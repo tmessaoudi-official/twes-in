@@ -18,6 +18,7 @@ use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Module\Invoices\Application\DeliveryNoteRoom;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Application\InvoiceNotFound;
@@ -86,7 +87,7 @@ final class ManageInvoicesTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), $this->sourceLines = new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($this->invoices, $this->totals), ShippedFiscalPresets::presets(), new InMemoryRecordVersions(), new ParameterListLimits([ListLimits::DOCUMENT_LINES => self::LINES_MOST]));
+        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new DeliveryNoteRoom($this->sourceLines = new InMemorySourceDeliveryNoteLines(), $this->invoices), ShippedDepositDeductions::of($this->invoices, $this->totals), ShippedFiscalPresets::presets(), new InMemoryRecordVersions(), new ParameterListLimits([ListLimits::DOCUMENT_LINES => self::LINES_MOST]));
         $this->invoices->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->provision->handle($this->company);

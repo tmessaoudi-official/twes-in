@@ -75,7 +75,7 @@ final readonly class ManageInvoices
         private ClockInterface $clock,
         private InvoiceLinePrices $linePrices,
         private ExcludedTaxFamilies $excluded,
-        private SourceDeliveryNoteLines $sourceLines,
+        private DeliveryNoteRoom $noteRoom,
         private DepositDeductions $deductions,
         private FiscalPresets $presets,
         private RecordVersions $versions,
@@ -465,26 +465,7 @@ final readonly class ManageInvoices
      */
     private function withinTheirNotes(Company $company, Invoice $current, array $lines): void
     {
-        $ids = [];
-        foreach ($lines as $line) {
-            if (null !== $line->sourceDeliveryNoteLineId) {
-                $ids[$line->sourceDeliveryNoteLineId->toRfc4122()] = $line->sourceDeliveryNoteLineId;
-            }
-        }
-        [$sources, $room] = $this->room($company, $current, array_values($ids), true);
-        foreach ($lines as $index => $line) {
-            $id = $line->sourceDeliveryNoteLineId?->toRfc4122();
-            if (null === $id || !isset($sources[$id], $room[$id])) {
-                continue;
-            }
-            $source = $sources[$id];
-            if (!(null === $source->productId ? null === $line->productId : null !== $line->productId && $source->productId->equals($line->productId))) {
-                throw (new InvalidInvoice('productId', 'A line taken from a delivery note keeps the product the note delivered.'))->within("lines[$index]");
-            }
-            if (is_numeric($line->quantity) && Decimal::of($line->quantity)->compare(Decimal::of($room[$id])) > 0) {
-                throw (new InvalidInvoice('quantity', \sprintf('Only %s of this delivery note line is left to invoice.', $room[$id])))->within("lines[$index]");
-            }
-        }
+        $this->noteRoom->assertWithin($company->getId(), $current, array_map(static fn (InvoiceLineInput $line): array => ['source' => $line->sourceDeliveryNoteLineId, 'product' => $line->productId, 'quantity' => $line->quantity], $lines));
     }
 
     /**
@@ -499,29 +480,7 @@ final readonly class ManageInvoices
             return [];
         }
 
-        return $this->room($company, $invoice, array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $invoice->getLines()))))[1];
-    }
-
-    /**
-     * @param list<Uuid> $ids  delivery note lines
-     * @param bool       $held whether what is read must stay so until the transaction ends, for a revision that relies on it
-     *
-     * @return array{array<string, SourceDeliveryNoteLine>, array<string, string>} the note lines of the company, and
-     *                                                                             what each leaves to this invoice
-     */
-    private function room(Company $company, Invoice $invoice, array $ids, bool $held = false): array
-    {
-        if ([] === $ids) {
-            return [[], []];
-        }
-        $sources = $held ? $this->sourceLines->lockedOfIds($ids, $company->getId()) : $this->sourceLines->ofIds($ids, $company->getId());
-        $elsewhere = $this->invoices->invoicedQuantities($company->getId(), $ids, false, $invoice->getId());
-        $room = [];
-        foreach ($sources as $id => $source) {
-            $room[$id] = Decimal::format(Decimal::of($source->quantity)->sub(Decimal::of($elsewhere[$id] ?? '0')), 3);
-        }
-
-        return [$sources, $room];
+        return $this->noteRoom->left($company->getId(), $invoice, array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $invoice->getLines()))))[1];
     }
 
     /** @param array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>, sources: list<string>, chargedBefore: list<string>} $kept */

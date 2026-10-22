@@ -38,6 +38,7 @@ import { provideQuietFeedback, RecordedFeedback, successToasts } from '../shared
 import { announceSaved } from '../shared/testing/live';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { TextsApi } from '../shared/i18n/texts-api';
+import { RecordDeletes } from '../shared/records/record-deletes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -164,7 +165,6 @@ describe('ExpensePage', () => {
     clearError: vi.fn(),
     payExpense: vi.fn(),
     classifyWithholding: vi.fn(),
-    deleteExpense: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
     restoreAttachment: vi.fn(),
@@ -182,10 +182,20 @@ describe('ExpensePage', () => {
     hasModule: vi.fn(),
   };
   const recurring = { create: vi.fn() };
+  const deletes = { remove: vi.fn() };
   let fixture: ComponentFixture<ExpensePage>;
 
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+
+  /** An entry of the bar's « ⋮ », where a destructive action always sits; null when the page offers none. */
+  async function menuEntry(id: string): Promise<HTMLElement | null> {
+    q('record-more')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const entry = document.body.querySelector<HTMLElement>(`[data-testid="record-menu-${id}"]`);
+    return entry;
+  }
 
   /** The expense form as the page holds it; a mat-select is set through its control. */
   const form = (): FormGroup =>
@@ -256,7 +266,7 @@ describe('ExpensePage', () => {
     facade.recordExpense.mockReset().mockResolvedValue({ ...draft, status: 'recorded' });
     facade.payExpense.mockReset().mockResolvedValue({ ...draft, status: 'paid' });
     facade.classifyWithholding.mockReset().mockResolvedValue({ ...draft, status: 'paid' });
-    facade.deleteExpense.mockReset().mockResolvedValue(true);
+    deletes.remove.mockReset().mockResolvedValue(true);
     facade.attach.mockReset().mockResolvedValue(true);
     facade.detach.mockReset().mockResolvedValue(true);
     facade.restoreAttachment.mockReset().mockResolvedValue(null);
@@ -278,6 +288,7 @@ describe('ExpensePage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ExpensesFacade, useValue: facade },
         { provide: RecurringExpensesApi, useValue: recurring },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: TextsApi, useValue: { part: () => Promise.resolve({}) } },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
@@ -486,7 +497,7 @@ describe('ExpensePage', () => {
 
     expect(q('expense-fixed')).not.toBeNull();
     expect(q('record-save')).toBeNull();
-    expect(q('expense-delete')).toBeNull();
+    expect(await menuEntry('delete')).toBeNull();
     expect((q('field-description') as HTMLInputElement).disabled).toBe(true);
 
     q('expense-pay')!.click();
@@ -662,21 +673,37 @@ describe('ExpensePage', () => {
     expect(q('expense-classify')).toBeNull();
   });
 
-  it('deletes a draft only on the second click', async () => {
+  it('deletes a draft without asking, said annulable, and goes back to the list once it is gone', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     expense.set(draft);
     await open('e1');
 
-    q('expense-delete')!.click();
+    const entry = await menuEntry('delete');
+    expect(entry?.getAttribute('data-kind')).toBe('annulable');
+    entry!.click();
     await settle();
-    expect(facade.deleteExpense).not.toHaveBeenCalled();
-    q('expense-delete')!.click();
-    await settle();
-    expect(facade.deleteExpense).toHaveBeenCalledWith('c1', 'e1');
+
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'expense', [
+      { id: 'e1', label: draft.description },
+    ]);
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(['/expenses'], { replaceUrl: true }),
     );
-    expect(successToasts()).toContain('expenses.deleted');
+  });
+
+  it('stays on the draft when the delete is refused, and offers none to whoever does not write expenses', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    deletes.remove.mockResolvedValue(false);
+    expense.set(draft);
+    await open('e1');
+    (await menuEntry('delete'))!.click();
+    await settle();
+    expect(deletes.remove).toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'expense.write');
+    await open('e1');
+    expect(await menuEntry('delete')).toBeNull();
   });
 
   it('attaches a chosen file, links each receipt to its content, and removes one only from a draft', async () => {

@@ -67,7 +67,6 @@ describe('ExpensesFacade', () => {
     reviseExpense: vi.fn(),
     recordExpense: vi.fn(),
     payExpense: vi.fn(),
-    deleteExpense: vi.fn(),
     attachments: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
@@ -254,15 +253,7 @@ describe('ExpensesFacade', () => {
     expect(facade.refusals()).toEqual([]);
   });
 
-  it('forgets a deleted expense and reads the categories again after a change', async () => {
-    api.expense.mockResolvedValue(draft);
-    api.options.mockResolvedValue(options);
-    api.attachments.mockResolvedValue([]);
-    await facade.loadExpense('c1', 'e1');
-    api.deleteExpense.mockResolvedValue(undefined);
-    expect(await facade.deleteExpense('c1', 'e1')).toBe(true);
-    expect(facade.expense()).toBeNull();
-
+  it('reads the categories again after a change', async () => {
     api.createCategory.mockResolvedValue({
       id: 'k1',
       name: 'Carburant',

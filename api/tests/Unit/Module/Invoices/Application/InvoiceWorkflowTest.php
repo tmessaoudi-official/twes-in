@@ -22,6 +22,7 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
+use App\Module\Invoices\Application\DeliveryNoteRoom;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\InvoiceWorkflow;
@@ -66,6 +67,7 @@ use App\Tests\Support\InMemoryInvoiceChains;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemorySettings;
+use App\Tests\Support\InMemorySourceDeliveryNoteLines;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\RecordingDomainEvents;
@@ -135,6 +137,7 @@ final class InvoiceWorkflowTest extends TestCase
             new SealInvoiceChains(new InMemoryInvoiceChains($this->invoices), $numbers, $this->transactions),
             new DocumentNames($this->taxes),
             new ExcludedTaxFamilies(ShippedFiscalPresets::presets()),
+            new DeliveryNoteRoom(new InMemorySourceDeliveryNoteLines(), $this->invoices),
         );
         foreach ([$this->company, $this->globex] as $company) {
             $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));

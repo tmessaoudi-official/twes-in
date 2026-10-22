@@ -159,13 +159,6 @@ export class ExpensesFacade {
     return this.save(() => this.api.classifyWithholding(companyId, id, code));
   }
 
-  async deleteExpense(companyId: string, id: string): Promise<boolean> {
-    return this.write(
-      () => this.api.deleteExpense(companyId, id),
-      async () => this.expenseSignal.set(null),
-    );
-  }
-
   /** Attaches a file, then reads the expense's files and count again. */
   async attach(companyId: string, expenseId: string, file: File): Promise<boolean> {
     return this.write(

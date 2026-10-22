@@ -224,18 +224,6 @@
     @if (mayWrite() && isDraft() && current()) {
       <div class="flex flex-wrap justify-end gap-2">
         <button
-          mat-button
-          type="button"
-          (click)="remove()"
-          [disabled]="busy()"
-          data-testid="expense-delete"
-        >
-          {{
-            (confirmingDelete() ? 'expenses.actions.delete_confirm' : 'expenses.actions.delete')
-              | translate
-          }}
-        </button>
-        <button
           mat-stroked-button
           type="button"
           (click)="record()"

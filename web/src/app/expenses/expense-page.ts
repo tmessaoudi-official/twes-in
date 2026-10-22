@@ -69,6 +69,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { FileDrop } from '../shared/form/file-drop';
@@ -111,6 +112,7 @@ export class ExpensePage {
   private readonly recurring = inject(RecurringExpensesApi);
   private readonly format = inject(FormatFacade);
   private readonly texts = inject(TextsParts);
+  private readonly deletes = inject(RecordDeletes);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `expenses/new`. */
   readonly expenseId = input<string | undefined>(undefined);
@@ -123,7 +125,6 @@ export class ExpensePage {
   protected readonly options = this.facade.options;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('expense.write'));
-  protected readonly confirmingDelete = signal(false);
 
   /** Null while a new expense is filled in; undefined until the expense asked for has been read. */
   protected readonly current = computed(() => {
@@ -331,7 +332,6 @@ export class ExpensePage {
       const companyId = this.company()?.id;
       const id = this.id();
       untracked(() => {
-        this.confirmingDelete.set(false);
         if (companyId) {
           void this.facade.loadExpense(companyId, id);
         }
@@ -426,6 +426,18 @@ export class ExpensePage {
           this.mayWrite() &&
           this.current() != null &&
           this.auth.hasModule(RECURRING_EXPENSES_MODULE),
+      },
+      {
+        id: 'delete',
+        label: 'records.delete',
+        icon: 'delete',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps the draft a day, its lines,
+        // taxes and receipts with it.
+        destructive: true,
+        undoable: true,
+        disabled: busy,
+        run: () => void this.remove(),
+        shown: may && this.current() != null,
       },
     ];
   });
@@ -601,21 +613,19 @@ export class ExpensePage {
     }
   }
 
-  protected async remove(): Promise<void> {
+  /** Deletes the draft, then leaves its page for the list once it is gone; what was typed in it goes with it. */
+  private async remove(): Promise<void> {
     const companyId = this.company()?.id;
-    const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
-    if (!this.confirmingDelete()) {
-      this.confirmingDelete.set(true);
-      return;
-    }
-    if (await this.facade.deleteExpense(companyId, id)) {
-      this.feedback.success('expenses.deleted');
-      // The record is GONE: asking whether to keep unsaved changes to it would be asking about something that no
-      // longer exists, and the only answer that saves anything is the one nobody can take (2026-09-20).
-      this.unsaved.savedAndLeaving();
-      await this.router.navigate(['/expenses'], { replaceUrl: true });
-    }
+    const current = this.current();
+    if (!companyId || !current || this.busy()) return;
+    const gone = await this.deletes.remove(companyId, 'expense', [
+      { id: current.id, label: current.description },
+    ]);
+    if (!gone) return;
+    // The record is GONE: asking whether to keep unsaved changes to it would be asking about something that no
+    // longer exists, and the only answer that saves anything is the one nobody can take.
+    this.unsaved.savedAndLeaving();
+    await this.router.navigate(['/expenses'], { replaceUrl: true });
   }
 
   protected async upload(file: File): Promise<void> {

@@ -2744,7 +2744,6 @@
     "save": "Save",
     "cancel": "Close",
     "saved": "The expense was saved.",
-    "deleted": "The expense was deleted.",
     "read_only": "You can read expenses but not change them.",
     "statuses": {
       "draft": "Draft",
@@ -2801,8 +2800,6 @@
     "actions": {
       "record": "Record in the books",
       "pay": "Mark as paid",
-      "delete": "Delete draft",
-      "delete_confirm": "Confirm deletion",
       "classify": "Save the operation"
     },
     "attachments": {
@@ -4072,7 +4069,8 @@
         "revised": "changed the expense",
         "recorded": "recorded the expense",
         "paid": "paid the expense",
-        "deleted": "deleted the expense"
+        "deleted": "deleted the expense",
+        "restored": "put back the expense"
       },
       "expense_category": {
         "created": "created the expense category",

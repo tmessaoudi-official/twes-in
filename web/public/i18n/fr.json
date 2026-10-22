@@ -2744,7 +2744,6 @@
     "save": "Enregistrer",
     "cancel": "Fermer",
     "saved": "La dépense a été enregistrée.",
-    "deleted": "La dépense a été supprimée.",
     "read_only": "Vous pouvez consulter les dépenses mais pas les modifier.",
     "statuses": {
       "draft": "Brouillon",
@@ -2801,8 +2800,6 @@
     "actions": {
       "record": "Comptabiliser",
       "pay": "Marquer comme payée",
-      "delete": "Supprimer le brouillon",
-      "delete_confirm": "Confirmer la suppression",
       "classify": "Enregistrer l’opération"
     },
     "attachments": {
@@ -4072,7 +4069,8 @@
         "revised": "a modifié la dépense",
         "recorded": "a enregistré la dépense",
         "paid": "a payé la dépense",
-        "deleted": "a supprimé la dépense"
+        "deleted": "a supprimé la dépense",
+        "restored": "a remis la dépense"
       },
       "expense_category": {
         "created": "a créé la catégorie de dépenses",

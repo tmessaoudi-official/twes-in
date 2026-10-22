@@ -135,6 +135,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'expense.recorded',
   'expense.paid',
   'expense.deleted',
+  'expense.restored',
   'purchase_order.created',
   'purchase_order.revised',
   'purchase_order.sent',

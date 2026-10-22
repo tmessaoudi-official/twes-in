@@ -108,6 +108,7 @@
         "invoice": "{{count}} {count, plural, one {invoice draft} other {invoice drafts}}",
         "quote": "{{count}} {count, plural, one {quote draft} other {quote drafts}}",
         "purchase_order": "{{count}} {count, plural, one {purchase order draft} other {purchase order drafts}}",
+        "expense": "{{count}} {count, plural, one {expense draft} other {expense drafts}}",
         "payment_instrument": "{{count}} {count, plural, one {cheque or traite} other {cheques or traites}}",
         "delivery_note": "{{count}} {count, plural, one {delivery note draft} other {delivery note drafts}}",
         "recurring_invoice": "{{count}} {count, plural, one {recurring invoice} other {recurring invoices}}",

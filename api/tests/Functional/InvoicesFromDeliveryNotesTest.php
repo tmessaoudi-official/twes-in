@@ -513,6 +513,44 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_OK, 'its own six are its own, not taken twice');
     }
 
+    public function testADraftPutBackFromTheBinIsRefusedAtIssueWhenItsNoteWasInvoicedOrCancelledMeanwhile(): void
+    {
+        $this->signedIn();
+        $note = $this->validatedNote(['lines' => [['productId' => $this->productId, 'quantity' => '10']]]);
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $restored = $this->stringAt($this->json(), 'id');
+        $removal = $this->removed($restored);
+        // With the first draft in the bin, the ten are free again: a second draft takes them and is issued.
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->invoicePath($this->stringAt($this->json(), 'id')).'/issue', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->companyPath().'/record-removals/'.$removal.'/restore', null);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->invoicePath($restored).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the same ten units are never invoiced twice');
+        $refusal = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('lines[0].quantity', $refusal);
+        self::assertStringContainsString('0.000', $refusal);
+        self::assertSame('draft', $this->em()->getConnection()->fetchOne('SELECT status FROM invoice WHERE id = ?', [$restored]), 'refused before the series: no number spent');
+
+        $cancelled = $this->validatedNote(['lines' => [['productId' => $this->productId, 'quantity' => '4']]]);
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$cancelled]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $stale = $this->stringAt($this->json(), 'id');
+        $removal = $this->removed($stale);
+        $this->postJson($this->notePath($cancelled).'/cancel', null);
+        self::assertResponseIsSuccessful('nothing carries the note while its draft is in the bin');
+        $this->postJson($this->companyPath().'/record-removals/'.$removal.'/restore', null);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->invoicePath($stale).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'goods back on the shelf are not invoiced');
+        self::assertStringContainsString('lines[0].sourceDeliveryNoteLineId', (string) $this->client->getResponse()->getContent());
+    }
+
     public function testADraftInvoicingNotesStaysWithTheirCustomerUntilItInvoicesNoneOfThem(): void
     {
         // Moved to another customer, one customer's delivered goods were invoiced to another, and the note marked invoiced.
@@ -771,6 +809,15 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
             'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit',
             'company.read', 'company.settings',
         ], 'member');
+    }
+
+    /** Deletes the draft, kept in « Récemment supprimés »; the removal's id. */
+    private function removed(string $draft): string
+    {
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'invoice', 'ids' => [$draft]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        return $this->stringAt($this->json(), 'id');
     }
 
     private function companyPath(): string

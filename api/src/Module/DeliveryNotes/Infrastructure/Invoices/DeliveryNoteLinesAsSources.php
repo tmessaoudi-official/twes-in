@@ -11,6 +11,7 @@ namespace App\Module\DeliveryNotes\Infrastructure\Invoices;
 
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Module\Invoices\Application\SourceDeliveryNote;
 use App\Module\Invoices\Application\SourceDeliveryNoteLine;
 use App\Module\Invoices\Application\SourceDeliveryNoteLines;
@@ -54,7 +55,7 @@ final readonly class DeliveryNoteLinesAsSources implements SourceDeliveryNoteLin
         $sources = [];
         foreach (\is_array($lines) ? $lines : [] as $line) {
             if ($line instanceof DeliveryNoteLine) {
-                $sources[$line->getId()->toRfc4122()] = new SourceDeliveryNoteLine($line->getProduct()?->getId(), $line->getQuantity());
+                $sources[$line->getId()->toRfc4122()] = new SourceDeliveryNoteLine($line->getProduct()?->getId(), $line->getQuantity(), DeliveryNoteStatus::Cancelled === $line->getDeliveryNote()->getStatus());
             }
         }
 

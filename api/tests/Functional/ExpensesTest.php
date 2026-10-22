@@ -665,6 +665,45 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame(['expense.created', 'expense.attachment_added', 'expense.attachment_added', 'expense.attachment_removed', 'expense.deleted'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
     }
 
+    public function testADraftGoesToRecentlyDeletedWithItsLinesTaxesAndReceiptsAndComesBackAsItWas(): void
+    {
+        $this->signedIn(['company.read', 'expense.read', 'expense.write']);
+        $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Carburant')]));
+        $id = $this->stringAt($this->json(), 'id');
+        $this->uploadFile($this->path($id).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $rows = fn (): array => [
+            'expense' => $this->em()->getConnection()->fetchAllAssociative('SELECT * FROM expense WHERE id = ?', [$id]),
+            'expense_line' => $this->em()->getConnection()->fetchAllAssociative('SELECT * FROM expense_line WHERE expense_id = ? ORDER BY id', [$id]),
+            'expense_line_tax' => $this->em()->getConnection()->fetchAllAssociative('SELECT t.* FROM expense_line_tax t JOIN expense_line l ON l.id = t.line_id WHERE l.expense_id = ? ORDER BY t.id', [$id]),
+            'expense_tax' => $this->em()->getConnection()->fetchAllAssociative('SELECT * FROM expense_tax WHERE expense_id = ? ORDER BY id', [$id]),
+            'attachment' => $this->em()->getConnection()->fetchAllAssociative("SELECT * FROM attachment WHERE entity_type = 'expense' AND entity_id = ?", [$id]),
+        ];
+        $before = $rows();
+        self::assertCount(1, $before['attachment']);
+        self::assertNotSame([], $before['expense_line_tax'], 'its line carries its VAT');
+
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'expense', 'ids' => [$id]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $removal = $this->json();
+        self::assertSame([['id' => $id, 'label' => 'Gasoil septembre']], $removal['items'], 'a draft reads as what it bought');
+        self::assertSame([], array_filter($rows()), 'nothing of the draft is left, its receipt included');
+        self::assertSame(1, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM file'), 'the receipt\'s bytes stay while it may come back');
+
+        $this->postJson($this->companyPath().'/record-removals/'.$this->stringAt($removal, 'id').'/restore', null);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame($before, $rows());
+        $this->getJson($this->path($id).'/attachments');
+        self::assertSame(['recu.pdf'], array_column($this->jsonList(), 'name'));
+
+        $this->postJson($this->path($id).'/record', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'expense', 'ids' => [$id]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a recorded expense is in the books, never a draft to delete');
+    }
+
     public function testAVendorNamesTheCategoryItsExpensesUsuallyGoTo(): void
     {
         $this->signedIn(['expense.read', 'expense.write', 'vendor.read', 'vendor.write']);
