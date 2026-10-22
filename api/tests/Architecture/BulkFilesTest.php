@@ -16,7 +16,9 @@ use Symfony\Component\Routing\RouterInterface;
 /**
  * A support grant refuses every file carrying the company out whole by its mark, BulkFile, not by its path: a report's
  * export once escaped a path pattern naming only `/exports/`. Every action recording `export.downloaded` is such a
- * file, so each carries the mark, and every marked class answers a route, so the mark is never left on nothing.
+ * file, so each carries the mark, and every marked class answers a route, so the mark is never left on nothing. The
+ * other way round too: every marked file asks who is at the screen again and records each file it hands out, which
+ * the month's TEJ declaration once did not.
  */
 final class BulkFilesTest extends KernelTestCase
 {
@@ -38,6 +40,8 @@ final class BulkFilesTest extends KernelTestCase
             }
             if (str_contains($match[3] ?? '', 'BulkFile')) {
                 $marked[] = $class;
+                self::assertStringContainsString('->isRecent(', $source, $class.' is marked BulkFile and asks for a recent step-up');
+                self::assertStringContainsString("'export.downloaded'", $source, $class.' is marked BulkFile and records each file it hands out');
             }
         }
         self::assertGreaterThanOrEqual(3, \count($recording), 'the exports recording export.downloaded are found');

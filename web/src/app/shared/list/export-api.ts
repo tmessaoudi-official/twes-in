@@ -27,7 +27,8 @@ export class ExportApi {
   }
 }
 
-async function stepUpAsked(error: unknown): Promise<boolean> {
+/** Whether a file's failure is the API waiting for who is at the screen to prove it again. */
+export async function stepUpAsked(error: unknown): Promise<boolean> {
   if (
     !(error instanceof HttpErrorResponse) ||
     error.status !== 403 ||

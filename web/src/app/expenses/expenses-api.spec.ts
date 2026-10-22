@@ -402,6 +402,17 @@ describe('ExpensesApi', () => {
     await expect(failing).rejects.toThrow();
   });
 
+  it('reads that the file waits for who is at the screen to prove it again', async () => {
+    const pending = api.tejFile('c1', '2026-08');
+    http
+      .expectOne('/api/companies/c1/withholding-declarations/tej/2026-08')
+      .flush(new Blob([JSON.stringify({ error: 'step_up_required' })]), {
+        status: 403,
+        statusText: 'Forbidden',
+      });
+    expect(await pending).toEqual({ kind: 'step_up' });
+  });
+
   it('sends back the version it revises, and reads the one saved', async () => {
     const revised = api.reviseExpense('c1', 'e1', fuel, 2);
     const put = http.expectOne('/api/companies/c1/expenses/e1');

@@ -9,6 +9,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { FileSaver } from '../shared/files/save-file';
 import type { FieldOption } from '../shared/form/form-types';
 import { Select } from '../shared/form/select';
+import { StepUp } from '../shared/step-up/step-up';
 import { DayPipe } from '../shared/i18n/format-pipes';
 import { ExpensesFacade } from './expenses-facade';
 import type { TejFileAnswer } from './expenses-types';
@@ -114,6 +115,7 @@ export class TejFileDialog {
   protected readonly facade = inject(ExpensesFacade);
   private readonly data = inject<TejFileDialogData>(MAT_DIALOG_DATA);
   private readonly saver = inject(FileSaver);
+  private readonly stepUp = inject(StepUp);
 
   protected readonly months = this.data.months;
   protected readonly month = signal(this.data.months[0]?.value ?? '');
@@ -124,11 +126,20 @@ export class TejFileDialog {
     const month = this.month();
     if (month === '' || this.facade.busy()) return;
     this.refusal.set(null);
-    const answer = await this.facade.tejFile(this.data.companyId, month);
+    let answer = await this.facade.tejFile(this.data.companyId, month);
+    // The file carries every vendor withheld that month, so it waits, as every export does, for a recent proof.
+    if (answer?.kind === 'step_up') {
+      if (!(await this.stepUp.request('step_up.intro_export'))) return;
+      answer = await this.facade.tejFile(this.data.companyId, month);
+    }
     this.failed.set(answer === null);
     if (answer === null) return;
     if (answer.kind === 'refused') {
       this.refusal.set(answer);
+      return;
+    }
+    if (answer.kind === 'step_up') {
+      this.failed.set(true);
       return;
     }
     this.saver.save(answer.file, answer.filename);
