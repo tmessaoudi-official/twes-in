@@ -610,7 +610,8 @@
       "screen": "Sur cette page",
       "create": "Créer",
       "goto": "Aller à",
-      "guide": "Guides"
+      "guide": "Guides",
+      "app": "Application"
     },
     "create": "Créer",
     "user_menu": "Compte",
@@ -645,7 +646,12 @@
     "soon": "Bientôt",
     "collapse_settings": "Réduire les réglages",
     "expand_settings": "Déployer les réglages",
-    "help": "Aide"
+    "help": "Aide",
+    "install": {
+      "menu": "Installer l’application",
+      "installed": "{{name}} est installé sur cet appareil.",
+      "failed": "Le navigateur n’a pas ouvert l’installation : passez par son propre menu."
+    }
   },
   "notifications": {
     "bell": "Notifications, {{count}} {count, plural, one {non lue} other {non lues}}",
@@ -3513,7 +3519,8 @@
         "notice": "Que vous avez fermé le bandeau sur les cookies.",
         "customer_screen_place": "L’établissement où se trouve l’écran client de cet appareil, pour chaque entreprise.",
         "stock_plan": "Le plan d’un étage arrangé et pas encore enregistré, pour le reprendre sur cet appareil.",
-        "phone": "Le lien d’un téléphone prêté comme scanner."
+        "phone": "Le lien d’un téléphone prêté comme scanner.",
+        "install_later": "Que la proposition d’installer l’application, sur l’accueil, a été mise de côté sur cet appareil."
       },
       "third_party": "Aucun script tiers, aucune mesure d’audience, aucune publicité."
     }

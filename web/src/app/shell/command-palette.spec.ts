@@ -31,7 +31,9 @@ class StaticLoader implements TranslateLoader {
           empty: 'Aucune commande ne correspond',
           hint: 'Chaque module ajoute ses propres commandes',
           guide: 'Guides',
+          app: 'Application',
         },
+        install: { menu: 'Installer l’application' },
       },
     });
   }
@@ -160,6 +162,33 @@ describe('CommandPalette', () => {
 
     expect(start).toHaveBeenCalledWith(tour);
     expect(close).toHaveBeenCalled();
+  });
+
+  it('runs what the application itself does from its line, after the guides, and closes first', async () => {
+    const order: string[] = [];
+    close.mockImplementation(() => order.push('close'));
+    const run = vi.fn(() => order.push('run'));
+    TestBed.overrideProvider(MAT_DIALOG_DATA, {
+      useValue: {
+        commands: [
+          ...COMMANDS,
+          {
+            key: 'install-app',
+            labelKey: 'shell.install.menu',
+            icon: 'install_desktop',
+            group: 'app',
+            run,
+          },
+        ],
+      },
+    });
+    const { options, type, key } = await render();
+
+    expect(options().at(-1)).toBe('Installer l’application');
+    await type('installer');
+    await key('Enter');
+
+    expect(order).toEqual(['close', 'run']);
   });
 
   it('runs the active command with Enter: goes to its route and closes', async () => {

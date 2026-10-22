@@ -610,7 +610,8 @@
       "screen": "On this page",
       "create": "Create",
       "goto": "Go to",
-      "guide": "Guides"
+      "guide": "Guides",
+      "app": "App"
     },
     "create": "Create",
     "user_menu": "Account",
@@ -645,7 +646,12 @@
     "soon": "Soon",
     "collapse_settings": "Collapse the settings",
     "expand_settings": "Expand the settings",
-    "help": "Help"
+    "help": "Help",
+    "install": {
+      "menu": "Install the app",
+      "installed": "{{name}} is installed on this device.",
+      "failed": "The browser did not open its installation: use its own menu."
+    }
   },
   "notifications": {
     "bell": "Notifications, {{count}} unread",
@@ -3513,7 +3519,8 @@
         "notice": "That you closed the cookie notice.",
         "customer_screen_place": "The establishment this device's customer screen stands at, for each company.",
         "stock_plan": "A floor’s plan arranged and not saved yet, to take it up again on this device.",
-        "phone": "The link of a phone lent as a scanner."
+        "phone": "The link of a phone lent as a scanner.",
+        "install_later": "That the offer to install the app, on the home page, was put aside on this device."
       },
       "third_party": "No third-party script, no audience measurement, no advertising."
     }

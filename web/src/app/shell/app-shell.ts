@@ -76,6 +76,7 @@ import { ScanWedge } from '../shared/scan/scan-wedge';
 import { SCANNING_MODULE } from '../shared/scan/scanning-module';
 import { CommandPalette, type CommandPaletteData } from './command-palette';
 import {
+  type AppCommand,
   type Command,
   guideCommands,
   MODULE_COMMANDS,
@@ -87,6 +88,8 @@ import { glossaryFor } from './glossary';
 import { type HelpChoice, HelpPanel, type HelpPanelData } from './help-panel';
 import type { Tour } from '../shared/tour/tour';
 import { TourGuide } from '../shared/tour/tour-guide';
+import { AppInstall } from '../shared/install/app-install';
+import type { IconName } from '../shared/icons/icons';
 import {
   CORE_NAV,
   MANAGE_NAV,
@@ -234,6 +237,24 @@ export class AppShell {
   /** A page over the whole window: the shell steps behind it and out of the keyboard's way. */
   protected readonly immersive = inject(Immersive);
   protected readonly handset = computed(() => this.windowClass() === 'compact');
+  /** « Installer l'application », offered only where this browser can install it and it is not installed yet. */
+  protected readonly install = inject(AppInstall);
+  protected readonly installIcon = computed((): IconName =>
+    this.handset() ? 'install_mobile' : 'install_desktop',
+  );
+  private readonly installCommand = computed((): readonly AppCommand[] =>
+    this.install.offer() === null
+      ? []
+      : [
+          {
+            key: 'install-app',
+            labelKey: 'shell.install.menu',
+            icon: this.installIcon(),
+            group: 'app',
+            run: () => this.install.install(),
+          },
+        ],
+  );
   /** The count as the bell writes it: past nine, 9+. */
   protected badge(count: number): string {
     return count > 9 ? '9+' : String(count);
@@ -281,6 +302,7 @@ export class AppShell {
     // What is not built yet, after what works, marked, and gone with « Montrer ce qui arrive » (row 150).
     ...(this.theme.showComing() ? plannedCommands(this.me()?.plannedModules) : []),
     ...this.visible(guideCommands(TOURS)),
+    ...this.installCommand(),
   ]);
   /** What « Créer » offers this person: the modules' creations they may make, in the palette's order. */
   protected readonly createCommands = computed(() => [

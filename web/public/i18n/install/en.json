@@ -1,0 +1,17 @@
+{
+  "install": {
+    "card": {
+      "title": "Install {{name}} on this phone",
+      "text": "It will open from the home screen, full screen, like an app.",
+      "install": "Install",
+      "later": "Later"
+    },
+    "guide": {
+      "title": "Install {{name}} on this device",
+      "intro": "Safari installs it in two steps:",
+      "share": "Tap “Share”, in Safari’s bar or under “…”.",
+      "add": "Choose “Add to Home Screen”, then “Add”.",
+      "close": "Got it"
+    }
+  }
+}

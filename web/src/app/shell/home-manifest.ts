@@ -3,6 +3,7 @@
 import type { Type } from '@angular/core';
 import { EXPENSES_HOME } from '../expenses/expenses-nav';
 import { FIRST_STEPS_HOME } from '../first-steps/first-steps-nav';
+import { INSTALL_HOME } from '../install/install-nav';
 import { INVOICES_HOME } from '../invoices/invoices-nav';
 import { WATCH_HOME } from '../watch/watch-nav';
 import type { Gated } from './nav-manifest';
@@ -19,6 +20,7 @@ export interface HomePanel extends Gated {
 
 /** Every module's home panels, in the order the page shows them. */
 export const HOME_PANELS: readonly HomePanel[] = [
+  ...INSTALL_HOME,
   ...FIRST_STEPS_HOME,
   ...WATCH_HOME,
   ...INVOICES_HOME,

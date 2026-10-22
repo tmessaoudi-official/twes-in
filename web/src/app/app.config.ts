@@ -47,6 +47,7 @@ import { ZxingBarcodeReader } from './shared/scan/zxing-barcode-reader';
 import { trackNavigation } from './shared/feedback/navigation-activity';
 import { ReportingErrorHandler } from './shared/errors/reporting-error-handler';
 import { DocumentDirection } from './shared/i18n/document-direction';
+import { AppInstall } from './shared/install/app-install';
 import { LanguageFacade } from './shared/i18n/language-facade';
 import { DEFAULT_LANGUAGE } from './shared/i18n/languages';
 import { ThemeFacade } from './shared/theme/theme-facade';
@@ -129,6 +130,8 @@ export const appConfig: ApplicationConfig = {
       // direction it gives the document.
       inject(DocumentDirection);
       inject(LanguageFacade);
+      // The browser says once, early, that the application may be installed: heard before any page.
+      inject(AppInstall);
       trackNavigation();
     }),
   ],

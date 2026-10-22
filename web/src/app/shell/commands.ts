@@ -14,11 +14,12 @@ import type { IconName } from '../shared/icons/icons';
 import type { Tour } from '../shared/tour/tour';
 
 /**
- * Where a command sits in the palette: what the screen on view can do, then what it creates, then where it goes.
- * The screen's own actions come first because they are the half that changes — everything below is on every page.
+ * Where a command sits in the palette: what the screen on view can do, then what it creates, then where it goes, then
+ * the guides and what the application itself does. The screen's own actions come first because they are the half that
+ * changes — everything below is on every page.
  */
-export type CommandGroup = 'screen' | 'create' | 'goto' | 'guide';
-export const COMMAND_GROUPS: readonly CommandGroup[] = ['screen', 'create', 'goto', 'guide'];
+export type CommandGroup = 'screen' | 'create' | 'goto' | 'guide' | 'app';
+export const COMMAND_GROUPS: readonly CommandGroup[] = ['screen', 'create', 'goto', 'guide', 'app'];
 
 /**
  * One line of the command palette (Ctrl K). A module declares its own beside its navigation, gated like a navigation
@@ -56,7 +57,16 @@ export interface GuideCommand extends CommandBase {
   readonly tour: Tour;
 }
 
-export type Command = NavigateCommand | ScreenCommand | GuideCommand;
+/**
+ * A command the application answers wherever the person is, such as installing it: run straight from the key or
+ * click that chose it, which a browser's own dialog requires.
+ */
+export interface AppCommand extends CommandBase {
+  readonly group: 'app';
+  readonly run: () => void;
+}
+
+export type Command = NavigateCommand | ScreenCommand | GuideCommand | AppCommand;
 
 /** The tours as palette lines, after everything else: « Guide : … », which typing « guide » finds. */
 export function guideCommands(tours: readonly Tour[]): readonly GuideCommand[] {

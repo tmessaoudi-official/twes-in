@@ -83,12 +83,16 @@ export class CommandPalette {
 
   /**
    * A destination is navigated to; an action the screen declared is run by the same `runAction` the toolbar uses,
-   * so a destructive action reached from here asks exactly as it asks from the bar.
+   * so a destructive action reached from here asks exactly as it asks from the bar; the application's own runs at once.
    */
   protected run(command: Command): void {
     this.dialog.close();
     if (command.group === 'guide') {
       void this.guide.start(command.tour);
+      return;
+    }
+    if (command.group === 'app') {
+      command.run();
       return;
     }
     if (command.group !== 'screen') {

@@ -1,0 +1,17 @@
+{
+  "install": {
+    "card": {
+      "title": "Installer {{name}} sur ce téléphone",
+      "text": "Il s’ouvrira depuis l’écran d’accueil, en plein écran, comme une application.",
+      "install": "Installer",
+      "later": "Plus tard"
+    },
+    "guide": {
+      "title": "Installer {{name}} sur cet appareil",
+      "intro": "Safari l’installe en deux gestes :",
+      "share": "Touchez « Partager », dans la barre de Safari ou sous « … ».",
+      "add": "Choisissez « Sur l’écran d’accueil », puis « Ajouter ».",
+      "close": "Compris"
+    }
+  }
+}
