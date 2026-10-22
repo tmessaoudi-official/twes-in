@@ -970,24 +970,43 @@ root on this computer; keep the computer's accounts to the shop's own, and the a
 | `twes start` | waits for Docker (five minutes), reads this computer's address, starts the release deployed here again; nothing is fetched, so a morning without the internet still opens |
 | `twes update` | the newest release tag, once its signature verifies: the database and the files backed up first, the release deployed by digest, its deep health read through the edge; unhealthy, the release before it is started again on the new schema and the developer told |
 | `twes policy auto 13:00-14:00` | updates applied by `tick` inside that daily window, in the shop's time, never just after a start, a release that failed here never retried by itself |
-| `twes policy notify` / `off` | a release out is told to each company's owners in the application (the default), or nothing |
-| `twes offsite on` / `off` | the off-site copy of the backups, once the bucket's values are given |
+| `twes policy notify` / `off` | a release out is told to each company's owners in the application, or nothing |
+| `twes offsite on` / `off` | the hourly off-site copy of the backups, once the bucket's values are given |
 | `twes tick` | a new address, alerts held back, the deep health (failing, the installation started again once, the developer told only if that did not mend it, never within ten minutes of a start), the backups' outcomes and schedule, then the policy |
-| `twes status` | the release, the address, the policy, the health, how often `tick` started it again, and the backups |
+| `twes status` | the release, the address, the policy, where the backups are and whether a copy leaves the computer, the health, how often `tick` started it again, and the backups |
 | `twes restore-commands` | what takes the installation back to the backup made before the last update (docs/RUNBOOK.md, « Restore a shop ») |
-| `twes install` | asks for the shop's facts, pins the release key once its fingerprint is confirmed, installs the newest release and makes the operator; on Linux and under `-Engine Wsl`, schedules as well |
+| `twes install` | asks for the shop's facts, and whether the computer stays on at night, and proposes the daily update window from that (02:00-05:00, otherwise the hour after closing, never across midnight) for `twes policy auto`; pins the release key once its fingerprint is confirmed, installs the newest release and makes the operator; on Linux and under `-Engine Wsl`, schedules as well |
 | `twes pin-key <file>` | pins a public release key: every release tag must verify against it |
 | `twes schedule` | Linux, and Docker Engine inside WSL (`-Engine Wsl`): system units running `twes start` at boot and `twes tick` every quarter hour as this account, once Docker runs (`sudo` asks for the password) |
 
 **Backups.** The computer is off at night, so its backups run when due: every half hour the schedule runs each step whose
 last success is older than its period (a full backup weekly, a differential daily, the dump and the files daily, a
-read-back weekly), the outcomes kept in a volume of their own. Both repositories are encrypted under the values'
-passphrases. An update always backs up first, locally, and keeps that backup's label.
+read-back weekly, the off-site copy hourly), the outcomes kept in a volume of their own. Both repositories are
+encrypted under the values' passphrases. An update always backs up first, locally, and keeps that backup's label.
+
+**What a shop can lose.** The database archives its changes into the backups' folder within five minutes
+(`archive_timeout=300`); the files (logos, issued PDFs, attachments) reach it with the day's copy. What a loss costs
+depends on where that folder and its copy are; `twes install` never refuses, says which case the shop is in, and
+`twes status` says it again:
+
+| Where the backups are | A dead system disk loses | A stolen, burnt or encrypted computer loses |
+|---|---|---|
+| blank folder, off site off: a Docker volume on this disk | everything, the backups with it | everything |
+| a second disk or a USB drive (`BACKUP_DIRECTORY`), off site off | up to five minutes of the database, the files since the day's copy | everything, unless the drive is kept elsewhere |
+| with `twes offsite on` (an S3-compatible bucket: a free Backblaze B2 or Cloudflare R2 account will do) | as above with a second disk; without one, up to an hour | up to an hour of the database, the files since the day's copy: the folder is copied there every hour the computer is on (`BACKUP_OFFSITE_EVERY`, 3,000 s by default, as the schedule runs every half hour) |
+
+The folder on a second disk is named by `twes-in-backups.id`, written in it and as `BACKUP_FOLDER_ID` in the values the
+first time it is there: a drive unplugged at start leaves an empty folder in its place, which the backup service
+refuses rather than backing up onto this computer's own disk (the database keeps its changes until the drive is back);
+`twes start` and `tick` mail the developer once a day, and `twes update` refuses, until it is plugged back in. A USB
+stick left plugged into the shop's computer is a second disk, not an off-site copy. While no copy leaves the
+computer, `tick` mails the developer once a day saying so and naming what to do.
 
 **Alerts.** A failed or rolled-back update, a failing deep health that starting the installation again did not mend, a failed backup step and a backup schedule gone quiet
 are mailed through the shop's own account to `ALERT_EMAIL`, so a mail leaves while the application is down, and told
 to the platform's operators in the application (`app:installation:tell`), held under `~/.twes-in/state/` until it
-answers. A release out is told to the owners only.
+answers. A mail that does not leave (no internet that minute, a password revoked) is kept under `state/pending-mails`
+and sent by the next `tick`; `twes status` counts what waits. A release out is told to the owners only.
 
 **The schema only grows.** Since an unhealthy update starts the release before it on the new schema, a migration added
 after a release tag never drops, renames or narrows what that release reads (`scripts/gates/additive-migrations.sh`);

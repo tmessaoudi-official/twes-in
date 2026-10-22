@@ -52,6 +52,14 @@ wait_for_database() {
 
 init() {
   wait_for_database
+  # A shop's folder is named by an identity its values carry (scripts/onprem/twes): a drive unplugged leaves an empty
+  # folder in its place, and a stanza made there would take the archive onto the computer's own disk. Refused, the
+  # archive waits in pg_wal until the drive is back, and every step fails, which twes tick says.
+  if [[ -n "${BACKUP_FOLDER_ID:-}" ]]; then
+    local found=''
+    [[ -f "${BACKUP_FOLDER:-/backup}/twes-in-backups.id" ]] && read -r found < "${BACKUP_FOLDER:-/backup}/twes-in-backups.id"
+    [[ "$found" == "$BACKUP_FOLDER_ID" ]] || { say "${BACKUP_FOLDER:-/backup} is not the backups' folder the values name ($BACKUP_FOLDER_ID): plug its drive back in"; return 1; }
+  fi
   # A shop's folder (compose.backup-local.yaml) starts empty, or as a host path owned by whoever made it; pgBackRest
   # writes it as the server's own user, archiving included.
   if [[ "${PGBACKREST_REPO1_TYPE:-}" == posix ]]; then
@@ -85,7 +93,8 @@ copy() {
 }
 
 # The local folder holds both repositories already encrypted; the off-site copy is one more restic repository, in the
-# bucket, which a lost machine is restored from by copying the folder back first (docs/RUNBOOK.md).
+# bucket, which a lost machine is restored from by copying the folder back first (docs/RUNBOOK.md, « Restore a lost
+# shop machine »).
 offsite() {
   if [[ -z "${OFFSITE_REPOSITORY:-}" ]]; then
     say "off-site copy off (compose.backup-offsite.yaml is not in this installation)"
@@ -96,7 +105,11 @@ offsite() {
     rst -r "$OFFSITE_REPOSITORY" init
   fi
   rst -r "$OFFSITE_REPOSITORY" backup --tag offsite --host twes /backup
-  rst -r "$OFFSITE_REPOSITORY" forget --host twes --keep-within "$KEEP" --prune
+  # Copied every hour, pruned once a day: a prune reads and rewrites the bucket's packs, too much to do hourly.
+  if (($(since offsite-prune) >= 20 * 3600)); then
+    rst -r "$OFFSITE_REPOSITORY" forget --host twes --keep-within "$KEEP" --prune
+    mkdir -p "$OUTCOME_DIRECTORY" && date +%s > "$OUTCOME_DIRECTORY/offsite-prune.ok"
+  fi
   say "local folder copied off site, kept $KEEP"
 }
 
@@ -149,7 +162,9 @@ since() {
 # Each step in its own process, as the schedule runs it, so it writes its outcome and takes the lock itself. A failed
 # step leaves the others to run: a base backup that fails is no reason to skip the night's copy.
 due() {
-  local self=${BASH_SOURCE[0]} failed=0 day=$((20 * 3600)) week=$((7 * 86400))
+  # The off-site copy's period: what a lost computer loses (docs/START.md § 16). Fifty minutes, since the schedule runs
+  # every half hour and an hour's period read a second early would wait the next half hour.
+  local self=${BASH_SOURCE[0]} failed=0 day=$((20 * 3600)) week=$((7 * 86400)) every=${OFFSITE_EVERY:-3000}
   # That the schedule is alive, whatever ran: a shop's twes tick alerts when this goes quiet while the application runs.
   mkdir -p "$OUTCOME_DIRECTORY" && echo "$(date +%s) ran" > "$OUTCOME_DIRECTORY/due"
   if (($(since full) >= week)); then
@@ -158,7 +173,8 @@ due() {
     bash "$self" diff || failed=1
   fi
   (($(since copy) < day)) || bash "$self" copy || failed=1
-  if [[ -n "${OFFSITE_REPOSITORY:-}" ]] && (($(since offsite) >= day)); then bash "$self" offsite || failed=1; fi
+  [[ "$every" =~ ^[0-9]+$ ]] || { say "OFFSITE_EVERY=$every: a number of seconds"; return 1; }
+  if [[ -n "${OFFSITE_REPOSITORY:-}" ]] && (($(since offsite) >= every)); then bash "$self" offsite || failed=1; fi
   (($(since verify) < week)) || bash "$self" verify || failed=1
   ((failed == 0)) || { say "due: a step failed, written down under $OUTCOME_DIRECTORY"; return 1; }
 }

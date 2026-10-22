@@ -163,9 +163,7 @@ final readonly class ManageRoles
             $holders = $this->memberships->holdersOfRole($company->getId(), $roleId, self::NAMED_HOLDERS + 1);
             $holders = array_merge($holders, $this->invitedToRole($company, $role));
             if ([] !== $holders) {
-                $named = \array_slice($holders, 0, self::NAMED_HOLDERS);
-                $more = \count($holders) > self::NAMED_HOLDERS ? ' and others' : '';
-                throw new RoleInUse(\sprintf('The %s role is held by %s%s. Move them to another role before deleting it.', $role->getName(), implode(', ', $named), $more));
+                throw new RoleInUse($role->getName(), \array_slice($holders, 0, self::NAMED_HOLDERS), \count($holders) > self::NAMED_HOLDERS);
             }
 
             // Recorded before the row goes: afterwards the name and the permissions exist nowhere else, and they are

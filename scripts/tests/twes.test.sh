@@ -136,13 +136,20 @@ installed() { # a shop running the old release
   local d; d=$(shop); git -C "$d/twes-in" checkout -q --detach "$OLD"
   mkdir -p "$d/etc/releases"; echo "t deployed $(git -C "$d/twes-in" rev-parse HEAD) release" > "$d/etc/releases/history"
   mkdir -p "$d/etc/state"; echo 192.168.1.20 > "$d/etc/state/lan-host"; echo $((NOON - 7200)) > "$d/etc/state/started-at"
+  # Already told today that no copy leaves the computer, so each case's own mail is the one read; OFFSITE_UNTOLD forgets it.
+  [[ -n "${OFFSITE_UNTOLD:-}" ]] || echo 2026-10-21 > "$d/etc/state/offsite-told"
   echo "$d"
 }
 bare() { local d; d=$(mktemp -d); git clone -q "$(origin)" "$d/twes-in"; echo "$d"; } # a clone, nothing else yet
 value_of() { awk -F= -v k="$2" '$1 == k { v = substr($0, length(k) + 2) } END { print v }' "$1/etc/install.env"; }
 FPR=$(GNUPGHOME=$TMPDIR/dev-gnupg gpg --batch --with-colons --list-keys "$DEV" | awk -F: '$1 == "fpr" { print $10; exit }')
-answers() { printf '%s\n' shop@gmail.com 'abcd efgh ijkl mnop' dev@example.test "${BACKUPS:-}" "${CONFIRM:-yes}" op@shop.test \
-  "${PW1:-a long passphrase 2026}" "${PW2:-a long passphrase 2026}"; }
+# NIGHT: whether the computer stays on at night; no asks the closing hour (CLOSING); WINDOW: what is typed at the window
+# proposed (blank takes it).
+answers() {
+  printf '%s\n' shop@gmail.com 'abcd efgh ijkl mnop' dev@example.test "${BACKUPS:-}" "${NIGHT:-yes}"
+  [[ "${NIGHT:-yes}" == yes ]] || printf '%s\n' "${CLOSING:-19:00}"
+  printf '%s\n' "${WINDOW:-}" "${CONFIRM:-yes}" op@shop.test "${PW1:-a long passphrase 2026}" "${PW2:-a long passphrase 2026}"
+}
 echo "twes"
 
 # start
@@ -152,6 +159,15 @@ d=$(installed)
 out=$(twes "$d" start); check "a deployed release starts again" $? 0 "$out" "https://192.168.1.20"
 check "  at the address the network gave, nothing fetched" 0 0 "$(deployed)" "LAN_HOST=192.168.1.20 --again"
 out=$(PLATFORM=wsl ADDRESS=10.0.0.7 twes "$d" start); check "under WSL, Windows' own address, its line end dropped" $? 0 "$(deployed)" "LAN_HOST=10.0.0.7 --again"
+# Started by systemd (-Engine Wsl), Windows' PATH is not appended: powershell.exe is found where Windows keeps it, and
+# a probe that cannot run at all keeps the address last read rather than moving the shop to 127.0.0.1.
+mkdir -p "$TMPDIR/windows"; mv "$TMPDIR/bin/powershell.exe" "$TMPDIR/windows/powershell.exe"
+out=$(PLATFORM=wsl ADDRESS=10.0.0.8 TWES_POWERSHELL=$TMPDIR/windows/powershell.exe twes "$d" start)
+check "under WSL from systemd, powershell.exe off the PATH: found where Windows keeps it" $? 0 "$(deployed)" "LAN_HOST=10.0.0.8 --again"
+out=$(PLATFORM=wsl TWES_POWERSHELL=$TMPDIR/nowhere.exe twes "$d" start)
+check "  nowhere at all: the address last read is kept" $? 0 "$(deployed)" "LAN_HOST=10.0.0.8 --again"
+check "  said so" 0 0 "$out" "Windows' address could not be read (no powershell.exe): 10.0.0.8 kept"
+mv "$TMPDIR/windows/powershell.exe" "$TMPDIR/bin/powershell.exe"
 out=$(NO_ROUTE=1 twes "$d" start); check "no network: this computer alone, said so" $? 0 "$out" "only this computer opens https://localhost"
 check "  at 127.0.0.1" 0 0 "$(deployed)" "LAN_HOST=127.0.0.1 --again"
 echo 'LAN_HOST=192.168.1.99' >> "$d/etc/install.env"
@@ -200,6 +216,7 @@ check "  its values written, a shop's" 0 0 "$(value_of "$d" TWES_INSTALL)" "onpr
 check "  the shop's Gmail as the relay, the address and the app password encoded, its spaces gone" 0 0 "$(value_of "$d" MAILER_DSN)" "smtp://shop%40gmail.com:abcdefghijklmnop@smtp.gmail.com:587"
 check "  the sender" 0 0 "$(value_of "$d" MAILER_SENDER)" "shop@gmail.com"
 check "  who is alerted" 0 0 "$(value_of "$d" ALERT_EMAIL)" "dev@example.test"
+check "  updates applied by themselves at night, the window proposed taken" 0 0 "$(value_of "$d" UPDATE_POLICY) $(value_of "$d" UPDATE_WINDOW)" "auto 02:00-05:00"
 check "  the release key's fingerprint shown before it is pinned" 0 0 "$out" "$FPR"
 check "  pinned" 0 0 "$(GNUPGHOME=$d/etc/release-keys gpg --batch --with-colons --list-keys 2>/dev/null)" "$FPR"
 check "  the newest signed release deployed" 0 0 "$(at_tag "$d")" "$NEW"
@@ -214,6 +231,52 @@ out=$(PLATFORM=wsl DOCKER_OS='Docker Desktop' twes "$d" install); [[ "$out" != *
 out=$(PLATFORM=wsl twes "$d" install); check "install again under WSL with Docker Engine: scheduled by systemd" $? 0 "$out" "scheduled: twes-in-start.service"
 d=$(bare); mkdir -p "$TMPDIR/usb"
 out=$(BACKUPS=$TMPDIR/usb answers | twes "$d" install); check "a backup folder given is the backups' folder" $? 0 "$(value_of "$d" BACKUP_DIRECTORY)" "$TMPDIR/usb"
+[[ "$out" != *"a dead disk"* ]]; check "  no word about this computer's own disk" $? 0 "$out" ""
+check "  but no copy off the computer: what a lost one costs, and how to send one" 0 0 "$out" "no copy leaves this computer: a stolen, burnt or encrypted computer loses every backup with it; give a bucket's values (BACKUP_S3_*) in"
+check "  every hour" 0 0 "$out" "then twes offsite on: the folder is copied there every hour"
+check "  the folder named by an identity, written in it and in the values" 0 0 "$(cat "$TMPDIR/usb/twes-in-backups.id")" "$(value_of "$d" BACKUP_FOLDER_ID)"
+[[ "$(value_of "$d" BACKUP_FOLDER_ID)" =~ ^[0-9a-f-]{36}$ ]]; check "  a uuid" $? 0 "$(value_of "$d" BACKUP_FOLDER_ID)" ""
+
+# The drive unplugged at start: the application starts all the same, the developer told, and nothing is backed up
+# into an empty folder made in its place on this computer's own disk.
+echo BACKUP_OFFSITE=on >> "$d/etc/install.env"  # its own mail is the one read here
+twes "$d" start >/dev/null; [[ -z "$(mailed)" ]]; check "the backups' folder there: started, nothing said" $? 0 "$(mailed)" ""
+mv "$TMPDIR/usb" "$TMPDIR/usb-away"
+out=$(twes "$d" start); check "the folder gone at start: started all the same" $? 0 "$(deployed)" "--again"
+check "  said" 0 0 "$out" "the backups' folder $TMPDIR/usb is not there"
+check "  and mailed" 0 0 "$(subject)" "Le dossier des sauvegardes n'est pas là"
+check "  saying what to do" 0 0 "$(mailed)" "Rebranchez le disque"
+out=$(AT=$((NOON + 900)) OUTCOMES="due $NOON ran\n" twes "$d" tick); [[ -z "$(mailed)" ]]; check "  tick: once a day, not every quarter hour" $? 0 "$(mailed)" ""
+out=$(AT=$((NOON + 86400)) OUTCOMES="due $((NOON + 86400)) ran\n" twes "$d" tick); check "  and again the next day while it lasts" $? 0 "$(subject)" "Le dossier des sauvegardes n'est pas là"
+mkdir -p "$TMPDIR/usb"
+out=$(twes "$d" start); check "an empty folder in its place: not the backups' folder" $? 0 "$out" "is not the backups' folder"
+check "  told as such" 0 0 "$(mailed)" "n'est pas celui des sauvegardes"
+[[ ! -e "$TMPDIR/usb/twes-in-backups.id" ]]; check "  and never named the backups' folder in its place" $? 0 "$(ls -A "$TMPDIR/usb")" ""
+rmdir "$TMPDIR/usb"; mv "$TMPDIR/usb-away" "$TMPDIR/usb"
+out=$(twes "$d" start); [[ "$out" != *"backups' folder"* ]]; check "the drive back: nothing said" $? 0 "$out" ""
+d=$(installed); mkdir -p "$TMPDIR/old-usb"; echo "BACKUP_DIRECTORY=$TMPDIR/old-usb" >> "$d/etc/install.env"
+out=$(twes "$d" start); check "an install from before the identity: its folder named at start" $? 0 "$(cat "$TMPDIR/old-usb/twes-in-backups.id")" "$(value_of "$d" BACKUP_FOLDER_ID)"
+[[ -n "$(value_of "$d" BACKUP_FOLDER_ID)" ]]; check "  in the values too" $? 0 "$(cat "$d/etc/install.env")" ""
+rm -r "$TMPDIR/old-usb"
+out=$(BACKUP_LABEL=$LABEL twes "$d" update); check "no update without the backups' folder, as an update backs up first" $? 1 "$out" "no update without it"
+[[ "$(at_tag "$d")" == "$OLD" && "$(deployed)" != *--release* ]]; check "  nothing checked out or deployed" $? 0 "$(deployed)" ""
+
+d=$(bare)
+out=$(NIGHT=no CLOSING=19:30 answers | twes "$d" install); check "a computer switched off at night: the window an hour after closing" $? 0 "$(value_of "$d" UPDATE_WINDOW)" "20:30-21:30"
+check "  proposed, so it may be changed" 0 0 "$out" "[20:30-21:30]"
+d=$(bare)
+out=$(NIGHT=no CLOSING=22:30 answers | twes "$d" install); check "  closing late: the window starts at midnight, never across it" $? 0 "$(value_of "$d" UPDATE_WINDOW)" "00:00-01:00"
+d=$(bare)
+out=$(NIGHT=no CLOSING=22:00 answers | twes "$d" install); check "  closing at 22:00: the window that would end at 24:00 starts at midnight" $? 0 "$(value_of "$d" UPDATE_WINDOW)" "00:00-01:00"
+d=$(bare)
+out=$(WINDOW=13:00-14:00 answers | twes "$d" install); check "another window typed: taken" $? 0 "$(value_of "$d" UPDATE_POLICY) $(value_of "$d" UPDATE_WINDOW)" "auto 13:00-14:00"
+d=$(bare)
+out=$(WINDOW=soon answers | twes "$d" install); check "a window that is none: refused, saying how one is written" $? 1 "$out" "a window is HH:MM-HH:MM"
+d=$(bare)
+out=$(NIGHT=perhaps answers | twes "$d" install); check "neither yes nor no: refused" $? 1 "$out" "yes or no"
+d=$(bare)
+out=$(answers | twes "$d" install); check "no backup folder: installed all the same, never blocked" $? 0 "$out" "installed: $NEW"
+check "  saying in words what a dead disk costs and how to move them" 0 0 "$out" "the backups stay on this computer's own disk: a dead disk loses every invoice with its backups; plug in a second disk or a USB drive and set BACKUP_DIRECTORY in"
 d=$(bare); odd="$TMPDIR/usb\nUPDATE_POLICY=off"; mkdir -p "$odd"
 out=$(BACKUPS=$odd answers | twes "$d" install); check "a backup folder whose name holds a backslash is written as typed" $? 0 "$(value_of "$d" BACKUP_DIRECTORY)" "$odd"
 [[ "$(grep -c '^UPDATE_POLICY=off$' "$d/etc/install.env")" == 0 ]]; check "  never read as a second value" $? 0 "$(cat "$d/etc/install.env")" ""
@@ -396,6 +459,18 @@ check "a failed backup step: the developer told" $? 0 "$(subject)" "Sauvegarde e
 check "  and the operators" 0 0 "$(told)" "installation.backup_failed step=copy"
 out=$(OUTCOMES="copy 2026-10-21T01:00:00Z failed copy exited 1\ndue $NOON ran\n" twes "$d" tick); [[ -z "$(told)" ]]; check "  once for that failure" $? 0 "$(told)" ""
 
+# A mail that does not leave (no internet that minute, a password revoked) is kept and sent by the next tick.
+d=$(installed)
+out=$(MAIL_EXIT=1 OUTCOMES="copy 2026-10-21T01:00:00Z failed copy exited 1\ndue $NOON ran\n" twes "$d" tick)
+check "a mail that did not leave: said" $? 0 "$out" "the mail to dev@example.test did not leave, kept for the next tick: [twes-in"
+check "  twes status counts it" 0 0 "$(MAIL_EXIT=1 twes "$d" status)" "held back: 1 mail(s)"
+out=$(AT=$((NOON + 900)) OUTCOMES="copy 2026-10-21T01:00:00Z failed copy exited 1\ndue $NOON ran\n" twes "$d" tick)
+check "  the next tick sends it" $? 0 "$(subject)" "Sauvegarde en échec : copy"
+check "  saying so" 0 0 "$out" "mailed to dev@example.test: [twes-in"
+[[ "$(twes "$d" status)" != *"mail(s)"* ]]; check "  and none is held any more" $? 0 "$(twes "$d" status)" ""
+out=$(AT=$((NOON + 1800)) OUTCOMES="copy 2026-10-21T01:00:00Z failed copy exited 1\ndue $NOON ran\n" twes "$d" tick); [[ -z "$(mailed)" ]]
+check "  sent once" $? 0 "$(mailed)" ""
+
 d=$(installed)
 out=$(OUTCOMES="due $((NOON - 6000)) ran\n" twes "$d" tick); check "a schedule silent for over an hour and a half: told" $? 0 "$(told)" "installation.backup_stopped"
 out=$(OUTCOMES="due $((NOON - 6000)) ran\n" twes "$d" tick); [[ -z "$(told)" ]]; check "  once a day" $? 0 "$(told)" ""
@@ -403,6 +478,20 @@ d=$(installed); echo $((NOON - 600)) > "$d/etc/state/started-at"
 out=$(OUTCOMES="due $((NOON - 6000)) ran\n" twes "$d" tick); [[ "$(told)" != *backup_stopped* ]]; check "  but not while the computer has just started" $? 0 "$(told)" ""
 d=$(installed)
 out=$(OUTCOMES_DOWN=1 twes "$d" tick); check "a backup service that does not answer: told" $? 0 "$(told)" "installation.backup_stopped"
+
+d=$(OFFSITE_UNTOLD=1 installed)
+out=$(twes "$d" tick); check "no copy off the computer: the developer mailed" $? 0 "$(subject)" "Aucune copie des sauvegardes hors de cet ordinateur"
+check "  saying the backups sit on this computer's own disk, and what to do" 0 0 "$(mailed)" "sur le disque de cet ordinateur"
+check "  the bucket's values, then twes offsite on" 0 0 "$(mailed)" "twes offsite on"
+out=$(AT=$((NOON + 900)) twes "$d" tick); [[ -z "$(mailed)" ]]; check "  once a day, not every quarter hour" $? 0 "$(mailed)" ""
+out=$(AT=$((NOON + 86400)) twes "$d" tick); check "  and again the next day while it lasts" $? 0 "$(subject)" "Aucune copie des sauvegardes"
+mkdir -p "$TMPDIR/usb"; echo "BACKUP_DIRECTORY=$TMPDIR/usb" >> "$d/etc/install.env"
+out=$(AT=$((NOON + 2 * 86400)) twes "$d" tick); check "  on a USB drive: named, a lost computer still loses it" $? 0 "$(mailed)" "sur $TMPDIR/usb"
+echo BACKUP_OFFSITE=on >> "$d/etc/install.env"
+out=$(AT=$((NOON + 3 * 86400)) twes "$d" tick); [[ "$(mailed)" != *"Aucune copie"* ]]; check "  off site on: never" $? 0 "$(mailed)" ""
+d=$(installed)
+check "status says where the backups are and that none leaves the computer" 0 0 "$(twes "$d" status)" "backups to: this computer's own disk (Docker volume backup-local)
+off site: off: a lost computer loses every backup; twes offsite on once a bucket's values are given"
 
 d=$(installed)
 out=$(twes "$d" tick); check "notify: the owners told a release is out" $? 0 "$(told)" "installation.update_available version=$NEW previous=$OLD"

@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\StepUp\RecentProof;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Role\ManageRoles;
 use App\Tenancy\Application\Role\RoleInUse;
 use App\Tenancy\Application\Role\RoleNotEditable;
@@ -42,7 +43,9 @@ final readonly class DeleteRoleProcessor implements ProcessorInterface
         } catch (RoleNotEditable $refused) {
             throw new UnprocessableEntityHttpException(self::refusal(RoleResource::BUILT_IN, $refused), $refused);
         } catch (RoleInUse $refused) {
-            throw new UnprocessableEntityHttpException(self::refusal(RoleResource::IN_USE, $refused), $refused);
+            // Who holds it is data no translation carries: the screen says its own sentence around these parameters,
+            // read from the violation's reason, never from the English detail.
+            throw DomainRule::refused('role', $refused->getMessage(), RoleResource::IN_USE, ['role' => $refused->role, 'holders' => implode(', ', $refused->holders), 'more' => $refused->more ? 1 : 0], $refused);
         }
 
         return null;

@@ -174,6 +174,31 @@ checkout:
 6. `twes status` must read health ok. Tell the shop the window between the backup and now: what was written in it is
    gone, and an invoice issued in it leaves a gap in its series to explain to their accountant.
 
+## Restore a lost shop machine
+
+Steps 5 to 8 are the ones `make backup-drill DRILL=local` runs every week in CI (scripts/backup/restore-drill.sh: the
+folder lost, brought back from the off-site copy, the database to the latest, the files, the API healthy and the data
+check clean). The sequence as a whole is untried on a shop's computer: try it once on a spare one before relying on it.
+It needs the off-site copy (`twes offsite on`, docs/START.md § 16): without it, a lost machine is lost.
+
+1. On the new computer, Docker and the checkout as for an install (docs/START.md § 16), but before `twes install` put
+   the escrowed values back at `~/.twes-in/install.env`, mode 600, from the password manager. Without them install draws
+   new passphrases, and every backup is unreadable.
+2. In those values, `BACKUP_DIRECTORY` names an empty folder on the new backup drive and `BACKUP_FOLDER_ID=` is blank.
+3. `bash scripts/onprem/twes install`: it asks only what the values lack (the operator: give any, the restore replaces
+   them), pins the release key and starts the newest release on an empty database.
+4. `… deploy.sh --compose ~/.twes-in/install.env stop`, then empty the backups' folder (it holds the empty database's
+   first backup), and leave `BACKUP_FOLDER_ID=` blank again in the values.
+5. The folder from the bucket: `… run --rm --no-deps -T restore sh -c 'restic -o s3.bucket-lookup=<host|path, as
+   BACKUP_S3_URI_STYLE> -r "$OFFSITE_REPOSITORY" restore latest --host twes --include /backup --target /' < /dev/null`.
+6. The database to the latest the folder holds: `… run --rm --no-deps restore gosu postgres pgbackrest --stanza=twes
+   --spool-path=/tmp --type=default --delta restore < /dev/null`.
+7. The files: `… run --rm --no-deps restore restic restore latest --host twes --include /files --target / < /dev/null`.
+8. `bash scripts/onprem/twes start`: the folder is named again from its own `twes-in-backups.id`, the release started.
+   `twes status` must read health ok, then `… exec -T api bin/console app:invoices:verify-chain` and `app:data:check`.
+9. Tell the shop the window: what was written after the last off-site copy (an hour of the computer being on at most)
+   is gone, and an invoice issued in it leaves a gap in its series to explain to their accountant.
+
 ## Rotate a secret
 
 The ten values `new-instance.sh` draws. For each: change it in `/etc/twes-in/deploy.env` (keep the old one until the

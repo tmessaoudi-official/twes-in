@@ -11,10 +11,16 @@
   @if (error(); as code) {
     <div role="alert" data-testid="roles-error" class="text-error flex flex-col gap-1">
       <p>{{ 'company.roles.errors.' + code | translate }}</p>
-      @if (detail()) {
-        <!-- The names in here are data the API knows and we do not; it is shown as written. -->
+      @if (code === 'in_use' && held(); as holders) {
         <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
-        <p data-testid="roles-error-detail">{{ detail() }}</p>
+        <p data-testid="roles-error-detail">
+          {{
+            (holders.more
+              ? 'company.roles.errors.in_use_holders_more'
+              : 'company.roles.errors.in_use_holders'
+            ) | translate: holders
+          }}
+        </p>
       }
     </div>
   }

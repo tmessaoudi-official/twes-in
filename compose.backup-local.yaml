@@ -21,6 +21,8 @@ services:
     environment:
       <<: *copy-environment
       BACKUP_SCHEDULE: due
+      # The folder's identity (twes-in-backups.id in it, written by twes): a folder without it is refused.
+      BACKUP_FOLDER_ID: "${BACKUP_FOLDER_ID:-}"
     volumes:
       - ${BACKUP_DIRECTORY:-backup-local}:/backup
   restore:

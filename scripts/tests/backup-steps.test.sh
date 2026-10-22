@@ -43,6 +43,18 @@ echo "backup steps"
 
 out=$(STEP=init run PGBACKREST_REPO1_TYPE=posix PGBACKREST_REPO1_PATH=/backup/pgbackrest)
 check "a shop's folder is made for the database's user before the stanza" $? 0 "$(calls)" "install -d -o postgres -g postgres -m 0750 /backup/pgbackrest|pgbackrest --stanza=twes stanza-create"
+# The folder a shop's values name by its identity: an empty one in its place (the drive unplugged) is refused, so the
+# database's archive waits in pg_wal for the drive rather than starting a stray repository.
+F=$TMPDIR/folder; mkdir -p "$F"
+out=$(STEP=init run PGBACKREST_REPO1_TYPE=posix PGBACKREST_REPO1_PATH=/backup/pgbackrest BACKUP_FOLDER="$F" BACKUP_FOLDER_ID=f0f0)
+check "a folder without the values' identity: refused" $? 1 "$out" "not the backups' folder"
+[[ "$(calls)" != *stanza-create* && "$(calls)" != *"restic"* ]]; check "  no stanza, no repository made in it" $? 0 "$(calls)" ""
+echo f0f1 > "$F/twes-in-backups.id"
+out=$(STEP=init run PGBACKREST_REPO1_TYPE=posix PGBACKREST_REPO1_PATH=/backup/pgbackrest BACKUP_FOLDER="$F" BACKUP_FOLDER_ID=f0f0)
+check "  another folder's identity: refused" $? 1 "$out" "not the backups' folder"
+echo f0f0 > "$F/twes-in-backups.id"
+out=$(STEP=init run PGBACKREST_REPO1_TYPE=posix PGBACKREST_REPO1_PATH=/backup/pgbackrest BACKUP_FOLDER="$F" BACKUP_FOLDER_ID=f0f0)
+check "  its own: made ready" $? 0 "$(calls)" "pgbackrest --stanza=twes stanza-create"
 out=$(STEP=init run PGBACKREST_REPO1_TYPE=s3 PGBACKREST_REPO1_PATH=/pgbackrest)
 [[ "$(calls)" != *"install "* ]]; check "a bucket needs no folder made" $? 0 "$out" ""
 
@@ -54,7 +66,7 @@ out=$(STEP=offsite run OFFSITE_REPOSITORY= MONITOR_URL=https://monitor.test MONI
 out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite MONITOR_URL=https://monitor.test MONITOR_HEARTBEAT_TOKEN=beat)
 check "switched on, it has its own heartbeat" $? 0 "$(calls)" "Sauvegardes_Hors_site/external"
 
-out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
+rm -rf "$O"; out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
 check "switched on, it copies the whole local folder into the off-site repository" $? 0 "$(calls)" "restic -o s3.bucket-lookup=dns -r s3:https://bucket.test:443/b/offsite backup --tag offsite --host twes /backup|"
 check "then keeps fourteen days there" 0 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite forget --host twes --keep-within 14d --prune"
 out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite RESTIC_MISSING=1)
@@ -111,7 +123,24 @@ out=$(STEP=due run); check "a week since the last read-back: read back" $? 0 "$(
 
 rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30
 out=$(STEP=due run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
-check "the off-site copy switched on is due once a day" $? 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite backup"
+check "the off-site copy switched on, never made: made" $? 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite backup"
+check "  and its old snapshots pruned, never done yet" 0 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite forget"
+
+# A lost computer loses what the bucket lacks: the folder goes off site every hour, its old copies pruned once a day.
+rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30; done_ago offsite 1; done_ago offsite-prune 2
+out=$(STEP=due run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
+check "an hour since the off-site copy: copied again" $? 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite backup"
+[[ "$(calls)" != *" forget "* ]]; check "  without pruning, done two hours ago" $? 0 "$(calls)" ""
+(( $(date +%s) - $(cat "$O/offsite-prune.ok") >= 7200 )); check "  and the prune's own time is left alone" $? 0 "$(cat "$O/offsite-prune.ok")" ""
+rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30; done_ago offsite 1; done_ago offsite-prune 25
+out=$(STEP=offsite run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
+check "a day since the prune: pruned with the copy" $? 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite forget --host twes --keep-within"
+rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30; done_ago offsite 0
+out=$(STEP=due run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite); [[ "$(calls)" != *"offsite backup"* ]]
+check "an off-site copy just made: not again" $? 0 "$(calls)" ""
+rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30; done_ago offsite 2
+out=$(STEP=due run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite OFFSITE_EVERY=86400); [[ "$(calls)" != *"offsite backup"* ]]
+check "the period is a parameter: once a day, two hours is not due" $? 0 "$(calls)" ""
 
 rm -rf "$O"; out=$(STEP=due run PGBR_STATUS=2)
 check "a base backup that fails fails the run" $? 1 "$out" "failed"

@@ -10,14 +10,16 @@ import type {
   RoleRoleWriteValidationRoleWrite as RoleRoleWrite,
 } from '../api/types.gen';
 import { isRecordChanged } from '../shared/errors/record-changed';
-import type { PermissionGroupRow, RoleRow } from './roles-types';
+import type { PermissionGroupRow, RoleHolders, RoleRow } from './roles-types';
+import { refusalsIn } from '../shared/form/field-refusals';
 import { refusedFor } from '../shared/errors/said-already';
 
 /**
  * Why the API refused, as the screen translates it.
  *
- * `in_use`, `built_in` and `unknown_permission` all arrive as a 422 (`not_held` as a 403) and are told apart by the stable token the
- * API's `detail` begins with — never by its sentence, which is reworded and one day translated.
+ * `in_use`, `built_in` and `unknown_permission` all arrive as a 422 (`not_held` as a 403) and are told apart by the
+ * violation's reason (`in_use`) or the stable token the API's `detail` begins with — never by its sentence, which is
+ * reworded and one day translated.
  */
 export type RolesError =
   | 'network'
@@ -36,6 +38,7 @@ export class RolesRefused extends Error {
   constructor(
     readonly code: RolesError,
     readonly detail = '',
+    readonly held: RoleHolders | null = null,
   ) {
     super(code);
   }
@@ -142,9 +145,21 @@ function refusalOf(error: unknown): RolesRefused {
     case 422:
       // Three refusals share this status and the API leads each with its own token (RoleResource's constants, the
       // shape CompanyGuard already uses). Reading the token rather than the sentence is what keeps this working
-      // when the message is reworded or translated; a functional test pins each one.
-      if (detail.startsWith('role_in_use:')) {
-        return refusedFor(error, new RolesRefused('in_use', detail));
+      // when the message is reworded or translated; a functional test pins each one. A role somebody holds is said by
+      // its violation's reason instead, whose parameters name the holders for the screen's own sentence.
+      {
+        const inUse = refusalsIn(error.error).find((refusal) => refusal.reason === 'role_in_use');
+        if (inUse !== undefined) {
+          const { role, holders, more } = inUse.params;
+          return refusedFor(
+            error,
+            new RolesRefused('in_use', detail, {
+              role: String(role ?? ''),
+              holders: String(holders ?? ''),
+              more: more === 1,
+            }),
+          );
+        }
       }
       if (detail.startsWith('role_built_in:')) {
         return refusedFor(error, new RolesRefused('built_in', detail));

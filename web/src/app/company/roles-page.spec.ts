@@ -24,7 +24,7 @@ import { Session } from '../shared/session/session';
 import type { RolesError } from './roles-api';
 import { RolesFacade } from './roles-facade';
 import { RolesPage } from './roles-page';
-import type { PermissionGroupRow, RoleRow } from './roles-types';
+import type { PermissionGroupRow, RoleHolders, RoleRow } from './roles-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -45,7 +45,13 @@ class StaticLoader implements TranslateLoader {
           edit: 'Modifier',
           new: 'Créer un rôle',
           everything: 'Le propriétaire a tous les droits',
-          errors: { in_use: 'Des membres ont encore ce rôle.' },
+          errors: {
+            in_use: 'Des membres ont encore ce rôle.',
+            built_in: 'Ce rôle est fourni avec le produit.',
+            in_use_holders: 'Le rôle « {{role}} » est encore celui de : {{holders}}.',
+            in_use_holders_more:
+              'Le rôle « {{role}} » est encore celui de : {{holders}} et d’autres.',
+          },
         },
       },
     });
@@ -92,13 +98,13 @@ const groups: readonly PermissionGroupRow[] = [
 describe('RolesPage', () => {
   const roles = signal<readonly RoleRow[]>([owner, member, barista]);
   const error = signal<RolesError | null>(null);
-  const detail = signal('');
+  const held = signal<RoleHolders | null>(null);
   const facade = {
     roles: roles.asReadonly(),
     groups: signal(groups).asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
-    detail: detail.asReadonly(),
+    held: held.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     create: vi.fn(),
@@ -133,7 +139,7 @@ describe('RolesPage', () => {
   beforeEach(() => {
     roles.set([owner, member, barista]);
     error.set(null);
-    detail.set('');
+    held.set(null);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.create.mockReset().mockResolvedValue(true);
     facade.revise.mockReset().mockResolvedValue(true);
@@ -373,14 +379,31 @@ describe('RolesPage', () => {
     expect(q('role-save')).toBeNull();
   });
 
-  it('shows a refusal with what the API said, because it names people we do not know', async () => {
+  it('names who holds a role in its own sentence, never in the API’s English', async () => {
     await open();
     error.set('in_use');
-    detail.set('The cashier role is held by sami@twes.local.');
+    held.set({ role: 'cashier', holders: 'sami@twes.local', more: false });
     await settle();
 
     expect(q('roles-error')?.textContent).toContain('Des membres ont encore ce rôle.');
-    expect(q('roles-error-detail')?.textContent).toContain('sami@twes.local');
+    expect(q('roles-error-detail')?.textContent?.trim()).toBe(
+      'Le rôle « cashier » est encore celui de : sami@twes.local.',
+    );
+
+    held.set({ role: 'cashier', holders: 'sami@twes.local', more: true });
+    await settle();
+    expect(q('roles-error-detail')?.textContent?.trim()).toBe(
+      'Le rôle « cashier » est encore celui de : sami@twes.local et d’autres.',
+    );
+  });
+
+  it('adds nothing of the API’s words under any other refusal', async () => {
+    await open();
+    error.set('built_in');
+    await settle();
+
+    expect(q('roles-error')?.textContent).toContain('fourni avec le produit');
+    expect(q('roles-error-detail')).toBeNull();
   });
 
   it('offers nothing to change without the permission', async () => {

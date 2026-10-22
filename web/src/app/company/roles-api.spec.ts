@@ -54,6 +54,40 @@ describe('RolesApi refusals', () => {
     expect(refused.code).toBe('step_up_required');
   });
 
+  it('tells a role somebody holds by its reason, and who holds it by the parameters, never by the English detail', async () => {
+    const removed = api.remove('c1', 'r1');
+    http.expectOne({ method: 'DELETE', url: '/api/companies/c1/roles/r1' }).flush(
+      {
+        detail:
+          'role: The cashier role is held by sami@twes.local. Move them to another role before deleting it.',
+        violations: [
+          {
+            propertyPath: 'role',
+            message: 'x',
+            payload: {
+              reason: 'role_in_use',
+              params: { role: 'cashier', holders: 'sami@twes.local, ali@twes.local', more: 1 },
+            },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    const refused = (await removed.then(
+      () => {
+        throw new Error('expected a refusal');
+      },
+      (error: unknown) => error,
+    )) as RolesRefused;
+
+    expect(refused.code).toBe('in_use');
+    expect(refused.held).toEqual({
+      role: 'cashier',
+      holders: 'sami@twes.local, ali@twes.local',
+      more: true,
+    });
+  });
+
   it('reads the version of each role it lists', async () => {
     const listed = api.list('c1');
     http.expectOne({ method: 'GET', url: '/api/companies/c1/roles' }).flush([

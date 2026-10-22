@@ -71,7 +71,7 @@ export class RolesPage implements OnInit {
   protected readonly groups = this.facade.groups;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
-  protected readonly detail = this.facade.detail;
+  protected readonly held = this.facade.held;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
 

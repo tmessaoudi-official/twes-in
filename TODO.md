@@ -149,8 +149,8 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
 - [ ] The restore drill with the person you named to restore the shop if you cannot (their name stays out of this
   repository): give them the sealed copy of the two backup passphrases, then run the drill together on this machine,
   never on the shop's data, `make backup-drill DRILL=local < /dev/null` (a shop's backup folder and off-site copy restored
-  into empty volumes, its own compose project, removed at the end), reading `docs/RUNBOOK.md` « Restore a shop » aloud as
-  it goes, so they know each step before they ever need it.
+  into empty volumes, its own compose project, removed at the end), reading `docs/RUNBOOK.md` « Restore a shop » and
+  « Restore a lost shop machine » aloud as it goes, so they know each step before they ever need it.
 - [ ] The client's Excel file, under `var/claude/client-excel/`, to map its columns into the importer (plan step 4).
 - [ ] Read `var/claude/client-excel/out/report.md` (on this machine only, never committed): how each sheet of the
   workbook was read and every doubt left, then answer the questions Claude asks about it. The five files beside it are
@@ -160,12 +160,15 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
 - [ ] Read the Arabic screen texts on a running screen, or have a native reader do it: every Arabic word was written by
   Claude from `docs/i18n/ar-glossary.md` and none has been read by an Arabic speaker yet.
 - [ ] Ask the shop: its opening hours, and whether its computer stays on at night. `twes install` asks them to place the
-  nightly update window (02:00 to 05:00 when it stays on, otherwise an hour after closing).
+  daily update window (02:00 to 05:00 when it stays on, otherwise the hour after closing), which you may change there
+  or later with `twes policy auto HH:MM-HH:MM`; from then on releases are applied by themselves inside it.
 - [ ] The shop's Gmail account with two-step verification on, and an app password made for twes-in
   (Google Account › Security › App passwords): `twes install` asks for both; mail, documents to customers and the alerts
   sent to you leave from that address.
-- [ ] A USB disk or second disk left plugged into the shop's computer for its local backups, and, if you want the off-site
-  copy, a bucket with its key (`docs/START.md` § 16).
+- [ ] A USB disk or second disk left plugged into the shop's computer for its local backups (without one, a dead disk
+  loses everything), and a bucket with its key for the hourly off-site copy (a free Backblaze B2 or Cloudflare R2
+  account will do; without one, a stolen or burnt computer loses everything, and `tick` mails you so every day): its
+  values `BACKUP_S3_*` in the shop's values, then `twes offsite on` (`docs/START.md` § 16).
 - [ ] Your monitor at home: a VM or device of its own, on a network segment that cannot reach the machine holding your
   release-signing key and GitHub credentials; a DDNS name pointing at it, ports 80 and 443 forwarded to it; then
   `scripts/monitor/new-monitor.sh` and `docs/START.md` § 15. Until it runs, problems reach you only by the shop's mail.
