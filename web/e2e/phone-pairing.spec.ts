@@ -50,6 +50,8 @@ test(
       await expect(screen.getByTestId('phone-echo')).toContainText(`Vis PHN-${run}`);
       // The customer price as the computer writes it; the cost is never sent.
       await expect(screen.getByTestId('phone-echo')).toContainText('1,000');
+      // What is in stock, read by the product feature once a phone first asks: nothing yet for a new product.
+      await expect(screen.getByTestId('phone-echo')).toContainText('Rupture de stock');
       expect(await wcagViolations(screen)).toEqual([]);
 
       // A short drop (the bad-network standard): a scan the network lost is kept and said unsent,

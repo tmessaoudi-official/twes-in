@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ProductScanDetails } from './products/product-scan-details';
 import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { SCAN_DETAILS } from './shared/scan/scan-details';
 import { tabInterceptor } from './shared/realtime/tab-interceptor';
@@ -15,6 +14,7 @@ import {
   ApplicationConfig,
   ErrorHandler,
   inject,
+  Injector,
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
@@ -89,7 +89,16 @@ export const appConfig: ApplicationConfig = {
     // shown before anyone signs in.
     // Shared code reads the session through its port; the auth feature answers it.
     { provide: Session, useExisting: AuthFacade },
-    { provide: SCAN_DETAILS, useExisting: ProductScanDetails },
+    // What a phone hears of a product it scanned reads the stock, which loads with the first scan, off the first page.
+    {
+      provide: SCAN_DETAILS,
+      useFactory: (injector = inject(Injector)) => ({
+        of: async (code: string) =>
+          injector
+            .get((await import('./products/product-scan-details')).ProductScanDetails)
+            .of(code),
+      }),
+    },
     // What a request did beyond its subject is said by the feature it concerns, whichever page sent the request.
     { provide: EFFECT_SAYERS, useExisting: PriceEffects, multi: true },
     // Proving who is at the screen again is the auth feature's too.
