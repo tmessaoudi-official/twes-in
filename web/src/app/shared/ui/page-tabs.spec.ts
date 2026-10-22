@@ -114,27 +114,46 @@ describe('PageTabs', () => {
     expect(selected('customers-tab')).toBe('false');
   });
 
-  it("brings the open tab into view, which a phone otherwise left under the bar's edge", async () => {
-    // At 390 px « Comptage » rested at 292–410, behind the chevron (sweep 2026-10-09).
-    const revealed: string[] = [];
+  it("brings the open tab into view by scrolling the bar alone, which a phone otherwise left under the bar's edge", async () => {
+    // At 390 px « Comptage » rested at 292–410, behind the chevron. Scrolling the tab itself into view moved the page
+    // too: scrolled down, a language switch resized the labels and the page jumped back up to the tabs.
+    const intoView = vi.fn();
     const original = HTMLElement.prototype.scrollIntoView;
-    HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
-      revealed.push(this.getAttribute('data-testid') ?? '');
+    HTMLElement.prototype.scrollIntoView = intoView;
+    const rect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      if (this.classList.contains('mat-mdc-tab-link-container'))
+        return { left: 0, right: 300 } as DOMRect;
+      if (this.getAttribute('data-testid') === 'customer-groups-link')
+        return { left: 292, right: 410 } as DOMRect;
+      return { left: 0, right: 0 } as DOMRect;
     };
     try {
       const fixture = TestBed.createComponent(Host);
+      const bar = () =>
+        (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+          '.mat-mdc-tab-link-container',
+        );
+      fixture.detectChanges();
+      let scrolled = 0;
+      Object.defineProperty(bar(), 'scrollLeft', {
+        configurable: true,
+        get: () => scrolled,
+        set: (value: number) => (scrolled = value),
+      });
       await TestBed.inject(Router).navigateByUrl('/customers/groups');
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
       await fixture.whenStable();
 
-      expect(revealed).toContain('customer-groups-link');
-      expect(revealed).not.toContain('customers-tab');
+      expect(bar()?.scrollLeft).toBe(110);
+      expect(intoView).not.toHaveBeenCalled();
     } finally {
       // jsdom has none: assigning undefined back would hide another spec's patch on Element in this worker.
       if (original) HTMLElement.prototype.scrollIntoView = original;
       else delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+      HTMLElement.prototype.getBoundingClientRect = rect;
     }
   });
 });
