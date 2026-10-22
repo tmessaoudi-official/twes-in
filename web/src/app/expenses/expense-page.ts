@@ -253,10 +253,19 @@ export class ExpensePage {
     const options = this.facade.options();
     return options === null ? null : paymentForm(options);
   });
+  /**
+   * What the payment's form is of. Reading the expense again yields a new object with the same content, as recording it
+   * does, and must not rebuild the form over what is being typed; another expense, state or suggestion must.
+   */
+  private readonly paymentKey = computed(() => {
+    const current = this.current();
+    return current == null
+      ? null
+      : `${current.id}|${current.status}|${current.suggestedWithholdingRate ?? ''}`;
+  });
   protected readonly paymentFormGroup = computed(() => {
     const descriptor = this.paymentDescriptor();
-    const id = this.current()?.id;
-    return descriptor === null || id === undefined
+    return descriptor === null || this.paymentKey() === null
       ? null
       : untracked(() =>
           buildFormGroup(

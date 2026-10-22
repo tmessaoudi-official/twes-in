@@ -104,7 +104,7 @@ final readonly class ManageExpenseCategories
         }
 
         return $this->categories->ofIdInCompany($parentId, $company->getId())
-            ?? throw new InvalidExpense('parentId', 'No expense category of this company has this id.');
+            ?? throw new InvalidExpense('parentId', 'No expense category of this company has this id.', 'unknown_choice');
     }
 
     /** @param array<string, mixed> $changes */

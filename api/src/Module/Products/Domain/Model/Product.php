@@ -314,10 +314,10 @@ class Product implements CompanyOwned
         $wanted = [];
         foreach ($lines as $index => $line) {
             if (isset($wanted[$line->barcode->key])) {
-                throw new InvalidProduct("barcodes.$index.code", \sprintf('The code %s is already on this product.', $line->barcode->code));
+                throw new InvalidProduct("barcodes.$index.code", \sprintf('The code %s is already on this product.', $line->barcode->code), 'barcode_twice');
             }
             if (null !== $line->supplier && !$line->supplier->getCompany()->getId()->equals($this->company->getId())) {
-                throw new InvalidProduct("barcodes.$index.supplierId", 'A product\'s supplier code names a supplier of its own company.');
+                throw new InvalidProduct("barcodes.$index.supplierId", 'A product\'s supplier code names a supplier of its own company.', 'unknown_choice');
             }
             $wanted[$line->barcode->key] = $line;
         }

@@ -54,7 +54,7 @@ final readonly class ReviseCompanyProfile
         }
 
         if ($profile->vatOnDebits && !$preset->invoiceFields->offersVatOnDebits()) {
-            throw new InvalidCompanyProfile('vatOnDebits', \sprintf('The %s preset offers companies no option to pay VAT on the débits.', $preset->country));
+            throw new InvalidCompanyProfile('vatOnDebits', \sprintf('The %s preset offers companies no option to pay VAT on the débits.', $preset->country), 'unknown_choice');
         }
 
         $refusal = IdentifierRules::refusal($preset, $profile->identifiers, IdentifierRules::COMPANY);

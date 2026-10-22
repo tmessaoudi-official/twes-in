@@ -404,7 +404,7 @@ final readonly class ManageExpenses
             return null;
         }
         if (!$id->equals($kept?->getId()) && !$this->modules->isEnabled($company->getId(), self::VENDORS_MODULE)) {
-            throw new InvalidExpense('vendorId', 'Vendors is switched off: an expense names no vendor it did not already.');
+            throw new InvalidExpense('vendorId', 'Vendors is switched off: an expense names no vendor it did not already.', 'unknown_choice');
         }
 
         return $this->vendors->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense('vendorId', 'No vendor of this company has this id.', 'unknown_choice');

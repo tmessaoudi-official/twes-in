@@ -498,6 +498,26 @@ describe('ExpensePage', () => {
     );
   });
 
+  it('keeps what is typed into the payment when the expense is read again unchanged', async () => {
+    // Recording an expense reads it back once more: that answer must not rebuild the payment over what was typed.
+    expense.set({ ...draft, status: 'recorded' });
+    await open('e1');
+    type('field-withholdingRate', '150');
+    await settle();
+
+    expense.set({ ...draft, status: 'recorded' });
+    await settle();
+
+    expect((q('field-withholdingRate') as HTMLInputElement).value).toBe('150');
+    q('expense-pay')!.click();
+    await settle();
+    expect(facade.payExpense).toHaveBeenCalledWith(
+      'c1',
+      'e1',
+      expect.objectContaining({ withholdingRate: '150' }),
+    );
+  });
+
   it('says a refused payment under the field it names, and puts the person on it', async () => {
     expense.set({ ...draft, status: 'recorded' });
     await open('e1');

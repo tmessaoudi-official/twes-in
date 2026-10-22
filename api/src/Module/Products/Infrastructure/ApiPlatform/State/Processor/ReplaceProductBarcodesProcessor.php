@@ -18,12 +18,12 @@ use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductBarcodesResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Output\RecordChangedProblem;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<ProductBarcodesResource, ProductBarcodesResource> */
 final readonly class ReplaceProductBarcodesProcessor implements ProcessorInterface
@@ -47,7 +47,7 @@ final readonly class ReplaceProductBarcodesProcessor implements ProcessorInterfa
         } catch (ProductBarcodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidProduct $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return ProductBarcodesResource::of($product, $seesCosts);

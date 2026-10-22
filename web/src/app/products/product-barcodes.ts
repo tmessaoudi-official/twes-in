@@ -17,13 +17,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
 import { PartConflict } from '../shared/form/part-conflict';
 import { Select } from '../shared/form/select';
 import { dirtyCount } from '../shared/form/dirty-count';
+import { refusalParams } from '../shared/form/refusal-words';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { addScanned, BARCODE_QUANTITY_MAX, rowProblem, sameCodes, withRole } from './barcode-rows';
 import { ProductBarcodes } from './product-barcodes-facade';
@@ -55,6 +56,7 @@ export class ProductBarcodesSection implements OnInit {
   private readonly facade = inject(ProductBarcodes);
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
+  private readonly translate = inject(TranslateService);
 
   readonly productId = input.required<string>();
   /** What the API holds for the product. */
@@ -154,6 +156,15 @@ export class ProductBarcodesSection implements OnInit {
   );
   /** The API's refusal, under the row it named. */
   protected readonly refusal = this.facade.refusal;
+  /** What the refusal's reason says, as every form words it; null for a reason no text words. */
+  protected readonly refusalText = computed(() => {
+    const reason = this.refusal()?.reason ?? null;
+    if (reason === null) return null;
+    const key = `import.rejections.${reason}`;
+    return this.translate.instant(key) === key
+      ? null
+      : { key, params: refusalParams(this.translate, this.refusal()?.params ?? {}) };
+  });
 
   private readonly companyId = computed(() => this.auth.me()?.company?.id ?? null);
   /** A supplier's code is read and written with product.cost.read (docs/SPEC.md § 7, 2026-09-23 slice 5). */

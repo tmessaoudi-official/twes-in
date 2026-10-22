@@ -3155,6 +3155,7 @@
       "unknown_tax": "Cette taxe n’existe plus, ou n’est plus active. Retirez-la, ou réactivez-la dans Taxes.",
       "regime_excludes_tax": "Ce régime ne facture pas la taxe « {{tax}} ».",
       "unknown_choice": "Ce choix n’est plus proposé : choisissez-en un autre.",
+      "under_itself": "Rien ne se range sous lui-même ni sous ce qui est rangé sous lui : choisissez un autre parent.",
       "tax_on_document": "{{tax}} se compte sur le document, pas sur une ligne.",
       "tracking_kept_by_stock": "Du stock de ce produit a déjà bougé : il garde son suivi.",
       "service_untracked": "Un service n’a pas de stock : il n’est suivi ni par lot ni par numéro de série.",
@@ -3173,6 +3174,8 @@
       "customer_merged": "Le client « {{number}} » a été fusionné dans « {{kept}} » : modifiez plutôt « {{kept}} ».",
       "vendor_has_code": "Le fournisseur « {{number}} » a encore un code pour ce produit : retirez d’abord le code.",
       "invalid_pack_quantity": "Un colis compte de 2 à 1 000 000 pièces, en nombre entier.",
+      "unit_code_one_piece": "Un code unitaire compte une seule pièce : pour plusieurs, choisissez « Colis ».",
+      "barcode_twice": "Ce code est déjà sur ce produit, à une autre ligne : retirez l’une des deux.",
       "cost_net_and_gross": "Le prix de revient est donné hors taxes et TVA comprise : gardez cost_price ou cost_price_gross.",
       "cost_gross_without_vat": "Un prix de revient TVA comprise demande le taux de TVA du produit : nommez ses taxes dans default_tax_codes, ou cochez « Donner les taxes par défaut »."
     },

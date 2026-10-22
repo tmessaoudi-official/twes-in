@@ -706,7 +706,14 @@ function toBarcode(
  * product holds says whose: `… is already a code of <reference>.` (ProductBarcodesResource's documented contract).
  */
 export function barcodesRefusal(error: unknown): BarcodesRefusal {
-  const none: BarcodesRefusal = { code: 'network', index: null, field: null, heldBy: null };
+  const none: BarcodesRefusal = {
+    code: 'network',
+    index: null,
+    field: null,
+    heldBy: null,
+    reason: null,
+    params: {},
+  };
   if (!(error instanceof HttpErrorResponse) || error.status === 0) return none;
   const body: unknown = error.error;
   const text = JSON.stringify(body ?? '');
@@ -726,10 +733,22 @@ export function barcodesRefusal(error: unknown): BarcodesRefusal {
           ? body.detail
           : '';
       const holder = / is already a code of (.+)\.$/.exec(detail);
-      return { code: 'barcode_taken', index, field, heldBy: holder ? holder[1] : null };
+      return { ...none, code: 'barcode_taken', index, field, heldBy: holder ? holder[1] : null };
     }
-    default:
-      return { code: 'invalid', index, field, heldBy: null };
+    default: {
+      // The row's own refusal, `barcodes.1.quantity` from a rule or `barcodes[1].quantity` from a constraint.
+      const named = refusalsIn(body).find((refusal) =>
+        /^barcodes(?:\.|\[)\d+\]?\./.test(refusal.field),
+      );
+      return {
+        ...none,
+        code: 'invalid',
+        index,
+        field,
+        reason: named?.reason ?? null,
+        params: named?.params ?? {},
+      };
+    }
   }
 }
 

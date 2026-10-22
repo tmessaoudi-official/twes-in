@@ -3155,6 +3155,7 @@
       "unknown_tax": "This tax no longer exists, or is no longer active. Remove it, or reactivate it under Taxes.",
       "regime_excludes_tax": "This regime does not charge the « {{tax}} » tax.",
       "unknown_choice": "This choice is no longer offered: pick another.",
+      "under_itself": "Nothing sits under itself or under what sits under it: choose another parent.",
       "tax_on_document": "{{tax}} is charged on the document, not on a line.",
       "tracking_kept_by_stock": "Stock of this product has already moved: it keeps its tracking.",
       "service_untracked": "A service holds no stock: it is tracked neither by lot nor by serial number.",
@@ -3173,6 +3174,8 @@
       "customer_merged": "Customer “{{number}}” was merged into “{{kept}}”: change “{{kept}}” instead.",
       "vendor_has_code": "Vendor “{{number}}” still has a code for this product: remove the code first.",
       "invalid_pack_quantity": "A pack counts 2 to 1,000,000 pieces, as a whole number.",
+      "unit_code_one_piece": "A unit code counts one piece: for several, choose “Pack”.",
+      "barcode_twice": "This code is already on this product, on another row: remove one of the two.",
       "cost_net_and_gross": "The cost price is given both without and with VAT: keep cost_price or cost_price_gross.",
       "cost_gross_without_vat": "A cost price VAT included needs the product’s VAT rate: name its taxes in default_tax_codes, or tick “Give new products naming no tax the default taxes”."
     },

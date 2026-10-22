@@ -51,7 +51,14 @@ export class ProductBarcodes {
         page.rows.map((vendor) => ({ id: vendor.id, label: `${vendor.number} · ${vendor.name}` })),
       );
     } catch {
-      this.refusalSignal.set({ code: 'network', index: null, field: null, heldBy: null });
+      this.refusalSignal.set({
+        code: 'network',
+        index: null,
+        field: null,
+        heldBy: null,
+        reason: null,
+        params: {},
+      });
     }
   }
 
@@ -75,7 +82,7 @@ export class ProductBarcodes {
       const refusal: BarcodesRefusal =
         error instanceof BarcodesRefused
           ? error.refusal
-          : { code: 'network', index: null, field: null, heldBy: null };
+          : { code: 'network', index: null, field: null, heldBy: null, reason: null, params: {} };
       if (refusal.code === 'record_changed') return 'changed';
       this.refusalSignal.set(refusal);
       return 'refused';

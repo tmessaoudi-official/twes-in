@@ -164,6 +164,8 @@
                   {{
                     'products.barcodes.taken' | translate: { reference: refusal()?.heldBy ?? '' }
                   }}
+                } @else if (refusalText(); as said) {
+                  {{ said.key | translate: said.params }}
                 } @else {
                   {{ 'products.barcodes.refused' | translate }}
                 }

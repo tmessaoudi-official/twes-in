@@ -39,7 +39,14 @@ describe('ProductBarcodes', () => {
   });
 
   it('keeps a refusal to say under its row', async () => {
-    const refusal = { code: 'barcode_taken' as const, index: 0, field: 'code', heldBy: 'ART-001' };
+    const refusal = {
+      code: 'barcode_taken' as const,
+      index: 0,
+      field: 'code',
+      heldBy: 'ART-001',
+      reason: null,
+      params: {},
+    };
     api.replaceBarcodes.mockRejectedValue(new BarcodesRefused(refusal));
 
     expect(await facade.save('c1', 'p1', [unit], 3)).toBe('refused');
@@ -51,7 +58,14 @@ describe('ProductBarcodes', () => {
   /** The product page says it and reads the product again; this tab says nothing of its own. */
   it('reports a product saved since without keeping it as a refusal', async () => {
     api.replaceBarcodes.mockRejectedValue(
-      new BarcodesRefused({ code: 'record_changed', index: null, field: null, heldBy: null }),
+      new BarcodesRefused({
+        code: 'record_changed',
+        index: null,
+        field: null,
+        heldBy: null,
+        reason: null,
+        params: {},
+      }),
     );
 
     expect(await facade.save('c1', 'p1', [unit], 3)).toBe('changed');
