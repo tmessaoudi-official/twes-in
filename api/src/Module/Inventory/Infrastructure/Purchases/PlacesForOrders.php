@@ -9,25 +9,29 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Purchases;
 
+use App\Module\Inventory\Application\Location\ManageStockLocations;
 use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\Repository\ProductHomeLocationRepository;
-use App\Module\Inventory\Domain\Repository\StockLocationRepository;
 use App\Module\Purchases\Application\ReceivingPlace;
 use App\Module\Purchases\Application\ReceivingPlaces;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
-/** Answers the purchases module's `ReceivingPlaces` port out of this module's places and the products' homes. */
+/**
+ * Answers the purchases module's `ReceivingPlaces` port out of this module's places and the products' homes. The places
+ * are read as the location screens read them, so an establishment whose stock nobody opened yet is given its default
+ * place here too: a first receipt is the first time a new shop's stock is needed.
+ */
 final readonly class PlacesForOrders implements ReceivingPlaces
 {
-    public function __construct(private StockLocationRepository $locations, private ProductHomeLocationRepository $homes)
+    public function __construct(private ManageStockLocations $locations, private ProductHomeLocationRepository $homes)
     {
     }
 
     public function placesOf(Company $company, Uuid $establishmentId): array
     {
         $places = array_filter(
-            $this->locations->ofCompany($company->getId()),
+            $this->locations->list($company),
             static fn (StockLocation $location): bool => $location->getEstablishment()->getId()->equals($establishmentId),
         );
 

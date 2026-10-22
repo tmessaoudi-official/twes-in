@@ -540,6 +540,22 @@ final class PurchaseOrdersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testAShopWhoseStockWasNeverOpenedIsOfferedItsOwnPlaceToReceiveInto(): void
+    {
+        // A company's first receipt can come before anyone opened its stock pages, which make the default place: the
+        // receiver is offered it all the same, or the dialog offers nothing and refuses every line.
+        $id = $this->sent([['productId' => $this->screws, 'quantity' => '10']]);
+        $this->em()->getConnection()->executeStatement('DELETE FROM stock_location WHERE company_id = ?', [$this->company->getId()->toRfc4122()]);
+
+        $this->signedIn('receiver', self::RECEIVER);
+        $this->getJson($this->path($id).'/receiving');
+
+        self::assertResponseIsSuccessful();
+        $places = $this->rows($this->json(), 'places');
+        self::assertSame([[null, true]], array_map(static fn (array $place): array => [$place['parentId'] ?? null, $place['isDefault'] ?? null], $places));
+        self::assertSame([$places[0]['id'] ?? null], array_column($this->rows($this->json(), 'homes'), 'locationId'), 'the line arrives at that place');
+    }
+
     /** @param list<BarcodeLine> $lines the screws' codes from now on */
     private function codes(array $lines): void
     {
