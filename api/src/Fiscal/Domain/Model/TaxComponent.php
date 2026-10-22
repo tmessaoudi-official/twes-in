@@ -14,6 +14,7 @@ use App\Fiscal\Domain\ValueObject\LanguageNames;
 use App\Fiscal\Domain\ValueObject\TaxFamily;
 use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Doctrine\DBAL\Types\Types;
@@ -203,7 +204,7 @@ class TaxComponent implements CompanyOwned
     /** @param array<array-key, mixed>|null $names null keeps them as they are */
     private function apply(string $name, ?array $names, ?string $rate, ?string $amount, ?string $threshold, bool $entersVatBase, bool $isDefault, bool $isActive, ?string $exemptionMention, int $sortOrder, int $currencyScale): void
     {
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
             throw new InvalidFiscalValue('name', \sprintf('A tax name has between 1 and %d characters.', self::NAME_MAX));
         }
@@ -213,7 +214,7 @@ class TaxComponent implements CompanyOwned
         if ($entersVatBase && !$this->family->mayEnterVatBase()) {
             throw new InvalidFiscalValue('entersVatBase', \sprintf('Only a levy enters the VAT base, not a %s tax.', $this->family->value));
         }
-        $exemptionMention = null === $exemptionMention || '' === trim($exemptionMention) ? null : trim($exemptionMention);
+        $exemptionMention = null === $exemptionMention || '' === TypedText::trimmed($exemptionMention) ? null : TypedText::trimmed($exemptionMention);
         if (null !== $exemptionMention && mb_strlen($exemptionMention) > self::MENTION_MAX) {
             throw new InvalidFiscalValue('exemptionMention', \sprintf('An exemption mention has at most %d characters.', self::MENTION_MAX));
         }
@@ -237,7 +238,7 @@ class TaxComponent implements CompanyOwned
     /** The value written with its column's three decimals, as the database gives it back, or null when not applicable. */
     private function decimal(string $field, ?string $value, bool $required, string $shape, int $maxDecimals, ?int $max = null): ?string
     {
-        $value = null === $value || '' === trim($value) ? null : trim($value);
+        $value = null === $value || '' === TypedText::trimmed($value) ? null : TypedText::trimmed($value);
         if (!$required) {
             if (null !== $value) {
                 throw new InvalidFiscalValue($field, \sprintf('A %s tax has no %s.', $this->kind->value, $field));

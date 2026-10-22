@@ -13,6 +13,7 @@ use App\Module\Expenses\Domain\Model\Expense;
 use App\Module\Expenses\Domain\Repository\ExpenseRepository;
 use App\Module\Expenses\Domain\ValueObject\ExpenseSearch;
 use App\Module\Expenses\Domain\ValueObject\ExpenseStatus;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Domain\ValueObject\PaymentMethod;
@@ -151,7 +152,7 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
             ->from(Expense::class, 'e')
             ->leftJoin('e.vendor', 'v')->leftJoin('v.mergedInto', 'vk')->leftJoin('e.category', 'k')
             ->where('e.company = :company')->setParameter('company', $companyId, 'uuid');
-        $words = trim($search->text ?? '');
+        $words = TypedText::trimmed($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
         } elseif ('' !== $words) {

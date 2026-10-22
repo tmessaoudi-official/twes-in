@@ -12,6 +12,7 @@ namespace App\Identity\Infrastructure\Console;
 use App\Identity\Application\Mfa\ResealSecondFactors;
 use App\Identity\Application\Mfa\SecondFactorsUnreadable;
 use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
+use App\Shared\Domain\Service\TypedText;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -38,7 +39,7 @@ final class RotateMfaKeyCommand extends Command
         $stream = ($input instanceof StreamableInputInterface ? $input->getStream() : null) ?? \STDIN;
         $line = fgets($stream);
         try {
-            $previous = new SodiumSecretCipher(false === $line ? '' : trim($line));
+            $previous = new SodiumSecretCipher(false === $line ? '' : TypedText::trimmed($line));
         } catch (\InvalidArgumentException) {
             $io->error('Give the previous APP_MFA_KEY, base64 encoded, as the first line of standard input.');
 

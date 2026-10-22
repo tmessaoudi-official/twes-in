@@ -15,6 +15,7 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Exception\InvalidEstablishment;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
@@ -154,7 +155,7 @@ final readonly class ManageEstablishments
 
     private function checkedCode(Company $company, string $code): string
     {
-        $code = trim($code);
+        $code = TypedText::trimmed($code);
         $pattern = $this->codePattern($company);
         if (1 !== preg_match('#'.str_replace('#', '\#', $pattern).'#u', $code)) {
             throw new InvalidEstablishment('code', \sprintf('"%s" does not have the shape the %s preset gives an establishment code.', $code, $company->getFiscalPreset()));

@@ -15,6 +15,7 @@ use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Domain\ValueObject\SettingType;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * The late fee (MON-15, CLI-14): off until the company turns it on, and charged only where the company wrote a tier,
@@ -46,15 +47,15 @@ final readonly class LateFeeSettings implements DeclaresSettings
      */
     public static function feeFor(string $tiers, int $stage, string $amountDue, int $scale): ?string
     {
-        if ('' === trim($tiers) || 1 !== preg_match(self::TIERS_PATTERN, $tiers)) {
+        if ('' === TypedText::trimmed($tiers) || 1 !== preg_match(self::TIERS_PATTERN, $tiers)) {
             return null;
         }
-        $tier = trim(explode(';', $tiers)[$stage - 1] ?? '');
+        $tier = TypedText::trimmed(explode(';', $tiers)[$stage - 1] ?? '');
         if ('' === $tier) {
             return null;
         }
         $share = str_ends_with($tier, '%');
-        $value = Decimal::of(str_replace(',', '.', trim(rtrim($tier, '%'))));
+        $value = Decimal::of(str_replace(',', '.', TypedText::trimmed(rtrim($tier, '%'))));
         $fee = Decimal::round($share ? Decimal::of($amountDue)->mul($value, Decimal::WORKING_SCALE)->div(100, Decimal::WORKING_SCALE) : $value, $scale);
 
         return $fee->compare(0) > 0 ? Decimal::format($fee, $scale) : null;

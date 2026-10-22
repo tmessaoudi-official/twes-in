@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Fiscal\Domain\ValueObject;
 
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * What a unit or a tax is called in each language a document prints in, beside its name: a document in a language it
@@ -32,10 +33,10 @@ final class LanguageNames
     {
         $kept = [];
         foreach ($names as $language => $name) {
-            if (!\is_string($language) || '' === trim($language) || !\is_string($name)) {
+            if (!\is_string($language) || '' === TypedText::trimmed($language) || !\is_string($name)) {
                 throw new InvalidFiscalValue('names', 'Names are given by language, each as text.');
             }
-            $name = trim($name);
+            $name = TypedText::trimmed($name);
             if (mb_strlen($name) > $max) {
                 throw new InvalidFiscalValue('names', \sprintf('A name has at most %d characters in any language.', $max));
             }

@@ -30,4 +30,10 @@ final readonly class VendorInput
         public bool $doubtsName = false,
     ) {
     }
+
+    /** The same input with this profile: its registration numbers as the preset stores them. */
+    public function withProfile(VendorProfile $profile): self
+    {
+        return clone ($this, ['profile' => $profile]);
+    }
 }

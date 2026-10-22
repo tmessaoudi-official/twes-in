@@ -10,6 +10,9 @@ declare(strict_types=1);
 namespace App\Fiscal\Infrastructure\Preset;
 
 use App\Fiscal\Application\Preset\FiscalPreset;
+use App\Fiscal\Application\Preset\IdentifierPart;
+use App\Fiscal\Application\Preset\IdentifierPartRule;
+use App\Fiscal\Application\Preset\IdentifierParts;
 use App\Fiscal\Application\Preset\PresetEstablishment;
 use App\Fiscal\Application\Preset\PresetIdentifier;
 use App\Fiscal\Application\Preset\PresetInvoiceFields;
@@ -124,9 +127,14 @@ final readonly class PresetReader
         foreach (array_values($nodes) as $i => $node) {
             $path = "identifiers.$i";
             $node = $this->asNode($node, $path);
-            $pattern = $this->string($node, 'pattern', "$path.pattern");
+            // Read part by part, the number's one pattern is made from its parts, so the two never say different things.
+            $parts = [] !== ($node['parts'] ?? []) ? $this->parts($node, $path) : null;
+            if (null !== $parts && isset($node['pattern'])) {
+                $this->refuse("$path.pattern", 'is made from the parts: leave it out');
+            }
+            $pattern = $parts?->pattern() ?? $this->string($node, 'pattern', "$path.pattern");
             if (false === @preg_match("\x01".$pattern."\x01u", '')) {
-                $this->refuse("$path.pattern", 'is not a valid regular expression');
+                $this->refuse(null === $parts ? "$path.pattern" : "$path.parts", 'is not a valid regular expression');
             }
             $foreign = $this->foreignPatterns($node, "$path.foreign_patterns", $country);
             if ([] !== $foreign && 1 !== preg_match('/^\^.*\$$/', $pattern)) {
@@ -135,8 +143,9 @@ final readonly class PresetReader
             $check = \is_string($node['check'] ?? null) ? IdentifierCheck::from($node['check']) : null;
             // Shown to whoever fills in a file, so it is a number the preset itself accepts.
             $example = $this->string($node, 'example', "$path.example");
-            if (1 !== preg_match("\x01".$pattern."\x01u", $example) || (null !== $check && !$check->accepts($example))) {
-                $this->refuse("$path.example", 'must be a number the pattern and the check accept');
+            if (1 !== preg_match("\x01".$pattern."\x01u", $example) || (null !== $check && !$check->accepts($example))
+                || (null !== $parts && $parts->normalised($example) !== $example)) {
+                $this->refuse("$path.example", 'must be a number the pattern, the parts and the check accept, as it is stored');
             }
             $identifiers[] = new PresetIdentifier(
                 $this->string($node, 'key', "$path.key"),
@@ -146,10 +155,75 @@ final readonly class PresetReader
                 $this->strings($node, 'required_for', "$path.required_for"),
                 $check,
                 $foreign,
+                $parts,
+                null === ($node['hint_key'] ?? null) ? null : $this->translationKey($node, 'hint_key', "$path.hint_key"),
             );
         }
 
         return $identifiers;
+    }
+
+    /**
+     * The parts a number is read by, the form it is stored in, naming each part once, and what one part asks of another.
+     *
+     * @param array<mixed> $node
+     */
+    private function parts(array $node, string $path): IdentifierParts
+    {
+        $parts = [];
+        foreach (array_values($this->node($node, 'parts', "$path.parts")) as $i => $part) {
+            $part = $this->asNode($part, "$path.parts.$i");
+            $name = $this->string($part, 'name', "$path.parts.$i.name");
+            if (1 !== preg_match('/^[a-z]+(?:_[a-z]+)*$/', $name) || isset($parts[$name])) {
+                $this->refuse("$path.parts.$i.name", "\"$name\" is not a new name in snake_case");
+            }
+            $parts[$name] = new IdentifierPart($name, $this->pattern($part, 'pattern', "$path.parts.$i.pattern"));
+        }
+        $written = $this->string($node, 'written', "$path.written");
+        preg_match_all('/\{([a-z_]+)\}/', $written, $named);
+        if ($named[1] !== array_keys($parts)) {
+            $this->refuse("$path.written", 'must name each part once, in the order of the parts');
+        }
+        $rules = [];
+        foreach (array_values(isset($node['part_rules']) ? $this->node($node, 'part_rules', "$path.part_rules") : []) as $i => $rule) {
+            $rulePath = "$path.part_rules.$i";
+            $rule = $this->asNode($rule, $rulePath);
+            $unless = $this->node($rule, 'unless', "$rulePath.unless");
+            $rules[] = new IdentifierPartRule(
+                $this->string($rule, 'name', "$rulePath.name"),
+                $this->partName($rule, 'part', "$rulePath.part", $parts),
+                $this->pattern($rule, 'pattern', "$rulePath.pattern"),
+                $this->partName($unless, 'part', "$rulePath.unless.part", $parts),
+                $this->pattern($unless, 'pattern', "$rulePath.unless.pattern"),
+            );
+        }
+
+        return new IdentifierParts(array_values($parts), $written, $rules);
+    }
+
+    /**
+     * @param array<mixed>                  $node
+     * @param array<string, IdentifierPart> $parts
+     */
+    private function partName(array $node, string $key, string $path, array $parts): string
+    {
+        $name = $this->string($node, $key, $path);
+        if (!isset($parts[$name])) {
+            $this->refuse($path, "\"$name\" is no part of this number");
+        }
+
+        return $name;
+    }
+
+    /** @param array<mixed> $node */
+    private function pattern(array $node, string $key, string $path): string
+    {
+        $pattern = $this->string($node, $key, $path);
+        if (false === @preg_match('#^(?:'.$pattern.')$#u', '')) {
+            $this->refuse($path, 'is not a valid regular expression');
+        }
+
+        return $pattern;
     }
 
     /**

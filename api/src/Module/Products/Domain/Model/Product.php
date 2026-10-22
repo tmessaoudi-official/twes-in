@@ -21,6 +21,7 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -668,7 +669,7 @@ class Product implements CompanyOwned
 
     private static function reference(string $reference): string
     {
-        $reference = trim($reference);
+        $reference = TypedText::trimmed($reference);
         if (1 !== preg_match(self::REFERENCE, $reference)) {
             throw new InvalidProduct('reference', \sprintf('"%s" is not a product reference: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $reference), 'invalid_reference', ['max' => 32]);
         }

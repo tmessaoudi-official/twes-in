@@ -11,6 +11,7 @@ namespace App\Legal\Application;
 
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * The publisher's and host's identity as the legal pages show it (`LegalSettings`): each filled-in fact by the
@@ -29,8 +30,8 @@ final readonly class LegalIdentity
         $values = [];
         foreach (LegalSettings::PLACEHOLDERS as $placeholder) {
             $value = $this->settings->value(new SettingContext(), LegalSettings::PREFIX.$placeholder);
-            if (\is_string($value) && '' !== trim($value)) {
-                $values[$placeholder] = trim($value);
+            if (\is_string($value) && '' !== TypedText::trimmed($value)) {
+                $values[$placeholder] = TypedText::trimmed($value);
             }
         }
 

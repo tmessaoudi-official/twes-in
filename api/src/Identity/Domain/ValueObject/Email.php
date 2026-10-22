@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Identity\Domain\ValueObject;
 
+use App\Shared\Domain\Service\TypedText;
+
 /** An address as the user identifier: lower-cased, trimmed, well-formed, at most 254 characters (RFC 5321). */
 final readonly class Email implements \Stringable
 {
@@ -21,7 +23,7 @@ final readonly class Email implements \Stringable
 
     public static function fromString(string $raw): self
     {
-        $value = mb_strtolower(trim($raw));
+        $value = mb_strtolower(TypedText::trimmed($raw));
         if ('' === $value || \strlen($value) > self::MAX_LENGTH || false === filter_var($value, \FILTER_VALIDATE_EMAIL)) {
             throw new \InvalidArgumentException('Not an email address.');
         }

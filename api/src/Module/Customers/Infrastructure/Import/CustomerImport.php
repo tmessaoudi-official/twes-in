@@ -43,6 +43,7 @@ use App\Module\Customers\Infrastructure\ApiPlatform\Resource\CustomerResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
@@ -264,7 +265,7 @@ final readonly class CustomerImport implements DeclaresImport
         return new CustomerInput(
             $record->value('number') ?? '',
             new CustomerProfile(
-                null === $kind ? $blankKind : $faults->read(static fn (): CustomerKind => CustomerKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A customer is a "company" or an "individual".', 'not_one_of', ['choices' => implode(', ', array_column(CustomerKind::cases(), 'value'))]), $blankKind),
+                null === $kind ? $blankKind : $faults->read(static fn (): CustomerKind => CustomerKind::tryFrom(self::KINDS[mb_strtolower(TypedText::trimmed($kind))] ?? '') ?? throw new RowRejected('kind', 'A customer is a "company" or an "individual".', 'not_one_of', ['choices' => implode(', ', array_column(CustomerKind::cases(), 'value'))]), $blankKind),
                 $record->value('name') ?? $profile->name ?? '',
                 $record->value('legal_name') ?? $profile?->legalName,
                 $identifiers,

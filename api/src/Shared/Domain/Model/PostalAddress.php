@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Shared\Domain\Model;
 
 use App\Shared\Domain\Service\ContactRules;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Refusal;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -83,7 +84,7 @@ final class PostalAddress
 
     private static function text(?string $value): ?string
     {
-        $value = null === $value ? '' : trim($value);
+        $value = null === $value ? '' : TypedText::trimmed($value);
 
         return '' === $value ? null : $value;
     }

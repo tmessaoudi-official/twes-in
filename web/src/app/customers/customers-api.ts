@@ -414,8 +414,9 @@ function toOptions(raw: CustomerOptionsCustomerOptionsRead): CustomerOptions {
     identifiers: (raw.identifiers ?? []).map((identifier) => ({
       key: identifier.key,
       label: identifier.label,
-      pattern: identifier.pattern,
+      pattern: identifier.pattern ?? null,
       requiredForBusiness: identifier.requiredForBusiness,
+      ...(identifier.hint ? { hint: identifier.hint } : {}),
     })),
     regimes: (raw.regimes ?? []).map((regime) => ({
       code: regime.code,

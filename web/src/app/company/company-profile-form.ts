@@ -46,7 +46,8 @@ export function profileForm(profile: CompanyProfile): FormDescriptor {
     kind: 'text',
     required: field.required,
     maxLength: IDENTIFIER_MAX_LENGTH,
-    pattern: field.pattern,
+    ...(field.pattern ? { pattern: field.pattern } : {}),
+    ...(field.hint ? { hint: field.hint } : {}),
   }));
 
   return {

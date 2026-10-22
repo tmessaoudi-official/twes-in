@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Domain\Model;
 
+use App\Shared\Domain\Service\TypedText;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -57,7 +58,7 @@ class Passkey
         $this->user = $user;
         $this->credentialId = $credentialId;
         $this->record = $record;
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         // A name only helps the person tell their devices apart, so an empty one is given a neutral default.
         $this->name = '' === $name ? 'Passkey' : mb_substr($name, 0, self::NAME_MAX);
         $this->createdAt = $now ?? new \DateTimeImmutable();

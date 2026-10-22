@@ -11,6 +11,7 @@ namespace App\Module\DeliveryNotes\Domain\ValueObject;
 
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * What a delivery note says besides its customer and its lines: the day the goods are expected, where they go, the
@@ -61,7 +62,7 @@ final readonly class DeliveryNoteHeader
 
     private static function text(string $field, ?string $value, int $max): ?string
     {
-        $value = trim($value ?? '');
+        $value = TypedText::trimmed($value ?? '');
         if (mb_strlen($value) > $max) {
             throw new InvalidDeliveryNote($field, \sprintf('At most %d characters.', $max));
         }

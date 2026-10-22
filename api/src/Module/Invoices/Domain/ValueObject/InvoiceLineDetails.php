@@ -16,6 +16,7 @@ use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Service\LotCode;
+use App\Shared\Domain\Service\TypedText;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -73,15 +74,15 @@ final readonly class InvoiceLineDetails
         if ($returned && null === $product) {
             throw new InvalidInvoice('returned', 'A line returns goods to stock only when it names a product.');
         }
-        $description = trim($description);
+        $description = TypedText::trimmed($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
             throw new InvalidInvoice('description', \sprintf('A line says what it sells in 1 to %d characters.', self::DESCRIPTION_MAX));
         }
         $this->description = $description;
-        $this->quantity = self::quantity(trim($quantity), $unit);
-        $this->unitPriceNet = self::price(trim($unitPriceNet));
-        $this->discountRate = self::rate(trim($discountRate ?? ''));
-        $this->discountAmount = self::amount(trim($discountAmount ?? ''));
+        $this->quantity = self::quantity(TypedText::trimmed($quantity), $unit);
+        $this->unitPriceNet = self::price(TypedText::trimmed($unitPriceNet));
+        $this->discountRate = self::rate(TypedText::trimmed($discountRate ?? ''));
+        $this->discountAmount = self::amount(TypedText::trimmed($discountAmount ?? ''));
         if (null !== $this->discountRate && null !== $this->discountAmount) {
             throw new InvalidInvoice('discountAmount', 'A line\'s discount is a rate or an amount, not both.');
         }
@@ -165,7 +166,7 @@ final readonly class InvoiceLineDetails
     /** @throws InvalidInvoice */
     private static function section(?string $title): ?string
     {
-        $title = trim($title ?? '');
+        $title = TypedText::trimmed($title ?? '');
         if ('' === $title) {
             return null;
         }
@@ -195,7 +196,7 @@ final readonly class InvoiceLineDetails
     /** @throws InvalidInvoice */
     private static function lotCode(?Product $product, ?string $code): ?string
     {
-        $code = trim($code ?? '');
+        $code = TypedText::trimmed($code ?? '');
         if ('' === $code) {
             return null;
         }

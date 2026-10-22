@@ -11,6 +11,7 @@ namespace App\Module\Products\Domain\ValueObject;
 
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\Model\ProductBarcode;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * What a product says about itself: its name and description, whether it is goods or a service, its net unit price
@@ -42,20 +43,20 @@ final readonly class ProductDetails
         ?string $costPrice = null,
         ?string $substitutionGroup = null,
     ) {
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
             throw new InvalidProduct('name', \sprintf('A product is named in 1 to %d characters.', self::NAME_MAX), 'invalid_text', ['min' => 1, 'max' => self::NAME_MAX]);
         }
         $this->name = $name;
-        $description = trim($description ?? '');
+        $description = TypedText::trimmed($description ?? '');
         if (mb_strlen($description) > self::DESCRIPTION_MAX) {
             throw new InvalidProduct('description', \sprintf('A product is described in at most %d characters.', self::DESCRIPTION_MAX), 'invalid_text', ['max' => self::DESCRIPTION_MAX]);
         }
         $this->description = '' === $description ? null : $description;
         $this->unitPriceNet = self::price('unitPriceNet', $unitPriceNet);
-        $costPrice = trim($costPrice ?? '');
+        $costPrice = TypedText::trimmed($costPrice ?? '');
         $this->costPrice = '' === $costPrice ? null : self::price('costPrice', $costPrice);
-        $group = trim($substitutionGroup ?? '');
+        $group = TypedText::trimmed($substitutionGroup ?? '');
         if (mb_strlen($group) > self::GROUP_MAX) {
             throw new InvalidProduct('substitutionGroup', \sprintf('A substitution group is named in at most %d characters.', self::GROUP_MAX), 'invalid_text', ['max' => self::GROUP_MAX]);
         }
@@ -98,7 +99,7 @@ final readonly class ProductDetails
 
     private static function price(string $field, string $price): string
     {
-        $price = trim($price);
+        $price = TypedText::trimmed($price);
         if (1 !== preg_match(self::PRICE, $price)) {
             throw new InvalidProduct($field, 'A price is a decimal number from 0 to 9999999999.9999, with at most four decimals.', 'invalid_price');
         }

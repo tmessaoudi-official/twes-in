@@ -15,8 +15,11 @@ namespace App\Shared\Domain\Service;
  */
 final class RegistrationNumbers
 {
-    /** Every space a keyboard or a spreadsheet writes: the no-break and the narrow no-break among them. */
-    private const string SPACES = '/[\s\x{00A0}\x{202F}]+/u';
+    /**
+     * Every space a keyboard or a spreadsheet writes, the no-break and the narrow no-break among them, and the invisible
+     * characters a copy from a page or a PDF brings along (a zero-width space, a direction mark): `TypedText`'s set.
+     */
+    private const string SPACES = '/[\s\x00\p{Z}\p{Cf}]+/u';
 
     /**
      * @param array<array-key, string|null> $numbers by identifier key

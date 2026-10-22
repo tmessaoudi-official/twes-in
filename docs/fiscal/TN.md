@@ -172,13 +172,18 @@ under `settings`, and a company may turn it off. Status: custom, unsourced as la
 
 | Rule | Preset | Source | Status |
 |---|---|---|---|
-| Seven digits, a check letter, the VAT code, the category code and a three-digit establishment number: `1234567A/B/M/000` | identifier `matricule_fiscal`, pattern `^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$`, required for the company and business customers | secondary sources only [8] | unvalidated |
+| Seven digits, a check letter, the VAT code, the category code and a three-digit establishment number: `1234567A/B/M/000` (13 characters, the ministry's cahier des charges « Déclaration d'employeur », 2006, p. 43-44) | identifier `matricule_fiscal` read by `parts` (`number`, `key`, `vat_code`, `category`, `establishment`), stored as `written` `{number}{key}/{vat_code}/{category}/{establishment}`; required for the company and business customers | the layout: the cahier; the rest: secondary sources only [8] | unvalidated |
+| The check letter is never I, O or U; the VAT code is one of A, B, D, N, P; the category one of C, M, N, P, or E for a secondary establishment | the parts' patterns `[A-HJ-NP-TV-Z]`, `[ABDNP]`, `[CEMNP]`; a value outside them is refused, its part named | secondary sources only, which disagree (F as a VAT code); refused as ruled 2026-10-20 22:38 (SPEC § 7), the identifiers pack would only mark it | unvalidated |
+| An establishment other than the seat (`000`) is category E | `part_rules` `secondary_establishment` | secondary sources only [8] | unvalidated |
 | The establishment number is the establishment's code | `establishment.code_pattern` `^[0-9]{3}$`; a company's first establishment starts as `000`, which the company corrects if its matricule says otherwise | same | unvalidated |
 | The check letter has an algorithm | **not implemented** (no primary source) | none | unvalidated |
 
-The preset's `example` for the matricule is `1234567A/B/M/000`, the shape above, which an import guide shows. A
-customer's or supplier's matricule is kept without spaces and in capitals (« 1234567 a / b / m / 000 » is read as
-`1234567A/B/M/000`). A customer file may bring a business customer without its matricule: the customer is created with a
+The preset's `example` for the matricule is `1234567A/B/M/000`, the shape above, which an import guide and the forms show,
+with a hint (`hint_key`) that it starts with its seven digits. Every holder's matricule, the company's own too, is kept
+without spaces or invisible characters and in capitals, and read whatever separates its parts: « 1234567 a / b / m / 000 »,
+`1234567aam000` and `1234567/A/B/M/000` are all stored as `1234567A/B/M/000`. One that cannot be read names its first part
+that does not fit (`identifier_part`), the rule it breaks (`identifier_part_rule`), or says it is written back to front
+(`identifier_reversed`, `000/M/B/A1234567`), each with the example; the letters are never guessed. A customer file may bring a business customer without its matricule: the customer is created with a
 note in the preview, and the matricule is still required on the invoice.
 
 ## 9. Customer tax regimes

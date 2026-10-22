@@ -50,10 +50,10 @@ final class Schedule
     public function __construct(ScheduleUnit $unit, int $every, ?ScheduleAnchor $anchor = null, ?int $monthDay = null, ?int $ordinal = null, ?int $weekday = null)
     {
         if ($every < 1 || $every > self::MOST_APART) {
-            throw new InvalidSchedule('every', \sprintf('A schedule recurs every 1 to %d.', self::MOST_APART));
+            throw new InvalidSchedule('every', \sprintf('A schedule recurs every 1 to %d.', self::MOST_APART), 'whole_number_between', ['min' => 1, 'max' => self::MOST_APART]);
         }
         if ($unit->isAnchored() !== (null !== $anchor)) {
-            throw new InvalidSchedule('anchor', 'A month or a year falls on a day it is anchored to; a day or a week has none.');
+            throw new InvalidSchedule('anchor', 'A month or a year falls on a day it is anchored to; a day or a week has none.', 'unknown_choice');
         }
         $this->unit = $unit;
         $this->every = $every;
@@ -107,7 +107,7 @@ final class Schedule
     private static function within(string $field, ?int $value, int $most): int
     {
         if (null === $value || $value < 1 || $value > $most) {
-            throw new InvalidSchedule($field, \sprintf('The %s is a whole number from 1 to %d.', $field, $most));
+            throw new InvalidSchedule($field, \sprintf('The %s is a whole number from 1 to %d.', $field, $most), 'whole_number_between', ['min' => 1, 'max' => $most]);
         }
 
         return $value;

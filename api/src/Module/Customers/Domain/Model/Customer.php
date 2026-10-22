@@ -17,6 +17,7 @@ use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
@@ -332,7 +333,7 @@ class Customer implements CompanyOwned
 
     private static function number(string $number): string
     {
-        $number = trim($number);
+        $number = TypedText::trimmed($number);
         if (1 !== preg_match(self::NUMBER, $number)) {
             throw new InvalidCustomer('number', \sprintf('"%s" is not a customer number: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $number), 'invalid_number', ['max' => 32]);
         }

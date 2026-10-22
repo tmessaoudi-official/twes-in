@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Intl;
 
 use App\Shared\Application\Languages;
+use App\Shared\Domain\Service\TypedText;
 use Symfony\Component\Intl\Languages as IntlLanguages;
 
 /**
@@ -46,8 +47,8 @@ final readonly class LanguageNames
 
     private static function folded(string $text): string
     {
-        $decomposed = \Normalizer::normalize(trim($text), \Normalizer::FORM_D);
-        $plain = \is_string($decomposed) ? $decomposed : trim($text);
+        $decomposed = \Normalizer::normalize(TypedText::trimmed($text), \Normalizer::FORM_D);
+        $plain = \is_string($decomposed) ? $decomposed : TypedText::trimmed($text);
 
         return mb_strtolower((string) preg_replace('/\p{Mn}/u', '', $plain));
     }

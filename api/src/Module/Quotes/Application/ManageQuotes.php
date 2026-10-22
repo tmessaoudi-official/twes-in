@@ -33,6 +33,7 @@ use App\Module\Quotes\Domain\ValueObject\QuoteSearch;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
@@ -306,7 +307,7 @@ final readonly class ManageQuotes
         $price = $line->unitPriceNet
             ?? (null === $product ? null : $this->linePrices->startingPrice($product, $customer->getId(), $line->quantity))
             ?? throw new InvalidQuote('unitPriceNet', 'A line without a product states its price.');
-        $description = null === $line->description || '' === trim($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
+        $description = null === $line->description || '' === TypedText::trimmed($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
         return new QuoteLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->discountAmount);
     }

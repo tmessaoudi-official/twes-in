@@ -192,9 +192,11 @@ export type ContactInput = Omit<ContactRow, 'id' | 'version'>;
 export interface IdentifierOption {
   key: string;
   label: string;
-  /** Anchored by the preset, without delimiters. */
-  pattern: string;
+  /** Anchored by the preset, without delimiters; null when the API alone judges every way of writing it. */
+  pattern: string | null;
   requiredForBusiness: boolean;
+  /** What the form shows under the field, its example in it, labelled by the API; none when the preset says nothing. */
+  hint?: string;
 }
 
 export interface RegimeOption {

@@ -12,6 +12,7 @@ namespace App\Module\Vendors\Infrastructure\Doctrine;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\Module\Vendors\Domain\ValueObject\VendorSearch;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
@@ -49,7 +50,7 @@ final readonly class DoctrineVendorRepository implements VendorRepository
             ->where('v.company = :company')->setParameter('company', $companyId, 'uuid')
             // A vendor merged away is listed as the vendor kept, which is listed already.
             ->andWhere('v.mergedInto IS NULL');
-        $words = trim($search->text ?? '');
+        $words = TypedText::trimmed($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
         } elseif ('' !== $words) {
@@ -84,7 +85,7 @@ final readonly class DoctrineVendorRepository implements VendorRepository
             ->select('v')->from(Vendor::class, 'v')
             ->where('v.company = :company')->setParameter('company', $companyId, 'uuid')
             ->andWhere('v.isActive = true');
-        $words = trim($words);
+        $words = TypedText::trimmed($words);
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
         } elseif ('' !== $words) {

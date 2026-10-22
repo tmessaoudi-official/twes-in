@@ -18,9 +18,11 @@ final class CompanyIdentifierField
     public function __construct(
         #[Groups([CompanyProfileResource::READ])] public string $key,
         #[Groups([CompanyProfileResource::READ])] public string $label,
-        /** A regular expression the whole value matches, without delimiters. */
-        #[Groups([CompanyProfileResource::READ])] public string $pattern,
+        /** A regular expression the whole value matches, without delimiters; null when the API alone judges every writing. */
+        #[Groups([CompanyProfileResource::READ])] public ?string $pattern,
         #[Groups([CompanyProfileResource::READ])] public bool $required,
+        /** What the form shows under the field, its example in it, in the reader's language; null when the preset says nothing. */
+        #[Groups([CompanyProfileResource::READ])] public ?string $hint = null,
     ) {
     }
 }

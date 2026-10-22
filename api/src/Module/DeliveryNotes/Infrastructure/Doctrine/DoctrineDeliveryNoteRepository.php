@@ -14,6 +14,7 @@ use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteSearch;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
@@ -109,7 +110,7 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
             ->join('n.customer', 'c')
             ->leftJoin('c.mergedInto', 'ck')
             ->where('n.company = :company')->setParameter('company', $companyId, 'uuid');
-        $words = trim($search->text ?? '');
+        $words = TypedText::trimmed($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
         } elseif ('' !== $words) {

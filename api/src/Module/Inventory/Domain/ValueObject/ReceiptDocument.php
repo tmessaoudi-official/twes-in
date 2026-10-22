@@ -11,6 +11,7 @@ namespace App\Module\Inventory\Domain\ValueObject;
 
 use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Vendors\Domain\Model\Vendor;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * What a goods receipt says about where the goods came from: the vendor, the number on the vendor's own delivery note or
@@ -28,7 +29,7 @@ final readonly class ReceiptDocument
     /** @throws InvalidStockMovement */
     public function __construct(public ?Vendor $vendor = null, ?string $supplierReference = null, public ?\DateTimeImmutable $receivedOn = null)
     {
-        $reference = null === $supplierReference ? '' : trim($supplierReference);
+        $reference = null === $supplierReference ? '' : TypedText::trimmed($supplierReference);
         if (mb_strlen($reference) > self::REFERENCE_MAX) {
             throw new InvalidStockMovement('supplierReference', \sprintf('A supplier reference is at most %d characters.', self::REFERENCE_MAX));
         }

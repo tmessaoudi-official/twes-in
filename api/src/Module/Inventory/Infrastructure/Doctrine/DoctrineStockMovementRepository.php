@@ -25,6 +25,7 @@ use App\Module\Inventory\Domain\ValueObject\StockMovementSearch;
 use App\Module\Inventory\Domain\ValueObject\StockValue;
 use App\Module\Inventory\Domain\ValueObject\TypedCost;
 use App\Module\Products\Domain\Model\Product;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
@@ -74,8 +75,10 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         // Read under the locks: a merge holds them while it carries the stock away and aliases the product.
         $merged = $this->mergedProducts->mergedAway(array_values($products));
         foreach ($movements as $movement) {
-            if (\in_array($movement->getProduct()->getId()->toRfc4122(), $merged, true)) {
-                throw new InvalidStockMovement('productId', \sprintf('The product %s was merged into another: its stock is that product\'s now.', $movement->getProduct()->getReference()), reason: 'product_merged');
+            $kept = $merged[$movement->getProduct()->getId()->toRfc4122()] ?? null;
+            if (null !== $kept) {
+                $reference = $movement->getProduct()->getReference();
+                throw new InvalidStockMovement('productId', \sprintf('The product %s was merged into %s: its stock is that product\'s now.', $reference, $kept), reason: 'product_merged', params: ['reference' => $reference, 'kept' => $kept]);
             }
         }
         $running = [];
@@ -285,7 +288,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             $query->andWhere('m.costToComplete = :costToComplete')->setParameter('costToComplete', $search->costToComplete, ParameterType::BOOLEAN);
         }
         Intervals::moments($query, 'm.at', 'moved', $search->movedOn, $search->timezone);
-        $lot = trim($search->lot ?? '');
+        $lot = TypedText::trimmed($search->lot ?? '');
         if ('' !== $lot) {
             $query->andWhere('LOWER(lt.code) = LOWER(:lot)')->setParameter('lot', $lot);
         }
@@ -584,7 +587,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
      */
     private static function narrowToWords(QueryBuilder $query, ?string $text): void
     {
-        $words = trim($text ?? '');
+        $words = TypedText::trimmed($text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
         } elseif ('' !== $words) {

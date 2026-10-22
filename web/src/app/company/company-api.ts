@@ -314,8 +314,9 @@ function toProfile(raw: CompanyProfileCompanyProfileRead): CompanyProfile {
     identifierFields: (raw.identifierFields ?? []).map((field) => ({
       key: field.key,
       label: field.label,
-      pattern: field.pattern,
+      pattern: field.pattern ?? null,
       required: field.required,
+      ...(field.hint ? { hint: field.hint } : {}),
     })),
     vatRegimes: (raw.vatRegimes ?? []).map((regime) => ({
       code: regime.code,

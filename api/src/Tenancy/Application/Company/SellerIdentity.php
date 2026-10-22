@@ -11,6 +11,7 @@ namespace App\Tenancy\Application\Company;
 
 use App\Fiscal\Application\Preset\FiscalPreset;
 use App\Fiscal\Application\Preset\IdentifierRules;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 
@@ -37,7 +38,7 @@ final class SellerIdentity
         if (null === $establishment?->getAddressLine1() && null === $profile->addressLine1) {
             $missing[] = 'addressLine1';
         }
-        if (null === $city || '' === trim($city)) {
+        if (null === $city || '' === TypedText::trimmed($city)) {
             $missing[] = 'city';
         }
         $refusal = IdentifierRules::refusal($preset, $profile->identifiers, IdentifierRules::COMPANY);

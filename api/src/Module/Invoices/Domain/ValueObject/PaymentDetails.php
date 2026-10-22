@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Domain\ValueObject;
 
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\PaymentMethod;
 
 /**
@@ -40,7 +41,7 @@ final readonly class PaymentDetails
 
     private static function amount(string $amount): string
     {
-        $amount = trim($amount);
+        $amount = TypedText::trimmed($amount);
         if (1 !== preg_match(self::AMOUNT, $amount)) {
             throw new InvalidInvoice('amount', 'A payment is an amount above 0 with at most three decimals.');
         }
@@ -55,7 +56,7 @@ final readonly class PaymentDetails
 
     private static function text(string $field, ?string $value, int $max): ?string
     {
-        $value = trim($value ?? '');
+        $value = TypedText::trimmed($value ?? '');
         if (mb_strlen($value) > $max) {
             throw new InvalidInvoice($field, \sprintf('At most %d characters.', $max));
         }

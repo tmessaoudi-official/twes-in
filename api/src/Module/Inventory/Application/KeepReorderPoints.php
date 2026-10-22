@@ -82,7 +82,7 @@ final readonly class KeepReorderPoints
         return $this->transactions->run(function () use ($company, $productId, $establishmentId, $quantity, $actorUserId, $version): ProductReorderPoint {
             $product = $this->held->held($company, $productId, $version) ?? throw new ProductNotInCompany();
             $establishment = $this->establishments->ofIdInCompany($establishmentId, $company->getId())
-                ?? throw new InvalidReorderPoint('establishmentId', 'No establishment of this company has this id.');
+                ?? throw new InvalidReorderPoint('establishmentId', 'No establishment of this company has this id.', 'unknown_choice');
 
             $existing = $this->points->ofProductInEstablishment($productId, $establishment->getId());
             if (null === $existing) {

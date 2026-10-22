@@ -20,6 +20,7 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Doctrine\DBAL\Types\Types;
@@ -301,7 +302,7 @@ class StockMovement implements CompanyOwned
      */
     public static function loss(Product $product, StockLocation $location, string $quantity, StockLossReason $reason, ?string $note, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null): self
     {
-        $note = null === $note ? null : trim($note);
+        $note = null === $note ? null : TypedText::trimmed($note);
         if (null !== $note && mb_strlen($note) > self::NOTE_MAX) {
             throw new InvalidStockMovement('note', \sprintf('A note is at most %d characters.', self::NOTE_MAX));
         }
@@ -500,7 +501,7 @@ class StockMovement implements CompanyOwned
      */
     private static function quantity(string $quantity, Product $product, bool $zeroAllowed): string
     {
-        if (1 !== preg_match(self::QUANTITY, trim($quantity), $match)) {
+        if (1 !== preg_match(self::QUANTITY, TypedText::trimmed($quantity), $match)) {
             throw new InvalidStockMovement('quantity', 'A quantity is a decimal number with at most eleven digits and three decimals.', reason: 'invalid_quantity');
         }
         [, $sign, $units] = $match;
@@ -589,7 +590,7 @@ class StockMovement implements CompanyOwned
      */
     private static function cost(string $unitCost): string
     {
-        if (1 !== preg_match('/^(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,4}))?$/', trim($unitCost), $match)) {
+        if (1 !== preg_match('/^(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,4}))?$/', TypedText::trimmed($unitCost), $match)) {
             throw new InvalidStockMovement('unitCost', 'A cost is an amount from zero with at most four decimals.', reason: 'invalid_price');
         }
         $normalized = $match[1].'.'.str_pad($match[2] ?? '', 4, '0');

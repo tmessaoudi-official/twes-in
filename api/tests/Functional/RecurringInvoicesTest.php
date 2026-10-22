@@ -254,19 +254,19 @@ final class RecurringInvoicesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
 
         foreach ([
-            [[$credit, $this->day(0), null], [], 'modelInvoiceId', 'not_copiable'],
-            [[$cancelled, $this->day(0), null], [], 'modelInvoiceId', 'not_copiable'],
-            [['0199a1b2-0000-7000-8000-000000000000', $this->day(0), null], [], 'modelInvoiceId', 'unknown_choice'],
-            [[$issued, $this->day(-1), null], [], 'startsOn', 'first_day_past'],
-            [[$issued, '2026-02-30', null], [], 'startsOn', 'not_a_date'],
-            [[$issued, $this->day(1), $this->day(0)], [], 'endsOn', 'last_day_before_first'],
-            [[$issued, $this->day(0), null], ['every' => 0], 'every', 'invalid_value'],
-            [[$issued, $this->day(0), null], ['unit' => 'month'], 'anchor', 'invalid_value'],
-            [[$issued, $this->day(0), null], ['unit' => 'month', 'anchor' => 'weekday', 'ordinal' => 5, 'weekday' => 1], 'ordinal', 'invalid_value'],
-        ] as [[$model, $startsOn, $endsOn], $changes, $field, $reason]) {
+            [[$credit, $this->day(0), null], [], 'modelInvoiceId', 'not_copiable', []],
+            [[$cancelled, $this->day(0), null], [], 'modelInvoiceId', 'not_copiable', []],
+            [['0199a1b2-0000-7000-8000-000000000000', $this->day(0), null], [], 'modelInvoiceId', 'unknown_choice', []],
+            [[$issued, $this->day(-1), null], [], 'startsOn', 'first_day_past', []],
+            [[$issued, '2026-02-30', null], [], 'startsOn', 'not_a_date', []],
+            [[$issued, $this->day(1), $this->day(0)], [], 'endsOn', 'last_day_before_first', []],
+            [[$issued, $this->day(0), null], ['every' => 0], 'every', 'whole_number_between', ['min' => 1, 'max' => 99]],
+            [[$issued, $this->day(0), null], ['unit' => 'month'], 'anchor', 'unknown_choice', []],
+            [[$issued, $this->day(0), null], ['unit' => 'month', 'anchor' => 'weekday', 'ordinal' => 5, 'weekday' => 1], 'ordinal', 'whole_number_between', ['min' => 1, 'max' => 4]],
+        ] as [[$model, $startsOn, $endsOn], $changes, $field, $reason, $params]) {
             $this->postJson($this->path().'/recurring-invoices', ['modelInvoiceId' => $model, ...self::WEEK, ...$changes, 'startsOn' => $startsOn, 'endsOn' => $endsOn]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
-            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => []]], $this->refusals(), $field);
+            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals(), $field);
         }
         $this->postJson($this->path().'/recurring-invoices', ['modelInvoiceId' => $issued, 'unit' => 'fortnight', 'every' => 1, 'startsOn' => $this->day(0), 'endsOn' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'no such unit');

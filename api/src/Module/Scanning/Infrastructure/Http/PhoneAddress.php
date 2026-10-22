@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Scanning\Infrastructure\Http;
 
+use App\Shared\Domain\Service\TypedText;
+
 /**
  * Where a phone opens a pairing link, when that is not where the computer tab is (docs/SPEC.md § 7, 2026-09-23 14:08):
  * a tab on http://localhost shows a link no phone can follow, so a development stack names its HTTPS address on the
@@ -21,7 +23,7 @@ final class PhoneAddress
 
     public static function of(string $configured): ?string
     {
-        $origin = rtrim(trim($configured), '/');
+        $origin = rtrim(TypedText::trimmed($configured), '/');
 
         return 1 === preg_match(self::ORIGIN, $origin) ? $origin : null;
     }

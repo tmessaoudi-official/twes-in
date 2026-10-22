@@ -12,6 +12,7 @@ namespace App\Module\Inventory\Domain\Model;
 use App\Module\Inventory\Domain\Exception\InvalidReorderPoint;
 use App\Module\Products\Domain\Model\Product;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use Doctrine\DBAL\Types\Types;
@@ -73,7 +74,7 @@ class ProductReorderPoint implements CompanyOwned
     public static function of(Product $product, Establishment $establishment, string $quantity, \DateTimeImmutable $now): self
     {
         if (!$product->getCompany()->getId()->equals($establishment->getCompany()->getId())) {
-            throw new InvalidReorderPoint('establishmentId', 'A reorder point is kept in one of the product’s own company’s establishments.');
+            throw new InvalidReorderPoint('establishmentId', 'A reorder point is kept in one of the product’s own company’s establishments.', 'unknown_choice');
         }
 
         return new self($product, $establishment, self::quantity($product, $quantity), $now);
@@ -125,14 +126,14 @@ class ProductReorderPoint implements CompanyOwned
     /** @throws InvalidReorderPoint */
     private static function quantity(Product $product, string $quantity): string
     {
-        $quantity = trim($quantity);
+        $quantity = TypedText::trimmed($quantity);
         if (1 !== preg_match(self::QUANTITY, $quantity)) {
-            throw new InvalidReorderPoint('quantity', 'A reorder point is a quantity from 0, with at most three decimals.');
+            throw new InvalidReorderPoint('quantity', 'A reorder point is a quantity from 0, with at most three decimals.', 'invalid_quantity');
         }
         [$units, $decimals] = [...explode('.', $quantity), ''];
         $unit = $product->getUnit();
         if (\strlen(rtrim($decimals, '0')) > $unit->getDecimals()) {
-            throw new InvalidReorderPoint('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()));
+            throw new InvalidReorderPoint('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()), 'quantity_decimals', ['unit' => $unit->getName(), 'decimals' => $unit->getDecimals()]);
         }
 
         return $units.'.'.str_pad($decimals, 3, '0');

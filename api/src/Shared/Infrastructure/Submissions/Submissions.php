@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Submissions;
 
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Infrastructure\Http\RoutedPath;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
@@ -49,7 +50,7 @@ final class Submissions
      */
     public static function keyOf(Request $request): ?Uuid
     {
-        $value = trim((string) $request->headers->get(self::HEADER, ''));
+        $value = TypedText::trimmed((string) $request->headers->get(self::HEADER, ''));
         if ('' === $value) {
             return null;
         }

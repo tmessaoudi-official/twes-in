@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Purchases\Domain\ValueObject;
 
 use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * What an order says besides its vendor and lines: the day the goods are expected, a remark printed for the vendor and
@@ -49,7 +50,7 @@ final readonly class PurchaseOrderHeader
     /** @throws InvalidPurchaseOrder */
     private static function text(string $field, ?string $value): ?string
     {
-        $value = trim($value ?? '');
+        $value = TypedText::trimmed($value ?? '');
         if (mb_strlen($value) > self::TEXT_MAX) {
             throw new InvalidPurchaseOrder($field, \sprintf('At most %d characters.', self::TEXT_MAX));
         }

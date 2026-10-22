@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Venue\Domain\ValueObject;
 
+use App\Shared\Domain\Service\TypedText;
 use App\Venue\Domain\Exception\InvalidVenue;
 
 /**
@@ -73,7 +74,7 @@ final readonly class PlanRect
      */
     public static function distance(string $field, string $value, bool $positive): string
     {
-        if (1 !== preg_match('/^(0|[1-9][0-9]{0,4})(?:\.([0-9]{1,3}))?$/', trim($value), $found)) {
+        if (1 !== preg_match('/^(0|[1-9][0-9]{0,4})(?:\.([0-9]{1,3}))?$/', TypedText::trimmed($value), $found)) {
             throw new InvalidVenue($field, \sprintf('%s is a distance in metres, zero or more, with at most %d decimals.', $field, self::SCALE));
         }
         // Built from the captures rather than from the input, so what reaches bcmath is a number by construction.

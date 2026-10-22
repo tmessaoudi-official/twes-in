@@ -50,7 +50,7 @@ final class DemoCatalogue
         $customers = [];
         $i = 0;
         foreach ($domestic as $name => $city) {
-            $customers[] = new DemoCustomer($name, $city, regime: 5 === $i ? 'exempt' : 'standard', group: $i < 6 ? 0 : 1, inactive: $i >= 22, withheld: $i < 6, identifiers: ['matricule_fiscal' => \sprintf('%07dA/M/A/000', 1_000_003 + $i * 7919)]);
+            $customers[] = new DemoCustomer($name, $city, regime: 5 === $i ? 'exempt' : 'standard', group: $i < 6 ? 0 : 1, inactive: $i >= 22, withheld: $i < 6, identifiers: ['matricule_fiscal' => \sprintf('%07dA/A/M/000', 1_000_003 + $i * 7919)]);
             ++$i;
         }
         foreach (['Amel Ben Salah' => 'La Marsa', 'Youssef Trabelsi' => 'Sfax', 'Leïla Gharbi' => 'Sousse', 'Karim Jaziri' => 'Tunis'] as $name => $city) {

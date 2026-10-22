@@ -14,6 +14,7 @@ use App\Module\Inventory\Domain\ValueObject\StockLossReason;
 use App\Module\Inventory\Domain\ValueObject\StockMovementKind;
 use App\Module\Inventory\Domain\ValueObject\StockMovementSearch;
 use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\ListFilters;
 use App\Tenancy\Domain\Model\Company;
 
@@ -58,7 +59,7 @@ final class StockMovementSearchReader
             array_map(StockMovementKind::from(...), $filters->choices('kind', array_column(StockMovementKind::cases(), 'value'))),
             $filters->choices('sourceType', self::SOURCES),
             $order,
-            \is_string($lot) && '' !== trim($lot) ? trim($lot) : null,
+            \is_string($lot) && '' !== TypedText::trimmed($lot) ? TypedText::trimmed($lot) : null,
             array_map(StockLossReason::from(...), $filters->choices('reason', array_column(StockLossReason::cases(), 'value'))),
             [] === $costToComplete ? null : 'yes' === $costToComplete[0],
             $movedOn->isOpen() ? null : $movedOn,

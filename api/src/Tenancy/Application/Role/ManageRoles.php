@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
@@ -226,7 +227,7 @@ final readonly class ManageRoles
     /** @throws RoleNameTaken */
     private function cleanName(Company $company, string $name, ?Uuid $except = null): string
     {
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         if ($this->roles->nameIsTaken($company->getId(), $name, $except)) {
             throw new RoleNameTaken(\sprintf('This company already has a role named "%s".', $name));
         }

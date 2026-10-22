@@ -12,6 +12,7 @@ namespace App\Module\Inventory\Domain\Model;
 use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Venue\Domain\Model\VenueSpot;
@@ -190,7 +191,7 @@ class StockLocation implements CompanyOwned
 
     private static function code(string $code): string
     {
-        $code = trim($code);
+        $code = TypedText::trimmed($code);
         if (1 !== preg_match(self::CODE, $code)) {
             throw new InvalidStockLocation('code', \sprintf('A location code is 1 to %d letters, digits, dots, dashes or underscores.', self::CODE_MAX));
         }
@@ -200,7 +201,7 @@ class StockLocation implements CompanyOwned
 
     private static function name(string $name): string
     {
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
             throw new InvalidStockLocation('name', \sprintf('A location is named in 1 to %d characters.', self::NAME_MAX));
         }

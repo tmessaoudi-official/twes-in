@@ -14,13 +14,14 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Constraints\Composite;
 use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\Validator\Constraints\Range;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
  * A resource constraint's payload is what a screen shows when it refuses a field: its reason must be one the screens
- * translate, and a length's maximum the one the constraint holds, or the form would say one limit while the API kept
- * another.
+ * translate, every placeholder its text names among its params, and a length's maximum the one the constraint holds,
+ * or the form would say one limit while the API kept another.
  */
 final class RefusalReasonsTest extends KernelTestCase
 {
@@ -49,8 +50,14 @@ final class RefusalReasonsTest extends KernelTestCase
                             $wrong[] = "$where: no screen text for the reason";
                         }
                         $params = $payload['params'] ?? [];
+                        // A placeholder the payload does not fill is shown as written, « {{max}} », to the person refused.
+                        $said = \is_string($payload['reason']) ? $translated[$payload['reason']] ?? null : null;
+                        preg_match_all('/\{\{\s*(\w+)\s*\}\}/', \is_string($said) ? $said : '', $named);
+                        foreach (array_diff($named[1], \is_array($params) ? array_keys($params) : []) as $unfilled) {
+                            $wrong[] = \sprintf('%s: its text names {{%s}}, which the payload does not send', $where, $unfilled);
+                        }
                         $max = \is_array($params) ? $params['max'] ?? null : 'params that are not a map';
-                        if (null !== $max && (!$constraint instanceof Length || $constraint->max !== $max)) {
+                        if (null !== $max && (!($constraint instanceof Length || $constraint instanceof Range) || $constraint->max !== $max)) {
                             $wrong[] = \sprintf('%s: a maximum of %s said, not the constraint\'s', $where, json_encode($max));
                         }
                     }
@@ -63,7 +70,8 @@ final class RefusalReasonsTest extends KernelTestCase
     }
 
     /**
-     * A domain refusal of a customer's, a vendor's, a product's, an expense's or the company's own field, or of a custom field, reaches the form the same way: every reason one is written
+     * A domain refusal of a customer's, a vendor's, a product's, an expense's, a stock's or the company's own field, of a
+     * schedule, a recurring document or a custom field, reaches the form the same way: every reason one is written
      * with has its screen text. A reason is the snake_case literal of the refusal's statement (fields, parameters and
      * messages are not snake_case).
      */
@@ -73,12 +81,12 @@ final class RefusalReasonsTest extends KernelTestCase
         $translated = self::translated();
         $statements = 0;
         $untranslated = [];
-        foreach (['src/Module/Customers', 'src/Module/Vendors', 'src/Fiscal/Application/Preset', 'src/CustomFields', 'src/Tenancy/Application/Company', 'src/Module/Products', 'src/Module/Expenses', 'src/Module/Inventory'] as $directory) {
+        foreach (['src/Module/Customers', 'src/Module/Vendors', 'src/Fiscal/Application/Preset', 'src/CustomFields', 'src/Tenancy/Application/Company', 'src/Module/Products', 'src/Module/Expenses', 'src/Module/Inventory', 'src/Shared/Domain/Model', 'src/Module/Recurring', 'src/Module/RecurringExpenses'] as $directory) {
             $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator("$root/$directory", \FilesystemIterator::SKIP_DOTS));
             foreach ($files as $file) {
                 \assert($file instanceof \SplFileInfo);
                 $source = (string) file_get_contents($file->getPathname());
-                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense|InvalidStockMovement)\((.*?)\);/s', $source, $found);
+                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense|InvalidStockMovement|InvalidReorderPoint|InvalidSchedule|InvalidRecurringInvoice|InvalidRecurringExpense)\((.*?)\);/s', $source, $found);
                 // A custom field's refusals go through its helper, one per arm of a match.
                 preg_match_all('/self::refuse\((.*?)\),$/m', $source, $helped);
                 foreach ([...$found[1], ...$helped[1]] as $arguments) {

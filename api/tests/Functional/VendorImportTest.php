@@ -180,7 +180,7 @@ final class VendorImportTest extends ApiTestCase
         $rejected = $this->arrayAt($this->json(), 'rejected');
         self::assertIsArray($rejected[0] ?? null);
         self::assertSame(
-            ['matricule_fiscal', 'identifier_shape', ['identifier' => 'matricule_fiscal']],
+            ['matricule_fiscal', 'identifier_part', ['identifier' => 'matricule_fiscal', 'example' => '1234567A/B/M/000', 'part' => 'number']],
             [$rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null, $rejected[0]['params'] ?? null],
         );
     }

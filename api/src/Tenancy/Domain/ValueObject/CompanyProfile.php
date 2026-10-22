@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Domain\ValueObject;
 
+use App\Shared\Domain\Service\RegistrationNumbers;
+use App\Shared\Domain\Service\TypedText;
+
 /**
  * What a company's documents say about it: legal identity, registration numbers, address, contact, banking, VAT regime,
  * whether it opted to pay VAT on the débits (where its preset offers that option) and the texts printed at the foot of
@@ -39,6 +42,16 @@ final readonly class CompanyProfile
     public ?string $latePenaltyText;
     public bool $vatOnDebits;
 
+    /**
+     * The same profile carrying these registration numbers, as the preset stores them (`IdentifierRules::normalised`).
+     *
+     * @param array<string, string> $identifiers
+     */
+    public function withIdentifiers(array $identifiers): self
+    {
+        return clone ($this, ['identifiers' => RegistrationNumbers::kept($identifiers)]);
+    }
+
     /** @param array<string, string|null> $identifiers */
     public function __construct(
         ?string $legalName = null,
@@ -60,15 +73,7 @@ final readonly class CompanyProfile
     ) {
         $this->legalName = self::text($legalName);
         $this->legalForm = self::text($legalForm);
-        $kept = [];
-        foreach ($identifiers as $key => $value) {
-            $value = self::text($value);
-            if (null !== $value) {
-                $kept[(string) $key] = $value;
-            }
-        }
-        ksort($kept, \SORT_STRING);
-        $this->identifiers = $kept;
+        $this->identifiers = RegistrationNumbers::kept($identifiers);
         $this->addressLine1 = self::text($addressLine1);
         $this->addressLine2 = self::text($addressLine2);
         $this->postalCode = self::text($postalCode);
@@ -78,7 +83,7 @@ final readonly class CompanyProfile
         $this->website = self::text($website);
         $this->iban = self::code($iban);
         $this->bic = self::code($bic);
-        $this->vatRegime = trim($vatRegime);
+        $this->vatRegime = TypedText::trimmed($vatRegime);
         $this->invoiceFooterText = self::text($invoiceFooterText);
         $this->latePenaltyText = self::text($latePenaltyText);
         $this->vatOnDebits = $vatOnDebits;
@@ -99,7 +104,7 @@ final readonly class CompanyProfile
 
     private static function text(?string $value): ?string
     {
-        $value = null === $value ? '' : trim($value);
+        $value = null === $value ? '' : TypedText::trimmed($value);
 
         return '' === $value ? null : $value;
     }

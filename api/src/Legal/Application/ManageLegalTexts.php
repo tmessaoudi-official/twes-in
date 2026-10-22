@@ -16,6 +16,7 @@ use App\Legal\Domain\Repository\LegalTextRepository;
 use App\Legal\Domain\ValueObject\LegalLanguage;
 use App\Legal\Domain\ValueObject\LegalPage;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -43,7 +44,7 @@ final readonly class ManageLegalTexts
 
     public function write(LegalPage $page, LegalLanguage $language, string $body, ?Uuid $actorUserId, string $actorEmail): LegalText
     {
-        if ('' === trim($body)) {
+        if ('' === TypedText::trimmed($body)) {
             throw new EmptyLegalText();
         }
         if (mb_strlen($body) > self::MAX_LENGTH) {

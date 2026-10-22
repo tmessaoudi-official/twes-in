@@ -13,6 +13,7 @@ use App\Module\Vendors\Domain\Exception\InvalidVendor;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\ContactRules;
 use App\Shared\Domain\Service\RegistrationNumbers;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Refusal;
 use Symfony\Component\Uid\Uuid;
 
@@ -64,7 +65,7 @@ final readonly class VendorProfile
         /** The expense category its expenses usually go to; checked against the company by the use case. */
         public ?Uuid $defaultExpenseCategoryId = null,
     ) {
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
             throw new InvalidVendor('name', \sprintf('A vendor is named in 1 to %d characters.', self::NAME_MAX), 'invalid_text', ['min' => 1, 'max' => self::NAME_MAX]);
         }
@@ -81,6 +82,16 @@ final readonly class VendorProfile
         }
         $this->paymentTermsDays = $paymentTermsDays;
         $this->notes = self::text($notes);
+    }
+
+    /**
+     * The same profile carrying these registration numbers, as the preset stores them (`IdentifierRules::normalised`).
+     *
+     * @param array<string, string> $identifiers
+     */
+    public function withIdentifiers(array $identifiers): self
+    {
+        return clone ($this, ['identifiers' => RegistrationNumbers::kept($identifiers)]);
     }
 
     /** @return list<string> the fields whose value differs from the other profile's, in declaration order */
@@ -159,7 +170,7 @@ final readonly class VendorProfile
 
     private static function text(?string $value): ?string
     {
-        $value = null === $value ? '' : trim($value);
+        $value = null === $value ? '' : TypedText::trimmed($value);
 
         return '' === $value ? null : $value;
     }

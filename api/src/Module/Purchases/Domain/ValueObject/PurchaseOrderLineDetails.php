@@ -11,6 +11,7 @@ namespace App\Module\Purchases\Domain\ValueObject;
 
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
+use App\Shared\Domain\Service\TypedText;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -36,14 +37,14 @@ final readonly class PurchaseOrderLineDetails
     /** @throws InvalidPurchaseOrder */
     public function __construct(public Uuid $productId, string $productReference, string $description, string $quantity, public Unit $unit, ?string $unitPriceNet)
     {
-        $this->productReference = mb_substr(trim($productReference), 0, self::REFERENCE_MAX);
-        $description = trim($description);
+        $this->productReference = mb_substr(TypedText::trimmed($productReference), 0, self::REFERENCE_MAX);
+        $description = TypedText::trimmed($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
             throw new InvalidPurchaseOrder('description', \sprintf('A line says what it orders in 1 to %d characters.', self::DESCRIPTION_MAX));
         }
         $this->description = $description;
-        $this->quantity = self::quantity(trim($quantity), $unit);
-        $this->unitPriceNet = null === $unitPriceNet || '' === trim($unitPriceNet) ? null : self::price(trim($unitPriceNet));
+        $this->quantity = self::quantity(TypedText::trimmed($quantity), $unit);
+        $this->unitPriceNet = null === $unitPriceNet || '' === TypedText::trimmed($unitPriceNet) ? null : self::price(TypedText::trimmed($unitPriceNet));
     }
 
     /** @return array{string, string, string, string, string, string|null} what two lines are compared on */

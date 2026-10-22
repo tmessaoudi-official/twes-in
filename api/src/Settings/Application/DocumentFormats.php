@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Shared\Domain\ValueObject\DocumentLayout;
 use App\Shared\Domain\ValueObject\DocumentWatermark;
@@ -43,7 +44,7 @@ final readonly class DocumentFormats
         $notes = $settings->value($atCustomer, 'document.printed_notes');
         $formats = self::of($settings, $company);
         $reference = $settings->value($atCustomer, 'document.exemption_reference');
-        $reference = \is_string($reference) ? trim($reference) : '';
+        $reference = \is_string($reference) ? TypedText::trimmed($reference) : '';
 
         return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat'], true === $settings->value($atCustomer, 'document.amount_in_words'), true === $settings->value($atCustomer, 'document.how_to_pay'), self::design($settings, $company), true === $settings->value($atCustomer, 'document.savings_line'), '' === $reference ? null : $reference);
     }

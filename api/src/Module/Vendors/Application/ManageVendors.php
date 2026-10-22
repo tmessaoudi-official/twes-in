@@ -20,6 +20,7 @@ use App\Module\Vendors\Domain\ValueObject\VendorSearch;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
@@ -73,8 +74,10 @@ final readonly class ManageVendors
      */
     public function create(Company $company, VendorInput $input, ?Uuid $actorUserId): Vendor
     {
+        $input = $this->withNumbersAsStored($company, $input);
+
         return $this->transactions->run(function () use ($company, $input, $actorUserId): Vendor {
-            if (null !== $this->vendors->ofNumberInCompany(trim($input->number), $company->getId())) {
+            if (null !== $this->vendors->ofNumberInCompany(TypedText::trimmed($input->number), $company->getId())) {
                 throw new VendorNumberTaken();
             }
             $this->check($company, $input, null);
@@ -101,6 +104,8 @@ final readonly class ManageVendors
      */
     public function revise(Company $company, Uuid $id, VendorInput $input, ?Uuid $actorUserId, ?int $version = null): Vendor
     {
+        $input = $this->withNumbersAsStored($company, $input);
+
         return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): Vendor {
             $vendor = $this->get($company, $id);
             if (null !== $version) {
@@ -109,7 +114,7 @@ final readonly class ManageVendors
             if ($vendor->isMergedAway()) {
                 throw new VendorMergedAway(\sprintf('The vendor %s was merged into %s: it is no longer revised.', $vendor->getNumber(), $vendor->standingFor()->getNumber()));
             }
-            $holder = $this->vendors->ofNumberInCompany(trim($input->number), $company->getId());
+            $holder = $this->vendors->ofNumberInCompany(TypedText::trimmed($input->number), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($vendor->getId())) {
                 throw new VendorNumberTaken();
             }
@@ -144,6 +149,14 @@ final readonly class ManageVendors
         }
 
         return array_values(array_unique($changed));
+    }
+
+    /** The input with its registration numbers as the preset stores them, however they were written. */
+    private function withNumbersAsStored(Company $company, VendorInput $input): VendorInput
+    {
+        $preset = $this->presets->get($company->getFiscalPreset());
+
+        return $input->withProfile($input->profile->withIdentifiers(IdentifierRules::normalised($preset, $input->profile->identifiers, '')));
     }
 
     private function check(Company $company, VendorInput $input, ?Vendor $current): void

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Shared\Domain\ValueObject;
 
 use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\Service\TypedText;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -121,7 +122,7 @@ final readonly class ListFilters
         $values = [];
         foreach ($given as $value) {
             if (\is_string($value)) {
-                '' === trim($value) || $values[] = trim($value);
+                '' === TypedText::trimmed($value) || $values[] = TypedText::trimmed($value);
             } elseif (null !== $value) {
                 throw new InvalidFilter($key, 'a value is expected, not a structure.');
             }
@@ -143,7 +144,7 @@ final readonly class ListFilters
                 return null;
             }
 
-            return \is_string($value) ? trim($value) : throw new InvalidFilter($key, 'an end of an interval is a single value.');
+            return \is_string($value) ? TypedText::trimmed($value) : throw new InvalidFilter($key, 'an end of an interval is a single value.');
         };
 
         return [$read($given[$low] ?? null), $read($given[$high] ?? null)];

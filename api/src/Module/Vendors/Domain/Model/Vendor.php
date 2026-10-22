@@ -14,6 +14,7 @@ use App\Module\Vendors\Domain\ValueObject\VendorCheckReason;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
@@ -262,7 +263,7 @@ class Vendor implements CompanyOwned
 
     private static function number(string $number): string
     {
-        $number = trim($number);
+        $number = TypedText::trimmed($number);
         if (1 !== preg_match(self::NUMBER, $number)) {
             throw new InvalidVendor('number', \sprintf('"%s" is not a vendor number: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $number), 'invalid_number', ['max' => 32]);
         }

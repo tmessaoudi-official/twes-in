@@ -38,6 +38,7 @@ use App\Shared\Application\ListLimits;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
@@ -549,7 +550,7 @@ final readonly class ManageInvoices
         $price = $line->unitPriceNet
             ?? (null === $product ? null : $this->linePrices->startingPrice($product, $customer->getId(), $line->quantity))
             ?? throw new InvalidInvoice('unitPriceNet', 'A line without a product states its price.');
-        $description = null === $line->description || '' === trim($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
+        $description = null === $line->description || '' === TypedText::trimmed($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
         return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes'], $kept['chargedBefore']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned, discountAmount: $line->discountAmount, section: $line->section, creditedLineId: $line->creditedLineId);
     }

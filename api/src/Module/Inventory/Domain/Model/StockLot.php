@@ -14,6 +14,7 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Service\LotCode;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -92,7 +93,7 @@ class StockLot implements CompanyOwned
      */
     public static function code(string $code): string
     {
-        $code = trim($code);
+        $code = TypedText::trimmed($code);
         if (!LotCode::isWellFormed($code)) {
             throw new InvalidStockMovement('lotCode', \sprintf('A lot code is 1 to %d printable characters without space or accent.', self::CODE_MAX));
         }

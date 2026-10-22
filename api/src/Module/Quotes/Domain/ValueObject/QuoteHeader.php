@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Quotes\Domain\ValueObject;
 
 use App\Module\Quotes\Domain\Exception\InvalidQuote;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * What a quote says besides its customer and its lines: the customer's own reference, notes printed and notes kept
@@ -56,7 +57,7 @@ final readonly class QuoteHeader
 
     private static function text(string $field, ?string $value, int $max): ?string
     {
-        $value = trim($value ?? '');
+        $value = TypedText::trimmed($value ?? '');
         if (mb_strlen($value) > $max) {
             throw new InvalidQuote($field, \sprintf('At most %d characters.', $max));
         }
@@ -66,7 +67,7 @@ final readonly class QuoteHeader
 
     private static function amount(?string $amount): ?string
     {
-        $amount = trim($amount ?? '');
+        $amount = TypedText::trimmed($amount ?? '');
         if ('' === $amount) {
             return null;
         }

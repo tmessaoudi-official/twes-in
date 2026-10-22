@@ -12,6 +12,7 @@ namespace App\Shared\Infrastructure\Health;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Settings\Application\SupportSettings;
+use App\Shared\Domain\Service\TypedText;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -57,7 +58,7 @@ final readonly class HealthController
     {
         $value = $this->settings->value(new SettingContext(), SupportSettings::STATUS_URL);
 
-        return \is_string($value) ? self::given(trim($value)) : null;
+        return \is_string($value) ? self::given(TypedText::trimmed($value)) : null;
     }
 
     /** An empty value is one nobody gave: an image built without its version, a deployment that names none. */

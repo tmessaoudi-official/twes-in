@@ -14,6 +14,7 @@ use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\Customers\Domain\ValueObject\CustomerCheckScope;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerSearch;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
@@ -59,7 +60,7 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
             ->where('c.company = :company')->setParameter('company', $companyId, 'uuid')
             // A customer merged away is listed as the customer kept, which is listed already.
             ->andWhere('c.mergedInto IS NULL');
-        $words = trim($search->text ?? '');
+        $words = TypedText::trimmed($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
         } elseif ('' !== $words) {
@@ -151,7 +152,7 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
             ->join('c.taxRegime', 'r')
             ->where('c.company = :company')->setParameter('company', $companyId, 'uuid')
             ->andWhere('c.isActive = true');
-        $words = trim($words);
+        $words = TypedText::trimmed($words);
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
         } elseif ('' !== $words) {

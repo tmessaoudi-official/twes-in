@@ -4,6 +4,7 @@ fiscal:
     identifier:
         tn:
             matricule_fiscal: 'Matricule fiscal'
+            matricule_fiscal_hint: 'Exemple : %example%. Il commence par ses 7 chiffres, même si la carte l’imprime dans l’autre sens.'
         fr:
             siren: 'SIREN'
             siret: 'SIRET'

@@ -13,6 +13,7 @@ use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\AccountSearch;
 use App\Identity\Domain\ValueObject\Email;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
@@ -78,7 +79,7 @@ final readonly class DoctrineUserRepository implements UserRepository
     public function search(AccountSearch $search, PageRequest $page): Page
     {
         $query = $this->entityManager->createQueryBuilder()->select('u')->from(User::class, 'u');
-        $words = trim($search->text ?? '');
+        $words = TypedText::trimmed($search->text ?? '');
         if ('' !== $words) {
             $query->andWhere("SEARCH_TEXT(u.email, u.displayName) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')")->setParameter('text', SearchText::escapeLike($words));
         }

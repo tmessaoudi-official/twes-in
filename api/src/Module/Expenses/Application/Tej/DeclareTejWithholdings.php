@@ -15,6 +15,7 @@ use App\Module\Expenses\Domain\Repository\ExpenseRepository;
 use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
 use App\Module\Expenses\Domain\ValueObject\WithholdingOperation;
 use App\Module\Vendors\Domain\Model\Vendor;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 
 /**
@@ -198,7 +199,7 @@ final readonly class DeclareTejWithholdings
     private static function address(Vendor $vendor): string
     {
         $address = $vendor->getProfile()->address;
-        $city = trim(($address->postalCode ?? '').' '.($address->city ?? ''));
+        $city = TypedText::trimmed(($address->postalCode ?? '').' '.($address->city ?? ''));
 
         return implode(', ', array_filter([$address->line1, $address->line2, $city], static fn (?string $part): bool => null !== $part && '' !== $part));
     }

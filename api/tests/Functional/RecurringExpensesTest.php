@@ -139,18 +139,18 @@ final class RecurringExpensesTest extends ApiTestCase
         $model = $this->expense();
         $week = ['unit' => 'week', 'every' => 1];
         foreach ([
-            [['modelExpenseId' => '0199a1b2-0000-7000-8000-000000000000'], 'modelExpenseId', 'unknown_choice'],
-            [['startsOn' => $this->day(-1)], 'startsOn', 'first_day_past'],
-            [['endsOn' => $this->day(-1)], 'endsOn', 'last_day_before_first'],
-            [['every' => 0], 'every', 'invalid_value'],
-            [['every' => 100], 'every', 'invalid_value'],
-            [['unit' => 'month'], 'anchor', 'invalid_value'],
-            [['unit' => 'month', 'anchor' => 'date', 'monthDay' => 32], 'monthDay', 'invalid_value'],
-            [['unit' => 'month', 'anchor' => 'weekday', 'ordinal' => 5, 'weekday' => 1], 'ordinal', 'invalid_value'],
-        ] as [$changes, $field, $reason]) {
+            [['modelExpenseId' => '0199a1b2-0000-7000-8000-000000000000'], 'modelExpenseId', 'unknown_choice', []],
+            [['startsOn' => $this->day(-1)], 'startsOn', 'first_day_past', []],
+            [['endsOn' => $this->day(-1)], 'endsOn', 'last_day_before_first', []],
+            [['every' => 0], 'every', 'whole_number_between', ['min' => 1, 'max' => 99]],
+            [['every' => 100], 'every', 'whole_number_between', ['min' => 1, 'max' => 99]],
+            [['unit' => 'month'], 'anchor', 'unknown_choice', []],
+            [['unit' => 'month', 'anchor' => 'date', 'monthDay' => 32], 'monthDay', 'whole_number_between', ['min' => 1, 'max' => 31]],
+            [['unit' => 'month', 'anchor' => 'weekday', 'ordinal' => 5, 'weekday' => 1], 'ordinal', 'whole_number_between', ['min' => 1, 'max' => 4]],
+        ] as [$changes, $field, $reason, $params]) {
             $this->postJson($this->path().'/recurring-expenses', [...$this->body($model, $week), ...$changes]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
-            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => []]], $this->refusals(), $field);
+            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals(), $field);
         }
         $this->postJson($this->path().'/recurring-expenses', [...$this->body($model, $week), 'unit' => 'fortnight']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'no such unit');

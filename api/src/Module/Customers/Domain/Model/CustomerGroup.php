@@ -11,6 +11,7 @@ namespace App\Module\Customers\Domain\Model;
 
 use App\Module\Customers\Domain\Exception\InvalidCustomerGroup;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -91,7 +92,7 @@ class CustomerGroup implements CompanyOwned
 
     private static function name(string $name): string
     {
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
             throw new InvalidCustomerGroup('name', \sprintf('A customer group is named in 1 to %d characters.', self::NAME_MAX));
         }
@@ -101,7 +102,7 @@ class CustomerGroup implements CompanyOwned
 
     private static function description(?string $description): ?string
     {
-        $description = null === $description ? '' : trim($description);
+        $description = null === $description ? '' : TypedText::trimmed($description);
         if (mb_strlen($description) > self::DESCRIPTION_MAX) {
             throw new InvalidCustomerGroup('description', \sprintf('A customer group is described in at most %d characters.', self::DESCRIPTION_MAX));
         }

@@ -21,6 +21,9 @@ final readonly class PresetIdentifier
      * @param array<string, string> $foreignPatterns the same number as other states issue it, by the prefix it starts
      *                                               with: a customer or a supplier abroad holds its own country's, the
      *                                               company never does; each pattern anchored at both ends
+     * @param IdentifierParts|null  $parts           how it is read part by part, when the preset says, which `pattern`
+     *                                               is then made from
+     * @param string|null           $hintKey         a `fiscal` text a form shows under the field beside the example
      */
     public function __construct(
         public string $key,
@@ -30,6 +33,8 @@ final readonly class PresetIdentifier
         public array $requiredFor,
         public ?IdentifierCheck $check = null,
         public array $foreignPatterns = [],
+        public ?IdentifierParts $parts = null,
+        public ?string $hintKey = null,
     ) {
     }
 
@@ -52,12 +57,16 @@ final readonly class PresetIdentifier
 
     /**
      * The one pattern a form checks a holder's value against before the API does: the preset's own, or any of the
-     * states' a value may come from. The check digits stay the API's.
+     * states' a value may come from. The check digits stay the API's. None for a number read part by part: every way
+     * of writing it is taken, and the API names the part that does not fit, which no pattern can say.
      *
      * @param string $holder one of the IdentifierRules holder constants, or ''
      */
-    public function patternFor(string $holder): string
+    public function patternFor(string $holder): ?string
     {
+        if (null !== $this->parts) {
+            return null;
+        }
         if (IdentifierRules::COMPANY === $holder || [] === $this->foreignPatterns) {
             return $this->pattern;
         }

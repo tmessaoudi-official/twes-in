@@ -20,9 +20,12 @@ final readonly class VendorIdentifierOption
         public string $key,
         #[Groups([VendorOptionsResource::READ])]
         public string $label,
-        /** A regular expression without delimiters, anchored by the preset. */
+        /** A regular expression without delimiters, anchored by the preset; null when the API alone judges every writing. */
         #[Groups([VendorOptionsResource::READ])]
-        public string $pattern,
+        public ?string $pattern,
+        /** What the form shows under the field, its example in it, in the reader's language; null when the preset says nothing. */
+        #[Groups([VendorOptionsResource::READ])]
+        public ?string $hint = null,
     ) {
     }
 }

@@ -16,6 +16,7 @@ use App\Demo\Domain\Model\DemoSandbox;
 use App\Demo\Domain\Repository\DemoMailRepository;
 use App\Demo\Domain\Repository\DemoSandboxRepository;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -48,7 +49,7 @@ final readonly class CaptureDemoMail
     {
         $sandboxes = [];
         foreach ($recipients as $recipient) {
-            $sandbox = $this->sandboxes->ownedByAddress(mb_strtolower(trim($recipient)));
+            $sandbox = $this->sandboxes->ownedByAddress(mb_strtolower(TypedText::trimmed($recipient)));
             if (null !== $sandbox) {
                 $sandboxes[$sandbox->getId()->toRfc4122()] = $sandbox;
             }

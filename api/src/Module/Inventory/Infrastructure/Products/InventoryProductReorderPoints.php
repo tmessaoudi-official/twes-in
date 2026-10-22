@@ -50,7 +50,7 @@ final readonly class InventoryProductReorderPoints implements ProductReorderPoin
 
             return [$before, $after];
         } catch (InvalidReorderPoint $refused) {
-            throw new ReorderPointRefused($refused->getMessage(), 0, $refused);
+            throw new ReorderPointRefused($refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
     }
 }

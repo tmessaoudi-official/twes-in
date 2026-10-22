@@ -208,7 +208,8 @@ function toOptions(raw: VendorOptionsVendorOptionsRead): VendorOptions {
     identifiers: (raw.identifiers ?? []).map((identifier) => ({
       key: identifier.key,
       label: identifier.label,
-      pattern: identifier.pattern,
+      pattern: identifier.pattern ?? null,
+      ...(identifier.hint ? { hint: identifier.hint } : {}),
     })),
     expenseCategories:
       raw.expenseCategories?.map(({ id, name, active }) => ({ id, name, active })) ?? null,

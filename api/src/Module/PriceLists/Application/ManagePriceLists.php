@@ -21,6 +21,7 @@ use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -68,7 +69,7 @@ final readonly class ManagePriceLists
     public function create(Company $company, PriceListInput $input, ?Uuid $actorUserId): PriceList
     {
         return $this->transactions->run(function () use ($company, $input, $actorUserId): PriceList {
-            if (null !== $this->lists->ofNameInCompany(trim($input->name), $company->getId())) {
+            if (null !== $this->lists->ofNameInCompany(TypedText::trimmed($input->name), $company->getId())) {
                 throw new PriceListNameTaken();
             }
             $this->checkScope($company, $input);
@@ -95,7 +96,7 @@ final readonly class ManagePriceLists
             if (null !== $version) {
                 $this->versions->expect($list, $version);
             }
-            $holder = $this->lists->ofNameInCompany(trim($input->name), $company->getId());
+            $holder = $this->lists->ofNameInCompany(TypedText::trimmed($input->name), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($list->getId())) {
                 throw new PriceListNameTaken();
             }

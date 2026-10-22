@@ -18,6 +18,7 @@ use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -68,7 +69,7 @@ final readonly class ManageProductCategories
     public function create(Company $company, string $name, ?Uuid $parentId, ?Uuid $actorUserId): ProductCategory
     {
         return $this->transactions->run(function () use ($company, $name, $parentId, $actorUserId): ProductCategory {
-            if (null !== $this->categories->ofNameInCompany(trim($name), $company->getId())) {
+            if (null !== $this->categories->ofNameInCompany(TypedText::trimmed($name), $company->getId())) {
                 throw new ProductCategoryNameTaken();
             }
             $category = ProductCategory::create($company, $name, $this->parent($company, $parentId), $this->clock->now());
@@ -92,7 +93,7 @@ final readonly class ManageProductCategories
             if (null !== $version) {
                 $this->versions->expect($category, $version);
             }
-            $holder = $this->categories->ofNameInCompany(trim($name), $company->getId());
+            $holder = $this->categories->ofNameInCompany(TypedText::trimmed($name), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($category->getId())) {
                 throw new ProductCategoryNameTaken();
             }

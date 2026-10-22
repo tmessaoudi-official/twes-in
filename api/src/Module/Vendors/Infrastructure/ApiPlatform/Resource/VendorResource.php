@@ -176,7 +176,7 @@ final class VendorResource
     public ?string $bic = null;
 
     /** Days after the vendor's invoice its payment is due. */
-    #[Assert\Range(min: 0, max: VendorProfile::PAYMENT_TERMS_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_payment_terms'])]
+    #[Assert\Range(min: 0, max: VendorProfile::PAYMENT_TERMS_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_payment_terms', 'params' => ['max' => VendorProfile::PAYMENT_TERMS_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?int $paymentTermsDays = null;
 

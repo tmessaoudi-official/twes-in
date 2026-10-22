@@ -4,6 +4,7 @@ fiscal:
     identifier:
         tn:
             matricule_fiscal: 'Tax identification number (matricule fiscal)'
+            matricule_fiscal_hint: 'Example: %example%. It starts with its 7 digits, even where the card prints it the other way round.'
         fr:
             siren: 'SIREN'
             siret: 'SIRET'

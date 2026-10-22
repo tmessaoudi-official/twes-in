@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Domain\Model;
 
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Exception\InvalidEstablishment;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -128,7 +129,7 @@ class Establishment implements CompanyOwned
 
     private static function code(string $code): string
     {
-        $code = trim($code);
+        $code = TypedText::trimmed($code);
         if (1 !== preg_match(self::CODE, $code)) {
             throw new InvalidEstablishment('code', \sprintf('"%s" is not an establishment code: 1 to 16 letters or digits.', $code));
         }
@@ -138,7 +139,7 @@ class Establishment implements CompanyOwned
 
     private static function name(string $name): string
     {
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
             throw new InvalidEstablishment('name', \sprintf('An establishment is named in 1 to %d characters.', self::NAME_MAX));
         }
@@ -148,7 +149,7 @@ class Establishment implements CompanyOwned
 
     private static function text(?string $value): ?string
     {
-        $value = null === $value ? '' : trim($value);
+        $value = null === $value ? '' : TypedText::trimmed($value);
 
         return '' === $value ? null : $value;
     }

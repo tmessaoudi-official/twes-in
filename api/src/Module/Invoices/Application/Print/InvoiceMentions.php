@@ -16,6 +16,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Domain\ValueObject\OperationCategory;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 
 /**
@@ -90,7 +91,7 @@ final readonly class InvoiceMentions
                 }
                 $setting = self::DATA[$placeholder] ?? null;
                 $value = null === $setting ? null : $this->settings->value($context, $setting);
-                $value = \is_string($value) ? trim($value) : '';
+                $value = \is_string($value) ? TypedText::trimmed($value) : '';
                 if ('' === $value) {
                     if ($issuing) {
                         throw new MentionDatumMissing($key, $setting ?? 'mention.'.$placeholder);

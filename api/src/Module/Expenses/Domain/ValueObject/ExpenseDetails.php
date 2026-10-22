@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Expenses\Domain\ValueObject;
 
 use App\Module\Expenses\Domain\Exception\InvalidExpense;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * What an expense says on its own: its day, what was bought, the vendor's own reference for it, notes, and who was
@@ -33,7 +34,7 @@ final readonly class ExpenseDetails
     public function __construct(\DateTimeImmutable $date, string $description, ?string $reference = null, ?string $notes = null, ?string $payee = null)
     {
         $this->date = new \DateTimeImmutable($date->format('Y-m-d'), new \DateTimeZone('UTC'));
-        $description = trim($description);
+        $description = TypedText::trimmed($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
             throw new InvalidExpense('description', \sprintf('An expense says what was bought in 1 to %d characters.', self::DESCRIPTION_MAX), 'invalid_text', ['min' => 1, 'max' => self::DESCRIPTION_MAX]);
         }
@@ -45,7 +46,7 @@ final readonly class ExpenseDetails
 
     private static function text(string $field, ?string $value, int $max): ?string
     {
-        $value = trim($value ?? '');
+        $value = TypedText::trimmed($value ?? '');
         if (mb_strlen($value) > $max) {
             throw new InvalidExpense($field, \sprintf('At most %d characters.', $max), 'invalid_text', ['max' => $max]);
         }

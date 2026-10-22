@@ -379,6 +379,8 @@ final class ProductMergeTest extends ApiTestCase
             self::fail('A movement of a product merged away is refused.');
         } catch (InvalidStockMovement $refused) {
             self::assertSame('product_merged', $refused->reason);
+            // Its text names both, « fusionné dans « VIS-6 » », or the person reads the placeholders.
+            self::assertSame(['reference' => 'VIS-6B', 'kept' => 'VIS-6'], $refused->params);
         }
     }
 

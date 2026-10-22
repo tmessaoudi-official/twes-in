@@ -46,7 +46,7 @@ final readonly class ReviseRecurringInvoiceProcessor implements ProcessorInterfa
         } catch (RecurringInvoiceNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (InvalidSchedule $refused) {
-            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, previous: $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return RecurringInvoiceResource::of($recurring, $this->manage->models($company, [$recurring])[$recurring->getModelInvoiceId()->toRfc4122()] ?? null);

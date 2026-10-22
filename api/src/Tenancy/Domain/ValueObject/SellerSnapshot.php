@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Domain\ValueObject;
 
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 
@@ -63,7 +64,7 @@ final readonly class SellerSnapshot
      */
     public function printedName(): string
     {
-        $form = trim($this->legalForm ?? '');
+        $form = TypedText::trimmed($this->legalForm ?? '');
         if ('' === $form || 1 === preg_match('/(^|\s)'.preg_quote($form, '/').'$/iu', $this->name)) {
             return $this->name;
         }

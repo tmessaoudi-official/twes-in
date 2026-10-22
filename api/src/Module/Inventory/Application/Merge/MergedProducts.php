@@ -21,7 +21,7 @@ interface MergedProducts
     /**
      * @param list<Uuid> $productIds
      *
-     * @return list<string> those merged into another, as RFC 4122
+     * @return array<string, string> the reference of the product each one merged away now stands for, by its RFC 4122 id
      */
     public function mergedAway(array $productIds): array;
 }

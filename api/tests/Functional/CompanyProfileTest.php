@@ -41,7 +41,8 @@ final class CompanyProfileTest extends ApiTestCase
         self::assertCount(1, $fields);
         self::assertIsArray($fields[0]);
         self::assertSame('matricule_fiscal', $fields[0]['key']);
-        self::assertSame('^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$', $fields[0]['pattern']);
+        self::assertNull($fields[0]['pattern'], 'a number read part by part is judged by the API alone');
+        self::assertSame("Exemple\u{00A0}: 1234567A/B/M/000. Il commence par ses 7 chiffres, même si la carte l’imprime dans l’autre sens.", $fields[0]['hint']);
         self::assertTrue($fields[0]['required']);
         self::assertIsString($fields[0]['label']);
         self::assertStringNotContainsString('fiscal.identifier', $fields[0]['label']);
@@ -64,6 +65,8 @@ final class CompanyProfileTest extends ApiTestCase
             'legalName' => 'Acme SARL',
             'iban' => 'tn59 1000 6035 1835 9847 8831',
             'bic' => 'biattntt',
+            // The company's own matricule is read as every holder's: whatever separates its parts, in any case.
+            'identifiers' => ['matricule_fiscal' => '1234567.b-b m 000'],
         ]));
 
         self::assertResponseIsSuccessful();
@@ -71,7 +74,7 @@ final class CompanyProfileTest extends ApiTestCase
         self::assertSame('Acme SARL', $body['legalName']);
         self::assertSame('TN5910006035183598478831', $body['iban']);
         self::assertSame('BIATTNTT', $body['bic']);
-        self::assertSame(['matricule_fiscal' => '1234567A/B/M/000'], $body['identifiers']);
+        self::assertSame(['matricule_fiscal' => '1234567B/B/M/000'], $body['identifiers']);
         self::assertTrue($body['writable']);
 
         $this->getJson($this->path());
@@ -146,8 +149,8 @@ final class CompanyProfileTest extends ApiTestCase
             'addressLine1' => [['addressLine1' => str_repeat('a', 201)], 'invalid_text', ['max' => 200]],
             'invoiceFooterText' => [['invoiceFooterText' => str_repeat('a', 2001)], 'invalid_text', ['max' => 2000]],
             'iban' => [['iban' => 'TN00 1234'], 'invalid_iban', []],
-            'identifiers[matricule_fiscal]' => [['identifiers' => ['matricule_fiscal' => str_repeat('1', 65)]], 'identifier_shape', []],
-            'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '1234567']], 'identifier_shape', ['identifier' => 'matricule_fiscal']],
+            'identifiers[matricule_fiscal]' => [['identifiers' => ['matricule_fiscal' => str_repeat('1', 65)]], 'invalid_text', ['max' => 64]],
+            'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '1234567']], 'identifier_part', ['identifier' => 'matricule_fiscal', 'example' => '1234567A/B/M/000', 'part' => 'key']],
             'vatRegime' => [['vatRegime' => 'franchise'], 'unknown_tax_regime', ['code' => 'franchise']],
         ] as $field => [$change, $reason, $params]) {
             $this->sendJson('PUT', $this->path(), $this->profile($change));

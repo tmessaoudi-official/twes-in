@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Application\Company\CompanyNameTaken;
 use App\Tenancy\Application\Invitation\PasswordBreached;
 use App\Tenancy\Application\Signup\CompleteSignup;
@@ -48,7 +49,7 @@ final readonly class CompleteSignupProcessor implements ProcessorInterface
         }
 
         try {
-            $outcome = $this->complete->handle(new CompleteSignupRequest($token, trim($data->displayName), $data->password, trim($data->companyName), $data->countryCode, $data->timezone));
+            $outcome = $this->complete->handle(new CompleteSignupRequest($token, TypedText::trimmed($data->displayName), $data->password, TypedText::trimmed($data->companyName), $data->countryCode, $data->timezone));
         } catch (SignupNotUsable $unusable) {
             throw new NotFoundHttpException('That signup link cannot be used.', $unusable);
         } catch (InvalidSignup|PasswordBreached|CompanyNameTaken $refused) {

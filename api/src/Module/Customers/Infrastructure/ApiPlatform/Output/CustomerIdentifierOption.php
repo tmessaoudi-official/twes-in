@@ -20,12 +20,15 @@ final readonly class CustomerIdentifierOption
         public string $key,
         #[Groups([CustomerOptionsResource::READ])]
         public string $label,
-        /** A regular expression without delimiters, anchored by the preset. */
+        /** A regular expression without delimiters, anchored by the preset; null when the API alone judges every writing. */
         #[Groups([CustomerOptionsResource::READ])]
-        public string $pattern,
+        public ?string $pattern,
         /** Whether a business customer billed in the company's own country must carry it. */
         #[Groups([CustomerOptionsResource::READ])]
         public bool $requiredForBusiness,
+        /** What the form shows under the field, its example in it, in the reader's language; null when the preset says nothing. */
+        #[Groups([CustomerOptionsResource::READ])]
+        public ?string $hint = null,
     ) {
     }
 }

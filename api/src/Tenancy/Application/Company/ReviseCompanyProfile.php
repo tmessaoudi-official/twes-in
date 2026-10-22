@@ -47,6 +47,7 @@ final readonly class ReviseCompanyProfile
     public function handle(Company $company, CompanyProfile $profile, ?Uuid $actorUserId, ?int $version = null): Company
     {
         $preset = $this->presets->get($company->getFiscalPreset());
+        $profile = $profile->withIdentifiers(IdentifierRules::normalised($preset, $profile->identifiers, IdentifierRules::COMPANY));
 
         if (!\in_array($profile->vatRegime, array_map(static fn ($regime): string => $regime->code, $preset->companyVatRegimes), true)) {
             throw new InvalidCompanyProfile('vatRegime', \sprintf('The %s preset offers companies no VAT regime "%s".', $preset->country, $profile->vatRegime), 'unknown_tax_regime', ['code' => $profile->vatRegime]);

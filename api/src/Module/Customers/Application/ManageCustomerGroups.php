@@ -20,6 +20,7 @@ use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -66,7 +67,7 @@ final readonly class ManageCustomerGroups
     public function create(Company $company, string $name, ?string $description, ?Uuid $actorUserId): CustomerGroup
     {
         return $this->transactions->run(function () use ($company, $name, $description, $actorUserId): CustomerGroup {
-            if (null !== $this->groups->ofNameInCompany(trim($name), $company->getId())) {
+            if (null !== $this->groups->ofNameInCompany(TypedText::trimmed($name), $company->getId())) {
                 throw new CustomerGroupNameTaken();
             }
             $group = CustomerGroup::create($company, $name, $description, $this->clock->now());
@@ -90,7 +91,7 @@ final readonly class ManageCustomerGroups
             if (null !== $version) {
                 $this->versions->expect($group, $version);
             }
-            $holder = $this->groups->ofNameInCompany(trim($name), $company->getId());
+            $holder = $this->groups->ofNameInCompany(TypedText::trimmed($name), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($group->getId())) {
                 throw new CustomerGroupNameTaken();
             }

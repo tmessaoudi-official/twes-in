@@ -51,7 +51,7 @@ final class CustomersTest extends ApiTestCase
         self::assertSame('TN', $options['countryCode']);
         $identifier = $this->arrayAt($options, 'identifiers')[0];
         self::assertIsArray($identifier);
-        self::assertSame(['matricule_fiscal', '^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$', true], [$identifier['key'], $identifier['pattern'], $identifier['requiredForBusiness']]);
+        self::assertSame(['matricule_fiscal', null, true, "Exemple\u{00A0}: 1234567A/B/M/000. Il commence par ses 7 chiffres, même si la carte l’imprime dans l’autre sens."], [$identifier['key'], $identifier['pattern'], $identifier['requiredForBusiness'], $identifier['hint']]);
         self::assertSame(['standard', 'exempt', 'suspended', 'export'], array_column($this->arrayAt($options, 'regimes'), 'code'));
         self::assertContains('TVA19', array_column($this->arrayAt($options, 'taxes'), 'code'));
     }
@@ -101,6 +101,25 @@ final class CustomersTest extends ApiTestCase
         self::assertStringContainsString('defaultTaxComponentIds', (string) $this->client->getResponse()->getContent());
     }
 
+    public function testAMatriculeWrittenAnyWayIsStoredTheOneWayAndOneWrittenBackToFrontIsSaidSo(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->postJson($this->path(), $this->customer(['identifiers' => ['matricule_fiscal' => "1234567 a\u{200B}/a/m 000"]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->json()['id'];
+        self::assertIsString($id);
+        self::assertSame(['matricule_fiscal' => '1234567A/A/M/000'], $this->json()['identifiers']);
+
+        $this->sendJson('PUT', $this->path($id), [...$this->customer(['identifiers' => ['matricule_fiscal' => '1234567/b/m/000']]), 'version' => $this->json()['version']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'identifiers.matricule_fiscal', 'reason' => 'identifier_part', 'params' => ['identifier' => 'matricule_fiscal', 'example' => '1234567A/B/M/000', 'part' => 'key']]], $this->refusals());
+
+        $this->postJson($this->path(), $this->customer(['number' => 'CLI-0002', 'identifiers' => ['matricule_fiscal' => '000/M/A/A1234567']]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('identifier_reversed', $this->refusals()[0]['reason'] ?? null);
+    }
+
     /**
      * A form's rules and the domain's refuse in one shape: each violation names its property and carries the reason a
      * screen translates, the import's own codes, with what that text needs (a length's maximum).
@@ -119,7 +138,7 @@ final class CustomersTest extends ApiTestCase
             'notes' => [['notes' => str_repeat('a', 5001)], 'invalid_text', ['max' => 5000]],
             'billingAddressLine1' => [['billingAddressLine1' => str_repeat('a', 201)], 'invalid_text', ['max' => 200]],
             'billingCountryCode' => [['billingCountryCode' => 'XX'], 'invalid_country', []],
-            'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '123']], 'identifier_shape', ['identifier' => 'matricule_fiscal']],
+            'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '123']], 'identifier_part', ['identifier' => 'matricule_fiscal', 'example' => '1234567A/B/M/000', 'part' => 'number']],
             'defaultTaxComponentIds' => [['taxRegime' => 'exempt', 'defaultTaxComponentIds' => [$this->taxId('TVA19')]], 'regime_excludes_tax', ['tax' => 'TVA 19 %']],
         ] as $case => [$change, $reason, $params]) {
             $field = 'a long email' === $case ? 'email' : $case;

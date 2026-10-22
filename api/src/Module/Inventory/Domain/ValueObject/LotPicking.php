@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Domain\ValueObject;
 
 use App\Module\Inventory\Domain\Model\StockLot;
+use App\Shared\Domain\Service\TypedText;
 use BcMath\Number;
 
 /**
@@ -83,7 +84,7 @@ final readonly class LotPicking
      */
     public static function find(array $available, string $code): ?LotOnHand
     {
-        $code = trim($code);
+        $code = TypedText::trimmed($code);
 
         return array_find($available, static fn (LotOnHand $each): bool => $each->lot->getCode() === $code)
             ?? array_find($available, static fn (LotOnHand $each): bool => 0 === strcasecmp($each->lot->getCode(), $code));

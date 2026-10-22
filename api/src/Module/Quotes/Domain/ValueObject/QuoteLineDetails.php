@@ -15,6 +15,7 @@ use App\Fiscal\Domain\Model\Unit;
 use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Quotes\Domain\Exception\InvalidQuote;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * One line as it is written, the way an invoice line is, since an accepted quote becomes one: what is offered, how
@@ -51,15 +52,15 @@ final readonly class QuoteLineDetails
      */
     public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, ?string $discountAmount = null)
     {
-        $description = trim($description);
+        $description = TypedText::trimmed($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
             throw new InvalidQuote('description', \sprintf('A line says what it offers in 1 to %d characters.', self::DESCRIPTION_MAX));
         }
         $this->description = $description;
-        $this->quantity = self::quantity(trim($quantity), $unit);
-        $this->unitPriceNet = self::price(trim($unitPriceNet));
-        $this->discountRate = self::rate(trim($discountRate ?? ''));
-        $this->discountAmount = self::amount(trim($discountAmount ?? ''));
+        $this->quantity = self::quantity(TypedText::trimmed($quantity), $unit);
+        $this->unitPriceNet = self::price(TypedText::trimmed($unitPriceNet));
+        $this->discountRate = self::rate(TypedText::trimmed($discountRate ?? ''));
+        $this->discountAmount = self::amount(TypedText::trimmed($discountAmount ?? ''));
         if (null !== $this->discountRate && null !== $this->discountAmount) {
             throw new InvalidQuote('discountAmount', 'A line\'s discount is a rate or an amount, not both.');
         }
