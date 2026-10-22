@@ -37,7 +37,7 @@
       "conflict": "The order changed state meanwhile: reload the page to see where it stands.",
       "record_changed": "Someone saved the order meanwhile.",
       "invalid": "The order was not accepted: check what is marked.",
-      "vendor_unavailable": "This vendor is retired: choose another."
+      "vendor_unavailable": "This vendor has been retired, or merged into another, since: choose the vendor on the draft (after a merge, the vendor kept)."
     },
     "fields": {
       "number": "Number",

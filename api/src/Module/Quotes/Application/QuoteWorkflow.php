@@ -76,6 +76,10 @@ final readonly class QuoteWorkflow
             // before another sent it is refused here, and takes no number.
             $quote = $this->locked($company, $id);
             $quote->assertDraft('is sent');
+            // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile.
+            if ($quote->getCustomer()->isMergedAway()) {
+                throw new InvalidQuote('customerId', $quote->getCustomer()->whySwitchedOff());
+            }
             $this->totals->checked($quote);
             $this->chargedByItsRegimes($company, $quote);
             $allocated = $this->numbers->allocate($company, $quote->getEstablishment(), self::DOCUMENT_TYPE);

@@ -116,6 +116,11 @@ final readonly class InvoiceWorkflow
                 $this->withinItsQuote($company, $invoice);
             }
             $customer = $invoice->getCustomer();
+            // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile: it would print
+            // the duplicate the merge retired.
+            if ($customer->isMergedAway()) {
+                throw new InvalidInvoice('customerId', $customer->whySwitchedOff());
+            }
             // Before the series, as a mention is: an invoice that cannot name its parties takes no number.
             $this->parties->assertNamed($company, $invoice->getEstablishment(), $customer);
             $this->chargedByItsRegimes($company, $invoice);

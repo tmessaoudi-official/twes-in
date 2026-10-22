@@ -37,7 +37,7 @@
       "conflict": "La commande a changé d’état entre-temps : rechargez la page pour voir où elle en est.",
       "record_changed": "Quelqu’un a enregistré la commande entre-temps.",
       "invalid": "La commande n’a pas été acceptée : vérifiez ce qui est signalé.",
-      "vendor_unavailable": "Ce fournisseur est retiré : choisissez-en un autre."
+      "vendor_unavailable": "Ce fournisseur a été retiré, ou fusionné dans un autre, depuis : choisissez le fournisseur sur le brouillon (après une fusion, le fournisseur conservé)."
     },
     "fields": {
       "number": "Numéro",

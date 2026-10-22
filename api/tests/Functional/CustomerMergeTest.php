@@ -114,6 +114,39 @@ final class CustomerMergeTest extends ApiTestCase
         self::assertEqualsCanonicalizing([$merged, $other], $connection->fetchFirstColumn("SELECT entity_id::text FROM audit_log WHERE action = 'customer.merged'"));
     }
 
+    public function testADraftPutBackFromTheBinAfterItsCustomerWasMergedAwayTakesNoNumberUntilItNamesTheCustomerKept(): void
+    {
+        // The bin keeps the draft as it was deleted, so a merge made meanwhile never moved it: numbered as it stands, it
+        // would print the duplicate the merge retired.
+        $this->signedIn();
+        [$kept, $merged] = [$this->customerId('C-001'), $this->customerId('C-002')];
+        $drafts = ['invoice' => $this->anInvoice($merged), 'quote' => $this->aQuote($merged), 'delivery_note' => $this->aDeliveryNote($merged)];
+        $removals = [];
+        foreach ($drafts as $subject => $id) {
+            $this->postJson($this->path('record-removals'), ['subject' => $subject, 'ids' => [$id]]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            $removals[$subject] = $this->stringAt($this->json(), 'id');
+        }
+        $this->merged($kept, [$merged]);
+        foreach ($removals as $removal) {
+            $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+            self::assertResponseIsSuccessful();
+        }
+
+        $steps = ['invoice' => 'invoices/%s/issue', 'quote' => 'quotes/%s/send', 'delivery_note' => 'delivery-notes/%s/validate'];
+        foreach ($steps as $subject => $step) {
+            $this->postJson($this->path(\sprintf($step, $drafts[$subject])), null);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $subject);
+            $detail = $this->stringAt($this->json(), 'detail');
+            self::assertStringStartsWith('customerId:', $detail, $subject);
+            self::assertStringContainsString('C-001', $detail, $subject.': the refusal names the customer kept');
+            self::assertSame(['draft', $merged], [
+                $this->em()->getConnection()->fetchOne(\sprintf('SELECT status FROM %s WHERE id = ?', $subject), [$drafts[$subject]]),
+                $this->customerOf($subject, $drafts[$subject]),
+            ], $subject.': refused before the series, the draft as it was');
+        }
+    }
+
     public function testUndoingTheMergeSwitchesTheCustomersBackOnAndPointsEveryLinkBack(): void
     {
         $this->signedIn();
@@ -749,7 +782,7 @@ final class CustomerMergeTest extends ApiTestCase
 
     private function signedIn(bool $prove = true): void
     {
-        $permissions = ['company.read', 'customer.read', 'customer.write', 'customer.remove', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'product.read', 'product.write'];
+        $permissions = ['company.read', 'customer.read', 'customer.write', 'customer.remove', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'product.read', 'product.write'];
         $this->createUser('shop@twes.local', self::PASSWORD, $this->company, $permissions, 'member');
         $this->login('shop@twes.local', self::PASSWORD);
         self::assertResponseIsSuccessful();

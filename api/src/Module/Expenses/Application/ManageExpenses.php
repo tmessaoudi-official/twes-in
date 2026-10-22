@@ -197,6 +197,14 @@ final readonly class ManageExpenses
             $expense = $this->get($company, $id);
             // Entering it in the books dates it there: a closed period takes no vendor invoice.
             $company->assertOpenOn($expense->getDate());
+            // A draft put back from the bin after a merge still names the vendor merged away, which the merge never moved:
+            // the books and the withholding certificates would keep the duplicate.
+            $vendor = $expense->getVendor();
+            $kept = $vendor?->getMergedInto();
+            if (null !== $vendor && null !== $kept) {
+                $number = $vendor->getNumber();
+                throw new InvalidExpense('vendorId', \sprintf('The vendor %s was merged into %s: an expense recorded names the vendor kept.', $number, $kept->getNumber()), 'vendor_merged_draft', ['number' => $number, 'kept' => $kept->getNumber()]);
+            }
             $expense->record($this->clock->now());
             $this->expenses->save($expense);
             $this->record($company, $expense->getId(), self::RECORDED, [], $actorUserId);

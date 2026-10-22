@@ -72,6 +72,10 @@ final readonly class PurchaseOrderWorkflow
             }
             $vendor = $this->vendors->ofId($company, $order->getVendorId())
                 ?? throw new InvalidPurchaseOrder('vendorId', 'The vendor of this order is gone: choose another.');
+            // A draft put back from the bin after a merge still names the vendor merged away, which the merge never moved.
+            if (null !== $vendor->keptNumber) {
+                throw new InvalidPurchaseOrder('vendorId', \sprintf('The vendor %s was merged into %s: an order sent names the vendor kept.', $vendor->number, $vendor->keptNumber));
+            }
             $allocated = $this->numbers->allocate($company, $order->getEstablishment(), self::DOCUMENT_TYPE);
             if ($this->orders->numberTaken($company->getId(), $allocated->number)) {
                 throw new PurchaseOrderNumberTaken(\sprintf('The number %s is already on another purchase order of this company: give the purchase order series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $order->getEstablishment()->getCode()));
