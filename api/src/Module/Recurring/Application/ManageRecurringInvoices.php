@@ -33,7 +33,6 @@ final readonly class ManageRecurringInvoices
     public const string ENTITY_TYPE = 'recurring_invoice';
     public const string CREATED = 'recurring_invoice.created';
     public const string REVISED = 'recurring_invoice.revised';
-    public const string DELETED = 'recurring_invoice.deleted';
 
     public function __construct(
         private RecurringInvoiceRepository $recurring,
@@ -113,16 +112,6 @@ final readonly class ManageRecurringInvoices
             }
 
             return $recurring;
-        });
-    }
-
-    /** @throws RecurringInvoiceNotFound */
-    public function delete(Company $company, Uuid $id, ?Uuid $actorUserId): void
-    {
-        $this->transactions->run(function () use ($company, $id, $actorUserId): void {
-            $recurring = $this->recurring->lockedOfIdInCompany($id, $company->getId()) ?? throw new RecurringInvoiceNotFound();
-            $this->recurring->remove($recurring);
-            $this->record($company, $id, self::DELETED, [], $actorUserId);
         });
     }
 

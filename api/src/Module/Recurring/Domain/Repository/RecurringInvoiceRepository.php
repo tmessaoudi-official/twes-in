@@ -16,8 +16,6 @@ interface RecurringInvoiceRepository
 {
     public function save(RecurringInvoice $recurring): void;
 
-    public function remove(RecurringInvoice $recurring): void;
-
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?RecurringInvoice;
 
     /** The same, locked for the rest of the transaction, read again from the database. */

@@ -21,7 +21,10 @@ namespace App\Records\Application;
  *
  * Only the rows whose `$whereColumn` holds one of `$whereValues` are the subject's records (a draft): any other is
  * answered as one the company does not keep, and stays. A record whose own columns may all be empty (a draft has no
- * number yet) is named also by columns of the row its `$labelKey` names in `$labelTable` (its customer's number and name).
+ * number yet) is named also by columns of the row its `$labelKey` names in `$labelTable` (its customer's number and name),
+ * and, one step further, by columns of the row that row's `$labelNextKey` names in `$labelNextTable`: a recurring invoice
+ * by its model's number and the customer the model bills. One with no column of its own worth reading is named by those
+ * alone.
  */
 final readonly class RecordSubject
 {
@@ -29,10 +32,11 @@ final readonly class RecordSubject
     public string $removePermission;
 
     /**
-     * @param non-empty-list<string> $labelColumns
-     * @param list<string>           $mustAgree
-     * @param list<string>           $whereValues
-     * @param list<string>           $labelTableColumns
+     * @param list<string> $labelColumns
+     * @param list<string> $mustAgree
+     * @param list<string> $whereValues
+     * @param list<string> $labelTableColumns
+     * @param list<string> $labelNextColumns
      */
     public function __construct(
         public string $table,
@@ -47,6 +51,9 @@ final readonly class RecordSubject
         public ?string $labelKey = null,
         public array $labelTableColumns = [],
         ?string $removePermission = null,
+        public ?string $labelNextTable = null,
+        public ?string $labelNextKey = null,
+        public array $labelNextColumns = [],
     ) {
         $this->removePermission = $removePermission ?? $writePermission;
         if ((null === $whereColumn) !== ([] === $whereValues)) {
@@ -55,10 +62,19 @@ final readonly class RecordSubject
         if ((null === $labelTable) !== (null === $labelKey) || (null === $labelTable) !== ([] === $labelTableColumns)) {
             throw new \InvalidArgumentException(\sprintf('%s: a label read from another table names that table, the column leading to it and its columns.', $table));
         }
+        if ((null === $labelNextTable) !== (null === $labelNextKey) || (null === $labelNextTable) !== ([] === $labelNextColumns)) {
+            throw new \InvalidArgumentException(\sprintf('%s: a label read one step further names that table, the column leading to it and its columns.', $table));
+        }
+        if (null !== $labelNextTable && null === $labelTable) {
+            throw new \InvalidArgumentException(\sprintf('%s: a label is read one step further only from the table it is read from first.', $table));
+        }
+        if ([] === $labelColumns && null === $labelTable) {
+            throw new \InvalidArgumentException(\sprintf('%s: a record is named by columns of its own or of another table.', $table));
+        }
         if (null !== $whereColumn && null !== $mergedAway) {
             throw new \InvalidArgumentException(\sprintf('%s: a subject only some rows of which are records is not merged.', $table));
         }
-        foreach ([$table, ...$labelColumns, ...$mustAgree, $whereColumn ?? 'none', $labelTable ?? 'none', $labelKey ?? 'none', ...$labelTableColumns] as $name) {
+        foreach ([$table, ...$labelColumns, ...$mustAgree, $whereColumn ?? 'none', $labelTable ?? 'none', $labelKey ?? 'none', ...$labelTableColumns, $labelNextTable ?? 'none', $labelNextKey ?? 'none', ...$labelNextColumns] as $name) {
             if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
                 throw new \InvalidArgumentException(\sprintf('"%s" is not a name the records engine may write into SQL.', $name));
             }

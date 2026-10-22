@@ -17,6 +17,7 @@ import { expensesTabs } from '../expenses/expenses-nav';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { PluralCompiler } from '../shared/i18n/plural-compiler';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -24,12 +25,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
-import {
-  effectToasts,
-  failureToasts,
-  provideQuietFeedback,
-  successToasts,
-} from '../shared/testing/feedback';
+import { failureToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { RecurringExpenseRefused, RecurringExpensesApi } from './recurring-expenses-api';
 import { recurringExpenseFailure } from './recurring-expense-form';
 import { RecurringExpensesPage } from './recurring-expenses-page';
@@ -53,7 +49,6 @@ class StaticLoader implements TranslateLoader {
         recurring: {
           states: { active: 'Active', paused: 'En pause', ended: 'Terminée' },
           errors: { not_found: 'Cette dépense récurrente n’existe plus.' },
-          delete_message: 'Plus aucun brouillon ne sera préparé pour {{description}}.',
           variable: 'Montant variable',
         },
       },
@@ -100,7 +95,8 @@ const power: RecurringExpenseRow = {
 };
 
 describe('RecurringExpensesPage', () => {
-  const api = { list: vi.fn(), revise: vi.fn(), delete: vi.fn() };
+  const api = { list: vi.fn(), revise: vi.fn() };
+  const deletes = { remove: vi.fn() };
   const live = { reloadOn: vi.fn() };
   let company: { id: string; name: string; timezone: string; countryCode?: string } = {
     id: 'c1',
@@ -153,7 +149,7 @@ describe('RecurringExpensesPage', () => {
       .mockImplementation((_c: string, _id: string, revision: object) =>
         Promise.resolve({ ...rent, ...revision }),
       );
-    api.delete.mockReset().mockResolvedValue(undefined);
+    deletes.remove.mockReset().mockResolvedValue(true);
     live.reloadOn.mockReset();
     auth.hasPermission.mockReset().mockReturnValue(true);
     auth.hasModule.mockReset().mockReturnValue(true);
@@ -173,6 +169,7 @@ describe('RecurringExpensesPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: RecurringExpensesApi, useValue: api },
         { provide: LiveChanges, useValue: live },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -368,21 +365,28 @@ describe('RecurringExpensesPage', () => {
     });
   });
 
-  it('deletes one only once asked, naming it, as a definitive action', async () => {
+  it('deletes one asking nothing, named by its description, as a record the toast takes back', async () => {
     await open();
 
     await rowAction('delete', 'r1');
-    expect(anywhere('confirm-message')?.textContent).toContain('Loyer du local');
-    expect(api.delete).not.toHaveBeenCalled();
-    anywhere('confirm-run')!.click();
     await settle();
 
-    expect(api.delete).toHaveBeenCalledWith('c1', 'r1');
-    await vi.waitFor(() =>
-      expect(effectToasts()).toEqual(['expenses.recurring.deleted:definitif']),
-    );
-    await settle();
+    expect(anywhere('confirm-run')).toBeNull();
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'recurring_expense', [
+      { id: 'r1', label: 'Loyer du local' },
+    ]);
     expect(q('recurring-expense-r1')).toBeNull();
+    expect(live.reloadOn.mock.calls[0]?.[0]).toContain('recurring_expense');
+  });
+
+  it('keeps the row when the delete was refused', async () => {
+    deletes.remove.mockResolvedValue(false);
+    await open();
+
+    await rowAction('delete', 'r1');
+    await settle();
+
+    expect(q('recurring-expense-r1')).not.toBeNull();
   });
 
   it('says what the API refused', async () => {

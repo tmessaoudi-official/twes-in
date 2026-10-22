@@ -288,24 +288,38 @@ final class RecurringInvoicesTest extends ApiTestCase
         self::assertSame(['invoice.recurring_stopped'], $this->told(), 'whoever writes invoices is told once, never left to find it stopped');
     }
 
-    public function testReadingIsInvoiceReadAndTheRestInvoiceWriteAndDeletingKeepsTheDrafts(): void
+    public function testReadingIsInvoiceReadAndTheRestInvoiceWriteAndDeletingKeepsTheDraftsAndComesBack(): void
     {
-        $recurring = $this->recurring($this->issued('100'), $this->monthly($this->day(0)), $this->day(0));
+        $model = $this->issued('100');
+        $this->getJson($this->path().'/invoices/'.$model);
+        $number = $this->stringAt($this->json(), 'number');
+        $recurring = $this->recurring($model, $this->monthly($this->day(0)), $this->day(0));
         $this->passEachDay();
         $draft = $this->draftsOf($recurring)[0];
+        $row = fn (): array => $this->em()->getConnection()->fetchAllAssociative('SELECT * FROM recurring_invoice WHERE id = ?', [$recurring]);
+        $before = $row();
 
         $this->login('reader@twes.local', 'password-1234');
         $this->getJson($this->path().'/recurring-invoices');
         self::assertResponseIsSuccessful();
         self::assertSame([$recurring], array_column($this->jsonList(), 'id'));
-        $this->sendJson('DELETE', $this->path().'/recurring-invoices/'.$recurring);
+        $this->postJson($this->path().'/record-removals', ['subject' => 'recurring_invoice', 'ids' => [$recurring]]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a reader deletes nothing');
 
         $this->login('sales@twes.local', 'password-1234');
         $this->sendJson('DELETE', $this->path().'/recurring-invoices/'.$recurring);
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertResponseStatusCodeSame(Response::HTTP_METHOD_NOT_ALLOWED, 'one way to delete: the records\' own');
+        $this->postJson($this->path().'/record-removals', ['subject' => 'recurring_invoice', 'ids' => [$recurring]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $removal = $this->json();
+        self::assertSame([], $row());
+        self::assertSame([$number.' Carthage Conseil'], array_column($this->arrayAt($removal, 'items'), 'label'), 'named by its model and the model\'s customer, who it bills');
         $this->getJson($this->path().'/invoices/'.$draft);
         self::assertResponseIsSuccessful('the draft it made stays');
+
+        $this->postJson($this->path().'/record-removals/'.$this->stringAt($removal, 'id').'/restore', null);
+        self::assertResponseIsSuccessful();
+        self::assertSame($before, $row(), 'put back within the day, as it was');
     }
 
     public function testSwitchedOffItIsNeitherReadNorRun(): void

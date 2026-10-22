@@ -3951,7 +3951,9 @@
       "support_grant": "وصول الدعم",
       "purchase_order": "طلبية لدى مزوّد",
       "payment_instrument": "صكّ أو كمبيالة",
-      "record_removal": "حذف"
+      "record_removal": "حذف",
+      "recurring_invoice": "فاتورة دورية",
+      "recurring_expense": "مصروف دوري"
     },
     "actions": {
       "auth": {
@@ -4148,6 +4150,14 @@
       },
       "record_removal": {
         "ended": "جعل حذفًا نهائيًا"
+      },
+      "recurring_invoice": {
+        "deleted": "حذف فاتورة دورية",
+        "restored": "أعاد فاتورة دورية"
+      },
+      "recurring_expense": {
+        "deleted": "حذف مصروفًا دوريًا",
+        "restored": "أعاد مصروفًا دوريًا"
       }
     },
     "history": {
@@ -4304,7 +4314,6 @@
       "confirm": "جعلها دورية"
     },
     "cancel": "إغلاق",
-    "keep": "إبقاء",
     "made": "صارت الفاتورة دورية: ستُعدّ أوّل مسودة لها في اليوم المختار.",
     "open": "عرض الفواتير الدورية",
     "pause": "إيقاف فاتورة {{customer}} مؤقتًا",
@@ -4312,10 +4321,6 @@
     "paused": "أُوقفت الفاتورة الدورية لـ{{customer}} مؤقتًا.",
     "resumed": "استُؤنفت الفاتورة الدورية لـ{{customer}}: تُتجاوز الآجال التي مرّت أثناء الإيقاف.",
     "delete": "حذف فاتورة {{customer}}",
-    "delete_title": "حذف هذه الفاتورة الدورية",
-    "delete_message": "لن تُعدّ أيّ مسودة بعد الآن لـ{{customer}}. تبقى الفواتير المُعدّة سابقًا.",
-    "delete_confirm": "حذف",
-    "deleted": "حُذفت الفاتورة الدورية لـ{{customer}}.",
     "last_draft": "فتح آخر مسودة",
     "model_draft": "مسودة",
     "errors": {

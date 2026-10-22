@@ -16,8 +16,6 @@ interface RecurringExpenseRepository
 {
     public function save(RecurringExpense $recurring): void;
 
-    public function remove(RecurringExpense $recurring): void;
-
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?RecurringExpense;
 
     /** The same, locked for the rest of the transaction, read again from the database. */

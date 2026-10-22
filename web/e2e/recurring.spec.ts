@@ -88,12 +88,16 @@ async function tidy(page: Page, made: { customer: string; invoice: string }): Pr
         id: string;
         modelInvoiceId: string;
       }[];
-      for (const each of recurring.filter((one) => one.modelInvoiceId === ids.invoice)) {
-        const deleted = await fetch(`${base}/recurring-invoices/${each.id}`, {
-          method: 'DELETE',
-          headers: { 'csrf-token': csrf },
+      const left = recurring
+        .filter((one) => one.modelInvoiceId === ids.invoice)
+        .map((one) => one.id);
+      if (left.length > 0) {
+        const deleted = await fetch(`${base}/record-removals`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({ subject: 'recurring_invoice', ids: left }),
         });
-        if (!deleted.ok) throw new Error(`DELETE recurring answered ${deleted.status}`);
+        if (!deleted.ok) throw new Error(`deleting recurring answered ${deleted.status}`);
       }
       const cancelled = await fetch(`${base}/invoices/${ids.invoice}/cancel`, {
         method: 'POST',
@@ -152,8 +156,10 @@ test('an invoice made recurring is listed under « Récurrentes », paused there
     await expect(row.locator('[data-column="state"]')).toContainText('En pause');
 
     await row.getByTestId(/^row-more-/).click();
+    // Deleted asking nothing: the toast takes it back, « Récemment supprimés » for a day.
     await page.getByTestId(/^row-menu-delete-/).click();
-    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('confirm-run')).toHaveCount(0);
+    await expect(toast(page)).toContainText('est supprimé');
     await expect(row).toHaveCount(0);
   } finally {
     await tidy(page, made);

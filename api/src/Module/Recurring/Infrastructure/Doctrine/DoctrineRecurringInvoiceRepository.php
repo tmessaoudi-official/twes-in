@@ -29,12 +29,6 @@ final readonly class DoctrineRecurringInvoiceRepository implements RecurringInvo
         $this->entityManager->flush();
     }
 
-    public function remove(RecurringInvoice $recurring): void
-    {
-        $this->entityManager->remove($recurring);
-        $this->entityManager->flush();
-    }
-
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?RecurringInvoice
     {
         $recurring = $this->entityManager->find(RecurringInvoice::class, $id);

@@ -70,6 +70,10 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
         if (null !== $subject->labelTable && null !== $subject->labelKey) {
             $columns = [...$columns, ...array_map(fn (string $column): string => \sprintf('CAST(l.%s AS text)', $this->name($column)), $subject->labelTableColumns)];
             $join = \sprintf(' LEFT JOIN %s l ON l.company_id = s.company_id AND l.id = s.%s', $this->name($subject->labelTable), $this->name($subject->labelKey));
+            if (null !== $subject->labelNextTable && null !== $subject->labelNextKey) {
+                $columns = [...$columns, ...array_map(fn (string $column): string => \sprintf('CAST(n.%s AS text)', $this->name($column)), $subject->labelNextColumns)];
+                $join .= \sprintf(' LEFT JOIN %s n ON n.company_id = s.company_id AND n.id = l.%s', $this->name($subject->labelNextTable), $this->name($subject->labelNextKey));
+            }
         }
         [$scope, $scoped] = $this->scope($subject, 's.');
         // In the ids' order, so that two deletes of the same records never lock them crosswise. FOR UPDATE, not FOR NO KEY

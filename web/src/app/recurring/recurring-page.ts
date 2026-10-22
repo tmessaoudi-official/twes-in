@@ -17,6 +17,7 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { SCHEDULE_UNITS, scheduleSentence } from '../shared/schedule/schedule';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { PageTabs } from '../shared/ui/page-tabs';
@@ -48,6 +49,7 @@ export class RecurringPage implements OnInit {
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
   private readonly live = inject(LiveChanges);
+  private readonly deletes = inject(RecordDeletes);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
   private readonly format = inject(FormatFacade);
@@ -181,18 +183,12 @@ export class RecurringPage implements OnInit {
         label: 'recurring.delete',
         labelParams: (row) => ({ customer: row.customerName }),
         icon: 'delete',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps it a day. The drafts it made stay.
         destructive: true,
+        undoable: true,
         run: (row) => void this.remove(row),
         disabled: () => this.busy(),
         shown: () => this.mayWrite(),
-        confirm: (row) => ({
-          kind: 'definitif',
-          title: 'recurring.delete_title',
-          message: 'recurring.delete_message',
-          messageParams: { customer: row.customerName },
-          confirmLabel: 'recurring.delete_confirm',
-          keepLabel: 'recurring.keep',
-        }),
       },
     ],
   }));
@@ -247,13 +243,14 @@ export class RecurringPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
     this.busy.set(true);
-    this.requests.clearError();
     try {
-      await this.api.delete(companyId, row.id);
-      this.rows.update((rows) => rows.filter((one) => one.id !== row.id));
-      this.feedback.effect('recurring.deleted', { customer: row.customerName }, 'definitif');
-    } catch (error) {
-      this.requests.refuse(error);
+      if (
+        await this.deletes.remove(companyId, 'recurring_invoice', [
+          { id: row.id, label: row.customerName },
+        ])
+      ) {
+        this.rows.update((rows) => rows.filter((one) => one.id !== row.id));
+      }
     } finally {
       this.busy.set(false);
     }

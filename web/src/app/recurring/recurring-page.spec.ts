@@ -15,6 +15,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { PluralCompiler } from '../shared/i18n/plural-compiler';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -22,12 +23,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
-import {
-  effectToasts,
-  failureToasts,
-  provideQuietFeedback,
-  successToasts,
-} from '../shared/testing/feedback';
+import { failureToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { RecurringApi, RecurringRefused } from './recurring-api';
 import { RecurringPage } from './recurring-page';
 import type { RecurringInvoiceRow } from './recurring-types';
@@ -49,7 +45,6 @@ class StaticLoader implements TranslateLoader {
       recurring: {
         states: { active: 'Active', paused: 'En pause', ended: 'Terminée' },
         errors: { not_found: 'Cette facture récurrente n’existe plus.' },
-        delete_message: 'Plus aucun brouillon ne sera préparé pour {{customer}}.',
       },
     });
   }
@@ -88,7 +83,8 @@ const over: RecurringInvoiceRow = {
 };
 
 describe('RecurringPage', () => {
-  const api = { list: vi.fn(), revise: vi.fn(), delete: vi.fn() };
+  const api = { list: vi.fn(), revise: vi.fn() };
+  const deletes = { remove: vi.fn() };
   const live = { reloadOn: vi.fn() };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -120,7 +116,7 @@ describe('RecurringPage', () => {
   beforeEach(() => {
     api.list.mockReset().mockResolvedValue([rent, over]);
     api.revise.mockReset().mockResolvedValue({ ...rent, paused: true });
-    api.delete.mockReset().mockResolvedValue(undefined);
+    deletes.remove.mockReset().mockResolvedValue(true);
     live.reloadOn.mockReset();
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
@@ -139,6 +135,7 @@ describe('RecurringPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: RecurringApi, useValue: api },
         { provide: LiveChanges, useValue: live },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -195,24 +192,33 @@ describe('RecurringPage', () => {
     expect(q('row-action-pause-r2')).toBeNull();
   });
 
-  it('deletes one only once asked, naming it, as a definitive action', async () => {
+  it('deletes one asking nothing, named by its customer, as a record the toast takes back', async () => {
     await open();
 
     q('row-more-r1')!.click();
     await settle();
     inMenu('row-menu-delete-r1')!.click();
     await settle();
-    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
-      'Atelier Ben Salah',
-    );
-    expect(api.delete).not.toHaveBeenCalled();
-    (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
-    await settle();
 
-    expect(api.delete).toHaveBeenCalledWith('c1', 'r1');
-    await vi.waitFor(() => expect(effectToasts()).toEqual(['recurring.deleted:definitif']));
+    expect(document.querySelector('[data-testid="confirm-run"]')).toBeNull();
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'recurring_invoice', [
+      { id: 'r1', label: 'Atelier Ben Salah' },
+    ]);
     await settle();
     expect(q('recurring-r1')).toBeNull();
+    expect(live.reloadOn.mock.calls[0]?.[0]).toContain('recurring_invoice');
+  });
+
+  it('keeps the row when the delete was refused', async () => {
+    deletes.remove.mockResolvedValue(false);
+    await open();
+
+    q('row-more-r1')!.click();
+    await settle();
+    inMenu('row-menu-delete-r1')!.click();
+    await settle();
+
+    expect(q('recurring-r1')).not.toBeNull();
   });
 
   it('says what the API refused', async () => {

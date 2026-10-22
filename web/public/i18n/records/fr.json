@@ -63,7 +63,8 @@
       "payment": "{{count}} {count, plural, one {paiement} other {paiements}}",
       "payment_instrument": "{{count}} {count, plural, one {chèque ou traite} other {chèques ou traites}}",
       "invoice_reminder": "{{count}} {count, plural, one {relance} other {relances}}",
-      "recurring_invoice": "{{count}} {count, plural, one {facture récurrente} other {factures récurrentes}}"
+      "recurring_invoice": "{{count}} {count, plural, one {facture récurrente} other {factures récurrentes}}",
+      "recurring_expense": "{{count}} {count, plural, one {dépense récurrente} other {dépenses récurrentes}}"
     },
     "errors": {
       "network": "Le serveur ne répond pas. Réessayez dans un instant.",
@@ -108,7 +109,9 @@
         "quote": "{{count}} {count, plural, one {brouillon de devis} other {brouillons de devis}}",
         "purchase_order": "{{count}} {count, plural, one {brouillon de commande fournisseur} other {brouillons de commandes fournisseur}}",
         "payment_instrument": "{{count}} {count, plural, one {chèque ou traite} other {chèques ou traites}}",
-        "delivery_note": "{{count}} {count, plural, one {brouillon de bon de livraison} other {brouillons de bon de livraison}}"
+        "delivery_note": "{{count}} {count, plural, one {brouillon de bon de livraison} other {brouillons de bon de livraison}}",
+        "recurring_invoice": "{{count}} {count, plural, one {facture récurrente} other {factures récurrentes}}",
+        "recurring_expense": "{{count}} {count, plural, one {dépense récurrente} other {dépenses récurrentes}}"
       }
     },
     "mismatch": {

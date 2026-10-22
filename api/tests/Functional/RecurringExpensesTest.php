@@ -227,13 +227,15 @@ final class RecurringExpensesTest extends ApiTestCase
         self::assertTrue($this->json()['paused']);
     }
 
-    public function testReadingIsExpenseReadAndTheRestExpenseWriteAndDeletingKeepsTheDrafts(): void
+    public function testReadingIsExpenseReadAndTheRestExpenseWriteAndDeletingKeepsTheDraftsAndComesBack(): void
     {
         $model = $this->expense();
         $recurring = $this->recurring($model, ['unit' => 'month', 'every' => 1, 'anchor' => 'last_day', 'startsOn' => $this->lastDayOfThisMonth()]);
         $this->runOn($this->lastDayOfThisMonth());
         Clock::set(new NativeClock());
         $draft = $this->draftsOf($recurring)[0];
+        $row = fn (): array => $this->em()->getConnection()->fetchAllAssociative('SELECT * FROM recurring_expense WHERE id = ?', [$recurring]);
+        $before = $row();
 
         $this->login('reader@twes.local', 'password-1234');
         $this->getJson($this->path().'/recurring-expenses');
@@ -241,14 +243,23 @@ final class RecurringExpensesTest extends ApiTestCase
         self::assertSame([$recurring], array_column($this->jsonList(), 'id'));
         $this->postJson($this->path().'/recurring-expenses', $this->body($model, ['unit' => 'week', 'every' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a reader makes nothing recurring');
-        $this->sendJson('DELETE', $this->path().'/recurring-expenses/'.$recurring);
+        $this->postJson($this->path().'/record-removals', ['subject' => 'recurring_expense', 'ids' => [$recurring]]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a reader deletes nothing');
 
         $this->login('buyer@twes.local', 'password-1234');
         $this->sendJson('DELETE', $this->path().'/recurring-expenses/'.$recurring);
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertResponseStatusCodeSame(Response::HTTP_METHOD_NOT_ALLOWED, 'one way to delete: the records\' own');
+        $this->postJson($this->path().'/record-removals', ['subject' => 'recurring_expense', 'ids' => [$recurring]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $removal = $this->json();
+        self::assertSame([], $row());
+        self::assertSame(['Électricité du local'], array_column($this->arrayAt($removal, 'items'), 'label'), 'named as its model expense is');
         $this->getJson($this->path().'/expenses/'.$draft);
         self::assertResponseIsSuccessful('the draft it made stays');
+
+        $this->postJson($this->path().'/record-removals/'.$this->stringAt($removal, 'id').'/restore', null);
+        self::assertResponseIsSuccessful();
+        self::assertSame($before, $row(), 'put back within the day, as it was');
     }
 
     public function testSwitchedOffItIsNeitherReadNorRun(): void
