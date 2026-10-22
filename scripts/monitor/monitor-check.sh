@@ -39,7 +39,7 @@ cleanup() {
   local status=$?
   if ((status != 0)); then
     mon logs --no-color --tail 40 edge gatus glitchtip 2>/dev/null || true
-    dc logs --no-color --tail 40 api backup 2>/dev/null || true
+    dc logs --no-color --tail 40 api migrate backup 2>/dev/null || true
   fi
   dc --profile restore down --volumes --remove-orphans >/dev/null 2>&1 || true
   mon down --volumes --remove-orphans >/dev/null 2>&1 || true

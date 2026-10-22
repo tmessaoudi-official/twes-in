@@ -20,6 +20,13 @@ echo "secrets-overlay gate"
 d=$(project)
 out=$(bash "$GATE" --root "$d" 2>&1); check "every installation as shaped passes" $? 0 "$out" "OK — 5 installations"
 
+# Compose 2.38 drops a `!reset` reached through an alias, so the workers kept what the block reset: read from the
+# files, whichever Compose runs the gate.
+d=$(project); edit "$d/compose.prod.yaml" 's|^  APP_ENV: prod$|&\n  APP_MFA_KEY: !reset null|'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a reset carried to an alias is named" $? 1 "$out" "compose.prod.yaml:21 &api-environment carries !reset"
+d=$(project); edit "$d/compose.deploy.yaml" 's|^    ports: !reset \[\]$|    ports: \&no-ports !reset []|; s|^    environment: \*deploy-environment$|&\n    ports: *no-ports|'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a tag on the anchored line itself is named" $? 1 "$out" "&no-ports carries !reset"
+
 d=$(project); edit "$d/compose.onprem.yaml" 's|^  SENTRY_DSN: "${SENTRY_DSN:-}"$|&\n  APP_SECRET: "${APP_SECRET:?x}"|'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a secret handed in an environment is named" $? 1 "$out" "api holds APP_SECRET in its environment"
 check "the value written into the configuration is named" 1 1 "$out" "the value of APP_SECRET is written"

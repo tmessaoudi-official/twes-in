@@ -38,7 +38,7 @@ dc() { (cd "$root" && docker compose --env-file "$values" "$@"); }
 
 cleanup() {
   local status=$?
-  if ((status != 0)); then dc logs --no-color --tail 60 edge web api backup 2>/dev/null || true; fi
+  if ((status != 0)); then dc logs --no-color --tail 60 edge web api migrate backup 2>/dev/null || true; fi
   dc --profile restore down --volumes --remove-orphans >/dev/null 2>&1 || true
   docker volume rm "$DRILL_PG_DATA" >/dev/null 2>&1 || true
   rm -rf "$DRILL_DIR"

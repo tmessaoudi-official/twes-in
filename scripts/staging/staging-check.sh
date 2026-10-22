@@ -59,7 +59,7 @@ forget_images() { # every name this machine holds the published images under, so
 }
 cleanup() {
   local status=$?
-  if ((status != 0)) && [[ -f "$values" ]]; then dc logs --no-color --tail 60 edge web api backup 2>/dev/null || true; fi
+  if ((status != 0)) && [[ -f "$values" ]]; then dc logs --no-color --tail 60 edge web api migrate backup 2>/dev/null || true; fi
   [[ -f "$values" ]] && { dc --profile restore down --volumes --remove-orphans >/dev/null 2>&1 || true; }
   docker volume rm "$DRILL_PG_DATA" >/dev/null 2>&1 || true
   docker rm -f "$REGISTRY_NAME" >/dev/null 2>&1 || true

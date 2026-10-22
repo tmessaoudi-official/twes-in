@@ -15,21 +15,27 @@
 # holds it.
 # Every service comes back by itself after a crash or a reboot, unless stopped on purpose
 # (api/tests/Architecture/ProductionRestartTest.php).
+# What every container of the api image is told. The variables a secret sets are reset in each service's own block, never
+# here: Compose 2.38, CI's runners, drops a `!reset` reached through an alias or a merge, and the workers and migrate then
+# kept the values CI exports for the secrets, which ContainerSecrets refuses (scripts/gates/secrets-overlay.sh holds it).
+x-api-environment: &api-environment
+  APP_ENV: prod
+  DEPLOY_ENV: "${DEPLOY_ENV:-prod}"
+  # The application's role, its password the secret postgres_app_password, which ContainerSecrets sets in it.
+  DATABASE_URL_TEMPLATE: "postgresql://twes_app:{postgres_app_password}@postgres:5432/twes?serverVersion=18&charset=utf8"
+
 services:
   api:
     restart: unless-stopped
     build:
       target: prod
-    environment: &api-environment
-      APP_ENV: prod
-      DEPLOY_ENV: "${DEPLOY_ENV:-prod}"
+    environment:
+      <<: *api-environment
       APP_MFA_KEY: !reset null
       REALTIME_TOKEN_KEY: !reset null
       REALTIME_API_KEY: !reset null
       MAILER_DSN: !reset null
-      # The application's role, its password the secret postgres_app_password, which ContainerSecrets sets in it.
       DATABASE_URL: !reset null
-      DATABASE_URL_TEMPLATE: "postgresql://twes_app:{postgres_app_password}@postgres:5432/twes?serverVersion=18&charset=utf8"
     secrets: &api-secrets [app_secret, app_mfa_key, realtime_token_key, realtime_api_key, postgres_app_password, mailer_dsn]
   # The migrations, on the same production image: its kernel refuses to start without the same secrets. Left down once
   # it has run (api/tests/Architecture/ProductionRestartTest.php). It alone holds the owner's password, and gives the
@@ -39,6 +45,11 @@ services:
       target: prod
     environment:
       <<: *api-environment
+      APP_MFA_KEY: !reset null
+      REALTIME_TOKEN_KEY: !reset null
+      REALTIME_API_KEY: !reset null
+      MAILER_DSN: !reset null
+      DATABASE_URL: !reset null
       DATABASE_MIGRATION_URL: !reset null
       DATABASE_MIGRATION_URL_TEMPLATE: "postgresql://twes:{postgres_password}@postgres:5432/twes?serverVersion=18&charset=utf8"
       POSTGRES_APP_PASSWORD: !reset null
@@ -48,13 +59,25 @@ services:
     restart: unless-stopped
     build:
       target: prod
-    environment: *api-environment
+    environment:
+      <<: *api-environment
+      APP_MFA_KEY: !reset null
+      REALTIME_TOKEN_KEY: !reset null
+      REALTIME_API_KEY: !reset null
+      MAILER_DSN: !reset null
+      DATABASE_URL: !reset null
     secrets: *api-secrets
   demo-worker:
     restart: unless-stopped
     build:
       target: prod
-    environment: *api-environment
+    environment:
+      <<: *api-environment
+      APP_MFA_KEY: !reset null
+      REALTIME_TOKEN_KEY: !reset null
+      REALTIME_API_KEY: !reset null
+      MAILER_DSN: !reset null
+      DATABASE_URL: !reset null
     secrets: *api-secrets
   postgres:
     restart: unless-stopped

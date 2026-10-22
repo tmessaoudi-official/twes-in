@@ -13,6 +13,8 @@
 #              address: FrankenPHP's workers read the environment over what ContainerSecrets set at boot
 #   database   the api image's addresses are templates carrying the passwords as placeholders, and the owner's reaches
 #              postgres and migrate only
+#   aliases    no `!reset` or `!override` sits in a block an alias or a merge reuses: Compose 2.38, CI's runners, drops
+#              the tag there, and the workers kept the secrets' variables CI exports
 # Usage: secrets-overlay.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -124,6 +126,27 @@ for installation in production drill server shop shop-offsite; do
     | select([(.value.secrets // [])[] | .source] | index("postgres_password"))
     | "\(.key) mounts the owner'"'"'s password: only postgres and migrate may"' <<<"$config")
 done
+
+# Read from the files themselves, so the Compose that runs this gate cannot hide it by honouring the tag.
+while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(cd "$root" && python3 -I - compose*.yaml <<'PY'
+import re, sys
+for path in sys.argv[1:]:
+    lines = open(path, encoding='utf-8').read().split('\n')
+    text = '\n'.join(lines)
+    for i, line in enumerate(lines):
+        anchor = re.search(r'&([A-Za-z0-9_-]+)', line.split('#')[0])
+        if not anchor or not re.search(r'\*' + re.escape(anchor.group(1)) + r'\b', text):
+            continue
+        indent = len(line) - len(line.lstrip())
+        block = [line]
+        for following in lines[i + 1:]:
+            if following.strip() and len(following) - len(following.lstrip()) <= indent:
+                break
+            block.append(following)
+        if any(re.search(r'!(reset|override)\b', b.split('#')[0]) for b in block):
+            print(f'{path}:{i + 1} &{anchor.group(1)} carries !reset or !override to an alias, which Compose 2.38 drops: write it in each service')
+PY
+)
 
 if ((${#problems[@]})); then
   printf 'secrets-overlay: FAIL — %d problem(s) with how secrets reach the containers (docs/SPEC.md § 7, Docker secrets):\n' "${#problems[@]}"
