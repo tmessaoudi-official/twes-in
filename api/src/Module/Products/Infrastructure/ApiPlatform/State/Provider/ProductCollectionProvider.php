@@ -18,6 +18,7 @@ use App\Module\Products\Application\Photo\ProductPhotos;
 use App\Module\Products\Application\ProductCheckScopes;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductSearch;
+use App\Module\Products\Infrastructure\ApiPlatform\Output\ProductGrossPrice;
 use App\Module\Products\Infrastructure\ApiPlatform\Payload\ProductSearchReader;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
@@ -33,7 +34,7 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class ProductCollectionProvider implements ProviderInterface
 {
-    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private Paging $paging, private ProductPhotos $photos, private CurrencyScales $scales, private ProductCheckScopes $checkScopes)
+    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private Paging $paging, private ProductPhotos $photos, private CurrencyScales $scales, private ProductCheckScopes $checkScopes, private ProductGrossPrice $gross)
     {
     }
 
@@ -54,7 +55,7 @@ final readonly class ProductCollectionProvider implements ProviderInterface
 
         return $this->paging->paginator(
             $page,
-            static fn (Product $product): ProductResource => ProductResource::of($product, $scope, $scale, $photos[$product->getId()->toRfc4122()] ?? null),
+            fn (Product $product): ProductResource => ProductResource::of($product, $scope, $scale, $photos[$product->getId()->toRfc4122()] ?? null, $this->gross->of($product)),
         );
     }
 }

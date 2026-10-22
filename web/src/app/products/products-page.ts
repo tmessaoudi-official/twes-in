@@ -39,6 +39,7 @@ import { ProductThumbnail } from './product-thumbnail';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { PRODUCTS_TABS } from './products-nav';
 import type { ProductSearch } from './products-types';
+import { FormatFacade } from '../shared/i18n/format-facade';
 
 /** The products of the company being worked in, with a hidden column per custom field of theirs. */
 @Component({
@@ -68,11 +69,16 @@ export class ProductsPage implements OnInit {
   protected readonly tabs = PRODUCTS_TABS;
   private readonly facade = inject(ProductsFacade);
   private readonly auth = inject(AuthFacade);
+  private readonly format = inject(FormatFacade);
   private readonly deletes = inject(RecordDeletes);
 
   /** Rows are selected for what the selection bar offers on them: their labels on one sheet, and a merge. */
   protected readonly list = computed(() => ({
-    ...productsList(this.facade.customFields(), this.offeredReasons() ?? []),
+    ...productsList(
+      this.facade.customFields(),
+      this.offeredReasons() ?? [],
+      this.auth.hasPermission('product.cost.read'),
+    ),
     selection: { countKey: 'products.selected' },
   }));
   /** The rows ticked on the page shown, by id: what the selection bar's actions act on. */
@@ -83,6 +89,8 @@ export class ProductsPage implements OnInit {
   );
   protected readonly total = this.facade.total;
   protected readonly scale = computed(() => this.facade.options()?.currencyScale ?? null);
+  /** A margin's share of the price as the screen writes decimals, its sign kept. */
+  protected readonly decimal = (value: string): string => this.format.decimal(value);
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));

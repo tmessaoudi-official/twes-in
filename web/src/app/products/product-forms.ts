@@ -144,6 +144,14 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
       width: AMOUNT_WIDTH,
     },
     {
+      id: 'priceGross',
+      label: `${FIELDS}.unitPriceGross`,
+      value: (row) => row.unitPriceGross ?? '',
+      align: 'end',
+      width: AMOUNT_WIDTH,
+      defaultHidden: true,
+    },
+    {
       id: 'status',
       label: `${FIELDS}.isActive`,
       value: (row) => (row.isActive ? 'active' : 'inactive'),
@@ -231,17 +239,56 @@ export function productSearch(
 }
 
 /**
- * The products list with a hidden column per active custom field of the company for products, and « À vérifier »'s
- * filters: marked or lacking something, and what is lacking, among the reasons the API says to this reader.
+ * What a cost reader may place in the list, hidden until placed: the cost, the margin and its share of the price. A
+ * field the person cannot read is no column at all (docs/SPEC.md § 7), never an empty one.
+ */
+const COST_COLUMNS: ListDescriptor<ProductListRow>['columns'] = [
+  {
+    id: 'cost',
+    label: `${FIELDS}.costPrice`,
+    value: (row) => row.costPrice ?? '',
+    align: 'end',
+    width: AMOUNT_WIDTH,
+    defaultHidden: true,
+  },
+  {
+    id: 'margin',
+    label: `${FIELDS}.margin`,
+    value: (row) => row.margin ?? '',
+    align: 'end',
+    width: AMOUNT_WIDTH,
+    defaultHidden: true,
+  },
+  {
+    id: 'marginPercent',
+    label: `${FIELDS}.marginPercent`,
+    value: (row) => row.marginPercent ?? '',
+    align: 'end',
+    width: 96,
+    defaultHidden: true,
+  },
+];
+
+/**
+ * The products list with a hidden column per active custom field of the company for products, the cost columns for a
+ * cost reader, and « À vérifier »'s filters: marked or lacking something, and what is lacking, among the reasons the
+ * API says to this reader.
  */
 export function productsList(
   fields: readonly CustomFieldDefinition[],
   offered: readonly ProductCheckReason[] = [],
+  costs = false,
 ): ListDescriptor<ProductListRow> {
   const reasons = PRODUCT_CHECK_REASONS.filter((reason) => offered.includes(reason));
+  const columns = PRODUCTS_LIST.columns;
+  const status = columns.findIndex((column) => column.id === 'status');
   return withCustomColumns(
     {
       ...PRODUCTS_LIST,
+      // Beside the prices, before the status.
+      columns: costs
+        ? [...columns.slice(0, status), ...COST_COLUMNS, ...columns.slice(status)]
+        : columns,
       filters: [
         ...(PRODUCTS_LIST.filters ?? []),
         {

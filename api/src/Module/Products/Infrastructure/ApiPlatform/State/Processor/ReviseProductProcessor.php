@@ -20,6 +20,7 @@ use App\Module\Products\Application\ProductMergedAway;
 use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\Exception\InvalidProduct;
+use App\Module\Products\Infrastructure\ApiPlatform\Output\ProductGrossPrice;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
@@ -32,7 +33,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /** @implements ProcessorInterface<ProductResource, ProductResource> */
 final readonly class ReviseProductProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private ProductPhotos $photos, private CurrencyScales $scales, private ProductCheckScopes $checkScopes)
+    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private ProductPhotos $photos, private CurrencyScales $scales, private ProductCheckScopes $checkScopes, private ProductGrossPrice $gross)
     {
     }
 
@@ -54,6 +55,6 @@ final readonly class ReviseProductProcessor implements ProcessorInterface
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
-        return ProductResource::of($product, $this->checkScopes->of($company, $seesCosts), $this->scales->of($company->getCurrency()), $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null);
+        return ProductResource::of($product, $this->checkScopes->of($company, $seesCosts), $this->scales->of($company->getCurrency()), $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null, unitPriceGross: $this->gross->of($product));
     }
 }

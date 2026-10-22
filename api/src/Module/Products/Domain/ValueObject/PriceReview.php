@@ -40,20 +40,12 @@ final readonly class PriceReview
     /** The margin the price left over the cost it was set against, as a percentage of the price, to one decimal. */
     public function previousMargin(): string
     {
-        return self::marginOn($this->price, $this->previousCost);
+        return Margin::percentOf($this->price, $this->previousCost);
     }
 
     /** The margin the same price leaves over the cost now. */
     public function margin(): string
     {
-        return self::marginOn($this->price, $this->cost);
-    }
-
-    private static function marginOn(string $price, string $cost): string
-    {
-        $price = Decimal::of($price);
-        $left = $price->sub(Decimal::of($cost))->mul(Decimal::of('100'), Decimal::WORKING_SCALE);
-
-        return Decimal::format($left->div($price, Decimal::WORKING_SCALE), 1);
+        return Margin::percentOf($this->price, $this->cost);
     }
 }

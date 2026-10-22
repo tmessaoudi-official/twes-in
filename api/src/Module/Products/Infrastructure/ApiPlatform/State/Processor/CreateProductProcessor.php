@@ -17,6 +17,7 @@ use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductCheckScopes;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\Exception\InvalidProduct;
+use App\Module\Products\Infrastructure\ApiPlatform\Output\ProductGrossPrice;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
@@ -27,7 +28,7 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 /** @implements ProcessorInterface<ProductResource, ProductResource> */
 final readonly class CreateProductProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private CurrencyScales $scales, private ProductCheckScopes $checkScopes)
+    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private CurrencyScales $scales, private ProductCheckScopes $checkScopes, private ProductGrossPrice $gross)
     {
     }
 
@@ -44,6 +45,6 @@ final readonly class CreateProductProcessor implements ProcessorInterface
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
-        return ProductResource::of($product, $this->checkScopes->of($company, $seesCosts), $this->scales->of($company->getCurrency()));
+        return ProductResource::of($product, $this->checkScopes->of($company, $seesCosts), $this->scales->of($company->getCurrency()), unitPriceGross: $this->gross->of($product));
     }
 }
