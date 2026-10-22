@@ -63,7 +63,8 @@
       "payment": "{count, plural, zero {لا دفوعات} one {دفعة واحدة} two {دفعتين} few {{{count}} دفوعات} many {{{count}} دفعةً} other {{{count}} دفعة}}",
       "payment_instrument": "{count, plural, zero {لا صكوك ولا كمبيالات} one {صك أو كمبيالة واحدة} two {صكين أو كمبيالتين} few {{{count}} صكوك أو كمبيالات} many {{{count}} صكًا أو كمبيالةً} other {{{count}} صك أو كمبيالة}}",
       "invoice_reminder": "{count, plural, zero {لا تذكيرات} one {تذكير واحد} two {تذكيرين} few {{{count}} تذكيرات} many {{{count}} تذكيرًا} other {{{count}} تذكير}}",
-      "recurring_invoice": "{count, plural, zero {لا فواتير دورية} one {فاتورة دورية واحدة} two {فاتورتين دوريتين} few {{{count}} فواتير دورية} many {{{count}} فاتورةً دوريةً} other {{{count}} فاتورة دورية}}"
+      "recurring_invoice": "{count, plural, zero {لا فواتير دورية} one {فاتورة دورية واحدة} two {فاتورتين دوريتين} few {{{count}} فواتير دورية} many {{{count}} فاتورةً دوريةً} other {{{count}} فاتورة دورية}}",
+      "recurring_expense": "{count, plural, zero {لا مصاريف دورية} one {مصروف دوري واحد} two {مصروفان دوريان} few {{{count}} مصاريف دورية} many {{{count}} مصروفًا دوريًا} other {{{count}} مصروف دوري}}"
     },
     "errors": {
       "network": "الخادم لا يستجيب. أعد المحاولة بعد قليل.",
@@ -108,7 +109,9 @@
         "quote": "{count, plural, zero {لا مسودات عروض أسعار} one {مسودة عرض سعر واحدة} two {مسودتا عرض سعر} few {{{count}} مسودات عروض أسعار} many {{{count}} مسودة عرض سعر} other {{{count}} مسودة عرض سعر}}",
         "purchase_order": "{count, plural, zero {لا مسودات طلبيات لدى مزوّد} one {مسودة طلبية واحدة لدى مزوّد} two {مسودتا طلبية لدى مزوّد} few {{{count}} مسودات طلبيات لدى مزوّد} many {{{count}} مسودة طلبية لدى مزوّد} other {{{count}} مسودة طلبية لدى مزوّد}}",
         "payment_instrument": "{count, plural, zero {لا صكوك ولا كمبيالات} one {صك أو كمبيالة واحدة} two {صكين أو كمبيالتين} few {{{count}} صكوك أو كمبيالات} many {{{count}} صكًا أو كمبيالةً} other {{{count}} صك أو كمبيالة}}",
-        "delivery_note": "{count, plural, zero {لا مسودات وصول تسليم} one {مسودة وصل تسليم واحدة} two {مسودتا وصل تسليم} few {{{count}} مسودات وصول تسليم} many {{{count}} مسودة وصل تسليم} other {{{count}} مسودة وصل تسليم}}"
+        "delivery_note": "{count, plural, zero {لا مسودات وصول تسليم} one {مسودة وصل تسليم واحدة} two {مسودتا وصل تسليم} few {{{count}} مسودات وصول تسليم} many {{{count}} مسودة وصل تسليم} other {{{count}} مسودة وصل تسليم}}",
+        "recurring_invoice": "{count, plural, zero {لا فواتير دورية} one {فاتورة دورية واحدة} two {فاتورتين دوريتين} few {{{count}} فواتير دورية} many {{{count}} فاتورةً دوريةً} other {{{count}} فاتورة دورية}}",
+        "recurring_expense": "{count, plural, zero {لا مصاريف دورية} one {مصروف دوري واحد} two {مصروفان دوريان} few {{{count}} مصاريف دورية} many {{{count}} مصروفًا دوريًا} other {{{count}} مصروف دوري}}"
       }
     },
     "mismatch": {

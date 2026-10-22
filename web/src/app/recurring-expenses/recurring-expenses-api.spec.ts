@@ -214,12 +214,6 @@ describe('RecurringExpensesApi', () => {
     expect(refusal).toBeInstanceOf(RecurringExpenseRefused);
     expect((refusal as RecurringExpenseRefused).field).toBeNull();
 
-    const removed = api.delete('c1', 'r1');
-    http
-      .expectOne({ method: 'DELETE', url: `${url}/r1` })
-      .flush(null, { status: 404, statusText: 'Not Found' });
-    await expect(removed).rejects.toMatchObject({ code: 'not_found' });
-
     const listed = api.list('c1');
     http.expectOne({ method: 'GET', url }).error(new ProgressEvent('error'));
     await expect(listed).rejects.toMatchObject({ code: 'network' });

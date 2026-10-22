@@ -80,7 +80,6 @@
         "confirm": "Save"
       },
       "cancel": "Close",
-      "keep": "Keep",
       "made": "The expense is recurring: its first draft will be prepared when the day comes.",
       "open": "See recurring",
       "revised": "Recurring expense “{{description}}” edited.",
@@ -89,10 +88,6 @@
       "paused": "Recurring expense “{{description}}” paused.",
       "resumed": "Recurring expense “{{description}}” resumed: the due dates passed while paused are skipped.",
       "delete": "Delete the one for {{description}}",
-      "delete_title": "Delete this recurring expense",
-      "delete_message": "No more drafts will be prepared for “{{description}}”. The expenses already prepared stay.",
-      "delete_confirm": "Delete",
-      "deleted": "Recurring expense “{{description}}” deleted.",
       "last_draft": "Open the last draft",
       "errors": {
         "invalid": "The recurring expense could not be saved.",

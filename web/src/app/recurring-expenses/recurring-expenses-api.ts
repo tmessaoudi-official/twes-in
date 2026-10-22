@@ -97,15 +97,6 @@ export class RecurringExpensesApi {
       throw refused(error);
     }
   }
-
-  /** Deletes it; the drafts it made stay. */
-  async delete(companyId: string, id: string): Promise<void> {
-    try {
-      await firstValueFrom(this.http.delete(`${path(companyId)}/${encodeURIComponent(id)}`));
-    } catch (error) {
-      throw refused(error);
-    }
-  }
 }
 
 const path = (companyId: string): string =>

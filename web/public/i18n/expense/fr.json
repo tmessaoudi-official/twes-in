@@ -80,7 +80,6 @@
         "confirm": "Enregistrer"
       },
       "cancel": "Fermer",
-      "keep": "Garder",
       "made": "La dépense est récurrente : son premier brouillon sera préparé le jour venu.",
       "open": "Voir les récurrentes",
       "revised": "Dépense récurrente « {{description}} » modifiée.",
@@ -89,10 +88,6 @@
       "paused": "Dépense récurrente « {{description}} » en pause.",
       "resumed": "Dépense récurrente « {{description}} » reprise : les échéances passées pendant la pause sont sautées.",
       "delete": "Supprimer celle de {{description}}",
-      "delete_title": "Supprimer cette dépense récurrente",
-      "delete_message": "Plus aucun brouillon ne sera préparé pour « {{description}} ». Les dépenses déjà préparées restent.",
-      "delete_confirm": "Supprimer",
-      "deleted": "Dépense récurrente « {{description}} » supprimée.",
       "last_draft": "Ouvrir le dernier brouillon",
       "errors": {
         "invalid": "La dépense récurrente n’a pas pu être enregistrée.",

@@ -63,7 +63,8 @@
       "payment": "{{count}} {count, plural, one {payment} other {payments}}",
       "payment_instrument": "{{count}} {count, plural, one {cheque or traite} other {cheques or traites}}",
       "invoice_reminder": "{{count}} {count, plural, one {reminder} other {reminders}}",
-      "recurring_invoice": "{{count}} {count, plural, one {recurring invoice} other {recurring invoices}}"
+      "recurring_invoice": "{{count}} {count, plural, one {recurring invoice} other {recurring invoices}}",
+      "recurring_expense": "{{count}} {count, plural, one {recurring expense} other {recurring expenses}}"
     },
     "errors": {
       "network": "The server is not answering. Try again in a moment.",
@@ -108,7 +109,9 @@
         "quote": "{{count}} {count, plural, one {quote draft} other {quote drafts}}",
         "purchase_order": "{{count}} {count, plural, one {purchase order draft} other {purchase order drafts}}",
         "payment_instrument": "{{count}} {count, plural, one {cheque or traite} other {cheques or traites}}",
-        "delivery_note": "{{count}} {count, plural, one {delivery note draft} other {delivery note drafts}}"
+        "delivery_note": "{{count}} {count, plural, one {delivery note draft} other {delivery note drafts}}",
+        "recurring_invoice": "{{count}} {count, plural, one {recurring invoice} other {recurring invoices}}",
+        "recurring_expense": "{{count}} {count, plural, one {recurring expense} other {recurring expenses}}"
       }
     },
     "mismatch": {

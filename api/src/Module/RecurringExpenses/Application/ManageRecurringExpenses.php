@@ -33,7 +33,6 @@ final readonly class ManageRecurringExpenses
     public const string ENTITY_TYPE = 'recurring_expense';
     public const string CREATED = 'recurring_expense.created';
     public const string REVISED = 'recurring_expense.revised';
-    public const string DELETED = 'recurring_expense.deleted';
 
     public function __construct(
         private RecurringExpenseRepository $recurring,
@@ -111,16 +110,6 @@ final readonly class ManageRecurringExpenses
             }
 
             return $recurring;
-        });
-    }
-
-    /** @throws RecurringExpenseNotFound */
-    public function delete(Company $company, Uuid $id, ?Uuid $actorUserId): void
-    {
-        $this->transactions->run(function () use ($company, $id, $actorUserId): void {
-            $recurring = $this->recurring->lockedOfIdInCompany($id, $company->getId()) ?? throw new RecurringExpenseNotFound();
-            $this->recurring->remove($recurring);
-            $this->record($company, $id, self::DELETED, [], $actorUserId);
         });
     }
 

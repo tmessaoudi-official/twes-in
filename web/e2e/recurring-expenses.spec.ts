@@ -44,10 +44,12 @@ async function tidy(page: Page, expenseId: string): Promise<void> {
         modelExpenseId: string;
       }[];
       const left: number[] = [];
-      for (const each of recurring.filter((one) => one.modelExpenseId === id)) {
-        const deleted = await fetch(`${base}/recurring-expenses/${each.id}`, {
-          method: 'DELETE',
-          headers: { 'csrf-token': csrf },
+      const ids = recurring.filter((one) => one.modelExpenseId === id).map((one) => one.id);
+      if (ids.length > 0) {
+        const deleted = await fetch(`${base}/record-removals`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({ subject: 'recurring_expense', ids }),
         });
         left.push(deleted.status);
       }
@@ -59,7 +61,7 @@ async function tidy(page: Page, expenseId: string): Promise<void> {
     },
     [CSRF, expenseId] as const,
   );
-  expect(statuses.every((status) => status === 204)).toBe(true);
+  expect(statuses.every((status) => status >= 200 && status < 300)).toBe(true);
 }
 
 /** Has a single Select take an option: it closes by itself, where an Escape would close the dialog it sits in. */
@@ -134,8 +136,10 @@ test('an expense made recurring is listed under « Récurrentes » in words, rev
     await rowAction(page, row, 'pause');
     await expect(row.locator('[data-column="state"]')).toContainText('En pause');
 
+    // Deleted asking nothing: the toast takes it back, « Récemment supprimés » for a day.
     await rowAction(page, row, 'delete');
-    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('confirm-run')).toHaveCount(0);
+    await expect(toast(page)).toContainText('est supprimé');
     await expect(row).toHaveCount(0);
   } finally {
     await tidy(page, expenseId);

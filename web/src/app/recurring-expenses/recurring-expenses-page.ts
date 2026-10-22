@@ -25,6 +25,7 @@ import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { scheduleSentence, SCHEDULE_UNITS } from '../shared/schedule/schedule';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { PageTabs } from '../shared/ui/page-tabs';
@@ -69,6 +70,7 @@ export class RecurringExpensesPage implements OnInit {
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
   private readonly live = inject(LiveChanges);
+  private readonly deletes = inject(RecordDeletes);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
   private readonly translate = inject(TranslateService);
@@ -223,18 +225,12 @@ export class RecurringExpensesPage implements OnInit {
         label: `${TEXTS}.delete`,
         labelParams: (row) => ({ description: row.description }),
         icon: 'delete',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps it a day. The drafts it made stay.
         destructive: true,
+        undoable: true,
         run: (row) => void this.remove(row),
         disabled: () => this.busy(),
         shown: () => this.mayWrite(),
-        confirm: (row) => ({
-          kind: 'definitif',
-          title: `${TEXTS}.delete_title`,
-          message: `${TEXTS}.delete_message`,
-          messageParams: { description: row.description },
-          confirmLabel: `${TEXTS}.delete_confirm`,
-          keepLabel: `${TEXTS}.keep`,
-        }),
       },
     ],
   }));
@@ -363,13 +359,14 @@ export class RecurringExpensesPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
     this.busy.set(true);
-    this.requests.clearError();
     try {
-      await this.api.delete(companyId, row.id);
-      this.rows.update((rows) => rows.filter((one) => one.id !== row.id));
-      this.feedback.effect(`${TEXTS}.deleted`, { description: row.description }, 'definitif');
-    } catch (error) {
-      this.requests.refuse(error);
+      if (
+        await this.deletes.remove(companyId, 'recurring_expense', [
+          { id: row.id, label: row.description },
+        ])
+      ) {
+        this.rows.update((rows) => rows.filter((one) => one.id !== row.id));
+      }
     } finally {
       this.busy.set(false);
     }

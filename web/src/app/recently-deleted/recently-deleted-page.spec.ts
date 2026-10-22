@@ -203,6 +203,8 @@ describe('RecentlyDeletedPage', () => {
       'delivery_note',
       'purchase_order',
       'payment_instrument',
+      'recurring_invoice',
+      'recurring_expense',
     ]);
 
     api.pending.mockResolvedValue([]);

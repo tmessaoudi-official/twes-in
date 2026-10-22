@@ -11,7 +11,6 @@ namespace App\Module\Recurring\Infrastructure\ApiPlatform\Resource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
@@ -19,7 +18,6 @@ use ApiPlatform\Metadata\Put;
 use App\Module\Recurring\Application\RecurringModel;
 use App\Module\Recurring\Domain\Model\RecurringInvoice;
 use App\Module\Recurring\Infrastructure\ApiPlatform\State\Processor\CreateRecurringInvoiceProcessor;
-use App\Module\Recurring\Infrastructure\ApiPlatform\State\Processor\DeleteRecurringInvoiceProcessor;
 use App\Module\Recurring\Infrastructure\ApiPlatform\State\Processor\ReviseRecurringInvoiceProcessor;
 use App\Module\Recurring\Infrastructure\ApiPlatform\State\Provider\RecurringInvoiceCollectionProvider;
 use App\Module\Recurring\Infrastructure\ApiPlatform\State\Provider\RecurringInvoiceItemProvider;
@@ -66,12 +64,6 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: ['groups' => [self::READ]],
             denormalizationContext: ['groups' => [self::REVISE, RecordVersion::REVISE]],
             validationContext: ['groups' => [self::REVISE, RecordVersion::REVISE]],
-        ),
-        new Delete(
-            uriTemplate: '/companies/{companyId}/recurring-invoices/{recurringInvoiceId}',
-            processor: DeleteRecurringInvoiceProcessor::class,
-            security: 'is_granted("ROLE_USER")',
-            read: false,
         ),
     ],
 )]

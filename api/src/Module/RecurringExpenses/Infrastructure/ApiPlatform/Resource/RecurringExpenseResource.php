@@ -11,7 +11,6 @@ namespace App\Module\RecurringExpenses\Infrastructure\ApiPlatform\Resource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
@@ -19,7 +18,6 @@ use ApiPlatform\Metadata\Put;
 use App\Module\RecurringExpenses\Application\RecurringExpenseModel;
 use App\Module\RecurringExpenses\Domain\Model\RecurringExpense;
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Processor\CreateRecurringExpenseProcessor;
-use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Processor\DeleteRecurringExpenseProcessor;
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Processor\ReviseRecurringExpenseProcessor;
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Provider\RecurringExpenseCollectionProvider;
 use App\Module\RecurringExpenses\Infrastructure\ApiPlatform\State\Provider\RecurringExpenseItemProvider;
@@ -66,12 +64,6 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: ['groups' => [self::READ]],
             denormalizationContext: ['groups' => [self::REVISE, RecordVersion::REVISE]],
             validationContext: ['groups' => [self::REVISE, RecordVersion::REVISE]],
-        ),
-        new Delete(
-            uriTemplate: '/companies/{companyId}/recurring-expenses/{recurringExpenseId}',
-            processor: DeleteRecurringExpenseProcessor::class,
-            security: 'is_granted("ROLE_USER")',
-            read: false,
         ),
     ],
 )]

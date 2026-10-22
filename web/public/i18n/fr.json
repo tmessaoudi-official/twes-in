@@ -3951,7 +3951,9 @@
       "support_grant": "Accès du support",
       "purchase_order": "Commande fournisseur",
       "payment_instrument": "Chèque ou traite",
-      "record_removal": "Suppression"
+      "record_removal": "Suppression",
+      "recurring_invoice": "Facture récurrente",
+      "recurring_expense": "Dépense récurrente"
     },
     "actions": {
       "auth": {
@@ -4148,6 +4150,14 @@
       },
       "record_removal": {
         "ended": "a rendu une suppression définitive"
+      },
+      "recurring_invoice": {
+        "deleted": "a supprimé une facture récurrente",
+        "restored": "a remis une facture récurrente"
+      },
+      "recurring_expense": {
+        "deleted": "a supprimé une dépense récurrente",
+        "restored": "a remis une dépense récurrente"
       }
     },
     "history": {
@@ -4304,7 +4314,6 @@
       "confirm": "Rendre récurrente"
     },
     "cancel": "Fermer",
-    "keep": "Garder",
     "made": "La facture est récurrente : son premier brouillon sera préparé le jour choisi.",
     "open": "Voir les récurrentes",
     "pause": "Mettre en pause celle de {{customer}}",
@@ -4312,10 +4321,6 @@
     "paused": "Facture récurrente de {{customer}} en pause.",
     "resumed": "Facture récurrente de {{customer}} reprise : les échéances passées pendant la pause sont sautées.",
     "delete": "Supprimer celle de {{customer}}",
-    "delete_title": "Supprimer cette facture récurrente",
-    "delete_message": "Plus aucun brouillon ne sera préparé pour {{customer}}. Les factures déjà préparées restent.",
-    "delete_confirm": "Supprimer",
-    "deleted": "Facture récurrente de {{customer}} supprimée.",
     "last_draft": "Ouvrir le dernier brouillon",
     "model_draft": "Brouillon",
     "errors": {

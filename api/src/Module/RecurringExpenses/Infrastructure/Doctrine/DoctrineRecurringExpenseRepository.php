@@ -29,12 +29,6 @@ final readonly class DoctrineRecurringExpenseRepository implements RecurringExpe
         $this->entityManager->flush();
     }
 
-    public function remove(RecurringExpense $recurring): void
-    {
-        $this->entityManager->remove($recurring);
-        $this->entityManager->flush();
-    }
-
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?RecurringExpense
     {
         $recurring = $this->entityManager->find(RecurringExpense::class, $id);
