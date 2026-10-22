@@ -196,7 +196,9 @@ step "API healthy and data check clean on the restored database"
 dc exec -T api sha256sum /app/var/files/restore-drill.bin > "$DRILL_DIR/back.sha256" || fail "restic gave back no files volume"
 [[ "$(cut -d' ' -f1 "$DRILL_DIR/files.sha256")" == "$(cut -d' ' -f1 "$DRILL_DIR/back.sha256")" ]] || fail "the file restic gave back differs from the one copied"
 DRILL_PG_DATA=twes-drill-pg-b dc up -d --wait backup >/dev/null
-dc exec -T backup twes-secrets restic restore latest --host twes --include /var/lib/twes-backup/dump --target /tmp/back >/dev/null
+# Under the steps' lock (twes-backup's BACKUP_LOCK): the service just started prepares its repositories, and its half-hourly
+# schedule may start a step whose prune takes restic's repository for itself.
+dc exec -T backup flock /tmp/twes-backup.lock twes-secrets restic restore latest --host twes --include /var/lib/twes-backup/dump --target /tmp/back >/dev/null
 dc exec -T backup sh -c 'pg_restore --list /tmp/back/var/lib/twes-backup/dump/twes.dump | grep -q "TABLE DATA public restore_drill"' \
   || fail "the nightly dump does not hold the database"
 step "files and nightly dump restored from restic, identical"
