@@ -8,10 +8,12 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { todayIn } from '../shared/i18n/format';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import { InvoiceBulkPayDialog, type BulkPayData } from './invoice-bulk-pay-dialog';
+import { INVOICE_BULK_TEXTS } from './invoice-bulk-texts';
 import {
   InvoiceBulkSkippedDialog,
   type BulkSkippedChoice,
@@ -72,9 +74,15 @@ export class InvoiceBulk {
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
+  private readonly texts = inject(TextsParts);
   protected readonly PDF_FORMATS: readonly BulkPdfFormat[] = ['pdf', 'zip'];
   /** How many invoices the file being fetched holds, as the API last checked. */
   private count = 0;
+
+  constructor() {
+    // The bar's own labels; each action waits for them again before it says anything.
+    void this.texts.open(INVOICE_BULK_TEXTS);
+  }
 
   protected readonly exporter = computed(() => {
     const companyId = this.companyId();
@@ -121,6 +129,7 @@ export class InvoiceBulk {
 
   /** « Encaisser »: the dialog previews, asks for the day and method, and records; the list is read again after. */
   protected async pay(): Promise<void> {
+    await this.texts.open(INVOICE_BULK_TEXTS);
     const data: BulkPayData = {
       companyId: this.companyId(),
       ids: this.ids(),
@@ -153,6 +162,7 @@ export class InvoiceBulk {
 
   /** What the API would do with each selected invoice, or null once the person is told it could not say. */
   private async check(action: BulkAction): Promise<BulkCheck | null> {
+    await this.texts.open(INVOICE_BULK_TEXTS);
     const check = await this.facade
       .bulkCheck(this.companyId(), action, this.ids())
       .catch(() => null);
