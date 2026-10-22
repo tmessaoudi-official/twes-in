@@ -265,6 +265,7 @@ The monitor check proves the readings, not the alerts (`make monitor-check`).
 | Line | Means | First look |
 |---|---|---|
 | Site | the edge does not answer, or its certificate has under two weeks left | the machine, then `docker compose … logs edge` (Let's Encrypt renewals) |
+| Site, 502 or 504 | the edge answers but the api does not | `docker compose … logs web`: a request's line ends `upstream="<address>" <status> <connect time>`, « - » for no connection (nginx writes no error line about a request: it would carry a link's token), then `logs api` |
 | Traitements | `/api/health/deep` answered 503 | its body names the failing part: the queue (above), the disk (above), the archive (the bucket) |
 | Base / Copie / Relecture | a backup step did not report in time | `docker compose … logs backup`; run the step by hand, `… exec backup twes-backup diff` (or `copy`, `verify`) |
 | Suivi des erreurs | GlitchTip itself is down | the monitor's machine |

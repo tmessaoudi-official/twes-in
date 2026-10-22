@@ -268,7 +268,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `twes-drill` only) restores from a stand-in bucket into empty volumes, as CI's `restore-drill` workflow does weekly.
   `BackupOverlayTest` pins the loss window and the encryption.
 - Deploying (`docs/START.md` § 14): `compose.deploy.yaml` over compose.yaml + `compose.prod.yaml` + `compose.backup.yaml`
-  adds the Caddy edge (`infra/edge/Caddyfile`: automatic certificates, HSTS for the host alone), the only service that
+  adds the Caddy edge (`infra/edge/Caddyfile`: automatic certificates, HSTS for the host alone; every Caddy of the tree, the api's
+  FrankenPHP included through `infra/api/log-filter.caddy`, writes a link's token [token] in its logs, `infra/edge/tests/token-free-logs.test.sh`), the only service that
   publishes a port, and derives every address from `TWES_HOST`; every value is required and comes from one file outside
   the checkout, written once by `scripts/deploy/new-instance.sh` (`--staging` for staging's) and handed to compose by
   `scripts/deploy/deploy.sh`, which refuses anything but a clean checkout and takes a mode: `--release` (production: an

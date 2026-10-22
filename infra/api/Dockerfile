@@ -9,6 +9,9 @@ FROM dunglas/frankenphp:1.13.1-php8.5-trixie AS base
 # every mode, so development and CI's e2e run what production runs; whatever a request leaves behind would show there.
 ENV SERVER_NAME=:80 \
     FRANKENPHP_CONFIG="worker ./public/index.php"
+# FrankenPHP's Caddyfile takes its global options from here: its logs write a link's token [token], as the edges do.
+COPY infra/api/log-filter.caddy /etc/frankenphp/log-filter.caddy
+ENV CADDY_GLOBAL_OPTIONS="import /etc/frankenphp/log-filter.caddy"
 
 WORKDIR /app
 

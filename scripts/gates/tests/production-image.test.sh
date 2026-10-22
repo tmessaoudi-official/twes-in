@@ -15,6 +15,7 @@ app() {
   printf '<?php return [%s];\n' "'root' => ['dev' => ${1:-false}]" > "$d/vendor/composer/installed.php"
   [[ "${2:-yes}" == yes ]] && echo '<?php' > "$d/var/cache/prod/App_KernelProdContainer.preload.php"
   echo '<?php' > "$d/config/preload.php"
+  printf 'log {\n\tformat filter {\n\t\trequest>uri regexp [0-9A-Fa-f]{32,} [token]\n\t}\n}\n' > "$d/log-filter.caddy"
   # The served process's status, as the kernel writes it: real, effective, saved and filesystem uid.
   printf 'Name:\tfrankenphp\nUid:\t%s\nGid:\t10001\t10001\t10001\t10001\n' "${3:-10001	10001	10001	10001}" > "$d/status"
   echo "$d"
@@ -29,7 +30,7 @@ run() {
   )
   local kv; for kv in "$@"; do ini[${kv%%=*}]=${kv#*=}; done
   local args=() k; for k in "${!ini[@]}"; do args+=(-d "$k=${ini[$k]}"); done
-  FRANKENPHP_CONFIG=${WORKER_UNDER_TEST-worker ./public/index.php} APP_ENV=${APP_ENV_UNDER_TEST:-prod} php -n "${args[@]}" "$GATE" "$d" "$d/status" 2>&1
+  CADDY_GLOBAL_OPTIONS=${CADDY_UNDER_TEST-import $d/log-filter.caddy} FRANKENPHP_CONFIG=${WORKER_UNDER_TEST-worker ./public/index.php} APP_ENV=${APP_ENV_UNDER_TEST:-prod} php -n "${args[@]}" "$GATE" "$d" "$d/status" 2>&1
 }
 
 echo "production-image check"
@@ -49,5 +50,7 @@ d=$(app true); out=$(run "$d"); check "dev packages installed are refused" $? 1 
 d=$(app false no); out=$(run "$d"); check "a cache not warmed at build, with nothing to preload, is refused" $? 1 "$out" "var/cache/prod"
 d=$(app false yes "0	0	0	0"); out=$(run "$d"); check "a server running as root is refused" $? 1 "$out" "root"
 d=$(app false yes "10001	0	10001	10001"); out=$(run "$d"); check "a server whose effective uid is root is refused" $? 1 "$out" "root"
+d=$(app); out=$(CADDY_UNDER_TEST= run "$d"); check "a server whose logs keep a link's token is refused" $? 1 "$out" "CADDY_GLOBAL_OPTIONS"
+d=$(app); : > "$d/log-filter.caddy"; out=$(run "$d"); check "an imported file that filters nothing is refused" $? 1 "$out" "CADDY_GLOBAL_OPTIONS"
 d=$(app); rm "$d/status"; out=$(run "$d"); check "a status that cannot be read is refused, not taken as fine" $? 1 "$out" "status"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

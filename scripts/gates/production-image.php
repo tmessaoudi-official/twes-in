@@ -33,6 +33,14 @@ if (!is_string($worker) || !preg_match('#\bworker\s+\./public/index\.php\b#', $w
     $problems[] = \sprintf('FRANKENPHP_CONFIG is "%s": no worker on public/index.php, so every request boots the kernel', is_string($worker) ? $worker : '');
 }
 
+// Its Caddy writes a link's token [token] in every log line, the error line of a failed request included
+// (infra/api/log-filter.caddy, imported into FrankenPHP's global options; infra/edge/tests/token-free-logs.test.sh).
+$caddy = getenv('CADDY_GLOBAL_OPTIONS');
+$filter = is_string($caddy) && preg_match('#^import\s+(\S+)$#', trim($caddy), $named) ? $named[1] : null;
+if (null === $filter || !is_file($filter) || !str_contains((string) file_get_contents($filter), 'request>uri regexp')) {
+    $problems[] = \sprintf('CADDY_GLOBAL_OPTIONS is "%s": no log filter imported, so a link\'s token reaches the server\'s error lines', is_string($caddy) ? $caddy : '');
+}
+
 $off = static fn (string $key): bool => in_array(strtolower((string) ini_get($key)), ['', '0', 'off', 'false', 'no'], true);
 if ('-1' !== ini_get('zend.assertions')) {
     $problems[] = \sprintf('zend.assertions is %s, not -1 (php.ini-production)', var_export(ini_get('zend.assertions'), true));
@@ -80,4 +88,4 @@ if ([] !== $problems) {
     }
     exit(1);
 }
-fwrite(\STDOUT, "production-image: OK — prod mode, worker mode, production ini, Symfony's OPcache values, preload warmed, no dev packages, not root\n");
+fwrite(\STDOUT, "production-image: OK — prod mode, worker mode, production ini, Symfony's OPcache values, preload warmed, no dev packages, not root, tokens filtered from the logs\n");
