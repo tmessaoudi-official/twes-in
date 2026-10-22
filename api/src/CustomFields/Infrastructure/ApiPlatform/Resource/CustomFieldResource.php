@@ -100,6 +100,7 @@ final class CustomFieldResource
     /** @var list<string> the values a choice field offers, in order; empty for any other type */
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Type('string')], groups: [self::WRITE])]
+    #[Assert\Count(max: CustomFieldDefinition::CHOICES_MAX, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $choices = [];
 

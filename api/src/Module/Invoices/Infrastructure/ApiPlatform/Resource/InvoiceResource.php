@@ -42,7 +42,9 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\ReviseInvoice
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider\InvoiceCollectionProvider;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider\InvoiceItemProvider;
 use App\Module\Products\Domain\Service\LotCode;
+use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -343,6 +345,7 @@ final class InvoiceResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public ?array $documentTaxComponentIds = null;
 
     /**
@@ -405,6 +408,7 @@ final class InvoiceResource
         'section' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'creditedLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
+    #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $lines = [];
 

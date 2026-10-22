@@ -73,6 +73,7 @@ final class StockReceiptResource
         groups: [self::WRITE],
     )], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $parts = [];
 
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'maxLength' => StockLot::CODE_MAX])]

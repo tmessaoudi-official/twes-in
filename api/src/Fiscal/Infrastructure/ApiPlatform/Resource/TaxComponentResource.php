@@ -96,6 +96,7 @@ final class TaxComponentResource
      */
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string', 'maxLength' => 120]])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public ?array $names = null;
 
     #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [TaxKind::PercentageLine->value, TaxKind::FixedDocument->value, TaxKind::WithholdingTotal->value]])]

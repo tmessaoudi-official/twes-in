@@ -40,8 +40,10 @@ use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\Validate
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\ValidateDeliveryNoteProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Provider\DeliveryNoteCollectionProvider;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Provider\DeliveryNoteItemProvider;
+use App\Shared\Application\ListLimits;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -368,6 +370,7 @@ final class DeliveryNoteResource
         ], groups: [self::WRITE]),
         'lotCode' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
+    #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $lines = [];
 

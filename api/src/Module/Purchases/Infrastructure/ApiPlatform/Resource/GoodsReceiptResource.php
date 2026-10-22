@@ -15,7 +15,9 @@ use ApiPlatform\Metadata\Post;
 use App\Module\Purchases\Domain\Model\GoodsReceipt;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Module\Purchases\Infrastructure\ApiPlatform\State\Processor\ReceiveGoodsProcessor;
+use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\Submissions\Submissions;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -98,6 +100,7 @@ final class GoodsReceiptResource
         'lotExpiresOn' => new Assert\Optional([new Assert\Type(['string', 'null'], groups: [self::WRITE]), new Assert\Date(groups: [self::WRITE])], groups: [self::WRITE]),
         'unitCost' => new Assert\Optional([new Assert\Type(['string', 'null'], groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: false, groups: [self::WRITE])], groups: [self::WRITE])]
+    #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public array $lines = [];
 }

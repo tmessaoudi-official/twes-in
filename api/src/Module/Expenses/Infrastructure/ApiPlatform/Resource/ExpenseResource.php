@@ -36,8 +36,10 @@ use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\RecordExpense
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Processor\ReviseExpenseProcessor;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Provider\ExpenseCollectionProvider;
 use App\Module\Expenses\Infrastructure\ApiPlatform\State\Provider\ExpenseItemProvider;
+use App\Shared\Application\ListLimits;
 use App\Shared\Domain\ValueObject\PaymentMethod;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -236,6 +238,7 @@ final class ExpenseResource
             new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
         ], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
+    #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $lines = [];
 
@@ -248,6 +251,7 @@ final class ExpenseResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $documentTaxComponentIds = [];
 
     /**
@@ -270,6 +274,7 @@ final class ExpenseResource
         'amount' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
     ], groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $printedTaxes = [];
 
     /** What the lines come to excluding taxes. */

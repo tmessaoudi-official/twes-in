@@ -150,6 +150,7 @@ final class CustomerResource
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string']])]
     #[Assert\All([new Assert\Type('string'), new Assert\Length(max: 64)], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $identifiers = [];
 
     #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE])]
@@ -208,6 +209,7 @@ final class CustomerResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Uuid()], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $defaultTaxComponentIds = [];
 
     /** A percentage from 0 to 100, as a decimal string. */
@@ -222,6 +224,7 @@ final class CustomerResource
     /** @var array<string, string|int|float|bool> values by the company's custom field keys (GET .../custom-fields?entity=customer) */
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['oneOf' => [['type' => 'string'], ['type' => 'number'], ['type' => 'boolean']]]])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $customFields = [];
 
     #[Groups([self::READ, self::WRITE])]
