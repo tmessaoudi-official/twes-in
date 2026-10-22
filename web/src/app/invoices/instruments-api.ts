@@ -67,15 +67,6 @@ export class InstrumentsApi {
     );
   }
 
-  /** 409 for an instrument that is not still held. */
-  async remove(companyId: string, invoiceId: string, instrumentId: string): Promise<void> {
-    await this.guard(() =>
-      firstValueFrom(
-        this.http.delete(`${path(companyId, invoiceId)}/${encodeURIComponent(instrumentId)}`),
-      ),
-    );
-  }
-
   private async guard<T>(call: () => Promise<T>): Promise<T> {
     try {
       return await call();

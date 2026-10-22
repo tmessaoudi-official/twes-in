@@ -13,6 +13,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -113,6 +114,16 @@ describe('PortfolioPage', () => {
     expect(row).toContain('Chèque');
     expect(row).toContain('Remis en banque');
     expect(q('list-link-i1')?.getAttribute('href')).toBe('/invoices/f1');
+  });
+
+  it('reads the portfolio again when an instrument moves, is taken out or is put back', async () => {
+    const reloadOn = vi
+      .spyOn(TestBed.inject(LiveChanges), 'reloadOn')
+      .mockImplementation(() => undefined);
+    await create();
+    expect(reloadOn.mock.calls[0]![0]).toEqual(
+      expect.arrayContaining(['invoice', 'payment', 'payment_instrument']),
+    );
   });
 
   it('asks the API for the page the list wants, and leaves the status to it', async () => {

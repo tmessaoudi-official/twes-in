@@ -988,8 +988,8 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame('deposited', $this->json()['status']);
         $this->postJson($instruments.'/'.$chequeId.'/deposit', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'deposited once');
-        $this->sendJson('DELETE', $instruments.'/'.$chequeId);
-        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a deposited one stays as the record');
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'payment_instrument', 'ids' => [$chequeId]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a deposited one stays as the record, as a stranger\'s would');
 
         $this->postJson($instruments.'/'.$chequeId.'/cash', null);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
@@ -1046,7 +1046,8 @@ final class InvoicesTest extends ApiTestCase
 
     public function testAnUnpaidInstrumentLeavesNoPaymentAndAHeldOneIsTakenOut(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
+        // company.read, as every role holds it: putting back reads the company's removals.
+        $this->signedIn(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
         $id = $this->issuedInvoice();
         $due = $this->stringAt($this->json(), 'amountDue');
@@ -1063,10 +1064,22 @@ final class InvoicesTest extends ApiTestCase
         $this->postJson($instruments, ['kind' => 'check', 'amount' => $due, 'dueOn' => $today]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'what came back unpaid promises nothing');
         $held = $this->stringAt($this->json(), 'id');
-        $this->sendJson('DELETE', $instruments.'/'.$held);
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
-        $this->sendJson('DELETE', $instruments.'/'.$held);
+        $row = fn (): array => $this->em()->getConnection()->fetchAllAssociative('SELECT * FROM payment_instrument WHERE id = ?', [$held]);
+        $before = $row();
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'payment_instrument', 'ids' => [$held]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $removal = $this->json();
+        self::assertSame([], $row(), 'a held one entered by mistake is taken out of the portfolio');
+        $this->getJson($instruments);
+        self::assertSame([$traite], array_column($this->json(), 'id'));
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'payment_instrument', 'ids' => [$held]]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->postJson($this->companyPath().'/record-removals/'.$this->stringAt($removal, 'id').'/restore', null);
+        self::assertResponseIsSuccessful();
+        self::assertSame($before, $row(), 'put back within the day, as it was');
+        $this->getJson($this->path($id));
+        self::assertSame(['issued', $due, []], [$this->json()['status'], $this->json()['amountDue'], $this->json()['payments']], 'an instrument is still not money');
     }
 
     public function testInstrumentsNeedPaymentWriteToChangeAndStayInTheirCompany(): void

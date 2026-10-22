@@ -107,18 +107,4 @@ describe('InstrumentsApi', () => {
       .flush({}, { status: 409, statusText: 'Conflict' });
     await expect(refused).rejects.toMatchObject({ code: 'conflict' });
   });
-
-  it('deletes a held one, and says when it is gone or kept', async () => {
-    const removed = api.remove('c1', 'f1', 'i1');
-    const request = http.expectOne('/api/companies/c1/invoices/f1/instruments/i1');
-    expect(request.request.method).toBe('DELETE');
-    request.flush(null, { status: 204, statusText: 'No Content' });
-    await removed;
-
-    const kept = api.remove('c1', 'f1', 'i1');
-    http
-      .expectOne('/api/companies/c1/invoices/f1/instruments/i1')
-      .flush({}, { status: 409, statusText: 'Conflict' });
-    await expect(kept).rejects.toMatchObject({ code: 'conflict' });
-  });
 });

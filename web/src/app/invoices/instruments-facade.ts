@@ -49,13 +49,6 @@ export class InstrumentsFacade {
     });
   }
 
-  async remove(companyId: string, invoiceId: string, instrumentId: string): Promise<boolean> {
-    return this.run(async () => {
-      await this.api.remove(companyId, invoiceId, instrumentId);
-      this.itemsSignal.set(await this.api.list(companyId, invoiceId));
-    });
-  }
-
   clearError(): void {
     this.state.clearError();
   }

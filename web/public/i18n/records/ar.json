@@ -107,6 +107,7 @@
         "invoice": "{count, plural, zero {لا مسودات فواتير} one {مسودة فاتورة واحدة} two {مسودتا فاتورة} few {{{count}} مسودات فواتير} many {{{count}} مسودة فاتورة} other {{{count}} مسودة فاتورة}}",
         "quote": "{count, plural, zero {لا مسودات عروض أسعار} one {مسودة عرض سعر واحدة} two {مسودتا عرض سعر} few {{{count}} مسودات عروض أسعار} many {{{count}} مسودة عرض سعر} other {{{count}} مسودة عرض سعر}}",
         "purchase_order": "{count, plural, zero {لا مسودات طلبيات لدى مزوّد} one {مسودة طلبية واحدة لدى مزوّد} two {مسودتا طلبية لدى مزوّد} few {{{count}} مسودات طلبيات لدى مزوّد} many {{{count}} مسودة طلبية لدى مزوّد} other {{{count}} مسودة طلبية لدى مزوّد}}",
+        "payment_instrument": "{count, plural, zero {لا صكوك ولا كمبيالات} one {صك أو كمبيالة واحدة} two {صكين أو كمبيالتين} few {{{count}} صكوك أو كمبيالات} many {{{count}} صكًا أو كمبيالةً} other {{{count}} صك أو كمبيالة}}",
         "delivery_note": "{count, plural, zero {لا مسودات وصول تسليم} one {مسودة وصل تسليم واحدة} two {مسودتا وصل تسليم} few {{{count}} مسودات وصول تسليم} many {{{count}} مسودة وصل تسليم} other {{{count}} مسودة وصل تسليم}}"
       }
     },

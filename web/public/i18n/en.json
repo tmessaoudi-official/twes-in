@@ -1698,7 +1698,6 @@
       "confirm_deposit": "Confirm the deposit",
       "confirm_cash": "Confirm: it cleared",
       "confirm_unpaid": "Confirm: it came back unpaid",
-      "confirm_delete": "Confirm deletion",
       "keep": "Keep it",
       "ask": {
         "deposit": {
@@ -1712,18 +1711,13 @@
         "unpaid": {
           "title": "Mark it unpaid?",
           "message": "The cheque or traite no longer covers anything: what it promised is due again."
-        },
-        "delete": {
-          "title": "Delete it?",
-          "message": "The cheque or traite leaves the portfolio and no longer shows on the invoice."
         }
       },
       "done": {
         "received": "The cheque or traite has been received.",
         "deposit": "The cheque or traite is deposited.",
         "cash": "The cheque or traite is cashed: the payment is recorded.",
-        "unpaid": "The cheque or traite is marked unpaid.",
-        "deleted": "The cheque or traite has been taken out of the portfolio."
+        "unpaid": "The cheque or traite is marked unpaid."
       }
     },
     "actions": {
@@ -3956,6 +3950,7 @@
       "export": "Export",
       "support_grant": "Support access",
       "purchase_order": "Purchase order",
+      "payment_instrument": "Cheque or traite",
       "record_removal": "Delete"
     },
     "actions": {
@@ -4146,6 +4141,10 @@
         "cancelled": "cancelled the purchase order",
         "deleted": "deleted the purchase order draft",
         "restored": "restored the purchase order draft"
+      },
+      "payment_instrument": {
+        "deleted": "took a cheque or traite out of the portfolio",
+        "restored": "put a cheque or traite back in the portfolio"
       },
       "record_removal": {
         "ended": "made a delete final"

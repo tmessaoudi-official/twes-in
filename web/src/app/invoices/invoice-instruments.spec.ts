@@ -10,6 +10,8 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { LiveChanges } from '../shared/realtime/live-changes';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -56,8 +58,9 @@ describe('InvoiceInstruments', () => {
     list: vi.fn(async () => rows),
     receive: vi.fn(),
     advance: vi.fn(),
-    remove: vi.fn(),
   };
+  const deletes = { remove: vi.fn() };
+  const live = { reloadOn: vi.fn() };
   const changes: unknown[] = [];
 
   const q = (testId: string): HTMLElement | null =>
@@ -87,7 +90,8 @@ describe('InvoiceInstruments', () => {
     api.list.mockClear();
     api.receive.mockReset().mockResolvedValue(held);
     api.advance.mockReset().mockResolvedValue(held);
-    api.remove.mockReset().mockResolvedValue(undefined);
+    deletes.remove.mockReset().mockResolvedValue(true);
+    live.reloadOn.mockReset();
     TestBed.configureTestingModule({
       imports: [InvoiceInstruments],
       providers: [
@@ -99,6 +103,8 @@ describe('InvoiceInstruments', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: InstrumentsApi, useValue: api },
+        { provide: RecordDeletes, useValue: deletes },
+        { provide: LiveChanges, useValue: live },
         { provide: AuthFacade, useValue: { me: () => null } },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -191,7 +197,7 @@ describe('InvoiceInstruments', () => {
     expect(effectToasts()).toEqual(['invoices.instruments.done.cash:definitif']);
   });
 
-  it('marks unpaid and deletes only once confirmed', async () => {
+  it('marks unpaid only once confirmed, and deletes a held one without asking, as a record is', async () => {
     await show([held]);
 
     q('instrument-i1-unpaid')!.click();
@@ -199,12 +205,25 @@ describe('InvoiceInstruments', () => {
     await answer('confirm-keep');
     expect(api.advance).not.toHaveBeenCalled();
 
+    // Undone from its toast or « Récemment supprimés » within the day: nothing to confirm, named by its number.
+    api.list.mockClear();
     q('instrument-i1-delete')!.click();
     await settle();
-    await answer('confirm-run');
-    await vi.waitFor(() => expect(api.remove).toHaveBeenCalledWith('c1', 'f1', 'i1'));
+    expect(document.body.querySelector('[data-testid="confirm-run"]')).toBeNull();
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'payment_instrument', [
+      { id: 'i1', label: 'CHQ-77 BT' },
+    ]);
+    expect(api.list).toHaveBeenCalledWith('c1', 'f1');
     expect(changes).toEqual([]);
-    expect(effectToasts()).toEqual(['invoices.instruments.done.deleted:definitif']);
+  });
+
+  it('reads its instruments again when one is deleted or put back, here or elsewhere', async () => {
+    await show([held]);
+    const [kinds, reload] = live.reloadOn.mock.calls[0]!;
+    expect(kinds).toEqual(expect.arrayContaining(['payment_instrument', 'invoice']));
+    api.list.mockClear();
+    await reload();
+    expect(api.list).toHaveBeenCalledWith('c1', 'f1');
   });
 
   it('starts a new one for what the open ones leave free, and sends what was typed', async () => {

@@ -120,12 +120,6 @@ class PaymentInstrument implements CompanyOwned
         $this->settle(InstrumentStatus::Unpaid, $day, $now);
     }
 
-    /** Whether it may be taken out of the portfolio: only a held one, a mistake nothing has acted on. */
-    public function isErasable(): bool
-    {
-        return InstrumentStatus::Held === $this->status;
-    }
-
     private function settle(InstrumentStatus $to, \DateTimeImmutable $day, \DateTimeImmutable $now): void
     {
         if (!$this->status->isOpen()) {

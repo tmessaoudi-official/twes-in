@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Records;
 
+use App\Module\Invoices\Domain\ValueObject\InstrumentStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
@@ -27,7 +28,12 @@ final readonly class InvoiceRecordReferences implements DeclaresRecordReferences
     {
         // Only a draft is deleted: what was issued is the books', corrected by a credit note. A draft has no number yet,
         // so it reads as the customer it bills.
-        return [new RecordSubject('invoice', InvoicePermission::WRITE, InvoicesModule::KEY, ['number'], whereColumn: 'status', whereValues: [InvoiceStatus::Draft->value], labelTable: 'customer', labelKey: 'customer_id', labelTableColumns: ['number', 'name'])];
+        return [
+            new RecordSubject('invoice', InvoicePermission::WRITE, InvoicesModule::KEY, ['number'], whereColumn: 'status', whereValues: [InvoiceStatus::Draft->value], labelTable: 'customer', labelKey: 'customer_id', labelTableColumns: ['number', 'name']),
+            // A cheque or a draft still held, entered by mistake, is taken out of the portfolio; one deposited, cashed or
+            // come back unpaid stays as the record of what happened. It reads as its number and bank, then its invoice's.
+            new RecordSubject('payment_instrument', InvoicePermission::PAYMENT_WRITE, InvoicesModule::KEY, ['number', 'bank'], whereColumn: 'status', whereValues: [InstrumentStatus::Held->value], labelTable: 'invoice', labelKey: 'invoice_id', labelTableColumns: ['number']),
+        ];
     }
 
     public function references(): array

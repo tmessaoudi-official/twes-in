@@ -140,27 +140,19 @@ final class ManageInstrumentsTest extends TestCase
         $this->manage->receive($this->company, $invoice->getId(), new InstrumentDetails(InstrumentKind::Draft, new \DateTimeImmutable('2026-10-01'), '178.101'), null);
     }
 
-    public function testOnlyAHeldOneIsDepositedOrTakenOutOfThePortfolio(): void
+    /** Taking a held one out of the portfolio is a delete of the records engine: `InvoicesTest` holds it. */
+    public function testOnlyAHeldOneIsDeposited(): void
     {
         $invoice = $this->issued($this->company);
-        $held = $this->manage->receive($this->company, $invoice->getId(), new InstrumentDetails(InstrumentKind::Check, new \DateTimeImmutable('2026-10-01'), '100'), null);
         $deposited = $this->manage->receive($this->company, $invoice->getId(), new InstrumentDetails(InstrumentKind::Check, new \DateTimeImmutable('2026-10-01'), '100'), null);
         $this->manage->deposit($this->company, $invoice->getId(), $deposited->getId(), null);
 
-        foreach ([
-            'a deposited one deposited again' => fn () => $this->manage->deposit($this->company, $invoice->getId(), $deposited->getId(), null),
-            'a deposited one deleted' => fn () => $this->manage->delete($this->company, $invoice->getId(), $deposited->getId(), null),
-        ] as $case => $attempt) {
-            try {
-                $attempt();
-                self::fail("$case was accepted");
-            } catch (InvoiceTransitionRefused) {
-                self::assertSame(InstrumentStatus::Deposited, $deposited->getStatus(), $case);
-            }
+        try {
+            $this->manage->deposit($this->company, $invoice->getId(), $deposited->getId(), null);
+            self::fail('a deposited one deposited again was accepted');
+        } catch (InvoiceTransitionRefused) {
+            self::assertSame(InstrumentStatus::Deposited, $deposited->getStatus());
         }
-
-        $this->manage->delete($this->company, $invoice->getId(), $held->getId(), null);
-        self::assertSame([$deposited], $this->instruments->instruments);
     }
 
     public function testAPaymentThatCashedOneIsKept(): void
