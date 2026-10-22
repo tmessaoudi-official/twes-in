@@ -61,7 +61,7 @@ final readonly class PriceOnCostMove
             return ['costPrice'];
         }
         $priceBefore = $product->getDetails()->unitPriceNet;
-        $product->adjustPriceToReview($this->scales->of($company->getCurrency()), $now);
+        $product->followCostWithPrice($this->scales->of($company->getCurrency()), $now);
         $this->effects->said(new Effect(self::PRICE_FOLLOWED, $product->getId(), ['previousPrice' => $priceBefore]));
 
         return ['costPrice', 'unitPriceNet'];

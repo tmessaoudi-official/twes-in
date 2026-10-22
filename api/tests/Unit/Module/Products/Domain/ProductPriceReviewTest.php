@@ -154,6 +154,60 @@ final class ProductPriceReviewTest extends TestCase
         self::assertNull($product->priceReview());
     }
 
+    /** A price that followed its cost may be put back while it is the one the follow set, and that once. */
+    public function testAPriceThatFollowedItsCostIsPutBackToThePriceItReplaced(): void
+    {
+        $product = $this->product('18.462', '12');
+        $product->reviseCost('13', $this->now);
+        $product->openPriceReview('12.0000', $this->now);
+
+        self::assertSame('20.001', $product->followCostWithPrice(3, $this->now));
+        self::assertNull($product->priceReview());
+
+        self::assertSame('18.4620', $product->restoreFollowedPrice($this->now));
+        self::assertSame(['18.4620', '13.0000', null], [$product->getDetails()->unitPriceNet, $product->getDetails()->costPrice, $product->priceReview()], 'the price as it was, under the cost the receipt left: kept, as « Garder le prix » would');
+
+        $this->expectException(\LogicException::class);
+        $product->restoreFollowedPrice($this->now);
+    }
+
+    public function testAPriceMovedSinceItFollowedItsCostIsNoLongerPutBack(): void
+    {
+        $product = $this->product('18.462', '12');
+        $product->reviseCost('13', $this->now);
+        $product->openPriceReview('12.0000', $this->now);
+        $product->followCostWithPrice(3, $this->now);
+
+        $product->revise('ART-001', new ProductDetails('Ampoule', null, ProductKind::Goods, '21', '13'), $this->piece, null, [], true, $this->now);
+
+        self::assertFalse($product->mayRestoreFollowedPrice());
+        $this->expectException(\LogicException::class);
+        $product->restoreFollowedPrice($this->now);
+    }
+
+    public function testARevisionLeavingTheFollowedPriceKeepsItsWayBack(): void
+    {
+        $product = $this->product('18.462', '12');
+        $product->reviseCost('13', $this->now);
+        $product->openPriceReview('12.0000', $this->now);
+        $product->followCostWithPrice(3, $this->now);
+
+        $product->revise('ART-001', new ProductDetails('Ampoule E27', null, ProductKind::Goods, '20.001', '13'), $this->piece, null, [], true, $this->now);
+
+        self::assertTrue($product->mayRestoreFollowedPrice());
+    }
+
+    public function testAPriceAdjustedFromAReviewHasNoWayBack(): void
+    {
+        $product = $this->product('18.462', '12');
+        $product->reviseCost('13', $this->now);
+        $product->openPriceReview('12.0000', $this->now);
+
+        $product->adjustPriceToReview(3, $this->now);
+
+        self::assertFalse($product->mayRestoreFollowedPrice(), 'a person chose that price: undoing it is typing the old one');
+    }
+
     protected function setUp(): void
     {
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');

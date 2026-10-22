@@ -252,7 +252,9 @@ export class ProductsApi {
 
   /**
    * Settles the margin a receipt's cost moved under the price: `adjust` sets the price that keeps it, `keep` keeps the
-   * price. `version` is the product's as read: one saved since answers `record_changed`, one already settled `settled`.
+   * price, `restore` puts back the price a cost moved away when the price followed it. `version` is the product's as
+   * read: one saved since answers `record_changed`, one already settled `settled`, a price moved since it followed
+   * `not_restorable`.
    */
   async settlePriceReview(
     companyId: string,
@@ -260,7 +262,7 @@ export class ProductsApi {
     decision: PriceReviewDecision,
     version: number,
   ): Promise<ProductRow> {
-    return this.settling(async () =>
+    return this.settling(decision === 'restore' ? 'not_restorable' : 'settled', async () =>
       toProduct(
         await firstValueFrom(
           this.http.post<ProductProductRead>(`${path(companyId, 'products', id)}/price-review`, {
@@ -550,11 +552,11 @@ export class ProductsApi {
 
   /** A product's save, the only call whose refusals name the fields of the form. */
   /** A settlement refused: another save in between, or the margin already settled by someone else. */
-  private async settling<T>(call: () => Promise<T>): Promise<T> {
+  private async settling<T>(conflict: ProductsError, call: () => Promise<T>): Promise<T> {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new ProductsRefused(codeOf(error, 'settled'), []));
+      throw refusedFor(error, new ProductsRefused(codeOf(error, conflict), []));
     }
   }
 

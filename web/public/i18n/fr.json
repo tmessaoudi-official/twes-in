@@ -2150,7 +2150,8 @@
       "name_taken": "Une autre catégorie porte déjà ce nom.",
       "invalid": "La modification a été refusée. Vérifiez l’unité, les prix et les taxes.",
       "barcode_taken": "Ce code est déjà celui d’un autre article.",
-      "settled": "La marge de ce produit a déjà été traitée."
+      "settled": "La marge de ce produit a déjà été traitée.",
+      "not_restorable": "Le prix de ce produit a changé depuis : il n’a pas été remis."
     },
     "categories": {
       "title": "Catégories de produits",
@@ -2388,6 +2389,8 @@
       "kept": "Prix de {{name}} gardé à {{price}}.",
       "followed": "Le prix de {{name}} est passé de {{before}} à {{after}} avec son coût.",
       "followed_many": "{{count}} {count, plural, one {prix a suivi son coût} other {prix ont suivi leur coût}}.",
+      "undo": "Annuler",
+      "restored": "Prix de {{name}} remis à {{price}}.",
       "moved_many": "La marge de {{count}} {count, plural, one {produit} other {produits}} a bougé."
     }
   },

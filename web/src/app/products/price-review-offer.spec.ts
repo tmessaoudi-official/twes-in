@@ -177,6 +177,55 @@ describe('PriceReviewOffer', () => {
     });
   });
 
+  it('offers « Annuler » on a price that followed its cost, which puts back the price it had and says it', async () => {
+    api.product.mockResolvedValue({ ...unmoved, unitPriceNet: '1375.0000' });
+    api.settlePriceReview.mockResolvedValue({ ...unmoved, unitPriceNet: '1250.0000' });
+    await offer().said([
+      { kind: 'product.price_followed', id: 'p2', params: { previousPrice: '1250.0000' } },
+    ]);
+    const next = offeredNext();
+    expect(next?.key).toBe('products.price_review.undo');
+
+    next?.run();
+    await vi.waitFor(() =>
+      expect(effectToasts()).toEqual(['products.price_review.restored:corrigeable']),
+    );
+    expect(api.settlePriceReview).toHaveBeenCalledWith('c1', 'p2', 'restore', 4);
+    expect(said().at(-1)?.params).toEqual({ name: 'Perceuse', price: '1250.0000 TND' });
+  });
+
+  it('says why a followed price was not put back', async () => {
+    api.product.mockResolvedValue({ ...unmoved, unitPriceNet: '1375.0000' });
+    api.settlePriceReview.mockRejectedValue(new ProductsRefused('not_restorable', []));
+    await offer().said([
+      { kind: 'product.price_followed', id: 'p2', params: { previousPrice: '1250.0000' } },
+    ]);
+
+    offeredNext()?.run();
+    await vi.waitFor(() => expect(failureToasts()).toEqual(['products.errors.not_restorable']));
+  });
+
+  it('offers no « Annuler » on a followed price to someone who does not write products, or on one merged away', async () => {
+    permissions.delete('product.write');
+    api.product.mockResolvedValue({ ...unmoved, unitPriceNet: '1375.0000' });
+    const followed: SaidEffect = {
+      kind: 'product.price_followed',
+      id: 'p2',
+      params: { previousPrice: '1250.0000' },
+    };
+    await offer().said([followed]);
+    expect(successToasts()).toEqual(['products.price_review.followed']);
+    expect(offeredNext()).toBeNull();
+
+    permissions.add('product.write');
+    api.product.mockResolvedValue({
+      ...unmoved,
+      mergedInto: { id: 'p9', reference: 'ART-009', name: 'Perceuse 2' },
+    });
+    await TestBed.inject(PriceReviewOffer).said([followed]);
+    expect(offeredNext()).toBeNull();
+  });
+
   it('says a count when the answer folded too many effects to name each product', async () => {
     await offer().said([
       { kind: 'product.price_followed', id: null, params: {}, count: 30 },

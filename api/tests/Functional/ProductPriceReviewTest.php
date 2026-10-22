@@ -167,6 +167,50 @@ final class ProductPriceReviewTest extends ApiTestCase
     }
 
     /**
+     * « Annuler » on a price that followed its cost puts back the price the receipt replaced, checked by the server: the
+     * last follow only, once, and never a price nobody's receipt moved.
+     */
+    public function testAPriceThatFollowedItsCostIsPutBackToThePriceTheReceiptReplaced(): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->signedIn(['company.read', 'product.read', 'product.write', 'product.cost.read', 'stock.read', 'stock.write']);
+        $this->receive('1000');
+        $this->settle('restore', $this->storedVersion('product', $this->productId));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a first cost moved no price');
+
+        $this->receive('1100');
+        $this->receive('1210');
+        self::assertSame('1512.5000', $this->em()->getConnection()->fetchOne('SELECT unit_price_net FROM product WHERE id = ?', [$this->productId]));
+
+        $this->settle('restore', $this->storedVersion('product', $this->productId));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['1375.0000', '1210.0000', null], [$this->json()['unitPriceNet'] ?? null, $this->json()['costPrice'] ?? null, $this->review()], 'the price the last receipt replaced, under the cost it left');
+        self::assertSame($this->storedVersion('product', $this->productId), $this->json()['version'] ?? null);
+        self::assertContains(['unitPriceNet'], $this->revisedFields());
+
+        $this->settle('restore', $this->storedVersion('product', $this->productId));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'put back once');
+        self::assertSame('1375.0000', $this->em()->getConnection()->fetchOne('SELECT unit_price_net FROM product WHERE id = ?', [$this->productId]));
+    }
+
+    public function testAPriceTypedSinceItFollowedItsCostIsNotPutBack(): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->signedIn(['company.read', 'product.read', 'product.write', 'product.cost.read', 'stock.read', 'stock.write']);
+        $this->receive('1000');
+        $this->receive('1100');
+        $this->em()->getConnection()->executeStatement('UPDATE product SET unit_price_net = 1400, price_followed_from = NULL WHERE id = ?', [$this->productId]);
+
+        $this->settle('restore', $this->storedVersion('product', $this->productId));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('1400.0000', $this->em()->getConnection()->fetchOne('SELECT unit_price_net FROM product WHERE id = ?', [$this->productId]));
+    }
+
+    /**
      * The receipt that moved the price or the margin says so in its own answer, whichever screen sent it, and a receipt
      * at the same cost moved nothing and says nothing, though a review is still open.
      */

@@ -14,8 +14,8 @@ import { MARGIN_MOVED, PRICE_FOLLOWED } from './price-effects';
  * cost and price): a cost moved under a kept price, or a price that followed its cost, is never silent. The receipt's
  * own answer says it (`PriceEffects`), whichever screen received the goods, and only the receipt that moved it: one at
  * the same cost says nothing. A cost reader hears the margin before and after, or the price before and after, and one
- * who writes products may adjust a kept price from the toast. Its failures are quiet: the receipt is recorded, and the
- * product page and « À surveiller » still show the move.
+ * who writes products may adjust a kept price, or put back a price that followed, from the toast. Its failures are
+ * quiet: the receipt is recorded, and the product page and « À surveiller » still show the move.
  */
 @Injectable({ providedIn: 'root' })
 export class PriceReviewOffer {
@@ -52,10 +52,19 @@ export class PriceReviewOffer {
       ...[...followed].map(async ([id, previousPrice]) => {
         const product = await this.api.product(companyId, id).catch(() => null);
         if (product === null) return;
-        this.feedback.success('products.price_review.followed', {
+        const params = {
           name: product.name,
           before: this.format.amount(previousPrice, null),
           after: this.format.amount(product.unitPriceNet, null),
+        };
+        if (!this.auth.hasPermission('product.write') || product.mergedInto !== null) {
+          this.feedback.success('products.price_review.followed', params);
+          return;
+        }
+        // Undo first: the server puts back the price the receipt replaced while the price is still the one it set.
+        this.feedback.success('products.price_review.followed', params, {
+          key: 'products.price_review.undo',
+          run: () => void this.settle(companyId, product, 'restore'),
         });
       }),
     ]);
@@ -75,21 +84,25 @@ export class PriceReviewOffer {
     }
     this.feedback.success('products.price_review.moved', params, {
       key: 'products.price_review.adjust_short',
-      run: () => void this.adjust(companyId, product),
+      run: () => void this.settle(companyId, product, 'adjust'),
     });
   }
 
-  private async adjust(companyId: string, product: ProductRow): Promise<void> {
+  private async settle(
+    companyId: string,
+    product: ProductRow,
+    decision: 'adjust' | 'restore',
+  ): Promise<void> {
     try {
-      const adjusted = await this.api.settlePriceReview(
+      const settled = await this.api.settlePriceReview(
         companyId,
         product.id,
-        'adjust',
+        decision,
         product.version,
       );
       this.feedback.effect(
-        'products.price_review.adjusted',
-        { name: adjusted.name, price: this.format.amount(adjusted.unitPriceNet, null) },
+        decision === 'adjust' ? 'products.price_review.adjusted' : 'products.price_review.restored',
+        { name: settled.name, price: this.format.amount(settled.unitPriceNet, null) },
         'corrigeable',
       );
     } catch (error) {
