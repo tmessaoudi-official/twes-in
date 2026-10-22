@@ -16,6 +16,7 @@ namespace App\Module\Products\Domain\ValueObject;
 enum ProductCheckReason: string
 {
     case PriceMissing = 'price_missing';
+    case PriceNotReached = 'price_not_reached';
     case VendorMissing = 'vendor_missing';
     case VatMissing = 'vat_missing';
     case CostMissing = 'cost_missing';

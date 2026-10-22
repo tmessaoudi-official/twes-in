@@ -9,10 +9,14 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Domain\ValueObject;
 
-/** What moved a product's cost: it was set when the product was created, a person edited it, or a receipt applied one. */
+/**
+ * What moved a product's cost: it was set when the product was created, a person edited it, a receipt applied one, or
+ * a file read in gave it.
+ */
 enum CostChangeSource: string
 {
     case Created = 'created';
     case Edited = 'edited';
     case Receipt = 'receipt';
+    case Import = 'import';
 }

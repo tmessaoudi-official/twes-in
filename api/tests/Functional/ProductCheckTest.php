@@ -175,6 +175,7 @@ final class ProductCheckTest extends ApiTestCase
         $toCount = $make('TO-COUNT', ProductKind::Goods, '10', '5', true);
         $toCount->awaitCount();
         $toCount->awaitUnitConfirmation();
+        $make('NOT-REACHED', ProductKind::Service, '8.3167', null, true)->priceReached(false, $now);
         $make('UNTAXED', ProductKind::Goods, '10', '5', true)->revise('UNTAXED', new ProductDetails('UNTAXED', null, ProductKind::Goods, '10', '5'), $piece, $category, [], true, $now);
         $make('RETIRED', ProductKind::Goods, '0', null, false)->revise('RETIRED', new ProductDetails('RETIRED', null, ProductKind::Goods, '0'), $piece, null, [], false, $now);
         $this->em()->flush();

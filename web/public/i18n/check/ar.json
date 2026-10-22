@@ -2,6 +2,7 @@
   "check": {
     "reasons": {
       "price_missing": "سعر البيع ناقص",
+      "price_not_reached": "لم يُبلَغ السعر المستورد باعتبار الأداءات",
       "vendor_missing": "المزوّد ناقص",
       "vat_missing": "الأداء على القيمة المضافة ناقص",
       "cost_missing": "سعر الكلفة ناقص",

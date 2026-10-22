@@ -12,6 +12,7 @@ namespace App\Tests\Unit\Module\Products\Application;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Products\Application\ChangeProductCost;
 use App\Module\Products\Application\ManageProducts;
+use App\Module\Products\Application\PriceOnCostMove;
 use App\Module\Products\Application\ProductPriceSettings;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\CostChangeSource;
@@ -113,7 +114,7 @@ final class ChangeProductCostTest extends TestCase
 
         $this->change->handle($this->company, $product, '13', CostChangeSource::Receipt, Uuid::v7(), null);
 
-        self::assertSame([[ChangeProductCost::PRICE_FOLLOWED, $product->getId()->toRfc4122(), ['previousPrice' => '18.4620']]], $this->effects->told(), 'a price moved by itself is never moved in silence, and « Annuler » needs the one it had');
+        self::assertSame([[PriceOnCostMove::PRICE_FOLLOWED, $product->getId()->toRfc4122(), ['previousPrice' => '18.4620']]], $this->effects->told(), 'a price moved by itself is never moved in silence, and « Annuler » needs the one it had');
     }
 
     public function testAMarginMovedUnderAKeptPriceIsSaidEachTimeAReceiptMovesTheCostAgain(): void
@@ -124,7 +125,7 @@ final class ChangeProductCostTest extends TestCase
         $this->change->handle($this->company, $product, '13', CostChangeSource::Receipt, Uuid::v7(), null);
         $this->change->handle($this->company, $product, '14', CostChangeSource::Receipt, Uuid::v7(), null);
 
-        $moved = [ChangeProductCost::MARGIN_MOVED, $product->getId()->toRfc4122(), []];
+        $moved = [PriceOnCostMove::MARGIN_MOVED, $product->getId()->toRfc4122(), []];
         self::assertSame([$moved, $moved], $this->effects->told(), 'a receipt at the same cost moved nothing and says nothing, though the review is still open');
     }
 
@@ -166,7 +167,7 @@ final class ChangeProductCostTest extends TestCase
         $this->settings = new InMemorySettings();
         $this->effects = new InMemoryEffects();
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new ProductPriceSettings()]), $this->settings));
-        $this->change = new ChangeProductCost($this->products, $this->history, $this->audit, new MockClock('2026-10-03 10:00:00'), $transactions, $read, ShippedFiscalPresets::scales(), $this->effects);
+        $this->change = new ChangeProductCost($this->products, $this->history, $this->audit, new MockClock('2026-10-03 10:00:00'), $transactions, new PriceOnCostMove($read, ShippedFiscalPresets::scales(), $this->effects));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, new \DateTimeImmutable());
     }

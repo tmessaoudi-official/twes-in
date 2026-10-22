@@ -51,8 +51,8 @@ final class ProductCostChangeResource
     #[Groups([self::READ])]
     public ?string $newCost = null;
 
-    /** @var 'created'|'edited'|'receipt' */
-    #[ApiProperty(writable: false, openapiContext: ['enum' => ['created', 'edited', 'receipt']])]
+    /** @var 'created'|'edited'|'receipt'|'import' */
+    #[ApiProperty(writable: false, openapiContext: ['enum' => ['created', 'edited', 'receipt', 'import']])]
     #[Groups([self::READ])]
     public string $source = 'edited';
 
