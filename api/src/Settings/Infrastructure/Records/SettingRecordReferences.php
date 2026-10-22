@@ -34,6 +34,7 @@ final readonly class SettingRecordReferences implements DeclaresRecordReferences
             RecordReference::ignored('setting', 'level_id', 'delivery_note', 'No setting is kept at a delivery note\'s level.'),
             RecordReference::ignored('setting', 'level_id', 'purchase_order', 'No setting is kept at an order\'s level.'),
             RecordReference::ignored('setting', 'level_id', 'payment_instrument', 'No setting is kept at a cheque\'s level.'),
+            RecordReference::ignored('setting', 'level_id', 'expense', 'No setting is kept at an expense\'s level.'),
             RecordReference::ignored('setting', 'level_id', 'recurring_invoice', 'No setting is kept at a recurring invoice\'s level.'),
             RecordReference::ignored('setting', 'level_id', 'recurring_expense', 'No setting is kept at a recurring expense\'s level.'),
             RecordReference::ignored('setting', 'level_id', 'vendor', 'No setting is kept at a vendor\'s level.'),

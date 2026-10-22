@@ -4,6 +4,7 @@ import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
 import { proveIfHeldBack } from './step-up';
 import { choose, expectFacetCount } from './select';
 import { wcagViolations } from './axe';
+import { toast } from './toast';
 
 // G9 through the real stack: in the seeded Tunisian company, the owner files a category, adds an expense under it with
 // VAT at 19 %, attaches a receipt and reads it back, records the expense and pays it. One database is shared by the
@@ -75,6 +76,8 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await page.getByTestId('expense-category-add').click();
     await page.getByTestId('field-name').fill(category);
     await page.getByTestId('expense-category-save').click();
+    // The shared company keeps every run's categories: the list is filtered first, or the new one sorts onto page 2.
+    await page.getByTestId('list-filter').fill(category);
     await expect(page.getByTestId(`expense-category-${category}`)).toBeVisible();
 
     await page.getByTestId('expenses-tab').click();
@@ -218,9 +221,11 @@ test('a bill at 19 % with FODEC and at 7 %, with the stamp, is entered as it is 
     expect(await figures('expense-tax-TVA7')).toContain('14,000');
     expect(await wcagViolations(page)).toEqual([]);
 
-    await page.getByTestId('expense-delete').click();
-    await page.getByTestId('expense-delete').click();
+    // Asks nothing: the draft goes to « Récemment supprimés », and the toast offers it back.
+    await page.getByTestId('record-more').click();
+    await page.getByTestId('record-menu-delete').click();
     await expect(page).toHaveURL(/\/expenses$/);
+    await expect(toast(page).getByTestId('toast-action')).toBeVisible();
     created = null;
   } finally {
     // A failure partway leaves the draft: it is deleted here, so nothing stays in the shared company.

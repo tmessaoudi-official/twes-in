@@ -78,6 +78,7 @@ final readonly class InvoiceWorkflow
         private SealInvoiceChains $chains,
         private DocumentNames $names,
         private ExcludedTaxFamilies $excluded,
+        private DeliveryNoteRoom $noteRoom,
     ) {
     }
 
@@ -89,6 +90,7 @@ final readonly class InvoiceWorkflow
      * @throws InvalidNumbering     when the company's day comes before the month of the series' last number
      * @throws InvoiceNumberTaken   when another establishment of the company already gave the number
      * @throws PartyIdentityMissing when the seller or the customer cannot be named as the law asks
+     * @throws InvalidInvoice       on `lines[i]` when a line takes more of its delivery note than is left, or its note was cancelled
      * @throws InvalidInvoice       on `deposit` when a deposit invoice comes to more than its quote leaves once its other issued deposits are charged
      * @throws InvalidInvoice       on `lines[i].taxComponentIds` or `documentTaxComponentIds` when the customer's or the company's
      *                              regime, changed since the draft was saved, no longer charges one of its taxes
@@ -106,6 +108,9 @@ final readonly class InvoiceWorkflow
             $type = $invoice->getType();
             if (InvoiceType::Invoice === $type) {
                 $this->stillGivenBack($company, $invoice);
+                // Read again under the notes' lock: a draft put back from « Récemment supprimés » was written before
+                // whatever invoiced or cancelled its notes meanwhile.
+                $this->noteRoom->assertWithin($company->getId(), $invoice, array_map(static fn (InvoiceLine $line): array => ['source' => $line->getSourceDeliveryNoteLineId(), 'product' => $line->getProduct()?->getId(), 'quantity' => $line->getQuantity()], $invoice->getLines()));
             }
             if ($invoice->isDeposit()) {
                 $this->withinItsQuote($company, $invoice);

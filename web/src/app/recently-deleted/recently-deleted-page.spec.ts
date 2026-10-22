@@ -197,6 +197,7 @@ describe('RecentlyDeletedPage', () => {
       'product',
       'product_category',
       'expense_category',
+      'expense',
       'customer',
       'invoice',
       'quote',

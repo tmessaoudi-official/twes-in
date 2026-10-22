@@ -11,10 +11,13 @@ namespace App\Module\Invoices\Application;
 
 use Symfony\Component\Uid\Uuid;
 
-/** What a delivery note line delivered: its product, if it names one, and its quantity. */
+/**
+ * What a delivery note line delivered: its product, if it names one, its quantity, and whether its note was cancelled
+ * since, which leaves nothing of it to invoice.
+ */
 final readonly class SourceDeliveryNoteLine
 {
-    public function __construct(public ?Uuid $productId, public string $quantity)
+    public function __construct(public ?Uuid $productId, public string $quantity, public bool $cancelled = false)
     {
     }
 }

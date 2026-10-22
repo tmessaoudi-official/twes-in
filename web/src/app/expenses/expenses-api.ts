@@ -204,12 +204,6 @@ export class ExpensesApi {
     );
   }
 
-  async deleteExpense(companyId: string, id: string): Promise<void> {
-    await this.guard(EXPENSE, async () =>
-      firstValueFrom(this.http.delete(path(companyId, 'expenses', id))),
-    );
-  }
-
   /** 422 while the expense has no category. */
   async recordExpense(companyId: string, id: string): Promise<ExpenseRow> {
     return this.saving(async () =>
