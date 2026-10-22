@@ -118,6 +118,32 @@ final class RecordRemovalTest extends ApiTestCase
         self::assertSame(1, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM vendor WHERE id = ?', [$vendor]));
     }
 
+    /**
+     * A configuration link makes the vendor used: a product bought from it and a code of theirs for it each refuse the
+     * delete and are counted, so the screen says where to change them first; neither link is cleared.
+     */
+    public function testAVendorAProductIsBoughtFromIsRefusedNamingWhere(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write', 'product.read', 'product.cost.read']);
+        $vendor = $this->vendorId('F-002');
+        $connection = $this->em()->getConnection();
+        $company = $this->company->getId()->toRfc4122();
+        $at = '2026-10-20 08:00:00';
+        $connection->insert('product_vendor', ['id' => Uuid::v7()->toRfc4122(), 'company_id' => $company, 'product_id' => $this->productId, 'vendor_id' => $vendor, 'created_at' => $at]);
+        $connection->insert('product_barcode', ['id' => Uuid::v7()->toRfc4122(), 'company_id' => $company, 'product_id' => $this->productId, 'role' => 'supplier', 'code' => 'VDS-0002', 'match_key' => 'VDS-0002', 'quantity' => 1, 'created_at' => $at, 'supplier_id' => $vendor]);
+
+        $this->postJson($this->path('record-removals'), ['subject' => 'vendor', 'ids' => [$vendor]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['error' => 'record_used', 'records' => [['id' => $vendor, 'label' => 'F-002 Visserie du Sud', 'uses' => [
+            ['table' => 'product_vendor', 'column' => 'vendor_id', 'count' => 1],
+            ['table' => 'product_barcode', 'column' => 'supplier_id', 'count' => 1],
+        ]]]], $this->json());
+        self::assertSame(1, $connection->fetchOne('SELECT count(*) FROM product_vendor WHERE vendor_id = ?', [$vendor]));
+        self::assertSame(1, $connection->fetchOne('SELECT count(*) FROM product_barcode WHERE supplier_id = ?', [$vendor]));
+        self::assertSame(1, $connection->fetchOne('SELECT count(*) FROM vendor WHERE id = ?', [$vendor]));
+    }
+
     /** An order names its vendor with no foreign key: only the declaration knows, and the vendor is kept. */
     public function testAVendorAnOrderNamesIsRefusedThoughNoForeignKeyBacksIt(): void
     {
