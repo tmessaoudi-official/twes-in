@@ -24,8 +24,15 @@ x-api-environment: &api-environment
   # The application's role, its password the secret postgres_app_password, which ContainerSecrets sets in it.
   DATABASE_URL_TEMPLATE: "postgresql://twes_app:{postgres_app_password}@postgres:5432/twes?serverVersion=18&charset=utf8"
 
+# Every service mounting a secret carries the digest of the secrets' values, which scripts/deploy/deploy.sh hands
+# compose: Compose keeps a running container whose secret's value alone changed, reading the old one, so a rotated key
+# must change the service to reach it (scripts/gates/secrets-overlay.sh holds every such service to it).
+x-secrets-digest: &secrets-digest
+  twes.secrets-digest: "${TWES_SECRETS_DIGEST:-}"
+
 services:
   api:
+    labels: *secrets-digest
     restart: unless-stopped
     build:
       target: prod
@@ -41,6 +48,7 @@ services:
   # it has run (api/tests/Architecture/ProductionRestartTest.php). It alone holds the owner's password, and gives the
   # application's role its own, which the api and the workers connect with.
   migrate:
+    labels: *secrets-digest
     build:
       target: prod
     environment:
@@ -56,6 +64,7 @@ services:
     secrets: [app_secret, app_mfa_key, realtime_token_key, realtime_api_key, postgres_app_password, mailer_dsn, postgres_password]
   # The workers run the same production image with the same secrets.
   worker:
+    labels: *secrets-digest
     restart: unless-stopped
     build:
       target: prod
@@ -68,6 +77,7 @@ services:
       DATABASE_URL: !reset null
     secrets: *api-secrets
   demo-worker:
+    labels: *secrets-digest
     restart: unless-stopped
     build:
       target: prod
@@ -80,6 +90,7 @@ services:
       DATABASE_URL: !reset null
     secrets: *api-secrets
   postgres:
+    labels: *secrets-digest
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: !reset null
@@ -87,6 +98,7 @@ services:
     secrets: [postgres_password]
   # Its two realtime keys, under the names its own configuration reads, through the shim mounted from the checkout.
   centrifugo:
+    labels: *secrets-digest
     restart: unless-stopped
     entrypoint: [sh, /twes-secrets, centrifugo]
     volumes:

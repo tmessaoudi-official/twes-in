@@ -84,10 +84,18 @@ fi
 if [[ "$creates" == yes ]]; then
   merged=$(cd "$root" && docker compose --env-file "$values" "${files[@]}" config 2>&1) \
     || refuse "docker compose cannot read this installation's files with $values: $merged"
+  said=''
   while IFS= read -r name; do
     given=$(value "$name"); given=${given#\"}; given=${given%\"}; given=${given#\'}; given=${given%\'}
     [[ -n "$given" ]] || refuse "$values give no value to $name, a secret this installation mounts: fill it in, from the password manager"
+    said+="$name=$given"$'\n'
   done < <(awk '/^[^ #]/ { top = $0 } top == "secrets:" && $1 == "environment:" { print $2 }' <<<"$merged")
+  # Compose keeps a running container whose secret's value alone changed, reading the old one: every service mounting
+  # a secret carries this digest as a label (scripts/gates/secrets-overlay.sh), so a rotated secret recreates them and
+  # an unchanged one recreates nothing. The values never leave this shell; the digest of all of them together, random
+  # keys among them, gives none of them away.
+  TWES_SECRETS_DIGEST=$(printf '%s' "$said" | sha256sum | cut -d' ' -f1)
+  export TWES_SECRETS_DIGEST
 fi
 
 staging_values=no

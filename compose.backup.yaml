@@ -56,6 +56,9 @@ services:
   backup:
     logging: *logging
     restart: unless-stopped
+    # The secrets' digest, as compose.prod.yaml says why; the restore takes it through extends.
+    labels:
+      twes.secrets-digest: "${TWES_SECRETS_DIGEST:-}"
     image: twes-in-postgres-backup
     entrypoint: [twes-secrets, docker-entrypoint.sh]
     command: [twes-backup, run]
