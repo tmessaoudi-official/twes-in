@@ -32,6 +32,8 @@ final readonly class OrderVendor
         public ?string $countryCode = null,
         public ?string $email = null,
         public ?string $phone = null,
+        /** The number of the vendor kept when this one was merged away into it: nothing new names this one. */
+        public ?string $keptNumber = null,
     ) {
     }
 }

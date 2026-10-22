@@ -142,6 +142,10 @@ final readonly class DeliveryNoteWorkflow
     private function numbered(Company $company, DeliveryNote $note, ?Uuid $actorUserId): DeliveryNote
     {
         $note->assertDraft('is validated');
+        // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile.
+        if ($note->getCustomer()->isMergedAway()) {
+            throw new InvalidDeliveryNote('customerId', $note->getCustomer()->whySwitchedOff());
+        }
         $this->chargedByItsRegimes($company, $note);
         $allocated = $this->numbers->allocate($company, $note->getEstablishment(), self::DOCUMENT_TYPE);
         if ($this->notes->numberTaken($company->getId(), $allocated->number)) {

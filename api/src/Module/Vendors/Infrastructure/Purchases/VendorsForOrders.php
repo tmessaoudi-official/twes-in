@@ -79,6 +79,7 @@ final readonly class VendorsForOrders implements OrderVendors
             $address->countryCode,
             $profile->email,
             $profile->phone,
+            $vendor->getMergedInto()?->getNumber(),
         );
     }
 }

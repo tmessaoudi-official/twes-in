@@ -219,6 +219,40 @@ final class VendorMergeTest extends ApiTestCase
         self::assertSame(['Sotumag Sfax', false], [$connection->fetchOne('SELECT name FROM vendor WHERE id = ?', [$merged]), $connection->fetchOne('SELECT is_active FROM vendor WHERE id = ?', [$merged])]);
     }
 
+    public function testADraftPutBackFromTheBinAfterItsVendorWasMergedAwayGoesNowhereUntilItNamesTheVendorKept(): void
+    {
+        // The bin keeps a draft as it was deleted, so a merge made meanwhile never moved it: sent or recorded as it
+        // stands, it would name the duplicate the merge retired, on the vendor's order and in the books.
+        $this->signedIn();
+        [$kept, $merged] = [$this->vendorId('F-001'), $this->vendorId('F-002')];
+        $drafts = ['purchase_order' => $this->anOrder($merged), 'expense' => $this->anExpense($merged)];
+        $removals = [];
+        foreach ($drafts as $subject => $id) {
+            $this->postJson($this->path('record-removals'), ['subject' => $subject, 'ids' => [$id]]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            $removals[$subject] = $this->stringAt($this->json(), 'id');
+        }
+        $this->merged($kept, [$merged]);
+        foreach ($removals as $removal) {
+            $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+            self::assertResponseIsSuccessful();
+        }
+
+        $this->postJson($this->path('purchase-orders/'.$drafts['purchase_order'].'/send'), null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $detail = $this->stringAt($this->json(), 'detail');
+        self::assertStringStartsWith('vendorId:', $detail);
+        self::assertStringContainsString('F-001', $detail, 'the refusal names the vendor kept');
+
+        $this->postJson($this->path('expenses/'.$drafts['expense'].'/record'), null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'vendorId', 'reason' => 'vendor_merged_draft', 'params' => ['number' => 'F-002', 'kept' => 'F-001']]], $this->refusals());
+
+        $connection = $this->em()->getConnection();
+        self::assertSame(['draft', null, $merged], [$connection->fetchOne('SELECT status FROM purchase_order WHERE id = ?', [$drafts['purchase_order']]), $connection->fetchOne('SELECT number FROM purchase_order WHERE id = ?', [$drafts['purchase_order']]), $this->vendorOf('purchase_order', $drafts['purchase_order'])]);
+        self::assertSame(['draft', $merged], [$connection->fetchOne('SELECT status FROM expense WHERE id = ?', [$drafts['expense']]), $this->vendorOf('expense', $drafts['expense'])]);
+    }
+
     /**
      * Lists, reports and pickers show the vendor kept wherever the one merged away is named; the books keep the vendor
      * an expense was recorded with, as the accountant's journal and the withholding certificates are the record.
