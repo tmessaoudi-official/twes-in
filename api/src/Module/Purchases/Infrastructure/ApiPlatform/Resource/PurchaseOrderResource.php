@@ -31,7 +31,9 @@ use App\Module\Purchases\Infrastructure\ApiPlatform\State\Processor\RevisePurcha
 use App\Module\Purchases\Infrastructure\ApiPlatform\State\Processor\SendPurchaseOrderProcessor;
 use App\Module\Purchases\Infrastructure\ApiPlatform\State\Provider\PurchaseOrderCollectionProvider;
 use App\Module\Purchases\Infrastructure\ApiPlatform\State\Provider\PurchaseOrderItemProvider;
+use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -252,6 +254,7 @@ final class PurchaseOrderResource
         'quantity' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'unitPriceNet' => new Assert\Optional([new Assert\Type(['string', 'null'], groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
+    #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $lines = [];
 

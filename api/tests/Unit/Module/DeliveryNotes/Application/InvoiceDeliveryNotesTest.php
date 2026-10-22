@@ -38,7 +38,9 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Infrastructure\DeliveryNotes\ManagedInvoiceDrafts;
 use App\Module\Invoices\Infrastructure\DeliveryNotes\RepositoryInvoicedLines;
+use App\Shared\Application\ListLimits;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Infrastructure\Validation\ParameterListLimits;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
 use App\Tenancy\Domain\Model\Company;
@@ -95,7 +97,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $this->audit = new InMemoryAuditTrail($this->transactions);
         // The notes are held while they are read, as the database holds their rows.
         $this->notes->transactions = $this->transactions;
-        $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($this->invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())), ShippedFiscalPresets::presets(), new InMemoryRecordVersions());
+        $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($this->invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())), ShippedFiscalPresets::presets(), new InMemoryRecordVersions(), new ParameterListLimits([ListLimits::DOCUMENT_LINES => 1000]));
         $this->invoicing = new InvoiceDeliveryNotes($this->notes, new RepositoryInvoicedLines($this->invoices), new ManagedInvoiceDrafts($manage, $this->invoices), $this->transactions, $this->audit, $this->clock);
         $this->customer = $this->customer($this->company);
     }

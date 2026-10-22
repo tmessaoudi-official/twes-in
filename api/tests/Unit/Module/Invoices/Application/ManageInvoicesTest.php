@@ -34,6 +34,8 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Shared\Application\ListLimits;
+use App\Shared\Infrastructure\Validation\ParameterListLimits;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tests\Support\FakeTransactions;
@@ -56,6 +58,8 @@ use Symfony\Component\Uid\Uuid;
 
 final class ManageInvoicesTest extends TestCase
 {
+    private const int LINES_MOST = 50;
+
     private MockClock $clock;
     private InMemoryUnits $units;
     private InMemoryTaxComponents $taxes;
@@ -82,7 +86,7 @@ final class ManageInvoicesTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), $this->sourceLines = new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($this->invoices, $this->totals), ShippedFiscalPresets::presets(), new InMemoryRecordVersions());
+        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), $this->sourceLines = new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($this->invoices, $this->totals), ShippedFiscalPresets::presets(), new InMemoryRecordVersions(), new ParameterListLimits([ListLimits::DOCUMENT_LINES => self::LINES_MOST]));
         $this->invoices->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->provision->handle($this->company);
@@ -293,6 +297,26 @@ final class ManageInvoicesTest extends TestCase
         $this->manage->revise($this->company, $invoice->getId(), $this->input($customer, [new InvoiceLineInput(null, 'Pièce', '2', $this->unit('C62')->getId(), '10', null, [$this->tax('TVA19')->getId()], $from)]), null);
 
         self::assertEquals([[$from]], $this->sourceLines->locked);
+    }
+
+    /**
+     * A draft written from lines already written, a delivery note's or a quote's, holds no more lines than a request may
+     * hand in (`ListLimits`): a hundred notes added to one draft would otherwise make it one no later save is accepted on.
+     */
+    public function testADraftOfLinesAlreadyWrittenHoldsNoMoreThanTheLimit(): void
+    {
+        $customer = $this->customer();
+        $establishment = array_find($this->establishments->ofCompany($this->company->getId()), static fn ($e): bool => $e->isDefault());
+        self::assertNotNull($establishment);
+        $lines = fn (int $count): array => array_map(fn (): InvoiceLineDetails => new InvoiceLineDetails(null, 'Pièce', '1', $this->unit('C62'), '10', null, [$this->tax('TVA19')], Uuid::v7()), range(1, $count));
+
+        $this->assertRefused('lines', fn () => $this->manage->createFromLines($this->company, $establishment, $customer, new InvoiceHeader(), $lines(self::LINES_MOST + 1), [], null));
+        self::assertSame([], $this->manage->list($this->company), 'nothing is drafted');
+
+        $invoice = $this->manage->createFromLines($this->company, $establishment, $customer, new InvoiceHeader(), $lines(self::LINES_MOST - 1), [], null);
+        $this->manage->appendLines($this->company, $invoice->getId(), $lines(1), [], null);
+        self::assertCount(self::LINES_MOST, $invoice->getLines(), 'up to the limit, lines are added');
+        $this->assertRefused('lines', fn () => $this->manage->appendLines($this->company, $invoice->getId(), $lines(1), [], null));
     }
 
     public function testAnotherCompanysInvoiceIsNotFound(): void

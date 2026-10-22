@@ -41,8 +41,10 @@ use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\ReviseQuoteProc
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\SendQuoteProcessor;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Provider\QuoteCollectionProvider;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Provider\QuoteItemProvider;
+use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Submissions\Submissions;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -402,6 +404,7 @@ final class QuoteResource
             new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
         ], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
+    #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $lines = [];
 

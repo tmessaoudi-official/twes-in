@@ -64,6 +64,7 @@ final class StockDrawingChangesResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['locationId', 'x', 'y', 'width', 'depth'], 'properties' => ['locationId' => ['type' => 'string', 'format' => 'uuid'], ...self::RECT]]])]
     #[Groups([self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $draws = [];
 
     /**
@@ -76,6 +77,7 @@ final class StockDrawingChangesResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['drawingId', 'x', 'y', 'width', 'depth', 'version'], 'properties' => ['drawingId' => ['type' => 'string', 'format' => 'uuid'], ...self::RECT, 'version' => ['type' => 'integer', 'minimum' => 1], 'locationId' => ['type' => 'string', 'format' => 'uuid']]]])]
     #[Groups([self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $moves = [];
 
     /**
@@ -86,6 +88,7 @@ final class StockDrawingChangesResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['drawingId', 'version'], 'properties' => ['drawingId' => ['type' => 'string', 'format' => 'uuid'], 'version' => ['type' => 'integer', 'minimum' => 1]]]])]
     #[Groups([self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $erasures = [];
 
     /**
@@ -98,6 +101,7 @@ final class StockDrawingChangesResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['kind', 'code', 'name', 'x', 'y', 'width', 'depth'], 'properties' => ['kind' => ['type' => 'string'], 'code' => ['type' => 'string'], 'name' => ['type' => 'string'], ...self::RECT]]])]
     #[Groups([self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $newPlaces = [];
 
     /**
@@ -108,6 +112,7 @@ final class StockDrawingChangesResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['kind', 'x', 'y', 'width', 'depth'], 'properties' => ['kind' => ['type' => 'string'], 'name' => ['type' => 'string'], ...self::RECT]]])]
     #[Groups([self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $structureBuilds = [];
 
     /**
@@ -118,6 +123,7 @@ final class StockDrawingChangesResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['structureId', 'version', 'kind', 'x', 'y', 'width', 'depth'], 'properties' => ['structureId' => ['type' => 'string', 'format' => 'uuid'], 'version' => ['type' => 'integer', 'minimum' => 1], 'kind' => ['type' => 'string'], 'name' => ['type' => 'string'], ...self::RECT]]])]
     #[Groups([self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $structureMoves = [];
 
     /**
@@ -128,6 +134,7 @@ final class StockDrawingChangesResource
     #[Assert\Type('list', groups: [self::WRITE])]
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['structureId', 'version'], 'properties' => ['structureId' => ['type' => 'string', 'format' => 'uuid'], 'version' => ['type' => 'integer', 'minimum' => 1]]]])]
     #[Groups([self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $structureErasures = [];
 
     /**
@@ -138,6 +145,7 @@ final class StockDrawingChangesResource
      */
     #[ApiProperty(schema: ['type' => 'object', 'required' => ['widthMetres', 'depthMetres', 'version'], 'properties' => ['widthMetres' => ['type' => 'string'], 'depthMetres' => ['type' => 'string'], 'version' => ['type' => 'integer', 'minimum' => 1]]])]
     #[Groups([self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public ?array $floor = null;
 
     /**

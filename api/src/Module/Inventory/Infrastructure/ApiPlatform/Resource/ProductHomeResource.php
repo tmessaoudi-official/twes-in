@@ -123,6 +123,7 @@ final class ProductHomeResource
     #[Assert\Type('list', groups: [self::ORDER])]
     #[Assert\All([new Assert\Uuid(groups: [self::ORDER])], groups: [self::ORDER])]
     #[Groups([self::ORDER])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $locationIds = [];
 
     /**

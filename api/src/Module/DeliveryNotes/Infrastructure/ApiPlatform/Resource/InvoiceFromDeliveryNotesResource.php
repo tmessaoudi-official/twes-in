@@ -12,10 +12,13 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
+use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\AddDeliveryNotesToDraftProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\DraftInvoiceFromDeliveryNotesProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
+use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\Submissions\Submissions;
+use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -62,6 +65,7 @@ final class InvoiceFromDeliveryNotesResource
      */
     #[ApiProperty(schema: ['type' => 'array', 'minItems' => 1, 'items' => ['type' => 'string', 'format' => 'uuid']])]
     #[Assert\Type('list', groups: [self::WRITE])]
+    #[Assert\Count(max: InvoiceDeliveryNotes::MOST, groups: [self::WRITE])]
     #[Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public array $deliveryNoteIds = [];
@@ -74,6 +78,7 @@ final class InvoiceFromDeliveryNotesResource
      */
     #[ApiProperty(schema: ['type' => ['object', 'null'], 'additionalProperties' => ['type' => 'string', 'description' => 'A decimal quantity, written with a dot.']])]
     #[Assert\Type('array', groups: [self::WRITE])]
+    #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Assert\All([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public ?array $quantities = null;

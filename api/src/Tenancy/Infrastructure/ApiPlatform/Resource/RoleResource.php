@@ -104,6 +104,7 @@ final class RoleResource
     #[Assert\All([new Assert\Type('string'), new Assert\Length(max: 128)], groups: [self::WRITE])]
     #[ApiProperty(required: true, schema: ['type' => 'array', 'items' => ['type' => 'string']])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $permissions = [];
 
     /** Whether the release defines it. A built-in role is listed so the screen can show it, and refuses every write. */

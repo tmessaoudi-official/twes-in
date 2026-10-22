@@ -89,6 +89,7 @@ final class UnitResource
      */
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string', 'maxLength' => 60]])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public ?array $names = null;
 
     /** How many decimals a quantity in this unit may carry. */

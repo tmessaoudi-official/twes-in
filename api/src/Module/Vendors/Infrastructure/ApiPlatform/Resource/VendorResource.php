@@ -131,6 +131,7 @@ final class VendorResource
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string']])]
     #[Assert\All([new Assert\Type('string'), new Assert\Length(max: 64)], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $identifiers = [];
 
     #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE])]

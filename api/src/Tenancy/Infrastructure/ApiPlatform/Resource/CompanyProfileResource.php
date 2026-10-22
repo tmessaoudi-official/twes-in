@@ -101,6 +101,7 @@ final class CompanyProfileResource
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string']])]
     #[Assert\All([new Assert\Type('string', payload: ['reason' => 'identifier_shape']), new Assert\Length(max: 64, payload: ['reason' => 'identifier_shape'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $identifiers = [];
 
     #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]

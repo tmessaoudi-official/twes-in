@@ -204,6 +204,7 @@ final class ProductResource
     #[Assert\Type('list', groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Assert\All([new Assert\Uuid(payload: ['reason' => 'invalid_value'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $defaultTaxComponentIds = [];
 
     /**
@@ -217,6 +218,7 @@ final class ProductResource
     #[Assert\Type('list', groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Assert\All([new Assert\Uuid(payload: ['reason' => 'invalid_value'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public ?array $vendorIds = null;
 
     /**
@@ -231,6 +233,7 @@ final class ProductResource
     /** @var array<string, string|int|float|bool> values by the company's custom field keys (GET .../custom-fields?entity=product) */
     #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['oneOf' => [['type' => 'string'], ['type' => 'number'], ['type' => 'boolean']]]])]
     #[Groups([self::READ, self::WRITE])]
+    // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $customFields = [];
 
     #[Groups([self::READ, self::WRITE])]

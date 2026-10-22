@@ -30,7 +30,9 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Infrastructure\DeliveryNotes\ManagedInvoiceDrafts;
 use App\Module\Invoices\Infrastructure\DeliveryNotes\RepositoryInvoicedLines;
+use App\Shared\Application\ListLimits;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Infrastructure\Validation\ParameterListLimits;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
@@ -68,7 +70,7 @@ final class MarkInvoicedDeliveryNotesTest extends TestCase
         $notes->transactions = $transactions;
         $invoices = new InMemoryInvoices();
         $audit = new InMemoryAuditTrail($transactions);
-        $manage = new ManageInvoices($invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $units, $taxes, $establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $audit, $clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())), ShippedFiscalPresets::presets(), new InMemoryRecordVersions());
+        $manage = new ManageInvoices($invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $units, $taxes, $establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $audit, $clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())), ShippedFiscalPresets::presets(), new InMemoryRecordVersions(), new ParameterListLimits([ListLimits::DOCUMENT_LINES => 1000]));
         $now = $clock->now();
         $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $units->ofCodeInCompany('C62', $company->getId());

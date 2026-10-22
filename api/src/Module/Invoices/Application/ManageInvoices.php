@@ -34,6 +34,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Shared\Application\ListLimits;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
@@ -77,6 +78,7 @@ final readonly class ManageInvoices
         private DepositDeductions $deductions,
         private FiscalPresets $presets,
         private RecordVersions $versions,
+        private ListLimits $limits,
     ) {
     }
 
@@ -111,6 +113,20 @@ final readonly class ManageInvoices
     public function get(Company $company, Uuid $id): Invoice
     {
         return $this->invoices->ofIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
+    }
+
+    /**
+     * A draft written from lines already written holds no more than a request may hand in, so every later save of it is
+     * accepted; what a request hands in is refused before it is read (`ListLimit`).
+     *
+     * @throws InvalidInvoice
+     */
+    private function checkLineCount(Invoice $invoice): void
+    {
+        $most = $this->limits->most(ListLimits::DOCUMENT_LINES);
+        if (\count($invoice->getLines()) > $most) {
+            throw new InvalidInvoice('lines', \sprintf('A document holds at most %d lines.', $most));
+        }
     }
 
     /** Held until the transaction ends and read as it stands: a draft check on it cannot be overtaken by another request. */
@@ -150,6 +166,7 @@ final readonly class ManageInvoices
 
         return $this->transactions->run(function () use ($company, $establishment, $customer, $header, $lines, $origin, $actorUserId, $quoteId, $deposit): Invoice {
             $invoice = Invoice::create($company, $establishment, $customer, $header, $lines, $this->documentTaxes($company, $customer, null, [], []), $this->clock->now(), $quoteId, $deposit);
+            $this->checkLineCount($invoice);
             $this->totals->checked($invoice);
             $this->invoices->save($invoice);
             $this->record($company, $invoice->getId(), self::CREATED, $origin, $actorUserId);
@@ -173,6 +190,7 @@ final readonly class ManageInvoices
         return $this->transactions->run(function () use ($company, $id, $lines, $origin, $actorUserId): Invoice {
             $invoice = $this->locked($company, $id);
             $invoice->addLines($lines, $this->clock->now());
+            $this->checkLineCount($invoice);
             $this->totals->checked($invoice);
             $this->invoices->save($invoice);
             $this->record($company, $invoice->getId(), self::REVISED, ['fields' => ['lines'], ...$origin], $actorUserId);
