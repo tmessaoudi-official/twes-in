@@ -243,7 +243,8 @@ export function vendorForm(
           label: `${FIELDS}.iban`,
           kind: 'text',
           maxLength: 42,
-          pattern: '[A-Za-z]{2}[0-9]{2}[A-Za-z0-9 ]{8,38}',
+          // An IBAN, or a bare Tunisian RIB (20 digits, its groups apart or not), which the API keeps as TN59 + RIB.
+          pattern: '(?:[A-Za-z]{2}[0-9]{2}[A-Za-z0-9 ]{8,38}|[0-9](?:[ .\\-]?[0-9]){19})',
           span: 2,
           hint: 'vendors.form.iban_hint',
         },

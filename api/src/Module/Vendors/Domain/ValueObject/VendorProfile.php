@@ -75,7 +75,7 @@ final readonly class VendorProfile
         $this->email = self::text($email);
         $this->phone = self::text($phone);
         $this->website = self::text($website);
-        $this->iban = self::code($iban);
+        $this->iban = self::code(null === $iban ? null : ContactRules::account($iban));
         $this->bic = self::code($bic);
         if (null !== $paymentTermsDays && ($paymentTermsDays < 0 || $paymentTermsDays > self::PAYMENT_TERMS_MAX)) {
             throw new InvalidVendor('paymentTermsDays', \sprintf('Payment terms run from 0 to %d days.', self::PAYMENT_TERMS_MAX), 'invalid_payment_terms', ['max' => self::PAYMENT_TERMS_MAX]);

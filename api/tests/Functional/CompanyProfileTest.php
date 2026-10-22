@@ -138,6 +138,17 @@ final class CompanyProfileTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
+    public function testABareRibIsKeptAsTheIbanItSpells(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->stepUp('password-1234');
+
+        $this->sendJson('PUT', $this->path(), $this->profile(['iban' => '10 006 035 1835984788 31']));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('TN5910006035183598478831', $this->em()->getConnection()->fetchOne('SELECT iban FROM company WHERE id = ?', [$this->company->getId()->toRfc4122()]));
+    }
+
     /** The form's rules and the preset's answer one shape, under the reasons a file is refused with. */
     public function testARefusalNamesItsFieldAndAReasonTheScreenTranslates(): void
     {
@@ -158,6 +169,11 @@ final class CompanyProfileTest extends ApiTestCase
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals(), $field);
         }
+
+        // Its check holds, but a Tunisian IBAN is 24 characters: the country's own length is refused under the same reason.
+        $this->sendJson('PUT', $this->path(), $this->profile(['iban' => 'TN521000603518359847883']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'iban', 'reason' => 'invalid_iban', 'params' => []]], $this->refusals());
     }
 
     public function testASaveOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void

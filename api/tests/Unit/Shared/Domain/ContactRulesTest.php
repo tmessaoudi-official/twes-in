@@ -78,6 +78,19 @@ final class ContactRulesTest extends TestCase
         }
     }
 
+    /** A Tunisian RIB is the IBAN TN59 spells before it (domain-identifiers § 2), so one written bare is taken as that IBAN. */
+    public function testABareTunisianRibIsTheIbanItSpells(): void
+    {
+        foreach (['10006035183598478831', '10 006 035 1835984788 31', '10.006.035.1835984788.31', '10-006-035-1835984788-31'] as $rib) {
+            self::assertSame('TN5910006035183598478831', ContactRules::account($rib), $rib);
+        }
+        self::assertNull(ContactRules::iban(ContactRules::account('10006035183598478831')));
+        self::assertSame('invalid_iban', ContactRules::iban(ContactRules::account('10006035183598478832'))?->reason, 'a RIB whose key is wrong spells an IBAN whose check fails');
+        foreach ([['TN59 1000 6035 1835 9847 8831', 'TN5910006035183598478831'], ['fr1420041010050500013m02606', 'FR1420041010050500013M02606'], ['1000603518359847883', '1000603518359847883'], ['100060351835984788311', '100060351835984788311']] as [$written, $kept]) {
+            self::assertSame($kept, ContactRules::account($written), "$written is not a bare RIB");
+        }
+    }
+
     public function testATextIsHeldToItsLengthInCharactersNotBytes(): void
     {
         self::assertNull(ContactRules::text(str_repeat('é', 20), 20));

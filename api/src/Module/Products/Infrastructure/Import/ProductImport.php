@@ -36,6 +36,8 @@ use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
+use App\ImportExport\Application\SetAside;
+use App\ImportExport\Infrastructure\Import\SetAsideMarks;
 use App\Module\Products\Application\BarcodeInput;
 use App\Module\Products\Application\Cost\PurchaseCost;
 use App\Module\Products\Application\CustomerPrice;
@@ -163,6 +165,7 @@ final readonly class ProductImport implements DeclaresImport
         private CurrencyScales $scales,
         private ExcludedTaxFamilies $excluded,
         private ReadSetting $settings,
+        private SetAsideMarks $marks,
     ) {
     }
 
@@ -240,7 +243,23 @@ final readonly class ProductImport implements DeclaresImport
         );
     }
 
+    /**
+     * A barcode whose check digit fails is set aside rather than refusing the row (docs/SPEC.md § 7, 2026-10-22 18:09):
+     * the row is read again without it, and the product written is marked « À vérifier » with it.
+     */
     public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
+    {
+        $aside = new SetAside();
+
+        return $aside->import($record, $notes, function (ImportRecord $row, RowNotes $tried) use ($company, $aside, $mode, $actorUserId, $context): RowImported {
+            $imported = $this->importRow($company, $row, $aside, $mode, $actorUserId, $tried, $context);
+            $aside->noteOn($tried);
+
+            return $imported;
+        });
+    }
+
+    private function importRow(Company $company, ImportRecord $record, SetAside $aside, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
     {
         // Found again by the reference written in the row, else by the unit code written in it, never by its name.
         $reference = $record->value('reference');
@@ -277,7 +296,7 @@ final readonly class ProductImport implements DeclaresImport
 
         $written = null;
         try {
-            $input = $this->input($company, $record, $existing, $faults, array_column($codes, 0), $vendor, $seesCosts, $context, $notes);
+            $input = $this->input($company, $record, $existing, $faults, array_column($codes, 0), $vendor, $seesCosts, $context, $notes, $aside);
             $faults->stopIfAny();
             \assert(false !== $home);
             // Rendered before the write, which changes the product in place.
@@ -553,7 +572,7 @@ final readonly class ProductImport implements DeclaresImport
      * @throws InvalidProduct
      */
     /** @param list<BarcodeInput> $codes */
-    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults, array $codes, ?Uuid $vendor, bool $seesCosts, ImportContext $context, RowNotes $notes): ProductInput
+    private function input(Company $company, ImportRecord $record, ?Product $current, RowFaults $faults, array $codes, ?Uuid $vendor, bool $seesCosts, ImportContext $context, RowNotes $notes, SetAside $aside): ProductInput
     {
         $held = $current?->getDetails();
         $kind = $record->value('kind');
@@ -589,7 +608,7 @@ final readonly class ProductImport implements DeclaresImport
             seesCosts: $seesCosts,
             // The vendor the row names is added to those the product is bought from; a file removes none.
             vendorIds: null === $vendor ? null : self::withVendor($current, $vendor),
-            check: $faults->read(static fn (): ?ProductCheckInput => self::check($record, $current)),
+            check: $faults->read(fn (): ?ProductCheckInput => $this->check($record, $current, $aside)),
             // A unit the row does not name is not one confirmed, on a new product as on one found again.
             unitNamed: null !== $record->value('unit_code'),
             // Goods coming in from a file are counted on the shelf before their stock is trusted.
@@ -646,13 +665,13 @@ final readonly class ProductImport implements DeclaresImport
 
     /**
      * « À vérifier » as the row writes it: its note sets the mark with that note; a blank cell keeps the mark as it is,
-     * and a price of nothing meant stays as the product holds it.
+     * and a price of nothing meant stays as the product holds it. A code set aside marks it, with what the file held.
      *
      * @throws RowRejected
      */
-    private static function check(ImportRecord $record, ?Product $current): ?ProductCheckInput
+    private function check(ImportRecord $record, ?Product $current, SetAside $aside): ?ProductCheckInput
     {
-        $mark = ImportCells::checkMark($record, 'to_check');
+        $mark = $this->marks->marked($aside, ImportCells::checkMark($record, 'to_check'), $current?->getCheckMark(), ['barcode' => $this->marks->label('barcode'), 'pack_barcode' => $this->marks->label('pack_barcode'), 'supplier_code' => $this->marks->label('supplier_code')]);
         if (null === $mark) {
             return null;
         }

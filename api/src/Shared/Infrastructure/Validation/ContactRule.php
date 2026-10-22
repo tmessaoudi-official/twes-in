@@ -24,8 +24,9 @@ final class ContactRule extends Constraint
     public const string WEBSITE = 'website';
     public const string COUNTRY = 'country';
     public const string BIC = 'bic';
+    public const string IBAN = 'iban';
 
-    /** @param self::EMAIL|self::PHONE|self::WEBSITE|self::COUNTRY|self::BIC $rule */
+    /** @param self::EMAIL|self::PHONE|self::WEBSITE|self::COUNTRY|self::BIC|self::IBAN $rule */
     public function __construct(public readonly string $rule, ?array $groups = null)
     {
         parent::__construct(null, $groups);

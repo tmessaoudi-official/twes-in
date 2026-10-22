@@ -128,7 +128,10 @@ final class VendorImportTest extends ApiTestCase
 
     /**
      * A file is held to the vendor form's own rules for what the domain does not check: bank details, contact details,
-     * the country and every length. A country the column cannot hold was a server error on the preview.
+     * the country and every length. A country the column cannot hold was a server error on the preview. A doubtful
+     * identifier, contact or bank detail is set aside rather than losing the row (docs/SPEC.md § 7, 2026-10-22 18:09):
+     * the vendor is written without it and the report says so on that cell; what is not one (a website, a country, a
+     * note too long) still refuses the row.
      */
     public function testAFileIsHeldToTheFormsRulesForBankAndContactDetails(): void
     {
@@ -153,36 +156,94 @@ final class VendorImportTest extends ApiTestCase
             $this->arrayAt($this->json(), 'rejected'),
         );
         self::assertSame([
-            [2, 'email', 'invalid_email', []],
-            [3, 'phone', 'invalid_phone', []],
             [4, 'website', 'invalid_website', []],
             [5, 'country_code', 'invalid_country', []],
-            [6, 'iban', 'invalid_iban', []],
-            [7, 'bic', 'invalid_bic', []],
             [8, 'notes', 'invalid_text', ['max' => 5000]],
         ], $rejected);
-        self::assertSame([9], $this->arrayAt($this->json(), 'created'), 'a country written in small letters is the same country');
+        self::assertSame([2, 3, 6, 7, 9], $this->arrayAt($this->json(), 'created'), 'a country written in small letters is the same country');
+        self::assertSame([
+            ['line' => 2, 'column' => 'email', 'code' => 'set_aside', 'params' => ['value' => 'pas-un-courriel', 'reason' => 'invalid_email']],
+            ['line' => 3, 'column' => 'phone', 'code' => 'set_aside', 'params' => ['value' => 'appeler le standard', 'reason' => 'invalid_phone']],
+            ['line' => 6, 'column' => 'iban', 'code' => 'set_aside', 'params' => ['value' => 'TN00 1234', 'reason' => 'invalid_iban']],
+            ['line' => 7, 'column' => 'bic', 'code' => 'set_aside', 'params' => ['value' => 'PASUNBIC', 'reason' => 'invalid_bic']],
+        ], $this->json()['notes']);
+    }
+
+    /**
+     * The vendor a mistyped IBAN came with is written, its IBAN left empty and itself marked « À vérifier » with what
+     * the file held and why, in the importing person's language; the rows naming it in a later file then find it.
+     */
+    public function testAVendorWithAMistypedIbanIsWrittenWithoutItAndMarkedToCheck(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+
+        $this->import('number,name,iban,to_check
+FRN-0020,Quincaillerie Ben Salah,TN59 1000 6035 1835 9847 8832,Rappeler le comptable
+');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->arrayAt($this->json(), 'created'));
+        $vendor = $this->vendor('FRN-0020');
+        self::assertNull($vendor->getProfile()->iban, 'nothing invalid is stored');
+        $mark = $vendor->getCheckMark();
+        self::assertTrue($mark->marked);
+        self::assertSame("Rappeler le comptable\nIBAN du fichier\u{a0}: «\u{a0}TN59 1000 6035 1835 9847 8832\u{a0}», mis de côté\u{a0}: sa forme ou sa clé de contrôle est fausse.", $mark->note);
+    }
+
+    /** A bare RIB where the file asks an IBAN is the IBAN TN59 spells before it, kept so and not marked. */
+    public function testABareRibInTheIbanColumnIsKeptAsTheIbanItSpells(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+
+        $this->import("number,name,iban\nFRN-0021,Banque du coin,10 006 035 1835984788 31\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->arrayAt($this->json(), 'created'));
+        self::assertSame([], $this->json()['notes']);
+        $vendor = $this->vendor('FRN-0021');
+        self::assertSame('TN5910006035183598478831', $vendor->getProfile()->iban);
+        self::assertFalse($vendor->getCheckMark()->marked);
+    }
+
+    /** Updating a vendor, a doubtful cell leaves what the vendor held, and the mark adds to the note already there. */
+    public function testAnUpdateSettingADoubtfulCellAsideKeepsWhatTheVendorHeld(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->import("number,name,email,to_check\nFRN-0022,Aciers,compta@aciers.tn,Vérifier l'adresse\n");
+        self::assertResponseIsSuccessful();
+
+        $this->import("number,name,email\nFRN-0022,Aciers,compta(at)aciers.tn\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->arrayAt($this->json(), 'rejected'));
+        $this->em()->clear();
+        $vendor = $this->vendor('FRN-0022');
+        self::assertSame('compta@aciers.tn', $vendor->getProfile()->email);
+        self::assertSame("Vérifier l'adresse\nAdresse e-mail du fichier\u{a0}: «\u{a0}compta(at)aciers.tn\u{a0}», mis de côté\u{a0}: ce n’est pas une adresse e-mail.", $vendor->getCheckMark()->note);
     }
 
     /**
      * A vendor is not required to carry a registration number — the preset requires one of a company and of a business
-     * CUSTOMER, not of a supplier — but one written down must have the preset's shape, and its refusal reaches the
-     * report under the preset's own stable code rather than a message only an English reader understands.
+     * CUSTOMER, not of a supplier — but one written down must have the preset's shape. One that has not is set aside
+     * under the preset's own stable code, rather than a message only an English reader understands, and the vendor is
+     * written without it (docs/SPEC.md § 7, 2026-10-22 18:09).
      */
-    public function testAMisshapenRegistrationNumberIsRejectedUnderThePresetsOwnCode(): void
+    public function testAMisshapenRegistrationNumberIsSetAsideUnderThePresetsOwnCode(): void
     {
         $this->signedIn(['vendor.read', 'vendor.write']);
 
-        $this->import("number,name,matricule_fiscal\nFRN-0006,Sans matricule,\nFRN-0007,Matricule tordu,pas-un-matricule\n", dryRun: true);
+        $this->import("number,name,matricule_fiscal\nFRN-0006,Sans matricule,\nFRN-0007,Matricule tordu,pas-un-matricule\n");
 
         self::assertResponseIsSuccessful();
-        self::assertSame([2], $this->arrayAt($this->json(), 'created'), 'a vendor without one is accepted');
-        $rejected = $this->arrayAt($this->json(), 'rejected');
-        self::assertIsArray($rejected[0] ?? null);
+        self::assertSame([2, 3], $this->arrayAt($this->json(), 'created'), 'a vendor without one is accepted');
+        self::assertSame([], $this->arrayAt($this->json(), 'rejected'));
         self::assertSame(
-            ['matricule_fiscal', 'identifier_part', ['identifier' => 'matricule_fiscal', 'example' => '1234567A/B/M/000', 'part' => 'number']],
-            [$rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null, $rejected[0]['params'] ?? null],
+            [['line' => 3, 'column' => 'matricule_fiscal', 'code' => 'set_aside', 'params' => ['value' => 'pas-un-matricule', 'reason' => 'identifier_part', 'identifier' => 'matricule_fiscal', 'example' => '1234567A/B/M/000', 'part' => 'number']]],
+            $this->json()['notes'],
         );
+        $vendor = $this->vendor('FRN-0007');
+        self::assertSame([], array_filter($vendor->getProfile()->identifiers), 'nothing invalid is stored');
+        self::assertSame("Matricule fiscal du fichier\u{a0}: «\u{a0}pas-un-matricule\u{a0}», mis de côté\u{a0}: sa forme ne correspond pas (exemple\u{a0}: 1234567A/B/M/000).", $vendor->getCheckMark()->note);
     }
 
     public function testCreateModeRefusesAKnownNumberAndUpsertFillsInOnlyTheCellsTheRowHas(): void

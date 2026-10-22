@@ -166,8 +166,8 @@ final class VendorResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $countryCode = null;
 
-    // Each country's own length on top of the shape and checksum the domain holds every IBAN to.
-    #[Assert\Iban(groups: [self::WRITE], payload: ['reason' => 'invalid_iban'])]
+    // A bare RIB is the IBAN it spells, held then to the domain's shape and checksum and to its country's length.
+    #[ContactRule(ContactRule::IBAN, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $iban = null;
 

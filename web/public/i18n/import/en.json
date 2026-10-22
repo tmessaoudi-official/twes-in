@@ -239,7 +239,8 @@
       "price_to_enter": "No sale price: created at 0 and switched off. Enter its price in its record, then switch it on.",
       "below_cost": "Sold under its cost price ({{cost}}).",
       "unit_to_confirm": "No unit: created in {{code}}, the default unit. Confirm it on its page.",
-      "gross_reached": "Price including taxes {{gross}} cannot be reached: {{reached}} kept."
+      "gross_reached": "Price including taxes {{gross}} cannot be reached: {{reached}} kept.",
+      "set_aside": "“{{value}}” set aside: {{why}} The record is marked “To check” with what the file held."
     },
     "stock": {
       "stock_add": "Quantity to add",

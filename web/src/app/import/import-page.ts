@@ -268,6 +268,19 @@ export class ImportPage {
    * does not know yet reads as nothing more than its code.
    */
   protected noteOf(note: ImportNote): string {
+    // A cell set aside says why in the words its refusal would have used: the format, an example, what to do.
+    if (note.code === 'set_aside') {
+      const { value, reason, ...rest } = note.params;
+      const why = this.reasonOf({
+        line: note.line,
+        column: note.column,
+        code: String(reason),
+        params: rest,
+        message: String(reason),
+      });
+
+      return this.translate.instant('import.notes.set_aside', { value, why }) as string;
+    }
     const key = `import.notes.${note.code}`;
     const params = Object.fromEntries(
       Object.entries(note.params).map(([name, value]) => [

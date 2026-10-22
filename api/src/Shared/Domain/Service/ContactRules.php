@@ -85,6 +85,19 @@ final class ContactRules
             : new Refusal('invalid_bic', 'Not a BIC (ISO 9362).');
     }
 
+    /**
+     * A bank account as it is kept: an IBAN without its spaces, in capitals; a bare Tunisian RIB, the 20 digits a
+     * Tunisian prints and copies, as the IBAN TN59 spells before it (docs/SPEC.md § 7, 2026-10-22 17:56), whose own
+     * check then holds the RIB's key. Anything else is kept as written, for `iban()` to judge.
+     */
+    public static function account(string $value): string
+    {
+        $account = strtoupper(str_replace(' ', '', $value));
+        $digits = (string) preg_replace('/[\s.\-]/u', '', $value);
+
+        return 1 === preg_match('/^\d{20}$/D', $digits) ? 'TN59'.$digits : $account;
+    }
+
     /** The shape and checksum the standard gives every IBAN; a country's own length is the form's to add. */
     public static function iban(string $value): ?Refusal
     {

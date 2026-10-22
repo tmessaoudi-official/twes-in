@@ -362,3 +362,28 @@ test('an import is undone from its result, and put back from « Récemment suppr
   await retire(page, first);
   await retire(page, second);
 });
+
+// docs/SPEC.md § 7, 2026-10-22 18:09: a mistyped e-mail no longer costs the customer. The preview says it is set aside,
+// the value as the file wrote it and the refusal's own sentence, and the row may still be imported.
+test('a doubtful cell is set aside, said on its cell, and the row kept', async ({ page }) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/imports/customers');
+  await expect(page.getByTestId('import-columns')).toBeVisible();
+
+  await choose(
+    page,
+    'clients.csv',
+    `number,name,kind,email\nIMP-${RUN}-A,Courriel tordu,individual,compta(at)exemple.tn\n`,
+  );
+  await page.getByTestId('import-preview').click();
+
+  await expect(page.getByTestId('import-created')).toContainText('1');
+  await expect(page.getByTestId('import-rejections')).toHaveCount(0);
+  await expect(page.getByTestId('import-notes')).toContainText(
+    '«\u00a0compta(at)exemple.tn\u00a0» mis de côté',
+  );
+  await expect(page.getByTestId('import-notes')).toContainText('Vérifiez l’arobase et le point.');
+  await expect(page.getByTestId('import-store')).toBeEnabled();
+  await page.getByTestId('import-notes').screenshot({ path: 'test-results/import-set-aside.png' });
+});

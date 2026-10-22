@@ -1,0 +1,23 @@
+# The « À vérifier » note an import leaves on a record whose doubtful cells it set aside (docs/SPEC.md § 7, 2026-10-22 18:09).
+set_aside:
+    line: '%label% في الملف: « %value% »، تُرك جانبًا: %why%.'
+    with_example: '%why% (مثال: %example%)'
+    why:
+        identifier_shape: 'شكله لا يطابق'
+        identifier_part: 'شكله لا يطابق'
+        identifier_part_rule: 'أجزاؤه لا تتوافق'
+        identifier_reversed: 'مكتوب بالاتجاه المعاكس'
+        identifier_checksum: 'مفتاح التحقّق فيه خاطئ'
+        invalid_iban: 'شكله أو مفتاح التحقّق فيه خاطئ'
+        invalid_bic: 'ليس رمز BIC من 8 أو 11 حرفًا (مثال: BIATTNTT)'
+        invalid_phone: 'ليس رقم هاتف'
+        invalid_email: 'ليس عنوان بريد إلكتروني'
+        invalid_barcode: 'رقم التحقّق فيه لا يطابق'
+column:
+    email: 'البريد الإلكتروني'
+    phone: 'الهاتف'
+    iban: 'IBAN'
+    bic: 'BIC'
+    barcode: 'الرمز الشريطي'
+    pack_barcode: 'الرمز الشريطي للعلبة'
+    supplier_code: 'رمز المزوّد'

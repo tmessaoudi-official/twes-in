@@ -50,11 +50,14 @@ class StaticLoader implements TranslateLoader {
         after: 'Après',
         rejections: {
           duplicate_in_file: 'Déjà présent à la ligne {{line}} du fichier.',
+          invalid_iban: 'L’IBAN s’écrit TN59 puis le RIB. Recopiez-le depuis le RIB.',
+          identifier_part: 'Partie refusée : {{part}} (exemple : {{example}}).',
           gross_unreachable:
             'Aucun prix HT n’arrive à {{gross}} TTC ; les plus proches sont {{below}} et {{above}}.',
         },
         notes: {
           reference_given: 'Référence donnée : {{reference}}.',
+          set_aside: '« {{value}} » mis de côté : {{why}}',
           stock_change: 'Stock à {{location}} : {{before}} → {{after}}.',
         },
         stock: { recount: 'Recompter', recount_note: 'Compte à nouveau.' },
@@ -584,6 +587,53 @@ describe('ImportPage', () => {
         .join(' '),
     );
     expect(rows).toEqual(['2 reference Référence donnée : ART-00042.', '3 name from_tomorrow']);
+    expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  // docs/SPEC.md § 7, 2026-10-22 18:09: a doubtful cell set aside says what the file held and why, in the refusal's words.
+  it('says a cell set aside with the value as typed and the refusal’s own sentence', async () => {
+    chooseFile();
+    await settle();
+    facade.run.mockImplementation(async () =>
+      report.set({
+        ...CLEAN,
+        notes: [
+          {
+            line: 2,
+            column: 'iban',
+            code: 'set_aside',
+            params: { value: 'TN00 1234', reason: 'invalid_iban' },
+          },
+          {
+            line: 3,
+            column: 'matricule_fiscal',
+            code: 'set_aside',
+            params: {
+              value: 'pas-un',
+              reason: 'identifier_part',
+              identifier: 'matricule_fiscal',
+              example: '1234567A/B/M/000',
+              part: 'number',
+            },
+          },
+          {
+            line: 4,
+            column: 'bic',
+            code: 'set_aside',
+            params: { value: 'X', reason: 'not_known_here' },
+          },
+        ],
+      }),
+    );
+    await click('import-preview');
+
+    const text = q('import-notes')?.textContent ?? '';
+    expect(text).toContain(
+      '« TN00 1234 » mis de côté : L’IBAN s’écrit TN59 puis le RIB. Recopiez-le depuis le RIB.',
+    );
+    expect(text).toContain('« pas-un » mis de côté : Partie refusée : ');
+    expect(text).toContain('(exemple : 1234567A/B/M/000).');
+    expect(text).toContain('« X » mis de côté : not_known_here');
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
   });
 

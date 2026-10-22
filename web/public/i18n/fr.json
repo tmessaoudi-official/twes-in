@@ -277,7 +277,8 @@
         "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
       },
       "hints": {
-        "vatOnDebits": "Cochez si la société a opté pour payer la TVA de ses prestations de services à la facturation plutôt qu’à l’encaissement. Ses factures de services porteront alors la mention « Option pour le paiement de la taxe d’après les débits »."
+        "vatOnDebits": "Cochez si la société a opté pour payer la TVA de ses prestations de services à la facturation plutôt qu’à l’encaissement. Ses factures de services porteront alors la mention « Option pour le paiement de la taxe d’après les débits ».",
+        "iban": "L’IBAN de l’entreprise, ou les 20 chiffres de son RIB tunisien (exemple : 10006035183598478831), gardés comme l’IBAN TN59 qui les précède."
       }
     },
     "establishments": {
@@ -2714,7 +2715,7 @@
       "number_hint": "Lettres, chiffres et . _ / -, 32 caractères au plus, unique dans l’entreprise.",
       "active_hint": "Un fournisseur inactif reste sur ses dépenses mais n’est plus proposé pour les nouvelles.",
       "country_hint": "Deux lettres, comme TN ou FR. Laissé vide, le pays de l’entreprise.",
-      "iban_hint": "Le compte sur lequel le fournisseur est payé ; les espaces sont retirés.",
+      "iban_hint": "Le compte sur lequel le fournisseur est payé : son IBAN, ou les 20 chiffres de son RIB tunisien (exemple : 10006035183598478831), gardés comme l’IBAN TN59 qui les précède. Les espaces sont retirés.",
       "terms_hint": "Jours après la facture du fournisseur avant que son paiement soit dû, de 0 à 365.",
       "notes_hint": "Pour votre équipe uniquement."
     },
