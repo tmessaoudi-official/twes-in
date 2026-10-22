@@ -19,6 +19,9 @@ import arReports from '../../public/i18n/reports/ar.json';
 import enReports from '../../public/i18n/reports/en.json';
 import frReports from '../../public/i18n/reports/fr.json';
 import en from '../../public/i18n/en.json';
+import arInvoiceBulk from '../../public/i18n/invoice-bulk/ar.json';
+import enInvoiceBulk from '../../public/i18n/invoice-bulk/en.json';
+import frInvoiceBulk from '../../public/i18n/invoice-bulk/fr.json';
 import arExpense from '../../public/i18n/expense/ar.json';
 import enExpense from '../../public/i18n/expense/en.json';
 import frExpense from '../../public/i18n/expense/fr.json';
@@ -71,6 +74,7 @@ const parts: Record<string, Record<string, unknown>> = {
   'demo-mails': { fr: frDemoMails, en: enDemoMails, ar: arDemoMails },
   expense: { fr: frExpense, en: enExpense, ar: arExpense },
   import: { fr: frImport, en: enImport, ar: arImport },
+  'invoice-bulk': { fr: frInvoiceBulk, en: enInvoiceBulk, ar: arInvoiceBulk },
   platform: { fr: frPlatform, en: enPlatform, ar: arPlatform },
   purchases: { fr: frPurchases, en: enPurchases, ar: arPurchases },
   records: { fr: frRecords, en: enRecords, ar: arRecords },

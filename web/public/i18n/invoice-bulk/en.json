@@ -1,0 +1,39 @@
+{
+  "invoices": {
+    "bulk": {
+      "exported": "{count, plural, one {{{count}} invoice exported} other {{{count}} invoices exported}}.",
+      "check_failed": "The selection could not be checked. Try again.",
+      "skipped_title": "{count, plural, =0 {No invoice left out} one {One selected invoice is left out} other {{{count}} selected invoices are left out}}",
+      "unknown": "Unknown invoice",
+      "reasons": {
+        "not_found": "Not found: deleted meanwhile, or no longer reachable",
+        "draft": "Draft: not numbered yet",
+        "cancelled": "Abandoned: never numbered",
+        "paid": "Settled: nothing is left due",
+        "credit_note": "Credit note: it is not cashed",
+        "instrument_held": "A cheque or bill of exchange is outstanding on it",
+        "issued_after": "Issued after the payment day"
+      },
+      "close": "Close",
+      "export_rest": "{count, plural, one {Export the other one} other {Export the other {{count}}}}",
+      "pdf": "PDF",
+      "pdf_as": {
+        "pdf": "One PDF",
+        "zip": "One PDF per invoice (zip)"
+      },
+      "pdf_rest": "{count, plural, one {Download the invoice} other {Download the {{count}} invoices}}",
+      "printed": "{count, plural, one {{{count}} invoice as PDF} other {{{count}} invoices as PDF}}.",
+      "include_drafts": "Include the drafts (with a draft watermark)",
+      "include_cancelled": "Include the abandoned ones (with a cancelled watermark)",
+      "pay": "Record payment",
+      "pay_title": "{count, plural, =0 {No invoice to record a payment for} one {Record payment for one invoice} other {Record payment for {{count}} invoices}}",
+      "pay_how": "The payment",
+      "pay_reference_hint": "Kept on each payment, such as the transfer number",
+      "pay_total": "Total received",
+      "pay_skipped": "{count, plural, one {One invoice is not paid} other {{{count}} invoices are not paid}}",
+      "pay_go": "{count, plural, =0 {Record payment} one {Record payment for the invoice} other {Record payment for the {{count}} invoices}}",
+      "pay_changed": "An invoice changed since the preview: nothing was recorded. Here is the preview as it stands now.",
+      "paid": "{count, plural, one {{{count}} invoice paid: {{total}}} other {{{count}} invoices paid: {{total}}}}."
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "invoices": {
+    "bulk": {
+      "exported": "{count, plural, one {{{count}} facture exportée} other {{{count}} factures exportées}}.",
+      "check_failed": "La sélection n’a pas pu être vérifiée. Réessayez.",
+      "skipped_title": "{count, plural, =0 {Aucune facture laissée de côté} one {Une facture sélectionnée est laissée de côté} other {{{count}} factures sélectionnées sont laissées de côté}}",
+      "unknown": "Facture inconnue",
+      "reasons": {
+        "not_found": "Introuvable : supprimée entre-temps, ou plus accessible",
+        "draft": "Brouillon : pas encore numérotée",
+        "cancelled": "Abandonnée : jamais numérotée",
+        "paid": "Soldée : plus rien n’est dû",
+        "credit_note": "Avoir : il ne s’encaisse pas",
+        "instrument_held": "Un chèque ou une traite est en cours sur elle",
+        "issued_after": "Émise après le jour du paiement"
+      },
+      "close": "Fermer",
+      "export_rest": "{count, plural, one {Exporter l’autre} other {Exporter les {{count}} autres}}",
+      "pdf": "PDF",
+      "pdf_as": {
+        "pdf": "Un seul PDF",
+        "zip": "Un PDF par facture (zip)"
+      },
+      "pdf_rest": "{count, plural, one {Télécharger la facture} other {Télécharger les {{count}} factures}}",
+      "printed": "{count, plural, one {{{count}} facture en PDF} other {{{count}} factures en PDF}}.",
+      "include_drafts": "Inclure les brouillons (filigrane BROUILLON)",
+      "include_cancelled": "Inclure les abandonnées (filigrane ANNULÉ)",
+      "pay": "Encaisser",
+      "pay_title": "{count, plural, =0 {Aucune facture à encaisser} one {Encaisser une facture} other {Encaisser {{count}} factures}}",
+      "pay_how": "Le paiement",
+      "pay_reference_hint": "Gardée sur chaque paiement, comme le numéro du virement",
+      "pay_total": "Total encaissé",
+      "pay_skipped": "{count, plural, one {Une facture n’est pas encaissée} other {{{count}} factures ne sont pas encaissées}}",
+      "pay_go": "{count, plural, =0 {Encaisser} one {Encaisser la facture} other {Encaisser les {{count}} factures}}",
+      "pay_changed": "Une facture a changé depuis l’aperçu : rien n’a été encaissé. Voici l’aperçu à jour.",
+      "paid": "{count, plural, one {{{count}} facture encaissée : {{total}}} other {{{count}} factures encaissées : {{total}}}}."
+    }
+  }
+}

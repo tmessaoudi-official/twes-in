@@ -18,6 +18,7 @@ import {
 import { Feedback } from '../shared/feedback/feedback';
 import { FileSaver } from '../shared/files/save-file';
 import { todayIn } from '../shared/i18n/format';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { StepUp } from '../shared/step-up/step-up';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { InvoiceBulk } from './invoice-bulk';
@@ -31,6 +32,8 @@ describe('InvoiceBulk', () => {
   const checked = vi.fn<
     (companyId: string, action: string, ids: readonly string[]) => Promise<BulkCheck>
   >(() => (check instanceof Error ? Promise.reject(check) : Promise.resolve(check)));
+
+  let opened = vi.fn<(name: string) => Promise<void>>(() => Promise.resolve());
 
   function create(ids: readonly string[], mayPay = false) {
     saved = [];
@@ -46,6 +49,7 @@ describe('InvoiceBulk', () => {
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: StepUp, useValue: { request: vi.fn() } },
+        { provide: TextsParts, useValue: { open: (name: string) => opened(name) } },
         { provide: FileSaver, useValue: { save: (_file: Blob, name: string) => saved.push(name) } },
         {
           provide: InvoicesFacade,
@@ -71,6 +75,7 @@ describe('InvoiceBulk', () => {
 
   afterEach(() => {
     checked.mockClear();
+    opened = vi.fn<(name: string) => Promise<void>>(() => Promise.resolve());
     document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
   });
 
@@ -108,6 +113,27 @@ describe('InvoiceBulk', () => {
   }
 
   const said = () => (TestBed.inject(Feedback) as RecordedFeedback).said;
+
+  it('opens its texts as it shows, and waits for them before it asks the API anything', async () => {
+    check = { rows: [row('a', 'FAC-1')], included: 1, skipped: 0 };
+    let ready = (): void => undefined;
+    opened = vi.fn<(name: string) => Promise<void>>(
+      () => new Promise<void>((resolve) => (ready = resolve)),
+    );
+    const fixture = create(['a']);
+    expect(opened).toHaveBeenCalledWith('invoice-bulk');
+
+    await exportAs(fixture, 'csv');
+    expect(checked).not.toHaveBeenCalled();
+
+    ready();
+    await settle();
+    expect(checked).toHaveBeenCalledExactlyOnceWith('c1', 'export', ['a']);
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/companies/c1/exports/invoices.csv?id[]=a')
+      .flush(new Blob(['file']));
+    await settle();
+  });
 
   it('downloads the selected invoices straight away when the API finds every one of them', async () => {
     check = { rows: [row('a', 'FAC-1'), row('b', null)], included: 2, skipped: 0 };
