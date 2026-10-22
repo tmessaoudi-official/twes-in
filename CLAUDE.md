@@ -121,7 +121,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   JSON through `fingers_crossed` into `Shared/Infrastructure/Logging/ChannelStreams`, on STDERR, or one file per
   channel under `LOG_DIRECTORY` when self-hosted, rotated by `infra/self-hosted/logrotate.conf` (its test rotates for
   real). A service picks its channel with `#[WithMonologChannel]`; list them with `bin/console debug:autowiring logger`.
-- `docs/fiscal/<CC>.md` — sourced fiscal rules per country; `api/config/fiscal/<CC>.yaml` — the preset.
+- `docs/fiscal/<CC>.md` — sourced fiscal rules per country; `api/config/fiscal/<CC>.yaml` — the preset;
+  `docs/fiscal/TN-accountant-packet.md` — every Tunisian rule the code applies, its source and place, for the accountant
+  to confirm or correct (a dated snapshot: its line numbers are the tree's of that date).
 - `docs/spec/pricing-vectors.json` — the calculator's fixture set.
 - `api/config/languages.json` and its identical copy `web/src/app/shared/i18n/languages.json` — the language catalogue:
   each language's BCP 47 tag, name in itself, direction, script, CLDR plural forms, and whether the interface, the documents

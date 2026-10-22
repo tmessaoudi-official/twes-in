@@ -28,6 +28,20 @@ final class DomainRule extends Constraint
     }
 
     /**
+     * A refusal of what another record already holds (a code another product has, the last owner), answered 409 and
+     * read exactly as a 422's: the screen takes its reason and parameters, never a word of its English detail.
+     *
+     * @param array<string, string|int> $params
+     */
+    public static function conflict(string $field, string $message, string $reason, array $params = [], ?\Throwable $previous = null): ValidationException
+    {
+        $conflict = self::refused($field, $message, $reason, $params, $previous);
+        $conflict->setStatus(409);
+
+        return $conflict;
+    }
+
+    /**
      * The violation a domain refusal makes of a field, as a form's own validation adds it.
      *
      * @param array<string, string|int> $params

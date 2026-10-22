@@ -264,6 +264,8 @@ final class MembersTest extends ApiTestCase
         $this->sendJson('DELETE', $this->path().'/'.$owner->getId()->toRfc4122());
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        // Told apart from an existing member by its reason, never by a word of its English detail.
+        self::assertSame([['propertyPath' => 'member', 'reason' => 'last_owner', 'params' => []]], $this->refusals());
     }
 
     public function testAnAnonymousCallerIsRefused(): void

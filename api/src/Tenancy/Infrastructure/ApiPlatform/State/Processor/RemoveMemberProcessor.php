@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\StepUp\RecentProof;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Member\LastOwner;
 use App\Tenancy\Application\Member\NotAMember;
 use App\Tenancy\Application\Member\RemoveMember;
@@ -21,7 +22,6 @@ use App\Tenancy\Infrastructure\ApiPlatform\Resource\MemberResource;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;
 
@@ -46,7 +46,8 @@ final readonly class RemoveMemberProcessor implements ProcessorInterface
         } catch (NotAMember $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (LastOwner $last) {
-            throw new ConflictHttpException($last->getMessage(), $last);
+            // Told apart from a member already there by its reason: the screen never reads the English detail.
+            throw DomainRule::conflict('member', $last->getMessage(), 'last_owner', [], $last);
         } catch (RoleNotManageable $refused) {
             throw new AccessDeniedHttpException($refused->getMessage(), $refused);
         }
