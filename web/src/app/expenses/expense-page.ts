@@ -254,18 +254,21 @@ export class ExpensePage {
     return options === null ? null : paymentForm(options);
   });
   /**
-   * What the payment's form is of. Reading the expense again yields a new object with the same content, as recording it
-   * does, and must not rebuild the form over what is being typed; another expense, state or suggestion must.
+   * What the payment's form is of. Reading the expense or the options again yields new objects with the same content, as
+   * recording it does, and must not rebuild the form over what is being typed; another expense, state, suggestion or
+   * set of choices must.
    */
   private readonly paymentKey = computed(() => {
     const current = this.current();
-    return current == null
+    const descriptor = this.paymentDescriptor();
+    return current == null || descriptor === null
       ? null
-      : `${current.id}|${current.status}|${current.suggestedWithholdingRate ?? ''}`;
+      : `${current.id}|${current.status}|${current.suggestedWithholdingRate ?? ''}|${JSON.stringify(descriptor)}`;
   });
   protected readonly paymentFormGroup = computed(() => {
-    const descriptor = this.paymentDescriptor();
-    return descriptor === null || this.paymentKey() === null
+    if (this.paymentKey() === null) return null;
+    const descriptor = untracked(() => this.paymentDescriptor());
+    return descriptor === null
       ? null
       : untracked(() =>
           buildFormGroup(
@@ -303,12 +306,22 @@ export class ExpensePage {
       ? null
       : classifyForm(options);
   });
-  protected readonly classifyFormGroup = computed(() => {
+  /** As the payment's: equal options read again keep the operation being chosen; another code said or other choices do not. */
+  private readonly classifyKey = computed(() => {
     const descriptor = this.classifyDescriptor();
-    const code = this.tejOperation()?.code ?? '';
     return descriptor === null
       ? null
-      : untracked(() => buildFormGroup(descriptor, { withholdingOperationCode: code }));
+      : `${this.tejOperation()?.code ?? ''}|${JSON.stringify(descriptor)}`;
+  });
+  protected readonly classifyFormGroup = computed(() => {
+    if (this.classifyKey() === null) return null;
+    return untracked(() => {
+      const descriptor = this.classifyDescriptor();
+      const code = this.tejOperation()?.code ?? '';
+      return descriptor === null
+        ? null
+        : buildFormGroup(descriptor, { withholdingOperationCode: code });
+    });
   });
 
   constructor() {
