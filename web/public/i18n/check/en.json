@@ -2,6 +2,7 @@
   "check": {
     "reasons": {
       "price_missing": "Selling price missing",
+      "price_not_reached": "Imported price including taxes not reached",
       "vendor_missing": "Vendor missing",
       "vat_missing": "VAT missing",
       "cost_missing": "Cost price missing",

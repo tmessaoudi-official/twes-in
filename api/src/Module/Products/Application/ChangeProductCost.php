@@ -11,17 +11,12 @@ namespace App\Module\Products\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Fiscal\Application\CurrencyScales;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Model\ProductCostChange;
 use App\Module\Products\Domain\Repository\ProductCostChangeRepository;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\CostChangeSource;
-use App\Settings\Application\ReadSetting;
-use App\Settings\Application\SettingContext;
-use App\Shared\Application\Effect;
-use App\Shared\Application\Effects;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
@@ -31,27 +26,18 @@ use Symfony\Component\Uid\Uuid;
  * Changes what a product costs the company on its own, as a receipt does, keeping the cost it had and what moved it.
  * The stock context calls it inside the transaction of the receipt, so the cost and its history commit with the goods.
  * The same figure is no change, and writes nothing. Audited by the name of the field, like any revision of a product.
- * A receipt moving the cost under a price that stays moves the margin: what follows is the company's setting
- * (ProductPriceSettings), the price kept and the move offered for review by default, never a margin moved in silence:
- * what the receipt did to the margin or the price is said to whoever received (`Effects`), in that receipt's answer.
+ * A receipt moving the cost under a price that stays moves the margin: what follows is the company's setting, through
+ * PriceOnCostMove, said to whoever received in that receipt's answer.
  */
 final readonly class ChangeProductCost
 {
-    /** A receipt moved the price with its cost, as the company's setting asks; said with the price it had. */
-    public const string PRICE_FOLLOWED = 'product.price_followed';
-
-    /** A receipt moved the cost under a price kept for review: the margin moved. */
-    public const string MARGIN_MOVED = 'product.margin_moved';
-
     public function __construct(
         private ProductRepository $products,
         private ProductCostChangeRepository $history,
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
-        private ReadSetting $settings,
-        private CurrencyScales $scales,
-        private Effects $effects,
+        private PriceOnCostMove $priceMove,
     ) {
     }
 
@@ -78,41 +64,12 @@ final readonly class ChangeProductCost
             if ((null !== $before && !is_numeric($before)) || (null !== $after && !is_numeric($after))) {
                 throw new \LogicException('A product cost is a number or nothing.');
             }
-            $fields = CostChangeSource::Receipt === $source ? $this->priceUnder($company, $product, $before, $now) : ['costPrice'];
+            $fields = CostChangeSource::Receipt === $source ? $this->priceMove->after($company, $product, $before, $now) : ['costPrice'];
             $this->products->save($product);
             $this->history->save(new ProductCostChange($product, $before, $after, $source, $sourceId, $actorUserId, $now));
             $this->audit->record(new AuditEntry(ManageProducts::ENTITY_TYPE, $product->getId(), ManageProducts::REVISED, $actorUserId, ['fields' => $fields], $company->getId()));
 
             return true;
         });
-    }
-
-    /**
-     * What the setting does to the price a receipt's cost moved under; a cost typed in the product is seen beside its
-     * price and asks nothing.
-     *
-     * @return list<string> the fields the receipt changed
-     */
-    private function priceUnder(Company $company, Product $product, ?string $before, \DateTimeImmutable $now): array
-    {
-        $context = new SettingContext($company, productCategoryId: $product->getCategory()?->getId(), productId: $product->getId());
-        $mode = ProductPriceSettings::modeOf($this->settings->value($context, ProductPriceSettings::ON_COST_CHANGE));
-        if (PriceOnCostChange::Keep === $mode) {
-            return ['costPrice'];
-        }
-        $product->openPriceReview($before, $now);
-        if (null === $product->priceReview()) {
-            return ['costPrice'];
-        }
-        if (PriceOnCostChange::Follow !== $mode) {
-            $this->effects->said(new Effect(self::MARGIN_MOVED, $product->getId()));
-
-            return ['costPrice'];
-        }
-        $priceBefore = $product->getDetails()->unitPriceNet;
-        $product->adjustPriceToReview($this->scales->of($company->getCurrency()), $now);
-        $this->effects->said(new Effect(self::PRICE_FOLLOWED, $product->getId(), ['previousPrice' => $priceBefore]));
-
-        return ['costPrice', 'unitPriceNet'];
     }
 }

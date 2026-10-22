@@ -141,6 +141,10 @@ class Product implements CompanyOwned
     #[ORM\Column(options: ['default' => false])]
     private bool $toCount = false;
 
+    /** Priced from a file's price taxes included that no net price reaches, kept at the nearest, until a price is set. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $priceNotReached = false;
+
     /**
      * The product this one was merged into, which lists and pickers show in its place; written by the records engine,
      * which also switches it off, and emptied again by « Annuler la fusion ».
@@ -525,6 +529,7 @@ class Product implements CompanyOwned
             ProductCheckReason::CategoryMissing => null === $this->category,
             ProductCheckReason::UnitToConfirm => $this->unitToConfirm,
             ProductCheckReason::ToCount => $this->toCount,
+            ProductCheckReason::PriceNotReached => $this->priceNotReached,
         }));
     }
 
@@ -591,6 +596,23 @@ class Product implements CompanyOwned
             return false;
         }
         $this->unitToConfirm = false;
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    /**
+     * Whether the price written is the one kept: a file's price taxes included that no net price reaches leaves the
+     * product to check, a price written as it is kept lifts that.
+     *
+     * @return bool whether that changed
+     */
+    public function priceReached(bool $reached, \DateTimeImmutable $now): bool
+    {
+        if ($this->priceNotReached === !$reached) {
+            return false;
+        }
+        $this->priceNotReached = !$reached;
         $this->updatedAt = $now;
 
         return true;

@@ -32,6 +32,7 @@ final class ProductCheckRules
             ProductCheckReason::BarcodeMissing => 'NOT EXISTS (SELECT check_code.id FROM '.ProductBarcode::class.' check_code WHERE check_code.product = p)',
             ProductCheckReason::CategoryMissing => 'p.category IS NULL',
             ProductCheckReason::UnitToConfirm => 'p.unitToConfirm = true',
+            ProductCheckReason::PriceNotReached => 'p.priceNotReached = true',
             ProductCheckReason::ToCount => 'p.toCount = true',
         };
 

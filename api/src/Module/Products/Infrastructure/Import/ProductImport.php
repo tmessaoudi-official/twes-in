@@ -57,6 +57,7 @@ use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\Barcode;
 use App\Module\Products\Domain\ValueObject\BarcodeLine;
 use App\Module\Products\Domain\ValueObject\BarcodeRole;
+use App\Module\Products\Domain\ValueObject\CostChangeSource;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
@@ -307,7 +308,7 @@ final readonly class ProductImport implements DeclaresImport
 
                 return RowImported::Created;
             }
-            $written = $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
+            $written = $this->manage->revise($company, $existing->getId(), $input, $actorUserId, costSource: CostChangeSource::Import);
             $this->noteBelowCost($written, $record, $seesCosts, $notes);
             $after = $this->inFile($company, $written, $context, $record);
             $moved = [
@@ -553,7 +554,11 @@ final readonly class ProductImport implements DeclaresImport
         $kind = $record->value('kind');
         $taxIds = $faults->read(fn (): array => $this->taxIds($company, $record, $current, $context), false);
         $unpriced = $this->unpriced($record, $current, $context);
-        $price = $unpriced ? '0' : $faults->read(fn (): string => $this->priceOf($company, $record, $held, $taxIds, $context, $notes), '0');
+        // Whether the price written is the one kept; nothing to say when the row names no price.
+        $reached = null === $record->value('unit_price_net') && null === $record->value('unit_price_gross') ? null : true;
+        $price = $unpriced ? '0' : $faults->read(function () use ($company, $record, $held, $taxIds, $context, $notes, &$reached): string {
+            return $this->priceOf($company, $record, $held, $taxIds, $context, $notes, $reached);
+        }, '0');
         $productKind = null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(TypedText::trimmed($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods);
 
         return new ProductInput(
@@ -584,6 +589,7 @@ final readonly class ProductImport implements DeclaresImport
             unitNamed: null !== $record->value('unit_code'),
             // Goods coming in from a file are counted on the shelf before their stock is trusted.
             awaitsCount: null === $current && ProductKind::Goods === $productKind,
+            priceReached: $reached,
         );
     }
 
@@ -597,7 +603,7 @@ final readonly class ProductImport implements DeclaresImport
      *
      * @throws RowRejected
      */
-    private function priceOf(Company $company, ImportRecord $record, ?ProductDetails $held, array|false $taxIds, ImportContext $context, RowNotes $notes): string
+    private function priceOf(Company $company, ImportRecord $record, ?ProductDetails $held, array|false $taxIds, ImportContext $context, RowNotes $notes, ?bool &$reached): string
     {
         $net = ImportCells::decimal($record, 'unit_price_net', 4);
         if (null === $record->value('unit_price_gross')) {
@@ -620,15 +626,16 @@ final readonly class ProductImport implements DeclaresImport
             // A tax charged on a document rather than on a line: the product's rules refuse it on its own cell.
             return $held->unitPriceNet ?? '0';
         } catch (GrossUnreachable $unreachable) {
-            $reached = match ($context->chosen(self::UNREACHABLE_GROSS)) {
+            $nearest = match ($context->chosen(self::UNREACHABLE_GROSS)) {
                 self::GROSS_ABOVE => $unreachable->above,
                 self::GROSS_REFUSE => throw new RowRejected('unit_price_gross', $unreachable->getMessage(), 'gross_unreachable', ['gross' => $gross, 'below' => $unreachable->below, 'above' => $unreachable->above]),
                 default => $unreachable->below,
             };
-            $notes->note('unit_price_gross', 'gross_reached', ['gross' => $gross, 'reached' => $reached]);
+            $notes->note('unit_price_gross', 'gross_reached', ['gross' => $gross, 'reached' => $nearest]);
+            $reached = false;
 
             // The nearest prices are those a net price reaches, so this one is found.
-            return $this->prices->netOf($company, array_map(static fn (Uuid $id): string => $id->toRfc4122(), $taxIds), $reached);
+            return $this->prices->netOf($company, array_map(static fn (Uuid $id): string => $id->toRfc4122(), $taxIds), $nearest);
         }
     }
 

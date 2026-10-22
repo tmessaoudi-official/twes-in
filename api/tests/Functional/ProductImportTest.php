@@ -871,6 +871,44 @@ Cheville 10 mm,6191234567897
     }
 
     /**
+     * A price taxes included that no net price reaches is kept at the nearest and the product marked « À vérifier » for
+     * it, as the note alone may go unread (row 61, ruled 2026-10-22 00:44): a row giving a price the product reaches
+     * lifts the doubt, a row naming no price keeps it, and so does the person saving the product's own page.
+     */
+    public function testAPriceTaxesIncludedNoNetReachesMarksTheProductUntilAPriceIsSet(): void
+    {
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->em()->persist($this->company);
+        $this->em()->flush();
+        static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
+        $this->signedIn(['product.read', 'product.write']);
+        $reasons = function (): array {
+            $this->em()->clear();
+
+            return array_map(static fn (ProductCheckReason $reason): string => $reason->value, $this->product('A-2')->checkReasons(self::everything()));
+        };
+
+        $this->import("reference,name,unit_code,unit_price_gross,default_tax_codes\nA-2,Pièce 2,H87,9.99,TVA20\n");
+        self::assertResponseIsSuccessful();
+        self::assertContains('price_not_reached', $reasons());
+
+        $this->import("reference,name\nA-2,Pièce deux\n", mode: 'upsert');
+        self::assertContains('price_not_reached', $reasons(), 'a row naming no price leaves the doubt');
+
+        $this->import("reference,name,unit_price_gross\nA-2,Pièce deux,12.00\n", mode: 'upsert');
+        self::assertNotContains('price_not_reached', $reasons(), 'a price reached lifts it');
+
+        $this->import("reference,name,unit_price_gross\nA-2,Pièce deux,9.99\n", mode: 'upsert');
+        self::assertContains('price_not_reached', $reasons());
+        $this->getJson($this->companyPath().'/products/'.$this->product('A-2')->getId()->toRfc4122());
+        self::assertContains('price_not_reached', $this->arrayAt($this->json(), 'checkReasons'));
+        $saved = $this->json();
+        $this->sendJson('PUT', $this->companyPath().'/products/'.$this->stringAt($saved, 'id'), array_intersect_key($saved, array_flip(['reference', 'name', 'description', 'kind', 'unitId', 'unitPriceNet', 'costPrice', 'categoryId', 'defaultTaxComponentIds', 'isActive', 'customFields', 'version'])));
+        self::assertResponseIsSuccessful();
+        self::assertNotContains('price_not_reached', $this->arrayAt($this->json(), 'checkReasons'), 'saved on its page, with the price in front of whoever saved it');
+    }
+
+    /**
      * A row names a pack and a supplier's code beside the unit code (F26): each is added, or the one the product
      * already holds under that code is updated, and a code the row does not name is never removed, so a product with
      * several packs or several suppliers keeps them all. The change list shows the code the row names.

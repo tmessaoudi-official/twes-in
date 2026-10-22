@@ -25,6 +25,7 @@ export type LineTaxFamily = 'vat' | 'levy';
  */
 export type ProductCheckReason =
   | 'price_missing'
+  | 'price_not_reached'
   | 'vendor_missing'
   | 'vat_missing'
   | 'cost_missing'
@@ -34,6 +35,7 @@ export type ProductCheckReason =
   | 'to_count';
 export const PRODUCT_CHECK_REASONS: readonly ProductCheckReason[] = [
   'price_missing',
+  'price_not_reached',
   'vendor_missing',
   'vat_missing',
   'cost_missing',
@@ -140,7 +142,7 @@ export interface ProductMergedInto {
 }
 
 /** What moved a product's cost price: its creation, a person's edit, or a stock receipt that applied one. */
-export type ProductCostSource = 'created' | 'edited' | 'receipt';
+export type ProductCostSource = 'created' | 'edited' | 'receipt' | 'import';
 
 /** One change of what a product costs the company, as the history lists it, the newest first. */
 export interface ProductCostChangeRow {

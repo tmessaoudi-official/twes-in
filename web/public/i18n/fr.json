@@ -2130,6 +2130,7 @@
       "zeroPriceIntended": "Prix 0 voulu",
       "unitToConfirm": "Unité à confirmer",
       "toCount": "À compter",
+      "priceNotReached": "Prix TTC importé non atteint",
       "vendorIds": "Fournisseurs"
     },
     "form": {
@@ -2336,7 +2337,8 @@
       "source": {
         "created": "Fixé à la création du produit",
         "edited": "Modifié sur le produit",
-        "receipt": "Appliqué par une réception de stock"
+        "receipt": "Appliqué par une réception de stock",
+        "import": "Lu dans un fichier importé"
       }
     },
     "photos": {

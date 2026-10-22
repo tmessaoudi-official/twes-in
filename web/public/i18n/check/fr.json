@@ -2,6 +2,7 @@
   "check": {
     "reasons": {
       "price_missing": "Prix de vente manquant",
+      "price_not_reached": "Prix TTC importé non atteint",
       "vendor_missing": "Fournisseur manquant",
       "vat_missing": "TVA manquante",
       "cost_missing": "Prix de revient manquant",

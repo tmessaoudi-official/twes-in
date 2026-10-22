@@ -96,7 +96,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 final class ProductResource
 {
     /** `ProductCheckReason`'s values, which an attribute cannot read from the enum; `ProductCheckTest` holds them equal. */
-    public const array CHECK_REASONS = ['price_missing', 'vendor_missing', 'vat_missing', 'cost_missing', 'barcode_missing', 'category_missing', 'unit_to_confirm', 'to_count'];
+    public const array CHECK_REASONS = ['price_missing', 'price_not_reached', 'vendor_missing', 'vat_missing', 'cost_missing', 'barcode_missing', 'category_missing', 'unit_to_confirm', 'to_count'];
 
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
     /** A decimal string, as every amount is: a float would round it. */

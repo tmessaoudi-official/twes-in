@@ -19,6 +19,7 @@ use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\CostBasis;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Module\Products\Application\ChangeProductCost;
+use App\Module\Products\Application\PriceOnCostMove;
 use App\Module\Products\Application\ProductPriceSettings;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\CostChangeSource;
@@ -203,7 +204,7 @@ final class KeepStockCostOnReceiveTest extends TestCase
         $this->settings->save(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new StockCostSettings(), new ProductPriceSettings()]), $this->settings));
         $this->history = new InMemoryProductCostChanges();
-        $this->keep = new KeepStock($movements, $lots, $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges($transactions), null, new ProductCostOnReceipt(new ChangeProductCost($products, $this->history, $audit, $clock, $transactions, $read, ShippedFiscalPresets::scales(), new InMemoryEffects())));
+        $this->keep = new KeepStock($movements, $lots, $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges($transactions), null, new ProductCostOnReceipt(new ChangeProductCost($products, $this->history, $audit, $clock, $transactions, new PriceOnCostMove($read, ShippedFiscalPresets::scales(), new InMemoryEffects()))));
     }
 
     private function product(string $reference, string $costPrice): Product

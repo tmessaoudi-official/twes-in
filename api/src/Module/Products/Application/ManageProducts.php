@@ -81,6 +81,7 @@ final readonly class ManageProducts
         private ProductCostChangeRepository $costChanges,
         private ProductReferences $references,
         private RecordVersions $versions,
+        private PriceOnCostMove $priceMove,
     ) {
     }
 
@@ -203,6 +204,9 @@ final readonly class ManageProducts
             if ($input->awaitsCount) {
                 $product->awaitCount();
             }
+            if (false === $input->priceReached) {
+                $product->priceReached(false, $now);
+            }
             $this->products->save($product);
             $this->record($company, $product->getId(), self::CREATED, [], $actorUserId);
             $this->keepCostChange($product, null, CostChangeSource::Created, $actorUserId, $now);
@@ -221,9 +225,9 @@ final readonly class ManageProducts
      * @throws RecordChanged
      * @throws ProductMergedAway
      */
-    public function revise(Company $company, Uuid $id, ProductInput $input, ?Uuid $actorUserId, ?int $version = null): Product
+    public function revise(Company $company, Uuid $id, ProductInput $input, ?Uuid $actorUserId, ?int $version = null, CostChangeSource $costSource = CostChangeSource::Edited): Product
     {
-        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version): Product {
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId, $version, $costSource): Product {
             $product = $this->locked($company, $id);
             if (null !== $version) {
                 $this->versions->expect($product, $version);
@@ -263,11 +267,19 @@ final readonly class ManageProducts
             if ($input->unitNamed && $product->confirmUnit($now)) {
                 $changed[] = 'unitToConfirm';
             }
+            if (null !== $input->priceReached && $product->priceReached($input->priceReached, $now)) {
+                $changed[] = 'priceNotReached';
+            }
+            // A cost read in from a file under a price the row leaves is a cost moving under a kept price, as a receipt's
+            // is; a price given beside it is its author's choice, and a cost typed here is seen beside its price.
+            if (CostChangeSource::Import === $costSource && \in_array('costPrice', $changed, true) && !\in_array('unitPriceNet', $changed, true)) {
+                $changed = array_values(array_unique([...$changed, ...$this->priceMove->after($company, $product, $costBefore, $now)]));
+            }
             if ([] !== $changed) {
                 $this->products->save($product);
                 $this->record($company, $product->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
                 if (\in_array('costPrice', $changed, true)) {
-                    $this->keepCostChange($product, $costBefore, CostChangeSource::Edited, $actorUserId, $now);
+                    $this->keepCostChange($product, $costBefore, $costSource, $actorUserId, $now);
                 }
             }
 

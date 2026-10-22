@@ -187,6 +187,52 @@ final class ProductPriceReviewTest extends ApiTestCase
         self::assertSame([['kind' => 'product.price_followed', 'id' => $this->productId, 'params' => ['previousPrice' => '1250.0000']]], $this->effects(), 'the price it had, for « Annuler »');
     }
 
+    /**
+     * A cost an import moves under a price the row leaves as it is moves the margin as a receipt does: a supplier's
+     * price list read in is no person looking at each product's price (row 29, ruled 2026-10-22 00:44).
+     */
+    public function testAnImportedCostUnderAKeptPriceOpensTheReviewAndSaysIt(): void
+    {
+        $this->signedIn(['company.read', 'product.read', 'product.write', 'product.cost.read']);
+        $this->importCosts("reference,name,cost_price\nART-001,Perceuse,1000\n");
+        self::assertSame([], $this->effects(), 'a first cost moves no margin');
+
+        $this->importCosts("reference,name,cost_price\nART-001,Perceuse,1100\n");
+
+        self::assertSame([['kind' => 'product.margin_moved', 'id' => $this->productId, 'params' => []]], $this->effects());
+        $this->getJson($this->path());
+        self::assertSame(['previousCost' => '1000.0000', 'cost' => '1100.0000', 'price' => '1250.0000', 'suggestedPrice' => '1375.000', 'previousMargin' => '20.0', 'margin' => '12.0'], $this->review());
+        self::assertSame(['import', 'import'], $this->em()->getConnection()->fetchFirstColumn('SELECT source FROM product_cost_change WHERE product_id = ? ORDER BY new_cost', [$this->productId]));
+    }
+
+    /** A row giving the price beside the cost is the price its author chose: nothing to review. */
+    public function testAnImportedCostBesideItsOwnPriceOpensNothing(): void
+    {
+        $this->signedIn(['company.read', 'product.read', 'product.write', 'product.cost.read']);
+        $this->importCosts("reference,name,cost_price\nART-001,Perceuse,1000\n");
+
+        $this->importCosts("reference,name,unit_price_net,cost_price\nART-001,Perceuse,1400,1100\n");
+
+        self::assertSame([], $this->effects());
+        $this->getJson($this->path());
+        self::assertSame(['1100.0000', '1400.0000', null], [$this->json()['costPrice'] ?? null, $this->json()['unitPriceNet'] ?? null, $this->review()]);
+    }
+
+    public function testAnImportedCostMovesThePriceOfACompanyFollowingTheMargin(): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.price_on_cost_change', 'follow', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->signedIn(['company.read', 'product.read', 'product.write', 'product.cost.read']);
+        $this->importCosts("reference,name,cost_price\nART-001,Perceuse,1000\n");
+
+        $this->importCosts("reference,name,cost_price\nART-001,Perceuse,1100\n");
+
+        self::assertSame([['kind' => 'product.price_followed', 'id' => $this->productId, 'params' => ['previousPrice' => '1250.0000']]], $this->effects());
+        $this->getJson($this->path());
+        self::assertSame(['1100.0000', '1375.0000', null], [$this->json()['costPrice'] ?? null, $this->json()['unitPriceNet'] ?? null, $this->review()]);
+        self::assertContains(['costPrice', 'unitPriceNet'], $this->revisedFields());
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -209,6 +255,14 @@ final class ProductPriceReviewTest extends ApiTestCase
         $site = $this->stringAt($this->jsonList()[0], 'id');
         $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->productId, 'locationId' => $site, 'quantity' => '2', 'unitCost' => $unitCost, 'applyCost' => 'last']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
+    /** Updates the products a file names, committed. */
+    private function importCosts(string $contents): void
+    {
+        $this->uploadFile($this->path('imports/products'), 'products.csv', $contents, 'file', ['mode' => 'upsert', 'dryRun' => '0', 'switches' => [], 'choices' => []]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['rejected'] ?? null);
     }
 
     /** @return list<mixed> what the last answer said the request did beyond its subject */
