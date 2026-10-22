@@ -33,6 +33,7 @@ use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Domain\ValueObject\PaymentMethod;
 use App\Tenancy\Domain\Model\Company;
+use BcMath\Number;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -102,8 +103,7 @@ final readonly class ManageInstruments
             if (0 !== Decimal::round($amount, $scale)->compare($amount)) {
                 throw new InvalidInvoice('amount', \sprintf('The currency %s has %d decimals.', $company->getCurrency(), $scale));
             }
-            // What the instruments already held or deposited promise is spoken for: the rest is what another can cover.
-            $free = Decimal::of($figures->amountDue)->sub(Decimal::of($this->instruments->openAmount($company->getId(), $invoiceId)));
+            $free = $this->free($company, $invoice);
             if ($amount->compare($free) > 0) {
                 throw new InvalidInvoice('amount', \sprintf('An instrument is at most what is still due and not already covered by another, %s.', Decimal::format($free, $scale)));
             }
@@ -204,6 +204,38 @@ final readonly class ManageInstruments
         }
 
         return [$invoice, $instrument];
+    }
+
+    /**
+     * Whether the instruments put back from the bin, now standing again, still fit what their invoices owe: the bin
+     * restores a row as it was, past the cap `receive` applies. Each invoice is held first, in a fixed order.
+     *
+     * @param list<Uuid> $instrumentIds
+     */
+    public function fitWhatIsDue(Company $company, array $instrumentIds): bool
+    {
+        $invoiceIds = [];
+        foreach ($instrumentIds as $id) {
+            $instrument = $this->instruments->ofIdInCompany($id, $company->getId()) ?? throw new InstrumentNotFound();
+            $invoiceIds[$instrument->getInvoice()->getId()->toRfc4122()] = $instrument->getInvoice()->getId();
+        }
+        ksort($invoiceIds);
+        foreach ($invoiceIds as $invoiceId) {
+            $invoice = $this->invoices->lockedOfIdInCompany($invoiceId, $company->getId()) ?? throw new InvoiceNotFound();
+            if ($this->free($company, $invoice)->compare(0) < 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** What the instruments already held or deposited promise is spoken for: the rest is what another can cover. */
+    private function free(Company $company, Invoice $invoice): Number
+    {
+        $due = $invoice->getIssuedFigures()->amountDue ?? '0';
+
+        return Decimal::of($due)->sub(Decimal::of($this->instruments->openAmount($company->getId(), $invoice->getId())));
     }
 
     /** @param array<string, string> $more */
