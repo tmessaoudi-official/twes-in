@@ -35,7 +35,8 @@ case "$1" in
       exit 0
     fi
     printf '%s\n' "API_BUILD_VERSION=${API_BUILD_VERSION:-}" "TWES_API_IMAGE=${TWES_API_IMAGE:-}" \
-      "TWES_WEB_IMAGE=${TWES_WEB_IMAGE:-}" "TWES_DATABASE_IMAGE=${TWES_DATABASE_IMAGE:-}" "$@" > "$TMPDIR/docker.args"
+      "TWES_WEB_IMAGE=${TWES_WEB_IMAGE:-}" "TWES_DATABASE_IMAGE=${TWES_DATABASE_IMAGE:-}" \
+      "TWES_SECRETS_DIGEST=${TWES_SECRETS_DIGEST:-}" "$@" > "$TMPDIR/docker.args"
     exit "${COMPOSE_EXIT:-0}" ;;
 esac
 EOF
@@ -92,6 +93,18 @@ d=$(repo); e=$(envfile $'MAILER_DSN=""\nMONITOR_TOKEN=t\n')
 out=$(SECRETS="MAILER_DSN MONITOR_TOKEN" run "$d" --build "$e"); check "a secret quoted empty is refused" $? 1 "$out" "give no value to MAILER_DSN"
 d=$(repo); e=$(envfile $'MAILER_DSN=smtp://u:p@relay:587\nMONITOR_TOKEN=t\n')
 out=$(SECRETS="MAILER_DSN MONITOR_TOKEN" run "$d" --build "$e"); check "every secret filled deploys" $? 0 "$out" "v2026.10.12.1"
+
+# Compose keeps a container whose secret's value alone changed, and it reads the old one: the digest of the values,
+# a label of every service mounting one, is what makes a rotated secret recreate them.
+digest_of() { called | grep -o 'TWES_SECRETS_DIGEST=[^ ]*' | cut -d= -f2; }
+first=$(digest_of)
+[[ "$first" =~ ^[0-9a-f]{64}$ ]]; check "compose is handed the digest of the secrets' values" $? 0 "$first" ""
+[[ "$(called)" != *"relay:587"* ]]; check "  never a value itself" $? 0 "$(called)" ""
+out=$(SECRETS="MAILER_DSN MONITOR_TOKEN" run "$d" --build "$e"); [[ "$(digest_of)" == "$first" ]]
+check "  the same while nothing is rotated, so nothing is recreated for nothing" $? 0 "$(digest_of) $first" ""
+d=$(repo); e=$(envfile $'MAILER_DSN=smtp://u:p@relay:587\nMONITOR_TOKEN=rotated\n')
+out=$(SECRETS="MAILER_DSN MONITOR_TOKEN" run "$d" --build "$e"); [[ "$(digest_of)" =~ ^[0-9a-f]{64}$ && "$(digest_of)" != "$first" ]]
+check "  another once one secret is rotated" $? 0 "$(digest_of) $first" ""
 
 out=$(run "$d" "$e"); check "a way of deploying must be named" $? 2 "$out" "Usage"
 out=$(run "$d" --build); check "the values file must be named" $? 2 "$out" "Usage"

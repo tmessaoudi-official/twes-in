@@ -15,6 +15,9 @@
 #              postgres and migrate only
 #   aliases    no `!reset` or `!override` sits in a block an alias or a merge reuses: Compose 2.38, CI's runners, drops
 #              the tag there, and the workers kept the secrets' variables CI exports
+#   rotation   every service mounting a secret carries the label twes.secrets-digest, the digest of the values that
+#              scripts/deploy/deploy.sh hands compose: Compose keeps a running container whose secret's value alone
+#              changed, so without it a rotated key never reaches the container
 # Usage: secrets-overlay.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -46,7 +49,8 @@ for name in "${secrets[@]}"; do values+=("$name=GateValue${name//_/}"); done
 facts=(TWES_HOST=gate.invalid EDGE_TLS=gate@gate.invalid MAILER_SENDER=gate@gate.invalid MONITOR_URL=https://monitor.invalid
   SENTRY_DSN=https://key@monitor.invalid/1 BACKUP_S3_ENDPOINT=s3.invalid BACKUP_S3_BUCKET=b BACKUP_S3_REGION=r
   BACKUP_S3_KEY=GateAccessKeyId LAN_HOST=192.0.2.10 TWES_API_IMAGE=r.invalid/twes-in-api@sha256:0
-  TWES_WEB_IMAGE=r.invalid/twes-in-web@sha256:0 TWES_DATABASE_IMAGE=r.invalid/twes-in-database@sha256:0)
+  TWES_WEB_IMAGE=r.invalid/twes-in-web@sha256:0 TWES_DATABASE_IMAGE=r.invalid/twes-in-database@sha256:0
+  TWES_SECRETS_DIGEST=GateSecretsDigest)
 
 declare -A installations=(
   [production]="compose.yaml compose.prod.yaml"
@@ -108,6 +112,10 @@ for installation in production drill server shop shop-offsite; do
     | select($shim | not)
     | select([$env | to_entries[] | select(.key | endswith("_FILE")) | .value] | index($t) | not)
     | "\($s) mounts \($t) and nothing reads it: run it through twes-secrets or point a <NAME>_FILE at it"' <<<"$config")
+  while IFS= read -r line; do [[ -n "$line" ]] && problem "$installation: $line"; done < <(jq -r '
+    .services | to_entries[] | select((.value.secrets // []) | length > 0)
+    | select((.value.labels // {})["twes.secrets-digest"] != "GateSecretsDigest")
+    | "\(.key) mounts a secret without the label twes.secrets-digest: ${TWES_SECRETS_DIGEST:-}: a rotated secret would never reach it"' <<<"$config")
   for service in "${API_IMAGE[@]}"; do
     jq -e --arg s "$service" '.services | has($s)' <<<"$config" >/dev/null || continue
     mounted=$(jq -r --arg s "$service" '[(.services[$s].secrets // [])[] | .source] | join(" ")' <<<"$config")

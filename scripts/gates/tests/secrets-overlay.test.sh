@@ -27,6 +27,15 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "a reset carried to an alias is name
 d=$(project); edit "$d/compose.deploy.yaml" 's|^    ports: !reset \[\]$|    ports: \&no-ports !reset []|; s|^    environment: \*deploy-environment$|&\n    ports: *no-ports|'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a tag on the anchored line itself is named" $? 1 "$out" "&no-ports carries !reset"
 
+# Compose keeps a running container whose secret's value alone changed: without the digest a rotated key never lands.
+d=$(project); python3 -I - "$d/compose.prod.yaml" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p).read()
+i = s.index('\n  centrifugo:\n'); j = s.index('    labels: *secrets-digest\n', i)
+open(p, 'w').write(s[:j] + s[j + len('    labels: *secrets-digest\n'):])
+PY
+out=$(bash "$GATE" --root "$d" 2>&1); check "a service mounting a secret without the digest label is named" $? 1 "$out" "production: centrifugo mounts a secret without the label twes.secrets-digest"
+
 d=$(project); edit "$d/compose.onprem.yaml" 's|^  SENTRY_DSN: "${SENTRY_DSN:-}"$|&\n  APP_SECRET: "${APP_SECRET:?x}"|'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a secret handed in an environment is named" $? 1 "$out" "api holds APP_SECRET in its environment"
 check "the value written into the configuration is named" 1 1 "$out" "the value of APP_SECRET is written"

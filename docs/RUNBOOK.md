@@ -178,6 +178,9 @@ checkout:
 
 The ten values `new-instance.sh` draws. For each: change it in `/etc/twes-in/deploy.env` (keep the old one until the
 procedure is done), then redeploy (`deploy.sh --release` at the running tag, or `--staging` with the running release).
+Redeploy through `deploy.sh`, never a bare `docker compose up`: Compose keeps a running container whose secret's value
+alone changed, reading the old one, and `deploy.sh` hands it the digest of the values (`TWES_SECRETS_DIGEST`), a label of
+every service that mounts a secret, so a rotation recreates them (postgres and the backup among them, a few seconds down).
 
 | Value | What changing it does | Procedure | Tried |
 |---|---|---|---|
