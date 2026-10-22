@@ -59,7 +59,10 @@
   "autoload": {
     "psr-4": {
       "App\\": "src/"
-    }
+    },
+    "files": [
+      "config/container-secrets.php"
+    ]
   },
   "autoload-dev": {
     "psr-4": {

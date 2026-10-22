@@ -7,7 +7,8 @@
 set -e
 
 if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
-	if [ -n "${DATABASE_URL:-}" ]; then
+	# Production names its address by a template the console fills from the secrets (ContainerSecrets).
+	if [ -n "${DATABASE_URL:-}${DATABASE_URL_TEMPLATE:-}" ]; then
 		echo 'Waiting for the database...'
 		attempts=60
 		until [ "$attempts" -eq 0 ] || error="$(php bin/console dbal:run-sql -q 'SELECT 1' 2>&1)"; do

@@ -194,6 +194,8 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-log-rotation.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/deploy-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/onprem-overlay.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/secrets-overlay.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/action-pins.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/release-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/publish.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/tag-release.test.sh
@@ -238,6 +240,8 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-steps.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes-secrets.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/secrets-stay-files.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/forwarded-proto.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/access-log.test.sh
@@ -257,6 +261,8 @@ in-gate-licences:
 	bash scripts/gates/compose-log-rotation.sh
 	bash scripts/gates/deploy-overlay.sh
 	bash scripts/gates/onprem-overlay.sh
+	bash scripts/gates/secrets-overlay.sh
+	bash scripts/gates/action-pins.sh
 	bash scripts/gates/release-overlay.sh
 	bash scripts/gates/monitor-config.sh
 	bash scripts/gates/version-pins.sh

@@ -7,8 +7,9 @@
 # Nothing in it names a provider: any machine, bucket and mail relay, through the values in that file, which
 # scripts/deploy/new-instance.sh starts. Every address comes from one name, TWES_HOST, since a passkey is bound to it and
 # a link in a mail must open where the person signed in. Only the edge is reachable: Docker's published ports pass by the
-# host's firewall, so a port left published here would be open to the internet. scripts/gates/deploy-overlay.sh holds
-# each of those promises.
+# host's firewall, so a port left published here would be open to the internet. Its secrets, the mail relay's address
+# among them, are compose secrets (compose.prod.yaml says how). scripts/gates/deploy-overlay.sh and
+# scripts/gates/secrets-overlay.sh hold each of those promises.
 x-logging: &logging
   driver: json-file
   options:
@@ -23,10 +24,8 @@ x-deploy-environment: &deploy-environment
   APP_WEBAUTHN_RP_ID: "${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
   APP_WEBAUTHN_ORIGINS: "https://${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
   PAIRING_ORIGIN: "https://${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
-  MAILER_DSN: "${MAILER_DSN:?set MAILER_DSN, the mail relay, such as smtp://user:pass@relay:587}"
+  # The relay itself, such as smtp://user:pass@relay.example:587, is the secret mailer_dsn.
   MAILER_SENDER: "${MAILER_SENDER:?set MAILER_SENDER, the address mails come from}"
-  # The application's role, never the schema's owner, whose address only the migrate service below is handed.
-  DATABASE_URL: "postgresql://twes_app:${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD}@postgres:5432/twes?serverVersion=18&charset=utf8"
   # Files on the api-files volume, which the backups copy; or in a bucket (api/.env says what each value means).
   FILES_STORAGE: "${FILES_STORAGE:-local}"
   FILES_S3_BUCKET: "${FILES_S3_BUCKET:-}"
@@ -35,8 +34,8 @@ x-deploy-environment: &deploy-environment
   FILES_S3_ACCESS_KEY: "${FILES_S3_ACCESS_KEY:-}"
   FILES_S3_SECRET_KEY: "${FILES_S3_SECRET_KEY:-}"
   FILES_S3_PATH_STYLE: "${FILES_S3_PATH_STYLE:-false}"
-  # The monitor (docs/START.md § 15): the token its health reads carry, and where errors are reported, scrubbed.
-  MONITOR_TOKEN: "${MONITOR_TOKEN:?set MONITOR_TOKEN, the token the monitor reads /api/health/deep with}"
+  # The monitor (docs/START.md § 15): where errors are reported, scrubbed; the token its health reads carry is the
+  # secret monitor_token.
   SENTRY_DSN: "${SENTRY_DSN:?set SENTRY_DSN, the DSN the monitor's error tracker gave this instance}"
 
 services:
@@ -64,18 +63,18 @@ services:
   api:
     ports: !reset []
     environment: *deploy-environment
+    secrets: &deploy-secrets [monitor_token]
   worker:
     environment: *deploy-environment
+    secrets: *deploy-secrets
   demo-worker:
     environment: *deploy-environment
+    secrets: *deploy-secrets
   migrate:
-    environment:
-      <<: *deploy-environment
-      DATABASE_MIGRATION_URL: "postgresql://twes:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/twes?serverVersion=18&charset=utf8"
+    environment: *deploy-environment
+    secrets: *deploy-secrets
   postgres:
     ports: !reset []
-    environment:
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}"
   centrifugo:
     environment:
       CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "https://${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
@@ -85,7 +84,7 @@ services:
   backup:
     environment:
       MONITOR_URL: "${MONITOR_URL:?set MONITOR_URL, the monitor's address, such as https://status.example}"
-      MONITOR_HEARTBEAT_TOKEN: "${MONITOR_HEARTBEAT_TOKEN:?set MONITOR_HEARTBEAT_TOKEN, the token the monitor takes heartbeats with}"
+    secrets: [monitor_heartbeat_token]
   gotenberg:
     ports: !reset []
   # Development's mail catcher: a deployment sends through its relay, so it never starts unless asked for by name.
@@ -96,3 +95,9 @@ services:
 volumes:
   edge-data:
   edge-config:
+
+secrets:
+  monitor_token:
+    environment: MONITOR_TOKEN
+  monitor_heartbeat_token:
+    environment: MONITOR_HEARTBEAT_TOKEN

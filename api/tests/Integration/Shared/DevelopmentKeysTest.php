@@ -24,8 +24,9 @@ final class DevelopmentKeysTest extends KernelTestCase
     private const string COMMITTED_MFA_KEY = 'ojCIqjd0KzQ4JrX9wyEpy58LdtCAQ56MTwM8CWA0XOc=';
     private const string COMMITTED_TOKEN_KEY = 'twes-in-development-realtime-token-key-0001';
     private const string COMMITTED_API_KEY = 'twes-in-development-realtime-api-key';
+    private const string COMMITTED_MAIL_RELAY = 'smtp://127.0.0.1:8093';
 
-    private const array NAMES = ['APP_SECRET', 'APP_MFA_KEY', 'REALTIME_TOKEN_KEY', 'REALTIME_API_KEY'];
+    private const array NAMES = ['APP_SECRET', 'APP_MFA_KEY', 'REALTIME_TOKEN_KEY', 'REALTIME_API_KEY', 'MAILER_DSN'];
 
     /** @var array<string, string|false> what the environment held before a case changed it */
     private array $saved = [];
@@ -97,6 +98,20 @@ final class DevelopmentKeysTest extends KernelTestCase
         self::bootKernel(['environment' => 'prod', 'debug' => false]);
     }
 
+    /**
+     * A mail relay left blank in the values file mounts no secret, and the kernel then reads the one `api/.env` commits,
+     * a port on the server itself where nothing listens: every invitation and document would fail in the queue, unseen.
+     */
+    public function testProductionRefusesTheCommittedMailRelay(): void
+    {
+        $this->environment(mailerDsn: self::COMMITTED_MAIL_RELAY);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/MAILER_DSN/');
+
+        self::bootKernel(['environment' => 'prod', 'debug' => false]);
+    }
+
     /** An empty secret is the same hole wearing a different hat: `api/.env` ships `APP_SECRET=`. */
     public function testProductionRefusesAnEmptySecret(): void
     {
@@ -162,8 +177,8 @@ final class DevelopmentKeysTest extends KernelTestCase
         static::$booted = false;
     }
 
-    /** Sets the four, each defaulting to a value no repository carries. */
-    private function environment(?string $secret = null, ?string $mfaKey = null, ?string $tokenKey = null, ?string $apiKey = null): void
+    /** Sets the five, each defaulting to a value no repository carries. */
+    private function environment(?string $secret = null, ?string $mfaKey = null, ?string $tokenKey = null, ?string $apiKey = null, ?string $mailerDsn = null): void
     {
         $this->discardKernel();
         $values = [
@@ -171,6 +186,7 @@ final class DevelopmentKeysTest extends KernelTestCase
             'APP_MFA_KEY' => $mfaKey ?? base64_encode(random_bytes(32)),
             'REALTIME_TOKEN_KEY' => $tokenKey ?? bin2hex(random_bytes(32)),
             'REALTIME_API_KEY' => $apiKey ?? bin2hex(random_bytes(16)),
+            'MAILER_DSN' => $mailerDsn ?? 'smtp://relay.invalid:587',
         ];
         foreach ($values as $name => $value) {
             $_SERVER[$name] = $value;

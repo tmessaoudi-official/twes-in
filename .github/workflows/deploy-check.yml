@@ -22,6 +22,12 @@ on:
       - scripts/deploy/**
       - scripts/backup/**
       - api/config/packages/framework.yaml
+      # How the secrets reach the containers (docs/SPEC.md § 7, Docker secrets): only a boot proves them.
+      - api/src/Shared/Infrastructure/Secrets/**
+      - api/config/container-secrets.php
+      - infra/postgres/twes-secrets
+      - infra/api/docker-entrypoint.sh
+      - infra/api/Dockerfile
       - .github/workflows/deploy-check.yml
 
 concurrency:
@@ -33,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         # The images are built as the version git says each part is, which counts the day's changes.
         with:
           fetch-depth: 0

@@ -10,7 +10,8 @@
 # another. The edge's certificates come from its own authority, which a phone trusts once from http://LAN_HOST/root.crt.
 # Mailed links open from any device, so they name the network address. The monitor is optional here: an empty
 # SENTRY_DSN reports nothing, and the backups send no heartbeat without MONITOR_URL. Only the edge publishes, on 80 and
-# 443. scripts/gates/onprem-overlay.sh holds each of those promises.
+# 443. Its secrets, the shop's mail account among them, are compose secrets (compose.prod.yaml says how).
+# scripts/gates/onprem-overlay.sh and scripts/gates/secrets-overlay.sh hold each of those promises.
 x-logging: &logging
   driver: json-file
   options:
@@ -25,13 +26,12 @@ x-onprem-environment: &onprem-environment
   APP_WEBAUTHN_RP_ID: localhost
   APP_WEBAUTHN_ORIGINS: https://localhost
   PAIRING_ORIGIN: "https://${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
-  MAILER_DSN: "${MAILER_DSN:?set MAILER_DSN, the shop's mail account, such as smtp://shop%40gmail.com:app-password@smtp.gmail.com:587}"
+  # The shop's mail account itself, such as smtp://shop%40gmail.com:app-password@smtp.gmail.com:587, is the secret
+  # mailer_dsn.
   MAILER_SENDER: "${MAILER_SENDER:?set MAILER_SENDER, the address mails come from, the account's own for Gmail}"
-  # The application's role, never the schema's owner, whose address only the migrate service below is handed.
-  DATABASE_URL: "postgresql://twes_app:${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD}@postgres:5432/twes?serverVersion=18&charset=utf8"
   FILES_STORAGE: local
-  # What an update's health check reads /api/health/deep with (scripts/onprem/twes), and a monitor later.
-  MONITOR_TOKEN: "${MONITOR_TOKEN:?set MONITOR_TOKEN, the token the deep health check is read with}"
+  # What an update's health check reads /api/health/deep with (scripts/onprem/twes), and a monitor later, is the secret
+  # monitor_token.
   SENTRY_DSN: "${SENTRY_DSN:-}"
 
 services:
@@ -56,18 +56,21 @@ services:
   api:
     ports: !reset []
     environment: *onprem-environment
+    secrets: &onprem-secrets [monitor_token]
   worker:
     environment: *onprem-environment
+    secrets: *onprem-secrets
   demo-worker:
     environment: *onprem-environment
+    secrets: *onprem-secrets
   migrate:
-    environment:
-      <<: *onprem-environment
-      DATABASE_MIGRATION_URL: "postgresql://twes:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/twes?serverVersion=18&charset=utf8"
+    environment: *onprem-environment
+    secrets: *onprem-secrets
   postgres:
     ports: !reset []
-    environment:
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}"
+  # The token a monitor takes heartbeats with, once MONITOR_URL names one; new-instance.sh --onprem makes it.
+  backup:
+    secrets: [monitor_heartbeat_token]
   centrifugo:
     environment:
       CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "https://localhost https://${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
@@ -83,3 +86,9 @@ services:
 volumes:
   edge-data:
   edge-config:
+
+secrets:
+  monitor_token:
+    environment: MONITOR_TOKEN
+  monitor_heartbeat_token:
+    environment: MONITOR_HEARTBEAT_TOKEN

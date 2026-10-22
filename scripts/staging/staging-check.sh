@@ -233,7 +233,7 @@ step "APP_SECRET rotated: older mail links refused, newer ones taken"
 # The realtime keys: Centrifugo checks a connection token with REALTIME_TOKEN_KEY and its HTTP API with REALTIME_API_KEY.
 [[ "$(signed_in_with "$secret")" == 200 ]] || fail "signing in again after the APP_SECRET rotation failed"
 realtime_token() { get /api/me/realtime-token | jq -r '.token // empty'; }
-token_valid() { dc exec -T centrifugo centrifugo checktoken "$1" > "$WORK/checktoken.log" 2>&1; }
+token_valid() { dc exec -T centrifugo sh /twes-secrets centrifugo checktoken "$1" > "$WORK/checktoken.log" 2>&1; }
 api_key_answer() { dc exec -T gotenberg curl -sS -o /dev/null -w '%{http_code}' -H "X-API-Key: $1" --data '{}' http://centrifugo:8000/api/info; }
 old_token=$(realtime_token); old_api=$(release_value REALTIME_API_KEY "$values")
 token_valid "$old_token" || fail "Centrifugo refused a token the API issued: $(cat "$WORK/checktoken.log")"

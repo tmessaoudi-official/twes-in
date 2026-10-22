@@ -6,7 +6,10 @@
 #   docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml up -d --build --wait
 # The database archives its WAL as it writes, so any moment of the last 14 days can be restored; the backup service
 # takes the base backups it replays from, the nightly pg_dump and a copy of the files volume, each encrypted under a
-# passphrase of the instance's own: compose stops before starting anything while one is missing.
+# passphrase of the instance's own, handed as a compose secret (compose.prod.yaml says how): compose stops before
+# starting anything while one is unset. pgBackRest reads its passphrase from the environment only, so the database and
+# the backup service run through infra/postgres/twes-secrets, which twes-backup also re-runs through when started by
+# `docker compose exec`; restic reads its own file through RESTIC_PASSWORD_FILE.
 # scripts/backup/restore-drill.sh proves the whole round trip on these very files.
 x-logging: &logging
   driver: json-file
@@ -14,8 +17,10 @@ x-logging: &logging
     max-size: 10m
     max-file: "5"
 
-x-backup-environment: &backup-environment
-  PGBACKREST_REPO1_CIPHER_PASS: "${BACKUP_DATABASE_PASSPHRASE:?set BACKUP_DATABASE_PASSPHRASE, kept apart from the server: without it no backup can be read}"
+# Kept apart from the server: without them no backup can be read.
+x-database-passphrase: &database-passphrase
+  source: backup_database_passphrase
+  target: /run/secrets/pgbackrest_repo1_cipher_pass
 
 services:
   postgres:
@@ -34,7 +39,10 @@ services:
       - archive_timeout=300
       - -c
       - archive_command=pgbackrest --stanza=twes archive-push %p
-    environment: *backup-environment
+    # The archiving runs inside the server, which must hold the passphrase in its own environment.
+    entrypoint: [twes-secrets, docker-entrypoint.sh]
+    secrets:
+      - *database-passphrase
     volumes:
       - pgbackrest-spool:/var/spool/pgbackrest
       # The backup service reaches the server through its socket, as the server's own user.
@@ -49,16 +57,20 @@ services:
     logging: *logging
     restart: unless-stopped
     image: twes-in-postgres-backup
+    entrypoint: [twes-secrets, docker-entrypoint.sh]
     command: [twes-backup, run]
     depends_on:
       postgres:
         condition: service_healthy
+    secrets:
+      - *database-passphrase
+      - source: backup_files_passphrase
+        target: /run/secrets/restic_password
     environment:
-      <<: *backup-environment
-      RESTIC_PASSWORD: "${BACKUP_FILES_PASSPHRASE:?set BACKUP_FILES_PASSPHRASE, kept apart from the server: without it no copy can be read}"
-      # Where each step's heartbeat goes (twes-backup); a deployment requires both, the drill and a shop have no monitor.
+      RESTIC_PASSWORD_FILE: /run/secrets/restic_password
+      # Where each step's heartbeat goes (twes-backup); a deployment requires it and hands the token as a secret
+      # (compose.deploy.yaml), the drill and a shop may have no monitor.
       MONITOR_URL: "${MONITOR_URL:-}"
-      MONITOR_HEARTBEAT_TOKEN: "${MONITOR_HEARTBEAT_TOKEN:-}"
       TZ: UTC
     volumes:
       - postgres-data:/var/lib/postgresql:ro
@@ -89,3 +101,9 @@ volumes:
   postgres-socket:
   backup-dump:
   backup-outcome:
+
+secrets:
+  backup_database_passphrase:
+    environment: BACKUP_DATABASE_PASSPHRASE
+  backup_files_passphrase:
+    environment: BACKUP_FILES_PASSPHRASE

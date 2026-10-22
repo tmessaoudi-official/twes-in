@@ -26,11 +26,14 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "the shop's overlay as shaped passes
 d=$(project); edit "$d/compose.onprem.yaml" '/^  postgres:/,/^  [a-z]*:$/{/ports: !reset \[\]/d}'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a published database port is named" $? 1 "$out" "postgres publishes"
 
-d=$(project); edit "$d/compose.onprem.yaml" '/^  worker:$/{n;/environment: \*onprem-environment/d}' && edit "$d/compose.onprem.yaml" 's/^  worker:$/  worker: {}/'
+d=$(project); edit "$d/compose.onprem.yaml" '/^  worker:$/{n;/environment: \*onprem-environment/d}'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a worker left on the development address is named" $? 1 "$out" "worker DEFAULT_URI"
 
-d=$(project); edit "$d/compose.onprem.yaml" 's/\${MAILER_DSN:?[^}]*}/${MAILER_DSN:-smtp:\/\/mailpit:1025}/'
-out=$(bash "$GATE" --root "$d" 2>&1); check "a required value given a default is named" $? 1 "$out" "MAILER_DSN is not required"
+d=$(project); edit "$d/compose.onprem.yaml" 's/\${MAILER_SENDER:?[^}]*}/${MAILER_SENDER:-shop@example.invalid}/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a required value given a default is named" $? 1 "$out" "MAILER_SENDER is not required"
+
+d=$(project); edit "$d/compose.prod.yaml" '/^  worker:$/,/^  demo-worker:$/{s/secrets: \*api-secrets/secrets: [app_secret, app_mfa_key, realtime_token_key, realtime_api_key, postgres_app_password]/}'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a worker that does not mount the shop's mail account is named" $? 1 "$out" "worker does not mount MAILER_DSN"
 
 d=$(project); edit "$d/compose.onprem.yaml" 's/\${SENTRY_DSN:-}/${SENTRY_DSN:?set SENTRY_DSN}/'
 out=$(bash "$GATE" --root "$d" 2>&1); check "the monitor is optional on premises" $? 1 "$out" "SENTRY_DSN"

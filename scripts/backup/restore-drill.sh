@@ -60,7 +60,9 @@ trap cleanup EXIT
 # This instance's own keys, never the development ones (production refuses those), and the bucket's.
 random() { head -c "$1" /dev/urandom | base64 | tr -d '\n/+=' | head -c "$2"; }
 export APP_SECRET=$(random 48 48) REALTIME_TOKEN_KEY=$(random 48 48) REALTIME_API_KEY=$(random 48 48)
-export APP_MFA_KEY=$(head -c 32 /dev/urandom | base64) POSTGRES_APP_PASSWORD=$(random 48 40)
+export APP_MFA_KEY=$(head -c 32 /dev/urandom | base64) POSTGRES_PASSWORD=$(random 48 40) POSTGRES_APP_PASSWORD=$(random 48 40)
+# Development's mail catcher, as the secret a relay's address would be.
+export MAILER_DSN=smtp://mailpit:1025
 export BACKUP_S3_ENDPOINT=s3 BACKUP_S3_PORT=8333 BACKUP_S3_BUCKET=twes-backups BACKUP_S3_REGION=us-east-1 BACKUP_S3_URI_STYLE=path
 export BACKUP_S3_KEY=drill$(random 24 12) BACKUP_S3_SECRET=$(random 48 32)
 export BACKUP_DATABASE_PASSPHRASE=$(random 48 40) BACKUP_FILES_PASSPHRASE=$(random 48 40)
@@ -96,7 +98,7 @@ sleep 2
 target=$(sql "SELECT now()")
 sleep 2
 sql "INSERT INTO restore_drill VALUES (2); SELECT pg_switch_wal()" >/dev/null
-dc exec -T backup gosu postgres pgbackrest --stanza=twes check >/dev/null
+dc exec -T backup twes-secrets gosu postgres pgbackrest --stanza=twes check >/dev/null
 # The nightly differential over Sunday's full: the latest restore goes through both, then the WAL after them.
 dc exec -T backup twes-backup diff
 companies_before=$(sql "SELECT count(*) FROM company")
@@ -116,7 +118,7 @@ dc exec -T backup twes-backup copy
 dc exec -T backup twes-backup verify
 if [[ "$mode" == local ]]; then
   sql "SELECT pg_switch_wal()" >/dev/null
-  dc exec -T backup gosu postgres pgbackrest --stanza=twes check >/dev/null
+  dc exec -T backup twes-secrets gosu postgres pgbackrest --stanza=twes check >/dev/null
   dc exec -T backup twes-backup offsite
 fi
 # The file changes after the copy, so only a restore can bring the written bytes back.
@@ -194,7 +196,7 @@ step "API healthy and data check clean on the restored database"
 dc exec -T api sha256sum /app/var/files/restore-drill.bin > "$DRILL_DIR/back.sha256" || fail "restic gave back no files volume"
 [[ "$(cut -d' ' -f1 "$DRILL_DIR/files.sha256")" == "$(cut -d' ' -f1 "$DRILL_DIR/back.sha256")" ]] || fail "the file restic gave back differs from the one copied"
 DRILL_PG_DATA=twes-drill-pg-b dc up -d --wait backup >/dev/null
-dc exec -T backup restic restore latest --host twes --include /var/lib/twes-backup/dump --target /tmp/back >/dev/null
+dc exec -T backup twes-secrets restic restore latest --host twes --include /var/lib/twes-backup/dump --target /tmp/back >/dev/null
 dc exec -T backup sh -c 'pg_restore --list /tmp/back/var/lib/twes-backup/dump/twes.dump | grep -q "TABLE DATA public restore_drill"' \
   || fail "the nightly dump does not hold the database"
 step "files and nightly dump restored from restic, identical"

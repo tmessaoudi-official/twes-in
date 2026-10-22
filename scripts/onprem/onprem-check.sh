@@ -125,6 +125,10 @@ out=$(twes pin-key "$WORK/release-key.asc" 2>&1) || fail "the shop could not pin
 out=$(twes update 2>&1) || { echo "$out" >&2; fail "the first install did not come up"; }
 [[ "$out" == *"updated to $A"* ]] || fail "the first install did not deploy $A: $out"
 step "installed: $A deployed by twes update, healthy through its edge"
+# shellcheck source=scripts/deploy/secrets-stay-files.sh
+source "$root/scripts/deploy/secrets-stay-files.sh"
+secrets_stay_files "$values"
+step "no container holds a secret in its environment"
 
 lan=$(cat "$state/lan-host")
 curl -fsS --max-time 10 -o "$WORK/root.crt" http://localhost/root.crt || fail "plain HTTP did not serve the root certificate"
@@ -211,7 +215,7 @@ code=$(deep); [[ "$code" == 200 ]] || fail "$A started again answers its deep he
 signs_in "rolled back"
 [[ "$(sql "SELECT count(*) FROM inbox_item WHERE type = 'installation.rolled_back'")" == 1 ]] || fail "the operator was not told of the rollback in the application"
 label=$(awk '{ print $3 }' "$state/last-update")
-dc exec -T backup gosu postgres pgbackrest --stanza=twes info | grep -q "$label" || fail "the backup made before $B, $label, is not in the repository"
+dc exec -T backup twes-secrets gosu postgres pgbackrest --stanza=twes info | grep -q "$label" || fail "the backup made before $B, $label, is not in the repository"
 step "$B unhealthy: $A again on $B's schema, told, nothing lost"
 
 twes restore-commands > "$WORK/restore.txt" || fail "twes restore-commands printed nothing to run"

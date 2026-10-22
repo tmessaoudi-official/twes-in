@@ -92,7 +92,7 @@ COPY api/ ./
 # get placeholders, and nothing they write holds one, because %env()% is read when a request needs it.
 RUN composer dump-autoload --no-dev --classmap-authoritative \
  && composer dump-env prod \
- && APP_SECRET=build-only-placeholder-of-32-characters APP_MFA_KEY=build-only REALTIME_TOKEN_KEY=build-only REALTIME_API_KEY=build-only \
+ && APP_SECRET=build-only-placeholder-of-32-characters APP_MFA_KEY=build-only REALTIME_TOKEN_KEY=build-only REALTIME_API_KEY=build-only MAILER_DSN=null://null \
     sh -c 'composer run-script --no-dev post-install-cmd --no-interaction && bin/console api:openapi:export --output=var/openapi.json'
 
 # The server runs as a user of its own, as FrankenPHP's documentation describes: a flaw in PHP, Caddy or the code then
