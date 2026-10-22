@@ -1698,7 +1698,6 @@
       "confirm_deposit": "Confirmer la remise",
       "confirm_cash": "Confirmer : il est passé",
       "confirm_unpaid": "Confirmer : il est revenu impayé",
-      "confirm_delete": "Confirmer la suppression",
       "keep": "Le garder",
       "ask": {
         "deposit": {
@@ -1712,18 +1711,13 @@
         "unpaid": {
           "title": "Marquer impayé ?",
           "message": "Le chèque ou la traite ne couvre plus rien : ce qu’il promettait redevient dû."
-        },
-        "delete": {
-          "title": "Supprimer ?",
-          "message": "Le chèque ou la traite sort du portefeuille, et n’apparaîtra plus sur la facture."
         }
       },
       "done": {
         "received": "Le chèque ou la traite est reçu.",
         "deposit": "Le chèque ou la traite est remis à l’encaissement.",
         "cash": "Le chèque ou la traite est encaissé : le paiement est enregistré.",
-        "unpaid": "Le chèque ou la traite est marqué impayé.",
-        "deleted": "Le chèque ou la traite est sorti du portefeuille."
+        "unpaid": "Le chèque ou la traite est marqué impayé."
       }
     },
     "actions": {
@@ -3956,6 +3950,7 @@
       "export": "Export",
       "support_grant": "Accès du support",
       "purchase_order": "Commande fournisseur",
+      "payment_instrument": "Chèque ou traite",
       "record_removal": "Suppression"
     },
     "actions": {
@@ -4146,6 +4141,10 @@
         "cancelled": "a annulé la commande fournisseur",
         "deleted": "a supprimé le brouillon de commande fournisseur",
         "restored": "a remis le brouillon de commande fournisseur"
+      },
+      "payment_instrument": {
+        "deleted": "a retiré un chèque ou une traite du portefeuille",
+        "restored": "a remis un chèque ou une traite au portefeuille"
       },
       "record_removal": {
         "ended": "a rendu une suppression définitive"

@@ -107,6 +107,7 @@
         "invoice": "{{count}} {count, plural, one {brouillon de facture} other {brouillons de facture}}",
         "quote": "{{count}} {count, plural, one {brouillon de devis} other {brouillons de devis}}",
         "purchase_order": "{{count}} {count, plural, one {brouillon de commande fournisseur} other {brouillons de commandes fournisseur}}",
+        "payment_instrument": "{{count}} {count, plural, one {chèque ou traite} other {chèques ou traites}}",
         "delivery_note": "{{count}} {count, plural, one {brouillon de bon de livraison} other {brouillons de bon de livraison}}"
       }
     },

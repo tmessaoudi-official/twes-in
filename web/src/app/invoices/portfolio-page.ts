@@ -73,9 +73,14 @@ export class PortfolioPage implements OnInit {
 
   ngOnInit(): void {
     const companyId = this.company()?.id;
-    // A step taken on an invoice is audited as the invoice's, so the invoice's kind is what says the portfolio moved.
+    // A step taken on an instrument is audited as its invoice's, so the invoice's kind says the portfolio moved; one
+    // taken out or put back is the records' own change.
     if (companyId)
-      this.live.reloadOn(['invoice', 'payment'], () => this.reload(companyId), this.destroyRef);
+      this.live.reloadOn(
+        ['invoice', 'payment', 'payment_instrument'],
+        () => this.reload(companyId),
+        this.destroyRef,
+      );
   }
 
   protected onQuery(query: ListQuery): void {

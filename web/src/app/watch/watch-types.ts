@@ -42,6 +42,7 @@ export class WatchSubjectGone extends Error {
 export const WATCHED_KINDS = [
   'invoice',
   'payment',
+  'payment_instrument',
   'customer',
   'stock',
   'delivery_note',

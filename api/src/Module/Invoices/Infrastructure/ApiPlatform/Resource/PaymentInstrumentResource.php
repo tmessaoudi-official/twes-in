@@ -11,7 +11,6 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform\Resource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
@@ -19,7 +18,6 @@ use App\Module\Invoices\Domain\Model\PaymentInstrument;
 use App\Module\Invoices\Domain\ValueObject\InstrumentDetails;
 use App\Module\Invoices\Domain\ValueObject\InstrumentKind;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\AdvanceInstrumentProcessor;
-use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\DeleteInstrumentProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\ReceiveInstrumentProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider\InvoiceInstrumentsProvider;
 use App\Shared\Infrastructure\Submissions\Submissions;
@@ -82,12 +80,6 @@ use Symfony\Component\Validator\Constraints as Assert;
             input: false,
             normalizationContext: self::NORMALIZATION,
             extraProperties: ['step' => 'unpaid'],
-        ),
-        new Delete(
-            uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/instruments/{instrumentId}',
-            processor: DeleteInstrumentProcessor::class,
-            security: 'is_granted("ROLE_USER")',
-            read: false,
         ),
     ],
 )]

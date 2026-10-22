@@ -83,7 +83,7 @@
                       mat-button
                       type="button"
                       [disabled]="busy()"
-                      (click)="ask(row, 'delete')"
+                      (click)="remove(row)"
                       [attr.data-testid]="'instrument-' + row.id + '-delete'"
                     >
                       {{ 'invoices.instruments.delete' | translate }}

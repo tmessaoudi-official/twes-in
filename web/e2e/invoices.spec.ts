@@ -454,14 +454,14 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
       .getByTestId('portfolio-table')
       .getByRole('row')
       .filter({ hasText: `Client ${customerNumber}` });
-    await expect(held).toHaveCount(1);
-    expect(await wcagViolations(page)).toEqual([]);
     // Filters combine here too (docs/SPEC.md § 7, 2026-10-06): a cheque that is held or open, due after a day in the
-    // far future, is not this one, and taking the interval's chip off brings it back.
+    // far future, is not this one, and taking the interval's chip off brings it back. Narrowed first, since every run
+    // leaves its unpaid cheque in the shared company and this one would sort onto another page.
     await choose(page, 'list-facet-kind', /Chèque|Cheque/);
     await choose(page, 'list-facet-status', /En portefeuille|In portfolio/);
     await choose(page, 'list-facet-status', /En cours|Open/);
     await expect(held).toHaveCount(1);
+    expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('list-filters').click();
     await page.getByTestId('portfolio-table-filter-panel-dueOn-from').fill('2999-01-01');
     await expect(page.getByTestId('list-chip-dueOn:range')).toBeVisible();
@@ -486,9 +486,10 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.getByTestId('instrument-receive').click();
     await page.getByTestId('instrument-save').click();
     await expect(toast(page)).toContainText('Le chèque ou la traite est reçu.');
+    // Taking a held one out asks nothing: the toast takes it back, « Récemment supprimés » for a day.
     await page.locator('[data-testid^="instrument-"][data-testid$="-delete"]').click();
-    await page.getByTestId('confirm-run').click();
-    await expect(toast(page)).toContainText('sorti du portefeuille');
+    await expect(page.getByTestId('confirm-run')).toHaveCount(0);
+    await expect(toast(page)).toContainText('est supprimé');
     await expect(page.locator('[data-testid^="instrument-"][data-testid$="-status"]')).toHaveCount(
       1,
     );

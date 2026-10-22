@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
@@ -21,6 +22,8 @@ import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-bu
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { Feedback } from '../shared/feedback/feedback';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
+import { LiveChanges } from '../shared/realtime/live-changes';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import type { ActionConfirm } from '../shared/actions/screen-action';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -69,6 +72,9 @@ export class InvoiceInstruments {
   private readonly facade = inject(InstrumentsFacade);
   private readonly feedback = inject(Feedback);
   private readonly dialog = inject(MatDialog);
+  private readonly deletes = inject(RecordDeletes);
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly items = this.facade.items;
   protected readonly busy = this.facade.busy;
@@ -99,6 +105,12 @@ export class InvoiceInstruments {
       const invoiceId = this.invoiceId();
       untracked(() => void this.facade.load(companyId, invoiceId));
     });
+    // One deleted or put back is the records' change, a step taken on one the invoice's: either is read again.
+    this.live.reloadOn(
+      ['payment_instrument', 'invoice'],
+      () => this.facade.load(this.companyId(), this.invoiceId()),
+      this.destroyRef,
+    );
   }
 
   protected open(): void {
@@ -137,13 +149,13 @@ export class InvoiceInstruments {
   /**
    * Every step on an instrument is one the bank or the paper makes final: a deposit is not taken back from the bank,
    * and none of them has an undo. So each asks through the shared confirmation, which names it « définitif », and the
-   * toast after it says the same word (audit 2026-10-06, C-8).
+   * toast after it says the same word (audit 2026-10-06, C-8). Taking a held one out of the portfolio is undone instead.
    */
-  protected ask(row: InstrumentRow, step: InstrumentStep | 'delete'): void {
+  protected ask(row: InstrumentRow, step: InstrumentStep): void {
     if (this.busy()) return;
     runAction(
       {
-        run: () => void (step === 'delete' ? this.remove(row) : this.advance(row, step)),
+        run: () => void this.advance(row, step),
         confirm: {
           kind: 'definitif',
           title: `invoices.instruments.ask.${step}.title`,
@@ -169,10 +181,17 @@ export class InvoiceInstruments {
     }
   }
 
-  private async remove(row: InstrumentRow): Promise<void> {
-    if (await this.facade.remove(this.companyId(), this.invoiceId(), row.id)) {
-      this.feedback.effect('invoices.instruments.done.deleted', {}, 'definitif');
-    }
+  /**
+   * A held one entered by mistake goes without a question, as a record does: its toast offers « Annuler », and
+   * « Récemment supprimés » keeps it a day. It is named by its number and bank, else by its amount.
+   */
+  protected async remove(row: InstrumentRow): Promise<void> {
+    if (this.busy()) return;
+    const label = [row.number, row.bank].filter((part) => part !== null && part !== '').join(' ');
+    const gone = await this.deletes.remove(this.companyId(), 'payment_instrument', [
+      { id: row.id, label: label === '' ? row.amount : label },
+    ]);
+    if (gone) await this.facade.load(this.companyId(), this.invoiceId());
   }
 }
 

@@ -48,7 +48,6 @@ final readonly class ManageInstruments
     public const string DEPOSITED = 'instrument.deposited';
     public const string CASHED = 'instrument.cashed';
     public const string UNPAID = 'instrument.unpaid';
-    public const string DELETED = 'instrument.deleted';
 
     public function __construct(
         private InvoiceRepository $invoices,
@@ -192,26 +191,6 @@ final readonly class ManageInstruments
             $this->trail($company, $invoice, self::UNPAID, $instrument, $actorUserId);
 
             return $instrument;
-        });
-    }
-
-    /**
-     * A held instrument entered by mistake, taken out of the portfolio; one that was deposited or settled stays as the
-     * record of what happened.
-     *
-     * @throws InvoiceNotFound
-     * @throws InstrumentNotFound
-     * @throws InvoiceTransitionRefused unless the instrument is still held
-     */
-    public function delete(Company $company, Uuid $invoiceId, Uuid $instrumentId, ?Uuid $actorUserId): void
-    {
-        $this->transactions->run(function () use ($company, $invoiceId, $instrumentId, $actorUserId): void {
-            [$invoice, $instrument] = $this->locked($company, $invoiceId, $instrumentId);
-            if (!$instrument->isErasable()) {
-                throw new InvoiceTransitionRefused(\sprintf('The %s is %s: only one still held is taken out of the portfolio.', $instrument->getKind()->value, $instrument->getStatus()->value));
-            }
-            $this->instruments->remove($instrument);
-            $this->trail($company, $invoice, self::DELETED, $instrument, $actorUserId);
         });
     }
 
