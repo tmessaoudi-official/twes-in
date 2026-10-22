@@ -30,23 +30,23 @@ final class ProductBarcodeRow
 {
     /** `unit` enters one piece, `pack` several, `supplier` is a supplier's own code, `internal` one the company printed. */
     #[ApiProperty(schema: ['type' => 'string', 'enum' => ['unit', 'pack', 'supplier', 'internal']])]
-    #[Assert\Choice(choices: ['unit', 'pack', 'supplier', 'internal'], groups: [ProductBarcodesResource::WRITE])]
+    #[Assert\Choice(choices: ['unit', 'pack', 'supplier', 'internal'], groups: [ProductBarcodesResource::WRITE], payload: ['reason' => 'not_one_of', 'params' => ['choices' => 'unit, pack, supplier, internal']])]
     #[Groups([ProductResource::READ, ProductBarcodesResource::READ, ProductBarcodesResource::WRITE])]
     public string $role = 'unit';
 
     /** As printed; an EAN, UPC or GTIN-14 has its check digit verified. */
-    #[Assert\NotBlank(groups: [ProductBarcodesResource::WRITE])]
-    #[Assert\Length(max: Barcode::MAX, groups: [ProductBarcodesResource::WRITE])]
+    #[Assert\NotBlank(groups: [ProductBarcodesResource::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: Barcode::MAX, groups: [ProductBarcodesResource::WRITE], payload: ['reason' => 'invalid_barcode'])]
     #[Groups([ProductResource::READ, ProductBarcodesResource::READ, ProductBarcodesResource::WRITE])]
     public string $code = '';
 
     /** How many pieces one scan of it enters: 1 for a unit code, more for a pack. */
-    #[Assert\Range(min: 1, max: BarcodeLine::QUANTITY_MAX, groups: [ProductBarcodesResource::WRITE])]
+    #[Assert\Range(min: 1, max: BarcodeLine::QUANTITY_MAX, groups: [ProductBarcodesResource::WRITE], payload: ['reason' => 'whole_number_between', 'params' => ['min' => 1, 'max' => BarcodeLine::QUANTITY_MAX]])]
     #[Groups([ProductResource::READ, ProductBarcodesResource::READ, ProductBarcodesResource::WRITE])]
     public int $quantity = 1;
 
     /** The supplier who prints it (GET .../vendors), for a supplier's code only. */
-    #[Assert\Uuid(groups: [ProductBarcodesResource::WRITE])]
+    #[Assert\Uuid(groups: [ProductBarcodesResource::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([ProductResource::READ, ProductBarcodesResource::READ, ProductBarcodesResource::WRITE])]
     public ?string $supplierId = null;
 

@@ -343,29 +343,39 @@ final class ProductsTest extends ApiTestCase
         self::assertSame($moved, $this->intAt($this->json(), 'version'), 'the same codes change nothing, the version neither');
     }
 
-    /** @return iterable<string, array{string, array<string, mixed>}> */
+    /** @return iterable<string, array{string, list<array<string, mixed>>, string, array<string, int|string>}> */
     public static function refusedCodes(): iterable
     {
-        yield 'a space inside' => ['barcodes.0.code', ['role' => 'unit', 'code' => 'with space', 'quantity' => 1]];
-        yield 'a wrong check digit' => ['barcodes.0.code', ['role' => 'unit', 'code' => '3017620422004', 'quantity' => 1]];
-        yield 'a pack of one' => ['barcodes.0.quantity', ['role' => 'pack', 'code' => 'P-1', 'quantity' => 1]];
-        yield 'a supplier code without its supplier' => ['barcodes.0.supplierId', ['role' => 'supplier', 'code' => 'P-1', 'quantity' => 1]];
-        yield 'an unknown supplier' => ['barcodes.0.supplierId', ['role' => 'supplier', 'code' => 'P-1', 'quantity' => 1, 'supplierId' => '0192c3a4-0000-7000-8000-000000000000']];
-        yield 'an unknown role' => ['barcodes[0].role', ['role' => 'pallet', 'code' => 'P-1', 'quantity' => 1]];
+        $range = ['min' => 1, 'max' => 1000000];
+        yield 'a space inside' => ['barcodes.0.code', [['role' => 'unit', 'code' => 'with space', 'quantity' => 1]], 'invalid_barcode', []];
+        yield 'a wrong check digit' => ['barcodes.0.code', [['role' => 'unit', 'code' => '3017620422004', 'quantity' => 1]], 'invalid_barcode', []];
+        yield 'a pack of one' => ['barcodes.0.quantity', [['role' => 'pack', 'code' => 'P-1', 'quantity' => 1]], 'invalid_pack_quantity', []];
+        yield 'a unit code of two pieces' => ['barcodes.0.quantity', [['role' => 'unit', 'code' => 'U-1', 'quantity' => 2]], 'unit_code_one_piece', []];
+        yield 'a scan of no piece' => ['barcodes[0].quantity', [['role' => 'pack', 'code' => 'P-1', 'quantity' => 0]], 'whole_number_between', $range];
+        yield 'a supplier code without its supplier' => ['barcodes.0.supplierId', [['role' => 'supplier', 'code' => 'P-1', 'quantity' => 1]], 'value_required', []];
+        yield 'an unknown supplier' => ['barcodes.0.supplierId', [['role' => 'supplier', 'code' => 'P-1', 'quantity' => 1, 'supplierId' => '0192c3a4-0000-7000-8000-000000000000']], 'unknown_choice', []];
+        yield 'the same code twice' => ['barcodes.1.code', [['role' => 'internal', 'code' => 'X-1', 'quantity' => 1], ['role' => 'internal', 'code' => 'X-1', 'quantity' => 1]], 'barcode_twice', []];
+        yield 'an unknown role' => ['barcodes[0].role', [['role' => 'pallet', 'code' => 'P-1', 'quantity' => 1]], 'not_one_of', ['choices' => 'unit, pack, supplier, internal']];
     }
 
-    /** @param array<string, mixed> $row */
+    /**
+     * Each refusal names its row's field and a reason the screen words (docs/SPEC.md § 7, row 57), never a bare
+     * « Valeur refusée ».
+     *
+     * @param list<array<string, mixed>> $rows
+     * @param array<string, int|string>  $params
+     */
     #[DataProvider('refusedCodes')]
-    public function testAMalformedCodeIsRefusedNamingItsRow(string $field, array $row): void
+    public function testAMalformedCodeIsRefusedNamingItsRow(string $field, array $rows, string $reason, array $params): void
     {
         $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
         $this->postJson($this->path(), $this->product());
         $id = $this->stringAt($this->json(), 'id');
 
-        $this->sendJson('PUT', $this->path($id).'/barcodes', ['version' => $this->storedVersion('product', $id), 'barcodes' => [$row]]);
+        $this->sendJson('PUT', $this->path($id).'/barcodes', ['version' => $this->storedVersion('product', $id), 'barcodes' => $rows]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
+        self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals());
     }
 
     /**

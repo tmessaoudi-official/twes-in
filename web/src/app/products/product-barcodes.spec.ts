@@ -8,6 +8,7 @@ import {
   provideTranslateLoader,
   provideTranslateService,
   TranslateLoader,
+  TranslateService,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
@@ -277,10 +278,44 @@ describe('ProductBarcodesSection', () => {
   it('puts the refusal of a code another product holds under its row, naming that product', async () => {
     await open([]);
     await scan('X-1');
-    refusal.set({ code: 'barcode_taken', index: 0, field: 'code', heldBy: 'ART-001' });
+    refusal.set({
+      code: 'barcode_taken',
+      index: 0,
+      field: 'code',
+      heldBy: 'ART-001',
+      reason: null,
+      params: {},
+    });
     fixture.detectChanges();
 
     expect(q('product-barcode-problem-0')?.textContent).toContain('products.barcodes.taken');
+  });
+
+  // docs/SPEC.md § 7, row 57: the row says what its reason says, as a form does, never « Ce code a été refusé ».
+  it('says the reason the API gave for a row, and the plain refusal only for a reason no text words', async () => {
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('fr', {
+      import: { rejections: { whole_number_between: 'De {{min}} à {{max}}.' } },
+    });
+    translate.use('fr');
+    await open([]);
+    await scan('X-1');
+    const at = (reason: string | null) => {
+      refusal.set({
+        code: 'invalid',
+        index: 0,
+        field: 'quantity',
+        heldBy: null,
+        reason,
+        params: { min: 1, max: 1000000 },
+      });
+      fixture.detectChanges();
+      return q('product-barcode-problem-0')?.textContent?.trim();
+    };
+
+    expect(at('whole_number_between')).toBe('De 1 à 1000000.');
+    expect(at('no_such_reason')).toBe('products.barcodes.refused');
+    expect(at(null)).toBe('products.barcodes.refused');
   });
 
   it('removes a row and puts the saved list back', async () => {

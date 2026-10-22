@@ -332,7 +332,12 @@ final readonly class ProductImport implements DeclaresImport
                     ? [$codes[(int) $at[1]][1]['quantity'] ?? 'barcode', 'invalid_pack_quantity']
                     : [$codes[(int) $at[1]][1][$at[2]] ?? $codes[(int) $at[1]][1]['code'] ?? 'barcode', 'code' === $at[2] ? 'invalid_barcode' : 'invalid_value'];
 
-                throw new RowRejected($column, $refused->getMessage(), $refused->reason ?? $code, 'invalid_pack_quantity' === $code ? self::PACK_BOUNDS : $refused->params);
+                // The file's only quantity is a pack's, whose bounds say more than a scan's 1 to a million.
+                if ('invalid_pack_quantity' === $code) {
+                    throw new RowRejected($column, $refused->getMessage(), $code, self::PACK_BOUNDS);
+                }
+
+                throw new RowRejected($column, $refused->getMessage(), $refused->reason ?? $code, $refused->params);
             }
             [$column, $code] = str_starts_with($refused->field, 'customFields.')
                 ? [self::CUSTOM_PREFIX.substr($refused->field, \strlen('customFields.')), 'invalid_value']

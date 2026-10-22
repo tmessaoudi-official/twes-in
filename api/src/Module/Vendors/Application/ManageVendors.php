@@ -168,7 +168,7 @@ final readonly class ManageVendors
         $category = $input->profile->defaultExpenseCategoryId;
         $kept = null !== $category && null !== $current && true === $current->getProfile()->defaultExpenseCategoryId?->equals($category);
         if (null !== $category && !$kept && !$this->expenseCategories->isActiveInCompany($category, $company->getId())) {
-            throw new InvalidVendor('defaultExpenseCategoryId', 'No active expense category of this company has this id.');
+            throw new InvalidVendor('defaultExpenseCategoryId', 'No active expense category of this company has this id.', 'unknown_choice');
         }
     }
 

@@ -29,19 +29,19 @@ final readonly class BarcodeLine
         public ?Vendor $supplier = null,
     ) {
         if ($quantity < 1 || $quantity > self::QUANTITY_MAX) {
-            throw new InvalidProduct('quantity', \sprintf('One scan enters 1 to %d pieces.', self::QUANTITY_MAX));
+            throw new InvalidProduct('quantity', \sprintf('One scan enters 1 to %d pieces.', self::QUANTITY_MAX), 'whole_number_between', ['min' => 1, 'max' => self::QUANTITY_MAX]);
         }
         if (BarcodeRole::Unit === $role && 1 !== $quantity) {
-            throw new InvalidProduct('quantity', 'A unit code enters one piece; a code that enters several is a pack.');
+            throw new InvalidProduct('quantity', 'A unit code enters one piece; a code that enters several is a pack.', 'unit_code_one_piece');
         }
         if (BarcodeRole::Pack === $role && 1 === $quantity) {
             throw new InvalidProduct('quantity', 'A pack enters more than one piece; a code that enters one is a unit code.', 'invalid_pack_quantity');
         }
         if (BarcodeRole::Supplier === $role && null === $supplier) {
-            throw new InvalidProduct('supplierId', 'A supplier\'s code names the supplier who prints it.');
+            throw new InvalidProduct('supplierId', 'A supplier\'s code names the supplier who prints it.', 'value_required');
         }
         if (BarcodeRole::Supplier !== $role && null !== $supplier) {
-            throw new InvalidProduct('supplierId', 'Only a supplier\'s code names a supplier.');
+            throw new InvalidProduct('supplierId', 'Only a supplier\'s code names a supplier.', 'unknown_choice');
         }
     }
 }

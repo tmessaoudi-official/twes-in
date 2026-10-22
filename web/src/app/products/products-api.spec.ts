@@ -496,7 +496,30 @@ describe('ProductsApi', () => {
         { status: 422, statusText: 'Unprocessable' },
       );
     await expect(shape).rejects.toMatchObject({
-      refusal: { code: 'invalid', index: 2, field: 'role', heldBy: null },
+      refusal: { code: 'invalid', index: 2, field: 'role', heldBy: null, reason: null, params: {} },
+    });
+
+    const reasoned = api.replaceBarcodes('c1', 'p1', [], 1);
+    http.expectOne('/api/companies/c1/products/p1/barcodes').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'barcodes.1.quantity',
+            message: 'One scan enters 1 to 1000000 pieces.',
+            payload: { reason: 'whole_number_between', params: { min: 1, max: 1000000 } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(reasoned).rejects.toMatchObject({
+      refusal: {
+        code: 'invalid',
+        index: 1,
+        field: 'quantity',
+        reason: 'whole_number_between',
+        params: { min: 1, max: 1000000 },
+      },
     });
 
     const stale = api.replaceBarcodes('c1', 'p1', [], 1);

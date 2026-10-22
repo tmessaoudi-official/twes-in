@@ -456,7 +456,8 @@ final readonly class ManageProducts
     {
         foreach ($rows as $index => $row) {
             if (BarcodeRole::Supplier->value === $row->role) {
-                throw new InvalidProduct("barcodes.$index.role", 'A supplier\'s code is written by someone who may read costs.');
+                // The role is not offered to whoever may not read costs: only a page read before a permission changed sends it.
+                throw new InvalidProduct("barcodes.$index.role", 'A supplier\'s code is written by someone who may read costs.', 'unknown_choice');
             }
         }
         foreach ($held?->getBarcodes() ?? [] as $code) {
@@ -595,11 +596,11 @@ final readonly class ManageProducts
         $lines = [];
         foreach ($rows as $index => $row) {
             $role = BarcodeRole::tryFrom($row->role)
-                ?? throw new InvalidProduct("barcodes.$index.role", 'A code is a unit, pack, supplier or internal code.');
+                ?? throw new InvalidProduct("barcodes.$index.role", 'A code is a unit, pack, supplier or internal code.', 'not_one_of', ['choices' => implode(', ', array_column(BarcodeRole::cases(), 'value'))]);
             $supplier = null;
             if (null !== $row->supplierId) {
                 $supplier = $this->vendors->ofIdInCompany($row->supplierId, $company->getId())
-                    ?? throw new InvalidProduct("barcodes.$index.supplierId", 'No supplier of this company has this id.');
+                    ?? throw new InvalidProduct("barcodes.$index.supplierId", 'No supplier of this company has this id.', 'unknown_choice');
                 if ($supplier->isMergedAway()) {
                     throw new InvalidProduct("barcodes.$index.supplierId", 'This supplier was merged into another: name that one.', 'unknown_choice');
                 }

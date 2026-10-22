@@ -89,7 +89,7 @@ class ExpenseCategory implements CompanyOwned
         $parent = $this->parentOfThisCompany($parent);
         for ($above = $parent; null !== $above; $above = $above->parent) {
             if ($above->id->equals($this->id)) {
-                throw new InvalidExpense('parentId', 'A category never sits under itself or under one of its own subcategories.');
+                throw new InvalidExpense('parentId', 'A category never sits under itself or under one of its own subcategories.', 'under_itself');
             }
         }
 
@@ -113,7 +113,7 @@ class ExpenseCategory implements CompanyOwned
     private function parentOfThisCompany(?self $parent): ?self
     {
         if (null !== $parent && !$parent->company->getId()->equals($this->company->getId())) {
-            throw new InvalidExpense('parentId', 'A category sits under a category of its own company.');
+            throw new InvalidExpense('parentId', 'A category sits under a category of its own company.', 'unknown_choice');
         }
 
         return $parent;

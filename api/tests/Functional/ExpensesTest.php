@@ -107,7 +107,9 @@ final class ExpensesTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->companyPath().'/expense-categories/'.$vehicles, ['name' => 'Véhicules', 'parentId' => $fuel, 'isActive' => true, 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('parentId', (string) $this->client->getResponse()->getContent());
+        self::assertSame([['propertyPath' => 'parentId', 'reason' => 'under_itself', 'params' => []]], $this->refusals());
+        $this->sendJson('PUT', $this->companyPath().'/expense-categories/'.$vehicles, ['name' => 'Véhicules', 'parentId' => '01920000-0000-7000-8000-000000000000', 'isActive' => true, 'version' => 1]);
+        self::assertSame([['propertyPath' => 'parentId', 'reason' => 'unknown_choice', 'params' => []]], $this->refusals(), 'a category no longer there');
 
         $this->sendJson('PUT', $this->companyPath().'/expense-categories/'.$fuel, ['name' => 'Carburant', 'parentId' => $vehicles, 'isActive' => false, 'version' => 1]);
         self::assertResponseIsSuccessful();
@@ -672,7 +674,7 @@ final class ExpensesTest extends ApiTestCase
 
         $this->sendJson('PUT', $vendorPath, [...$body, 'defaultExpenseCategoryId' => '01920000-0000-7000-8000-000000000000']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('defaultExpenseCategoryId', (string) $this->client->getResponse()->getContent());
+        self::assertSame([['propertyPath' => 'defaultExpenseCategoryId', 'reason' => 'unknown_choice', 'params' => []]], $this->refusals());
 
         $this->sendJson('PUT', $vendorPath, [...$body, 'defaultExpenseCategoryId' => $fuel]);
         self::assertResponseIsSuccessful();

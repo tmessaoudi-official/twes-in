@@ -249,6 +249,9 @@ export interface BarcodesRefusal {
   field: string | null;
   /** For `barcode_taken`, the reference of the product that already answers to the code. */
   heldBy: string | null;
+  /** The reason the API gave for that row's field, which `import.rejections.*` words, and that text's values. */
+  reason: string | null;
+  params: Readonly<Record<string, number | string>>;
 }
 
 /**
