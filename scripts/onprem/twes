@@ -447,6 +447,7 @@ start() {
   [[ "$address" != 127.0.0.1 ]] || say "no network address found: only this computer opens https://localhost"
   echo "$address" > "$state/lan-host"
   why=$(backup_folder_ready) || backup_folder_missing "$why"
+  resume_cut_update
   LAN_HOST=$address bash "$deploy" --again "$values"
   now > "$state/started-at"
   deliver_held
@@ -479,6 +480,7 @@ update() {
   local auto=${1:-} newest current previous='' label='' failure address why
   exec 8> "$state/update.lock"
   flock -n 8 || { say "an update is already running"; return 0; }
+  resume_cut_update held
   git -C "$root" fetch --quiet --tags origin || { say "the releases could not be read (no network?): nothing changed"; return 1; }
   newest=$(git -C "$root" tag --list "$release_tags" --sort=-v:refname | head -n 1)
   [[ -n "$newest" ]] || { say "no release published yet"; return 0; }
@@ -510,8 +512,12 @@ update() {
     say "backed up before the update: $label"
   fi
 
+  # Written before the checkout moves: an update cut short (the computer switched off, a task's time limit) leaves the
+  # checkout on a release nothing answered for, and the next start or tick takes the shop back from what is written here.
+  [[ -z "$previous" ]] || printf '%s %s %s\n' "$newest" "$previous" "$label" > "$state/update-in-progress"
   git -C "$root" checkout --quiet --detach "$newest"
   if LAN_HOST=$address bash "$deploy" --release "$values" && failure=$(deep_health 18); then
+    rm -f "$state/update-in-progress"
     say "updated to $newest"
     if [[ -f "$state/failed-releases" ]]; then
       awk -v t="$newest" '$0 != t' "$state/failed-releases" > "$state/failed-releases.new"
@@ -528,19 +534,44 @@ update() {
     return 1
   fi
   say "$newest is unhealthy ($failure): starting $current again on the current schema"
-  git -C "$root" checkout --quiet --detach "$previous"
-  if LAN_HOST=$address bash "$deploy" --again "$values" && deep_health 18 >/dev/null; then
-    alert installation.rolled_back "Mise à jour vers $newest annulée, $current a repris" \
-      "La mise à jour vers $newest ne répondait pas (en échec : $failure). $current a été redémarré sur le schéma actuel et répond.
-Sauvegarde prise avant la mise à jour : $label" \
-      "version=$newest" "previous=$current" "label=$label"
-    return 1
-  fi
-  alert installation.update_failed "URGENT : mise à jour vers $newest en échec, et le retour à $current aussi" \
-    "La mise à jour vers $newest ne répondait pas (en échec : $failure), et $current redémarré ne répond pas non plus.
-$(restore_commands "$label" "$previous" "$address")" \
-    "version=$newest" "previous=$current" "label=$label"
+  take_back "$newest" "$previous" "$label" "$address" "ne répondait pas (en échec : $failure)" annulée
   return 1
+}
+
+# The release the shop ran before an update, started again on the current schema, and everyone told: the update is
+# written down as failed, so tick never applies it again by itself. Cleared once told, whatever the outcome.
+take_back() { # newest, previous commit, label, address, what happened to the update, its word in the subject
+  local current
+  current=$(tag_of "$2")
+  listed "$1" failed-releases || echo "$1" >> "$state/failed-releases"
+  git -C "$root" checkout --quiet --detach "$2"
+  if LAN_HOST=$4 bash "$deploy" --again "$values" && deep_health 18 >/dev/null; then
+    alert installation.rolled_back "Mise à jour vers $1 $6, $current a repris" \
+      "La mise à jour vers $1 $5. $current a été redémarré sur le schéma actuel et répond.
+Sauvegarde prise avant la mise à jour : $3" \
+      "version=$1" "previous=$current" "label=$3"
+  else
+    alert installation.update_failed "URGENT : mise à jour vers $1 $6, et le retour à $current en échec" \
+      "La mise à jour vers $1 $5, et $current redémarré ne répond pas.
+$(restore_commands "$3" "$2" "$4")" \
+      "version=$1" "previous=$current" "label=$3"
+  fi
+  rm -f "$state/update-in-progress"
+}
+
+# An update cut short before its verdict: found by start, tick or a later update while no update runs (the lock held by
+# the caller is named \`held\`), it takes the shop back to the release it ran, as an unhealthy update does.
+resume_cut_update() { # [held]
+  local newest previous label
+  [[ -s "$state/update-in-progress" ]] || return 0
+  if [[ "${1:-}" != held ]]; then
+    exec 7> "$state/update.lock"
+    flock -n 7 || { exec 7>&-; return 0; }
+  fi
+  read -r newest previous label < "$state/update-in-progress"
+  say "the update to $newest was cut short: starting $(tag_of "$previous") again"
+  take_back "$newest" "$previous" "$label" "$(recall lan-host 127.0.0.1)" "a été interrompue avant la fin (ordinateur éteint ou redémarré pendant qu'elle se faisait)" interrompue
+  [[ "${1:-}" == held ]] || exec 7>&-
 }
 
 set_value() { # name value: the values file rewritten beside itself, readable by its owner alone
@@ -658,6 +689,7 @@ tick() {
   exec 8> "$state/update.lock"
   flock -n 8 || return 0
   [[ -f "$state/lan-host" ]] || { say "not started yet: twes start"; return 0; }
+  resume_cut_update held
   address=$(lan_address)
   if [[ "$address" != "$(recall lan-host)" ]]; then
     say "the network address moved from $(recall lan-host) to $address"

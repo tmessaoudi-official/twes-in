@@ -277,7 +277,8 @@
         "step_up_required": "Nothing changed: confirm it is you to make this change."
       },
       "hints": {
-        "vatOnDebits": "Tick if the company opted to pay the VAT on its services when it invoices them rather than when it is paid. Its invoices for services will then carry the mention « Option pour le paiement de la taxe d’après les débits »."
+        "vatOnDebits": "Tick if the company opted to pay the VAT on its services when it invoices them rather than when it is paid. Its invoices for services will then carry the mention « Option pour le paiement de la taxe d’après les débits ».",
+        "iban": "The company’s IBAN, or the 20 digits of its Tunisian RIB (example: 10006035183598478831), kept as the IBAN TN59 puts before them."
       }
     },
     "establishments": {
@@ -2714,7 +2715,7 @@
       "number_hint": "Letters, digits and . _ / -, up to 32 characters, unique in the company.",
       "active_hint": "An inactive vendor stays on its expenses but is no longer offered for new ones.",
       "country_hint": "Two letters, such as TN or FR. Left empty, the company's country.",
-      "iban_hint": "The account the vendor is paid on; spaces are removed.",
+      "iban_hint": "The account the vendor is paid on: its IBAN, or the 20 digits of its Tunisian RIB (example: 10006035183598478831), kept as the IBAN TN59 puts before them. Spaces are removed.",
       "terms_hint": "Days after the vendor's invoice its payment is due, from 0 to 365.",
       "notes_hint": "For your team only."
     },

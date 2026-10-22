@@ -153,7 +153,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   S3-compatible bucket, which refuses to start without its own variables), `ImportExport` (a module declares an
   import with `DeclaresImport`; `RunImport` reads the file, the guide at `GET .../imports/{subject}` describes its
   columns, and every rejected row carries a `code` and `params` the screen translates, from a refusal's `reason`; a row
-  imported may carry notes, `RowNotes`, such as the reference its new product was given; a subject offers switches,
+  imported may carry notes, `RowNotes`, such as the reference its new product was given; a doubtful cell (an identifier's
+  shape or check, an e-mail, a phone, an IBAN, a BIC, a barcode) is set aside by `SetAside` rather than refusing its row: the
+  record is written without it and marked « À vérifier » by `Infrastructure/Import/SetAsideMarks` (the `imports` text
+  domain), and the report notes `set_aside` on that cell; a subject offers switches,
   `ImportSwitch`, worded by the screen alone (`ImportColumnsTest` holds every label and note to each language; the
   products file's: `default_taxes`, the line defaults for a new product naming no tax, and `unpriced_inactive`, a new
   product with no price created switched off at 0; its `cost_price_gross` column is a cost with taxes, kept less the
@@ -246,7 +249,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   and dialogs read (the schedule's, `public/i18n/schedule/`) are opened into the root instead, by `textsOpened(name)` on
   a route or `await TextsParts.open(name)` before a dialog, and a screen that says them without opening them shows keys.
 - `api/translations/*.{fr,en,ar}.yaml` — the only strings the API itself emits: the invitation mail (`emails`), fiscal
-  labels and mentions (`fiscal`), and printed documents (`pdf`, laid out in `api/templates/pdf/`, whose `_document.css.twig` every document shares with the
+  labels and mentions (`fiscal`), the « À vérifier » note an import leaves on a record (`imports`), and printed documents (`pdf`, laid out in `api/templates/pdf/`, whose `_document.css.twig` every document shares with the
   built-in layouts and the accent, and rendered by
   Gotenberg). `ApiTranslationParityTest` keeps each pair's keys identical. Everything a person reads in the SPA lives
   in `web/public/i18n/` instead, with its own parity test.

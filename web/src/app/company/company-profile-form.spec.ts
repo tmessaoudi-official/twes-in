@@ -82,6 +82,30 @@ describe('the débits option', () => {
 });
 
 describe('profileForm', () => {
+  // docs/SPEC.md § 7, 2026-10-22 18:09: a bare RIB is the IBAN TN59 spells before it, so the field lets one through.
+  it('takes an IBAN or a bare RIB in the IBAN field, and nothing else', () => {
+    const iban = buildFormGroup(profileForm(profile), profileValues(profile)).controls['iban']!;
+    for (const taken of [
+      'TN59 1000 6035 1835 9847 8831',
+      '10006035183598478831',
+      '10 006 035 1835984788 31',
+      '10.006.035.1835984788.31',
+    ]) {
+      iban.setValue(taken);
+      expect(iban.errors, taken).toBeNull();
+    }
+    for (const refused of [
+      '1000603518359847883',
+      'TN59',
+      'TN59 1000 6035 18!!',
+      '!!10006035183598478831',
+      '10006035183598478831 TN',
+    ]) {
+      iban.setValue(refused);
+      expect(iban.errors?.['pattern'], refused).toBeTruthy();
+    }
+  });
+
   it('groups the profile the way an invoice header reads it', () => {
     const form = profileForm(profile);
 

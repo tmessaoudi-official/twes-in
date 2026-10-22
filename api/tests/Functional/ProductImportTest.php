@@ -1006,6 +1006,26 @@ Cheville 10 mm,6191234567897
     }
 
     /**
+     * A unit code whose check digit fails is set aside rather than losing the product: written without it, marked
+     * « À vérifier » with the code as the file wrote it, and said on that cell (docs/SPEC.md § 7, 2026-10-22 18:09).
+     */
+    public function testAUnitCodeWhoseCheckDigitFailsIsSetAsideAndTheProductMarked(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import("reference,name,unit_code,unit_price_net,barcode\nVIS-9,Vis 9,H87,1,6190000000018\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->json()['created'] ?? null);
+        self::assertSame([], $this->rejections());
+        self::assertContains(['line' => 2, 'column' => 'barcode', 'code' => 'set_aside', 'params' => ['value' => '6190000000018', 'reason' => 'invalid_barcode']], $this->arrayAt($this->json(), 'notes'));
+        $this->em()->clear();
+        $product = $this->product('VIS-9');
+        self::assertSame([], $product->getBarcodes(), 'nothing invalid is stored');
+        self::assertSame("Code-barres du fichier\u{a0}: «\u{a0}6190000000018\u{a0}», mis de côté\u{a0}: son chiffre de contrôle ne correspond pas.", $product->getCheckMark()->note);
+    }
+
+    /**
      * Each code cell is refused on its own column, the pair it belongs to named where one half is missing.
      *
      * @param array<string, int|string> $params

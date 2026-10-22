@@ -2,6 +2,7 @@
 
 import { VENDORS_LIST, vendorForm, vendorInput, vendorSearch, vendorValues } from './vendor-forms';
 import type { VendorOptions, VendorRow } from './vendors-types';
+import { buildFormGroup } from '../shared/form/form-builder';
 
 const options: VendorOptions = {
   countryCode: 'TN',
@@ -174,6 +175,28 @@ describe('vendor forms', () => {
     ]);
     expect(VENDORS_LIST.defaultSort).toEqual({ column: 'number', direction: 'asc' });
     expect(VENDORS_LIST.columns.find((c) => c.id === 'paymentTermsDays')?.value(sotumag)).toBe(0);
+  });
+
+  // docs/SPEC.md § 7, 2026-10-22 18:09: a bare RIB is the IBAN TN59 spells before it, so the field lets one through.
+  it('takes an IBAN or a bare RIB in the IBAN field, and nothing else', () => {
+    const iban = buildFormGroup(vendorForm(options), vendorValues(null, options)).controls['iban']!;
+    for (const taken of [
+      'TN59 1000 6035 1835 9847 8831',
+      '10006035183598478831',
+      '10-006-035-1835984788-31',
+    ]) {
+      iban.setValue(taken);
+      expect(iban.errors, taken).toBeNull();
+    }
+    for (const refused of [
+      '1000603518359847883',
+      'TN59',
+      'TN59 1000 6035 18!!',
+      '!!10006035183598478831',
+    ]) {
+      iban.setValue(refused);
+      expect(iban.errors?.['pattern'], refused).toBeTruthy();
+    }
   });
 
   it("asks for the preset's registration numbers without requiring any", () => {

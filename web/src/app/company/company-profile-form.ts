@@ -147,7 +147,9 @@ export function profileForm(profile: CompanyProfile): FormDescriptor {
           label: label('iban'),
           kind: 'text',
           maxLength: 42,
-          pattern: '[A-Za-z]{2}[0-9]{2}[A-Za-z0-9 ]{8,38}',
+          hint: 'company.profile.hints.iban',
+          // An IBAN, or a bare Tunisian RIB (20 digits, its groups apart or not), which the API keeps as TN59 + RIB.
+          pattern: '(?:[A-Za-z]{2}[0-9]{2}[A-Za-z0-9 ]{8,38}|[0-9](?:[ .\\-]?[0-9]){19})',
         },
         {
           id: 'bic',

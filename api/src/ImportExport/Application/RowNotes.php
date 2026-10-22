@@ -28,6 +28,13 @@ final class RowNotes
         $this->notes[] = ['column' => $column, 'code' => $code, 'params' => $params];
     }
 
+    /** What a try of the row noted, kept once the row is written. */
+    public function keep(self $tried): void
+    {
+        array_push($this->notes, ...$tried->notes);
+        array_push($this->changes, ...$tried->changes);
+    }
+
     /** @return list<array{column: string|null, code: string, params: array<string, string|int>}> */
     public function all(): array
     {

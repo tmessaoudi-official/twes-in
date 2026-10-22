@@ -28,6 +28,8 @@ use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
+use App\ImportExport\Application\SetAside;
+use App\ImportExport\Infrastructure\Import\SetAsideMarks;
 use App\ImportExport\Infrastructure\Validation\ResourceRules;
 use App\Module\Customers\Application\CustomerCheckScopes;
 use App\Module\Customers\Application\CustomerInput;
@@ -123,6 +125,7 @@ final readonly class CustomerImport implements DeclaresImport
         private EntityManagerInterface $entityManager,
         private ResourceRules $rules,
         private CustomerSettingCells $settingCells,
+        private SetAsideMarks $marks,
     ) {
     }
 
@@ -160,7 +163,18 @@ final readonly class CustomerImport implements DeclaresImport
         return new ImportSubject(self::KEY, [...$this->fixed(), ...$this->identifiers($company), ...$this->custom($company)]);
     }
 
+    /**
+     * A doubtful registration number, e-mail or phone is set aside rather than refusing the row (docs/SPEC.md § 7,
+     * 2026-10-22 18:09): the row is read again without it, and the customer written is marked « À vérifier » with it.
+     */
     public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
+    {
+        $aside = new SetAside();
+
+        return $aside->import($record, $notes, fn (ImportRecord $row, RowNotes $tried): RowImported => $this->importRow($company, $row, $aside, $mode, $actorUserId, $tried, $context));
+    }
+
+    private function importRow(Company $company, ImportRecord $record, SetAside $aside, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
     {
         $number = $record->value('number') ?? throw new RowRejected('number', 'A customer is found again by its number, so every row needs one.', 'value_required');
         $existing = $this->customers->ofNumberInCompany($number, $company->getId());
@@ -179,7 +193,7 @@ final readonly class CustomerImport implements DeclaresImport
 
         $written = null;
         try {
-            $input = $this->input($company, $record, $existing, $faults);
+            $input = $this->input($company, $record, $existing, $faults, $aside);
             $faults->stopIfAny();
             // Rendered before the write, which changes the customer in place.
             $codes = null === $existing ? [] : $this->taxCodes($company);
@@ -188,6 +202,7 @@ final readonly class CustomerImport implements DeclaresImport
                 ? $this->manage->create($company, $input, $actorUserId)
                 : $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
             $this->settingCells->write($company, $written->getId(), $settings, $actorUserId);
+            $aside->noteOn($notes);
             $this->noteMissingIdentifiers($company, $written, $notes);
             if (null === $existing) {
                 $context->created('customer', $written->getId());
@@ -249,14 +264,14 @@ final readonly class CustomerImport implements DeclaresImport
      *
      * @throws InvalidCustomer
      */
-    private function input(Company $company, ImportRecord $record, ?Customer $current, RowFaults $faults): CustomerInput
+    private function input(Company $company, ImportRecord $record, ?Customer $current, RowFaults $faults, SetAside $aside): CustomerInput
     {
         $profile = $current?->getProfile();
         $kind = $record->value('kind');
         $identifiers = $profile->identifiers ?? [];
         $carriesOne = false;
         foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
-            $carriesOne = $carriesOne || null !== $record->value($identifier->key);
+            $carriesOne = $carriesOne || null !== $record->value($identifier->key) || $aside->has($identifier->key);
             $identifiers[$identifier->key] = $record->value($identifier->key) ?? $identifiers[$identifier->key] ?? null;
         }
         // A row silent on its kind is a business when it names one by its registration number, and a person otherwise.
@@ -283,8 +298,23 @@ final readonly class CustomerImport implements DeclaresImport
             $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
             $this->customValues($company, $record, $current, $faults),
             identifiersMayFollow: true,
-            mark: $faults->read(static fn (): ?CheckMark => ImportCells::checkMark($record, 'to_check')),
+            mark: $this->marks->marked($aside, $faults->read(static fn (): ?CheckMark => ImportCells::checkMark($record, 'to_check')), $current?->getCheckMark(), $this->labels($company)),
         );
+    }
+
+    /**
+     * The label of each column a cell may be set aside from, as the person reads it on the record's mark.
+     *
+     * @return array<string, string>
+     */
+    private function labels(Company $company): array
+    {
+        $labels = ['email' => $this->marks->label('email'), 'phone' => $this->marks->label('phone')];
+        foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
+            $labels[$identifier->key] = $this->marks->labelIn($identifier->labelKey, 'fiscal');
+        }
+
+        return $labels;
     }
 
     /** A business customer stored without the number the preset requires of one: it cannot be invoiced until it has it. */

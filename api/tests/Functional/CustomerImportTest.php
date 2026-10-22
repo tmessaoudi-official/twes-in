@@ -268,14 +268,41 @@ final class CustomerImportTest extends ApiTestCase
             $this->arrayAt($this->json(), 'rejected'),
         );
         self::assertSame([
-            [2, 'email', 'invalid_email', []],
-            [3, 'phone', 'invalid_phone', []],
             [4, 'website', 'invalid_website', []],
             [5, 'billing_country_code', 'invalid_country', []],
             [6, 'billing_city', 'invalid_text', ['max' => 120]],
             [7, 'shipping_postal_code', 'invalid_text', ['max' => 20]],
         ], $rejected);
-        self::assertSame([8], $this->arrayAt($this->json(), 'created'), 'a country written in small letters is the same country');
+        self::assertSame([2, 3, 8], $this->arrayAt($this->json(), 'created'), 'a country written in small letters is the same country');
+        // A doubtful e-mail or phone is set aside rather than losing the customer (docs/SPEC.md § 7, 2026-10-22 18:09).
+        self::assertSame([
+            ['line' => 2, 'column' => 'email', 'code' => 'set_aside', 'params' => ['value' => 'pas-un-courriel', 'reason' => 'invalid_email']],
+            ['line' => 3, 'column' => 'phone', 'code' => 'set_aside', 'params' => ['value' => 'appeler le standard', 'reason' => 'invalid_phone']],
+        ], $this->json()['notes']);
+    }
+
+    /**
+     * A business customer's misshapen registration number is set aside: the customer is written without it, still a
+     * business since the row named one, marked « À vérifier » with what the file held, and said as missing besides.
+     */
+    public function testAMisshapenRegistrationNumberIsSetAsideAndTheCustomerMarked(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import("number,name,matricule_fiscal,phone\nCLI-0030,Quincaillerie du Port,pas-un-matricule,le standard\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2], $this->arrayAt($this->json(), 'created'));
+        self::assertSame([
+            ['line' => 2, 'column' => 'phone', 'code' => 'set_aside', 'params' => ['value' => 'le standard', 'reason' => 'invalid_phone']],
+            ['line' => 2, 'column' => 'matricule_fiscal', 'code' => 'set_aside', 'params' => ['value' => 'pas-un-matricule', 'reason' => 'identifier_part', 'identifier' => 'matricule_fiscal', 'example' => '1234567A/B/M/000', 'part' => 'number']],
+            ['line' => 2, 'column' => 'matricule_fiscal', 'code' => 'identifier_missing', 'params' => ['identifier' => 'matricule_fiscal']],
+        ], $this->json()['notes'], 'what was set aside is said before what it leaves missing');
+        $customer = $this->customer('CLI-0030');
+        self::assertSame('company', $customer->getProfile()->kind->value, 'a row naming a registration number names a business');
+        self::assertSame([], array_filter($customer->getProfile()->identifiers), 'nothing invalid is stored');
+        self::assertNull($customer->getProfile()->phone);
+        self::assertSame("Téléphone du fichier\u{a0}: «\u{a0}le standard\u{a0}», mis de côté\u{a0}: ce n’est pas un numéro de téléphone.\nMatricule fiscal du fichier\u{a0}: «\u{a0}pas-un-matricule\u{a0}», mis de côté\u{a0}: sa forme ne correspond pas (exemple\u{a0}: 1234567A/B/M/000).", $customer->getCheckMark()->note);
     }
 
     /** A customer stored before a rule is held to it when a file writes it again, under the column the rule names. */

@@ -14,6 +14,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Put;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tenancy\Infrastructure\ApiPlatform\Output\CompanyIdentifierField;
 use App\Tenancy\Infrastructure\ApiPlatform\Output\CompanyVatRegimeOption;
@@ -134,7 +135,7 @@ final class CompanyProfileResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $website = null;
 
-    #[Assert\Iban(groups: [self::WRITE], payload: ['reason' => 'invalid_iban'])]
+    #[ContactRule(ContactRule::IBAN, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $iban = null;
 

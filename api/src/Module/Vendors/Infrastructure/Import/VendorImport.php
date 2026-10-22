@@ -25,6 +25,8 @@ use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
+use App\ImportExport\Application\SetAside;
+use App\ImportExport\Infrastructure\Import\SetAsideMarks;
 use App\ImportExport\Infrastructure\Validation\ResourceRules;
 use App\Module\Vendors\Application\ExpenseCategoryDirectory;
 use App\Module\Vendors\Application\ManageVendors;
@@ -101,6 +103,7 @@ final readonly class VendorImport implements DeclaresImport
         private EntityManagerInterface $entityManager,
         private ConfirmStepUp $stepUp,
         private ResourceRules $rules,
+        private SetAsideMarks $marks,
     ) {
     }
 
@@ -138,7 +141,23 @@ final readonly class VendorImport implements DeclaresImport
         return new ImportSubject(self::KEY, [...$this->fixed(), ...$this->identifiers($company)]);
     }
 
+    /**
+     * A doubtful identifier, contact or bank detail is set aside rather than refusing the row (docs/SPEC.md § 7,
+     * 2026-10-22 18:09): the row is read again without it, and the vendor written is marked « À vérifier » with it.
+     */
     public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
+    {
+        $aside = new SetAside();
+
+        return $aside->import($record, $notes, function (ImportRecord $row, RowNotes $tried) use ($company, $aside, $mode, $actorUserId, $context): RowImported {
+            $imported = $this->importRow($company, $row, $aside, $mode, $actorUserId, $tried, $context);
+            $aside->noteOn($tried);
+
+            return $imported;
+        });
+    }
+
+    private function importRow(Company $company, ImportRecord $record, SetAside $aside, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
     {
         $number = $record->value('number') ?? throw new RowRejected('number', 'A vendor is found again by its number, so every row needs one.', 'value_required');
         $existing = $this->vendors->ofNumberInCompany($number, $company->getId());
@@ -156,7 +175,7 @@ final readonly class VendorImport implements DeclaresImport
 
         $written = null;
         try {
-            $input = $this->input($company, $record, $existing, $faults);
+            $input = $this->input($company, $record, $existing, $faults, $aside);
             $faults->stopIfAny();
             if (!$context->dryRun && $input->profile->changesBankDetailsOf($existing?->getProfile()) && (null === $actorUserId || !$this->stepUp->isRecent($actorUserId))) {
                 throw new StepUpRequired();
@@ -196,7 +215,7 @@ final readonly class VendorImport implements DeclaresImport
      *
      * @throws InvalidVendor
      */
-    private function input(Company $company, ImportRecord $record, ?Vendor $current, RowFaults $faults): VendorInput
+    private function input(Company $company, ImportRecord $record, ?Vendor $current, RowFaults $faults, SetAside $aside): VendorInput
     {
         $held = $current?->getProfile();
         // A « yes » puts the name in doubt, a « no » takes the doubt away, a blank leaves it as it is.
@@ -223,7 +242,7 @@ final readonly class VendorImport implements DeclaresImport
                 $faults->read(fn (): ?Uuid => $this->expenseCategoryId($company, $record, $held), $held?->defaultExpenseCategoryId),
             ),
             $faults->read(static fn (): ?bool => self::yesNo($record, 'active')) ?? $current?->isActive() ?? true,
-            $faults->read(static fn (): ?CheckMark => ImportCells::checkMark($record, 'to_check')),
+            $this->marks->marked($aside, $faults->read(static fn (): ?CheckMark => ImportCells::checkMark($record, 'to_check')), $current?->getCheckMark(), $this->labels($company)),
             false === $doubt ? false : null,
             true === $doubt,
         );
@@ -333,6 +352,24 @@ final readonly class VendorImport implements DeclaresImport
         }
 
         return $columns;
+    }
+
+    /**
+     * The label of each column a cell may be set aside from, as the person reads it on the record's mark.
+     *
+     * @return array<string, string>
+     */
+    private function labels(Company $company): array
+    {
+        $labels = [];
+        foreach (['email', 'phone', 'iban', 'bic'] as $column) {
+            $labels[$column] = $this->marks->label($column);
+        }
+        foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
+            $labels[$identifier->key] = $this->marks->labelIn($identifier->labelKey, 'fiscal');
+        }
+
+        return $labels;
     }
 
     private static function columnOf(string $field): ?string

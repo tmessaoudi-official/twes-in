@@ -239,7 +239,8 @@
       "price_to_enter": "Sans prix de vente : créé au prix 0 et désactivé. Saisissez son prix dans sa fiche, puis activez-le.",
       "below_cost": "Vendu sous son prix de revient ({{cost}}).",
       "unit_to_confirm": "Sans unité : créé en {{code}}, l’unité par défaut. Confirmez-la dans sa fiche.",
-      "gross_reached": "Prix TTC {{gross}} impossible à atteindre : {{reached}} retenu."
+      "gross_reached": "Prix TTC {{gross}} impossible à atteindre : {{reached}} retenu.",
+      "set_aside": "« {{value}} » mis de côté : {{why}} La fiche est marquée « À vérifier » avec ce que le fichier tenait."
     },
     "stock": {
       "stock_add": "Quantité à ajouter",

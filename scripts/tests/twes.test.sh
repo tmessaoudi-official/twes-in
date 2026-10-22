@@ -48,6 +48,9 @@ rev=$(git -C "$root" rev-parse HEAD)
 echo "LAN_HOST=${LAN_HOST:-} $mode $*" >> "$TMPDIR/deploy.calls"
 case "$mode" in
   --release)
+    # RELEASE_CUT: the update killed while it deploys (before the release is written down), or once it is written
+    # down and before its health is read (after), as a computer switched off or a task's time limit would.
+    if [[ -n "${RELEASE_CUT:-}" ]]; then [[ "$RELEASE_CUT" != after ]] || echo "t deployed $rev release" >> "$records/history"; kill -9 "$PPID"; exit 137; fi
     if [[ "${RELEASE_EXIT:-0}" == 0 ]]; then echo "t deployed $rev release" >> "$records/history"; else echo "t failed $rev release" >> "$records/history"; exit 1; fi ;;
   --again)
     grep -q " $rev " "$records/history" 2>/dev/null || { echo "never deployed here" >&2; exit 1; }
@@ -327,6 +330,38 @@ runs=$(grep -c ' run --rm ' <<<"$out"); safe=$(grep -c ' run --rm .* < /dev/null
 check "  safe to paste as one block: both restores read no input" 0 0 "$runs $safe" "2 2"
 d=$(installed)
 out=$(twes "$d" restore-commands); check "restore-commands with no update made here: refused" $? 1 "$out" "no update"
+
+d=$(installed)
+out=$(RELEASE_CUT=before BACKUP_LABEL=$LABEL twes "$d" update); [[ "$(at_tag "$d")" == "$NEW" ]]
+check "an update cut short while it deploys: the checkout left on the new release" $? 0 "$(at_tag "$d")" ""
+check "  what it was doing written down" 0 0 "$(cat "$d/etc/state/update-in-progress")" "$NEW $(git -C "$d/twes-in" rev-parse "$OLD^{commit}") $LABEL"
+out=$(twes "$d" start); check "  the next start takes the shop back to the release it ran" $? 0 "$out" "the update to $NEW was cut short: starting $OLD again"
+[[ "$(at_tag "$d")" == "$OLD" ]]; check "  checked out again" $? 0 "$(at_tag "$d")" ""
+check "  started from its own images" 0 0 "$(deployed)" "--again"
+check "  the developer mailed" 0 0 "$(subject)" "Mise à jour vers $NEW interrompue, $OLD a repris"
+check "  and the operators told, with the backup's label" 0 0 "$(told)" "installation.rolled_back version=$NEW previous=$OLD label=$LABEL"
+check "  the release written down as failed, so it is not applied again by itself" 0 0 "$(cat "$d/etc/state/failed-releases")" "$NEW"
+[[ ! -e "$d/etc/state/update-in-progress" ]]; check "  and the journal cleared" $? 0 "" ""
+out=$(twes "$d" start); [[ "$out" != *"cut short"* ]]; check "  a start after it: nothing more to take back" $? 0 "$out" "running:"
+
+d=$(installed)
+out=$(RELEASE_CUT=after BACKUP_LABEL=$LABEL twes "$d" update)
+out=$(twes "$d" tick); check "cut once deployed and before its health was read: tick takes the shop back" $? 0 "$out" "the update to $NEW was cut short: starting $OLD again"
+[[ "$(at_tag "$d")" == "$OLD" ]]; check "  checked out again" $? 0 "$(at_tag "$d")" ""
+check "  the operators told" 0 0 "$(told)" "installation.rolled_back version=$NEW previous=$OLD label=$LABEL"
+
+d=$(installed)
+out=$(RELEASE_CUT=before BACKUP_LABEL=$LABEL twes "$d" update)
+out=$(AGAIN_EXIT=1 twes "$d" start); check "cut short, and the release it ran does not start again: the restore is mailed" $? 1 "$out" "URGENT"
+check "  with its commands" 0 0 "$(mailed)" "--set=$LABEL"
+[[ ! -e "$d/etc/state/update-in-progress" ]]; check "  told once: the journal cleared" $? 0 "" ""
+
+d=$(installed)
+out=$(BACKUP_LABEL=$LABEL twes "$d" update); [[ ! -e "$d/etc/state/update-in-progress" ]]
+check "an update that ends leaves no journal" $? 0 "$out" "updated to $NEW"
+d=$(installed)
+out=$(BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" update); [[ ! -e "$d/etc/state/update-in-progress" ]]
+check "  nor one rolled back" $? 0 "$out" "starting $OLD again"
 
 out=$(AT=$((NOON + 86400)) BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" update)
 check "a release that failed may be tried again by hand" $? 1 "$(deployed)" "--release"

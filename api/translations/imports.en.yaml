@@ -1,0 +1,23 @@
+# The « À vérifier » note an import leaves on a record whose doubtful cells it set aside (docs/SPEC.md § 7, 2026-10-22 18:09).
+set_aside:
+    line: '%label% in the file: “%value%”, set aside: %why%.'
+    with_example: '%why% (example: %example%)'
+    why:
+        identifier_shape: 'its shape does not match'
+        identifier_part: 'its shape does not match'
+        identifier_part_rule: 'its parts do not go together'
+        identifier_reversed: 'it is written the other way round'
+        identifier_checksum: 'its check digits are wrong'
+        invalid_iban: 'its shape or its check digits are wrong'
+        invalid_bic: 'it is not a BIC of 8 or 11 characters (example: BIATTNTT)'
+        invalid_phone: 'it is not a phone number'
+        invalid_email: 'it is not an e-mail address'
+        invalid_barcode: 'its check digit does not match'
+column:
+    email: 'E-mail address'
+    phone: 'Phone'
+    iban: 'IBAN'
+    bic: 'BIC'
+    barcode: 'Barcode'
+    pack_barcode: 'Pack barcode'
+    supplier_code: 'Supplier code'

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Domain\ValueObject;
 
+use App\Shared\Domain\Service\ContactRules;
 use App\Shared\Domain\Service\RegistrationNumbers;
 use App\Shared\Domain\Service\TypedText;
 
@@ -81,7 +82,7 @@ final readonly class CompanyProfile
         $this->email = self::text($email);
         $this->phone = self::text($phone);
         $this->website = self::text($website);
-        $this->iban = self::code($iban);
+        $this->iban = self::code(null === $iban ? null : ContactRules::account($iban));
         $this->bic = self::code($bic);
         $this->vatRegime = TypedText::trimmed($vatRegime);
         $this->invoiceFooterText = self::text($invoiceFooterText);

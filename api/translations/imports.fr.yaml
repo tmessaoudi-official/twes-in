@@ -1,0 +1,23 @@
+# The « À vérifier » note an import leaves on a record whose doubtful cells it set aside (docs/SPEC.md § 7, 2026-10-22 18:09).
+set_aside:
+    line: '%label% du fichier : « %value% », mis de côté : %why%.'
+    with_example: '%why% (exemple : %example%)'
+    why:
+        identifier_shape: 'sa forme ne correspond pas'
+        identifier_part: 'sa forme ne correspond pas'
+        identifier_part_rule: 'ses parties ne vont pas ensemble'
+        identifier_reversed: 'il est écrit à l’envers'
+        identifier_checksum: 'sa clé de contrôle est fausse'
+        invalid_iban: 'sa forme ou sa clé de contrôle est fausse'
+        invalid_bic: 'ce n’est pas un BIC de 8 ou 11 caractères (exemple : BIATTNTT)'
+        invalid_phone: 'ce n’est pas un numéro de téléphone'
+        invalid_email: 'ce n’est pas une adresse e-mail'
+        invalid_barcode: 'son chiffre de contrôle ne correspond pas'
+column:
+    email: 'Adresse e-mail'
+    phone: 'Téléphone'
+    iban: 'IBAN'
+    bic: 'BIC'
+    barcode: 'Code-barres'
+    pack_barcode: 'Code-barres du colis'
+    supplier_code: 'Code fournisseur'
