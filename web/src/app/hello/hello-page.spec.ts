@@ -21,6 +21,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { Session } from '../shared/session/session';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 import type { SignedInState } from '../auth/auth-types';
 import type { CompanyOption } from '../company/company-types';
 import { HelloPage } from './hello-page';
@@ -93,6 +94,8 @@ describe('HelloPage', () => {
       imports: [HelloPage],
       providers: [
         provideRouter([]),
+        // The install card says through it whether the application was installed.
+        ...provideQuietFeedback(),
         {
           provide: AuthFacade,
           useValue: { me: me.asReadonly(), logout, hasPermission, hasModule },

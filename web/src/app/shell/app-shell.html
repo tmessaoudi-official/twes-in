@@ -420,6 +420,12 @@
         <mat-icon aria-hidden="true">manage_accounts</mat-icon>
         <span>{{ 'account.title' | translate }}</span>
       </a>
+      @if (install.offer() !== null) {
+        <button mat-menu-item type="button" (click)="install.install()" data-testid="install-app">
+          <mat-icon aria-hidden="true">{{ installIcon() }}</mat-icon>
+          <span>{{ 'shell.install.menu' | translate }}</span>
+        </button>
+      }
       <mat-divider />
       <!-- The language and the scheme live here at every width: the top bar gave its room to the rail. -->
       <p

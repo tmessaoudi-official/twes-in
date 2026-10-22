@@ -28,6 +28,9 @@ import frExpense from '../../public/i18n/expense/fr.json';
 import arImport from '../../public/i18n/import/ar.json';
 import enImport from '../../public/i18n/import/en.json';
 import frImport from '../../public/i18n/import/fr.json';
+import arInstall from '../../public/i18n/install/ar.json';
+import enInstall from '../../public/i18n/install/en.json';
+import frInstall from '../../public/i18n/install/fr.json';
 import fr from '../../public/i18n/fr.json';
 import arPlatform from '../../public/i18n/platform/ar.json';
 import enPlatform from '../../public/i18n/platform/en.json';
@@ -74,6 +77,7 @@ const parts: Record<string, Record<string, unknown>> = {
   'demo-mails': { fr: frDemoMails, en: enDemoMails, ar: arDemoMails },
   expense: { fr: frExpense, en: enExpense, ar: arExpense },
   import: { fr: frImport, en: enImport, ar: arImport },
+  install: { fr: frInstall, en: enInstall, ar: arInstall },
   'invoice-bulk': { fr: frInvoiceBulk, en: enInvoiceBulk, ar: arInvoiceBulk },
   platform: { fr: frPlatform, en: enPlatform, ar: arPlatform },
   purchases: { fr: frPurchases, en: enPurchases, ar: arPurchases },

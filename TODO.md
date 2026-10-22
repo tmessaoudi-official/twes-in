@@ -126,6 +126,10 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
 - [ ] `twes status` reads healthy, its backups due.
 - [ ] `https://localhost` opens in Edge without a warning; a phone opens `http://<this computer's address>/root.crt`
       once, then the HTTPS address `twes status` names, and scans.
+- [ ] Installed as an application: signed in, in Edge on `https://localhost`, the account menu offers « Installer
+      l’application » and opens Edge's own dialog; twes-in then opens from the Start menu in a window of its own. On the
+      phone, over the HTTPS address: Android's Chrome shows the home's card (« Installer »), an iPhone's Safari its two
+      steps; it then opens from the home screen. Tell me what each did: no test here runs a real Edge or iPhone.
 - [ ] **Restart Windows and do NOT sign in.** Wait three minutes, then the phone opens the HTTPS address. If it does not,
       sign in: it should open within three minutes then, and tell me which happened.
 - [ ] Docker restarted: `wsl -d Ubuntu -u root -- systemctl restart docker`, then `twes status` healthy within two

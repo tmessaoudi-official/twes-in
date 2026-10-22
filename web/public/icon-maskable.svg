@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="twes-in">
+  <!--
+    The "Angle" mark of icon.svg for a home screen that cuts its own shape (a manifest's "maskable" icon): the
+    accent fills the whole square, and the strokes are drawn at three quarters about the centre, written out
+    (p' = 16 + 0.75 (p - 16)), so they stay inside the circle of 80 % a phone may keep. At full size the
+    arrow's tip falls outside it, and Android cut it. The PNG beside it is this drawing rendered by Chromium.
+  -->
+  <rect width="32" height="32" fill="#1f6feb"/>
+  <g fill="none" stroke="#fff" stroke-width="1.95" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12.55 8.95V17.65c0 1.725 0.975 2.7 2.625 2.7"/>
+    <path d="M9.475 12.325h6.15"/>
+    <path d="M18.7 13.9 23.05 9.55"/>
+    <path d="M19.675 9.55h3.375v3.375"/>
+  </g>
+</svg>
