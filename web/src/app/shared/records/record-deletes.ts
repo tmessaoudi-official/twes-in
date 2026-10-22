@@ -32,6 +32,7 @@ export const DELETABLE_SUBJECTS = [
   'invoice',
   'quote',
   'delivery_note',
+  'purchase_order',
 ] as const;
 
 /** The refusals of an undo sent again, each the outcome it already had. */

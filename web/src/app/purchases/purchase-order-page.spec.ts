@@ -15,6 +15,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -149,6 +150,7 @@ describe('PurchaseOrderPage', () => {
     pdfUrl: (companyId: string, id: string) =>
       `/api/companies/${companyId}/purchase-orders/${id}/pdf`,
   };
+  const deletes = { remove: vi.fn() };
   const granted = new Set<string>();
   const auth = {
     me: () => ({
@@ -236,6 +238,7 @@ describe('PurchaseOrderPage', () => {
     facade.close.mockReset().mockResolvedValue(orderIn('closed'));
     facade.cancel.mockReset().mockResolvedValue(orderIn('cancelled'));
     facade.clearError.mockReset();
+    deletes.remove.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       imports: [PurchaseOrderPage],
       providers: [
@@ -250,6 +253,7 @@ describe('PurchaseOrderPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: PurchasesFacade, useValue: facade },
+        { provide: RecordDeletes, useValue: deletes },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -332,7 +336,7 @@ describe('PurchaseOrderPage', () => {
   it('sends a draft once confirmed, saving what is shown at the version it was opened at', async () => {
     order.set(orderIn('draft'));
     await open('o1');
-    expect(await offered()).toEqual(['cancel', 'pdf', 'save', 'send']);
+    expect(await offered()).toEqual(['cancel', 'delete', 'pdf', 'save', 'send']);
 
     q('document-action-send')!.click();
     await settle();
@@ -637,6 +641,52 @@ describe('PurchaseOrderPage', () => {
 
       expect(noticeToasts()).toEqual([{ key: 'documents.add_to.not_draft' }]);
       expect(readSent()).toEqual([]);
+    });
+  });
+  describe('deleting a draft', () => {
+    async function menuEntry(id: string): Promise<HTMLElement | null> {
+      q('document-more')?.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return document.body.querySelector<HTMLElement>(`[data-testid="document-menu-${id}"]`);
+    }
+
+    it('deletes the draft without asking, said annulable, and goes back to the list once it is gone', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      order.set(orderIn('draft'));
+      await open('o1');
+
+      const entry = await menuEntry('delete');
+      expect(entry?.getAttribute('data-kind')).toBe('annulable');
+      entry!.click();
+      await settle();
+
+      // Not numbered yet, it is named by its vendor.
+      expect(deletes.remove).toHaveBeenCalledWith('c1', 'purchase_order', [
+        { id: 'o1', label: 'Sotumag' },
+      ]);
+      expect(navigate).toHaveBeenCalledWith(['/purchases']);
+    });
+
+    it('stays on the draft when the delete is refused, and offers none once sent or to whoever does not write orders', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      deletes.remove.mockResolvedValue(false);
+      order.set(orderIn('draft'));
+      await open('o1');
+      (await menuEntry('delete'))!.click();
+      await settle();
+      expect(navigate).not.toHaveBeenCalled();
+
+      fixture.destroy();
+      order.set(orderIn('sent'));
+      await open('o1');
+      expect(await menuEntry('delete')).toBeNull();
+
+      fixture.destroy();
+      granted.delete('purchase.write');
+      order.set(orderIn('draft'));
+      await open('o1');
+      expect(await menuEntry('delete')).toBeNull();
     });
   });
 });

@@ -35,6 +35,7 @@ import { RecordChanged } from '../shared/form/record-changed';
 import { RecordView } from '../shared/form/record-view';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { DocumentActions } from '../shared/ui/document-actions';
 import {
@@ -95,6 +96,7 @@ export class PurchaseOrderPage {
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
   private readonly router = inject(Router);
+  private readonly deletes = inject(RecordDeletes);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly auth = inject(AuthFacade);
 
@@ -354,8 +356,33 @@ export class PurchaseOrderPage {
           keepLabel: 'purchases.actions.keep',
         },
       },
+      {
+        id: 'delete',
+        label: 'records.delete',
+        icon: 'delete',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps the draft a day. A draft a receipt
+        // names is refused, the toast saying by what.
+        destructive: true,
+        undoable: true,
+        disabled: busy,
+        run: () => void this.remove(),
+        shown: this.current()?.status === 'draft' && this.mayWrite(),
+      },
     ];
   });
+
+  /** Deletes the draft, then leaves its page for the list once it is gone; what was typed in it goes with it. */
+  private async remove(): Promise<void> {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    if (!companyId || !current) return;
+    const gone = await this.deletes.remove(companyId, 'purchase_order', [
+      { id: current.id, label: current.number ?? current.vendorName },
+    ]);
+    if (!gone) return;
+    this.unsaved.savedAndLeaving();
+    await this.router.navigate(['/purchases']);
+  }
 
   /** The printed order carries its prices, which are costs: only a cost reader is offered it. */
   protected readonly pdfUrl = computed(() => {

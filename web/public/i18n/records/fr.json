@@ -39,6 +39,8 @@
       "quote_line": "{{count}} {count, plural, one {ligne de devis} other {lignes de devis}}",
       "delivery_note_line": "{{count}} {count, plural, one {ligne de bon de livraison} other {lignes de bons de livraison}}",
       "purchase_order_line": "{{count}} {count, plural, one {ligne de commande fournisseur} other {lignes de commandes fournisseur}}",
+      "goods_receipt": "{{count}} {count, plural, one {réception de marchandise} other {réceptions de marchandise}}",
+      "goods_receipt_line": "{{count}} {count, plural, one {ligne de réception} other {lignes de réception}}",
       "stock_lot": "{{count}} {count, plural, one {lot} other {lots}}",
       "price_list_item": "{{count}} {count, plural, one {prix d’une liste de prix} other {prix de listes de prix}}",
       "product": "{{count}} {count, plural, one {produit} other {produits}}",
@@ -104,6 +106,7 @@
         "customer": "{{count}} {count, plural, one {client} other {clients}}",
         "invoice": "{{count}} {count, plural, one {brouillon de facture} other {brouillons de facture}}",
         "quote": "{{count}} {count, plural, one {brouillon de devis} other {brouillons de devis}}",
+        "purchase_order": "{{count}} {count, plural, one {brouillon de commande fournisseur} other {brouillons de commandes fournisseur}}",
         "delivery_note": "{{count}} {count, plural, one {brouillon de bon de livraison} other {brouillons de bon de livraison}}"
       }
     },
