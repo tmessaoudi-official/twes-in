@@ -16,13 +16,13 @@ use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductMergedAway;
 use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Domain\Exception\InvalidProduct;
+use App\Module\Products\Infrastructure\ApiPlatform\Output\BarcodeConflict;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductBarcodesResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Output\RecordChangedProblem;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProcessorInterface<ProductBarcodesResource, ProductBarcodesResource> */
@@ -45,7 +45,7 @@ final readonly class ReplaceProductBarcodesProcessor implements ProcessorInterfa
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException('No such product.', $absent);
         } catch (ProductBarcodeTaken $taken) {
-            throw new ConflictHttpException($taken->getMessage(), $taken);
+            throw BarcodeConflict::of($taken);
         } catch (InvalidProduct $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }

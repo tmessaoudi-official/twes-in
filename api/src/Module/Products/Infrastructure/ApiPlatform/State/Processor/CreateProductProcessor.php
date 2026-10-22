@@ -17,6 +17,7 @@ use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductCheckScopes;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\Exception\InvalidProduct;
+use App\Module\Products\Infrastructure\ApiPlatform\Output\BarcodeConflict;
 use App\Module\Products\Infrastructure\ApiPlatform\Output\ProductGrossPrice;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
@@ -39,7 +40,9 @@ final readonly class CreateProductProcessor implements ProcessorInterface
         try {
             $seesCosts = $this->guard->may($company, ProductPermission::COST_READ);
             $product = $this->manage->create($company, $data->input($seesCosts), $this->guard->account()->getId());
-        } catch (ProductReferenceTaken|ProductBarcodeTaken $taken) {
+        } catch (ProductBarcodeTaken $taken) {
+            throw BarcodeConflict::of($taken);
+        } catch (ProductReferenceTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidProduct $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);

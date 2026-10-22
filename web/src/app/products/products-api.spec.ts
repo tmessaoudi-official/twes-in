@@ -478,14 +478,36 @@ describe('ProductsApi', () => {
 
   it('names the row a refusal is about, and whose code it is when another product holds it', async () => {
     const taken = api.replaceBarcodes('c1', 'p1', [], 1);
+    http.expectOne('/api/companies/c1/products/p1/barcodes').flush(
+      {
+        detail: 'barcodes.1.code: 03017620422003 is already a code of ART-001.',
+        violations: [
+          {
+            propertyPath: 'barcodes.1.code',
+            message: '03017620422003 is already a code of ART-001.',
+            payload: {
+              reason: 'barcode_taken',
+              params: { reference: 'ART-001', code: '03017620422003' },
+            },
+          },
+        ],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(taken).rejects.toMatchObject({
+      refusal: { code: 'barcode_taken', index: 1, field: 'code', heldBy: 'ART-001' },
+    });
+
+    // The holder is read from the parameter alone: the English detail is never parsed for it.
+    const unnamed = api.replaceBarcodes('c1', 'p1', [], 1);
     http
       .expectOne('/api/companies/c1/products/p1/barcodes')
       .flush(
         { detail: 'barcodes.1.code: 03017620422003 is already a code of ART-001.' },
         { status: 409, statusText: 'Conflict' },
       );
-    await expect(taken).rejects.toMatchObject({
-      refusal: { code: 'barcode_taken', index: 1, field: 'code', heldBy: 'ART-001' },
+    await expect(unnamed).rejects.toMatchObject({
+      refusal: { code: 'barcode_taken', index: 1, field: 'code', heldBy: null },
     });
 
     const shape = api.replaceBarcodes('c1', 'p1', [], 1);

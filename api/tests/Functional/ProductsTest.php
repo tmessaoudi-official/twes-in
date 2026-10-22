@@ -394,6 +394,8 @@ final class ProductsTest extends ApiTestCase
         $this->sendJson('PUT', $this->path($second).'/barcodes', ['version' => $this->storedVersion('product', $second), 'barcodes' => [['role' => 'internal', 'code' => 'X-1', 'quantity' => 1], ['role' => 'pack', 'code' => '03017620422003', 'quantity' => 6]]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a second product cannot take the same code');
         self::assertStringContainsString('barcodes.1.code: 03017620422003 is already a code of ART-001', $this->stringAt($this->json(), 'detail'));
+        // The holder is said as data, which the screen words; its English detail is never parsed.
+        self::assertSame([['propertyPath' => 'barcodes.1.code', 'reason' => 'barcode_taken', 'params' => ['reference' => 'ART-001', 'code' => '03017620422003']]], $this->refusals());
 
         // Its own code is not "taken" by anyone else, and the same list again is no change: nothing more is audited.
         $this->sendJson('PUT', $this->path($first).'/barcodes', ['version' => $this->storedVersion('product', $first), 'barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);

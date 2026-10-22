@@ -20,6 +20,7 @@ use App\Module\Products\Application\ProductMergedAway;
 use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\Exception\InvalidProduct;
+use App\Module\Products\Infrastructure\ApiPlatform\Output\BarcodeConflict;
 use App\Module\Products\Infrastructure\ApiPlatform\Output\ProductGrossPrice;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
@@ -49,7 +50,9 @@ final readonly class ReviseProductProcessor implements ProcessorInterface
             throw new RecordChangedProblem($merged);
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException('No such product.', $absent);
-        } catch (ProductReferenceTaken|ProductBarcodeTaken $taken) {
+        } catch (ProductBarcodeTaken $taken) {
+            throw BarcodeConflict::of($taken);
+        } catch (ProductReferenceTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidProduct $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);

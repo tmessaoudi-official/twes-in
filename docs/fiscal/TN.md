@@ -160,8 +160,9 @@ by ruling of 2026-09-13**; the revisit is a fourth kind when public-sector invoi
 Code de la TVA art. 18-II [13]: the date; a serial number from an uninterrupted series; the name, address and tax
 identifier of the seller; the name and address of the customer and, with exceptions, its tax identifier; the
 designation and the price excluding VAT of each item; the VAT rates and amounts; and, for operations under VAT
-suspension (loi n° 2006-85), the suspended VAT amount. These are document fields printed at G6 and G7. The preset
-lists them as translation keys under `mentions`, and each customer regime names its own mention. **The wording of
+suspension (loi n° 2006-85), the suspended VAT amount. These are document fields the printed invoice's template
+writes (`api/templates/pdf/invoice.html.twig`); the preset's `mentions` lists none of them, and each customer regime
+names its own mention. **The wording of
 the regime mentions is unsourced.**
 
 The total written out in words beneath the figures (« Arrêtée la présente facture à la somme de … ») is a custom of

@@ -435,8 +435,8 @@ function codeOf(error: unknown): CompanyError {
     case 404:
       return 'not_found';
     case 409:
-      // The API distinguishes these by message; the UI only needs to know both are refusals of an existing row.
-      return typeof error.error?.detail === 'string' && error.error.detail.includes('owner')
+      // The last owner is named by its reason; any other conflict here is a member already there.
+      return refusalsIn(error.error).some((refusal) => refusal.reason === 'last_owner')
         ? 'last_owner'
         : 'already_member';
     case 422:

@@ -148,6 +148,27 @@ describe('CompanyApi, the members', () => {
     await expect(removing).rejects.toEqual(new CompanyRefused('forbidden'));
   });
 
+  it('tells the last owner from a member already there by its reason, never by a word of the detail', async () => {
+    const last = api.removeMember('c1', 'u2');
+    http.expectOne({ method: 'DELETE', url: '/api/companies/c1/members/u2' }).flush(
+      {
+        detail: 'member: A company keeps at least one owner.',
+        violations: [{ propertyPath: 'member', message: 'x', payload: { reason: 'last_owner' } }],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(last).rejects.toEqual(new CompanyRefused('last_owner'));
+
+    const already = api.removeMember('c1', 'u2');
+    http
+      .expectOne({ method: 'DELETE', url: '/api/companies/c1/members/u2' })
+      .flush(
+        { detail: 'This owner is already a member.' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(already).rejects.toEqual(new CompanyRefused('already_member'));
+  });
+
   it("keeps the demo's answer under its refusal of an invitation, which the screen leaves to the toast", async () => {
     const adding = api.addMember('c1', 'someone@example.test', 'staff');
     http

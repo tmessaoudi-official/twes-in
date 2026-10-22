@@ -703,7 +703,7 @@ function toBarcode(
 /**
  * What the API said about a list of codes. Its refusals name the row the way it writes fields,
  * `barcodes.<index>.<field>: …` (or `barcodes[<index>].<field>` for a shape the validator refused), and a code another
- * product holds says whose: `… is already a code of <reference>.` (ProductBarcodesResource's documented contract).
+ * product holds says whose as its `barcode_taken` refusal's `reference` parameter (ProductBarcodesResource).
  */
 export function barcodesRefusal(error: unknown): BarcodesRefusal {
   const none: BarcodesRefusal = {
@@ -725,15 +725,16 @@ export function barcodesRefusal(error: unknown): BarcodesRefusal {
       return { ...none, code: 'not_found' };
     case 409: {
       if (isRecordChanged(body)) return { ...none, code: 'record_changed' };
-      const detail =
-        typeof body === 'object' &&
-        body !== null &&
-        'detail' in body &&
-        typeof body.detail === 'string'
-          ? body.detail
-          : '';
-      const holder = / is already a code of (.+)\.$/.exec(detail);
-      return { ...none, code: 'barcode_taken', index, field, heldBy: holder ? holder[1] : null };
+      const holder = refusalsIn(body).find((refusal) => refusal.reason === 'barcode_taken')?.params[
+        'reference'
+      ];
+      return {
+        ...none,
+        code: 'barcode_taken',
+        index,
+        field,
+        heldBy: typeof holder === 'string' ? holder : null,
+      };
     }
     default: {
       // The row's own refusal, `barcodes.1.quantity` from a rule or `barcodes[1].quantity` from a constraint.
