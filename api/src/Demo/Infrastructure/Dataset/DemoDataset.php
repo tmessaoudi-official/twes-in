@@ -36,9 +36,15 @@ use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Application\InvoiceWorkflow;
 use App\Module\Invoices\Application\ManageInvoices;
+use App\Module\Invoices\Application\Payment\ManageInstruments;
 use App\Module\Invoices\Application\Payment\ManagePayments;
+use App\Module\Invoices\Domain\ValueObject\InstrumentDetails;
+use App\Module\Invoices\Domain\ValueObject\InstrumentKind;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
+use App\Module\PriceLists\Application\ManagePriceLists;
+use App\Module\PriceLists\Application\PriceListInput;
+use App\Module\PriceLists\Application\PriceListItemInput;
 use App\Module\Products\Application\BarcodeInput;
 use App\Module\Products\Application\Category\ManageProductCategories;
 use App\Module\Products\Application\ManageProducts;
@@ -59,6 +65,8 @@ use App\Module\Quotes\Application\QuoteInvoices;
 use App\Module\Quotes\Application\QuoteLineInput;
 use App\Module\Quotes\Application\QuoteWorkflow;
 use App\Module\Quotes\Domain\ValueObject\QuoteHeader;
+use App\Module\Recurring\Application\ManageRecurringInvoices;
+use App\Module\Recurring\Application\RunRecurringInvoices;
 use App\Module\RecurringExpenses\Application\ManageRecurringExpenses;
 use App\Module\RecurringExpenses\Application\RunRecurringExpenses;
 use App\Module\Vendors\Application\ManageVendors;
@@ -128,6 +136,7 @@ final readonly class DemoDataset
         private ManageContacts $contacts,
         private ManageProductCategories $productCategories,
         private ManageProducts $products,
+        private ManagePriceLists $priceLists,
         private DemoDepot $depot,
         private KeepProductHomes $homes,
         private KeepStock $stock,
@@ -142,6 +151,9 @@ final readonly class DemoDataset
         private ManageInvoices $invoices,
         private InvoiceWorkflow $invoiceWorkflow,
         private ManagePayments $payments,
+        private ManageInstruments $instruments,
+        private ManageRecurringInvoices $recurringInvoices,
+        private RunRecurringInvoices $runRecurringInvoices,
         private ManageCustomerCredit $credit,
         private ManageQuotes $quotes,
         private QuoteWorkflow $quoteWorkflow,
@@ -195,6 +207,7 @@ final readonly class DemoDataset
             // over; an invoice naming none would sell the pieces the notes already took, and move nothing.
             $untracked = array_values(array_filter($sellable, static fn (Uuid $id): bool => [] === array_filter($tracked, static fn (Uuid $each): bool => $each->equals($id))));
             $this->planInvoices($demo, $timeline, $company, $customerIds, $untracked, $actor);
+            $this->planPriceLists($demo, $timeline, $company, $untracked, $actor);
             $timeline->run();
 
             return $companyId;
@@ -722,6 +735,9 @@ final readonly class DemoDataset
             }
         }
 
+        $this->planInstruments($demo, $timeline, $company, $ids, $actor);
+        $this->planRecurringInvoice($timeline, $company, $ids, $actor);
+
         $timeline->at(-6, function () use ($input, $company, $actor): void {
             $cancelled = $this->invoices->create($company(), $input(self::INVOICES), $actor);
             $this->invoices->cancel($company(), $cancelled->getId(), $actor);
@@ -729,6 +745,105 @@ final readonly class DemoDataset
         $timeline->at(-5, function () use ($input, $company, $actor): void {
             $this->invoices->create($company(), $input(self::INVOICES + 1), $actor);
             $this->invoices->create($company(), $input(self::INVOICES + 2), $actor);
+        });
+    }
+
+    /**
+     * Cheques and traites, as a Tunisian shop is often paid: a cheque cashed, one deposited and waiting, one that came
+     * back unpaid, a post-dated one and a traite still held. Each covers what its invoice still owed, so the invoice stays
+     * due until the cheque clears (the portfolio and the invoice's own section show them).
+     *
+     * @param \Closure(): Company $company
+     * @param array<int, Uuid>    $ids     the invoices, by their place in the plan, filled as the timeline runs
+     */
+    private function planInstruments(DemoCompany $demo, Timeline $timeline, \Closure $company, array &$ids, Uuid $actor): void
+    {
+        $banks = 'TN' === $demo->country ? ['BIAT', 'STB', 'Attijari bank'] : ['Crédit Agricole', 'BNP Paribas', 'Banque Populaire'];
+        // invoice => [kind, received, falls due, deposited, then cashed or refused], in days from today; every invoice
+        // here is one the plan leaves unpaid (2 === $i % 4) or not yet due (from 24).
+        $plans = [
+            2 => [InstrumentKind::Check, -138, -135, -134, 'cash', -131],
+            10 => [InstrumentKind::Check, -98, -95, -2, null, null],
+            14 => [InstrumentKind::Check, -78, -75, -74, 'refuse', -70],
+            22 => [InstrumentKind::Draft, -38, 20, null, null, null],
+            26 => [InstrumentKind::Check, -18, 3, null, null, null],
+        ];
+        /** @var array<int, Uuid> $held the instrument received on each invoice, by the invoice's place */
+        $held = [];
+        foreach ($plans as $i => [$kind, $received, $dueOn, $deposited, $then, $thenOn]) {
+            $timeline->at($received, function () use (&$ids, &$held, $i, $kind, $received, $dueOn, $banks, $timeline, $company, $actor): void {
+                $due = ($this->invoices->get($company(), $ids[$i])->getIssuedFigures() ?? throw new \LogicException('An issued invoice has figures.'))->amountDue;
+                if (!is_numeric($due)) {
+                    throw new \LogicException("An invoice's amount due is a number, not \"$due\".");
+                }
+                $details = new InstrumentDetails($kind, $timeline->day($dueOn), $due, $banks[$i % \count($banks)], \sprintf('%07d', 4_200_000 + 37 * $i - $received));
+                $held[$i] = $this->instruments->receive($company(), $ids[$i], $details, $actor)->getId();
+            });
+            if (null !== $deposited) {
+                $timeline->at($deposited, function () use (&$ids, &$held, $i, $company, $actor): void {
+                    $this->instruments->deposit($company(), $ids[$i], $held[$i] ?? throw new \LogicException('A deposit follows its receipt.'), $actor);
+                });
+            }
+            if (null !== $then && null !== $thenOn) {
+                $timeline->at($thenOn, function () use (&$ids, &$held, $i, $then, $company, $actor): void {
+                    $id = $held[$i] ?? throw new \LogicException('A cheque clears after its receipt.');
+                    'cash' === $then ? $this->instruments->cash($company(), $ids[$i], $id, $actor) : $this->instruments->refuse($company(), $ids[$i], $id, $actor);
+                });
+            }
+        }
+    }
+
+    /**
+     * A monthly service invoice made recurring a month after it was issued: the worker's pass today drafts the
+     * occurrences due since, each a draft for someone to check and issue.
+     *
+     * @param \Closure(): Company $company
+     * @param array<int, Uuid>    $ids     the invoices, by their place in the plan, filled as the timeline runs
+     */
+    private function planRecurringInvoice(Timeline $timeline, \Closure $company, array &$ids, Uuid $actor): void
+    {
+        $model = 16;
+        $start = -150 + 5 * $model + 30;
+        $timeline->at($start, function () use (&$ids, $model, $start, $timeline, $company, $actor): void {
+            $date = $timeline->day($start);
+            $schedule = new Schedule(ScheduleUnit::Month, 1, ScheduleAnchor::Date, (int) $date->format('j'));
+            $this->recurringInvoices->create($company(), $ids[$model], $schedule, $date, null, $actor);
+        });
+        $timeline->at(0, function () use ($company): void {
+            $this->runRecurringInvoices->handle($company());
+        });
+    }
+
+    /**
+     * Two price lists, written once every invoice is out so none of them moves a figure already printed: the first
+     * customer group's lower prices, one of them lower again from ten pieces, and a promotion for everyone running a
+     * month from three days ago.
+     *
+     * @param \Closure(): Company $company
+     * @param list<Uuid>          $sellable services and untracked goods
+     */
+    private function planPriceLists(DemoCompany $demo, Timeline $timeline, \Closure $company, array $sellable, Uuid $actor): void
+    {
+        $timeline->at(-3, function () use ($demo, $timeline, $sellable, $company, $actor): void {
+            $priced = function (int $k, string $rate, string $from) use ($demo, $sellable, $company): PriceListItemInput {
+                $price = $this->products->get($company(), $sellable[$k])->getDetails()->unitPriceNet;
+                if (!is_numeric($price) || !is_numeric($rate)) {
+                    throw new \LogicException("A price and a rate are numbers, not \"$price\" and \"$rate\".");
+                }
+
+                return new PriceListItemInput($sellable[$k], $from, bcmul($price, $rate, $demo->scale));
+            };
+            $group = $this->customerGroups->list($company())[0] ?? throw new \LogicException("$demo->name has no customer group.");
+            $this->priceLists->create($company(), new PriceListInput(
+                \sprintf('Tarif %s', $group->getName()),
+                $group->getId(),
+                null,
+                null,
+                null,
+                true,
+                [$priced(0, '0.90', '1'), $priced(0, '0.85', '10'), $priced(1, '0.90', '1'), $priced(2, '0.90', '1')],
+            ), $actor);
+            $this->priceLists->create($company(), new PriceListInput('Promotion du mois', null, null, $timeline->day(-3), $timeline->day(27), true, [$priced(3, '0.80', '1')]), $actor);
         });
     }
 

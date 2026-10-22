@@ -117,6 +117,16 @@ final class DemoFixturesTest extends ApiTestCase
             self::assertSame(['draft', 'paid', 'recorded'], $this->column('SELECT DISTINCT status FROM expense WHERE company_id = ? ORDER BY status', [$id]));
             self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM recurring_expense WHERE company_id = ? AND variable_amount AND NOT paused AND drafted > 0 AND next_on > CURRENT_DATE', [$id]), "$name has a monthly bill that recurs and has drafted");
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM expense WHERE company_id = ? AND status = 'draft' AND amount_to_check", [$id]), "$name has a draft whose amount is to be checked");
+            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM recurring_invoice WHERE company_id = ? AND NOT paused AND drafted > 0 AND next_on > CURRENT_DATE', [$id]), "$name has a monthly invoice that recurs and has drafted");
+            // Cheques and traites are how a Tunisian shop is often paid: the portfolio shows one in each state.
+            self::assertSame(
+                [['check', 'cashed'], ['check', 'deposited'], ['check', 'held'], ['check', 'unpaid'], ['draft', 'held']],
+                array_map(static fn (mixed $pair): array => \is_string($pair) ? explode(' ', $pair) : self::fail('A pair is text.'), $this->column("SELECT DISTINCT kind || ' ' || status FROM payment_instrument WHERE company_id = ? ORDER BY 1", [$id])),
+                "$name holds a cheque in each state and a traite",
+            );
+            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM price_list WHERE company_id = ? AND customer_group_id IS NOT NULL AND is_active', [$id]), "$name has a price list for a customer group");
+            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM price_list WHERE company_id = ? AND customer_group_id IS NULL AND customer_id IS NULL AND valid_from <= CURRENT_DATE AND valid_to > CURRENT_DATE', [$id]), "$name has a promotion running today");
+            self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM price_list_item WHERE company_id = ? AND min_quantity > 1', [$id]), "$name has a price from a quantity");
             self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM stock_movement WHERE company_id = ? AND quantity < 0', [$id]), "$name's deliveries took goods out of stock");
             // An invoice issued without a delivery note takes its goods out itself; one selling what the shelves no
             // longer hold moves nothing and says so, which the demo would show as its own mistake on every visit.
