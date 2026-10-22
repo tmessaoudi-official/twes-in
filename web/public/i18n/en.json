@@ -4143,7 +4143,9 @@
         "sent": "sent the purchase order",
         "received": "received goods on the purchase order",
         "closed": "closed the purchase order",
-        "cancelled": "cancelled the purchase order"
+        "cancelled": "cancelled the purchase order",
+        "deleted": "deleted the purchase order draft",
+        "restored": "restored the purchase order draft"
       },
       "record_removal": {
         "ended": "made a delete final"

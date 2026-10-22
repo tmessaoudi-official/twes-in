@@ -138,6 +138,8 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'purchase_order.received',
   'purchase_order.closed',
   'purchase_order.cancelled',
+  'purchase_order.deleted',
+  'purchase_order.restored',
   'expense_category.created',
   'expense_category.revised',
   'expense_category.deleted',

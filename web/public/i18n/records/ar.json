@@ -39,6 +39,8 @@
       "quote_line": "{count, plural, zero {لا أسطر عروض أسعار} one {سطر عرض سعر واحد} two {سطري عرض سعر} few {{{count}} أسطر عروض أسعار} many {{{count}} سطر عرض سعر} other {{{count}} سطر عرض سعر}}",
       "delivery_note_line": "{count, plural, zero {لا أسطر وصولات تسليم} one {سطر وصل تسليم واحد} two {سطري وصل تسليم} few {{{count}} أسطر وصولات تسليم} many {{{count}} سطر وصل تسليم} other {{{count}} سطر وصل تسليم}}",
       "purchase_order_line": "{count, plural, zero {لا أسطر طلبيات لدى مزوّد} one {سطر طلبية لدى مزوّد واحد} two {سطري طلبية لدى مزوّد} few {{{count}} أسطر طلبيات لدى مزوّد} many {{{count}} سطر طلبية لدى مزوّد} other {{{count}} سطر طلبية لدى مزوّد}}",
+      "goods_receipt": "{count, plural, zero {لا استلامات للسلع} one {استلام سلع واحد} two {استلاما سلع} few {{{count}} استلامات للسلع} many {{{count}} استلام سلع} other {{{count}} استلام سلع}}",
+      "goods_receipt_line": "{count, plural, zero {لا أسطر استلام} one {سطر استلام واحد} two {سطرا استلام} few {{{count}} أسطر استلام} many {{{count}} سطر استلام} other {{{count}} سطر استلام}}",
       "stock_lot": "{count, plural, zero {لا دفعات} one {دفعة واحدة} two {دفعتين} few {{{count}} دفعات} many {{{count}} دفعةً} other {{{count}} دفعة}}",
       "price_list_item": "{count, plural, zero {لا أسعار في قوائم الأسعار} one {سعر واحد في قائمة أسعار} two {سعرين في قوائم الأسعار} few {{{count}} أسعار في قوائم الأسعار} many {{{count}} سعرًا في قوائم الأسعار} other {{{count}} سعر في قوائم الأسعار}}",
       "product": "{count, plural, zero {لا منتجات} one {منتج واحد} two {منتجين} few {{{count}} منتجات} many {{{count}} منتجًا} other {{{count}} منتج}}",
@@ -104,6 +106,7 @@
         "customer": "{count, plural, zero {لا حرفاء} one {حريف واحد} two {حريفان} few {{{count}} حرفاء} many {{{count}} حريفًا} other {{{count}} حريف}}",
         "invoice": "{count, plural, zero {لا مسودات فواتير} one {مسودة فاتورة واحدة} two {مسودتا فاتورة} few {{{count}} مسودات فواتير} many {{{count}} مسودة فاتورة} other {{{count}} مسودة فاتورة}}",
         "quote": "{count, plural, zero {لا مسودات عروض أسعار} one {مسودة عرض سعر واحدة} two {مسودتا عرض سعر} few {{{count}} مسودات عروض أسعار} many {{{count}} مسودة عرض سعر} other {{{count}} مسودة عرض سعر}}",
+        "purchase_order": "{count, plural, zero {لا مسودات طلبيات لدى مزوّد} one {مسودة طلبية واحدة لدى مزوّد} two {مسودتا طلبية لدى مزوّد} few {{{count}} مسودات طلبيات لدى مزوّد} many {{{count}} مسودة طلبية لدى مزوّد} other {{{count}} مسودة طلبية لدى مزوّد}}",
         "delivery_note": "{count, plural, zero {لا مسودات وصول تسليم} one {مسودة وصل تسليم واحدة} two {مسودتا وصل تسليم} few {{{count}} مسودات وصول تسليم} many {{{count}} مسودة وصل تسليم} other {{{count}} مسودة وصل تسليم}}"
       }
     },

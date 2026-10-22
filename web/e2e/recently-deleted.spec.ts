@@ -608,3 +608,58 @@ test('a draft invoice, quote or delivery note is deleted from its page and put b
   }
   await removed(page, 'customer', customer);
 });
+
+// An unsent order is deleted from its page as a draft document is: no question, named by its vendor while it has no
+// number, taken back from the toast and put back from « Récemment supprimés ». It ends deleted, so the run's vendor,
+// which nothing names then, goes too.
+test('a draft purchase order is deleted from its page, taken back and put back', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const number = `E2E-PO-${runDigits()}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const vendor = await aVendor(page, number);
+  const order = await page.evaluate(
+    async ([csrf, vendorId]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const created = await fetch(`/api/companies/${me.company.id}/purchase-orders`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ vendorId, lines: [] }),
+      });
+      if (!created.ok) throw new Error(`drafting the order answered ${created.status}`);
+      return ((await created.json()) as { id: string }).id;
+    },
+    [CSRF, vendor] as const,
+  );
+
+  async function deleteIt(): Promise<void> {
+    await page.goto(`/purchases/${order}`);
+    await expect(page.getByTestId('purchase-order-form')).toBeVisible();
+    await page.getByTestId('document-more').click();
+    const entry = page.getByTestId('document-menu-delete');
+    await expect(entry).toHaveAttribute('data-kind', 'annulable');
+    await entry.click();
+    await expect(page).toHaveURL(/\/purchases$/);
+    await expect(toast(page)).toContainText(number);
+  }
+
+  await deleteIt();
+  await toast(page).getByTestId('toast-action').click();
+  await expect(toast(page)).toContainText('remis');
+  await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
+
+  await deleteIt();
+  await page.goto('/company/recently-deleted');
+  const removal = page.locator('li[data-testid^="removal-"]', { hasText: number });
+  await expect(removal).toHaveCount(1);
+  await expect(removal).toContainText('1 brouillon de commande fournisseur');
+  await removal.getByRole('button').click();
+  await expect(toast(page)).toContainText('remis');
+  await expect(removal).toHaveCount(0);
+  await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
+
+  await deleteIt();
+  await removed(page, 'vendor', vendor);
+});

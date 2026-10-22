@@ -24,6 +24,8 @@ export const NAMED_TABLES = [
   'quote_line',
   'delivery_note_line',
   'purchase_order_line',
+  'goods_receipt',
+  'goods_receipt_line',
   'stock_lot',
   'price_list_item',
   'customer',

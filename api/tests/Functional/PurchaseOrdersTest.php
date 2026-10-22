@@ -587,6 +587,37 @@ final class PurchaseOrdersTest extends ApiTestCase
         return $this->stringAt($this->json(), 'id');
     }
 
+    /**
+     * An order not yet sent is deleted freely with its lines (docs/SPEC.md § 7, row 76), named by its vendor since it has
+     * no number yet, and « Restaurer » puts every row back; a sent order is what the vendor holds, never a draft.
+     */
+    public function testADraftOrderGoesWithItsLinesAndComesBackWhileASentOneStays(): void
+    {
+        $this->signedIn('writer', self::WRITER);
+        $draft = $this->draft();
+        $rows = fn (): array => [
+            $this->em()->getConnection()->fetchAllAssociative('SELECT * FROM purchase_order WHERE id = ?', [$draft]),
+            $this->em()->getConnection()->fetchAllAssociative('SELECT * FROM purchase_order_line WHERE purchase_order_id = ? ORDER BY position', [$draft]),
+        ];
+        $before = $rows();
+        self::assertCount(1, $before[1]);
+
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'purchase_order', 'ids' => [$draft]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $removal = $this->json();
+        self::assertSame(['purchase_order', [['id' => $draft, 'label' => 'FRN-0001 Quincaillerie du Sud']]], [$removal['subject'], $removal['items']]);
+        self::assertSame([[], []], $rows(), 'nothing of the draft is left');
+        $this->postJson($this->companyPath().'/record-removals/'.$this->stringAt($removal, 'id').'/restore', null);
+        self::assertResponseIsSuccessful();
+        self::assertSame($before, $rows());
+
+        $sent = $this->sent([['productId' => $this->screws, 'quantity' => '10']]);
+        $this->postJson($this->companyPath().'/record-removals', ['subject' => 'purchase_order', 'ids' => [$sent]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a sent order is no draft, so it answers as a stranger\'s would');
+        self::assertEquals(1, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM purchase_order WHERE id = ?', [$sent]));
+    }
+
     /** @param list<array<string, string>> $lines */
     private function sent(array $lines): string
     {

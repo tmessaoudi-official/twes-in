@@ -4143,7 +4143,9 @@
         "sent": "a envoyé la commande fournisseur",
         "received": "a réceptionné de la marchandise de la commande fournisseur",
         "closed": "a clos la commande fournisseur",
-        "cancelled": "a annulé la commande fournisseur"
+        "cancelled": "a annulé la commande fournisseur",
+        "deleted": "a supprimé le brouillon de commande fournisseur",
+        "restored": "a remis le brouillon de commande fournisseur"
       },
       "record_removal": {
         "ended": "a rendu une suppression définitive"
