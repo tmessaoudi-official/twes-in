@@ -4,6 +4,18 @@
 # own name, over TLS. Caddy obtains and renews the certificates itself and answers plain HTTP with a redirect.
 {
 	admin off
+	# A link's token is a password while it lives (64 hexadecimal characters in the path, the query, or the Referer a
+	# page under it sends), and the error line of a failed upstream writes the whole request: every log line here has
+	# each run of 32 or more written [token], as the web tier's access log does. Caddy leaves Cookie and Authorization
+	# out by itself; X-Sentry-Auth carries the error tracker's key. The same block in every Caddy of the tree
+	# (infra/edge/tests/token-free-logs.test.sh).
+	log {
+		format filter {
+			request>uri regexp [0-9A-Fa-f]{32,} [token]
+			request>headers>Referer regexp [0-9A-Fa-f]{32,} [token]
+			request>headers>X-Sentry-Auth regexp [0-9A-Fa-f]{32,} [token]
+		}
+	}
 }
 
 # The public status page, and the door the backups' heartbeats come in by (each carries its token).

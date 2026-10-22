@@ -38,7 +38,8 @@ asked "/api/twes/x" "http://web/invitation/$upper"
 asked "/api/signup/$first/complete?next=$second"
 asked "/reset-password/$second"
 sleep 0.5
-logged=$(docker logs "$id-web" 2>/dev/null)
+# Both streams: nginx writes its error log to stderr.
+logged=$(docker logs "$id-web" 2>&1)
 
 check "the requests were logged" "$(grep -c '/api/twes/x' <<<"$logged")" 1
 check "no token in any line, in any case" "$(grep -ciE "$first|$second" <<<"$logged")" 0
@@ -46,6 +47,19 @@ check "the path keeps everything but the token" "$(grep -c '"GET /api/invitation
 check "a Referer under a token's page is masked" "$(grep -c '"http://web/invitation/\[token\]"' <<<"$logged")" 1
 check "two tokens on one line are both masked" "$(grep -c '"GET /api/signup/\[token\]/complete?next=\[token\] HTTP/1.1"' <<<"$logged")" 1
 check "a page's own address is masked too" "$(grep -c '"GET /reset-password/\[token\] HTTP/1.1"' <<<"$logged")" 1
-check "a hashed bundle name is no token and stays" "$(asked /main-AB12cd34.js; sleep 0.3; docker logs "$id-web" 2>/dev/null | grep -c '/main-AB12cd34.js')" 1
+check "a hashed bundle name is no token and stays" "$(asked /main-AB12cd34.js; sleep 0.3; docker logs "$id-web" 2>&1 | grep -c '/main-AB12cd34.js')" 1
+
+# The api gone: nginx's error line on a failed upstream writes the request, token and all, so none is written below
+# crit, and the access line says what the upstream did instead.
+docker stop "$id-api" >/dev/null
+# The api's container asked until now; a client of its own asks from here.
+docker run --rm --network "$id" "$image" wget -qO- --header "Referer: http://web/invitation/$second" \
+    "http://web/api/invitations/$second/accept?next=$first" >/dev/null 2>&1
+sleep 0.5
+gone=$(docker logs "$id-web" 2>&1)
+check "with the api gone, no token in any line of either stream" "$(grep -ciE "$first|$second" <<<"$gone")" 0
+check "the failed request is logged, masked, with its upstream's status" \
+    "$(grep -cE '"GET /api/invitations/\[token\]/accept\?next=\[token\] HTTP/1.1" 502 .* upstream="[0-9.]+:80" 502 -$' <<<"$gone")" 1
+check "no error line about a request is written" "$(grep -c '\[error\]' <<<"$gone")" 0
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
