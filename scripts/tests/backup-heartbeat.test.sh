@@ -37,5 +37,16 @@ out=$(TOKEN='' STEP=full run); check "a monitor named without its token is refus
 
 out=$(STEP=init run); [[ -z "$(called)" ]]; check "preparing the bucket sends no heartbeat" $? 0 "$out" ""
 
+# The service's start-up prepares both repositories while a step may already be running (a drill's, an update's): it
+# takes the steps' lock, so restic never finds its repository locked by the other, and lets it go before the schedule.
+printf '#!/usr/bin/env bash\nflock -n "$BACKUP_LOCK" true && echo restic-unlocked >> "%s/lock.seen" || echo restic-locked >> "%s/lock.seen"\n' "$TMPDIR" "$TMPDIR" > "$TMPDIR/bin/restic"
+printf '#!/usr/bin/env bash\nflock -n "$BACKUP_LOCK" true && echo schedule-unlocked >> "%s/lock.seen" || echo schedule-locked >> "%s/lock.seen"\n' "$TMPDIR" "$TMPDIR" > "$TMPDIR/bin/supercronic"
+chmod +x "$TMPDIR/bin/restic" "$TMPDIR/bin/supercronic"
+rm -f "$TMPDIR/lock.seen"
+out=$(URL='' STEP=run run BACKUP_LOCK="$TMPDIR/backup.lock"); seen=$(tr '\n' ' ' < "$TMPDIR/lock.seen" 2>/dev/null)
+check "the start-up prepares the repositories under the steps' lock" $? 0 "$seen" "restic-locked restic-locked"
+[[ "$seen" != *restic-unlocked* ]]; check "and never outside it" $? 0 "$seen" ""
+check "and the schedule starts with the lock let go" 0 0 "$seen" "schedule-unlocked"
+
 echo "backup heartbeat: $pass passed, $fail failed"
 ((fail == 0))
