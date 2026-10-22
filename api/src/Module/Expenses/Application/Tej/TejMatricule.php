@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Expenses\Application\Tej;
 
+use App\Shared\Domain\Service\TypedText;
+
 /**
  * A Tunisian matricule fiscal as the TEJ platform names a taxpayer: its seven digits and check letter, and whether it
  * is a legal person (PM) or a natural one (PP). The full matricule is `1234567A/B/M/000` (docs/fiscal/TN.md § 8):
@@ -40,7 +42,7 @@ final readonly class TejMatricule
     /** Null for a value that is not a matricule. */
     public static function parse(string $value): ?self
     {
-        if (1 !== preg_match(self::SHAPE, strtoupper(trim($value)), $parts)) {
+        if (1 !== preg_match(self::SHAPE, strtoupper(TypedText::trimmed($value)), $parts)) {
             return null;
         }
 

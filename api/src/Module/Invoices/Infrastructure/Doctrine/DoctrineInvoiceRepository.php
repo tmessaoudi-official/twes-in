@@ -16,6 +16,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceKind;
 use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
@@ -137,7 +138,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ->join('i.customer', 'c')
             ->leftJoin('c.mergedInto', 'ck')
             ->where('i.company = :company')->setParameter('company', $companyId, 'uuid');
-        $words = trim($search->text ?? '');
+        $words = TypedText::trimmed($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
         } elseif ('' !== $words) {

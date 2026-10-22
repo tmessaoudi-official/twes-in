@@ -12,7 +12,8 @@ namespace App\Shared\Domain\Exception;
 /** A schedule that cannot recur as asked, refused on the field that says so, with the reason a screen translates. */
 final class InvalidSchedule extends \DomainException
 {
-    public function __construct(public readonly string $field, string $message, public readonly string $reason = 'invalid_value')
+    /** @param array<string, string|int> $params what the reason's text names */
+    public function __construct(public readonly string $field, string $message, public readonly string $reason = 'invalid_value', public readonly array $params = [])
     {
         parent::__construct($message);
     }

@@ -13,6 +13,7 @@ use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\ValueObject\ReceiptDocument;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
@@ -59,12 +60,12 @@ final readonly class ReceiptDocuments
     /** @throws InvalidStockMovement */
     private static function day(?string $text): ?\DateTimeImmutable
     {
-        if (null === $text || '' === trim($text)) {
+        if (null === $text || '' === TypedText::trimmed($text)) {
             return null;
         }
-        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($text));
+        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', TypedText::trimmed($text));
         // `2026-13-45` is not refused by the parser: it rolls into the next year, so the day must read back as typed.
-        if (false === $day || $day->format('Y-m-d') !== trim($text)) {
+        if (false === $day || $day->format('Y-m-d') !== TypedText::trimmed($text)) {
             throw new InvalidStockMovement('receivedOn', 'A day is written year-month-day, as 2026-09-12.');
         }
 

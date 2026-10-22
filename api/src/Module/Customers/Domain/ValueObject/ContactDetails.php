@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Customers\Domain\ValueObject;
 
 use App\Module\Customers\Domain\Exception\InvalidContact;
+use App\Shared\Domain\Service\TypedText;
 
 /** Who a contact is and how to reach them; kept without stray spaces, with a first or a last name at least. */
 final readonly class ContactDetails
@@ -43,7 +44,7 @@ final readonly class ContactDetails
 
     private static function text(?string $value, string $field): ?string
     {
-        $value = null === $value ? '' : trim($value);
+        $value = null === $value ? '' : TypedText::trimmed($value);
         if (\in_array($field, ['firstName', 'lastName', 'role'], true) && mb_strlen($value) > self::NAME_MAX) {
             throw new InvalidContact($field, \sprintf('At most %d characters.', self::NAME_MAX));
         }

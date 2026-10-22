@@ -67,6 +67,7 @@ use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -342,7 +343,7 @@ final readonly class ProductImport implements DeclaresImport
                 ProductStockRefused::PLACE => null === $record->value('location') && null !== $home ? 'home_location' : 'location', ProductStockRefused::COST => 'cost_price', default => $quantity[2] ?? 'stock_count',
             }, $refused->getMessage(), $refused->reason, $refused->params);
         } catch (ReorderPointRefused $refused) {
-            throw new RowRejected('reorder_point', $refused->getMessage(), 'invalid_value');
+            throw new RowRejected('reorder_point', $refused->getMessage(), $refused->reason ?? 'invalid_quantity', $refused->params);
         } catch (ProductReferenceTaken) {
             throw new RowRejected('reference', 'A product already has this reference.', 'already_exists');
         } catch (ProductBarcodeTaken $taken) {
@@ -385,10 +386,10 @@ final readonly class ProductImport implements DeclaresImport
     private function homeOf(Company $company, ImportRecord $record): ?Uuid
     {
         $code = $record->value('home_location');
-        if (null === $code || '' === trim($code)) {
+        if (null === $code || '' === TypedText::trimmed($code)) {
             return null;
         }
-        $found = $this->homes->locationsCoded($company, trim($code));
+        $found = $this->homes->locationsCoded($company, TypedText::trimmed($code));
         if ([] === $found) {
             throw new RowRejected('home_location', \sprintf('The company has no stock location coded "%s". Create it first, under Stock.', $code), 'unknown_location', ['code' => $code]);
         }
@@ -502,12 +503,12 @@ final readonly class ProductImport implements DeclaresImport
     private function reorderPointOf(Company $company, ImportRecord $record, Uuid|false|null $homeLocationId, ImportContext $context): ?array
     {
         $quantity = ImportCells::decimal($record, 'reorder_point', 3);
-        if (null === $quantity || '' === trim($quantity)) {
+        if (null === $quantity || '' === TypedText::trimmed($quantity)) {
             return null;
         }
-        $quantity = trim($quantity);
+        $quantity = TypedText::trimmed($quantity);
         if (1 !== preg_match('/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/', $quantity)) {
-            throw new RowRejected('reorder_point', 'A reorder point is a quantity from 0, with at most three decimals.', 'invalid_value');
+            throw new RowRejected('reorder_point', 'A reorder point is a quantity from 0, with at most three decimals.', 'invalid_quantity');
         }
         if (false === $homeLocationId) {
             return null;
@@ -553,7 +554,7 @@ final readonly class ProductImport implements DeclaresImport
         $taxIds = $faults->read(fn (): array => $this->taxIds($company, $record, $current, $context), false);
         $unpriced = $this->unpriced($record, $current, $context);
         $price = $unpriced ? '0' : $faults->read(fn (): string => $this->priceOf($company, $record, $held, $taxIds, $context, $notes), '0');
-        $productKind = null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(trim($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods);
+        $productKind = null === $kind ? ($held->kind ?? ProductKind::Goods) : $faults->read(static fn (): ProductKind => ProductKind::tryFrom(self::KINDS[mb_strtolower(TypedText::trimmed($kind))] ?? '') ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))]), ProductKind::Goods);
 
         return new ProductInput(
             // Left out, a new product is given the next of the company's format and a product found by its code keeps its own.
@@ -655,7 +656,7 @@ final readonly class ProductImport implements DeclaresImport
             return null;
         }
 
-        return ProductTracking::tryFrom(self::TRACKINGS[mb_strtolower(trim($cell))] ?? '')
+        return ProductTracking::tryFrom(self::TRACKINGS[mb_strtolower(TypedText::trimmed($cell))] ?? '')
             ?? throw new RowRejected('tracking', 'Stock is told apart by "none", "lot" or "serial".', 'not_one_of', ['choices' => implode(', ', array_column(ProductTracking::cases(), 'value'))]);
     }
 
@@ -911,7 +912,7 @@ final readonly class ProductImport implements DeclaresImport
         return null === $current
             && null === $record->value('unit_price_net') && null === $record->value('unit_price_gross')
             && $context->ticked(self::UNPRICED_INACTIVE)
-            && (null === $active || !\in_array(mb_strtolower(trim($active)), self::YES, true));
+            && (null === $active || !\in_array(mb_strtolower(TypedText::trimmed($active)), self::YES, true));
     }
 
     /** A product the row leaves sold under its cost, most often a slip in the sheet, is pointed out. */

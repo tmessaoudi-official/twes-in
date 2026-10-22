@@ -84,7 +84,8 @@ final class ScheduleTest extends TestCase
             $make();
             self::fail("$field was taken");
         } catch (InvalidSchedule $refused) {
-            self::assertSame([$field, 'invalid_value'], [$refused->field, $refused->reason]);
+            // A number out of its range says the range; an anchor is a choice the form offers.
+            self::assertSame([$field, 'anchor' === $field ? 'unknown_choice' : 'whole_number_between'], [$refused->field, $refused->reason]);
         }
     }
 

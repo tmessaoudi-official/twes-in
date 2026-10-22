@@ -17,6 +17,7 @@ use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use App\Venue\Application\ArrangeVenue;
 use App\Venue\Application\VenueAreaNotFound;
@@ -395,7 +396,7 @@ final readonly class DrawStockMap
      */
     private function codes(Company $company, StockLocation $source, string $firstCode, int $count): array
     {
-        $first = trim($firstCode);
+        $first = TypedText::trimmed($firstCode);
         if (1 !== preg_match('/^(.*?)([0-9]+)$/', $first, $found)) {
             throw new InvalidStockLocation('firstCode', 'A repeat counts on from a code ending in a number, such as R2.');
         }

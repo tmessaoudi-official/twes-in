@@ -20,6 +20,7 @@ use App\Module\Reports\Application\ReportContext;
 use App\Module\Reports\Application\ReportDrill;
 use App\Module\Reports\Application\ReportPeriod;
 use App\Module\Reports\Application\ReportRow;
+use App\Shared\Domain\Service\TypedText;
 use Doctrine\DBAL\Connection;
 
 /**
@@ -120,7 +121,7 @@ final readonly class ActivityByMemberReport implements DeclaresReport
 
         return array_map(static function (array $row) use ($from, $to): ReportRow {
             $user = self::text($row['user_id']);
-            $name = null === $row['display_name'] || '' === trim(self::text($row['display_name'])) ? self::text($row['email']) : self::text($row['display_name']);
+            $name = null === $row['display_name'] || '' === TypedText::trimmed(self::text($row['display_name'])) ? self::text($row['email']) : self::text($row['display_name']);
 
             return new ReportRow($user, [
                 'member' => $name,

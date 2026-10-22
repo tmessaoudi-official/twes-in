@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Venue\Domain\Model;
 
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Venue\Domain\Exception\InvalidVenue;
@@ -276,7 +277,7 @@ class VenueArea implements CompanyOwned
     /** @throws InvalidVenue */
     private static function name(string $name): string
     {
-        $trimmed = trim($name);
+        $trimmed = TypedText::trimmed($name);
         if ('' === $trimmed || mb_strlen($trimmed) > self::NAME_MAX) {
             throw new InvalidVenue('name', \sprintf('An area is named in 1 to %d characters.', self::NAME_MAX));
         }

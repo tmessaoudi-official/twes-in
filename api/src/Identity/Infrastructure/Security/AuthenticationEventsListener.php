@@ -13,6 +13,7 @@ use App\Identity\Application\Login\FailedLoginAttempt;
 use App\Identity\Application\Login\RecordFailedLogin;
 use App\Identity\Application\Login\RecordLogout;
 use App\Identity\Application\Login\RecordSuccessfulLogin;
+use App\Shared\Domain\Service\TypedText;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
@@ -85,6 +86,6 @@ final readonly class AuthenticationEventsListener
             return null;
         }
 
-        return \is_array($body) && \is_string($body['email'] ?? null) ? mb_substr(mb_strtolower(trim($body['email'])), 0, 254) : null;
+        return \is_array($body) && \is_string($body['email'] ?? null) ? mb_substr(mb_strtolower(TypedText::trimmed($body['email'])), 0, 254) : null;
     }
 }

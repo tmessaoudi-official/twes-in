@@ -30,8 +30,11 @@ final readonly class ExpenseAmounts
      */
     public function __construct(public array $lines, public array $charges = [], public array $printed = [])
     {
-        if ([] === $lines || \count($lines) > self::LINES_MAX) {
-            throw new InvalidExpense('lines', \sprintf('A bill has 1 to %d lines.', self::LINES_MAX));
+        if ([] === $lines) {
+            throw new InvalidExpense('lines', \sprintf('A bill has 1 to %d lines.', self::LINES_MAX), 'value_required');
+        }
+        if (\count($lines) > self::LINES_MAX) {
+            throw new InvalidExpense('lines', \sprintf('A bill has 1 to %d lines.', self::LINES_MAX), 'too_many_entries');
         }
     }
 

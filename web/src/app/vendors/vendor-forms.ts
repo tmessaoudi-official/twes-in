@@ -159,7 +159,8 @@ export function vendorForm(
     label: identifier.label,
     kind: 'text',
     maxLength: 64,
-    pattern: identifier.pattern,
+    ...(identifier.pattern ? { pattern: identifier.pattern } : {}),
+    ...(identifier.hint ? { hint: identifier.hint } : {}),
   }));
 
   return {

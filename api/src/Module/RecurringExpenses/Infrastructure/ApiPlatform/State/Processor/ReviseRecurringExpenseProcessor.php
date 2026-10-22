@@ -47,7 +47,7 @@ final readonly class ReviseRecurringExpenseProcessor implements ProcessorInterfa
         } catch (RecurringExpenseNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (InvalidSchedule $refused) {
-            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, previous: $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return RecurringExpenseResource::of($recurring, $this->manage->models($company, [$recurring])[$recurring->getModelExpenseId()->toRfc4122()] ?? null);

@@ -39,6 +39,29 @@ final class IdentifierRules
     }
 
     /**
+     * The numbers in the form the preset stores them in: one read part by part is written its one way, whichever way it
+     * was typed (`1234567aam000`, `1234567/A/A/M/000`, `1234567A/A/M/000` are one matricule); any other is kept as it
+     * came, for `refusal()` to judge.
+     *
+     * @param array<string, string> $values registration numbers by identifier key, as `RegistrationNumbers::kept()` gives them
+     * @param string                $holder one of the holder constants, or ''
+     *
+     * @return array<string, string>
+     */
+    public static function normalised(FiscalPreset $preset, array $values, string $holder): array
+    {
+        foreach ($preset->identifiers as $identifier) {
+            $value = $values[$identifier->key] ?? null;
+            if (null === $value || null === $identifier->parts || null !== $identifier->foreignPatternOf($value, $holder)) {
+                continue;
+            }
+            $values[$identifier->key] = $identifier->parts->normalised($value) ?? $value;
+        }
+
+        return $values;
+    }
+
+    /**
      * The first rule the values break; null when they break none.
      *
      * @param array<string, string> $values  registration numbers by identifier key, blank ones already left out
@@ -52,19 +75,31 @@ final class IdentifierRules
             $known[] = $identifier->key;
             $field = "identifiers.$identifier->key";
             $value = $values[$identifier->key] ?? null;
+            // Every refusal of a number shows how it is written, as the preset's example.
+            $example = ['identifier' => $identifier->key, 'example' => $identifier->example];
             if (null === $value) {
                 if ($identifier->isRequiredOf($holder) && !\in_array($identifier->key, $excused, true)) {
-                    return new IdentifierRefusal($field, \sprintf('The %s preset requires %s to carry its %s.', $preset->country, self::HOLDERS[$holder] ?? $holder, $identifier->key), 'identifier_required', ['identifier' => $identifier->key]);
+                    return new IdentifierRefusal($field, \sprintf('The %s preset requires %s to carry its %s.', $preset->country, self::HOLDERS[$holder] ?? $holder, $identifier->key), 'identifier_required', $example);
                 }
                 continue;
             }
             // Another state's number has that state's shape; the preset's check digits are its own country's alone.
             $foreign = $identifier->foreignPatternOf($value, $holder);
+            $fault = null === $foreign ? $identifier->parts?->fault($value) : null;
+            if (null !== $fault && $fault->isReversed()) {
+                return new IdentifierRefusal($field, \sprintf('This %s is written the other way round, as a right-to-left certificate reads.', $identifier->key), 'identifier_reversed', $example);
+            }
+            if (null !== $fault && null !== $fault->rule) {
+                return new IdentifierRefusal($field, \sprintf('The %s part of this %s does not go with its other parts.', $fault->part, $identifier->key), 'identifier_part_rule', [...$example, 'part' => (string) $fault->part, 'rule' => $fault->rule->name]);
+            }
+            if (null !== $fault) {
+                return new IdentifierRefusal($field, \sprintf('The %s part of this %s is not written as it should be.', $fault->part, $identifier->key), 'identifier_part', [...$example, 'part' => (string) $fault->part]);
+            }
             if (1 !== preg_match('#'.str_replace('#', '\#', $foreign ?? $identifier->pattern).'#u', $value)) {
-                return new IdentifierRefusal($field, \sprintf('This %s does not have the shape the %s preset expects.', $identifier->key, $preset->country), 'identifier_shape', ['identifier' => $identifier->key]);
+                return new IdentifierRefusal($field, \sprintf('This %s does not have the shape the %s preset expects.', $identifier->key, $preset->country), 'identifier_shape', $example);
             }
             if (null === $foreign && null !== $identifier->check && !$identifier->check->accepts($value)) {
-                return new IdentifierRefusal($field, \sprintf('This %s fails its check digits.', $identifier->key), 'identifier_checksum', ['identifier' => $identifier->key]);
+                return new IdentifierRefusal($field, \sprintf('This %s fails its check digits.', $identifier->key), 'identifier_checksum', $example);
             }
         }
         foreach (array_keys($values) as $key) {

@@ -1125,7 +1125,15 @@ Cheville 10 mm,6191234567897
         self::assertResponseStatusCodeSame(422);
         $rejected = $this->arrayAt($this->json(), 'rejected');
         self::assertIsArray($rejected[0] ?? null);
-        self::assertSame(['reorder_point', 'invalid_value'], [$rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null]);
+        self::assertSame(['reorder_point', 'invalid_quantity'], [$rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null]);
+
+        // A point its unit cannot count is the inventory's refusal, said as a stock quantity's is, with the unit.
+        $this->import("reference,name,home_location,reorder_point\nVIS-6X40,Vis 6x40 zinguée,Z1,2.5\n", mode: 'upsert');
+        self::assertResponseStatusCodeSame(422);
+        $rejected = $this->arrayAt($this->json(), 'rejected');
+        self::assertIsArray($rejected[0] ?? null);
+        self::assertIsArray($rejected[0]['params'] ?? null);
+        self::assertSame(['reorder_point', 'quantity_decimals', 0], [$rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null, $rejected[0]['params']['decimals'] ?? null]);
 
         $this->import("reference,name,home_location,reorder_point\nVIS-6X40,Vis 6x40 zinguée,Z1,\n", mode: 'upsert');
         self::assertResponseIsSuccessful();
@@ -1217,7 +1225,7 @@ Cheville 10 mm,6191234567897
             [2, 'default_tax_codes', 'unknown_tax_code'],
             [2, 'active', 'not_yes_or_no'],
             [2, 'home_location', 'unknown_location'],
-            [2, 'reorder_point', 'invalid_value'],
+            [2, 'reorder_point', 'invalid_quantity'],
             [3, 'home_location', 'unknown_location'],
         ], array_map(static fn (array $row): array => \array_slice($row, 0, 3), $this->rejections()));
     }

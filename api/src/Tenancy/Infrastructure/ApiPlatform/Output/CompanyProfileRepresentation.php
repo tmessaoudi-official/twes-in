@@ -60,8 +60,9 @@ final readonly class CompanyProfileRepresentation
             $resource->identifierFields[] = new CompanyIdentifierField(
                 $identifier->key,
                 $this->translator->trans($identifier->labelKey, [], 'fiscal'),
-                $identifier->pattern,
+                $identifier->patternFor(IdentifierRules::COMPANY),
                 $identifier->isRequiredOf(IdentifierRules::COMPANY),
+                null === $identifier->hintKey ? null : $this->translator->trans($identifier->hintKey, ['%example%' => $identifier->example], 'fiscal'),
             );
         }
         foreach ($preset->companyVatRegimes as $regime) {

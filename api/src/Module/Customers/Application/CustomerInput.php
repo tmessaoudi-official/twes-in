@@ -37,4 +37,10 @@ final readonly class CustomerInput
         public ?CheckMark $mark = null,
     ) {
     }
+
+    /** The same input with this profile: its registration numbers as the preset stores them. */
+    public function withProfile(CustomerProfile $profile): self
+    {
+        return clone ($this, ['profile' => $profile]);
+    }
 }

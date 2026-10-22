@@ -40,7 +40,8 @@ final class VendorsTest extends ApiTestCase
         self::assertSame('TN', $options['countryCode']);
         $identifier = $this->arrayAt($options, 'identifiers')[0];
         self::assertIsArray($identifier);
-        self::assertSame(['matricule_fiscal', '^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$'], [$identifier['key'], $identifier['pattern']]);
+        // Read part by part, the matricule is judged by the API alone, which takes every way of writing it.
+        self::assertSame(['matricule_fiscal', null, "Exemple\u{00A0}: 1234567A/B/M/000. Il commence par ses 7 chiffres, même si la carte l’imprime dans l’autre sens."], [$identifier['key'], $identifier['pattern'], $identifier['hint']]);
     }
 
     public function testTheFormIsOfferedTheExpenseCategoriesWhileTheExpensesModuleIsOn(): void
@@ -144,8 +145,8 @@ final class VendorsTest extends ApiTestCase
             'countryCode' => [['countryCode' => 'XX'], 'invalid_country', []],
             'iban' => [['iban' => 'TN00 1234'], 'invalid_iban', []],
             'bic' => [['bic' => 'NOPE'], 'invalid_bic', []],
-            'paymentTermsDays' => [['paymentTermsDays' => 400], 'invalid_payment_terms', []],
-            'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '123']], 'identifier_shape', ['identifier' => 'matricule_fiscal']],
+            'paymentTermsDays' => [['paymentTermsDays' => 400], 'invalid_payment_terms', ['max' => 365]],
+            'identifiers.matricule_fiscal' => [['identifiers' => ['matricule_fiscal' => '123']], 'identifier_part', ['identifier' => 'matricule_fiscal', 'example' => '1234567A/B/M/000', 'part' => 'number']],
         ] as $field => [$change, $reason, $params]) {
             $this->postJson($this->path(), $this->vendor($change));
 

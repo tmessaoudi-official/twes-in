@@ -20,6 +20,7 @@ use App\Module\Quotes\Domain\ValueObject\QuoteLineDetails;
 use App\Module\Quotes\Domain\ValueObject\QuotePrint;
 use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
@@ -267,7 +268,7 @@ class Quote implements CompanyOwned
      */
     public function refuse(\DateTimeImmutable $refusedOn, ?string $reason, \DateTimeImmutable $today, \DateTimeImmutable $now): void
     {
-        $reason = trim($reason ?? '');
+        $reason = TypedText::trimmed($reason ?? '');
         if (mb_strlen($reason) > self::REASON_MAX) {
             throw new InvalidQuote('reason', \sprintf('At most %d characters.', self::REASON_MAX));
         }

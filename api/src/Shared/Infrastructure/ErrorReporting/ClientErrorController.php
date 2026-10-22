@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\ErrorReporting;
 
+use App\Shared\Domain\Service\TypedText;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -50,7 +51,7 @@ final readonly class ClientErrorController
         }
 
         $body = json_decode($request->getContent(), true);
-        if (!\is_array($body) || !\is_string($body['message'] ?? null) || '' === trim($body['message'])) {
+        if (!\is_array($body) || !\is_string($body['message'] ?? null) || '' === TypedText::trimmed($body['message'])) {
             return new JsonResponse(['error' => 'invalid_report'], Response::HTTP_BAD_REQUEST);
         }
 

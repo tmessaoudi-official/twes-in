@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Products\Domain\ValueObject;
 
 use App\Module\Products\Domain\Exception\InvalidProduct;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * One code a product answers to (docs/SPEC.md § 7, 2026-09-17, 2026-09-22 11:05 and 22:26). The code is kept as it
@@ -32,12 +33,12 @@ final readonly class Barcode
     /** @throws InvalidProduct */
     public function __construct(string $code)
     {
-        $code = trim($code);
+        $code = TypedText::trimmed($code);
         if (1 !== preg_match(self::PRINTABLE, $code)) {
-            throw new InvalidProduct('code', \sprintf('A barcode is 1 to %d printable characters without spaces.', self::MAX));
+            throw new InvalidProduct('code', \sprintf('A barcode is 1 to %d printable characters without spaces.', self::MAX), 'invalid_barcode');
         }
         if (self::claimsGtin($code) && !self::checkDigitHolds($code)) {
-            throw new InvalidProduct('code', 'This barcode has the shape of an EAN-13, EAN-8, UPC or GTIN-14 code and its check digit does not match.');
+            throw new InvalidProduct('code', 'This barcode has the shape of an EAN-13, EAN-8, UPC or GTIN-14 code and its check digit does not match.', 'invalid_barcode');
         }
         $this->code = $code;
         $this->key = self::keyOf($code);
@@ -49,7 +50,7 @@ final readonly class Barcode
      */
     public static function keyOf(string $scanned): string
     {
-        $scanned = trim($scanned);
+        $scanned = TypedText::trimmed($scanned);
         if (self::claimsGtin($scanned) && self::checkDigitHolds($scanned)) {
             return str_pad($scanned, 14, '0', \STR_PAD_LEFT);
         }

@@ -266,9 +266,14 @@ export function customerForm(
     label: identifier.label,
     kind: 'text',
     maxLength: 64,
-    pattern: identifier.pattern,
+    ...(identifier.pattern ? { pattern: identifier.pattern } : {}),
     visibleWhen: { field: 'kind', oneOf: ['company'] },
-    ...(identifier.requiredForBusiness ? { hint: 'customers.form.identifier_hint' } : {}),
+    // The preset's own hint shows how the number is written; whether it is required, its refusal says.
+    ...(identifier.hint
+      ? { hint: identifier.hint }
+      : identifier.requiredForBusiness
+        ? { hint: 'customers.form.identifier_hint' }
+        : {}),
   }));
 
   const descriptor: FormDescriptor = {

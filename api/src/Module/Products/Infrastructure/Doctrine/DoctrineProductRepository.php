@@ -17,6 +17,7 @@ use App\Module\Products\Domain\ValueObject\Gs1Scan;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductSearch;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
@@ -89,7 +90,7 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->where('p.company = :company')->setParameter('company', $companyId, 'uuid')
             // A product merged away is listed as the product kept, which is listed already.
             ->andWhere('p.mergedInto IS NULL');
-        $this->matchWords($query, $companyId, trim($search->text ?? ''));
+        $this->matchWords($query, $companyId, TypedText::trimmed($search->text ?? ''));
         if ([] !== $search->kinds) {
             $query->andWhere('p.kind IN (:kinds)')
                 ->setParameter('kinds', array_map(static fn (ProductKind $each): string => $each->value, $search->kinds), ArrayParameterType::STRING);
@@ -151,7 +152,7 @@ final readonly class DoctrineProductRepository implements ProductRepository
         if (null !== $kind) {
             $query->andWhere('p.kind = :kind')->setParameter('kind', $kind->value);
         }
-        $code = $this->matchWords($query, $companyId, trim($words));
+        $code = $this->matchWords($query, $companyId, TypedText::trimmed($words));
         if (null !== $code) {
             // A scan is exact, so the product it names is the first offered: that is what lets Enter take it.
             $query->addSelect('CASE WHEN p.id = :code THEN 0 ELSE 1 END AS HIDDEN exact')->orderBy('exact', 'ASC');

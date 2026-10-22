@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Domain\ValueObject;
 
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Exception\InvalidNumbering;
 
 /**
@@ -30,7 +31,7 @@ final readonly class NumberFormat
     /** @throws InvalidNumbering */
     public function __construct(string $pattern)
     {
-        if ('' === trim($pattern)) {
+        if ('' === TypedText::trimmed($pattern)) {
             throw new InvalidNumbering('format', 'A numbering format cannot be blank.');
         }
         if (\strlen($pattern) > self::MAX_LENGTH) {

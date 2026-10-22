@@ -35,7 +35,7 @@ final readonly class BarcodeLine
             throw new InvalidProduct('quantity', 'A unit code enters one piece; a code that enters several is a pack.');
         }
         if (BarcodeRole::Pack === $role && 1 === $quantity) {
-            throw new InvalidProduct('quantity', 'A pack enters more than one piece; a code that enters one is a unit code.');
+            throw new InvalidProduct('quantity', 'A pack enters more than one piece; a code that enters one is a unit code.', 'invalid_pack_quantity');
         }
         if (BarcodeRole::Supplier === $role && null === $supplier) {
             throw new InvalidProduct('supplierId', 'A supplier\'s code names the supplier who prints it.');

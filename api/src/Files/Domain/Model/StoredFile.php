@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Files\Domain\Model;
 
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -58,7 +59,7 @@ class StoredFile implements CompanyOwned
 
     public function __construct(Company $company, string $originalName, string $mime, string $contents, ?Uuid $uploadedBy, \DateTimeImmutable $now)
     {
-        $name = trim($originalName);
+        $name = TypedText::trimmed($originalName);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX || str_contains($name, '/')) {
             throw new \InvalidArgumentException(\sprintf('A file is named in 1 to %d characters, without a slash.', self::NAME_MAX));
         }
@@ -82,7 +83,7 @@ class StoredFile implements CompanyOwned
     public static function nameFrom(string $given, string $fallback): string
     {
         $name = (string) preg_replace('/[\x00-\x1F\x7F]/u', '', str_replace('\\', '/', $given));
-        $name = trim(substr($name, (int) strrpos('/'.$name, '/')));
+        $name = TypedText::trimmed(substr($name, (int) strrpos('/'.$name, '/')));
 
         return '' === $name ? $fallback : mb_substr($name, 0, self::NAME_MAX);
     }

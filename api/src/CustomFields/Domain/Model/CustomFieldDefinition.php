@@ -14,6 +14,7 @@ use App\CustomFields\Domain\ValueObject\CustomFieldEntity;
 use App\CustomFields\Domain\ValueObject\CustomFieldRule;
 use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -149,7 +150,7 @@ class CustomFieldDefinition implements CompanyOwned
 
     private static function label(string $label): string
     {
-        $label = trim($label);
+        $label = TypedText::trimmed($label);
         if ('' === $label || mb_strlen($label) > self::LABEL_MAX) {
             throw new InvalidCustomFieldDefinition('label', \sprintf('A label of 1 to %d characters.', self::LABEL_MAX));
         }
@@ -164,7 +165,7 @@ class CustomFieldDefinition implements CompanyOwned
      */
     private static function choices(CustomFieldType $type, array $choices): array
     {
-        $choices = array_map(trim(...), $choices);
+        $choices = array_map(TypedText::trimmed(...), $choices);
         if (CustomFieldType::Choice !== $type) {
             if ([] !== $choices) {
                 throw new InvalidCustomFieldDefinition('choices', 'Only a choice field has choices.');

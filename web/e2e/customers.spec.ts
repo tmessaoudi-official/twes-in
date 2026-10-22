@@ -137,7 +137,9 @@ test('an e-mail the browser takes and the API refuses is said under the field, i
     await page.getByTestId('field-email').fill('compta@carthage');
     await page.getByTestId('record-save').click();
 
-    await expect(page.getByTestId('field-error-email')).toHaveText('E-mail refusé.');
+    await expect(page.getByTestId('field-error-email')).toHaveText(
+      'Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn). Vérifiez l’arobase et le point.',
+    );
     await expect(page.getByTestId('field-email')).toBeFocused();
     await expect(page).toHaveURL(/\/customers\/new$/);
 

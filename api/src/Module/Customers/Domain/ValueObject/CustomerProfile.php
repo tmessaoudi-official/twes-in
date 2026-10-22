@@ -13,6 +13,7 @@ use App\Module\Customers\Domain\Exception\InvalidCustomer;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\ContactRules;
 use App\Shared\Domain\Service\RegistrationNumbers;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Refusal;
 use BcMath\Number;
 
@@ -62,7 +63,7 @@ final readonly class CustomerProfile
         ?string $defaultDiscountRate = null,
         ?string $notes = null,
     ) {
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
             throw new InvalidCustomer('name', \sprintf('A customer is named in 1 to %d characters.', self::NAME_MAX), 'invalid_text', ['min' => 1, 'max' => self::NAME_MAX]);
         }
@@ -75,6 +76,16 @@ final readonly class CustomerProfile
         $this->shippingAddress = null === $shippingAddress || $shippingAddress->isEmpty() ? null : $shippingAddress;
         $this->defaultDiscountRate = self::rate($defaultDiscountRate);
         $this->notes = self::text($notes);
+    }
+
+    /**
+     * The same profile carrying these registration numbers, as the preset stores them (`IdentifierRules::normalised`).
+     *
+     * @param array<string, string> $identifiers
+     */
+    public function withIdentifiers(array $identifiers): self
+    {
+        return clone ($this, ['identifiers' => RegistrationNumbers::kept($identifiers)]);
     }
 
     /**
@@ -162,7 +173,7 @@ final readonly class CustomerProfile
 
     private static function text(?string $value): ?string
     {
-        $value = null === $value ? '' : trim($value);
+        $value = null === $value ? '' : TypedText::trimmed($value);
 
         return '' === $value ? null : $value;
     }

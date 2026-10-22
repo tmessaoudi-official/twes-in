@@ -12,6 +12,7 @@ namespace App\CustomFields\Domain\Service;
 use App\CustomFields\Domain\Exception\InvalidCustomFieldValue;
 use App\CustomFields\Domain\ValueObject\CustomFieldRule;
 use App\CustomFields\Domain\ValueObject\CustomFieldType;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * A record's custom field values checked against its company's fields. A key no field declares is refused, a required
@@ -56,7 +57,7 @@ final class CustomFieldValues
 
             $value = $submitted[$key] ?? null;
             if (\is_string($value)) {
-                $value = trim($value);
+                $value = TypedText::trimmed($value);
             }
             if (null === $value || '' === $value) {
                 if ($rule->required) {

@@ -13,6 +13,7 @@ use App\Module\Quotes\Domain\Model\Quote;
 use App\Module\Quotes\Domain\Repository\QuoteRepository;
 use App\Module\Quotes\Domain\ValueObject\QuoteSearch;
 use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
@@ -100,7 +101,7 @@ final readonly class DoctrineQuoteRepository implements QuoteRepository
             ->join('q.customer', 'c')
             ->leftJoin('c.mergedInto', 'ck')
             ->where('q.company = :company')->setParameter('company', $companyId, 'uuid');
-        $words = trim($search->text ?? '');
+        $words = TypedText::trimmed($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
         } elseif ('' !== $words) {

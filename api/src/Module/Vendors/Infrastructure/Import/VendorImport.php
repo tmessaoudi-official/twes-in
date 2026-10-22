@@ -38,6 +38,7 @@ use App\Module\Vendors\Infrastructure\ApiPlatform\Resource\VendorResource;
 use App\Module\Vendors\Infrastructure\ApiPlatform\Security\VendorPermission;
 use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
@@ -388,7 +389,7 @@ final readonly class VendorImport implements DeclaresImport
         if (null === $cell) {
             return null;
         }
-        $cell = trim($cell);
+        $cell = TypedText::trimmed($cell);
 
         return 1 === preg_match('/^-?\d+$/', $cell) ? (int) $cell : throw new RowRejected($column, 'A whole number of days.', 'not_a_whole_number');
     }

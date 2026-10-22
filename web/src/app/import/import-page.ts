@@ -44,6 +44,7 @@ import type { ActionConfirm } from '../shared/actions/screen-action';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { firstValueFrom } from 'rxjs';
 import { tableCounts } from '../shared/records/record-tables';
+import { refusalParams } from '../shared/form/refusal-words';
 
 /** How many of a preview's changes the table lists; the count by column says them all. */
 export const CHANGES_SHOWN = 200;
@@ -286,11 +287,14 @@ export class ImportPage {
    */
   protected reasonOf(rejection: ImportRejection): string {
     const key = `import.rejections.${rejection.code}`;
-    const params = Object.fromEntries(
-      Object.entries(rejection.params).map(([name, value]) => [
-        name,
-        PRICE_PARAMS.has(name) && typeof value === 'string' ? this.format.decimal(value) : value,
-      ]),
+    const params = refusalParams(
+      this.translate,
+      Object.fromEntries(
+        Object.entries(rejection.params).map(([name, value]) => [
+          name,
+          PRICE_PARAMS.has(name) && typeof value === 'string' ? this.format.decimal(value) : value,
+        ]),
+      ),
     );
     const said = this.translate.instant(key, params) as string;
 

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Domain\ValueObject;
 
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\PaymentMethod;
 
 /**
@@ -36,7 +37,7 @@ final readonly class InstrumentDetails
         $payment = new PaymentDetails($this->dueOn, $amount, PaymentMethod::Check, $number);
         $this->amount = $payment->amount;
         $this->number = $payment->reference;
-        $bank = trim($bank ?? '');
+        $bank = TypedText::trimmed($bank ?? '');
         if (mb_strlen($bank) > self::BANK_MAX) {
             throw new InvalidInvoice('bank', \sprintf('At most %d characters.', self::BANK_MAX));
         }

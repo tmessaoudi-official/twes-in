@@ -82,8 +82,10 @@ export type VendorInput = Omit<VendorRow, 'id' | 'version' | 'mergedInto' | 'che
 export interface VendorIdentifierOption {
   key: string;
   label: string;
-  /** Anchored by the preset, without delimiters. */
-  pattern: string;
+  /** Anchored by the preset, without delimiters; null when the API alone judges every way of writing it. */
+  pattern: string | null;
+  /** What the form shows under the field, its example in it, labelled by the API; none when the preset says nothing. */
+  hint?: string;
 }
 
 /** One of the company's expense categories, as the vendor form names it. */

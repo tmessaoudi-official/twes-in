@@ -22,6 +22,7 @@ use App\ModuleRegistry\Application\ModuleStates;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Settings\Application\SupportSettings;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
 use Symfony\Component\Uid\Uuid;
@@ -64,7 +65,7 @@ final readonly class MeFactory
         $channel = function (string $key): ?string {
             $value = $this->settings->value(new SettingContext(), $key);
 
-            return \is_string($value) && '' !== trim($value) ? trim($value) : null;
+            return \is_string($value) && '' !== TypedText::trimmed($value) ? TypedText::trimmed($value) : null;
         };
 
         return new MeSupport($channel(SupportSettings::PHONE), $channel(SupportSettings::WHATSAPP), $channel(SupportSettings::EMAIL));

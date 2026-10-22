@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Application;
 
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\CheckMark;
 
 /**
@@ -84,7 +85,7 @@ final class ImportCells
     /** A day written day first, as French and Tunisian people write one, in the notation a date field keeps. */
     public static function day(string $cell): string
     {
-        if (1 === preg_match('#^([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})$#D', trim($cell), $parts) && checkdate((int) $parts[2], (int) $parts[1], (int) $parts[3])) {
+        if (1 === preg_match('#^([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})$#D', TypedText::trimmed($cell), $parts) && checkdate((int) $parts[2], (int) $parts[1], (int) $parts[3])) {
             return \sprintf('%04d-%02d-%02d', $parts[3], $parts[2], $parts[1]);
         }
 

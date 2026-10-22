@@ -31,6 +31,7 @@ use App\Module\Expenses\Domain\ValueObject\TejOperationCode;
 use App\Module\Expenses\Domain\ValueObject\WithholdingOperation;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\PaymentMethod;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -251,7 +252,7 @@ class Expense implements CompanyOwned
             throw new InvalidExpense('paidOn', 'A payment is recorded once it happened, today at the latest.', 'paid_after_today');
         }
         $this->assertDeclarableToTej($operationCode);
-        $rate = trim($withholdingRate ?? '');
+        $rate = TypedText::trimmed($withholdingRate ?? '');
         if ('' !== $rate && (1 !== preg_match(self::WITHHOLDING_RATE, $rate) || Decimal::of($rate)->compare(100) > 0)) {
             throw new InvalidExpense('withholdingRate', 'A withholding is a percentage from 0 to 100 with at most three decimals.', 'invalid_withholding_rate');
         }
@@ -422,7 +423,7 @@ class Expense implements CompanyOwned
         $unit = Decimal::of('1')->div(10 ** $currencyScale, $currencyScale);
         foreach ($amounts->printed as $code => $amount) {
             $worked = array_find($totals->taxes, static fn ($tax): bool => $tax->code === $code);
-            $printed = trim($amount);
+            $printed = TypedText::trimmed($amount);
             // One unit of the last decimal off per line carrying the rate, each line having rounded on its own.
             $tolerance = $unit->mul($carriers[$code] ?? 1);
             if (null === $worked || 1 !== preg_match('/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/', $printed) || 0 !== Decimal::round(Decimal::of($printed), $currencyScale)->compare(Decimal::of($printed))
@@ -435,7 +436,7 @@ class Expense implements CompanyOwned
         $tax = Decimal::zero();
         foreach ($totals->taxes as $total) {
             $worked = self::stored(Decimal::of($total->amount));
-            $charged = isset($amounts->printed[$total->code]) ? self::stored(Decimal::of(trim($amounts->printed[$total->code]))) : $worked;
+            $charged = isset($amounts->printed[$total->code]) ? self::stored(Decimal::of(TypedText::trimmed($amounts->printed[$total->code]))) : $worked;
             $rows[] = [$components[$total->code], Decimal::format(Decimal::of($total->rate->percentage()), 3), self::stored(Decimal::of($total->base)), $worked, $charged];
             $tax = $tax->add(Decimal::of($charged));
         }

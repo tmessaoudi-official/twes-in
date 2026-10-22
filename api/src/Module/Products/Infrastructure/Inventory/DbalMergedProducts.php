@@ -24,9 +24,14 @@ final readonly class DbalMergedProducts implements MergedProducts
 
     public function mergedAway(array $productIds): array
     {
-        return Rows::texts($this->connection->fetchFirstColumn(
-            'SELECT p.id::text FROM product p WHERE p.id = ANY(CAST(:ids AS uuid[])) AND '.KeptRecords::mergedAway('p'),
+        $kept = [];
+        foreach ($this->connection->fetchAllKeyValue(
+            'SELECT p.id::text, k.reference FROM product p JOIN product k ON k.id = '.KeptRecords::id('p').' WHERE p.id = ANY(CAST(:ids AS uuid[])) AND '.KeptRecords::mergedAway('p'),
             ['ids' => '{'.implode(',', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $productIds)).'}'],
-        ));
+        ) as $id => $reference) {
+            $kept[Rows::text($id)] = Rows::text($reference);
+        }
+
+        return $kept;
     }
 }

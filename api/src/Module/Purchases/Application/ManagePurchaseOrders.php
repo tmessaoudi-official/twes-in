@@ -22,6 +22,7 @@ use App\Module\Purchases\Domain\ValueObject\PurchaseOrderSearch;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
@@ -186,7 +187,7 @@ final readonly class ManagePurchaseOrders
         $unit = $this->units->ofIdInCompany($product->unitId, $company->getId())
             ?? throw new \LogicException('A product is counted in a unit of its own company.');
         // A retired unit still counts the products already counted in it.
-        $description = null === $line->description || '' === trim($line->description) ? $product->name : $line->description;
+        $description = null === $line->description || '' === TypedText::trimmed($line->description) ? $product->name : $line->description;
         $price = $seesCost ? ($line->unitPriceNet ?? (null === $kept ? $product->costPrice : null)) : $kept?->getUnitPriceNet();
 
         return new PurchaseOrderLineDetails($product->id, $product->reference, $description, $line->quantity, $unit, $price);

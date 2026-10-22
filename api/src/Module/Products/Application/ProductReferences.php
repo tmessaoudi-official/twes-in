@@ -45,7 +45,7 @@ final readonly class ProductReferences
     public function preview(Company $company, ?Uuid $categoryId): string
     {
         $category = null === $categoryId ? null : ($this->categories->ofIdInCompany($categoryId, $company->getId())
-            ?? throw new InvalidProduct('categoryId', 'The category is not one of the company\'s.'));
+            ?? throw new InvalidProduct('categoryId', 'The category is not one of the company\'s.', 'unknown_choice'));
         $format = $this->format($company, $category);
         $number = $this->sequences->of($company->getId())?->nextNumber() ?? 1;
         do {

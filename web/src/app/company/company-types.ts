@@ -41,9 +41,11 @@ export interface MemberRow {
 export interface IdentifierField {
   readonly key: string;
   readonly label: string;
-  /** A regular expression the whole value matches. */
-  readonly pattern: string;
+  /** A regular expression the whole value matches; null when the API alone judges every way of writing it. */
+  readonly pattern: string | null;
   readonly required: boolean;
+  /** What the form shows under the field, its example in it, labelled by the API; none when the preset says nothing. */
+  readonly hint?: string;
 }
 
 /** A VAT regime the preset offers companies, labelled by the API. */

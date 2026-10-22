@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\Password;
 
 use App\Identity\Application\BreachedPasswordCheck;
+use App\Shared\Domain\Service\TypedText;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -54,7 +55,7 @@ final readonly class HibpBreachedPasswordCheck implements BreachedPasswordCheck
         }
 
         foreach (explode("\n", $body) as $line) {
-            [$candidate, $count] = array_pad(explode(':', trim($line), 2), 2, '0');
+            [$candidate, $count] = array_pad(explode(':', TypedText::trimmed($line), 2), 2, '0');
             // Padding entries are real suffixes with a count of zero; they are not matches.
             if (hash_equals($suffix, $candidate) && 0 !== (int) $count) {
                 return true;

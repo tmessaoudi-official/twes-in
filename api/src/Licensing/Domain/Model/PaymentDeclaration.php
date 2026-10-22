@@ -14,6 +14,7 @@ use App\Licensing\Domain\ValueObject\DeclarationStatus;
 use App\Licensing\Domain\ValueObject\DeclaredPayment;
 use App\Licensing\Domain\ValueObject\PaymentMethod;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -194,7 +195,7 @@ class PaymentDeclaration implements CompanyOwned
 
     private static function trimmed(?string $value): ?string
     {
-        $trimmed = trim($value ?? '');
+        $trimmed = TypedText::trimmed($value ?? '');
 
         return '' === $trimmed ? null : $trimmed;
     }

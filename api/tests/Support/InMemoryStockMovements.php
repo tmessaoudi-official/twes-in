@@ -39,8 +39,9 @@ final class InMemoryStockMovements implements StockMovementRepository
     public function save(StockMovement ...$movements): void
     {
         foreach ($movements as $movement) {
-            if ($movement->getProduct()->standingFor() !== $movement->getProduct()) {
-                throw new InvalidStockMovement('productId', 'The product was merged into another.', reason: 'product_merged');
+            $product = $movement->getProduct();
+            if ($product->standingFor() !== $product) {
+                throw new InvalidStockMovement('productId', 'The product was merged into another.', reason: 'product_merged', params: ['reference' => $product->getReference(), 'kept' => $product->standingFor()->getReference()]);
             }
         }
         foreach ($movements as $movement) {

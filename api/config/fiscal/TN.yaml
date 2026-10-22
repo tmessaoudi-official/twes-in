@@ -20,9 +20,20 @@ corrections:
 identifiers:
     - key: matricule_fiscal
       label_key: fiscal.identifier.tn.matricule_fiscal
-      pattern: '^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$'
+      hint_key: fiscal.identifier.tn.matricule_fiscal_hint
       example: '1234567A/B/M/000'
       required_for: [company, business_customer]
+      # Read part by part (docs/fiscal/TN.md § 8): every writing (slashes, spaces, dots, nothing) is stored as `written`,
+      # and a refusal names the part that does not fit. The letter sets are secondary sources', unvalidated.
+      parts:
+          - { name: number, pattern: '[0-9]{7}' }
+          - { name: key, pattern: '[A-HJ-NP-TV-Z]' }
+          - { name: vat_code, pattern: '[ABDNP]' }
+          - { name: category, pattern: '[CEMNP]' }
+          - { name: establishment, pattern: '[0-9]{3}' }
+      written: '{number}{key}/{vat_code}/{category}/{establishment}'
+      part_rules:
+          - { name: secondary_establishment, part: category, pattern: 'E', unless: { part: establishment, pattern: '000' } }
 
 tax_components:
     - code: TVA19

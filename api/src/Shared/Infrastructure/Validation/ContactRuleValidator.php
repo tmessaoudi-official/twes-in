@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Validation;
 
 use App\Shared\Domain\Service\ContactRules;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
@@ -33,12 +34,12 @@ final class ContactRuleValidator extends ConstraintValidator
         if (!\is_string($value)) {
             throw new UnexpectedValueException($value, 'string');
         }
-        if ('' === trim($value)) {
+        if ('' === TypedText::trimmed($value)) {
             return;
         }
 
         // The domain keeps a value without its surrounding spaces, so it judges it so.
-        $value = trim($value);
+        $value = TypedText::trimmed($value);
         $refusal = match ($constraint->rule) {
             ContactRule::EMAIL => ContactRules::email($value),
             ContactRule::PHONE => ContactRules::phone($value),

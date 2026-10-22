@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Infrastructure\Doctrine;
 
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
@@ -90,7 +91,7 @@ final readonly class DoctrineCompanyRepository implements CompanyRepository
     public function search(CompanySearch $search, PageRequest $page): Page
     {
         $query = $this->entityManager->createQueryBuilder()->select('c')->from(Company::class, 'c');
-        $words = trim($search->text ?? '');
+        $words = TypedText::trimmed($search->text ?? '');
         if ('' !== $words) {
             $owners = $this->entityManager->createQueryBuilder()->select('1')->from(Membership::class, 'm')
                 ->join('m.user', 'u')->join('m.role', 'r')

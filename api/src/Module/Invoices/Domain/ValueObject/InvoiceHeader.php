@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Domain\ValueObject;
 
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Model\Payment;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * What an invoice says besides its customer, its lines and its document taxes: the day the goods or services were
@@ -70,7 +71,7 @@ final readonly class InvoiceHeader
 
     private static function text(string $field, ?string $value, int $max): ?string
     {
-        $value = trim($value ?? '');
+        $value = TypedText::trimmed($value ?? '');
         if (mb_strlen($value) > $max) {
             throw new InvalidInvoice($field, \sprintf('At most %d characters.', $max));
         }
@@ -80,7 +81,7 @@ final readonly class InvoiceHeader
 
     private static function amount(?string $amount): ?string
     {
-        $amount = trim($amount ?? '');
+        $amount = TypedText::trimmed($amount ?? '');
         if ('' === $amount) {
             return null;
         }

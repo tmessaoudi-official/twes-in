@@ -17,6 +17,7 @@ use App\Module\Expenses\Domain\Repository\ExpenseCategoryRepository;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -54,7 +55,7 @@ final readonly class ManageExpenseCategories
     public function create(Company $company, string $name, ?Uuid $parentId, bool $isActive, ?Uuid $actorUserId): ExpenseCategory
     {
         return $this->transactions->run(function () use ($company, $name, $parentId, $isActive, $actorUserId): ExpenseCategory {
-            if (null !== $this->categories->ofNameInCompany(trim($name), $company->getId())) {
+            if (null !== $this->categories->ofNameInCompany(TypedText::trimmed($name), $company->getId())) {
                 throw new ExpenseCategoryNameTaken();
             }
             $category = ExpenseCategory::create($company, $name, $this->parent($company, $parentId), $this->clock->now());
@@ -81,7 +82,7 @@ final readonly class ManageExpenseCategories
             if (null !== $version) {
                 $this->versions->expect($category, $version);
             }
-            $holder = $this->categories->ofNameInCompany(trim($name), $company->getId());
+            $holder = $this->categories->ofNameInCompany(TypedText::trimmed($name), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($category->getId())) {
                 throw new ExpenseCategoryNameTaken();
             }

@@ -43,7 +43,7 @@ final readonly class CreateRecurringInvoiceProcessor implements ProcessorInterfa
                 $this->guard->account()->getId(),
             );
         } catch (InvalidSchedule|InvalidRecurringInvoice $refused) {
-            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, previous: $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return RecurringInvoiceResource::of($recurring, $this->manage->models($company, [$recurring])[$recurring->getModelInvoiceId()->toRfc4122()] ?? null);

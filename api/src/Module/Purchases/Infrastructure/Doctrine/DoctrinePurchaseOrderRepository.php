@@ -13,6 +13,7 @@ use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Domain\Repository\PurchaseOrderRepository;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderSearch;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderStatus;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
@@ -96,7 +97,7 @@ final readonly class DoctrinePurchaseOrderRepository implements PurchaseOrderRep
         $query = $this->entityManager->createQueryBuilder()
             ->from(PurchaseOrder::class, 'o')
             ->where('o.company = :company')->setParameter('company', $companyId, 'uuid');
-        $words = trim($search->text ?? '');
+        $words = TypedText::trimmed($search->text ?? '');
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
         } elseif ('' !== $words) {

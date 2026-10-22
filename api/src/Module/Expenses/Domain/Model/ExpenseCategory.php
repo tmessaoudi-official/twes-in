@@ -11,6 +11,7 @@ namespace App\Module\Expenses\Domain\Model;
 
 use App\Module\Expenses\Domain\Exception\InvalidExpense;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -120,9 +121,12 @@ class ExpenseCategory implements CompanyOwned
 
     private static function name(string $name): string
     {
-        $name = trim($name);
-        if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidExpense('name', \sprintf('An expense category is named in 1 to %d characters.', self::NAME_MAX));
+        $name = TypedText::trimmed($name);
+        if ('' === $name) {
+            throw new InvalidExpense('name', \sprintf('An expense category is named in 1 to %d characters.', self::NAME_MAX), 'value_required');
+        }
+        if (mb_strlen($name) > self::NAME_MAX) {
+            throw new InvalidExpense('name', \sprintf('An expense category is named in 1 to %d characters.', self::NAME_MAX), 'invalid_text', ['max' => self::NAME_MAX]);
         }
 
         return $name;

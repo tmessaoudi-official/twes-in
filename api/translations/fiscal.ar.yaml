@@ -4,6 +4,7 @@ fiscal:
     identifier:
         tn:
             matricule_fiscal: 'المعرّف الجبائي'
+            matricule_fiscal_hint: 'مثال: %example%. يبدأ بأرقامه السبعة، حتى إن طبعته البطاقة في الاتجاه المعاكس.'
         fr:
             siren: 'SIREN'
             siret: 'SIRET'

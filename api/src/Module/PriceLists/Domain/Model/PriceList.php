@@ -11,6 +11,7 @@ namespace App\Module\PriceLists\Domain\Model;
 
 use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -166,7 +167,7 @@ class PriceList implements CompanyOwned
     /** @throws InvalidPriceList */
     private function describe(string $name, ?Uuid $customerGroupId, ?Uuid $customerId, ?\DateTimeImmutable $validFrom, ?\DateTimeImmutable $validTo, bool $isActive): void
     {
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
             throw new InvalidPriceList('name', \sprintf('A price list is named in 1 to %d characters.', self::NAME_MAX));
         }

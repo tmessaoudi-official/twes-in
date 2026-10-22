@@ -12,6 +12,7 @@ namespace App\Fiscal\Domain\Model;
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Domain\ValueObject\LanguageNames;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -144,7 +145,7 @@ class Unit implements CompanyOwned
     /** @param array<array-key, mixed>|null $names null keeps them as they are */
     private function apply(string $name, ?array $names, int $decimals, bool $isActive, int $sortOrder): void
     {
-        $name = trim($name);
+        $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
             throw new InvalidFiscalValue('name', \sprintf('A unit name has between 1 and %d characters.', self::NAME_MAX));
         }

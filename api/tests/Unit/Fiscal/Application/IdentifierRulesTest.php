@@ -12,6 +12,8 @@ namespace App\Tests\Unit\Fiscal\Application;
 use App\Fiscal\Application\Preset\IdentifierRefusal;
 use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Fiscal\Infrastructure\Preset\YamlFiscalPresets;
+use App\Shared\Domain\Service\RegistrationNumbers;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /** The shipped presets' identifier rules, for the two holders a preset can require something of. */
@@ -26,7 +28,7 @@ final class IdentifierRulesTest extends TestCase
         self::assertNull(IdentifierRules::refusal($fr, ['siren' => '732829320', 'siret' => '73282932000074', 'vat_number' => 'FR44732829320'], IdentifierRules::COMPANY));
         self::assertSame('identifiers.siret', IdentifierRules::refusal($fr, ['siren' => '732829320'], IdentifierRules::COMPANY)?->field);
         self::assertEquals(
-            new IdentifierRefusal('identifiers.siren', 'This siren fails its check digits.', 'identifier_checksum', ['identifier' => 'siren']),
+            new IdentifierRefusal('identifiers.siren', 'This siren fails its check digits.', 'identifier_checksum', ['identifier' => 'siren', 'example' => '123456782']),
             IdentifierRules::refusal($fr, ['siren' => '732829321', 'siret' => '73282932000074'], IdentifierRules::COMPANY),
         );
         self::assertSame('identifiers.vat_number', IdentifierRules::refusal($fr, ['siren' => '732829320', 'siret' => '73282932000074', 'vat_number' => 'FR45732829320'], IdentifierRules::COMPANY)?->field);
@@ -38,7 +40,7 @@ final class IdentifierRulesTest extends TestCase
 
         self::assertNull(IdentifierRules::refusal($fr, ['siren' => '732829320'], IdentifierRules::BUSINESS_CUSTOMER));
         self::assertEquals(
-            new IdentifierRefusal('identifiers.siren', 'The FR preset requires a business customer to carry its siren.', 'identifier_required', ['identifier' => 'siren']),
+            new IdentifierRefusal('identifiers.siren', 'The FR preset requires a business customer to carry its siren.', 'identifier_required', ['identifier' => 'siren', 'example' => '123456782']),
             IdentifierRules::refusal($fr, [], IdentifierRules::BUSINESS_CUSTOMER),
         );
     }
@@ -83,7 +85,62 @@ final class IdentifierRulesTest extends TestCase
         self::assertNull(IdentifierRules::refusal($tn, [], ''));
         $unknown = IdentifierRules::refusal($tn, ['siren' => '732829320'], '');
         self::assertSame(['identifiers.siren', 'unknown_identifier', ['identifier' => 'siren']], [$unknown?->field, $unknown?->reason, $unknown?->params]);
-        $shape = IdentifierRules::refusal($tn, ['matricule_fiscal' => '1234567'], '');
-        self::assertSame(['identifiers.matricule_fiscal', 'identifier_shape', ['identifier' => 'matricule_fiscal']], [$shape?->field, $shape?->reason, $shape?->params]);
+        $short = IdentifierRules::refusal($tn, ['matricule_fiscal' => '1234567'], '');
+        self::assertSame(['identifiers.matricule_fiscal', 'identifier_part', ['identifier' => 'matricule_fiscal', 'example' => '1234567A/B/M/000', 'part' => 'key']], [$short?->field, $short?->reason, $short?->params]);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function matriculeWritings(): iterable
+    {
+        yield 'compact, in small letters' => ['1234567aam000'];
+        yield 'a slash after the digits' => ['1234567/A/A/M/000'];
+        yield 'spaced out' => ['1234567 A A M 000'];
+        yield 'dots and hyphens' => ['1234567.A-A.M-000'];
+        yield 'as stored' => ['1234567A/A/M/000'];
+    }
+
+    #[DataProvider('matriculeWritings')]
+    public function testEveryWritingOfAMatriculeIsStoredTheOneWay(string $written): void
+    {
+        $tn = (new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue()))->get('TN');
+        $kept = IdentifierRules::normalised($tn, RegistrationNumbers::kept(['matricule_fiscal' => $written]), IdentifierRules::COMPANY);
+
+        self::assertSame(['matricule_fiscal' => '1234567A/A/M/000'], $kept);
+        self::assertNull(IdentifierRules::refusal($tn, $kept, IdentifierRules::COMPANY));
+    }
+
+    /** @return iterable<string, array{string, string, array<string, string>}> */
+    public static function matriculeFaults(): iterable
+    {
+        yield 'no key letter' => ['1234567/B/M/000', 'identifier_part', ['part' => 'key']];
+        yield 'a key letter never used' => ['1234567I/B/M/000', 'identifier_part', ['part' => 'key']];
+        yield 'a VAT code outside its set' => ['1234567A/F/M/000', 'identifier_part', ['part' => 'vat_code']];
+        yield 'a category outside its set' => ['1234567A/B/X/000', 'identifier_part', ['part' => 'category']];
+        yield 'six digits' => ['123456A/B/M/000', 'identifier_part', ['part' => 'number']];
+        yield 'two establishment digits' => ['1234567A/B/M/00', 'identifier_part', ['part' => 'establishment']];
+        yield 'a secondary establishment not marked E' => ['1234567A/B/M/001', 'identifier_part_rule', ['part' => 'category', 'rule' => 'secondary_establishment']];
+        yield 'read from right to left, with slashes' => ['000/M/B/A1234567', 'identifier_reversed', []];
+        yield 'read from right to left, each group as written' => ['000/M/B/1234567A', 'identifier_reversed', []];
+        yield 'read from right to left, compact' => ['000MBA1234567', 'identifier_reversed', []];
+    }
+
+    /** @param array<string, string> $params */
+    #[DataProvider('matriculeFaults')]
+    public function testAMatriculeThatCannotBeReadNamesWhatIsWrongAndShowsTheExample(string $written, string $reason, array $params): void
+    {
+        $tn = (new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue()))->get('TN');
+        $values = IdentifierRules::normalised($tn, RegistrationNumbers::kept(['matricule_fiscal' => $written]), IdentifierRules::COMPANY);
+        $refusal = IdentifierRules::refusal($tn, $values, IdentifierRules::COMPANY);
+
+        self::assertSame(['matricule_fiscal' => strtoupper($written)], $values, 'a matricule that cannot be read is kept as written');
+        self::assertSame(['identifiers.matricule_fiscal', $reason, ['identifier' => 'matricule_fiscal', 'example' => '1234567A/B/M/000', ...$params]], [$refusal?->field, $refusal?->reason, $refusal?->params]);
+    }
+
+    public function testASecondaryEstablishmentMarkedEIsRead(): void
+    {
+        $tn = (new YamlFiscalPresets(self::SHIPPED, \App\Tests\Support\ShippedLanguages::catalogue()))->get('TN');
+
+        self::assertNull(IdentifierRules::refusal($tn, ['matricule_fiscal' => '1234567A/B/E/001'], IdentifierRules::COMPANY));
+        self::assertNull(IdentifierRules::refusal($tn, ['matricule_fiscal' => '1234567A/B/E/000'], IdentifierRules::COMPANY));
     }
 }

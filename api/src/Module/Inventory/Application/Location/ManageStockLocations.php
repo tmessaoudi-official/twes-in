@@ -19,6 +19,7 @@ use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
@@ -98,7 +99,7 @@ final readonly class ManageStockLocations
             $establishment = $this->establishments->ofIdInCompany($establishmentId, $company->getId())
                 ?? throw new InvalidStockLocation('establishmentId', 'No establishment of this company has this id.');
             $parent = null === $parentId ? $this->defaultOf($establishment) : $this->parent($company, $parentId);
-            if (null !== $this->locations->ofCodeInEstablishment(trim($code), $establishment->getId())) {
+            if (null !== $this->locations->ofCodeInEstablishment(TypedText::trimmed($code), $establishment->getId())) {
                 throw new StockLocationCodeTaken();
             }
 
@@ -130,7 +131,7 @@ final readonly class ManageStockLocations
                 $location->isDefault() => null,
                 default => $this->defaultOf($location->getEstablishment()),
             };
-            $holder = $this->locations->ofCodeInEstablishment(trim($code), $location->getEstablishment()->getId());
+            $holder = $this->locations->ofCodeInEstablishment(TypedText::trimmed($code), $location->getEstablishment()->getId());
             if (null !== $holder && !$holder->getId()->equals($location->getId())) {
                 throw new StockLocationCodeTaken();
             }

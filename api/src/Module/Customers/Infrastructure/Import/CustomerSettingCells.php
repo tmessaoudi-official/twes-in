@@ -22,6 +22,7 @@ use App\Settings\Domain\Repository\SettingRepository;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Infrastructure\Intl\LanguageNames;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
@@ -111,10 +112,10 @@ final readonly class CustomerSettingCells
     private function value(Company $company, ImportRecord $record, string $column, string $cell, SettingDefinition $definition): int|string
     {
         $value = match ($column) {
-            self::TERMS => 1 === preg_match('/^\d+$/D', trim($cell)) ? (int) trim($cell) : null,
+            self::TERMS => 1 === preg_match('/^\d+$/D', TypedText::trimmed($cell)) ? (int) TypedText::trimmed($cell) : null,
             self::CREDIT => ImportCells::decimal($record, $column, $this->scales->of($company->getCurrency())),
             // A language by its tag or as a person names it; anything else is left as written, for the setting to refuse.
-            self::LANGUAGE => $this->languageNames->documentLanguageOf($cell) ?? trim($cell),
+            self::LANGUAGE => $this->languageNames->documentLanguageOf($cell) ?? TypedText::trimmed($cell),
             default => $cell,
         };
         if (null === $value || null !== $definition->refusal($value)) {

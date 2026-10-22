@@ -12,6 +12,7 @@ namespace App\Module\PriceLists\Domain\Model;
 use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
 use App\Module\Products\Domain\Model\Product;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Doctrine\DBAL\Types\Types;
@@ -77,7 +78,7 @@ class PriceListItem implements CompanyOwned
      */
     private static function minimum(string $quantity): string
     {
-        $quantity = trim($quantity);
+        $quantity = TypedText::trimmed($quantity);
         if (1 !== preg_match(self::QUANTITY, $quantity, $match)) {
             throw new InvalidPriceList('minQuantity', 'A minimum quantity is a decimal number with at most three decimals.');
         }
@@ -96,7 +97,7 @@ class PriceListItem implements CompanyOwned
      */
     private static function price(string $price): string
     {
-        $price = trim($price);
+        $price = TypedText::trimmed($price);
         if (1 !== preg_match(self::PRICE, $price, $match)) {
             throw new InvalidPriceList('unitPriceNet', 'A price is a decimal number from 0 to 9999999999.9999, with at most four decimals.');
         }

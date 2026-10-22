@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Identity\Domain\ValueObject;
 
+use App\Shared\Domain\Service\TypedText;
+
 /**
  * A single-use way back in when the authenticator is gone. Ten are issued at enrolment and shown once
  * (ruling of 2026-09-10).
@@ -57,7 +59,7 @@ final readonly class RecoveryCode
     /** Normalises the way a person types it back: off paper, capitalised, with a stray space. */
     public static function hashOf(string $raw): string
     {
-        return hash('sha256', strtolower(trim($raw)));
+        return hash('sha256', strtolower(TypedText::trimmed($raw)));
     }
 
     private static function group(): string

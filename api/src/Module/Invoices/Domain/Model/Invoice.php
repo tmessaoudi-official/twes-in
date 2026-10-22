@@ -34,6 +34,7 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Service\LotCode;
 use App\Shared\Domain\Event\DomainEvent;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
@@ -393,7 +394,7 @@ class Invoice implements CompanyOwned
         if (InvoiceType::Invoice !== $invoice->documentType || !$invoice->isIssued()) {
             throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is corrected by a credit note.', $invoice->documentType->value, $invoice->reference(), $invoice->status->value));
         }
-        $reason = trim($reason);
+        $reason = TypedText::trimmed($reason);
         if ('' === $reason) {
             throw new InvalidInvoice('creditNoteReason', 'A credit note states why it corrects its invoice.');
         }

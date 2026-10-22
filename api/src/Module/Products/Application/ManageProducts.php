@@ -45,6 +45,7 @@ use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\Tree;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
@@ -167,7 +168,7 @@ final readonly class ManageProducts
     public function create(Company $company, ProductInput $input, ?Uuid $actorUserId): Product
     {
         return $this->transactions->run(function () use ($company, $input, $actorUserId): Product {
-            $reference = trim($input->reference);
+            $reference = TypedText::trimmed($input->reference);
             if ('' !== $reference && null !== $this->products->ofReferenceInCompany($reference, $company->getId())) {
                 throw new ProductReferenceTaken();
             }
@@ -228,7 +229,7 @@ final readonly class ManageProducts
                 $this->versions->expect($product, $version);
             }
             self::notMergedAway($product);
-            $holder = $this->products->ofReferenceInCompany(trim($input->reference), $company->getId());
+            $holder = $this->products->ofReferenceInCompany(TypedText::trimmed($input->reference), $company->getId());
             if (null !== $holder && !$holder->getId()->equals($product->getId())) {
                 throw new ProductReferenceTaken();
             }
@@ -594,7 +595,7 @@ final readonly class ManageProducts
             try {
                 $line = new BarcodeLine($role, new Barcode($row->code), $row->quantity, $supplier);
             } catch (InvalidProduct $refused) {
-                throw new InvalidProduct("barcodes.$index.{$refused->field}", $refused->getMessage());
+                throw new InvalidProduct("barcodes.$index.{$refused->field}", $refused->getMessage(), $refused->reason, $refused->params);
             }
             $held = $this->products->barcodeOfKeyInCompany($line->barcode->key, $company->getId());
             if (null !== $held && !(null !== $revising && $held->getProduct()->getId()->equals($revising->getId()))) {

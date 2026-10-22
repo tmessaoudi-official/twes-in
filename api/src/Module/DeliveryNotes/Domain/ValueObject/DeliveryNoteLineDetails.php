@@ -15,6 +15,7 @@ use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Service\LotCode;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * One line as it is written: what is delivered, how much of it in which unit, its net unit price and the taxes charged
@@ -49,13 +50,13 @@ final readonly class DeliveryNoteLineDetails
      */
     public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, array $taxes, ?string $lotCode = null)
     {
-        $description = trim($description);
+        $description = TypedText::trimmed($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
             throw new InvalidDeliveryNote('description', \sprintf('A line says what it delivers in 1 to %d characters.', self::DESCRIPTION_MAX));
         }
         $this->description = $description;
-        $this->quantity = self::quantity(trim($quantity), $unit);
-        $this->unitPriceNet = self::price(trim($unitPriceNet));
+        $this->quantity = self::quantity(TypedText::trimmed($quantity), $unit);
+        $this->unitPriceNet = self::price(TypedText::trimmed($unitPriceNet));
 
         $ids = [];
         foreach ($taxes as $tax) {
@@ -105,7 +106,7 @@ final readonly class DeliveryNoteLineDetails
     /** @throws InvalidDeliveryNote */
     private static function lotCode(?Product $product, ?string $code): ?string
     {
-        $code = trim($code ?? '');
+        $code = TypedText::trimmed($code ?? '');
         if ('' === $code) {
             return null;
         }

@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Application\Export;
 
+use App\Shared\Domain\Service\TypedText;
+
 /**
  * What a list asked for, as its own query string says it: the words, the choices that narrow it and the order. The same
  * parameters the list's endpoint takes, so a screen hands over the address it is already showing.
@@ -35,7 +37,7 @@ final readonly class ExportQuery
     {
         $value = $this->parameters[$key] ?? null;
 
-        return \is_string($value) && '' !== trim($value) ? trim($value) : null;
+        return \is_string($value) && '' !== TypedText::trimmed($value) ? TypedText::trimmed($value) : null;
     }
 
     /** @param list<string> $allowed */

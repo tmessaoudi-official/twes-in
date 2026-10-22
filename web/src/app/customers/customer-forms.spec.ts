@@ -215,6 +215,28 @@ describe('customer forms', () => {
     expect(field('number')).toMatchObject({ required: true, maxLength: 32 });
   });
 
+  // A number the preset reads part by part is judged by the API alone, which takes every way of writing it: a
+  // pattern here would refuse « 1234567aam000 » before the API could store it as 1234567A/A/M/000.
+  it('leaves a number read part by part to the API, and shows the preset’s hint under it', () => {
+    const parts: CustomerOptions = {
+      ...options,
+      identifiers: [
+        {
+          key: 'matricule_fiscal',
+          label: 'Matricule fiscal',
+          pattern: null,
+          requiredForBusiness: true,
+          hint: 'Exemple : 1234567A/B/M/000.',
+        },
+      ],
+    };
+    const fields = customerForm(parts, groups).sections.flatMap((section) => section.fields);
+    const matricule = fields.find((field) => field.id === 'identifier__matricule_fiscal');
+
+    expect(matricule?.pattern).toBeUndefined();
+    expect(matricule?.hint).toBe('Exemple : 1234567A/B/M/000.');
+  });
+
   it('starts a new customer as a business in the company country under the first regime', () => {
     const values = customerValues(null, options);
 

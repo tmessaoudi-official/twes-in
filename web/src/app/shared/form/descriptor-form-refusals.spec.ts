@@ -84,7 +84,11 @@ class StaticLoader implements TranslateLoader {
           invalid_text: 'Text refused: {{max}} characters at most.',
           invalid_value: 'Value refused.',
           regime_excludes_tax: 'This regime does not charge that tax.',
+          identifier_part: 'Part refused: {{part}} (example: {{example}}).',
+          identifier_part_rule: 'Part refused: {{part}}, as {{rule}}.',
         },
+        identifier_parts: { key: 'the key letter', category: 'the category code' },
+        identifier_rules: { secondary_establishment: 'an establishment other than 000 is E' },
       },
     });
   }
@@ -139,6 +143,45 @@ describe('DescriptorForm, a save the API refused', () => {
     expect(text('field-error-email')).toBe('E-mail refused.');
     expect(text('field-error-city')).toBe('Text refused: 120 characters at most.');
     expect(text('field-error-website')).toBe('Value refused.');
+  });
+
+  it('says the part of a registration number the API names, and the rule it breaks, in the reader’s words', async () => {
+    fixture.componentInstance.form.controls['kind']!.setValue('company');
+    await settle();
+    fixture.componentInstance.shown().showRefused([
+      {
+        field: 'identifier__siren',
+        reason: 'identifier_part',
+        params: { part: 'key', example: '1234567A/B/M/000' },
+      },
+    ]);
+    await settle();
+    expect(text('field-error-identifier__siren')).toBe(
+      'Part refused: the key letter (example: 1234567A/B/M/000).',
+    );
+
+    fixture.componentInstance.shown().showRefused([
+      {
+        field: 'identifier__siren',
+        reason: 'identifier_part_rule',
+        params: { part: 'category', rule: 'secondary_establishment' },
+      },
+    ]);
+    await settle();
+    expect(text('field-error-identifier__siren')).toBe(
+      'Part refused: the category code, as an establishment other than 000 is E.',
+    );
+
+    // A part the screens have no words for yet is said as the API named it, never left blank.
+    fixture.componentInstance.shown().showRefused([
+      {
+        field: 'identifier__siren',
+        reason: 'identifier_part',
+        params: { part: 'branch', example: 'X' },
+      },
+    ]);
+    await settle();
+    expect(text('field-error-identifier__siren')).toBe('Part refused: branch (example: X).');
   });
 
   it('hands back what no field shown can carry, and puts the person on the first refused field', async () => {

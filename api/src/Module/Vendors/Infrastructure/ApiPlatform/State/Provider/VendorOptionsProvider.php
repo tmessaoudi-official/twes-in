@@ -48,6 +48,7 @@ final readonly class VendorOptionsProvider implements ProviderInterface
                 $identifier->key,
                 $this->translator->trans($identifier->labelKey, [], 'fiscal'),
                 $identifier->patternFor(''),
+                null === $identifier->hintKey ? null : $this->translator->trans($identifier->hintKey, ['%example%' => $identifier->example], 'fiscal'),
             );
         }
         // Named only to whoever may read them on their own page, while their module is on.

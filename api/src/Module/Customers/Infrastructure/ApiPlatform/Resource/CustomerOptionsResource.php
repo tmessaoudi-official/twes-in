@@ -49,8 +49,8 @@ final class CustomerOptionsResource
         'type' => 'array',
         'items' => [
             'type' => 'object',
-            'required' => ['key', 'label', 'pattern', 'requiredForBusiness'],
-            'properties' => ['key' => ['type' => 'string'], 'label' => ['type' => 'string'], 'pattern' => ['type' => 'string', 'description' => 'A regular expression the whole value matches, without delimiters.'], 'requiredForBusiness' => ['type' => 'boolean']],
+            'required' => ['key', 'label', 'pattern', 'requiredForBusiness', 'hint'],
+            'properties' => ['key' => ['type' => 'string'], 'label' => ['type' => 'string'], 'pattern' => ['type' => ['string', 'null'], 'description' => 'A regular expression the whole value matches, without delimiters; null when the API alone judges every way of writing it.'], 'requiredForBusiness' => ['type' => 'boolean'], 'hint' => ['type' => ['string', 'null'], 'description' => 'What the form shows under the field, its example in it, in the reader\'s language.']],
         ],
     ])]
     #[Groups([self::READ])]

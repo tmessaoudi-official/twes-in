@@ -11,6 +11,7 @@ namespace App\Module\Expenses\Domain\ValueObject;
 
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Module\Expenses\Domain\Exception\InvalidExpense;
+use App\Shared\Domain\Service\TypedText;
 
 /**
  * One block of a supplier's bill as it is printed: a net amount above zero with no more decimals than the company's
@@ -35,7 +36,7 @@ final readonly class ExpenseAmountLine
     {
         $allowed = min($currencyScale, self::STORED);
         $refused = new InvalidExpense('amountNet', \sprintf('A net amount is above 0 with at most %d decimals.', $allowed), 'invalid_amount', ['decimals' => $allowed]);
-        $amount = trim($amountNet);
+        $amount = TypedText::trimmed($amountNet);
         if (1 !== preg_match('/^(0|[1-9][0-9]{0,10})'.(0 === $allowed ? '' : '(\.[0-9]{1,'.$allowed.'})?').'$/', $amount)) {
             throw $refused;
         }

@@ -18,6 +18,7 @@ use App\Module\Purchases\Domain\ValueObject\PurchaseOrderStatus;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Module\Purchases\Domain\ValueObject\VendorSnapshot;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
@@ -226,7 +227,7 @@ class PurchaseOrder implements CompanyOwned
         if ($receivedOn > self::day($today)) {
             throw new InvalidPurchaseOrder('receivedOn', 'Goods are received once they arrived, today at the latest.');
         }
-        $reference = trim($supplierReference ?? '');
+        $reference = TypedText::trimmed($supplierReference ?? '');
         if (mb_strlen($reference) > GoodsReceipt::REFERENCE_MAX) {
             throw new InvalidPurchaseOrder('supplierReference', \sprintf('A supplier reference is at most %d characters.', GoodsReceipt::REFERENCE_MAX));
         }
@@ -236,7 +237,7 @@ class PurchaseOrder implements CompanyOwned
         foreach ($goods as $index => $part) {
             $line = $this->lineOfThisOrder($part->orderLineId) ?? throw new InvalidPurchaseOrder(\sprintf('lines[%d].orderLineId', $index), 'A receipt brings goods of a line of its own order.');
             try {
-                $quantity = PurchaseOrderLineDetails::quantity(trim($part->quantity), $line->getUnit());
+                $quantity = PurchaseOrderLineDetails::quantity(TypedText::trimmed($part->quantity), $line->getUnit());
             } catch (InvalidPurchaseOrder $refused) {
                 throw $refused->within(\sprintf('lines[%d]', $index));
             }

@@ -12,6 +12,7 @@ namespace App\Audit\Infrastructure\Doctrine;
 use App\Audit\Application\ActivityEntry;
 use App\Audit\Application\ActivityJournal;
 use App\Audit\Application\ActivitySearch;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Rows;
@@ -51,7 +52,7 @@ final readonly class DbalActivityJournal implements ActivityJournal
             ->leftJoin('a', '"user"', 'u', 'u.id = a.actor_user_id')
             ->where('a.company_id = :company')->setParameter('company', $companyId->toRfc4122())
             ->andWhere('a.at >= :since')->setParameter('since', self::utc($since));
-        $words = trim($search->text ?? '');
+        $words = TypedText::trimmed($search->text ?? '');
         if ('' !== $words) {
             $query->andWhere('(a.action ILIKE :words OR a.entity_type ILIKE :words OR u.display_name ILIKE :words)')
                 ->setParameter('words', '%'.SearchText::escapeLike($words).'%');

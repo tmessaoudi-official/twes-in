@@ -61,8 +61,11 @@ final readonly class CustomerPrice
         $company = $product->getCompany();
         // ManageProducts keeps only the company's line taxes here, so anything else is a broken invariant, and a price
         // counted without one of its taxes would be a wrong price shown to a customer.
-        $taxes = $this->lineTaxes($company, $product->getDefaultTaxComponentIds())
-            ?? throw new \LogicException(\sprintf('The product %s starts its lines with a tax that is not a line tax of its company.', $product->getReference()));
+        try {
+            $taxes = $this->lineTaxes($company, $product->getDefaultTaxComponentIds());
+        } catch (InvalidProduct $broken) {
+            throw new \LogicException(\sprintf('The product %s starts its lines with a tax that is not a line tax of its company.', $product->getReference()), 0, $broken);
+        }
 
         return $this->counted($company, (string) $quantity, $unitPriceNet ?? $product->getDetails()->unitPriceNet, $taxes)->total;
     }
@@ -83,8 +86,7 @@ final readonly class CustomerPrice
      */
     public function preview(Company $company, array $taxComponentIds, string $unitPriceNet, array $quantities): array
     {
-        $taxes = $this->lineTaxes($company, array_values(array_unique($taxComponentIds)))
-            ?? throw new InvalidProduct('defaultTaxComponentIds', 'A product starts its lines with its company\'s line taxes only.');
+        $taxes = $this->lineTaxes($company, array_values(array_unique($taxComponentIds)));
 
         return array_map(function (string $quantity) use ($company, $unitPriceNet, $taxes): PricePreview {
             $totals = $this->counted($company, $quantity, $unitPriceNet, $taxes);
@@ -108,8 +110,7 @@ final readonly class CustomerPrice
      */
     public function netOf(Company $company, array $taxComponentIds, string $gross): string
     {
-        $taxes = $this->lineTaxes($company, array_values(array_unique($taxComponentIds)))
-            ?? throw new InvalidProduct('defaultTaxComponentIds', 'A product starts its lines with its company\'s line taxes only.');
+        $taxes = $this->lineTaxes($company, array_values(array_unique($taxComponentIds)));
         // A net price counted in ten-thousandths, the scale a price is kept at.
         $total = fn (int $net): Number => Decimal::of($this->counted($company, '1', self::price($net), $taxes)->total);
         $target = Decimal::of($gross);
@@ -130,16 +131,22 @@ final readonly class CustomerPrice
     /**
      * @param list<string> $ids
      *
-     * @return list<TaxInput>|null null when one of them is not a line tax of the company
+     * @return list<TaxInput>
+     *
+     * @throws InvalidProduct when one of them is not a line tax of the company
      */
-    private function lineTaxes(Company $company, array $ids): ?array
+    private function lineTaxes(Company $company, array $ids): array
     {
         $taxes = [];
         foreach ($ids as $id) {
             $tax = Uuid::isValid($id) ? $this->taxes->ofIdInCompany(Uuid::fromString($id), $company->getId()) : null;
-            $rate = $tax?->getRate();
-            if (null === $tax || TaxKind::PercentageLine !== $tax->getKind() || null === $rate) {
-                return null;
+            // Refused as the product's own form refuses its line taxes, so a screen or an import says which.
+            if (null === $tax) {
+                throw new InvalidProduct('defaultTaxComponentIds', \sprintf('No tax of this company has the id %s.', $id), 'unknown_tax');
+            }
+            $rate = $tax->getRate();
+            if (TaxKind::PercentageLine !== $tax->getKind() || null === $rate) {
+                throw new InvalidProduct('defaultTaxComponentIds', \sprintf('%s is charged on a document, not on a line.', $tax->getCode()), 'tax_on_document', ['tax' => $tax->getName()]);
             }
             $taxes[] = TaxInput::percentage($tax->getCode(), Rate::fromPercentage($rate), $tax->entersVatBase());
         }
