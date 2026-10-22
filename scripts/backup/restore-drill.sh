@@ -48,7 +48,7 @@ empty_folder() {
 
 cleanup() {
   local status=$?
-  if ((status != 0)); then dc logs --no-color --tail 80 s3 postgres backup api 2>/dev/null || true; fi
+  if ((status != 0)); then dc logs --no-color --tail 80 s3 postgres backup api migrate 2>/dev/null || true; fi
   dc --profile restore down --volumes --remove-orphans >/dev/null 2>&1 || true
   docker volume rm "${VOLUMES[@]}" >/dev/null 2>&1 || true
   if [[ "$mode" == local ]]; then empty_folder >/dev/null 2>&1 || true; fi
