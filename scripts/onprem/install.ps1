@@ -77,7 +77,9 @@ function Invoke-Ubuntu([string]$Command, [switch]$AsRoot) {
     if ($Command.Contains('"')) { throw "a command for Ubuntu holds a double quote, which Windows PowerShell would drop: $Command" }
     $arguments = @('-d', $Distribution)
     if ($AsRoot) { $arguments += @('-u', 'root') }
-    $arguments += @('--cd', '~', '--', 'bash', '-c', $Command)
+    # --exec starts bash itself: after -- wsl.exe hands the line to the default shell first, which expanded every $( ) and
+    # $t of the command before bash saw it.
+    $arguments += @('--cd', '~', '--exec', 'bash', '-c', $Command)
     & wsl.exe @arguments | Out-Host
     return $LASTEXITCODE
 }
