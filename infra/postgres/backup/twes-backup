@@ -185,9 +185,21 @@ main() {
     offsite) hold; [[ -z "${OFFSITE_REPOSITORY:-}" ]] || trap 'heartbeat Hors_site offsite' EXIT; offsite ;;
     before-update) hold; before_update ;;
     due) due ;;
-    *) echo "usage: twes-backup run|init|full|diff|copy|verify|offsite|before-update|due" >&2; exit 64 ;;
+    # Which compose secrets this container read, by the variable each became: their values are never said.
+    secrets)
+      local path variable
+      for path in "${TWES_SECRETS_DIRECTORY:-/run/secrets}"/*; do
+        [[ -f "$path" ]] || continue
+        variable=$(basename "$path" | tr 'a-z' 'A-Z')
+        if [[ -n "${!variable:-}" ]]; then echo "secrets read: $variable"; else echo "secret not read: $variable"; fi
+      done ;;
+    *) echo "usage: twes-backup run|init|full|diff|copy|verify|offsite|before-update|due|secrets" >&2; exit 64 ;;
   esac
 }
 
-# Sourced by its test (scripts/backup/tests/heartbeat.test.sh), it only defines its functions.
-[[ "${BASH_SOURCE[0]}" != "$0" ]] || main "$@"
+# Sourced by its test (scripts/backup/tests/heartbeat.test.sh), it only defines its functions. Started by
+# `docker compose exec`, which skips the entrypoint, it first reads the compose secrets (infra/postgres/twes-secrets).
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  [[ -n "${TWES_SECRETS_READ:-}" || ! -d "${TWES_SECRETS_DIRECTORY:-/run/secrets}" ]] || exec twes-secrets "$0" "$@"
+  main "$@"
+fi

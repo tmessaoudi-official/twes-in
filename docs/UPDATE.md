@@ -31,7 +31,7 @@ make versions
 | npm packages                | `make web-tools CMD='npm outdated'`                                                          |
 | Angular (framework + CLI)   | `make web-tools CMD='npx ng update'` (lists what `ng update` would migrate)                  |
 | Docker images               | Docker Hub tags: `hub.docker.com/_/postgres`, `/_/node`, `/_/nginx`, `/_/composer`, `/r/dunglas/frankenphp`, `/r/gotenberg/gotenberg`, `/r/centrifugo/centrifugo`, `/r/axllent/mailpit`, `/_/caddy`, `/r/twinproduction/gatus`, `/r/glitchtip/glitchtip`, `/_/registry`, `/_/docker`, `/r/chrislusf/seaweedfs` |
-| GitHub Actions              | each action's releases page, for example `github.com/actions/checkout/releases`             |
+| GitHub Actions              | each action's releases page, for example `github.com/actions/checkout/releases`; pinned by the release's full commit SHA with its tag as a comment (`@3d3c42e… # v7.0.1`), as GitHub's security hardening guide recommends: a tag can be moved, a commit cannot. The tag's commit: `gh api repos/actions/checkout/git/ref/tags/v7.0.1`, then its `object.sha` (an annotated tag: one `git/tags/<sha>` more) |
 | PHP and Node themselves     | `php.net/supported-versions.php`, `nodejs.org/en/about/previous-releases`                    |
 
 `composer outdated` never shows a new Symfony **minor**: `extra.symfony.require` in `api/composer.json` (`8.1.*`) makes

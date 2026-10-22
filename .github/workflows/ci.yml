@@ -25,7 +25,7 @@ jobs:
   licences:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         # The whole history: decision-stamps compares each Decisions Log stamp with the commit that wrote it.
         with:
           fetch-depth: 0
@@ -41,7 +41,7 @@ jobs:
   api:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Starts the compose postgres service and runs the gate in the tools image: the same PostgreSQL 18 and PHP 8.5 as
       # the stack, never the runner's.
       - run: make gate-api
@@ -51,7 +51,7 @@ jobs:
   web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The gate starts by generating the TypeScript types from the OpenAPI document, which `make gate-web` exports
       # itself, from the same tools image the api job uses, so the two jobs cannot read different contracts.
       - run: make gate-web
@@ -68,16 +68,18 @@ jobs:
     steps:
       # The images are built as the version git says each part is (scripts/build-version.sh), which counts the day's
       # changes: the whole history, not the one commit a checkout fetches.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - run: bash scripts/build-version.sh --env >> "$GITHUB_ENV"
       # Production refuses the committed development keys, so this instance gets random ones.
       - run: |
-          for name in APP_SECRET REALTIME_TOKEN_KEY REALTIME_API_KEY POSTGRES_APP_PASSWORD; do
+          for name in APP_SECRET REALTIME_TOKEN_KEY REALTIME_API_KEY POSTGRES_PASSWORD POSTGRES_APP_PASSWORD; do
             value=$(openssl rand -hex 24); echo "::add-mask::$value"; echo "$name=$value" >> "$GITHUB_ENV"
           done
           value=$(openssl rand -base64 32); echo "::add-mask::$value"; echo "APP_MFA_KEY=$value" >> "$GITHUB_ENV"
+          # Development's mail catcher, handed as the secret a relay's address would be.
+          echo "MAILER_DSN=smtp://mailpit:1025" >> "$GITHUB_ENV"
       - run: docker compose up -d --build --wait
       - run: docker compose exec -T api php < scripts/gates/production-image.php
       # The api reaches the database as the application's role, which the one-shot migrate service made and granted.
@@ -115,7 +117,7 @@ jobs:
     steps:
       # The images are built as the version git says each part is (scripts/build-version.sh), which counts the day's
       # changes: the whole history, not the one commit a checkout fetches.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - run: bash scripts/build-version.sh --env >> "$GITHUB_ENV"
@@ -143,7 +145,7 @@ jobs:
       # WHY: the dot reporter CI uses writes no HTML report, so web/playwright-report alone uploaded nothing and a
       # failure left no evidence (run 34797116869). test-results holds each failure's trace and error context.
       - if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report-${{ matrix.shard }}
           path: |
@@ -162,13 +164,13 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
       - run: bash scripts/release/publish.sh "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" release.env
       # What staging follows and a release tag records: the three images by their digests.
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-${{ github.sha }}
           path: release.env

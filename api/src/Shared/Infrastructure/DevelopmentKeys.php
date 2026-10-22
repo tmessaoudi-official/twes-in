@@ -29,13 +29,16 @@ final class DevelopmentKeys
         'APP_MFA_KEY' => ['ojCIqjd0KzQ4JrX9wyEpy58LdtCAQ56MTwM8CWA0XOc='],
         'REALTIME_TOKEN_KEY' => ['twes-in-development-realtime-token-key-0001'],
         'REALTIME_API_KEY' => ['twes-in-development-realtime-api-key'],
+        // Not a key, but where a relay left blank in the values file falls back to: nothing listens there, so every mail
+        // would fail in the queue unseen.
+        'MAILER_DSN' => ['smtp://127.0.0.1:8093'],
     ];
 
     /** `APP_SECRET` signs the links mails carry: one short enough to guess lets anyone forge them. */
     private const int SECRET_MINIMUM_LENGTH = 32;
 
     /** Every secret production must hold, `APP_SECRET` included: `api/.env` ships it empty. */
-    private const array REQUIRED = ['APP_SECRET', 'APP_MFA_KEY', 'REALTIME_TOKEN_KEY', 'REALTIME_API_KEY'];
+    private const array REQUIRED = ['APP_SECRET', 'APP_MFA_KEY', 'REALTIME_TOKEN_KEY', 'REALTIME_API_KEY', 'MAILER_DSN'];
 
     /**
      * @param array<mixed> $values the environment, as the kernel was handed it

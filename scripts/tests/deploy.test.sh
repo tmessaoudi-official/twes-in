@@ -28,6 +28,12 @@ case "$1" in
   pull) echo "${@: -1}" >> "$TMPDIR/docker.pulled" ;;
   image) [[ -z "${IMAGE_MISSING:-}" ]] || { echo "Error: No such image: ${@: -1}" >&2; exit 1; }; printf '%s\n' "${LABEL_REV:-}" ;;
   compose)
+    # The merged configuration deploy.sh reads the secrets from: those SECRETS names, each from its variable.
+    if [[ " $* " == *" config"* ]]; then
+      echo "services: {}"; [[ -z "${SECRETS:-}" ]] || echo "secrets:"
+      for name in ${SECRETS:-}; do printf '  %s:\n    environment: %s\n' "${name,,}" "$name"; done
+      exit 0
+    fi
     printf '%s\n' "API_BUILD_VERSION=${API_BUILD_VERSION:-}" "TWES_API_IMAGE=${TWES_API_IMAGE:-}" \
       "TWES_WEB_IMAGE=${TWES_WEB_IMAGE:-}" "TWES_DATABASE_IMAGE=${TWES_DATABASE_IMAGE:-}" "$@" > "$TMPDIR/docker.args"
     exit "${COMPOSE_EXIT:-0}" ;;
@@ -75,6 +81,17 @@ out=$(run "$d" --build "$TMPDIR/none.env"); check "a missing file is refused" $?
 
 d=$(repo); e=$(staging_values)
 out=$(run "$d" --build "$e"); check "staging's values never deploy a production instance" $? 1 "$out" "staging"
+
+# Each secret the installation mounts is filled in the values: compose would start the instance with nothing mounted.
+d=$(repo); e=$(envfile $'MAILER_DSN=smtp://u:p@relay:587\nMONITOR_TOKEN=\n')
+out=$(SECRETS="MAILER_DSN MONITOR_TOKEN" run "$d" --build "$e"); check "a secret left empty in the values is refused" $? 1 "$out" "give no value to MONITOR_TOKEN"
+[[ -z "$(called)" ]]; check "and nothing is started" $? 0 "" ""
+d=$(repo); e=$(envfile $'MAILER_DSN=smtp://u:p@relay:587\n')
+out=$(SECRETS="MAILER_DSN MONITOR_TOKEN" run "$d" --build "$e"); check "a secret missing from the values is refused" $? 1 "$out" "give no value to MONITOR_TOKEN"
+d=$(repo); e=$(envfile $'MAILER_DSN=""\nMONITOR_TOKEN=t\n')
+out=$(SECRETS="MAILER_DSN MONITOR_TOKEN" run "$d" --build "$e"); check "a secret quoted empty is refused" $? 1 "$out" "give no value to MAILER_DSN"
+d=$(repo); e=$(envfile $'MAILER_DSN=smtp://u:p@relay:587\nMONITOR_TOKEN=t\n')
+out=$(SECRETS="MAILER_DSN MONITOR_TOKEN" run "$d" --build "$e"); check "every secret filled deploys" $? 0 "$out" "v2026.10.12.1"
 
 out=$(run "$d" "$e"); check "a way of deploying must be named" $? 2 "$out" "Usage"
 out=$(run "$d" --build); check "the values file must be named" $? 2 "$out" "Usage"
@@ -209,6 +226,10 @@ check "  with the arguments as given, after the release overlay" 0 0 "$(called)"
 [[ "$out" != *"deploy:"* ]]; check "  saying nothing of its own, so what the command prints can be read" $? 0 "$out" ""
 [[ "$(wc -l < "$(dirname "$e")/releases/history")" == "$lines" && ! -f "$TMPDIR/docker.pulled" ]]; check "  writing nothing down and pulling nothing" $? 0 "" ""
 out=$(COMPOSE_EXIT=3 run "$d" --compose "$e" exec -T backup false); check "  and failing as the command fails" $? 3 "$out" ""
+# A blank secret stops what makes containers, never a stop or a status: the shop can still bring its stack down.
+out=$(SECRETS="BLANK_SECRET" run "$d" --compose "$e" stop); check "  a stop runs with a secret left blank" $? 0 "$out" ""
+out=$(SECRETS="BLANK_SECRET" run "$d" --compose "$e" up -d --no-build --wait); check "  an up is refused with it" $? 1 "$out" "give no value to BLANK_SECRET"
+out=$(SECRETS="BLANK_SECRET" run "$d" --compose "$e" --profile restore run --rm restore true); check "  and so is a run" $? 1 "$out" "give no value to BLANK_SECRET"
 
 d=$(repo); e=$(onprem_values); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
 out=$(run "$d" --compose "$e" ps); check "a command on a release never deployed here is refused" $? 1 "$out" "never deployed here"

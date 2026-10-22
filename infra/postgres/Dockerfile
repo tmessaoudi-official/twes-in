@@ -30,6 +30,9 @@ RUN apt-get update \
 COPY --from=supercronic --chmod=0755 /supercronic /usr/local/bin/supercronic
 
 COPY pgbackrest.conf /etc/pgbackrest/pgbackrest.conf
+# Reads the compose secrets into the environment of what it runs (the server, the backup service): pgBackRest takes its
+# passphrase and its bucket key from the environment only.
+COPY --chmod=0755 twes-secrets /usr/local/bin/twes-secrets
 COPY backup/twes-backup /usr/local/bin/twes-backup
 COPY backup/crontab /etc/twes-backup/crontab
 COPY backup/crontab.due /etc/twes-backup/crontab.due

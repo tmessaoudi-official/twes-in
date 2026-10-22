@@ -37,6 +37,15 @@ check "a container leaving the rows to the api waits for the database" $? 0 "$(r
 check "  runs none of the steps" 0 0 "$(ran | grep -c 'console app:' || true)" "0"
 check "  and starts" 0 0 "$(ran | tail -n 1)" "started php bin/console messenger:consume demo"
 
+# Production names its address by a template the console fills from the secrets (ContainerSecrets), never DATABASE_URL.
+start env -u TWES_RELEASE_STEPS -u DATABASE_URL DATABASE_URL_TEMPLATE='postgresql://twes_app:{postgres_app_password}@postgres/twes' sh "$HERE/docker-entrypoint.sh" frankenphp run >/dev/null
+check "production's api, its address a template, waits for the database" $? 0 "$(ran | head -n 1)" "console dbal:run-sql"
+for step in $steps; do check "  then runs $step" 0 0 "$(ran)" "console $step"; done
+
+start env -u TWES_RELEASE_STEPS -u DATABASE_URL sh "$HERE/docker-entrypoint.sh" frankenphp run >/dev/null
+check "a server with no database at all starts without waiting" $? 0 "$(ran)" "started frankenphp run"
+check "  asking the console nothing" 0 0 "$(ran | grep -c '^console' || true)" "0"
+
 start env -u TWES_RELEASE_STEPS sh "$HERE/docker-entrypoint.sh" sh -c true >/dev/null
 check "a shell starts untouched" $? 0 "$(ran)" "started sh -c true"
 check "  asking the console nothing" 0 0 "$(ran | grep -c '^console' || true)" "0"

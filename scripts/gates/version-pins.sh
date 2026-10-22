@@ -9,7 +9,7 @@
 #   Caddy                  compose.yaml's lan = compose.deploy.yaml's edge = the monitor's edge (infra/monitor/compose.yaml)
 #   monitor postgres       the monitor's error-tracker database (infra/monitor/compose.yaml) = compose.yaml's postgres,
 #                          so one bump moves every server this project runs
-#   serverVersion          every DATABASE_URL (compose.yaml, compose.deploy.yaml, api/.env*) = the postgres image's major
+#   serverVersion          every database address (compose.yaml, compose.prod.yaml's templates, compose.deploy.yaml, api/.env*) = the postgres image's major
 #   PHP                    infra/api/Dockerfile's frankenphp tag = composer.json's floor
 #   Node                   web/.nvmrc = infra/web/Dockerfile's node image = web/package.json engines; and the
 #                          tools image (infra/web/tools.Dockerfile) runs the same full version
@@ -61,7 +61,7 @@ elif [[ -n "$compose_pg" && "$monitor_pg" != "$compose_pg" ]]; then problem "pos
 
 # serverVersion follows the image's major
 found=0
-for file in compose.yaml compose.deploy.yaml api/.env api/.env.*; do
+for file in compose.yaml compose.prod.yaml compose.deploy.yaml api/.env api/.env.*; do
   [[ -f "$root/$file" ]] || continue
   while read -r v; do
     found=$((found + 1))

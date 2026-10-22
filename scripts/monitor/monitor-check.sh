@@ -124,7 +124,7 @@ step "operator's account, project and DSN made (bootstrap.py)"
 
 stand_in_bucket_up
 dc up -d --build --wait
-dc exec -T backup gosu postgres pgbackrest --stanza=twes check >/dev/null || fail "the backup service does not reach the bucket"
+dc exec -T backup twes-secrets gosu postgres pgbackrest --stanza=twes check >/dev/null || fail "the backup service does not reach the bucket"
 dc exec -T edge cat /data/caddy/pki/authorities/local/root.crt > "$CHECK_DIR/instance-root.crt"
 chmod a+r "$CHECK_DIR/instance-root.crt"
 # Gatus reads its authorities once, at its first request: started again, it trusts the instance's.

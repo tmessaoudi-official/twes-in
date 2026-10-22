@@ -72,6 +72,24 @@ esac
 files=()
 for layer in "${layers[@]}"; do files+=(-f "$layer"); done
 
+# Every secret the installation mounts must have its value: compose starts a container whose secret is set but empty
+# with nothing mounted, so a blank MAILER_DSN, which new-instance.sh leaves for the developer to fill, would start an
+# instance that sends no mail. Read from the merged configuration, where the top-level secrets are only those mounted.
+# Only what makes containers needs it: a shop's `twes stop` or `status` (--compose) still runs with one blank.
+creates=yes
+if [[ "$mode" == --compose ]]; then
+  creates=no
+  for word in "$@"; do [[ "$word" == up || "$word" == run || "$word" == create ]] && { creates=yes; break; }; done
+fi
+if [[ "$creates" == yes ]]; then
+  merged=$(cd "$root" && docker compose --env-file "$values" "${files[@]}" config 2>&1) \
+    || refuse "docker compose cannot read this installation's files with $values: $merged"
+  while IFS= read -r name; do
+    given=$(value "$name"); given=${given#\"}; given=${given%\"}; given=${given#\'}; given=${given%\'}
+    [[ -n "$given" ]] || refuse "$values give no value to $name, a secret this installation mounts: fill it in, from the password manager"
+  done < <(awk '/^[^ #]/ { top = $0 } top == "secrets:" && $1 == "environment:" { print $2 }' <<<"$merged")
+fi
+
 staging_values=no
 [[ "$(value DEPLOY_ENV)" == staging || "$(value BACKUP_S3_PREFIX)" == staging/ ]] && staging_values=yes
 if [[ "$mode" == --staging ]]; then

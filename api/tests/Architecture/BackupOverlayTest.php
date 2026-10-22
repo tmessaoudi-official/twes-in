@@ -63,8 +63,13 @@ final class BackupOverlayTest extends TestCase
         self::assertDoesNotMatchRegularExpression('/^repo1-cipher-pass=/m', $conf, 'the passphrase never sits in a committed file');
 
         $base = self::read('compose.backup.yaml');
-        self::assertMatchesRegularExpression('/PGBACKREST_REPO1_CIPHER_PASS: "\$\{BACKUP_DATABASE_PASSPHRASE:\?/', $base);
-        self::assertMatchesRegularExpression('/RESTIC_PASSWORD: "\$\{BACKUP_FILES_PASSPHRASE:\?/', $base);
+        // Each passphrase is a compose secret, a file the tool reads, never a value in an environment.
+        self::assertMatchesRegularExpression('/backup_database_passphrase:\n\s+environment: BACKUP_DATABASE_PASSPHRASE$/m', $base);
+        self::assertMatchesRegularExpression('/source: backup_database_passphrase\n\s+target: \/run\/secrets\/pgbackrest_repo1_cipher_pass$/m', $base);
+        self::assertMatchesRegularExpression('/backup_files_passphrase:\n\s+environment: BACKUP_FILES_PASSPHRASE$/m', $base);
+        self::assertMatchesRegularExpression('/source: backup_files_passphrase\n\s+target: \/run\/secrets\/restic_password$/m', $base);
+        self::assertMatchesRegularExpression('/RESTIC_PASSWORD_FILE: \/run\/secrets\/restic_password$/m', $base);
+        self::assertDoesNotMatchRegularExpression('/(PGBACKREST_REPO1_CIPHER_PASS|RESTIC_PASSWORD):/', $base);
     }
 
     public function testWhereTheRepositoriesLieIsTheDestinationsAlone(): void
@@ -86,10 +91,17 @@ final class BackupOverlayTest extends TestCase
 
             self::assertSame('s3', $environment['PGBACKREST_REPO1_TYPE'] ?? null, $name);
             self::assertSame('/${BACKUP_S3_PREFIX:-}pgbackrest', $environment['PGBACKREST_REPO1_PATH'] ?? null, $name);
-            foreach (['PGBACKREST_REPO1_S3_ENDPOINT', 'PGBACKREST_REPO1_S3_BUCKET', 'PGBACKREST_REPO1_S3_KEY', 'PGBACKREST_REPO1_S3_KEY_SECRET'] as $key) {
+            foreach (['PGBACKREST_REPO1_S3_ENDPOINT', 'PGBACKREST_REPO1_S3_BUCKET', 'PGBACKREST_REPO1_S3_KEY'] as $key) {
                 self::assertStringContainsString(':?', self::text($environment, $key, $name), $name.' '.$key.' is required: a server without it would archive nowhere');
             }
+            // The secret key is a compose secret, under the name pgBackRest reads, required as every secret is.
+            self::assertArrayNotHasKey('PGBACKREST_REPO1_S3_KEY_SECRET', $environment, $name);
+            self::assertSame('backup_s3_secret', self::secrets('compose.backup-bucket.yaml', $name)['/run/secrets/pgbackrest_repo1_s3_key_secret'] ?? null, $name);
         }
+        foreach (['backup', 'restore'] as $name) {
+            self::assertSame('backup_s3_secret', self::secrets('compose.backup-bucket.yaml', $name)['/run/secrets/aws_secret_access_key'] ?? null, $name);
+        }
+        self::assertSame('BACKUP_S3_SECRET', self::topSecrets('compose.backup-bucket.yaml')['backup_s3_secret'] ?? null);
         foreach (['backup', 'restore'] as $name) {
             $environment = self::environment('compose.backup-bucket.yaml', $name);
             self::assertMatchesRegularExpression('#^s3:[^"]*/\$\{BACKUP_S3_BUCKET\}/\$\{BACKUP_S3_PREFIX:-\}restic$#', self::text($environment, 'RESTIC_REPOSITORY', $name), $name);
@@ -136,10 +148,42 @@ final class BackupOverlayTest extends TestCase
             $environment = self::environment('compose.backup-offsite.yaml', $name);
 
             self::assertMatchesRegularExpression('#^s3:https://\$\{BACKUP_S3_ENDPOINT:\?[^}]*\}:\$\{BACKUP_S3_PORT:-443\}/\$\{BACKUP_S3_BUCKET:\?[^}]*\}/\$\{BACKUP_S3_PREFIX:-\}offsite$#', self::text($environment, 'OFFSITE_REPOSITORY', $name), $name);
-            foreach (['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_DEFAULT_REGION'] as $key) {
+            foreach (['AWS_ACCESS_KEY_ID', 'AWS_DEFAULT_REGION'] as $key) {
                 self::assertStringContainsString(':?', self::text($environment, $key, $name), $name.' '.$key.' is required once the copy is on');
             }
+            self::assertArrayNotHasKey('AWS_SECRET_ACCESS_KEY', $environment, $name);
+            self::assertSame('backup_s3_secret', self::secrets('compose.backup-offsite.yaml', $name)['/run/secrets/aws_secret_access_key'] ?? null, $name);
         }
+        self::assertSame('BACKUP_S3_SECRET', self::topSecrets('compose.backup-offsite.yaml')['backup_s3_secret'] ?? null);
+    }
+
+    /** @return array<string, string> each secret the service mounts, by its target, to its source */
+    private static function secrets(string $file, string $name): array
+    {
+        $found = [];
+        foreach ((array) (self::service($file, $name)['secrets'] ?? []) as $secret) {
+            self::assertIsArray($secret, $name.' names each secret with its source and target');
+            self::assertIsString($secret['source'] ?? null);
+            self::assertIsString($secret['target'] ?? null);
+            $found[$secret['target']] = $secret['source'];
+        }
+
+        return $found;
+    }
+
+    /** @return array<string, string> each secret the file declares, to the variable it comes from */
+    private static function topSecrets(string $file): array
+    {
+        $compose = Yaml::parseFile(\dirname(__DIR__, 3).'/'.$file, Yaml::PARSE_CUSTOM_TAGS);
+        self::assertIsArray($compose);
+        $found = [];
+        foreach ((array) ($compose['secrets'] ?? []) as $key => $secret) {
+            self::assertIsArray($secret);
+            self::assertIsString($secret['environment'] ?? null, $file.' '.$key.' comes from a variable');
+            $found[(string) $key] = $secret['environment'];
+        }
+
+        return $found;
     }
 
     /** @param array<array-key, mixed> $environment */

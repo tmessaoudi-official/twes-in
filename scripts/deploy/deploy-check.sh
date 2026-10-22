@@ -13,6 +13,7 @@
 #   client address  a forged X-Forwarded-For does not become the client's address: five refused password-reset
 #                   requests, each claiming another one, are still counted against one, and the sixth answers 429
 #   backups         the backup service started and pgBackRest reaches the bucket
+#   secrets         no running container holds a secret of the values in its environment, only under /run/secrets
 # Certificates come from Caddy's own authority (EDGE_TLS=internal), and requests are made from inside the stack's
 # network, trusting that authority, so no public name or port is needed. Runs under the compose project
 # `twes-deploy-check` only and removes its containers and volumes at the end.
@@ -71,8 +72,12 @@ step "images built, values written by new-instance.sh, bucket keys made"
 
 stand_in_bucket_up
 dc up -d --build --wait
-dc exec -T backup gosu postgres pgbackrest --stanza=twes check >/dev/null || fail "the backup service does not reach the bucket"
+dc exec -T backup twes-secrets gosu postgres pgbackrest --stanza=twes check >/dev/null || fail "the backup service does not reach the bucket"
 step "deployment up behind its edge, backups archiving"
+# shellcheck source=scripts/deploy/secrets-stay-files.sh
+source "$root/scripts/deploy/secrets-stay-files.sh"
+secrets_stay_files "$values"
+step "no container holds a secret in its environment"
 
 # Requests from inside the network, as a browser outside would make them: every connection to the host goes to the edge.
 dc exec -T edge cat /data/caddy/pki/authorities/local/root.crt > "$DRILL_DIR/edge-root.crt"

@@ -1,7 +1,8 @@
 # A server's backups go to an S3-compatible bucket, over compose.backup.yaml (docs/START.md § 13): pgBackRest archives
 # into it as the database writes, restic copies the nightly dump and the files beside it, each under its own path below
 # the instance's prefix. Every value is the instance's own and required: compose stops before starting anything while
-# one is missing. Each service that reaches the repositories is named them, the restore as much as the backup service.
+# one is missing. Each service that reaches the repositories is named them, the restore as much as the backup service;
+# the bucket's secret key as a compose secret, under the name each tool reads (compose.backup.yaml says how).
 x-bucket-environment: &bucket-environment
   PGBACKREST_REPO1_TYPE: s3
   PGBACKREST_REPO1_S3_ENDPOINT: "${BACKUP_S3_ENDPOINT:?set BACKUP_S3_ENDPOINT, the bucket service's host name}"
@@ -13,20 +14,34 @@ x-bucket-environment: &bucket-environment
   # so a staging that was handed production's bucket by mistake still never writes over its backups.
   PGBACKREST_REPO1_PATH: "/${BACKUP_S3_PREFIX:-}pgbackrest"
   PGBACKREST_REPO1_S3_KEY: "${BACKUP_S3_KEY:?set BACKUP_S3_KEY}"
-  PGBACKREST_REPO1_S3_KEY_SECRET: "${BACKUP_S3_SECRET:?set BACKUP_S3_SECRET}"
 
 x-copy-environment: &copy-environment
   <<: *bucket-environment
   BACKUP_S3_URI_STYLE: "${BACKUP_S3_URI_STYLE:-host}"
   RESTIC_REPOSITORY: "s3:https://${BACKUP_S3_ENDPOINT}:${BACKUP_S3_PORT:-443}/${BACKUP_S3_BUCKET}/${BACKUP_S3_PREFIX:-}restic"
   AWS_ACCESS_KEY_ID: "${BACKUP_S3_KEY}"
-  AWS_SECRET_ACCESS_KEY: "${BACKUP_S3_SECRET}"
   AWS_DEFAULT_REGION: "${BACKUP_S3_REGION}"
+
+x-database-key: &database-key
+  source: backup_s3_secret
+  target: /run/secrets/pgbackrest_repo1_s3_key_secret
+x-copy-keys: &copy-keys
+  - *database-key
+  - source: backup_s3_secret
+    target: /run/secrets/aws_secret_access_key
 
 services:
   postgres:
     environment: *bucket-environment
+    secrets:
+      - *database-key
   backup:
     environment: *copy-environment
+    secrets: *copy-keys
   restore:
     environment: *copy-environment
+    secrets: *copy-keys
+
+secrets:
+  backup_s3_secret:
+    environment: BACKUP_S3_SECRET

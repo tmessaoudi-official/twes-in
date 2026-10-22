@@ -564,14 +564,25 @@ and compile time: the first attempt spent about 2 minutes on those alone.
 (`messenger:consume async scheduler_default`: the queue and the schedule), and a deployment runs one, and only one,
 beside the API. The `demo-worker` reads the demo sandboxes' builds alone (`messenger:consume demo`), a quarter of a
 minute or more each, which a mail would otherwise wait behind. Production refuses to start without secrets of
-its own, so give it four:
+its own, so give it six, and the mail catcher's address. Each reaches its container as a compose secret, a file under `/run/secrets` (docs/SPEC.md § 7,
+Docker secrets), never as its environment, where `docker inspect` would show it: the api image reads them through
+`Shared/Infrastructure/Secrets/ContainerSecrets`, loaded with Composer's autoloader, so a `docker compose exec`'d console
+reads them too, the database's addresses made from `DATABASE_URL_TEMPLATE` and its migration twin, whose placeholders
+take the passwords. None of those variables may be in an api container's environment, not even empty: FrankenPHP's
+workers read the environment over what was set at start, and the loader refuses to start rather than let them;
+PostgreSQL through `POSTGRES_PASSWORD_FILE`; Centrifugo, pgBackRest and restic through
+`infra/postgres/twes-secrets`, which `twes-backup` re-runs itself through when started by `docker compose exec`. A
+command of yours exec'd into the backup service starts with it: `docker compose exec backup twes-secrets gosu postgres
+pgbackrest … info`. `scripts/gates/secrets-overlay.sh` holds every installation to that in CI:
 
 ```sh
 export COMPOSE_PROJECT_NAME=twes-prod WEB_PORT=18190 API_PORT=18191 MAILPIT_UI_PORT=18192 \
        MAILPIT_SMTP_PORT=18193 POSTGRES_PORT=15533 GOTENBERG_PORT=18194 \
        COMPOSE_FILE=compose.yaml:compose.prod.yaml \
        APP_SECRET=$(openssl rand -hex 24) REALTIME_TOKEN_KEY=$(openssl rand -hex 24) \
-       REALTIME_API_KEY=$(openssl rand -hex 24) APP_MFA_KEY=$(openssl rand -base64 32)
+       REALTIME_API_KEY=$(openssl rand -hex 24) APP_MFA_KEY=$(openssl rand -base64 32) \
+       POSTGRES_PASSWORD=$(openssl rand -hex 20) POSTGRES_APP_PASSWORD=$(openssl rand -hex 20) \
+       MAILER_DSN=smtp://mailpit:1025
 docker compose up -d --build --wait                                     # http://localhost:18190
 docker compose exec -T api php < scripts/gates/production-image.php     # what the image promises, checked inside it
 docker compose down --volumes --rmi local                               # when done, in the same shell
@@ -582,7 +593,7 @@ operator-code` work there too: seed it before signing in. The demo fixtures do n
 package. CI's `prod-image` job runs the same check on every push.
 
 A secret generated this way lives only in that shell. `APP_MFA_KEY` encrypts every authenticator secret stored, so a
-stack restarted with another key cannot read them: keep the four values if the stack is to outlive the shell.
+stack restarted with another key cannot read them: keep the six values if the stack is to outlive the shell.
 Profiler, dev logs and fixtures belong to `make up`'s development image.
 
 ## 11. Which build is running
@@ -648,7 +659,9 @@ on (§ 16). Without a destination the layer archives nowhere, so every command b
   bucket's own versioning and replication, which its provider configures.
 
 It refuses to start without the bucket and two passphrases. Keep the passphrases somewhere other than the server: a
-backup is unreadable without its passphrase.
+backup is unreadable without its passphrase. The passphrases and the bucket's secret key reach pgBackRest and restic as
+compose secrets (§ 10), so a step of yours exec'd into the backup service runs through `twes-secrets`, as
+`twes-backup` does on its own.
 
 ```sh
 export BACKUP_S3_ENDPOINT=<the bucket service's host> BACKUP_S3_BUCKET=<bucket> BACKUP_S3_REGION=<region> \
@@ -719,8 +732,10 @@ application secret, the database password): without them a restored backup canno
 left blank: `TWES_HOST`, `EDGE_TLS` (the address Let's Encrypt writes to), `MAILER_DSN` and `MAILER_SENDER`, the
 bucket (§ 13), and the monitor's two (§ 15): `MONITOR_URL`, its status page's address, and `SENTRY_DSN`, the address its
 error tracker gave this instance. It also draws the two tokens the monitor reads the instance with, `MONITOR_TOKEN` and
-`MONITOR_HEARTBEAT_TOKEN`, which are copied into the monitor's own values. Every one is required: compose refuses to start while one is empty. The name never changes afterwards:
-passkeys are bound to it.
+`MONITOR_HEARTBEAT_TOKEN`, which are copied into the monitor's own values. Every one is required: compose refuses to
+start while a setting is empty, and `deploy.sh` while a secret is, since compose would start with nothing mounted. The
+secrets among them (the mail relay, the bucket's secret key, the keys, passwords and tokens) reach the containers as
+compose secrets, never their environment (§ 10). The name never changes afterwards: passkeys are bound to it.
 
 **The monitor first.** The deployment requires the monitor's two values, so a first deployment comes after its
 monitor (§ 15): `new-instance.sh` draws the two tokens; `new-monitor.sh` writes the monitor's values, into which they are
@@ -931,7 +946,8 @@ is only as trustworthy as that comparison.
 blank for a volume on this disk. It shows the release key's fingerprint and pins it only once `yes` is typed, installs
 the newest release, makes the platform's operator (the password read twice, hidden, handed to `app:seed` on its input),
 and on Linux writes `twes schedule`'s units. Run again, it asks only what is still missing. Keep a copy of the keys the
-values list (§ 14) away from this computer. On macOS nothing is scheduled yet: `twes start` after each start of the
+values list (§ 14) away from this computer, in the password manager with the shop's facts, which are never written
+anywhere else. The secrets among them reach the containers as compose secrets, never their environment (§ 10). On macOS nothing is scheduled yet: `twes start` after each start of the
 computer and `twes tick` every quarter hour are run by hand, and `twes install` says so.
 
 **Signed releases.** `twes update` takes a release only from a tag signed by the key pinned at install

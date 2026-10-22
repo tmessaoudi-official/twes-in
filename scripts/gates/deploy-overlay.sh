@@ -6,12 +6,13 @@
 #              the database, the api or a mail catcher left published would face the internet
 #   addresses  api and both workers take every address from TWES_HOST (the workers send the mails, so their links must be
 #              the api's), and centrifugo accepts that origin alone
-#   database   api and both workers connect as the application's role with POSTGRES_APP_PASSWORD; the owner's password reaches
-#              only postgres and the one-shot migrate service, so a statement the application is tricked into running
-#              never holds the schema
-#   required   TWES_HOST, EDGE_TLS, POSTGRES_PASSWORD, POSTGRES_APP_PASSWORD, the mail settings and the monitor's (its token, its address,
-#              the heartbeats' token, the error tracker's DSN) have no default: a server missing one stops before
-#              starting anything, rather than run unwatched
+#   database   api and both workers connect as the application's role, its password the secret POSTGRES_APP_PASSWORD; the
+#              owner's, POSTGRES_PASSWORD, reaches only postgres and the one-shot migrate service, so a statement the
+#              application is tricked into running never holds the schema
+#   required   TWES_HOST, EDGE_TLS, MAILER_SENDER, MONITOR_URL and SENTRY_DSN have no default; each secret, the mail relay
+#              and the monitor's two tokens among them, is a compose secret every service that needs it mounts, which
+#              compose refuses to start without and scripts/deploy/deploy.sh refuses empty: a server missing one stops
+#              before starting anything, rather than run unwatched (scripts/gates/secrets-overlay.sh: none in an environment)
 #   monitor    api and both workers report their errors to SENTRY_DSN and answer MONITOR_TOKEN; the backup service sends its
 #              heartbeats to MONITOR_URL with MONITOR_HEARTBEAT_TOKEN
 #   mailpit    behind a profile, so it never starts
@@ -28,11 +29,18 @@ finish() {
     printf '  %s\n' "${problems[@]}"
     exit 1
   fi
-  printf 'deploy-overlay: OK — only the edge publishes, every address comes from TWES_HOST, %d settings are required, HSTS for the host alone\n' "${#REQUIRED[@]}"
+  printf 'deploy-overlay: OK — only the edge publishes, every address comes from TWES_HOST, %d settings and %d secrets are required, HSTS for the host alone\n' "${#REQUIRED[@]}" "${#SECRETS[@]}"
   exit 0
 }
 
-REQUIRED=(TWES_HOST EDGE_TLS POSTGRES_PASSWORD POSTGRES_APP_PASSWORD MAILER_DSN MAILER_SENDER MONITOR_TOKEN MONITOR_URL MONITOR_HEARTBEAT_TOKEN SENTRY_DSN)
+REQUIRED=(TWES_HOST EDGE_TLS MAILER_SENDER MONITOR_URL SENTRY_DSN)
+# Each secret, by its variable, and the services that must mount it.
+SECRETS=("APP_SECRET:api worker demo-worker migrate" "APP_MFA_KEY:api worker demo-worker migrate"
+  "REALTIME_TOKEN_KEY:api worker demo-worker migrate centrifugo" "REALTIME_API_KEY:api worker demo-worker migrate centrifugo"
+  "POSTGRES_PASSWORD:postgres migrate" "POSTGRES_APP_PASSWORD:api worker demo-worker migrate"
+  "MAILER_DSN:api worker demo-worker migrate" "MONITOR_TOKEN:api worker demo-worker migrate"
+  "MONITOR_HEARTBEAT_TOKEN:backup" "BACKUP_DATABASE_PASSPHRASE:postgres backup" "BACKUP_FILES_PASSPHRASE:backup"
+  "BACKUP_S3_SECRET:postgres backup")
 HOST=gate.twes.invalid
 # Every value the five files need, as made up as the host, given as the server gives them: in an --env-file, which
 # takes the place of the committed development .env, and with nothing of the developer's own environment.
@@ -61,6 +69,15 @@ for name in "${REQUIRED[@]}"; do
   out=$(compose "${without[@]}")
   if [[ $? -eq 0 || "$out" != *"$name"* ]]; then problem "$name is not required: a server without it would start on a default"; fi
 done
+for entry in "${SECRETS[@]}"; do
+  name=${entry%%:*}
+  secret=$(jq -r --arg v "$name" '[(.secrets // {}) | to_entries[] | select(.value.environment == $v) | .key] | first // ""' <<<"$config")
+  if [[ -z "$secret" ]]; then problem "$name is no compose secret: a server without it would start on a default"; continue; fi
+  for service in ${entry#*:}; do
+    jq -e --arg s "$service" --arg k "$secret" '[.services[$s].secrets // [] | .[] | .source] | index($k)' <<<"$config" >/dev/null \
+      || problem "$service does not mount $name (the secret $secret)"
+  done
+done
 
 while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(jq -r '.services | to_entries[]
   | select(.key != "edge" and ((.value.ports // []) | length) > 0)
@@ -70,30 +87,29 @@ edge_ports=$(jq -r '[.services.edge.ports // [] | .[] | "\(.published):\(.target
 
 for service in api worker demo-worker; do
   for pair in "DEFAULT_URI=https://$HOST" "APP_WEBAUTHN_RP_ID=$HOST" "APP_WEBAUTHN_ORIGINS=https://$HOST" \
-    "PAIRING_ORIGIN=https://$HOST" "MAILER_DSN=smtp://relay.invalid:587" "MAILER_SENDER=no-reply@$HOST" \
-    "MONITOR_TOKEN=gate-monitor" "SENTRY_DSN=https://gate@errors.$HOST/1"; do
+    "PAIRING_ORIGIN=https://$HOST" "MAILER_SENDER=no-reply@$HOST" "SENTRY_DSN=https://gate@errors.$HOST/1"; do
     key=${pair%%=*} want=${pair#*=}
     got=$(jq -r --arg s "$service" --arg k "$key" '.services[$s].environment[$k] // "(unset)"' <<<"$config")
     [[ "$got" == "$want" ]] || problem "$service $key is $got, wanted $want"
   done
-  got=$(jq -r --arg s "$service" '.services[$s].environment.DATABASE_URL // ""' <<<"$config")
-  [[ "$got" == "postgresql://twes_app:gate-app@"* ]] || problem "$service DATABASE_URL is not the application's role with POSTGRES_APP_PASSWORD: $got"
+  got=$(jq -r --arg s "$service" '.services[$s].environment.DATABASE_URL_TEMPLATE // ""' <<<"$config")
+  [[ "$got" == "postgresql://twes_app:{postgres_app_password}@"* ]] || problem "$service DATABASE_URL_TEMPLATE is not the application's role with its password's placeholder: $got"
 done
-got=$(jq -r '.services.migrate.environment.DATABASE_MIGRATION_URL // ""' <<<"$config")
-[[ "$got" == "postgresql://twes:gate-postgres@"* ]] || problem "migrate DATABASE_MIGRATION_URL is not the owner with POSTGRES_PASSWORD: $got"
-got=$(jq -r '.services.migrate.environment.POSTGRES_APP_PASSWORD // "(unset)"' <<<"$config")
-[[ "$got" == gate-app ]] || problem "migrate POSTGRES_APP_PASSWORD is $got, wanted the deployment's"
+got=$(jq -r '.services.migrate.environment.DATABASE_MIGRATION_URL_TEMPLATE // ""' <<<"$config")
+[[ "$got" == "postgresql://twes:{postgres_password}@"* ]] || problem "migrate DATABASE_MIGRATION_URL_TEMPLATE is not the owner with its password's placeholder: $got"
 while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(jq -r '.services | to_entries[]
   | select(.key != "postgres" and .key != "migrate")
   | select([.value.environment // {} | .[] | tostring | contains("gate-postgres")] | any)
   | "\(.key) holds the owner'"'"'s password: only postgres and migrate may"' <<<"$config")
-for pair in "MONITOR_URL=https://status.$HOST" "MONITOR_HEARTBEAT_TOKEN=gate-heartbeat"; do
-  key=${pair%%=*} want=${pair#*=}
-  got=$(jq -r --arg k "$key" '.services.backup.environment[$k] // "(unset)"' <<<"$config")
-  [[ "$got" == "$want" ]] || problem "backup $key is $got, wanted $want"
-done
-got=$(jq -r '.services.postgres.environment.POSTGRES_PASSWORD // "(unset)"' <<<"$config")
-[[ "$got" == gate-postgres ]] || problem "postgres POSTGRES_PASSWORD is $got, wanted the deployment's"
+while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(jq -r '
+  [(.secrets // {}) | to_entries[] | select(.value.environment == "POSTGRES_PASSWORD") | .key] as $owner
+  | .services | to_entries[] | select(.key != "postgres" and .key != "migrate")
+  | select([(.value.secrets // [])[] | .source] | any(. as $s | $owner | index($s)))
+  | "\(.key) holds the owner'"'"'s password: only postgres and migrate may"' <<<"$config")
+got=$(jq -r '.services.backup.environment.MONITOR_URL // "(unset)"' <<<"$config")
+[[ "$got" == "https://status.$HOST" ]] || problem "backup MONITOR_URL is $got, wanted https://status.$HOST"
+got=$(jq -r '.services.postgres.environment.POSTGRES_PASSWORD_FILE // "(unset)"' <<<"$config")
+[[ "$got" == /run/secrets/postgres_password ]] || problem "postgres reads its password from $got, wanted the secret /run/secrets/postgres_password"
 got=$(jq -r '.services.centrifugo.environment.CENTRIFUGO_CLIENT_ALLOWED_ORIGINS // "(unset)"' <<<"$config")
 [[ "$got" == "https://$HOST" ]] || problem "centrifugo accepts origins [$got], wanted https://$HOST alone"
 jq -e '.services | has("mailpit") | not' <<<"$config" >/dev/null || problem "mailpit starts in a deployment: put it behind a profile"
