@@ -257,8 +257,10 @@ test('a company that requires two-step verification sends its owner to set it up
   await expect(scan.locator('svg')).toBeVisible();
   await expectAccessible(page, 'two-factor, after removing the authenticator');
   await page.screenshot({ path: test.info().outputPath('two-factor-removed.png'), fullPage: true });
-  await page.getByTestId('two-factor-logout').click();
-  await expect(page).toHaveURL(/\/login$/);
+  // Required no more, the page offers « Plus tard » rather than signing out, and the shell signs out.
+  await page.getByTestId('two-factor-later').click();
+  await expect(page).not.toHaveURL(/\/two-factor/);
+  await signOut(page);
   await signIn(page, owner, NEW_PASSWORD);
   await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
 });

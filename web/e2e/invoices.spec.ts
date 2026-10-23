@@ -1022,6 +1022,8 @@ test('an issued invoice is delivered by a note, which names it, moves no stock a
     );
 
     await page.goto(`/invoices/${invoiceId}`);
+    // The title is empty until the invoice is read: wait for it before reading it once.
+    await expect(page.getByTestId('invoice-title')).not.toBeEmpty();
     const invoiceNumber = (await page.getByTestId('invoice-title').textContent())?.trim() ?? '';
     expect(invoiceNumber).not.toBe('');
     await page.getByTestId('document-action-deliver').click();
@@ -1030,6 +1032,8 @@ test('an issued invoice is delivered by a note, which names it, moves no stock a
     await expect(page.getByTestId('line-0-quantity')).toHaveValue('3');
     await page.getByTestId('document-action-validate').click();
     await page.getByTestId('confirm-run').click();
+    // The link was there before the note was validated: wait for the validation itself before leaving.
+    await expect(page.getByTestId('delivery-note-status')).toContainText(/Validé|Validated/);
     await expect(page.getByTestId('delivery-note-invoice-link')).toHaveText(invoiceNumber);
     // Its goods were billed by the invoice: the note is not invoiced again.
     await expect(page.getByTestId('document-action-invoice')).toHaveCount(0);

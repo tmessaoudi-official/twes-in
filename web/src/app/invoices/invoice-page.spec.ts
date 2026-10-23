@@ -1293,6 +1293,43 @@ describe('InvoicePage', () => {
     expect(q('invoice-deliveries')).toBeNull();
   });
 
+  // A note's change is announced under the note, never under the invoice it delivers.
+  it('reads an issued invoice again when one of its notes changes, and says how far it is delivered', async () => {
+    invoice.set({ ...issued, deliveredBy: [], delivery: 'none', deliveries: [] });
+    await open('i1');
+    expect(q('invoice-delivery')).toBeNull();
+    facade.loadInvoice.mockImplementation(async () => {
+      invoice.set({
+        ...issued,
+        delivery: 'whole',
+        deliveredBy: [{ deliveryNoteId: 'n9', number: 'BL-2026-00009', status: 'validated' }],
+        deliveries: [],
+      });
+    });
+
+    facade.loadInvoice.mockClear();
+    await announceSaved('delivery_note', 'n9', null, 'delivery_note.validated');
+    await settle();
+
+    expect(facade.loadInvoice).toHaveBeenCalledWith('c1', 'i1');
+    expect(q('invoice-delivery')?.textContent).toContain('deliveries.statuses.whole');
+    expect(noticeToasts()).toEqual([]);
+  });
+
+  it('never reads a draft again for a note, which cannot deliver it, and keeps what was typed', async () => {
+    invoice.set(draft);
+    await open('i1');
+    type('field-customerReference', 'BC-9');
+    await settle();
+    facade.loadInvoice.mockClear();
+
+    await announceSaved('delivery_note', 'n9', null, 'delivery_note.validated');
+    await settle();
+
+    expect(facade.loadInvoice).not.toHaveBeenCalled();
+    expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-9');
+  });
+
   it('leads back to each delivery note its lines were taken from, and says nothing when none', async () => {
     invoice.set({
       ...draft,

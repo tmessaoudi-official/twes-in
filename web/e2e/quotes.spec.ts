@@ -409,6 +409,8 @@ test('an accepted quote is delivered by a note, which names it, and is no longer
     await expect(page.getByTestId('line-0-description')).toHaveValue(`Livraison ${run}`);
     await page.getByTestId('document-action-validate').click();
     await page.getByTestId('confirm-run').click();
+    // The link was there before the note was validated: wait for the validation itself before leaving.
+    await expect(page.getByTestId('delivery-note-status')).toContainText(/Validé|Validated/);
     await expect(page.getByTestId('delivery-note-quote-link')).toHaveText(quoteNumber);
 
     await page.getByTestId('delivery-note-quote-link').click();

@@ -38,6 +38,8 @@ test('a role is deleted only once its question, naming it, is answered', async (
   await page.getByTestId(`role-delete-${name}`).click();
   await expect(page.getByTestId('confirm-message')).toContainText(name);
   await page.getByTestId('confirm-keep').click();
+  // The question has left the page, closing animation included, before it is asked again.
+  await expect(page.getByTestId('confirm-message')).toHaveCount(0);
   await expect(page.getByTestId(`role-${name}`)).toBeVisible();
 
   const deleted = page.waitForResponse(

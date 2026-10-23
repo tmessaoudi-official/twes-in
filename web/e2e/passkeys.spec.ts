@@ -148,7 +148,10 @@ test('an account adds a passkey, signs in with it, and removes it', async ({ pag
   await page.getByTestId('confirm-run').click();
   await expect(page.getByTestId('two-factor-passkeys-none')).toBeVisible();
   await expect(page.getByTestId('two-factor-qr').locator('svg')).toBeVisible();
-  await page.getByTestId('two-factor-logout').click();
+  // Nothing requires the check of this account: « Plus tard » leaves the page unchanged, and the shell signs out.
+  await page.getByTestId('two-factor-later').click();
+  await expect(page).not.toHaveURL(/\/two-factor/);
+  await signOut(page);
   await signIn(page, invited, NEW_PASSWORD);
   await expect(page.getByTestId('greeting')).toContainText('Passkey Owner');
 });

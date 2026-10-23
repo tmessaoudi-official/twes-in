@@ -34,6 +34,7 @@ import {
   RecordedFeedback,
   successToasts,
 } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import { Feedback } from '../shared/feedback/feedback';
 import { QuotePage } from './quote-page';
 import { QuotesFacade } from './quotes-facade';
@@ -891,6 +892,46 @@ describe('QuotePage', () => {
         q('quote-delivery-note-0')?.querySelector('a'),
         'no link for whoever may not open it',
       ).toBeNull();
+    });
+
+    // A note's change is announced under the note, never under the quote it delivers.
+    it('reads an accepted quote again when one of its notes changes, and says how far it is delivered', async () => {
+      quote.set({
+        ...toDeliver,
+        delivery: 'none',
+        deliveryNotes: [{ deliveryNoteId: 'n1', number: null, status: 'draft' }],
+      });
+      await open('q1');
+      expect(q('quote-delivery')).toBeNull();
+      facade.loadQuote.mockImplementation(async () =>
+        quote.set({
+          ...toDeliver,
+          delivery: 'whole',
+          deliveryNotes: [{ deliveryNoteId: 'n1', number: 'BL-2026-00004', status: 'validated' }],
+        }),
+      );
+
+      facade.loadQuote.mockClear();
+      await announceSaved('delivery_note', 'n1', null, 'delivery_note.validated');
+      await settle();
+
+      expect(facade.loadQuote).toHaveBeenCalledWith('c1', 'q1');
+      expect(q('quote-delivery')?.textContent).toContain('deliveries.statuses.whole');
+      expect(noticeToasts()).toEqual([]);
+    });
+
+    it('never reads a draft again for a note, which cannot deliver it, and keeps what was typed', async () => {
+      quote.set(draft);
+      await open('q1');
+      typeIn(q('field-customerReference') as HTMLInputElement, 'BC-9');
+      await settle();
+      facade.loadQuote.mockClear();
+
+      await announceSaved('delivery_note', 'n9', null, 'delivery_note.validated');
+      await settle();
+
+      expect(facade.loadQuote).not.toHaveBeenCalled();
+      expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-9');
     });
   });
 
