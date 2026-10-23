@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { FormGroup } from '@angular/forms';
 import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
+import { buildFormGroup } from '../shared/form/form-builder';
 import {
+  ADDRESS_PARTS,
   CONTACT_FORM,
+  linkShippingToBilling,
+  SAME_ADDRESS,
   contactInput,
   contactValues,
   customerForm,
@@ -274,7 +279,11 @@ describe('customer forms', () => {
       shippingCity: '',
     });
 
-    const input = customerInput({ ...values, legalName: '  ', shippingCity: 'Sfax' }, options);
+    expect(values['shippingSameAsBilling']).toBe(true);
+    const input = customerInput(
+      { ...values, legalName: '  ', shippingSameAsBilling: false, shippingCity: 'Sfax' },
+      options,
+    );
 
     expect(input).toEqual({
       ...carthage,
@@ -390,5 +399,71 @@ describe('customer forms', () => {
       id: undefined,
       version: undefined,
     });
+  });
+});
+
+// Round 2: a related field offers its link. The delivery address reads as a variation of the billing one.
+describe('the delivery address beside the billing one', () => {
+  const formOf = (row: CustomerRow | null): FormGroup => {
+    const form = buildFormGroup(customerForm(options, groups), customerValues(row, options));
+    linkShippingToBilling(form);
+    return form;
+  };
+  const shipping = (form: FormGroup): unknown[] =>
+    ADDRESS_PARTS.map((part) => form.controls[`shipping${part}`]!.value);
+
+  it('opens on the billing address while the customer keeps no delivery address', () => {
+    const form = formOf(null);
+    expect(form.controls[SAME_ADDRESS]!.value).toBe(true);
+    const fields = customerForm(options, groups).sections.find(
+      (each) => each.id === 'shipping',
+    )!.fields;
+    expect(fields[0]).toMatchObject({ id: SAME_ADDRESS, kind: 'checkbox' });
+    expect(fields.slice(1).every((field) => field.visibleWhen?.field === SAME_ADDRESS)).toBe(true);
+  });
+
+  it('turned off, starts the delivery address from a copy of the billing one', () => {
+    const form = formOf(null);
+    form.patchValue({ billingAddressLine1: '12 rue de Marseille', billingCity: 'Tunis' });
+    form.controls[SAME_ADDRESS]!.setValue(false);
+    expect(shipping(form)).toEqual(['12 rue de Marseille', '', '', 'Tunis', 'TN']);
+
+    form.controls['shippingCity']!.setValue('Sfax');
+    const input = customerInput(form.getRawValue(), options);
+    expect(input.shippingAddress).toEqual({
+      line1: '12 rue de Marseille',
+      line2: null,
+      postalCode: null,
+      city: 'Sfax',
+      countryCode: 'TN',
+    });
+  });
+
+  it('turned on again, keeps no delivery address, so the notes print the billing one', () => {
+    const form = formOf(null);
+    form.controls[SAME_ADDRESS]!.setValue(false);
+    form.controls[SAME_ADDRESS]!.setValue(true);
+    expect(shipping(form)).toEqual(['', '', '', '', '']);
+    expect(customerInput(form.getRawValue(), options).shippingAddress).toBeNull();
+  });
+
+  it('opens off on a customer who keeps a delivery address, and never writes over one typed', () => {
+    const elsewhere: CustomerRow = {
+      ...carthage,
+      shippingAddress: {
+        line1: 'Zone industrielle',
+        line2: null,
+        postalCode: '2013',
+        city: 'Ben Arous',
+        countryCode: 'TN',
+      },
+    };
+    const form = formOf(elsewhere);
+    expect(form.controls[SAME_ADDRESS]!.value).toBe(false);
+    form.controls[SAME_ADDRESS]!.setValue(true);
+    form.controls['shippingCity']!.setValue('Sfax');
+    form.controls[SAME_ADDRESS]!.setValue(false);
+    expect(form.controls['shippingCity']!.value).toBe('Sfax');
+    expect(form.controls['shippingAddressLine1']!.value).toBe('');
   });
 });

@@ -31,7 +31,7 @@ final readonly class PickCustomers
     }
 
     /**
-     * @return list<array{id: string, number: string, name: string, excludedFamilies: list<string>, defaultDiscountRate: string|null, defaultTaxComponentIds: list<string>}>
+     * @return list<array{id: string, number: string, name: string, excludedFamilies: list<string>, defaultDiscountRate: string|null, defaultTaxComponentIds: list<string>, deliveryAddress: array{line1: string|null, line2: string|null, postalCode: string|null, city: string|null, countryCode: string|null}}>
      */
     public function matching(Company $company, string $words, int $limit = self::SHOWN): array
     {
@@ -45,7 +45,7 @@ final readonly class PickCustomers
      *
      * @param list<Uuid> $ids
      *
-     * @return list<array{id: string, number: string, name: string, excludedFamilies: list<string>, defaultDiscountRate: string|null, defaultTaxComponentIds: list<string>}>
+     * @return list<array{id: string, number: string, name: string, excludedFamilies: list<string>, defaultDiscountRate: string|null, defaultTaxComponentIds: list<string>, deliveryAddress: array{line1: string|null, line2: string|null, postalCode: string|null, city: string|null, countryCode: string|null}}>
      */
     public function byIds(Company $company, array $ids): array
     {
@@ -55,7 +55,7 @@ final readonly class PickCustomers
     /**
      * `excludedFamilies` is what a document for this customer leaves out: its regime's and the company's own (EXT-03).
      *
-     * @return array{id: string, number: string, name: string, excludedFamilies: list<string>, defaultDiscountRate: string|null, defaultTaxComponentIds: list<string>}
+     * @return array{id: string, number: string, name: string, excludedFamilies: list<string>, defaultDiscountRate: string|null, defaultTaxComponentIds: list<string>, deliveryAddress: array{line1: string|null, line2: string|null, postalCode: string|null, city: string|null, countryCode: string|null}}
      */
     private function row(Company $company, Customer $customer): array
     {
@@ -66,6 +66,21 @@ final readonly class PickCustomers
             'excludedFamilies' => array_map(static fn (TaxFamily $family): string => $family->value, $this->excluded->of($company, $customer->getTaxRegime())),
             'defaultDiscountRate' => $customer->getProfile()->defaultDiscountRate,
             'defaultTaxComponentIds' => $customer->getDefaultTaxComponentIds(),
+            'deliveryAddress' => self::deliveryAddress($customer),
         ];
+    }
+
+    /**
+     * Where goods for this customer go, as a delivery note prints it: its delivery address, else its billing one. A
+     * delivery note's form offers it to copy, to correct one part rather than type it all.
+     *
+     * @return array{line1: string|null, line2: string|null, postalCode: string|null, city: string|null, countryCode: string|null}
+     */
+    private static function deliveryAddress(Customer $customer): array
+    {
+        $profile = $customer->getProfile();
+        $address = null === $profile->shippingAddress || $profile->shippingAddress->isEmpty() ? $profile->billingAddress : $profile->shippingAddress;
+
+        return ['line1' => $address->line1, 'line2' => $address->line2, 'postalCode' => $address->postalCode, 'city' => $address->city, 'countryCode' => $address->countryCode];
     }
 }

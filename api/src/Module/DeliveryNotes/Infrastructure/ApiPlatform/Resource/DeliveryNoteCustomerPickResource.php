@@ -74,7 +74,17 @@ final class DeliveryNoteCustomerPickResource
     #[Groups([self::READ])]
     public array $excludedFamilies = [];
 
-    /** @param array{id: string, number: string, name: string, excludedFamilies: list<string>, defaultDiscountRate: string|null, defaultTaxComponentIds: list<string>} $pick */
+    /**
+     * Where goods for this customer go, as the note prints it when its own delivery address is left empty: the
+     * customer's delivery address, else its billing one. The form offers it to copy, to correct one part of it.
+     *
+     * @var array{line1: string|null, line2: string|null, postalCode: string|null, city: string|null, countryCode: string|null}
+     */
+    #[ApiProperty(required: true, schema: ['type' => 'object', 'required' => ['line1', 'line2', 'postalCode', 'city', 'countryCode'], 'properties' => ['line1' => ['type' => ['string', 'null']], 'line2' => ['type' => ['string', 'null']], 'postalCode' => ['type' => ['string', 'null']], 'city' => ['type' => ['string', 'null']], 'countryCode' => ['type' => ['string', 'null']]]])]
+    #[Groups([self::READ])]
+    public array $deliveryAddress = ['line1' => null, 'line2' => null, 'postalCode' => null, 'city' => null, 'countryCode' => null];
+
+    /** @param array{id: string, number: string, name: string, excludedFamilies: list<string>, defaultDiscountRate: string|null, defaultTaxComponentIds: list<string>, deliveryAddress: array{line1: string|null, line2: string|null, postalCode: string|null, city: string|null, countryCode: string|null}} $pick */
     public static function of(array $pick): self
     {
         $resource = new self();
@@ -82,6 +92,7 @@ final class DeliveryNoteCustomerPickResource
         $resource->number = $pick['number'];
         $resource->name = $pick['name'];
         $resource->excludedFamilies = $pick['excludedFamilies'];
+        $resource->deliveryAddress = $pick['deliveryAddress'];
 
         return $resource;
     }

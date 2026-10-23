@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { FormGroup } from '@angular/forms';
+import type { Subscription } from 'rxjs';
 import { CHECK_NOTE_MAX } from '../shared/check/check-note';
 import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import {
@@ -222,33 +224,104 @@ const section = (id: string, fields: FormField[]): FormSection => ({
   fields,
 });
 
-const addressFields = (prefix: 'billing' | 'shipping'): FormField[] => [
-  {
-    id: `${prefix}AddressLine1`,
-    label: `${FIELDS}.addressLine1`,
-    kind: 'text',
-    maxLength: 200,
-    span: 2,
-    ...(prefix === 'shipping' ? { hint: 'customers.form.shipping_hint' } : {}),
-  },
-  {
-    id: `${prefix}AddressLine2`,
-    label: `${FIELDS}.addressLine2`,
-    kind: 'text',
-    maxLength: 200,
-    span: 2,
-  },
-  { id: `${prefix}PostalCode`, label: `${FIELDS}.postalCode`, kind: 'text', maxLength: 20 },
-  { id: `${prefix}City`, label: `${FIELDS}.city`, kind: 'text', maxLength: 120 },
-  {
-    id: `${prefix}CountryCode`,
-    label: `${FIELDS}.countryCode`,
-    kind: 'text',
-    maxLength: 2,
-    pattern: '[A-Za-z]{2}',
-    hint: 'customers.form.country_hint',
-  },
-];
+/** The parts of an address, as the form names them after its `billing` or `shipping` prefix. */
+export const ADDRESS_PARTS = [
+  'AddressLine1',
+  'AddressLine2',
+  'PostalCode',
+  'City',
+  'CountryCode',
+] as const;
+
+/**
+ * The switch heading the delivery address: on while the customer keeps none, which is what the delivery notes then
+ * print, the billing address; off, the delivery fields show, so the two addresses read as related, not as two to fill.
+ */
+export const SAME_ADDRESS = 'shippingSameAsBilling';
+
+const addressFields = (prefix: 'billing' | 'shipping'): FormField[] => {
+  // The browser fills an address by its section token, billing or shipping, which tells the two apart.
+  const shown =
+    prefix === 'shipping' ? { visibleWhen: { field: SAME_ADDRESS, oneOf: ['false'] } } : {};
+  return [
+    ...(prefix === 'shipping'
+      ? [
+          {
+            id: SAME_ADDRESS,
+            label: `${FIELDS}.${SAME_ADDRESS}`,
+            kind: 'checkbox' as const,
+            span: 2 as const,
+            hint: 'customers.form.same_address_hint',
+          },
+        ]
+      : []),
+    {
+      id: `${prefix}AddressLine1`,
+      label: `${FIELDS}.addressLine1`,
+      kind: 'text',
+      maxLength: 200,
+      span: 2,
+      autocomplete: `${prefix} address-line1`,
+      ...shown,
+    },
+    {
+      id: `${prefix}AddressLine2`,
+      label: `${FIELDS}.addressLine2`,
+      kind: 'text',
+      maxLength: 200,
+      span: 2,
+      autocomplete: `${prefix} address-line2`,
+      ...shown,
+    },
+    {
+      id: `${prefix}PostalCode`,
+      label: `${FIELDS}.postalCode`,
+      kind: 'text',
+      maxLength: 20,
+      autocomplete: `${prefix} postal-code`,
+      ...shown,
+    },
+    {
+      id: `${prefix}City`,
+      label: `${FIELDS}.city`,
+      kind: 'text',
+      maxLength: 120,
+      autocomplete: `${prefix} address-level2`,
+      ...shown,
+    },
+    {
+      id: `${prefix}CountryCode`,
+      label: `${FIELDS}.countryCode`,
+      kind: 'text',
+      maxLength: 2,
+      pattern: '[A-Za-z]{2}',
+      hint: 'customers.form.country_hint',
+      autocomplete: `${prefix} country`,
+      ...shown,
+    },
+  ];
+};
+
+/**
+ * Keeps the delivery address beside the billing one as the switch says: turned off, the delivery fields open on a copy
+ * of the billing address, to correct the part that differs; turned on again, the copy goes, since the customer then
+ * keeps no delivery address. What is already typed in the delivery fields is never written over.
+ */
+export function linkShippingToBilling(form: FormGroup): Subscription | null {
+  const same = form.controls[SAME_ADDRESS];
+  if (same === undefined) return null;
+  return same.valueChanges.subscribe((value) => {
+    const shipping = ADDRESS_PARTS.map((part) => form.controls[`shipping${part}`]);
+    if (value === false) {
+      if (shipping.some((control) => String(control?.value ?? '').trim() !== '')) return;
+      for (const part of ADDRESS_PARTS) {
+        form.controls[`shipping${part}`]?.setValue(form.controls[`billing${part}`]?.value ?? '');
+      }
+    } else {
+      for (const control of shipping) control?.setValue('');
+    }
+  });
+}
 
 /**
  * The customer form, from what the company's preset and fiscal setup offer: its registration numbers (shown for a
@@ -444,6 +517,9 @@ export function customerValues(
       row === null ? options.countryCode : '',
     ),
     ...addressValues('shipping', row?.shippingAddress ?? null, ''),
+    [SAME_ADDRESS]: Object.values(row?.shippingAddress ?? {}).every(
+      (part) => part === null || part === '',
+    ),
   };
   for (const identifier of options.identifiers) {
     values[IDENTIFIER_PREFIX + identifier.key] = row?.identifiers[identifier.key] ?? '';
@@ -484,7 +560,11 @@ export function customerInput(
     phone: text(values['phone']),
     website: text(values['website']),
     billingAddress: address(values, 'billing'),
-    shippingAddress: Object.values(shipping).every((part) => part === null) ? null : shipping,
+    // The switch on is no delivery address at all: the delivery notes then print the billing one.
+    shippingAddress:
+      values[SAME_ADDRESS] === true || Object.values(shipping).every((part) => part === null)
+        ? null
+        : shipping,
     defaultTaxComponentIds: offeredTaxes(options, values['defaultTaxComponentIds']),
     defaultDiscountRate: text(values['defaultDiscountRate']),
     notes: text(values['notes']),

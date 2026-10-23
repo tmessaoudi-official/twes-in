@@ -81,8 +81,26 @@ const options: DeliveryNoteOptions = {
 };
 /** What the pickers answer; the page is never handed either list whole. */
 const customers: CustomerOption[] = [
-  { id: 'k1', number: 'CLI-1', name: 'Carthage', excludedFamilies: [] },
-  { id: 'k2', number: 'CLI-2', name: 'Export SA', excludedFamilies: ['vat'] },
+  {
+    id: 'k1',
+    number: 'CLI-1',
+    name: 'Carthage',
+    excludedFamilies: [],
+    deliveryAddress: {
+      line1: '12 rue de Marseille',
+      line2: null,
+      postalCode: '1000',
+      city: 'Tunis',
+      countryCode: 'TN',
+    },
+  },
+  {
+    id: 'k2',
+    number: 'CLI-2',
+    name: 'Export SA',
+    excludedFamilies: ['vat'],
+    deliveryAddress: { line1: null, line2: null, postalCode: null, city: null, countryCode: null },
+  },
 ];
 const products: ProductOption[] = [
   {
@@ -909,6 +927,57 @@ describe('DeliveryNotePage', () => {
     expect(unsaved.count()).toBe(0);
     await pick('delivery-note-customer', 'CLI-1 · Carthage');
     expect(unsaved.count()).toBeGreaterThan(0);
+  });
+
+  // Round 2: a related field offers its link. The note's address starts from where the customer's goods go.
+  it('copies where the customer’s goods go into the note’s address, still editable', async () => {
+    // Saved, the new note is opened at its own address, which this test has no route for.
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    expect(q('delivery-note-copy-customer-address')).toBeNull();
+
+    await pick('delivery-note-customer', 'CLI-2 · Export SA');
+    expect(q('delivery-note-copy-customer-address')).toBeNull();
+
+    await pick('delivery-note-customer', 'CLI-1 · Carthage');
+    const field = (id: string): HTMLInputElement =>
+      fixture.nativeElement.querySelector(`[data-testid="field-${id}"]`);
+    typeIn(field('deliveryAddressLine2'), 'Porte 3');
+    q('delivery-note-copy-customer-address')!.click();
+    await settle();
+
+    expect(
+      [
+        'deliveryAddressLine1',
+        'deliveryAddressLine2',
+        'deliveryPostalCode',
+        'deliveryCity',
+        'deliveryCountryCode',
+      ].map((id) => field(id).value),
+    ).toEqual(['12 rue de Marseille', '', '1000', 'Tunis', 'TN']);
+    typeIn(field('deliveryCity'), 'La Marsa');
+    await pick('line-0-product', 'ART-1 · Portable 14"');
+    type('line-0-quantity', '2');
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.create).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({
+        deliveryAddress: {
+          line1: '12 rue de Marseille',
+          line2: null,
+          postalCode: '1000',
+          city: 'La Marsa',
+          countryCode: 'TN',
+        },
+      }),
+    );
+  });
+
+  it('offers no copy of the customer’s address on a note that no longer changes', async () => {
+    note.set({ ...draft, status: 'validated', number: 'BL-1' });
+    await open('n1');
+    expect(q('delivery-note-copy-customer-address')).toBeNull();
   });
 
   it('takes the header and lines another person saved into a quiet draft', async () => {

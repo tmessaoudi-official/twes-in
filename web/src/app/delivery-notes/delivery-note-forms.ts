@@ -7,6 +7,7 @@ import { filterValues, idValues, rangeParams } from '../shared/list/list-filters
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import type { PickOption } from '../shared/form/pick-field';
+import type { AddressFields } from '../shared/form/address-fill';
 import {
   type CustomerOption,
   DELIVERY_NOTE_STATUSES,
@@ -17,6 +18,7 @@ import {
   type DeliveryNoteSearch,
   type DeliveryNoteSortKey,
   type LineTaxOption,
+  type PostalAddress,
   type ProductOption,
   type TaxFamily,
   DELIVERY_NOTE_STATUS_TONES,
@@ -222,6 +224,7 @@ export function deliveryNoteForm(
           id: 'deliveryAddressLine1',
           label: `${FIELDS}.deliveryAddressLine1`,
           kind: 'text',
+          autocomplete: 'shipping address-line1',
           maxLength: 200,
           span: 2,
           hint: 'delivery_notes.form.address_hint',
@@ -230,6 +233,7 @@ export function deliveryNoteForm(
           id: 'deliveryAddressLine2',
           label: `${FIELDS}.deliveryAddressLine2`,
           kind: 'text',
+          autocomplete: 'shipping address-line2',
           maxLength: 200,
           span: 2,
         },
@@ -237,13 +241,21 @@ export function deliveryNoteForm(
           id: 'deliveryPostalCode',
           label: `${FIELDS}.deliveryPostalCode`,
           kind: 'text',
+          autocomplete: 'shipping postal-code',
           maxLength: 20,
         },
-        { id: 'deliveryCity', label: `${FIELDS}.deliveryCity`, kind: 'text', maxLength: 120 },
+        {
+          id: 'deliveryCity',
+          label: `${FIELDS}.deliveryCity`,
+          kind: 'text',
+          autocomplete: 'shipping address-level2',
+          maxLength: 120,
+        },
         {
           id: 'deliveryCountryCode',
           label: `${FIELDS}.deliveryCountryCode`,
           kind: 'text',
+          autocomplete: 'shipping country',
           maxLength: 2,
           pattern: '[A-Za-z]{2}',
           hint: 'delivery_notes.form.country_hint',
@@ -270,6 +282,15 @@ export function deliveryNoteForm(
     ],
   };
 }
+
+/** Which field of the note's delivery address each part of a postal address goes to. */
+export const DELIVERY_ADDRESS_FIELDS: AddressFields<PostalAddress> = {
+  line1: 'deliveryAddressLine1',
+  line2: 'deliveryAddressLine2',
+  postalCode: 'deliveryPostalCode',
+  city: 'deliveryCity',
+  countryCode: 'deliveryCountryCode',
+};
 
 /** Each header field at the note's value; a new note starts at the company's default establishment. */
 export function deliveryNoteValues(

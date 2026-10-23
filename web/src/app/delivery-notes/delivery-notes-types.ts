@@ -251,6 +251,8 @@ export interface CustomerOption {
   name: string;
   /** The tax families the customer's regime refuses on a line. */
   excludedFamilies: TaxFamily[];
+  /** Where its goods go: its delivery address, else its billing one, which « Adresse du client » copies. */
+  deliveryAddress: PostalAddress;
 }
 
 /** One product as the picker answers it: what a line starts from. */

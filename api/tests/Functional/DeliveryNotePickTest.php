@@ -62,8 +62,25 @@ final class DeliveryNotePickTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $picks = $this->jsonList();
         self::assertCount(1, $picks);
-        self::assertSame(['id', 'number', 'name', 'excludedFamilies'], array_keys($picks[0]));
+        self::assertSame(['id', 'number', 'name', 'excludedFamilies', 'deliveryAddress'], array_keys($picks[0]));
         self::assertSame(['CLI-001', 'Boulangerie Mercier'], [$picks[0]['number'], $picks[0]['name']]);
+    }
+
+    /**
+     * Where the goods go, as the note prints it when its own delivery address is left empty: the customer's delivery
+     * address, else its billing one. The form offers it to copy, so one part is corrected rather than all typed.
+     */
+    public function testTheCustomerPickerSaysWhereTheGoodsGo(): void
+    {
+        static::getContainer()->get(ManageCustomers::class)->create($this->company, $this->customer('CLI-002', 'Atelier Ferchichi', billing: new PostalAddress('12 rue de Marseille', null, '1000', 'Tunis', 'TN'), shipping: new PostalAddress('Zone industrielle', 'Lot 4', '2013', 'Ben Arous', 'TN')), null);
+        $this->em()->flush();
+        $this->signedIn(['delivery_note.read']);
+
+        $this->getJson($this->path('customers').'?q=ferchichi');
+        self::assertSame(['line1' => 'Zone industrielle', 'line2' => 'Lot 4', 'postalCode' => '2013', 'city' => 'Ben Arous', 'countryCode' => 'TN'], $this->jsonList()[0]['deliveryAddress'] ?? null, 'its delivery address');
+
+        $this->getJson($this->path('customers').'?q=mercier');
+        self::assertSame(['line1' => null, 'line2' => null, 'postalCode' => null, 'city' => null, 'countryCode' => $this->company->getCountryCode()], $this->jsonList()[0]['deliveryAddress'] ?? null, 'none kept: its billing one');
     }
 
     /** A line starts from the same three facts here as on an invoice: what it is sold in, its price, its taxes. */
@@ -129,11 +146,11 @@ final class DeliveryNotePickTest extends ApiTestCase
         return '/api/companies/'.$this->company->getId()->toRfc4122().'/delivery-note-options/'.$subject;
     }
 
-    private function customer(string $number, string $name, bool $active = true): CustomerInput
+    private function customer(string $number, string $name, bool $active = true, ?PostalAddress $billing = null, ?PostalAddress $shipping = null): CustomerInput
     {
         return new CustomerInput(
             $number,
-            new CustomerProfile(CustomerKind::Individual, $name, null, [], null, null, null, new PostalAddress(countryCode: $this->company->getCountryCode())),
+            new CustomerProfile(CustomerKind::Individual, $name, null, [], null, null, null, $billing ?? new PostalAddress(countryCode: $this->company->getCountryCode()), $shipping),
             null,
             'standard',
             [],

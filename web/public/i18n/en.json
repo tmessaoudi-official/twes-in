@@ -300,6 +300,8 @@
       "yes": "Yes",
       "no": "No",
       "section": "Establishment",
+      "address_section": "Address",
+      "copy_company_address": "Use the company's address",
       "fields": {
         "code": "Code",
         "code_hint": "The shape the registration numbers of the company's country give it.",
@@ -1303,6 +1305,7 @@
       "postalCode": "Postal code",
       "city": "City",
       "countryCode": "Country code",
+      "shippingSameAsBilling": "Deliver to the billing address",
       "billingCity": "City",
       "taxRegime": "Tax regime",
       "defaultDiscountRate": "Default discount (%)",
@@ -1319,6 +1322,7 @@
       "identifier_hint": "Required for a business billed in the company's country.",
       "country_hint": "Two letters, such as TN or FR. Left empty, the company's country.",
       "shipping_hint": "Leave empty when goods go to the billing address.",
+      "same_address_hint": "Delivery notes then take the billing address. Untick to type another, starting from a copy of the billing one.",
       "discount_hint": "A percentage from 0 to 100, with up to three decimals.",
       "notes_hint": "For your team; never printed on documents."
     },
@@ -1952,6 +1956,7 @@
       "reference_hint": "The customer's order number, printed on the note.",
       "delivery_date_hint": "The day the goods are expected; set to the day they are handed over once delivered.",
       "address_hint": "Left empty, the customer's shipping address, else its billing address, is printed when the note is validated.",
+      "copy_customer_address": "Use the customer's address",
       "country_hint": "Two letters, such as TN.",
       "remarks_hint": "Printed on the note.",
       "notes_hint": "Kept inside the company, never printed.",

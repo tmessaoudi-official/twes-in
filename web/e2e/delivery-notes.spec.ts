@@ -250,6 +250,43 @@ test('a draft is validated and delivered in one step', async ({ page }) => {
   }
 });
 
+// Round 2: a related field offers its link. The note's address starts from where the customer's goods go, and one
+// part of it is corrected rather than all typed again.
+test('a note takes the customer’s address with one press, then one part of it is corrected', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-DNA-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    await page.goto('/delivery-notes/new');
+    await expect(page.getByTestId('delivery-note-copy-customer-address')).toHaveCount(0);
+    await page.getByTestId('delivery-note-customer').fill(customerNumber);
+    await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+    await page.getByTestId('delivery-note-copy-customer-address').click();
+    await expect(page.getByTestId('field-deliveryAddressLine1')).toHaveValue('Rue de Rome');
+    await expect(page.getByTestId('field-deliveryPostalCode')).toHaveValue('1000');
+    await expect(page.getByTestId('field-deliveryCity')).toHaveValue('Tunis');
+    await expect(page.getByTestId('field-deliveryCountryCode')).toHaveValue('TN');
+    await page.getByTestId('field-deliveryAddressLine2').fill('Entrepôt arrière');
+    await page.getByTestId('line-0-description').fill(`Adresse reprise ${run}`);
+    await page.getByTestId('line-0-quantity').fill('1');
+    await page.getByTestId('line-0-price').fill('10');
+    await choose(page, 'line-0-taxes', /19/);
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('document-action-save').click();
+    await expect(page).toHaveURL(/\/delivery-notes\/[0-9a-f-]{36}$/);
+    await page.reload();
+    await expect(page.getByTestId('field-deliveryAddressLine1')).toHaveValue('Rue de Rome');
+    await expect(page.getByTestId('field-deliveryAddressLine2')).toHaveValue('Entrepôt arrière');
+    await page.screenshot({ path: test.info().outputPath('customer-address-copied.png') });
+  } finally {
+    await retire(page, customerNumber);
+  }
+});
+
 test('the lines say what they carry in each unit as they are typed', async ({ page }) => {
   const run = Date.now().toString(36).toUpperCase();
   const customerNumber = `E2E-DNQ-${run}`;

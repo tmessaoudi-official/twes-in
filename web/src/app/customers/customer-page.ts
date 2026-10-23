@@ -33,6 +33,7 @@ import {
   customerForm,
   customerInput,
   customerValues,
+  linkShippingToBilling,
 } from './customer-forms';
 import { CustomersFacade } from './customers-facade';
 import { CustomerStatementView } from './customer-statement';
@@ -259,6 +260,12 @@ export class CustomerPage {
   constructor() {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45).
     inject(ScreenActions).declare(this.recordActions);
+    // The delivery address follows its switch on whichever form is open: a copy of the billing one, or none.
+    effect((onCleanup) => {
+      const form = this.form();
+      const link = form === null ? null : linkShippingToBilling(form);
+      onCleanup(() => link?.unsubscribe());
+    });
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();

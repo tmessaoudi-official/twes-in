@@ -20,7 +20,8 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
-import type { CompanyError, EstablishmentRow } from './company-types';
+import type { CompanyError, CompanyProfile, EstablishmentRow } from './company-types';
+import { CompanyProfileFacade } from './company-profile-facade';
 import { EstablishmentsFacade } from './establishments-facade';
 import { EstablishmentsPage } from './establishments-page';
 import { ArticleSettings } from '../products/article-settings-facade';
@@ -81,6 +82,11 @@ describe('EstablishmentsPage', () => {
     reset: vi.fn(async () => true),
     clearError: vi.fn(),
   };
+  const profile = signal<Partial<CompanyProfile> | null>(null);
+  const profileFacade = {
+    profile: profile.asReadonly(),
+    load: vi.fn<(companyId: string) => Promise<void>>(),
+  };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
@@ -110,6 +116,15 @@ describe('EstablishmentsPage', () => {
     facade.createEstablishment.mockReset().mockResolvedValue(true);
     facade.reviseEstablishment.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    profile.set(null);
+    profileFacade.load.mockReset().mockImplementation(async () =>
+      profile.set({
+        addressLine1: 'Avenue Habib Bourguiba',
+        addressLine2: null,
+        postalCode: '1001',
+        city: 'Tunis',
+      }),
+    );
 
     TestBed.configureTestingModule({
       imports: [EstablishmentsPage],
@@ -126,6 +141,7 @@ describe('EstablishmentsPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: EstablishmentsFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: CompanyProfileFacade, useValue: profileFacade },
         { provide: ArticleSettings, useValue: articleSettings },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -155,6 +171,44 @@ describe('EstablishmentsPage', () => {
       'c1',
       expect.objectContaining({ code: '001', name: 'Agence de Sfax', isDefault: false }),
     );
+  });
+
+  // Round 2: a related field offers its link. A shop's first place is usually where the company itself is.
+  it('copies the company’s address into a new establishment, still editable', async () => {
+    expect(profileFacade.load).toHaveBeenCalledWith('c1');
+    q('establishment-add')!.click();
+    await settle();
+    type('field-code', '001');
+    type('field-name', 'Dépôt');
+    type('field-addressLine2', 'Bloc B');
+    q('establishment-copy-company-address')!.click();
+    await settle();
+    expect(
+      ['addressLine1', 'addressLine2', 'postalCode', 'city'].map(
+        (id) => (q(`field-${id}`) as HTMLInputElement).value,
+      ),
+    ).toEqual(['Avenue Habib Bourguiba', '', '1001', 'Tunis']);
+    type('field-postalCode', '1002');
+    q('establishment-save')!.click();
+    await settle();
+
+    expect(facade.createEstablishment).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({
+        addressLine1: 'Avenue Habib Bourguiba',
+        addressLine2: null,
+        postalCode: '1002',
+        city: 'Tunis',
+      }),
+    );
+  });
+
+  it('offers no copy while the company’s profile holds no address', async () => {
+    profile.set({ addressLine1: null, addressLine2: null, postalCode: null, city: null });
+    q('establishment-add')!.click();
+    await settle();
+    expect(q('field-addressLine1')).not.toBeNull();
+    expect(q('establishment-copy-company-address')).toBeNull();
   });
 
   it('does not send a code the preset would refuse', async () => {

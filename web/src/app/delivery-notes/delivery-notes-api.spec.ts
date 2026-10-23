@@ -124,8 +124,25 @@ describe('DeliveryNotesApi', () => {
     // Asking for what a note names is not a search: the words are left out entirely.
     expect(resolve.request.params.getAll('ids[]')).toEqual(['k1']);
     expect(resolve.request.params.has('q')).toBe(false);
-    resolve.flush([{ id: 'k1', number: 'CLI-1', name: 'Carthage', excludedFamilies: ['vat'] }]);
+    const where = {
+      line1: 'Zone industrielle',
+      line2: null,
+      postalCode: '2013',
+      city: 'Ben Arous',
+      countryCode: 'TN',
+    };
+    resolve.flush([
+      {
+        id: 'k1',
+        number: 'CLI-1',
+        name: 'Carthage',
+        excludedFamilies: ['vat'],
+        deliveryAddress: where,
+      },
+    ]);
     expect((await named)[0]?.excludedFamilies).toEqual(['vat']);
+    // Where its goods go, which the form offers to copy into the note's own address.
+    expect((await named)[0]?.deliveryAddress).toEqual(where);
   });
 
   it('reads the issued invoice a note hands over the goods of, and the invoice line each line delivers', async () => {

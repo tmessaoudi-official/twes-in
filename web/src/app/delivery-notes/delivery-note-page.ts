@@ -15,6 +15,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
@@ -27,7 +28,9 @@ import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { StatusBadge } from '../shared/ui/status-badge';
+import { fillAddress, holdsAddress } from '../shared/form/address-fill';
 import {
+  DELIVERY_ADDRESS_FIELDS,
   deliveryNoteForm,
   deliveryNoteInput,
   deliveryNoteValues,
@@ -95,6 +98,7 @@ export const DELIVERY_NOTE_PLANNED: readonly PlannedAction[] = [
     QuantityTotalsView,
     MatButtonModule,
     MatCardModule,
+    MatIconModule,
     MatFormFieldModule,
     MatInputModule,
     RouterLink,
@@ -278,6 +282,22 @@ export class DeliveryNotePage {
     return picked !== (current?.customerId ?? null) ? 1 : 0;
   });
   protected readonly customerShown = computed(() => pickedCustomer(this.customer()));
+  /**
+   * Where the customer's goods go, offered beside the note's own address so one part is corrected rather than all
+   * typed; nothing is offered for a customer whose record holds no address.
+   */
+  protected readonly customerAddress = computed(() => {
+    const address = this.customer()?.deliveryAddress ?? null;
+    return holdsAddress(address, DELIVERY_ADDRESS_FIELDS) ? address : null;
+  });
+
+  /** Copies the customer's address into the note's, every part, each still editable and unsaved until saved. */
+  protected copyCustomerAddress(): void {
+    const form = this.form();
+    const address = this.customerAddress();
+    if (form === null || address === null) return;
+    fillAddress(form, DELIVERY_ADDRESS_FIELDS, address);
+  }
 
   /** Bumped by every value the form or the lines take, so the figures read what is typed now. */
   private readonly typed = signal(0);

@@ -13,6 +13,7 @@ import {
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
@@ -26,12 +27,17 @@ import type { ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { EstablishmentRow } from './company-types';
 import {
+  companyAddress,
+  ESTABLISHMENT_ADDRESS_FIELDS,
+  ESTABLISHMENT_ADDRESS_SECTION,
   ESTABLISHMENT_LIST,
   establishmentForm,
   establishmentFormValues,
   establishmentInput,
 } from './establishment-forms';
 import { EstablishmentsFacade } from './establishments-facade';
+import { CompanyProfileFacade } from './company-profile-facade';
+import { fillAddress, holdsAddress } from '../shared/form/address-fill';
 import { Feedback } from '../shared/feedback/feedback';
 import { ArticleDefaults } from '../products/article-defaults';
 import type { ArticleSubject } from '../shared/settings/settings-types';
@@ -43,6 +49,7 @@ import type { ArticleSubject } from '../shared/settings/settings-types';
     ArticleDefaults,
     MatButtonModule,
     MatCardModule,
+    MatIconModule,
     TranslatePipe,
     DataList,
     DataListCell,
@@ -59,6 +66,17 @@ export class EstablishmentsPage implements OnInit {
   private readonly facade = inject(EstablishmentsFacade);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
+  private readonly profile = inject(CompanyProfileFacade);
+
+  protected readonly addressSection = ESTABLISHMENT_ADDRESS_SECTION;
+  /**
+   * The company's own address, offered to an establishment's form so a shop's first place is not typed twice; nothing
+   * is offered while the company's profile holds no address.
+   */
+  protected readonly companyAddress = computed(() => {
+    const address = companyAddress(this.profile.profile());
+    return holdsAddress(address, ESTABLISHMENT_ADDRESS_FIELDS) ? address : null;
+  });
 
   /** An establishment is closed through its form rather than deleted, so editing is its one action. */
   protected readonly list = computed<ListDescriptor<EstablishmentRow>>(() => ({
@@ -143,7 +161,16 @@ export class EstablishmentsPage implements OnInit {
         this.destroyRef,
       );
       await this.facade.loadEstablishments(companyId);
+      if (this.profile.profile() === null) await this.profile.load(companyId);
     }
+  }
+
+  /** Copies the company's address into the open form, every part, each still editable and unsaved until saved. */
+  protected copyCompanyAddress(): void {
+    const form = this.form();
+    const address = this.companyAddress();
+    if (form === null || address === null) return;
+    fillAddress(form, ESTABLISHMENT_ADDRESS_FIELDS, address);
   }
 
   protected add(): void {

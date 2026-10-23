@@ -300,6 +300,8 @@
       "yes": "Oui",
       "no": "Non",
       "section": "Établissement",
+      "address_section": "Adresse",
+      "copy_company_address": "Reprendre l’adresse de l’entreprise",
       "fields": {
         "code": "Code",
         "code_hint": "La forme que lui donnent les numéros d’immatriculation du pays de la société.",
@@ -1303,6 +1305,7 @@
       "postalCode": "Code postal",
       "city": "Ville",
       "countryCode": "Code pays",
+      "shippingSameAsBilling": "Livrer à l’adresse de facturation",
       "billingCity": "Ville",
       "taxRegime": "Régime fiscal",
       "defaultDiscountRate": "Remise par défaut (%)",
@@ -1319,6 +1322,7 @@
       "identifier_hint": "Obligatoire pour une entreprise facturée dans le pays de l’entreprise.",
       "country_hint": "Deux lettres, comme TN ou FR. Laissé vide, le pays de l’entreprise.",
       "shipping_hint": "Laissez vide quand la marchandise part à l’adresse de facturation.",
+      "same_address_hint": "Les bons de livraison prennent alors l’adresse de facturation. Décochez pour en saisir une autre, à partir d’une copie de celle de facturation.",
       "discount_hint": "Un pourcentage de 0 à 100, avec trois décimales au plus.",
       "notes_hint": "Pour votre équipe ; jamais imprimé sur les documents."
     },
@@ -1952,6 +1956,7 @@
       "reference_hint": "Le numéro de commande du client, imprimé sur le bon.",
       "delivery_date_hint": "Le jour où la marchandise est attendue ; devient le jour de la remise une fois livrée.",
       "address_hint": "Laissée vide, l’adresse de livraison du client, sinon son adresse de facturation, est imprimée à la validation.",
+      "copy_customer_address": "Reprendre l’adresse du client",
       "country_hint": "Deux lettres, par exemple TN.",
       "remarks_hint": "Imprimées sur le bon.",
       "notes_hint": "Gardées dans la société, jamais imprimées.",

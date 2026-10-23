@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { AddressFields } from '../shared/form/address-fill';
 import type { FieldValue, FormDescriptor, FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
 import {
+  type CompanyProfile,
   RESET_PERIODS,
   type EstablishmentInput,
   type EstablishmentRow,
@@ -50,6 +52,36 @@ export const ESTABLISHMENT_LIST: ListDescriptor<EstablishmentRow> = {
   ],
 };
 
+/** The section holding where the establishment is, which ends with the offer to take the company's own address. */
+export const ESTABLISHMENT_ADDRESS_SECTION = 'address';
+
+/** Where the company is, in the parts an establishment keeps: an establishment keeps no country of its own. */
+export interface CompanyAddress {
+  readonly line1: string | null;
+  readonly line2: string | null;
+  readonly postalCode: string | null;
+  readonly city: string | null;
+}
+
+/** Which field of an establishment each part of the company's address goes to. */
+export const ESTABLISHMENT_ADDRESS_FIELDS: AddressFields<CompanyAddress> = {
+  line1: 'addressLine1',
+  line2: 'addressLine2',
+  postalCode: 'postalCode',
+  city: 'city',
+};
+
+/** The company's own address, as the parts an establishment's fields take. */
+export function companyAddress(profile: CompanyProfile | null): CompanyAddress | null {
+  if (profile === null) return null;
+  return {
+    line1: profile.addressLine1,
+    line2: profile.addressLine2,
+    postalCode: profile.postalCode,
+    city: profile.city,
+  };
+}
+
 /**
  * The code is checked against the shape the company's preset gives it, once the API has said what that is, and
  * shown without being editable once numbered documents carry it.
@@ -73,6 +105,21 @@ export function establishmentForm(codePattern: string, codeLocked = false): Form
             ...(codeLocked ? { readOnly: true } : {}),
           },
           { id: 'name', label: `${FIELDS}.name`, kind: 'text', required: true, maxLength: 120 },
+          { id: 'phone', label: `${FIELDS}.phone`, kind: 'tel', maxLength: 40 },
+          { id: 'email', label: `${FIELDS}.email`, kind: 'email', maxLength: 254 },
+          {
+            id: 'isDefault',
+            label: `${FIELDS}.isDefault`,
+            kind: 'checkbox',
+            hint: `${FIELDS}.isDefault_hint`,
+            span: 2,
+          },
+        ],
+      },
+      {
+        id: ESTABLISHMENT_ADDRESS_SECTION,
+        title: 'company.establishments.address_section',
+        fields: [
           {
             id: 'addressLine1',
             label: `${FIELDS}.addressLine1`,
@@ -102,15 +149,6 @@ export function establishmentForm(codePattern: string, codeLocked = false): Form
             kind: 'text',
             maxLength: 120,
             autocomplete: 'address-level2',
-          },
-          { id: 'phone', label: `${FIELDS}.phone`, kind: 'tel', maxLength: 40 },
-          { id: 'email', label: `${FIELDS}.email`, kind: 'email', maxLength: 254 },
-          {
-            id: 'isDefault',
-            label: `${FIELDS}.isDefault`,
-            kind: 'checkbox',
-            hint: `${FIELDS}.isDefault_hint`,
-            span: 2,
           },
         ],
       },

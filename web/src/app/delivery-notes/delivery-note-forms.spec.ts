@@ -45,6 +45,7 @@ const carthage: CustomerOption = {
   number: 'CLI-1',
   name: 'Carthage',
   excludedFamilies: [],
+  deliveryAddress: { line1: null, line2: null, postalCode: null, city: null, countryCode: 'TN' },
 };
 const laptop: ProductOption = {
   id: 'p1',

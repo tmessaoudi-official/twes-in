@@ -40,8 +40,21 @@
           [conflicts]="sync.conflicts()"
           (resolved)="sync.resolve(form, $event)"
           testId="establishment-form"
+          [trailIn]="addressSection"
           (submitted)="save($event)"
         >
+          @if (companyAddress()) {
+            <button
+              formTrail
+              mat-stroked-button
+              type="button"
+              data-testid="establishment-copy-company-address"
+              (click)="copyCompanyAddress()"
+            >
+              <mat-icon aria-hidden="true">content_copy</mat-icon>
+              {{ 'company.establishments.copy_company_address' | translate }}
+            </button>
+          }
           <div class="flex justify-end">
             <app-record-bar
               [changes]="sync.changes()"

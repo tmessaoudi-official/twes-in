@@ -145,6 +145,7 @@
               [form]="form"
               testId="delivery-note-form"
               leadIn="parties"
+              trailIn="delivery_address"
               [readOnly]="!editable()"
               [updated]="sync.updated()"
               [conflicts]="sync.conflicts()"
@@ -177,6 +178,18 @@
                   </p>
                 }
               </div>
+              @if (editable() && customerAddress()) {
+                <button
+                  formTrail
+                  mat-stroked-button
+                  type="button"
+                  data-testid="delivery-note-copy-customer-address"
+                  (click)="copyCustomerAddress()"
+                >
+                  <mat-icon aria-hidden="true">content_copy</mat-icon>
+                  {{ 'delivery_notes.form.copy_customer_address' | translate }}
+                </button>
+              }
             </app-descriptor-form>
           }
         </mat-card-content>

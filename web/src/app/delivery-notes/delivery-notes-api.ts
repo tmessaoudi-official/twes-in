@@ -94,6 +94,7 @@ export class DeliveryNotesApi {
         number: customer.number,
         name: customer.name,
         excludedFamilies: [...customer.excludedFamilies],
+        deliveryAddress: { ...customer.deliveryAddress },
       }));
     });
   }
