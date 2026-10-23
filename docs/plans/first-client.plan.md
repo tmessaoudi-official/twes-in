@@ -749,6 +749,9 @@ was and was not certified by execution.
   (`timestamp(0)` columns); the clock-moving suites restore it. Cause not found: if it comes back, read the merge's
   and the trade's stored moments in the failing worker's database before blaming test order.
 ### Known issues
+- A deleted draft delivery note put back from « Récemment supprimés » is not checked again against what is left of its
+  quote: after another note took the rest, the restore can deliver more than the quote (stock and billing stay once per
+  note). Refuse the restore, or recheck at validation (W5, 2026-10-23 04:08).
 - `make mutants` once graded a web mutant INVALID (« no tally, exit 1 ») whose log held `Tests 1 failed`; its verdict
   pattern matched that log 300 times in 300 in the container, and two reruns killed it. Fail-safe (an INVALID never
   counts as a kill) but unexplained: the log may still have been written after the verdict read it. Rerun before

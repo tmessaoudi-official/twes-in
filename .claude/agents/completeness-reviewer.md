@@ -151,6 +151,14 @@ mode here, not an unusual one.
    blast radius. Equally: a `TODO`, a stub, a `throw new \LogicException('not implemented')`, or a
    feature flag left off — if the change advertises a capability that is not reachable, say so.
 
+## A finding is a class
+
+The developer judges by « checked everywhere »: for each behaviour the change fixes, write the
+property in one sentence, find its shared mechanism, enumerate every member by `git grep` (search
+pasted), and confirm each is fixed or named as a plan row, with a gate or test that reds on a new
+member. Check the neighbouring axes: fr / en / ar texts, phone, keyboard, a second tab, sign-out and
+company switch, the import and the API reaching the same rule.
+
 ## Evidence-grade angle
 
 - Read CLAUDE.md's *current* text before asserting a doc row is unmet — the author may have updated

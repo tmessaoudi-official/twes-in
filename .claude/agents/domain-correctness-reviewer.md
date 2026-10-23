@@ -93,6 +93,14 @@ is a wrong number on a legal document, an unbalanced ledger, and in the EU a com
     already the next day in Tunis. A scheduler (subscriptions are computed from dates on every
     request, never by a job) must be idempotent if one is ever added.
 
+## The shop's own flows, both ways
+
+Walk every chain the diff touches in both directions and in parts: a quote to its delivery notes on
+different days and to one or several invoices; an invoice to its delivery note; a credit note back to
+its invoice; a product to its stock and back. Goods leave stock once and are billed once whichever way
+was taken; a partial delivery leaves the right quantity owed; a discount, a raised price and a
+withholding come out the same on the screen, the PDF and Factur-X.
+
 ## Regression angle
 
 - Which existing tests cover the changed code, and were they **executed**? Run them and paste output.

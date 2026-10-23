@@ -75,6 +75,13 @@ Never run two of these side by side, and never one beside a gate (`uptime` first
    through compose to the process; flag each one reachable through an image layer, `docker inspect`, a
    log, an error report (`ScrubPersonalData`), or a file wider than 600.
 
+## Recovery is part of the path
+
+For every way a shop can lose access or data (a forgotten password, a lost authenticator, a dead disk,
+a failed update), the way back exists, is written in docs/RUNBOOK.md, and was run (or is marked
+untried). `app:mfa:replace` is the lost-authenticator way; a recovery step that only an operator on
+screen could take is a finding (the operator's reset of a second factor is refused).
+
 ## Evidence-grade angle
 
 - A finding is a path and a step: « `twes update` killed after `migrate` and before the health check

@@ -716,6 +716,10 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   FrankenPHP worker thread keeps the memory earlier requests took, so the real size read 123 MB for 39 rows. In development
   the profiler's collectors (Doctrine's queries, Monolog's records) hold most of a long request; they are capped now, and
   production keeps none, so a development peak is an upper bound, never production's figure (2026-10-21).
+- esbuild keeps one copy of a package, made of every export the whole app uses, in the chunk its first importer
+  needs: a root provider importing `MatPaginatorIntl` put Material's paginator, its select and all of `@angular/forms`
+  on the first page, so any lazy screen using one more forms export grew it. Provide such a class where it is drawn
+  (`DataList`'s `providers`), and diff the first page's inputs against master's stats before trimming (2026-10-23).
 - `make check` on a texts file (`web/public/i18n/**`) runs no spec that reads it: French punctuation (U+00A0 before « : »,
   U+202F before « ; ? ! ») and key parity live in `i18n-parity.spec.ts`, which only `make gate-web` runs. After any texts
   change, run the web gate before committing: r35's « depuis : » passed `make check` and reddened the gate (2026-10-22).

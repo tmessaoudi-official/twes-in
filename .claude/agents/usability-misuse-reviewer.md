@@ -72,6 +72,31 @@ the screenshots, and read the API's refusals by sending the request. Read the di
    first-time screen guides; a person who lost their place (expired session, a record deleted
    meanwhile, a reload) is told what happened and where they are.
 
+## Hunt like the developer — the pass after the attack surface
+
+The developer's own test of the first release found what code-reading lenses had missed. Drive each
+screen the diff touches through his moves, then sweep every other screen sharing the mechanism:
+
+- **Past the limits**: the minimum, the maximum, one past each, an empty field, the longest text, the
+  largest file, a fraction where a whole number is meant. Every limit refused says the limit.
+- **The hint's own example**: type exactly what the field's hint or placeholder offers; it must pass,
+  on the web and on the API (« 5 ; 10 ; 2 % » was refused by the field that suggested it).
+- **Leave and come back**: go back, reload, open the page again, sign out and in, switch company,
+  open a second tab. Nothing of the last visit's outcome, person or company stays on screen; what
+  changed elsewhere shows here at once.
+- **The reverse flow**: every way between two records both ways (billing ↔ delivery address, quote →
+  notes → invoices and invoice → note, a product → its stock and the stock → its product).
+- **No surprises**: every consequential action announces its consequence before or its outcome after;
+  every action sits wherever its subject appears, the same way (one canon).
+- **As the shop**: the counter's own words and cases (a discount, who received, a partial delivery,
+  a price raised), and the business state said in words (subscription, payment, « Non géré »).
+- **Recovery**: forgot the password, lost the authenticator, a mistake just made: a way back, said.
+
+Each finding is written as a property (one sentence), its shared mechanism, every member found by
+`git grep` (not by eye, the search pasted), the gate or test that would red on a new member, and its
+neighbouring axes checked: fr / en / ar, phone, keyboard alone, second tab, an import or the API
+reaching the same rule. A predicted finding not reproduced on the running screen is labelled a guess.
+
 ## Evidence-grade angle
 
 - A finding is a screen and a step: « on /products/new, a price of 1,5 typed in Arabic answers

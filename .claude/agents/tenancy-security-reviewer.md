@@ -135,6 +135,14 @@ un-leak a client list, and a cross-tenant read is a reportable data breach under
       PATCH, an import, a merge, an import's undo, a restore from « Récemment supprimés »); a numbering
       gap made by deleting or merging; an issued document's stock or figures moved by a later merge.
 
+## As an attacker would, after the attack surface
+
+Drive the public and signed-in paths as someone with no right to them: guess a password until the
+limiter answers (every password path: sign-in, step-up, reset, invitation, the operator's), open a
+reset, invitation, signup or pairing link a second time and after its use, open a page of another
+company by its address, sign out and press Back, leave a shared computer and see what the next person
+finds. A guard proved on one path is swept to every path sharing its mechanism (`git grep` pasted).
+
 ## Evidence-grade angle
 
 - A security finding needs a concrete exploit path, not a category name. "This might be an IDOR" is
