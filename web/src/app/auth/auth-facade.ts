@@ -4,6 +4,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Session } from '../shared/session/session';
+import { SessionData } from '../shared/session/session-data';
 import { CustomerScreenHold } from '../shared/customer-view/customer-screen-hold';
 import { type StepUpOutcome, StepUpProof } from '../shared/step-up/step-up-proof';
 import { AuthApi, AuthRefused } from './auth-api';
@@ -36,6 +37,8 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
   private readonly api = inject(AuthApi);
   private readonly passkeyClient = inject(PasskeyClient);
   private readonly unsaved = inject(UnsavedChanges);
+  /** Told every session this holds, so what the facades kept for the last one is forgotten with it. */
+  private readonly session = inject(SessionData);
   private readonly stateSignal = signal<SignedInState | null>(null);
   private readonly statusSignal = signal<AuthStatus>('unknown');
 
@@ -378,6 +381,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
   }
 
   private signedIn(state: SignedInState): void {
+    this.session.heard(state);
     this.stateSignal.set(state);
     this.statusSignal.set('authenticated');
   }
@@ -390,6 +394,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
   }
 
   private signedOut(): void {
+    this.session.heard(null);
     this.stateSignal.set(null);
     this.statusSignal.set('anonymous');
   }

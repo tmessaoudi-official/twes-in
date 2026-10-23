@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import type { FieldRefusal } from '../shared/form/field-refusals';
@@ -25,6 +25,7 @@ import type {
   ProductTracking,
   ProductVendor,
 } from './products-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The products of the company being worked in, their categories, the form's options and the company's fields for products. */
 @Injectable({ providedIn: 'root' })
@@ -32,18 +33,18 @@ export class ProductsFacade {
   private readonly api = inject(ProductsApi);
   private readonly fields = inject(CustomFieldsApi);
   private readonly settings = inject(SettingsApi);
-  private readonly productsSignal = signal<readonly ProductRow[]>([]);
-  private readonly totalSignal = signal(0);
+  private readonly productsSignal = sessionSignal<readonly ProductRow[]>([]);
+  private readonly totalSignal = sessionSignal(0);
   private readonly pageRequests = new LatestRequest();
-  private readonly categoriesSignal = signal<readonly ProductCategoryRow[]>([]);
-  private readonly optionsSignal = signal<ProductOptions | null>(null);
-  private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
-  private readonly productSignal = signal<ProductRow | null>(null);
-  private readonly substitutionGroupsSignal = signal<readonly string[]>([]);
-  private readonly defaultUnitCodeSignal = signal<string | null>(null);
-  private readonly defaultTrackingSignal = signal<ProductTracking>('none');
+  private readonly categoriesSignal = sessionSignal<readonly ProductCategoryRow[]>([]);
+  private readonly optionsSignal = sessionSignal<ProductOptions | null>(null);
+  private readonly customFieldsSignal = sessionSignal<readonly CustomFieldDefinition[]>([]);
+  private readonly productSignal = sessionSignal<ProductRow | null>(null);
+  private readonly substitutionGroupsSignal = sessionSignal<readonly string[]>([]);
+  private readonly defaultUnitCodeSignal = sessionSignal<string | null>(null);
+  private readonly defaultTrackingSignal = sessionSignal<ProductTracking>('none');
   private readonly state = requestState(codeOf);
-  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
 
   readonly products = this.productsSignal.asReadonly();
   /** How many products the last search found in all, the page shown being one part of them. */

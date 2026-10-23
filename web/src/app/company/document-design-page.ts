@@ -36,6 +36,7 @@ import { ColourField } from '../shared/form/colour-field';
 import { RecordBar } from '../shared/form/record-bar';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { SettingRefusalLines } from '../shared/settings/setting-refusal-lines';
 import { DocumentDesignFacade } from './document-design-facade';
 import { DEFAULT_DESIGN, designChanges, logoRoom, savedDesign } from './document-design-forms';
 import {
@@ -72,6 +73,7 @@ export const PREVIEW_DELAY_MS = 300;
     ColourField,
     Label,
     RecordBar,
+    SettingRefusalLines,
   ],
   templateUrl: './document-design-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -92,6 +94,8 @@ export class DocumentDesignPage implements OnInit {
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
+  protected readonly rows = this.settings.rows;
+  protected readonly refusals = this.settings.refusals;
   protected readonly picture = this.design.picture;
   protected readonly previewState = this.design.state;
 

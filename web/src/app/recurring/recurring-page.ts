@@ -143,6 +143,8 @@ export class RecurringPage implements OnInit {
     filters: [
       {
         id: 'state',
+        // Several states at once: « Active » and « En pause » together are what still runs.
+        multiple: true,
         label: 'recurring.columns.state',
         value: (row) => recurringState(row),
         options: (['active', 'paused', 'ended'] as const).map((value) => ({

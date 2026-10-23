@@ -29,6 +29,14 @@
               {{ 'invoices.statuses.' + status | translate }}
             </app-status-badge>
           }
+          @if (invoice.delivery !== 'none') {
+            <app-status-badge
+              [tone]="deliveryTones[invoice.delivery]"
+              data-testid="invoice-delivery"
+            >
+              {{ 'deliveries.statuses.' + invoice.delivery | translate }}
+            </app-status-badge>
+          }
           @if (isCreditNote()) {
             <span>{{ 'invoices.types.credit_note' | translate }}</span>
           }
@@ -393,6 +401,50 @@
                 | translate: { currency: options()?.currency }
             }}
           </p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (deliveredBy().length > 0) {
+    <mat-card data-testid="invoice-deliveries">
+      <mat-card-content>
+        <div class="flex flex-col gap-2">
+          <h2 class="text-xl font-semibold">{{ 'deliveries.card.title' | translate }}</h2>
+          <ul class="flex flex-col gap-1">
+            @for (note of deliveredBy(); track note.deliveryNoteId; let i = $index) {
+              <li
+                class="flex flex-wrap items-center gap-2"
+                [attr.data-testid]="'invoice-delivered-by-' + i"
+              >
+                <a [routerLink]="['/delivery-notes', note.deliveryNoteId]" class="underline">{{
+                  note.number ?? ('deliveries.card.draft' | translate)
+                }}</a>
+                <span class="text-sm text-on-surface-variant">{{
+                  'delivery_notes.statuses.' + note.status | translate
+                }}</span>
+              </li>
+            }
+          </ul>
+          <ul class="flex flex-col gap-1 tabular-nums">
+            @for (line of deliveries(); track line.lineId; let i = $index) {
+              <li class="flex flex-col" [attr.data-testid]="'invoice-delivery-line-' + i">
+                <bdi class="font-medium">{{ line.description }}</bdi>
+                <span class="text-sm text-on-surface-variant">{{
+                  'invoice_deliveries.figures'
+                    | translate
+                      : {
+                          quantity: line.quantity | amount: null,
+                          returned: line.returned | amount: null,
+                          onNotes: line.onNotes | amount: null,
+                          delivered: line.delivered | amount: null,
+                          left: line.left | amount: null,
+                        }
+                }}</span>
+              </li>
+            }
+          </ul>
+          <p class="text-xs opacity-70">{{ 'invoice_deliveries.hint' | translate }}</p>
         </div>
       </mat-card-content>
     </mat-card>

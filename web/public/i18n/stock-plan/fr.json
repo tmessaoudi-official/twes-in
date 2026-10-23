@@ -283,7 +283,10 @@
         "resumed": "{{count}} {count, plural, one {modification reprise} other {modifications reprises}}.",
         "dropped": "Modifications reprises, sauf sur {{count}} {count, plural, one {forme enregistrée} other {formes enregistrées}} entre-temps par quelqu’un d’autre.",
         "abandoned": "Les modifications gardées dans ce navigateur sont abandonnées."
-      }
+      },
+      "remove_floor_title": "Supprimer cet étage ?",
+      "remove_floor_message": "L’étage « {{name}} » disparaît du plan, avec les murs, rayonnages et zones dessinés dessus : rien ne les redessine. Les emplacements de stock restent, avec leur stock.",
+      "keep_floor": "Garder l’étage"
     }
   }
 }

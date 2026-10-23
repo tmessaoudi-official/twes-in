@@ -23,7 +23,8 @@ import { FiscalFacade } from '../fiscal/fiscal-facade';
 import type { UnitRow } from '../fiscal/fiscal-types';
 import { ArticleDefaults } from './article-defaults';
 import { ArticleSettings } from './article-settings-facade';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
 import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
@@ -60,6 +61,7 @@ describe('ArticleDefaults', () => {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: signal([]).asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     save: vi.fn(),
@@ -243,6 +245,31 @@ describe('ArticleDefaults', () => {
     q('article-defaults-reset-article.default_unit')!.click();
     expect(facade.reset).toHaveBeenCalledWith('c1', { productId: 'p1' }, 'article.default_unit');
     expect(q('article-defaults-error')?.textContent).toContain('Valeur refusée');
+  });
+
+  it('says a reset gave the value up, naming it, and puts it back on the version the reset left', async () => {
+    rows.set([
+      {
+        ...unit,
+        levels: [...unit.levels, { level: 'product', value: 'KGM' }],
+        versions: { ...unit.versions, product: 2 },
+      },
+    ]);
+    await open({ productId: 'p1' });
+
+    q('article-defaults-reset-article.default_unit')!.click();
+    await fixture.whenStable();
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    expect(said).toEqual([
+      expect.objectContaining({ key: 'settings.overrides.reset_done', action: expect.anything() }),
+    ]);
+
+    rows.set([unit]);
+    said[0].action!.run();
+    await fixture.whenStable();
+    expect(facade.save).toHaveBeenCalledWith('c1', { productId: 'p1' }, [
+      { key: 'article.default_unit', value: 'KGM', version: 0 },
+    ]);
   });
 
   it('shows a reader the values without a way to change them', async () => {

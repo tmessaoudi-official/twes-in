@@ -64,6 +64,7 @@ describe('FinishSignupPage', () => {
     loadAvailability: vi.fn(),
     loadLink: vi.fn(),
     complete: vi.fn(),
+    forget: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -169,5 +170,13 @@ describe('FinishSignupPage', () => {
 
     expect(query('signup-link-error')?.textContent).toContain('Lien invalide');
     expect(query('signup-finish-form')).toBeNull();
+    expect(query('signup-finish-back')?.getAttribute('href')).toBe('/login');
+  });
+
+  it('leads back to the sign-in from the form too, for whoever opened the link and changed their mind', async () => {
+    const { query } = await render();
+
+    expect(query('signup-finish-form')).not.toBeNull();
+    expect(query('signup-finish-back')?.getAttribute('href')).toBe('/login');
   });
 });

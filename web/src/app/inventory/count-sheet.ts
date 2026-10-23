@@ -1,8 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { minus } from '../shared/documents/per-unit';
 import { addCount } from '../shared/scan/scan-lines';
 import { QUANTITY_PATTERN } from './inventory-forms';
-import type { StockLocationRow, StockMovementInput, StockProductOption } from './inventory-types';
+import type {
+  CountContext,
+  StockLocationRow,
+  StockMovementInput,
+  StockProductOption,
+} from './inventory-types';
+import { sumQuantities } from './stock-quantities';
 
 /**
  * One product — or one lot of a tracked product — counted at a location in count mode (docs/SPEC.md § 7, 2026-09-23
@@ -132,4 +139,105 @@ export function countGroups(
     groups.set(line.locationId, entries);
   });
   return [...groups].map(([locationId, entries]) => ({ locationId, entries }));
+}
+
+/** What a count at one place would change, said on its line before anything is recorded. */
+export interface CountEffect {
+  /** What is recorded there now: of the lot named, else of every lot there. */
+  readonly expected: string;
+  /** The count less what is expected, signed; null while the count is not a quantity yet. */
+  readonly difference: string | null;
+  readonly direction: 'up' | 'down' | 'same' | null;
+  /** The product's stock at every other place that holds some, its lots together. */
+  readonly elsewhere: readonly { readonly locationId: string; readonly quantity: string }[];
+  /**
+   * Nothing of the product is recorded at this place and it is not the product's home, while the product is kept
+   * elsewhere: recording adds the count here and takes nothing from where it was. Said, never refused, since finding
+   * goods in a new place is a real count.
+   */
+  readonly stray: boolean;
+  /** Where the product lives, which a stray count names. */
+  readonly homeLocationIds: readonly string[];
+  /** The lot a count would open, the product never having had it; null when the lot is known or none is named. */
+  readonly newLot: string | null;
+}
+
+/** What is counted, where, and of which lot. */
+export interface Counting {
+  readonly locationId: string;
+  readonly lotCode: string;
+  readonly counted: string;
+  readonly tracking: StockProductOption['tracking'];
+}
+
+/**
+ * What a count would change, from what the API says of the product: what is expected here, the difference, what is
+ * elsewhere, and whether the place or the lot is new to the product. Null while there is no place to say it of. The lot
+ * is matched exactly as the API keeps it, its typed ends trimmed and nothing folded.
+ */
+export function countEffect(
+  context: CountContext,
+  locations: readonly StockLocationRow[],
+  counting: Counting,
+): CountEffect | null {
+  const place = counting.locationId;
+  if (place === '') return null;
+  const lot = counting.tracking === 'none' ? '' : counting.lotCode.trim();
+  const here = context.places.filter((row) => row.locationId === place);
+  const expected = sumQuantities(
+    here.filter((row) => lot === '' || row.lotCode === lot).map((row) => row.quantity),
+  );
+  const counted = counting.counted.trim();
+  const difference = QUANTITY.test(counted) ? minus(counted, expected) : null;
+
+  const totals = new Map<string, string[]>();
+  for (const row of context.places) {
+    if (row.locationId === place) continue;
+    totals.set(row.locationId, [...(totals.get(row.locationId) ?? []), row.quantity]);
+  }
+  const elsewhere = [...totals]
+    .map(([locationId, quantities]) => ({ locationId, quantity: sumQuantities(quantities) }))
+    .filter((each) => !isNought(each.quantity));
+
+  const heldHere = !isNought(sumQuantities(here.map((row) => row.quantity)));
+  const stray =
+    !heldHere &&
+    !atHome(place, context.homeLocationIds, locations) &&
+    (elsewhere.length > 0 || context.homeLocationIds.length > 0);
+  const newLot = lot !== '' && !context.places.some((row) => row.lotCode === lot) ? lot : null;
+
+  return {
+    expected,
+    difference,
+    direction: difference === null ? null : directionOf(difference),
+    elsewhere,
+    stray,
+    homeLocationIds: context.homeLocationIds,
+    newLot,
+  };
+}
+
+/** Whether a place is one the product lives at, or under one: a rack answers for its bins. */
+function atHome(
+  place: string,
+  homes: readonly string[],
+  locations: readonly StockLocationRow[],
+): boolean {
+  const parents = new Map(locations.map((location) => [location.id, location.parentId]));
+  const seen = new Set<string>();
+  for (let at: string | null | undefined = place; at; at = parents.get(at)) {
+    if (homes.includes(at)) return true;
+    if (seen.has(at)) return false;
+    seen.add(at);
+  }
+  return false;
+}
+
+function isNought(quantity: string): boolean {
+  return /^-?0*(?:\.0*)?$/.test(quantity);
+}
+
+function directionOf(difference: string): 'up' | 'down' | 'same' {
+  if (isNought(difference)) return 'same';
+  return difference.startsWith('-') ? 'down' : 'up';
 }

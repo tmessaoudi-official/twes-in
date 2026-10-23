@@ -137,15 +137,36 @@ describe('ProductLabelsSheetPage', () => {
     fixture.detectChanges();
     expect(all('product-label')).toHaveLength(6);
 
-    // Never fewer than one of each, never more than the ceiling the field says.
-    copies.value = '0';
+    q('product-labels-print')!.click();
+    expect(print).toHaveBeenCalledTimes(1);
+  });
+
+  // A refusal said, never a silent clamp: « 150 » printed 100 and « 0 » printed one, with nothing said either time.
+  it.each([
+    ['150', 'form.errors.max'],
+    ['0', 'form.errors.min'],
+    ['', 'form.errors.required'],
+    ['2.5', 'form.errors.pattern'],
+  ])('keeps « %s » in the field, says why under it and prints nothing', async (typed, said) => {
+    await open(['p1', 'p2']);
+    const copies = q('product-labels-copies') as HTMLInputElement;
+    copies.value = '3';
     copies.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    expect(all('product-label')).toHaveLength(2);
+
+    copies.value = typed;
+    copies.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(copies.value).toBe(typed);
+    // The sheet keeps the last count it could print until the field holds another.
+    expect(all('product-label')).toHaveLength(6);
     expect(copies.getAttribute('max')).toBe('100');
 
     q('product-labels-print')!.click();
-    expect(print).toHaveBeenCalledTimes(1);
+    fixture.detectChanges();
+    expect(print).not.toHaveBeenCalled();
+    expect(q('product-labels-copies-error')?.textContent).toContain(said);
+    expect(document.activeElement).toBe(copies);
   });
 
   it('prints nothing when no product selected has a code of its own', async () => {

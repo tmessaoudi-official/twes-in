@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   SettingChangesSettingChangesWriteSettingChangesCompanyRecordReviseValidationSettingChangesWriteSettingChangesCompanyRecordRevise as SettingChangesBody,
@@ -21,21 +21,35 @@ import type {
 import { SILENT } from '../feedback/activity-interceptor';
 import { isRecordChanged } from '../errors/record-changed';
 import { refusedFor } from '../errors/said-already';
+import type { FieldRefusal } from '../form/field-refusals';
+import { TextsParts } from '../i18n/texts-part';
 
 /** A preference written as it is clicked is quiet: nobody waits for it, so it never shows the activity bar. */
 const quietly = (quiet: boolean) => new HttpContext().set(SILENT, quiet);
 
-/** Thrown when the API refuses; carries the code the UI translates. */
+/**
+ * Thrown when the API refuses; carries the code the UI translates and, for values it would not store, each refused
+ * setting on the form field that shows it, with the reason and parameters its words take.
+ */
 export class SettingsRefused extends Error {
-  constructor(readonly code: SettingsError) {
+  constructor(
+    readonly code: SettingsError,
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
+
+/** What a failed settings write refused, each on its setting's field; none for any other failure. */
+export const refusalsOf = (error: unknown): readonly FieldRefusal[] =>
+  error instanceof SettingsRefused ? error.refusals : [];
 
 /** The HTTP edge of the settings engine: the only code here that knows its endpoints and generated types. */
 @Injectable({ providedIn: 'root' })
 export class SettingsApi {
   private readonly http = inject(HttpClient);
+  // Asked for only when a refusal is to be said: most screens reading a chain never need the texts.
+  private readonly injector = inject(Injector);
 
   /** A chain as the caller sees it, or as the named customer or customer group does. */
   async chain(
@@ -43,7 +57,7 @@ export class SettingsApi {
     chain: SettingChain,
     subject?: SettingSubject,
   ): Promise<SettingRow[]> {
-    return this.guard(async () =>
+    const rows = await this.guard(async () =>
       (
         await firstValueFrom(
           this.http.get<SettingSettingRead[]>(this.path(companyId), {
@@ -52,6 +66,9 @@ export class SettingsApi {
         )
       ).map(toRow),
     );
+    // A field with a pattern says its refusal before it saves, in the words a save's refusal is said in.
+    if (rows.some((row) => row.patternReason)) await this.openRefusalTexts();
+    return rows;
   }
 
   /**
@@ -129,6 +146,19 @@ export class SettingsApi {
     );
   }
 
+  /**
+   * Texts that could not be fetched (the network gone between the answer and the fetch) neither hide the refusal nor
+   * fail the read: a field whose reason has no words yet says « Valeur refusée. » (`DescriptorForm.showRefused`), and
+   * the next refusal fetches them again (`TextsParts` keeps no failed fetch).
+   */
+  private async openRefusalTexts(): Promise<void> {
+    const { SETTING_REFUSAL_TEXTS } = await import('./setting-refusals');
+    await this.injector
+      .get(TextsParts)
+      .open(SETTING_REFUSAL_TEXTS)
+      .catch(() => undefined);
+  }
+
   private path(companyId: string): string {
     return `/api/companies/${encodeURIComponent(companyId)}/settings`;
   }
@@ -141,7 +171,10 @@ export class SettingsApi {
         throw refusedFor(error, new SettingsRefused('not_found'));
       }
       if (error instanceof HttpErrorResponse && (error.status === 400 || error.status === 422)) {
-        throw refusedFor(error, new SettingsRefused('invalid'));
+        const { settingRefusalsIn } = await import('./setting-refusals');
+        const refusals = settingRefusalsIn(error.error);
+        if (refusals.length > 0) await this.openRefusalTexts();
+        throw refusedFor(error, new SettingsRefused('invalid', refusals));
       }
       if (
         error instanceof HttpErrorResponse &&
@@ -182,5 +215,6 @@ function toRow(raw: SettingSettingRead): SettingRow {
     max: raw.max ?? null,
     maxLength: raw.maxLength ?? null,
     pattern: raw.pattern ?? null,
+    patternReason: raw.patternReason ?? null,
   };
 }

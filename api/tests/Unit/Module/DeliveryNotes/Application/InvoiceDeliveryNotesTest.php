@@ -59,6 +59,7 @@ use App\Tests\Support\InMemorySourceDeliveryNoteLines;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\KeptNames;
+use App\Tests\Support\NoQuotesToDeliver;
 use App\Tests\Support\ShelfLinePrices;
 use App\Tests\Support\ShippedDepositDeductions;
 use App\Tests\Support\ShippedFiscalPresets;
@@ -99,7 +100,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         // The notes are held while they are read, as the database holds their rows.
         $this->notes->transactions = $this->transactions;
         $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new DeliveryNoteRoom(new InMemorySourceDeliveryNoteLines(), $this->invoices), ShippedDepositDeductions::of($this->invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())), ShippedFiscalPresets::presets(), new InMemoryRecordVersions(), new ParameterListLimits([ListLimits::DOCUMENT_LINES => 1000]));
-        $this->invoicing = new InvoiceDeliveryNotes($this->notes, new RepositoryInvoicedLines($this->invoices), new ManagedInvoiceDrafts($manage, $this->invoices), $this->transactions, $this->audit, $this->clock);
+        $this->invoicing = new InvoiceDeliveryNotes($this->notes, new RepositoryInvoicedLines($this->invoices), new ManagedInvoiceDrafts($manage, $this->invoices), $this->transactions, $this->audit, $this->clock, NoQuotesToDeliver::discounts($this->notes, new RepositoryInvoicedLines($this->invoices)));
         $this->customer = $this->customer($this->company);
     }
 

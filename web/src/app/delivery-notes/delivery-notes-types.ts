@@ -138,6 +138,16 @@ export interface DeliveryNoteLine {
   productTracking: ProductTracking | null;
   /** The lot or serial handed over, for a product tracked by one. */
   lotCode: string | null;
+  /**
+   * The accepted quote's line this line delivers, which bills it at the price and discount the customer accepted;
+   * absent or null for a line of the note's own. Sent back as read, so a revision keeps the link.
+   */
+  sourceQuoteLineId?: string | null;
+  /**
+   * The issued invoice's line whose goods this line hands over: that invoice billed them and took them out of stock,
+   * so the line moves no stock and is never invoiced. Absent or null otherwise; sent back as read on a revision.
+   */
+  sourceInvoiceLineId?: string | null;
   /** The line's net amount at the currency's scale, computed by the API on every read. */
   net: string;
 }
@@ -159,6 +169,23 @@ export interface CarryingInvoice {
   invoiceId: string;
   number: string | null;
   status: 'draft' | 'issued' | 'partially_paid' | 'paid';
+}
+
+/** The quote a note delivers, as the note names it: by its number, which a sent quote always has. */
+export interface DeliveredQuote {
+  quoteId: string;
+  number: string | null;
+}
+
+/** The issued invoice whose goods a note hands over, as the note names it: by its number. */
+export interface DeliveredInvoice {
+  invoiceId: string;
+  number: string | null;
+}
+
+/** Whether the note hands over an issued invoice's goods, which that invoice billed: such a note is never invoiced. */
+export function deliversInvoice(note: Pick<DeliveryNoteRow, 'lines'> | null | undefined): boolean {
+  return (note?.lines ?? []).some((line) => (line.sourceInvoiceLineId ?? '') !== '');
 }
 
 export interface DeliveryNoteRow {
@@ -190,6 +217,10 @@ export interface DeliveryNoteRow {
   total: string;
   /** The invoices carrying the note, oldest first; none when the person may not open invoices. */
   invoices: CarryingInvoice[];
+  /** The accepted quote the note delivers lines of; null when it delivers none, or the person may not open quotes. */
+  quote: DeliveredQuote | null;
+  /** The issued invoice whose goods it hands over; null when none, or the person may not open invoices. */
+  invoice: DeliveredInvoice | null;
 }
 
 export interface DeliveryNoteInput {

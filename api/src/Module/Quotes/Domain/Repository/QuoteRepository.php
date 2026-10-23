@@ -38,6 +38,16 @@ interface QuoteRepository
     /** The same, its row held until the transaction this runs in ends; outside a transaction it refuses. */
     public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Quote;
 
+    /**
+     * The company's quotes holding any of these lines, in id order; with `$locked`, their rows held until the transaction
+     * this runs in ends, in that order, so two requests holding the same quotes wait for each other rather than deadlock.
+     *
+     * @param list<Uuid> $lineIds
+     *
+     * @return list<Quote>
+     */
+    public function ofLineIdsInCompany(array $lineIds, Uuid $companyId, bool $locked): array;
+
     /** Whether a quote of the company already carries this number. */
     public function numberTaken(Uuid $companyId, string $number): bool;
 

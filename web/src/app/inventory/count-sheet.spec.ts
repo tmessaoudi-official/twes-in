@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  countEffect,
   countInputs,
   countLine,
   locationScanned,
@@ -141,5 +142,77 @@ describe('the count sheet', () => {
     expect(countInputs(lines).map((input) => input.locationId)).toEqual(['l1', 'l2']);
     // A line scanned before any location was known cannot be recorded anywhere.
     expect(readyToRecord({ ...lines[0], locationId: '' })).toBe(false);
+  });
+});
+
+describe('what a count would change', () => {
+  const rack = location('rack', 'R1');
+  const bin = { ...location('bin', 'R1-1'), parentId: 'rack' };
+  const shelf = location('shelf', 'R2');
+  const empty = location('empty', 'R3');
+  const places = [rack, bin, shelf, empty];
+  const screwsKept = {
+    productId: 'p1',
+    places: [
+      { locationId: 'rack', lotCode: null, quantity: '4.000' },
+      { locationId: 'shelf', lotCode: null, quantity: '10.000' },
+    ],
+    homeLocationIds: ['rack'],
+  };
+  const glueKept = {
+    productId: 'p3',
+    places: [
+      { locationId: 'shelf', lotCode: 'L-1', quantity: '3.000' },
+      { locationId: 'shelf', lotCode: 'L-2', quantity: '0.000' },
+    ],
+    homeLocationIds: [],
+  };
+  const counting = { locationId: 'rack', lotCode: '', counted: '6', tracking: 'none' as const };
+
+  it('says what is expected here, the difference, and what is elsewhere', () => {
+    expect(countEffect(screwsKept, places, counting)).toEqual({
+      expected: '4.000',
+      difference: '2.000',
+      direction: 'up',
+      elsewhere: [{ locationId: 'shelf', quantity: '10.000' }],
+      stray: false,
+      homeLocationIds: ['rack'],
+      newLot: null,
+    });
+    expect(countEffect(screwsKept, places, { ...counting, counted: '1' })?.direction).toBe('down');
+    expect(countEffect(screwsKept, places, { ...counting, counted: '4' })?.direction).toBe('same');
+    expect(countEffect(screwsKept, places, { ...counting, counted: '' })?.difference).toBeNull();
+  });
+
+  it('warns of a count where nothing is kept and the product does not live', () => {
+    const there = countEffect(screwsKept, places, { ...counting, locationId: 'empty' });
+    expect(there?.stray).toBe(true);
+    expect(there?.expected).toBe('0.000');
+    expect(there?.elsewhere.map((each) => each.locationId)).toEqual(['rack', 'shelf']);
+    // A bin under the product's rack is at home: counting goods there is no stray.
+    expect(countEffect(screwsKept, places, { ...counting, locationId: 'bin' })?.stray).toBe(false);
+    // A product never kept anywhere and living nowhere is a first count, not a stray one.
+    const first = { productId: 'p9', places: [], homeLocationIds: [] };
+    expect(countEffect(first, places, { ...counting, locationId: 'empty' })?.stray).toBe(false);
+  });
+
+  it('counts a lot against that lot, and names a lot the product never had', () => {
+    const lots = { ...counting, locationId: 'shelf', tracking: 'lot' as const };
+    expect(countEffect(glueKept, places, { ...lots, lotCode: 'L-1' })).toMatchObject({
+      expected: '3.000',
+      newLot: null,
+    });
+    // An emptied lot is still the product's own.
+    expect(countEffect(glueKept, places, { ...lots, lotCode: ' L-2 ' })?.newLot).toBeNull();
+    expect(countEffect(glueKept, places, { ...lots, lotCode: 'l-1' })?.newLot).toBe('l-1');
+    expect(countEffect(glueKept, places, { ...lots, lotCode: 'L-9' })).toMatchObject({
+      expected: '0.000',
+      newLot: 'L-9',
+      stray: false,
+    });
+  });
+
+  it('says nothing before the place is known', () => {
+    expect(countEffect(screwsKept, places, { ...counting, locationId: '' })).toBeNull();
   });
 });

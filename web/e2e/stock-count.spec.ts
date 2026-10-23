@@ -51,6 +51,17 @@ test('count mode tallies what is scanned at a location and records it as the sto
     await expect(toast(page)).toContainText('Comptage enregistré');
     await expect(page.getByTestId('stock-count-empty')).toBeVisible();
 
+    // Counted again, the line says what is recorded there and what recording would change, before anything is sent.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scan(page, code);
+    await expect(page.getByTestId('stock-count-0-effect-expected')).toContainText('Attendu ici');
+    await expect(page.getByTestId('stock-count-0-effect-expected')).toContainText('2');
+    await expect(page.getByTestId('stock-count-0-effect-difference')).toContainText('−1');
+    await expect(page.getByTestId('stock-count-0-effect-stray')).toHaveCount(0);
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('stock-count-0-remove').click();
+    await expect(page.getByTestId('stock-count-empty')).toBeVisible();
+
     await page.getByTestId('stock-tab').click();
     await page.getByTestId('list-filter').fill(reference);
     const row = page.getByRole('row').filter({ hasText: reference });

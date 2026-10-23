@@ -52,6 +52,8 @@ import {
   DELIVERY_NOTE_STATUS_TONES,
   DELIVERY_NOTE_STATUS_STAGES,
   type DeliveryNoteInput,
+  type DeliveryNoteRow,
+  deliversInvoice,
   type ProductOption,
   type TaxFamily,
 } from './delivery-notes-types';
@@ -524,7 +526,9 @@ export class DeliveryNotePage {
     () => this.current()?.status === 'validated' && this.mayWrite(),
   );
   /** A validated or delivered note becomes an invoice, while the invoices module is on for a writer of invoices. */
-  protected readonly canInvoice = computed(() => this.invoiceable(this.current()?.status));
+  protected readonly canInvoice = computed(() => this.invoiceable(this.current()));
+  /** Whether the note hands over an issued invoice's goods, which it says: it moves no stock and is never invoiced. */
+  protected readonly deliversInvoice = computed(() => deliversInvoice(this.current()));
   /**
    * The products the saved note names, each once and in its order, which the stock map lights to say where to pick
    * them; none where the stock is not kept or not readable here, so the action is offered only where it can answer,
@@ -806,9 +810,12 @@ export class DeliveryNotePage {
     }
   }
 
-  private invoiceable(status: string | undefined): boolean {
+  /** A note handing over an issued invoice's goods is never invoiced: that invoice billed them already. */
+  private invoiceable(note: Pick<DeliveryNoteRow, 'status' | 'lines'> | null | undefined): boolean {
+    const status = note?.status;
     return (
       (status === 'validated' || status === 'delivered') &&
+      !deliversInvoice(note) &&
       this.auth.hasModule('invoices') &&
       this.auth.hasPermission('invoice.write')
     );
@@ -830,7 +837,7 @@ export class DeliveryNotePage {
     if (validated === null) await this.refused();
     if (validated === null || kind === undefined) return;
     // Its next step, to whoever may take it (docs/SPEC.md § 7, 2026-09-26, row 139).
-    const next = this.invoiceable(validated.status)
+    const next = this.invoiceable(validated)
       ? { key: 'delivery_notes.suggest.invoice', run: () => void this.invoice() }
       : undefined;
     this.feedback.effect('delivery_notes.validated', {}, kind, next);
@@ -851,7 +858,7 @@ export class DeliveryNotePage {
     );
     if (delivered === null) await this.refused();
     if (delivered === null || kind === undefined) return;
-    const next = this.invoiceable(delivered.status)
+    const next = this.invoiceable(delivered)
       ? { key: 'delivery_notes.suggest.invoice', run: () => void this.invoice() }
       : undefined;
     this.feedback.effect('delivery_notes.validated_delivered', {}, kind, next);

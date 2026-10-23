@@ -287,6 +287,15 @@ describe('CompanyApi, the logo', () => {
     await expect(down).rejects.toEqual(new CompanyRefused('network'));
   });
 
+  it('reads the logo shown as a file the upload takes again, named by its kind', async () => {
+    const reading = api.logoFile('c1', 'v1');
+    http
+      .expectOne({ method: 'GET', url: '/api/companies/c1/logo?v=v1' })
+      .flush(new Blob(['jpg'], { type: 'image/jpeg' }));
+    const file = await reading;
+    expect([file.name, file.type]).toEqual(['logo.jpg', 'image/jpeg']);
+  });
+
   it('names the logo by its version, so a changed one is a new address', () => {
     expect(companyLogoUrl('c 1', 'v/2')).toBe('/api/companies/c%201/logo?v=v%2F2');
   });

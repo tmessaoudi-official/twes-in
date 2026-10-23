@@ -309,6 +309,25 @@ describe('PriceListsPage', () => {
     );
   });
 
+  // A refusal said only by an untouched field: an emptied name saved nothing and said nothing under the name.
+  it('says an emptied name is needed under its field, puts the cursor there and saves nothing', async () => {
+    facade.open.mockResolvedValue({ ...wholesale, items: [] });
+    const { query, settle } = await render();
+    query<HTMLButtonElement>('row-action-edit-l2')!.click();
+    await settle();
+
+    const name = query<HTMLInputElement>('price-list-name')!;
+    name.value = '';
+    name.dispatchEvent(new Event('input'));
+    await settle();
+    query<HTMLButtonElement>('price-list-save')!.click();
+    await settle();
+
+    expect(facade.revise).not.toHaveBeenCalled();
+    expect(query('price-list-name-error')?.textContent).toContain('form.errors.required');
+    expect(document.activeElement).toBe(name);
+  });
+
   it('opens a list with the prices it holds and sends the whole list back, its group kept', async () => {
     facade.open.mockResolvedValue({
       ...wholesale,

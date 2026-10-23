@@ -1,0 +1,14 @@
+{
+  "count_effect": {
+    "expected": "Attendu ici : {{expected}}",
+    "difference_up": "· écart : +{{difference}}",
+    "difference_down": "· écart : −{{difference}}",
+    "difference_same": "· aucun écart",
+    "also": "Aussi :",
+    "at_place": "{{quantity}} à {{place}}",
+    "separator": ", ",
+    "stray": "Rien de cet article n’est enregistré à cet emplacement, qui n’est pas sa place : l’enregistrer ajoute ce qui est compté ici sans rien retirer ailleurs.",
+    "home": "Sa place :",
+    "new_lot": "Nouveau lot : {{lot}} sera ouvert à l’enregistrement."
+  }
+}

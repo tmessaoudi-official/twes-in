@@ -4,14 +4,17 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
+  ElementRef,
   inject,
   input,
   type OnInit,
   signal,
   untracked,
+  viewChildren,
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgModel } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,8 +29,12 @@ import { Select } from '../shared/form/select';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { PageTabs } from '../shared/ui/page-tabs';
+import { LiveChanges } from '../shared/realtime/live-changes';
+import { CountEffectNote } from './count-effect-note';
+import type { CountContext } from './inventory-types';
 import {
   type CountLine,
+  countEffect,
   countGroups,
   countInputs,
   countLine,
@@ -35,7 +42,7 @@ import {
   readyToRecord,
 } from './count-sheet';
 import { InventoryFacade } from './inventory-facade';
-import { locationLabels } from './inventory-forms';
+import { locationLabels, QUANTITY_PATTERN } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
 
 /**
@@ -60,6 +67,7 @@ import { INVENTORY_TABS } from './inventory-nav';
     Label,
     PageTabs,
     TranslatePipe,
+    CountEffectNote,
   ],
   templateUrl: './stock-count-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -70,6 +78,8 @@ export class StockCountPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly productScans = inject(ProductScans);
   private readonly bus = inject(ScanBus);
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly tabs = INVENTORY_TABS;
 
   /** The location a label's address named (`/stock/locations/:location`), counted from the start. */
@@ -96,6 +106,25 @@ export class StockCountPage implements OnInit {
   });
   /** A code typed by hand, for a label the scanner cannot read. */
   protected readonly code = signal('');
+  protected readonly quantityPattern = QUANTITY_PATTERN;
+  /** Each line's lot and count, which an attempt to record shows wrong under themselves. */
+  private readonly lineFields = viewChildren('lineField', { read: NgModel });
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+
+  /** What the API says of each product on the sheet before it is counted, by product id. */
+  private readonly contexts = signal<ReadonlyMap<string, CountContext>>(new Map());
+  /** What recording each line would change, said on the line: null until its product is read. */
+  protected readonly effects = computed(() => {
+    const contexts = this.contexts();
+    const locations = this.facade.locations();
+    return this.lines().map((line) => {
+      const context = contexts.get(line.productId);
+      return context === undefined ? null : countEffect(context, locations, line);
+    });
+  });
+  protected readonly placeNames = computed<ReadonlyMap<string, string>>(
+    () => new Map(this.locations()),
+  );
 
   constructor() {
     // What is counted and not yet recorded is unsaved work: leaving the page would lose it.
@@ -110,11 +139,42 @@ export class StockCountPage implements OnInit {
         if (first) this.locationId.set(first.id);
       });
     });
+    // A product scanned for the first time is read once; what is already known is read again only on a change.
+    effect(() => {
+      const known = this.contexts();
+      const missing = [...new Set(this.lines().map((line) => line.productId))].filter(
+        (id) => !known.has(id),
+      );
+      if (missing.length > 0) untracked(() => void this.readContexts(missing));
+    });
   }
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
-    if (companyId) await this.facade.loadStockContext(companyId);
+    if (!companyId) return;
+    // A count recorded here, in another tab or by someone else changes what each line expects.
+    this.live.reloadOn(
+      ['stock', 'product', 'stock_location'],
+      () => this.readContexts([...this.contexts().keys()]),
+      this.destroyRef,
+    );
+    await this.facade.loadStockContext(companyId);
+  }
+
+  private readonly asked = new Set<string>();
+
+  private async readContexts(productIds: readonly string[]): Promise<void> {
+    const companyId = this.company()?.id;
+    // Each product is asked once until its answer is in, so a second scan of it asks nothing more.
+    const asking = productIds.filter((id) => !this.asked.has(id) || this.contexts().has(id));
+    if (!companyId || asking.length === 0) return;
+    for (const id of asking) this.asked.add(id);
+    const read = await this.facade.countContexts(companyId, asking);
+    this.contexts.update((contexts) => {
+      const next = new Map(contexts);
+      for (const context of read) next.set(context.productId, context);
+      return next;
+    });
   }
 
   protected submit(event: Event): void {
@@ -147,6 +207,9 @@ export class StockCountPage implements OnInit {
     const lines = this.lines();
     if (!companyId || lines.length === 0 || this.busy()) return;
     if (!lines.every(readyToRecord)) {
+      // Said under each field it concerns, the cursor in the first, as well as for the whole sheet.
+      for (const field of this.lineFields()) field.control.markAsTouched();
+      this.host.querySelector<HTMLElement>('input.ng-invalid')?.focus();
       this.feedback.failure('inventory.count.incomplete');
       return;
     }

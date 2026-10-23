@@ -56,6 +56,68 @@ test("the owner sets the company's payment terms, which survive a reload until r
     await page.getByTestId(`settings-reset-${TERMS}`).click();
     await expect(terms).toHaveValue('30');
     await expect(page.getByTestId(`settings-override-${TERMS}`)).toHaveCount(0);
+    // Never « enregistré » for a value given up: the toast names it, and « Annuler » puts the 45 back.
+    await expect(toast(page)).toContainText('reprend la valeur');
+    await toast(page).getByTestId('toast-action').click();
+    await expect(terms).toHaveValue('45');
+    await expect(page.getByTestId(`settings-override-${TERMS}`)).toHaveCount(1);
+    await page.getByTestId(`settings-reset-${TERMS}`).click();
+    await expect(terms).toHaveValue('30');
+  } finally {
+    await forgetCompanyTerms(page);
+  }
+});
+
+test('a value the API refuses is said on its own field, with its rule, and nothing is saved', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await forgetCompanyTerms(page);
+  try {
+    await page.goto('/settings');
+    const terms = page.getByTestId('field-document__payment_terms_days');
+    await expect(terms).toHaveValue('30');
+
+    // The screen refuses 9999 itself, so the request it sends is rewritten on its way: what comes back is the
+    // API's own answer, read by the screen as a refusal of that one setting.
+    await page.route('**/api/companies/*/settings', async (route) => {
+      const request = route.request();
+      if (request.method() !== 'PUT') return route.continue();
+      const body = request.postDataJSON() as {
+        changes: { key: string; value: unknown; version: number }[];
+      };
+      const changes = body.changes.map((change) =>
+        change.key === TERMS ? { ...change, value: 9999 } : change,
+      );
+      await route.continue({ postData: JSON.stringify({ ...body, changes }) });
+    });
+    await terms.fill('45');
+    const answered = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PUT' &&
+        /\/settings$/.test(new URL(response.url()).pathname),
+    );
+    await page.getByTestId('record-save').click();
+    expect((await answered).status()).toBe(422);
+
+    await expect(page.getByTestId('settings-error')).toContainText('corrigez les champs marqués');
+    await expect(page.getByTestId(`field-error-${TERMS.replaceAll('.', '__')}`)).toContainText(
+      '365',
+    );
+    await page.unroute('**/api/companies/*/settings');
+
+    // Read from the API rather than reloaded: the typed 45 is still unsaved, and the page rightly holds a reload.
+    const stored = await page.evaluate(async (key) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const rows = (await (
+        await fetch(`/api/companies/${me.company.id}/settings?chain=parties`, {
+          headers: { accept: 'application/json' },
+        })
+      ).json()) as { key: string; value: unknown }[];
+      return rows.find((row) => row.key === key)?.value;
+    }, TERMS);
+    expect(stored).toBe(30);
   } finally {
     await forgetCompanyTerms(page);
   }

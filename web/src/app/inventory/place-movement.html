@@ -23,6 +23,15 @@
         testId="place-movement-form"
         (submitted)="save($event)"
       >
+        @if (countNote(); as note) {
+          <app-count-effect-note
+            class="mb-3 block"
+            [effect]="note"
+            [decimals]="asked().line.unitDecimals"
+            [places]="placeNames()"
+            testId="place-movement-count-effect"
+          />
+        }
         <div class="flex flex-wrap justify-end gap-2">
           <button mat-button type="button" (click)="back()" data-testid="place-movement-cancel">
             {{ 'inventory.cancel' | translate }}

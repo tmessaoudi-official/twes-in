@@ -99,6 +99,8 @@ const validated: DeliveryNoteRow = {
   totalTax: '3.800',
   total: '23.8',
   invoices: [],
+  quote: null,
+  invoice: null,
 };
 
 describe('delivery note forms', () => {
@@ -225,6 +227,8 @@ describe('delivery note forms', () => {
       taxComponentIds: [],
       lotCode: '',
       productTracking: '',
+      sourceQuoteLineId: '',
+      sourceInvoiceLineId: '',
     });
     expect(line.controls.description.hasError('required')).toBe(true);
 
@@ -275,6 +279,8 @@ describe('delivery note forms', () => {
       taxComponentIds: ['t1'],
       lotCode: '',
       productTracking: '',
+      sourceQuoteLineId: '',
+      sourceInvoiceLineId: '',
     });
     expect(lines.valid).toBe(true);
     expect(linesArray([], options).length).toBe(1);
@@ -296,6 +302,8 @@ describe('delivery note forms', () => {
       taxComponentIds: ['t1', 't2'],
       lotCode: '',
       productTracking: 'none',
+      sourceQuoteLineId: '',
+      sourceInvoiceLineId: '',
     });
     // The line carries the product's own words, which is what lets the picker show it without the catalogue.
     expect(pickedProduct(line)).toEqual({ id: 'p1', code: 'ART-1', name: 'Portable 14"' });
@@ -374,6 +382,53 @@ describe('delivery note forms', () => {
     expect(
       deliveryNoteInput(deliveryNoteValues(null, options), lines, carthage.id).lines[0].lotCode,
     ).toBeNull();
+  });
+
+  it('sends back the quote line a line delivers, until another product is picked on it', () => {
+    const lines = linesArray(
+      [{ ...validated.lines[0]!, productId: 'p1', sourceQuoteLineId: 'ql1' }],
+      options,
+    );
+    const sent = () =>
+      deliveryNoteInput(deliveryNoteValues(null, options), lines, carthage.id).lines[0];
+    expect(sent()?.sourceQuoteLineId).toBe('ql1');
+
+    // The same product again keeps it: only its words are read anew.
+    applyProduct(lines.at(0), laptop, options, []);
+    expect(sent()?.sourceQuoteLineId).toBe('ql1');
+
+    applyProduct(lines.at(0), { ...laptop, id: 'p2' }, options, []);
+    expect(sent(), 'a line of the note’s own names no quote line').not.toHaveProperty(
+      'sourceQuoteLineId',
+    );
+    expect(
+      deliveryNoteInput(deliveryNoteValues(null, options), linesArray([], options), carthage.id)
+        .lines[0],
+    ).not.toHaveProperty('sourceQuoteLineId');
+  });
+
+  it('sends back the invoice line a line delivers, and leaves its goods out of what the note takes', () => {
+    const lines = linesArray(
+      [{ ...validated.lines[0]!, productId: 'p1', sourceInvoiceLineId: 'il1' }],
+      options,
+    );
+    const sent = () =>
+      deliveryNoteInput(deliveryNoteValues(null, options), lines, carthage.id).lines[0];
+    expect(sent()?.sourceInvoiceLineId).toBe('il1');
+    applyProduct(lines.at(0), laptop, options, []);
+    expect(sent()?.sourceInvoiceLineId, 'the same product keeps it').toBe('il1');
+    lines.at(0).patchValue({ unitId: 'u1', quantity: '3' });
+    const onHand = new Map([['p1', { unitId: 'u1', onHand: '6.000' }]]);
+    expect(
+      lineStock(lines, onHand),
+      'the invoice took these goods out of stock when it was issued',
+    ).toEqual([{ unitId: 'u1', onHand: '6.000', left: null }]);
+    lines.at(0).patchValue({ sourceInvoiceLineId: '' });
+    expect(lineStock(lines, onHand)).toEqual([{ unitId: 'u1', onHand: '6.000', left: '3.000' }]);
+    lines.at(0).patchValue({ sourceInvoiceLineId: 'il1' });
+
+    applyProduct(lines.at(0), { ...laptop, id: 'p2' }, options, []);
+    expect(sent()).not.toHaveProperty('sourceInvoiceLineId');
   });
 
   it('tells each line what is on hand of its product and what the note leaves once validated', () => {

@@ -13,7 +13,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
@@ -34,8 +34,11 @@ import {
 } from './settings-forms';
 import { FiscalFacade } from '../fiscal/fiscal-facade';
 import { versioned, versionsAt } from '../shared/settings/setting-forms';
+import { resetTakenBack } from '../shared/settings/reset-taken-back';
 import { Feedback } from '../shared/feedback/feedback';
 import { ThemeFacade } from '../shared/theme/theme-facade';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { SettingRefusalLines } from '../shared/settings/setting-refusal-lines';
 
 /** A planned module's settings, said in words: what a company will be able to set once it ships. */
 export interface PlannedSetting {
@@ -72,6 +75,7 @@ export const PLANNED_SETTINGS: readonly PlannedSetting[] = [
     DescriptorForm,
     RecordBar,
     RecordChanged,
+    SettingRefusalLines,
   ],
   templateUrl: './settings-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -79,6 +83,7 @@ export const PLANNED_SETTINGS: readonly PlannedSetting[] = [
 export class SettingsPage implements OnInit {
   private readonly settings = inject(CompanySettings);
   private readonly feedback = inject(Feedback);
+  private readonly translate = inject(TranslateService);
   private readonly auth = inject(AuthFacade);
   private readonly theme = inject(ThemeFacade);
   private readonly fiscal = inject(FiscalFacade);
@@ -87,6 +92,9 @@ export class SettingsPage implements OnInit {
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
+  protected readonly rows = this.settings.rows;
+  /** The settings the last save refused that no field of the form carries, named in the page's line. */
+  protected readonly unplaced = signal<readonly FieldRefusal[]>([]);
   protected readonly descriptor = computed(() =>
     withUnitChoice(companySettingsForm(this.settings.rows()), this.fiscal.units()),
   );
@@ -187,21 +195,30 @@ export class SettingsPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
     const changes = versioned(changedSettings(this.settings.rows(), values), this.sync.version());
+    this.unplaced.set([]);
     if (changes.length === 0 || (await this.settings.save(companyId, changes))) {
       this.revision.update((revision) => revision + 1);
       this.feedback.success('settings.saved');
     } else if (this.settings.error() === 'record_changed') {
       this.settings.clearError();
       await this.sync.savedElsewhere();
+    } else {
+      // Each refused setting under its own field; what no field here shows is named in the page's line.
+      const refused = this.settings.refusals();
+      this.unplaced.set(this.shownForm()?.showRefused(refused) ?? refused);
     }
   }
 
   protected async reset(key: string): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    if (await this.settings.reset(companyId, key)) {
-      this.revision.update((revision) => revision + 1);
-      this.feedback.success('settings.saved');
-    }
+    await resetTakenBack(this.feedback, this.translate, {
+      key,
+      level: 'company',
+      rows: () => this.settings.rows(),
+      reset: () => this.settings.reset(companyId, key),
+      save: (changes) => this.settings.save(companyId, changes),
+      written: () => this.revision.update((revision) => revision + 1),
+    });
   }
 }

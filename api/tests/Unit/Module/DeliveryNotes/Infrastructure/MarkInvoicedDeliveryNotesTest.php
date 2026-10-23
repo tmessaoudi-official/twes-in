@@ -48,6 +48,7 @@ use App\Tests\Support\InMemorySourceDeliveryNoteLines;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\KeptNames;
+use App\Tests\Support\NoQuotesToDeliver;
 use App\Tests\Support\ShelfLinePrices;
 use App\Tests\Support\ShippedDepositDeductions;
 use App\Tests\Support\ShippedFiscalPresets;
@@ -96,7 +97,7 @@ final class MarkInvoicedDeliveryNotesTest extends TestCase
                 $this->records[] = [$level, $message, $context];
             }
         };
-        $invoicing = new InvoiceDeliveryNotes($notes, new RepositoryInvoicedLines($invoices), new ManagedInvoiceDrafts($manage, $invoices), $transactions, $audit, $clock);
+        $invoicing = new InvoiceDeliveryNotes($notes, new RepositoryInvoicedLines($invoices), new ManagedInvoiceDrafts($manage, $invoices), $transactions, $audit, $clock, NoQuotesToDeliver::discounts($notes, new RepositoryInvoicedLines($invoices)));
         // The invoice the event tells of, issued, as the repository holds it by then.
         new \ReflectionProperty(Invoice::class, 'status')->setValue($invoices->ofIdInCompany($invoicing->draftInvoice($company, [$invoiced->getId()], null), $company->getId()), InvoiceStatus::Issued);
         $transactions->committed = 0;

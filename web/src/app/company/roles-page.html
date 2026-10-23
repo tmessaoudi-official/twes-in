@@ -120,6 +120,8 @@
         <input
           matInput
           name="roleName"
+          #roleName
+          #roleNameModel="ngModel"
           [ngModel]="draftName()"
           (ngModelChange)="draftName.set($event)"
           [disabled]="!editable()"
@@ -127,6 +129,11 @@
           required
           data-testid="role-name"
         />
+        @if (roleNameModel.invalid) {
+          <mat-error data-testid="role-name-error">{{
+            'form.errors.required' | translate
+          }}</mat-error>
+        }
       </mat-form-field>
 
       @if (open()?.wildcard) {

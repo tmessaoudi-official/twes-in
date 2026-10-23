@@ -262,6 +262,77 @@ describe('QuotesApi', () => {
     await expect(invoiced).rejects.toEqual(new QuotesRefused('deposit_pending'));
   });
 
+  it('reads what notes take and delivered of each line, and what is left of it', async () => {
+    const pending = api.quote('c1', 'q1');
+    http.expectOne('/api/companies/c1/quotes/q1').flush(
+      raw({
+        status: 'accepted',
+        lines: [
+          {
+            id: 'ql1',
+            description: 'Tour CNC',
+            quantity: '10.000',
+            unitId: 'u1',
+            unitPriceNet: '1250.0000',
+            taxComponentIds: [],
+            net: '12500.000',
+            onNotes: '4.500',
+            delivered: '3.000',
+          },
+        ],
+        deliveryNotes: [{ deliveryNoteId: 'n1', number: 'BL-2026-00004', status: 'validated' }],
+        delivery: 'partly',
+      }),
+    );
+    const quote = await pending;
+    expect(quote.delivery).toBe('partly');
+    expect(quote.deliveryNotes).toEqual([
+      { deliveryNoteId: 'n1', number: 'BL-2026-00004', status: 'validated' },
+    ]);
+    expect(quote.deliveries).toEqual([
+      {
+        lineId: 'ql1',
+        description: 'Tour CNC',
+        quantity: '10.000',
+        onNotes: '4.500',
+        delivered: '3.000',
+        left: '5.500',
+      },
+    ]);
+  });
+
+  it('delivers every line or the quantities given, and names a refusal for what it is', async () => {
+    const whole = api.deliver('c1', 'q 1', null);
+    const all = http.expectOne('/api/companies/c1/quotes/q%201/delivery-notes');
+    expect(all.request.method).toBe('POST');
+    expect(all.request.body).toEqual({ quantities: null });
+    all.flush({ id: 'n9' });
+    expect(await whole).toBe('n9');
+
+    const part = api.deliver('c1', 'q1', { ql1: '2.5' });
+    const some = http.expectOne('/api/companies/c1/quotes/q1/delivery-notes');
+    expect(some.request.body).toEqual({ quantities: { ql1: '2.5' } });
+    some.flush(
+      { detail: 'quantities: Only 1.000 of the line ql1 is left to deliver.' },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(part).rejects.toEqual(new QuotesRefused('delivery_refused'));
+
+    for (const field of ['deposits', 'discountAmount']) {
+      const kept = api.deliver('c1', 'q1', null);
+      http
+        .expectOne('/api/companies/c1/quotes/q1/delivery-notes')
+        .flush({ detail: `${field}: kept whole` }, { status: 422, statusText: 'Unprocessable' });
+      await expect(kept).rejects.toEqual(new QuotesRefused('delivery_whole'));
+    }
+
+    const done = api.deliver('c1', 'q1', null);
+    http
+      .expectOne('/api/companies/c1/quotes/q1/delivery-notes')
+      .flush({ detail: 'Nothing is left' }, { status: 409, statusText: 'Conflict' });
+    await expect(done).rejects.toEqual(new QuotesRefused('conflict'));
+  });
+
   it("sends an empty answer day as none, the company's today", async () => {
     const accepted = api.accept('c1', 'q1', { answeredOn: ' ' });
     const accept = http.expectOne('/api/companies/c1/quotes/q1/accept');

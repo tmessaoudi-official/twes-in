@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { DeliveryNotesApi, DeliveryNotesRefused } from './delivery-notes-api';
 import type { PickAsked } from '../shared/form/pick-api';
 import type { PreviewBody } from '../shared/documents/document-figures';
@@ -22,17 +22,18 @@ import type {
   InvoiceDraftOption,
   InvoicingCheck,
 } from './delivery-notes-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The delivery notes of the company being worked in, the note open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
 export class DeliveryNotesFacade {
   private readonly api = inject(DeliveryNotesApi);
   private readonly prices = inject(PriceListsApi);
-  private readonly notesSignal = signal<readonly DeliveryNoteRow[]>([]);
-  private readonly optionsSignal = signal<DeliveryNoteOptions | null>(null);
-  private readonly noteSignal = signal<DeliveryNoteRow | null>(null);
-  private readonly totalSignal = signal(0);
-  private readonly statusCountsSignal = signal<DeliveryNoteStatusCounts | null>(null);
+  private readonly notesSignal = sessionSignal<readonly DeliveryNoteRow[]>([]);
+  private readonly optionsSignal = sessionSignal<DeliveryNoteOptions | null>(null);
+  private readonly noteSignal = sessionSignal<DeliveryNoteRow | null>(null);
+  private readonly totalSignal = sessionSignal(0);
+  private readonly statusCountsSignal = sessionSignal<DeliveryNoteStatusCounts | null>(null);
   private readonly pageRequests = new LatestRequest();
   private readonly countsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);

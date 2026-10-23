@@ -283,7 +283,10 @@
         "resumed": "{{count}} {count, plural, one {change resumed} other {changes resumed}}.",
         "dropped": "Changes resumed, except on {{count}} {count, plural, one {shape} other {shapes}} someone else saved in the meantime.",
         "abandoned": "The changes kept in this browser were discarded."
-      }
+      },
+      "remove_floor_title": "Remove this floor?",
+      "remove_floor_message": "The “{{name}}” floor leaves the plan, with the walls, racks and zones drawn on it: nothing draws them again. The stock locations stay, with their stock.",
+      "keep_floor": "Keep the floor"
     }
   }
 }

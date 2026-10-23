@@ -150,31 +150,56 @@ export const ACCOUNTS_LIST: ListDescriptor<PlatformAccountRow> = {
       sortable: true,
       width: 120,
     },
-    { id: 'actions', label: `${ACCOUNT_FIELDS}.actions`, value: () => null, hideable: false },
   ],
   filters: [
     {
       id: 'state',
       label: `${ACCOUNT_FIELDS}.state`,
+      multiple: true,
       value: (row) => (row.active ? 'active' : 'inactive'),
-      options: ['active', 'inactive', 'operator'].map((state) => ({
+      options: ['active', 'inactive'].map((state) => ({
         value: state,
         label: `platform.accounts.states.${state}`,
+      })),
+    },
+    {
+      id: 'role',
+      label: `${ACCOUNT_FIELDS}.role`,
+      multiple: true,
+      value: (row) => (row.platformOperator ? 'operator' : 'member'),
+      options: ['operator', 'member'].map((role) => ({
+        value: role,
+        label: `platform.accounts.roles.${role}`,
       })),
     },
   ],
 };
 
-/** What the API is asked for the page of accounts the list shows; « Opérateurs » narrows to the platform's own. */
+/** One value of a facet of two narrows to it; both, or none, are every account. */
+function oneOf(chosen: readonly string[], yes: string, no: string): boolean | null {
+  const takesYes = chosen.includes(yes);
+  const takesNo = chosen.includes(no);
+  return takesYes === takesNo ? null : takesYes;
+}
+
+/**
+ * What the API is asked for the page of accounts the list shows: the state and the role combine, so a deactivated
+ * operator is found. An address or a saved view from before the role was its own facet says `state=operator`, which
+ * still means the platform's own.
+ */
 export function accountSearch(query: ListQuery): PlatformAccountSearch {
-  const state = query.filters['state'];
+  const states = filterValues(query.filters['state']);
+  const roles = [
+    ...filterValues(query.filters['role']),
+    ...(states.includes('operator') ? ['operator'] : []),
+  ];
   const key = query.sort === null ? undefined : ACCOUNT_SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     q: query.query,
-    active: state === 'active' ? true : state === 'inactive' ? false : null,
-    platformOperator: state === 'operator' ? true : null,
+    active: oneOf(states, 'active', 'inactive'),
+    platformOperator: oneOf(roles, 'operator', 'member'),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };

@@ -74,7 +74,7 @@ const me: Me = {
   },
   company: null,
   permissions: [],
-  mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
+  mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
   modules: [],
   plannedModules: [],
   customerScreenCompanyId: null,

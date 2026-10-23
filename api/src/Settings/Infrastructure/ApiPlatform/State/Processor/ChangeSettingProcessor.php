@@ -16,6 +16,7 @@ use App\Settings\Application\InvalidSettingValue;
 use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Infrastructure\ApiPlatform\Output\SettingRefusals;
 use App\Settings\Infrastructure\ApiPlatform\Payload\SettingKey;
 use App\Settings\Infrastructure\ApiPlatform\Resource\SettingResource;
 use App\Settings\Infrastructure\ApiPlatform\Security\SettingAccess;
@@ -39,12 +40,15 @@ final readonly class ChangeSettingProcessor implements ProcessorInterface
         $company = $this->access->companyToWrite($companyId, $level);
         $settingContext = $this->access->contextToWrite($company, $level, $data->roleId, $data->customerId, $data->customerGroupId, $data->productId, $data->productCategoryId, $data->establishmentId);
 
+        $key = SettingKey::of($uriVariables);
         try {
-            $setting = $this->change->change($settingContext, SettingKey::of($uriVariables), $level, $data->value, $this->access->callerId());
+            $setting = $this->change->change($settingContext, $key, $level, $data->value, $this->access->callerId());
         } catch (UnknownSetting $unknown) {
             throw new NotFoundHttpException($unknown->getMessage(), $unknown);
-        } catch (SettingLevelRefused|InvalidSettingValue $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+        } catch (SettingLevelRefused $refused) {
+            throw SettingRefusals::ofLevel($key, $refused);
+        } catch (InvalidSettingValue $refused) {
+            throw SettingRefusals::of($refused);
         }
 
         return SettingResource::of($setting, $this->access->writableLevels($setting->definition, $this->access->mayShare($company), $this->access->mayWriteParties($company), $settingContext, $this->access->mayWriteArticles($company)));

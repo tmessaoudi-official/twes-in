@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { requestState } from '../shared/feedback/request-state';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { StepUp } from '../shared/step-up/step-up';
 import { SubscriptionApi, SubscriptionRefused } from './subscription-api';
@@ -11,6 +11,7 @@ import type {
   SubscriptionView,
   WaitingPayment,
 } from './subscription-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /**
  * The working company's subscription, and the payments it declares. A declaration changes what the company may do —
@@ -22,11 +23,11 @@ export class SubscriptionFacade {
   private readonly api = inject(SubscriptionApi);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
-  private readonly subscriptionSignal = signal<SubscriptionView | null>(null);
-  private readonly waitingSignal = signal<readonly WaitingPayment[]>([]);
+  private readonly subscriptionSignal = sessionSignal<SubscriptionView | null>(null);
+  private readonly waitingSignal = sessionSignal<readonly WaitingPayment[]>([]);
   private readonly state = requestState(codeOf);
   /** Told apart from "not loaded yet": a company licensing does not manage has no subscription at all. */
-  private readonly managedSignal = signal(true);
+  private readonly managedSignal = sessionSignal(true);
 
   readonly subscription = this.subscriptionSignal.asReadonly();
   readonly waiting = this.waitingSignal.asReadonly();

@@ -5,11 +5,13 @@ import {
   Component,
   computed,
   DestroyRef,
+  ElementRef,
   inject,
   OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
-import { FormControl, FormGroup, FormsModule } from '@angular/forms';
+import { FormControl, FormGroup, FormsModule, NgModel } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -25,10 +27,13 @@ import type { DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FieldValue } from '../shared/form/form-types';
 import { liveRecord } from '../shared/form/live-record';
 import { PartConflict } from '../shared/form/part-conflict';
-import type { ScreenAction } from '../shared/actions/screen-action';
+import type { ActionConfirm, ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { RecordChanged } from '../shared/form/record-changed';
+import { MatDialog } from '@angular/material/dialog';
+import { runAction } from '../shared/actions/run-action';
+import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
 
@@ -66,6 +71,7 @@ export class RolesPage implements OnInit {
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly roles = this.facade.roles;
   protected readonly groups = this.facade.groups;
@@ -100,6 +106,8 @@ export class RolesPage implements OnInit {
   protected readonly draftName = signal('');
 
   private readonly ticksSignal = signal<ReadonlySet<string>>(new Set());
+  private readonly nameModel = viewChild('roleNameModel', { read: NgModel });
+  private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('roleName');
   protected readonly ticks = this.ticksSignal.asReadonly();
 
   /**
@@ -172,7 +180,7 @@ export class RolesPage implements OnInit {
         label: 'company.roles.save',
         icon: 'save',
         primary: true,
-        disabled: busy || this.changes() === 0 || this.draftName().trim() === '',
+        disabled: busy || this.changes() === 0,
         run: () => void this.save(),
         shown: this.editable(),
       },
@@ -248,7 +256,14 @@ export class RolesPage implements OnInit {
   protected async save(): Promise<void> {
     const companyId = this.company()?.id;
     const name = this.draftName().trim();
-    if (!companyId || name === '' || this.busy()) {
+    if (name === '') {
+      // Spaces alone pass `required`: the name is said needed here, under its field, where the cursor goes.
+      this.nameModel()?.control.setErrors({ required: true });
+      this.nameModel()?.control.markAsTouched();
+      this.nameInput()?.nativeElement.focus();
+      return;
+    }
+    if (!companyId || this.busy()) {
       return;
     }
     const permissions = [...this.ticks()];
@@ -266,14 +281,44 @@ export class RolesPage implements OnInit {
     }
   }
 
-  protected async remove(row: RoleRow): Promise<void> {
+  /**
+   * Nothing brings a deleted role back, so the question names it first; the delete names the version the list read,
+   * and a role revised since stays, said so, with the list read again to show what it permits now.
+   */
+  protected remove(row: RoleRow): void {
+    if (this.busy()) return;
+    runAction(
+      {
+        run: () => void this.removeAsked(row),
+        confirm: {
+          kind: 'definitif',
+          title: 'company.roles.delete_title',
+          message: 'company.roles.delete_message',
+          messageParams: { name: row.name },
+          confirmLabel: 'company.roles.delete',
+          keepLabel: 'company.roles.keep',
+        },
+      },
+      (asked) =>
+        this.dialog
+          .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+            data: asked,
+            autoFocus: 'dialog',
+          })
+          .afterClosed(),
+    );
+  }
+
+  private async removeAsked(row: RoleRow): Promise<void> {
     const companyId = this.company()?.id;
-    if (!companyId || this.busy()) {
-      return;
-    }
-    if (await this.facade.remove(companyId, row.id)) {
-      this.feedback.success('company.roles.deleted');
+    if (!companyId) return;
+    if (await this.facade.remove(companyId, row.id, row.version)) {
+      this.feedback.effect('company.roles.deleted', {}, 'definitif');
       this.close();
+    } else if (this.error() === 'record_changed') {
+      this.facade.clearError();
+      await this.facade.load(companyId);
+      this.feedback.notice('company.roles.changed_since', { name: row.name });
     }
   }
 }

@@ -115,6 +115,7 @@ describe('PlaceMovement', () => {
     reloadContents: vi.fn(),
     reloadHoldings: vi.fn(),
     reloadWhereabouts: vi.fn(),
+    countContexts: vi.fn(),
   };
   let fixture: ComponentFixture<Host>;
 
@@ -156,6 +157,7 @@ describe('PlaceMovement', () => {
     facade.reloadContents.mockReset().mockResolvedValue(undefined);
     facade.reloadHoldings.mockReset().mockResolvedValue(undefined);
     facade.reloadWhereabouts.mockReset().mockResolvedValue(undefined);
+    facade.countContexts.mockReset().mockResolvedValue([]);
     TestBed.configureTestingModule({
       imports: [Host],
       providers: [
@@ -315,6 +317,34 @@ describe('PlaceMovement', () => {
     ]);
     expect(said().at(-1)?.key).toBe('inventory.stock.recorded');
     expect(fixture.componentInstance.closed).toBe(1);
+  });
+
+  it('says what the count changes where the line is before it is recorded', async () => {
+    facade.countContexts.mockResolvedValue([
+      {
+        productId: 'p1',
+        places: [
+          { locationId: 'r2', lotCode: null, quantity: '173.000' },
+          { locationId: 'r3', lotCode: null, quantity: '4.000' },
+        ],
+        homeLocationIds: ['r2'],
+      },
+    ]);
+    await open({ operation: 'count', line });
+    input('quantity').value = '170';
+    input('quantity').dispatchEvent(new Event('input'));
+    await settle();
+
+    expect(facade.countContexts).toHaveBeenCalledWith('c1', ['p1']);
+    expect(q('place-movement-count-effect-difference')).not.toBeNull();
+    expect(q('place-movement-count-effect-elsewhere')?.querySelectorAll('bdi').length).toBe(1);
+    expect(q('place-movement-count-effect-stray')).toBeNull();
+  });
+
+  it('asks nothing of a count when the line is moved', async () => {
+    await open({ operation: 'move', line });
+    expect(facade.countContexts).not.toHaveBeenCalled();
+    expect(q('place-movement-count-effect')).toBeNull();
   });
 
   it('receives the product where the line is', async () => {

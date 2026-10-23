@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  type AbstractControl,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  type ValidationErrors,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
+import { revealInvalid } from '../shared/form/reveal-invalid';
 import { formatTime, todayIn } from '../shared/i18n/format';
 
 /**
@@ -23,7 +31,7 @@ const WALL_CLOCK = 'en-GB'; // language-literal: its 24-hour HH:MM is the API's 
 @Component({
   selector: 'app-deliver-dialog',
   imports: [
-    FormsModule,
+    ReactiveFormsModule,
     DayInput,
     DayCalendarButton,
     MatButtonModule,
@@ -48,11 +56,19 @@ const WALL_CLOCK = 'en-GB'; // language-literal: its 24-hour HH:MM is the API's 
             type="text"
             inputmode="numeric"
             autocomplete="off"
-            [ngModel]="day()"
-            (ngModelChange)="day.set($event)"
+            [formControl]="form.controls.day"
             data-testid="delivery-note-delivered-on"
           />
           <app-day-calendar-button matSuffix [field]="dayField" />
+          @if (form.controls.day.hasError('date')) {
+            <mat-error data-testid="delivery-note-delivered-on-error">{{
+              'form.errors.date' | translate
+            }}</mat-error>
+          } @else if (form.controls.day.hasError('required')) {
+            <mat-error data-testid="delivery-note-delivered-on-error">{{
+              'form.errors.required' | translate
+            }}</mat-error>
+          }
         </mat-form-field>
         <mat-form-field subscriptSizing="dynamic" class="w-32">
           <mat-label>{{ 'delivery_notes.actions.delivered_time' | translate }}</mat-label>
@@ -62,10 +78,18 @@ const WALL_CLOCK = 'en-GB'; // language-literal: its 24-hour HH:MM is the API's 
             inputmode="numeric"
             autocomplete="off"
             maxlength="5"
-            [ngModel]="time()"
-            (ngModelChange)="time.set($event)"
+            [formControl]="form.controls.time"
             data-testid="delivery-note-delivered-time"
           />
+          @if (form.controls.time.hasError('time')) {
+            <mat-error data-testid="delivery-note-delivered-time-error">{{
+              'form.errors.time' | translate
+            }}</mat-error>
+          } @else if (form.controls.time.hasError('required')) {
+            <mat-error data-testid="delivery-note-delivered-time-error">{{
+              'form.errors.required' | translate
+            }}</mat-error>
+          }
         </mat-form-field>
       </div>
     </mat-dialog-content>
@@ -73,13 +97,7 @@ const WALL_CLOCK = 'en-GB'; // language-literal: its 24-hour HH:MM is the API's 
       <button mat-button type="button" (click)="ref.close(null)" data-testid="deliver-cancel">
         {{ 'delivery_notes.actions.keep' | translate }}
       </button>
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="!valid()"
-        (click)="ref.close(moment())"
-        data-testid="delivery-note-deliver"
-      >
+      <button mat-flat-button type="button" (click)="deliver()" data-testid="delivery-note-deliver">
         {{ 'delivery_notes.actions.deliver' | translate }}
       </button>
     </mat-dialog-actions>
@@ -92,24 +110,58 @@ export class DeliverDialog {
     day: todayIn(this.zone),
     time: formatTime(new Date().toISOString(), WALL_CLOCK, this.zone ?? undefined),
   };
-  protected readonly day = signal(this.opened.day);
-  protected readonly time = signal(this.opened.time);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  /**
+   * Both empty is « now »; otherwise each needs the other. The day's own shape is the day input's to say (`date`), the
+   * time's is said here, and each is said under its field once left or once « Livrer » is pressed.
+   */
+  protected readonly form = new FormGroup({
+    day: new FormControl(this.opened.day, {
+      nonNullable: true,
+      validators: (control) => neededBeside(control, 'time'),
+    }),
+    time: new FormControl(this.opened.time, {
+      nonNullable: true,
+      validators: (control) => timeOfDay(control) ?? neededBeside(control, 'day'),
+    }),
+  });
 
-  /** The time as the API takes it, `HH:MM`, from what was typed; null when it is not a time of day. */
-  private readonly clock = computed(() => wallClock(this.time()));
+  constructor() {
+    // Each field's need follows what the other holds, so a change to one asks the other again.
+    for (const [changed, other] of [
+      ['day', 'time'],
+      ['time', 'day'],
+    ] as const) {
+      this.form.controls[changed].valueChanges
+        .pipe(takeUntilDestroyed(inject(DestroyRef)))
+        .subscribe(() => this.form.controls[other].updateValueAndValidity({ emitEvent: false }));
+    }
+  }
 
-  protected readonly valid = computed(
-    () =>
-      (this.day() === '' && this.time().trim() === '') ||
-      (/^\d{4}-\d{2}-\d{2}$/.test(this.day()) && this.clock() !== null),
-  );
+  protected deliver(): void {
+    if (revealInvalid(this.form, this.host)) return;
+    this.ref.close(this.moment());
+  }
 
   /** '' for now, or the moment written. */
-  protected moment(): string {
-    const [day, time] = [this.day(), this.time().trim()];
+  private moment(): string {
+    const day = this.form.controls.day.value;
+    const time = this.form.controls.time.value.trim();
     const untouched = day === this.opened.day && time === this.opened.time;
-    return untouched || (day === '' && time === '') ? '' : `${day}T${this.clock()}`;
+    return untouched || (day === '' && time === '') ? '' : `${day}T${wallClock(time)}`;
   }
+}
+
+/** A field left empty while the other is filled: a moment needs both its day and its time. */
+function neededBeside(control: AbstractControl, other: 'day' | 'time'): ValidationErrors | null {
+  const own = String(control.value).trim();
+  const beside = String(control.parent?.get(other)?.value ?? '').trim();
+  return own === '' && beside !== '' ? { required: true } : null;
+}
+
+function timeOfDay(control: AbstractControl): ValidationErrors | null {
+  const text = String(control.value).trim();
+  return text === '' || wallClock(text) !== null ? null : { time: true };
 }
 
 /** A time of day on 24 hours as a person writes it, « 9h05 », « 9:05 » or « 0905 », as `HH:MM`; null otherwise. */

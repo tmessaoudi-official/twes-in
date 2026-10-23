@@ -24,7 +24,8 @@ import { MembersFacade } from './members-facade';
 import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
 import { MEMBERS_LIST, MembersPage } from './members-page';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
 class StaticLoader implements TranslateLoader {
@@ -278,6 +279,34 @@ describe('MembersPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     await vi.waitFor(() => expect(members.remove).toHaveBeenCalledWith('c1', 'u1'));
+    // Said once done, naming who lost access, as the question did.
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({
+          key: 'members.removed',
+          params: { name: 'Owner' },
+          effect: 'corrigeable',
+        }),
+      ]),
+    );
+  });
+
+  it('says nothing was done when the removal was refused', async () => {
+    members.remove.mockResolvedValue(false);
+    fixture.nativeElement.querySelector('[data-testid="row-more-u1"]').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const entries = document.querySelectorAll('[data-testid^="row-menu-remove-"]');
+    (entries[entries.length - 1] as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const buttons = document.querySelectorAll('[data-testid="confirm-run"]');
+    (buttons[buttons.length - 1] as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await vi.waitFor(() => expect(members.remove).toHaveBeenCalled());
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
   });
 
   it('says so when the API refused', async () => {

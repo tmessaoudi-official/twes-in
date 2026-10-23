@@ -1,0 +1,20 @@
+{
+  "settings": {
+    "refused_line": "{{label}}: {{reason}}"
+  },
+  "import": {
+    "rejections": {
+      "at_least": "Expected: {{min}} or more.",
+      "at_most": "Expected: {{max}} at most.",
+      "number_between": "Expected: a number from {{min}} to {{max}}.",
+      "not_a_colour": "Expected: a colour written #rrggbb, six digits or letters from a to f after the hash (example: #1f6feb).",
+      "level_refused": "This value is not set at this level: set it where it is offered.",
+      "invalid_late_fee_tiers": "Up to five fees separated by semicolons, each an amount or a percentage of what is still owed (example: 5; 10; 2%).",
+      "invalid_reminder_stages": "Up to five numbers of days late, three digits at most each, separated by commas (example: 7, 15, 30).",
+      "invalid_reference_format": "Unaccented letters, digits and . _ / - around exactly one {SEQ} or {SEQ:n}, n from 1 to 12 (example: ART-{SEQ:5}).",
+      "invalid_unit_code": "A unit code has 2 or 3 capital letters or digits (example: C62 for a piece, KGM for a kilogram).",
+      "invalid_whatsapp": "A WhatsApp number is written in international form: + then the country code and the number, in digits and spaces only (example: +216 20 123 456).",
+      "invalid_status_url": "The status page's address starts with https:// then the site's name (example: https://status.example.com)."
+    }
+  }
+}

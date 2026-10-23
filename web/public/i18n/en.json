@@ -211,7 +211,8 @@
     "remove_confirm": "Remove",
     "keep": "Keep",
     "activity": "{{name}}’s activity",
-    "invite_title": "Invite a member"
+    "invite_title": "Invite a member",
+    "removed": "{{name}} no longer has access to this company."
   },
   "company": {
     "choose": "Choose a company",
@@ -250,7 +251,9 @@
         "replace": "Choose another picture",
         "remove": "Remove the logo",
         "saved": "The logo was saved.",
-        "removed": "The logo was removed."
+        "removed": "The logo was removed.",
+        "undo": "Undo",
+        "put_back": "The logo was put back."
       },
       "fields": {
         "legalName": "Legal name",
@@ -464,7 +467,11 @@
         "step_up_required": "Nothing changed: confirm it is you to make this change."
       },
       "name_conflict": "The name was changed in the saved version too.",
-      "permissions_conflict": "The permissions were changed in the saved version too."
+      "permissions_conflict": "The permissions were changed in the saved version too.",
+      "delete_title": "Delete this role?",
+      "delete_message": "The “{{name}}” role goes, with the list of what it permits: nothing puts it back.",
+      "keep": "Keep the role",
+      "changed_since": "The “{{name}}” role was changed in the meantime: nothing was deleted. Read it again before deleting it."
     },
     "security": {
       "title": "Security",
@@ -817,7 +824,9 @@
       "inverted": "The end comes before the start: this interval is not applied."
     },
     "loading": "Loading…",
-    "failed": "The list could not be loaded. Reload the page in a moment."
+    "failed": "The list could not be loaded. Reload the page in a moment.",
+    "view_deleted": "The view {{name}} was deleted.",
+    "view_undo": "Undo"
   },
   "form": {
     "save": "Save",
@@ -841,6 +850,7 @@
       "min": "At least {{min}}.",
       "max": "At most {{max}}.",
       "date": "Enter a valid day, such as 05/09/2026.",
+      "time": "Enter a valid time of day, such as 9:05.",
       "colour": "Enter a colour written as #rrggbb, such as #1f6feb."
     },
     "leave": {
@@ -1164,10 +1174,13 @@
     "overrides": {
       "title": "Values set for the company",
       "intro": "Resetting a value returns it to the default.",
-      "reset": "Reset"
+      "reset": "Reset",
+      "reset_done": "{{label}} takes the value from the level above again.",
+      "undo": "Undo",
+      "put_back": "{{label}} has its value back."
     },
     "errors": {
-      "invalid": "The values were refused. Check the limits shown.",
+      "invalid": "Nothing was saved: correct the fields marked.",
       "not_found": "Setting not found.",
       "network": "The server could not be reached."
     },
@@ -1372,7 +1385,7 @@
       "overrides": "Values set here",
       "reset": "Reset",
       "errors": {
-        "invalid": "The values were refused. Check the limits shown.",
+        "invalid": "Nothing was saved: correct the fields marked.",
         "not_found": "Not found.",
         "network": "The server could not be reached."
       }
@@ -2163,7 +2176,7 @@
       "overrides": "Values set here",
       "reset": "Reset",
       "errors": {
-        "invalid": "The values were refused. Check the limits shown.",
+        "invalid": "Nothing was saved: correct the fields marked.",
         "not_found": "Not found.",
         "network": "The server could not be reached."
       }
@@ -2179,7 +2192,9 @@
       "clear": "Remove this home location",
       "saved": "Home location added.",
       "reordered": "Home locations reordered.",
-      "cleared": "Home location removed."
+      "cleared": "Home location removed.",
+      "undo": "Undo",
+      "put_back": "Home location put back."
     },
     "reorder": {
       "title": "Reorder points",
@@ -2192,7 +2207,9 @@
       "malformed": "A quantity from 0, with at most three decimals.",
       "saved": "The reorder point was saved.",
       "changed_since": "This threshold was changed in the saved version too.",
-      "cleared": "The reorder point was removed."
+      "cleared": "The reorder point was removed.",
+      "undo": "Undo",
+      "put_back": "The reorder point was put back."
     },
     "barcodes": {
       "intro": "The codes a scanner reads for this article: its unit code, packs that count several at once, its supplier’s carton code, a code you printed. A code belongs to one article of the company only.",
@@ -2577,6 +2594,7 @@
       "add": "Add",
       "empty": "Nothing counted here yet.",
       "counted": "Counted",
+      "counted_invalid": "A number, zero included, with three decimals at most, such as 12 or 2.5.",
       "remove": "Remove the line",
       "record": "Record the count",
       "incomplete": "Every line needs a quantity, and a tracked article its lot.",

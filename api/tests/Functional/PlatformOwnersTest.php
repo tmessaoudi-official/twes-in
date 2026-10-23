@@ -117,6 +117,8 @@ final class PlatformOwnersTest extends ApiTestCase
         $this->postJson($this->ownersOf($company), ['email' => 'not an address']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        // Said on the address's own field, with the form an address takes and an example.
+        self::assertSame([['propertyPath' => 'email', 'reason' => 'invalid_email', 'params' => []]], $this->refusals());
     }
 
     public function testAnUnknownOrMalformedCompanyIsNotFound(): void

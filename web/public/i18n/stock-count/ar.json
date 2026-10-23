@@ -1,0 +1,14 @@
+{
+  "count_effect": {
+    "expected": "المتوقَّع هنا: {{expected}}",
+    "difference_up": "· زيادة {{difference}}",
+    "difference_down": "· نقص {{difference}}",
+    "difference_same": "· لا فرق",
+    "also": "أيضًا:",
+    "at_place": "{{quantity}} في {{place}}",
+    "separator": "، ",
+    "stray": "لا شيء من هذا المنتج مسجَّل في هذا الموقع، وليس موقعه: يضيف التسجيل ما عُدّ هنا دون أن يُنقص شيئًا من موقع آخر.",
+    "home": "موقعه:",
+    "new_lot": "دفعة جديدة: ستُفتح الدفعة {{lot}} عند التسجيل."
+  }
+}

@@ -17,6 +17,8 @@ delivery_note:
     issue_date: 'التاريخ'
     delivery_date: 'تاريخ التسليم'
     customer_reference: 'مرجعكم'
+    quote: 'عرض سعر'
+    invoice: 'فاتورة'
     remarks: 'ملاحظات'
     reception:
         title: 'الاستلام'

@@ -21,7 +21,8 @@ import {
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
 import { PartyDefaults } from './party-defaults';
 import { PartySettings } from './party-settings-facade';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
 import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
@@ -58,6 +59,7 @@ describe('PartyDefaults', () => {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: signal([]).asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     save: vi.fn(),
@@ -206,6 +208,35 @@ describe('PartyDefaults', () => {
       'document.payment_terms_days',
     );
     expect(q('party-defaults-error')?.textContent).toContain('Valeur refusée');
+  });
+
+  it('says a reset gave the value up, naming it, and puts it back on the version the reset left', async () => {
+    rows.set([
+      {
+        ...terms,
+        levels: [...terms.levels, { level: 'customer', value: 10 }],
+        versions: { customer_group: 1, customer: 3 },
+      },
+    ]);
+    await open();
+
+    q('party-defaults-reset-document.payment_terms_days')!.click();
+    await fixture.whenStable();
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    expect(said).toEqual([
+      expect.objectContaining({
+        key: 'settings.overrides.reset_done',
+        params: { label: 'settings.document.payment_terms_days' },
+      }),
+    ]);
+
+    rows.set([terms]);
+    said[0].action!.run();
+    await fixture.whenStable();
+    expect(facade.save).toHaveBeenCalledWith('c1', { customerId: 'k1' }, [
+      { key: 'document.payment_terms_days', value: 10, version: 0 },
+    ]);
+    expect(said[1]).toEqual(expect.objectContaining({ key: 'settings.overrides.put_back' }));
   });
 
   it('shows a reader the values without a way to change them', async () => {

@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
+use App\Module\Quotes\Application\Delivery\QuoteDeliveryNotes;
 use App\Module\Quotes\Domain\Exception\InvalidQuote;
 use App\Module\Quotes\Domain\Exception\QuoteNotDraft;
 use App\Module\Quotes\Domain\Exception\QuoteTransitionRefused;
@@ -58,6 +59,7 @@ final readonly class QuoteWorkflow
         private QuoteInvoices $invoices,
         private DocumentNames $names,
         private ExcludedTaxFamilies $excluded,
+        private QuoteDeliveryNotes $deliveries,
     ) {
     }
 
@@ -171,6 +173,7 @@ final readonly class QuoteWorkflow
             }
             // Checked before the draft is made, so a quote that is not accepted makes no invoice.
             $quote->assertInvoiceable();
+            $this->assertNotDelivered($company, $quote, 'it is invoiced through them, « Facturer les bons de livraison »');
             $invoiceId = $this->invoices->draftFrom($quote, $actorUserId);
             $quote->markInvoiced($invoiceId, $this->clock->now());
             $this->quotes->save($quote);
@@ -199,6 +202,7 @@ final readonly class QuoteWorkflow
                 throw new QuoteTransitionRefused(\sprintf('The quote %s is already on an invoice: cancel that draft first to invoice it again.', $quote->getNumber() ?? $quote->getId()->toRfc4122()));
             }
             $quote->assertInvoiceable();
+            $this->assertNotDelivered($company, $quote, 'it is invoiced through them, « Facturer les bons de livraison »');
             $this->invoices->addTo($quote, $invoiceId, $actorUserId);
             $quote->markInvoiced($invoiceId, $this->clock->now());
             $this->quotes->save($quote);
@@ -236,11 +240,28 @@ final readonly class QuoteWorkflow
                 throw new QuoteTransitionRefused(\sprintf('The quote %s is already on an invoice: a deposit comes before it.', $quote->getNumber() ?? $quote->getId()->toRfc4122()));
             }
             $quote->assertInvoiceable();
+            $this->assertNotDelivered($company, $quote, 'a deposit comes before them, and the invoice of its notes would not give it back');
             $invoiceId = $this->invoices->depositFrom($quote, $percentage, $amount, $actorUserId);
             $this->record($company, $quote, self::DEPOSIT_DRAFTED, ['invoiceId' => $invoiceId->toRfc4122()], $actorUserId);
 
             return $quote;
         });
+    }
+
+    /**
+     * A quote delivered by notes that are not cancelled is invoiced through them alone: invoiced as a whole too, its goods
+     * would leave stock twice and be billed twice.
+     *
+     * @throws QuoteTransitionRefused
+     */
+    private function assertNotDelivered(Company $company, Quote $quote, string $instead): void
+    {
+        $key = $quote->getId()->toRfc4122();
+        $lines = array_map(static fn (QuoteLine $line): Uuid => $line->getId(), $quote->getLines());
+        $notes = $this->deliveries->ofQuotes($company, [$key => $lines])[$key]->notes ?? [];
+        if ([] !== $notes) {
+            throw new QuoteTransitionRefused(\sprintf('The quote %s is delivered by delivery notes that are not cancelled: %s.', $quote->getNumber() ?? $key, $instead));
+        }
     }
 
     private static function zero(string $decimal): bool

@@ -211,7 +211,8 @@
     "remove_confirm": "Retirer",
     "keep": "Garder",
     "activity": "Activité de {{name}}",
-    "invite_title": "Inviter un membre"
+    "invite_title": "Inviter un membre",
+    "removed": "{{name}} n’a plus accès à cette entreprise."
   },
   "company": {
     "choose": "Choisir une entreprise",
@@ -250,7 +251,9 @@
         "replace": "Choisir une autre image",
         "remove": "Retirer le logo",
         "saved": "Le logo est enregistré.",
-        "removed": "Le logo est retiré."
+        "removed": "Le logo est retiré.",
+        "undo": "Annuler",
+        "put_back": "Le logo est remis."
       },
       "fields": {
         "legalName": "Raison sociale",
@@ -464,7 +467,11 @@
         "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
       },
       "name_conflict": "Le nom a aussi été modifié dans la version enregistrée.",
-      "permissions_conflict": "Les permissions ont aussi été modifiées dans la version enregistrée."
+      "permissions_conflict": "Les permissions ont aussi été modifiées dans la version enregistrée.",
+      "delete_title": "Supprimer ce rôle ?",
+      "delete_message": "Le rôle « {{name}} » disparaît, avec la liste de ce qu’il permet : rien ne le remet.",
+      "keep": "Garder le rôle",
+      "changed_since": "Le rôle « {{name}} » a été modifié entre-temps : rien n’a été supprimé. Relisez-le avant de le supprimer."
     },
     "security": {
       "title": "Sécurité",
@@ -817,7 +824,9 @@
       "inverted": "La fin précède le début : cet intervalle n’est pas appliqué."
     },
     "loading": "Chargement…",
-    "failed": "La liste n’a pas pu être chargée. Rechargez la page dans un instant."
+    "failed": "La liste n’a pas pu être chargée. Rechargez la page dans un instant.",
+    "view_deleted": "La vue {{name}} a été supprimée.",
+    "view_undo": "Annuler"
   },
   "form": {
     "save": "Enregistrer",
@@ -841,6 +850,7 @@
       "min": "Au moins {{min}}.",
       "max": "Au plus {{max}}.",
       "date": "Saisissez un jour valide, par exemple 05/09/2026.",
+      "time": "Saisissez une heure valide, par exemple 9h05.",
       "colour": "Saisissez une couleur au format #rrggbb, par exemple #1f6feb."
     },
     "leave": {
@@ -1164,10 +1174,13 @@
     "overrides": {
       "title": "Valeurs fixées pour la société",
       "intro": "Réinitialiser une valeur la ramène à la valeur par défaut.",
-      "reset": "Réinitialiser"
+      "reset": "Réinitialiser",
+      "reset_done": "{{label}} reprend la valeur du niveau au-dessus.",
+      "undo": "Annuler",
+      "put_back": "{{label}} a retrouvé sa valeur."
     },
     "errors": {
-      "invalid": "Les valeurs ont été refusées. Vérifiez les limites indiquées.",
+      "invalid": "Rien n’a été enregistré : corrigez les champs marqués.",
       "not_found": "Paramètre introuvable.",
       "network": "Le serveur est injoignable."
     },
@@ -1372,7 +1385,7 @@
       "overrides": "Valeurs réglées ici",
       "reset": "Réinitialiser",
       "errors": {
-        "invalid": "Les valeurs ont été refusées. Vérifiez les limites indiquées.",
+        "invalid": "Rien n’a été enregistré : corrigez les champs marqués.",
         "not_found": "Introuvable.",
         "network": "Le serveur est injoignable."
       }
@@ -2163,7 +2176,7 @@
       "overrides": "Valeurs réglées ici",
       "reset": "Réinitialiser",
       "errors": {
-        "invalid": "Les valeurs ont été refusées. Vérifiez les limites indiquées.",
+        "invalid": "Rien n’a été enregistré : corrigez les champs marqués.",
         "not_found": "Introuvable.",
         "network": "Le serveur est injoignable."
       }
@@ -2179,7 +2192,9 @@
       "clear": "Retirer cet emplacement habituel",
       "saved": "Emplacement habituel ajouté.",
       "reordered": "Emplacements habituels réordonnés.",
-      "cleared": "Emplacement habituel retiré."
+      "cleared": "Emplacement habituel retiré.",
+      "undo": "Annuler",
+      "put_back": "Emplacement habituel remis."
     },
     "reorder": {
       "title": "Seuils de réapprovisionnement",
@@ -2192,7 +2207,9 @@
       "malformed": "Une quantité à partir de 0, avec au plus trois décimales.",
       "saved": "Le seuil a été enregistré.",
       "changed_since": "Ce seuil a aussi été modifié dans la version enregistrée.",
-      "cleared": "Le seuil a été retiré."
+      "cleared": "Le seuil a été retiré.",
+      "undo": "Annuler",
+      "put_back": "Le seuil a été remis."
     },
     "barcodes": {
       "intro": "Les codes que la douchette lit pour cet article : son code à l’unité, les colis qui en comptent plusieurs d’un coup, le code du carton de son fournisseur, un code que vous avez imprimé. Un code n’appartient qu’à un seul article de l’entreprise.",
@@ -2577,6 +2594,7 @@
       "add": "Ajouter",
       "empty": "Rien n’est encore compté ici.",
       "counted": "Compté",
+      "counted_invalid": "Un nombre, zéro compris, avec trois décimales au plus, par exemple 12 ou 2,5.",
       "remove": "Retirer la ligne",
       "record": "Enregistrer le comptage",
       "incomplete": "Chaque ligne a besoin d’une quantité, et d’un lot pour un article suivi.",

@@ -68,7 +68,8 @@ describe('RolesFacade', () => {
     api.remove.mockResolvedValue(undefined);
 
     await facade.create('c1', 'Caissier', ['till.use']);
-    await facade.remove('c1', 'r1');
+    await facade.remove('c1', 'r1', 4);
+    expect(api.remove).toHaveBeenCalledWith('c1', 'r1', 4);
 
     expect(auth.refresh).toHaveBeenCalledTimes(2);
   });
@@ -97,7 +98,7 @@ describe('RolesFacade', () => {
     stepUp.request.mockReset().mockResolvedValue(false);
     api.remove.mockRejectedValue(new RolesRefused('step_up_required'));
 
-    expect(await facade.remove('c1', 'r1')).toBe(false);
+    expect(await facade.remove('c1', 'r1', 1)).toBe(false);
     expect(facade.error()).toBe('step_up_required');
   });
 });

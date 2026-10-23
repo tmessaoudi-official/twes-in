@@ -35,7 +35,7 @@ final readonly class LateFeeSettings implements DeclaresSettings
     public function settings(): iterable
     {
         yield new SettingDefinition(self::ENABLED, SettingType::Bool, false, SettingChain::Parties, [SettingLevel::Company], 'settings.late_fees.enabled', self::MODULE);
-        yield new SettingDefinition(self::TIERS, SettingType::Text, '', SettingChain::Parties, [SettingLevel::Company], 'settings.late_fees.tiers', self::MODULE, pattern: self::TIERS_PATTERN);
+        yield new SettingDefinition(self::TIERS, SettingType::Text, '', SettingChain::Parties, [SettingLevel::Company], 'settings.late_fees.tiers', self::MODULE, pattern: self::TIERS_PATTERN, patternReason: 'invalid_late_fee_tiers');
     }
 
     /**

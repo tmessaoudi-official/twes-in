@@ -34,7 +34,7 @@ final readonly class ReminderSettings implements DeclaresSettings
     public function settings(): iterable
     {
         yield new SettingDefinition(self::ENABLED, SettingType::Bool, true, SettingChain::Parties, [SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer], 'settings.reminders.enabled', self::MODULE);
-        yield new SettingDefinition(self::STAGES, SettingType::Text, '7, 15, 30', SettingChain::Parties, [SettingLevel::Company], 'settings.reminders.stages', self::MODULE, pattern: self::STAGES_PATTERN);
+        yield new SettingDefinition(self::STAGES, SettingType::Text, '7, 15, 30', SettingChain::Parties, [SettingLevel::Company], 'settings.reminders.stages', self::MODULE, pattern: self::STAGES_PATTERN, patternReason: 'invalid_reminder_stages');
         yield new SettingDefinition(self::HOUR, SettingType::Int, 9, SettingChain::Parties, [SettingLevel::Company], 'settings.reminders.hour', self::MODULE, min: 0, max: 23);
     }
 

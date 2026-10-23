@@ -100,7 +100,21 @@ export class ProductHomesSection implements OnInit {
     const companyId = this.companyId();
     if (companyId === null) return;
     const outcome = await this.homes.remove(companyId, this.productId(), home, this.version());
-    if (outcome === 'saved') this.feedback.success('products.homes.cleared');
+    // Undo first: nothing asks before a home is taken off, and « Annuler » puts it back where it stood.
+    if (outcome === 'saved') {
+      this.feedback.success(
+        'products.homes.cleared',
+        {},
+        { key: 'products.homes.undo', run: () => void this.putBack(companyId, home) },
+      );
+    }
+    this.told(outcome);
+  }
+
+  /** On the version the product holds when « Annuler » is pressed, which the removal moved. */
+  private async putBack(companyId: string, home: ProductHomeRow): Promise<void> {
+    const outcome = await this.homes.putBack(companyId, this.productId(), home, this.version());
+    if (outcome === 'saved') this.feedback.success('products.homes.put_back');
     this.told(outcome);
   }
 

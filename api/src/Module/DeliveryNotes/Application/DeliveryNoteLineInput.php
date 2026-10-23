@@ -18,8 +18,11 @@ use Symfony\Component\Uid\Uuid;
 final readonly class DeliveryNoteLineInput
 {
     /**
-     * @param list<Uuid>|null $taxComponentIds null for the product's default taxes; an empty list for none
-     * @param string|null     $lotCode         the lot or serial handed over, for a product tracked by one
+     * @param list<Uuid>|null $taxComponentIds     null for the product's default taxes; an empty list for none
+     * @param string|null     $lotCode             the lot or serial handed over, for a product tracked by one
+     * @param Uuid|null       $sourceQuoteLineId   the line of an accepted quote it delivers: what it leaves out comes from
+     *                                             that line, and what it states must be what that line says
+     * @param Uuid|null       $sourceInvoiceLineId the line of an issued invoice whose goods it hands over, kept the same way
      */
     public function __construct(
         public ?Uuid $productId,
@@ -29,6 +32,8 @@ final readonly class DeliveryNoteLineInput
         public ?string $unitPriceNet = null,
         public ?array $taxComponentIds = null,
         public ?string $lotCode = null,
+        public ?Uuid $sourceQuoteLineId = null,
+        public ?Uuid $sourceInvoiceLineId = null,
     ) {
     }
 }

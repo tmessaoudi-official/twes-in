@@ -30,6 +30,7 @@ import { RecurringExpenseRefused, RecurringExpensesApi } from './recurring-expen
 import { recurringExpenseFailure } from './recurring-expense-form';
 import { RecurringExpensesPage } from './recurring-expenses-page';
 import type { RecurringExpenseRow } from './recurring-expenses-types';
+import { applyFilters } from '../shared/list/list-view';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -223,6 +224,17 @@ describe('RecurringExpensesPage', () => {
     await open();
 
     expect(q('recurring-expense-r1')?.textContent ?? '').toContain('جانفي');
+  });
+
+  it('narrows by several states at once: « Active » and « En pause » together', async () => {
+    await open();
+    const filters = fixture.componentInstance['list']().filters ?? [];
+    const held: RecurringExpenseRow = { ...rent, id: 'r3', paused: true };
+
+    expect(filters.map((filter) => [filter.id, filter.multiple])).toEqual([['state', true]]);
+    expect(
+      applyFilters([rent, power, held], filters, { state: 'active,paused' }).map((row) => row.id),
+    ).toEqual(['r1', 'r3']);
   });
 
   it('sits between the expenses and their categories as a tab of Dépenses', async () => {

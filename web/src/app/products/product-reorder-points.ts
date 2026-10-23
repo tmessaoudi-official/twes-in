@@ -167,10 +167,35 @@ export class ProductReorderPointsSection implements OnInit {
       null,
       this.version(),
     );
+    // Undo first: nothing asks before a point is cleared, and « Annuler » sets the one it held again.
     if (outcome === 'saved') {
       this.forget(row);
-      this.feedback.success('products.reorder.cleared');
+      const held = row.quantity;
+      this.feedback.success(
+        'products.reorder.cleared',
+        {},
+        held === null
+          ? undefined
+          : { key: 'products.reorder.undo', run: () => void this.putBack(companyId, row, held) },
+      );
     }
+    this.told(outcome);
+  }
+
+  /** On the version the product holds when « Annuler » is pressed, which the clearing moved. */
+  private async putBack(
+    companyId: string,
+    row: ProductReorderPointRow,
+    quantity: string,
+  ): Promise<void> {
+    const outcome = await this.points.set(
+      companyId,
+      this.productId(),
+      row.establishmentId,
+      quantity,
+      this.version(),
+    );
+    if (outcome === 'saved') this.feedback.success('products.reorder.put_back');
     this.told(outcome);
   }
 

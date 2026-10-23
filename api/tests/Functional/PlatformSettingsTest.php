@@ -130,6 +130,23 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertSame('', $this->platformRows()['support.phone']['value']);
     }
 
+    /** Every refused key of a platform save is named on its own, as a company's are. */
+    public function testEveryPlatformKeyRefusedIsNamedWithItsReason(): void
+    {
+        $this->signedInAsOperator();
+
+        $this->sendJson('PUT', self::PATH, ['changes' => [
+            ['key' => 'support.email', 'value' => 'help at twes', 'version' => 0],
+            ['key' => 'licensing.grace_days', 'value' => -1, 'version' => 0],
+            ['key' => 'support.phone', 'value' => '+216 71 000 000', 'version' => 0],
+        ]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $said = array_map(static fn (array $refusal): array => [$refusal['propertyPath'], $refusal['reason']], $this->refusals());
+        self::assertSame([['support.email', 'invalid_email'], ['licensing.grace_days', 'whole_number_between']], $said);
+        self::assertSame('', $this->platformRows()['support.phone']['value'], 'nothing of a refused save is kept');
+    }
+
     public function testAValueOfTheWrongShapeIsUnprocessable(): void
     {
         $this->signedInAsOperator();

@@ -26,7 +26,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * An operator's hand on a company's subscription (docs/SPEC.md § 7, 2026-09-17): setting its terms starts managing the
  * company, stopping forgets them and gives the company full access again. Every change is audited against the company,
- * with the terms before and after, so the company's own log shows what was decided about it.
+ * naming the terms it changed, so the company's own log shows when what was decided about it changed.
  */
 final readonly class ManageSubscriptions
 {
@@ -77,22 +77,28 @@ final readonly class ManageSubscriptions
                 $subscription->revise($terms, $now);
             }
             $this->subscriptions->save($subscription);
-            $this->record($subscription, self::SET, $operatorId, ['from' => null === $before ? null : self::describe($before), 'to' => self::describe($terms)]);
+            $this->record($subscription, self::SET, $operatorId, ['fields' => self::changed($before, $terms)]);
 
             return $subscription;
         });
     }
 
-    /** Stopping a subscription licensing does not hold changes nothing. @throws CompanyNotFound */
-    public function stop(Uuid $companyId, Uuid $operatorId): void
+    /**
+     * Stopping erases the terms, which nothing keeps afterwards, so it names the version it was read at: terms another
+     * operator set or stopped since are refused rather than erased unseen.
+     *
+     * @param int $version the version of the subscription the operator read
+     *
+     * @throws CompanyNotFound
+     * @throws RecordChanged   when the subscription was set, stopped or carried forward since
+     */
+    public function stop(Uuid $companyId, Uuid $operatorId, int $version): void
     {
         $company = $this->companyOf($companyId);
-        $this->transactions->run(function () use ($company, $operatorId): void {
-            $subscription = $this->subscriptions->lockedOfCompany($company->getId());
-            if (null === $subscription) {
-                return;
-            }
-            $this->record($subscription, self::STOPPED, $operatorId, ['from' => self::describe($subscription->getTerms())]);
+        $this->transactions->run(function () use ($company, $operatorId, $version): void {
+            $subscription = $this->subscriptions->lockedOfCompany($company->getId()) ?? throw new RecordChanged();
+            $this->versions->expect($subscription, $version);
+            $this->record($subscription, self::STOPPED, $operatorId, ['fields' => self::changed($subscription->getTerms(), null)]);
             $this->subscriptions->remove($subscription);
         });
     }
@@ -104,17 +110,36 @@ final readonly class ManageSubscriptions
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $subscription->getId(), $action, $operatorId, $changes, $companyId));
     }
 
-    /** @return array<string, int|string|null> */
-    private static function describe(SubscriptionTerms $terms): array
+    /**
+     * The names of the terms that differ between two sets, either of which may be none: the journal names what changed
+     * and never holds a price or a date (audit records field names, never values).
+     *
+     * @return list<string>
+     */
+    private static function changed(?SubscriptionTerms $before, ?SubscriptionTerms $after): array
+    {
+        $from = self::compared($before);
+        $to = self::compared($after);
+
+        return array_values(array_filter(array_keys($from), static fn (string $term): bool => $from[$term] !== $to[$term]));
+    }
+
+    /**
+     * Each term as one comparable value, none when there are no terms; kept in memory to tell what changed.
+     *
+     * @return array<string, int|string|null>
+     */
+    private static function compared(?SubscriptionTerms $terms): array
     {
         return [
-            'period' => $terms->period->count.' '.$terms->period->unit->value,
-            'trialEndsAt' => $terms->trialEndsAt?->format(\DATE_ATOM),
-            'paidUntil' => $terms->paidUntil?->format(\DATE_ATOM),
-            'price' => $terms->price,
-            'currency' => $terms->currency,
-            'graceDays' => $terms->graceDays,
-            'unpaidMode' => $terms->unpaidMode?->value,
+            'period' => null === $terms ? null : $terms->period->count.' '.$terms->period->unit->value,
+            'trialEndsAt' => $terms?->trialEndsAt?->format(\DATE_ATOM),
+            'paidUntil' => $terms?->paidUntil?->format(\DATE_ATOM),
+            'price' => $terms?->price,
+            'currency' => $terms?->currency,
+            'graceDays' => $terms?->graceDays,
+            'holdDays' => $terms?->holdDays,
+            'unpaidMode' => $terms?->unpaidMode?->value,
         ];
     }
 

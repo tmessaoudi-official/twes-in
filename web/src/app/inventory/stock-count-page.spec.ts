@@ -108,6 +108,7 @@ describe('StockCountPage', () => {
     ),
     record: vi.fn(),
     clearError: vi.fn(),
+    countContexts: vi.fn(),
   };
   const scans = { named: vi.fn(), piecesPerScan: vi.fn() };
   const granted = new Set<string>();
@@ -141,6 +142,7 @@ describe('StockCountPage', () => {
     facade.loadStockContext.mockReset().mockResolvedValue(undefined);
     facade.record.mockReset().mockResolvedValue(true);
     facade.pickProducts.mockClear();
+    facade.countContexts.mockReset().mockResolvedValue([]);
     scans.named.mockReset().mockResolvedValue(null);
     TestBed.configureTestingModule({
       imports: [StockCountPage],
@@ -222,6 +224,56 @@ describe('StockCountPage', () => {
     }
   });
 
+  it('says on each line what recording it would change, and warns of a place the article is not kept at', async () => {
+    facade.countContexts.mockResolvedValue([
+      {
+        productId: 'p1',
+        places: [{ locationId: rack.id, lotCode: null, quantity: '10.000' }],
+        homeLocationIds: [rack.id],
+      },
+    ]);
+    scans.named.mockResolvedValue(scanOf('p1'));
+    await scanned('3017620422003');
+    await settle();
+
+    expect(facade.countContexts).toHaveBeenCalledWith('c1', ['p1']);
+    expect(q('stock-count-0-effect-expected')).not.toBeNull();
+    expect(q('stock-count-0-effect-elsewhere')?.querySelectorAll('bdi').length).toBe(1);
+    // Counted at the default place, where nothing of it is recorded and which is not its home.
+    expect(q('stock-count-0-effect-stray')?.textContent).toContain('R1');
+    expect(facade.record).not.toHaveBeenCalled();
+
+    // A second scan of it asks nothing more: the product is known.
+    await scanned('3017620422003');
+    await settle();
+    expect(facade.countContexts).toHaveBeenCalledTimes(1);
+
+    // At its own rack it is counted against what is there, with nothing to warn of.
+    await scanned(`https://twes.example/stock/locations/${rack.id}`);
+    await scanned('3017620422003');
+    await settle();
+    expect(q('stock-count-1-effect-difference')).not.toBeNull();
+    expect(q('stock-count-1-effect-stray')).toBeNull();
+  });
+
+  it('names a lot the article never had before it is recorded', async () => {
+    facade.countContexts.mockResolvedValue([
+      {
+        productId: 'p3',
+        places: [{ locationId: 'l1', lotCode: 'L-1', quantity: '2.000' }],
+        homeLocationIds: [],
+      },
+    ]);
+    scans.named.mockResolvedValue(scanOf('p3', { lot: 'L-1' }));
+    await scanned('3017620422003');
+    await settle();
+    expect(q('stock-count-0-effect-new-lot')).toBeNull();
+
+    type('stock-count-0-lot', 'L-9');
+    await settle();
+    expect(q('stock-count-0-effect-new-lot')?.textContent).toContain('count_effect.new_lot');
+  });
+
   // docs/SPEC.md § 7, 2026-09-24 12:40 (row 23): what is counted and not recorded is unsaved work.
   it('counts what is tallied and not recorded as unsaved work, and nothing once it is recorded', async () => {
     const unsaved = TestBed.inject(UnsavedChanges);
@@ -235,6 +287,23 @@ describe('StockCountPage', () => {
     q('stock-count-record')!.click();
     await settle();
     expect(unsaved.count()).toBe(0);
+  });
+
+  it('says a count that is not a quantity under its field and records nothing', async () => {
+    scans.named.mockResolvedValue(scanOf('p1'));
+    await scanned('3017620422003');
+    await settle();
+
+    type('stock-count-0-counted', 'douze');
+    await settle();
+    q('stock-count-record')!.click();
+    await settle();
+
+    expect(facade.record).not.toHaveBeenCalled();
+    expect(q('stock-count-0-counted-error')?.textContent).toContain(
+      'inventory.count.counted_invalid',
+    );
+    expect(document.activeElement).toBe(q('stock-count-0-counted'));
   });
 
   it('offers to record only once something is counted', async () => {
@@ -277,6 +346,9 @@ describe('StockCountPage', () => {
     expect(said()).toContainEqual(
       expect.objectContaining({ kind: 'failure', key: 'inventory.count.incomplete' }),
     );
+    // Said under the field it concerns too, the cursor there: a toast alone left the line to be found.
+    expect(q('stock-count-1-lot-error')?.textContent).toContain('form.errors.required');
+    expect(document.activeElement).toBe(q('stock-count-1-lot'));
 
     type('stock-count-1-lot', 'L-07');
     type('stock-count-0-counted', '9');

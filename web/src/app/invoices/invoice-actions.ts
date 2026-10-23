@@ -23,6 +23,9 @@ import { todayIn } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SCHEDULE_TEXTS } from '../shared/schedule/schedule-texts';
+import { DELIVERIES_TEXTS } from '../shared/documents/deliveries-texts';
+import { DeliverPartDialog, type DeliverableLine } from '../shared/documents/deliver-part-dialog';
+import { DELIVERY_NOTES_MODULE } from '../delivery-notes/delivery-notes-nav';
 import { versus } from '../shared/ui/versus';
 import { CreditNoteDialog, type CreditNoteDialogData } from './credit-note-dialog';
 import { FacturXRefusalDialog, type FacturXRefusal } from './factur-x-refusal-dialog';
@@ -49,6 +52,13 @@ export interface InvoiceRights {
   recurring: boolean;
   /** Whether the company's preset writes Factur-X. */
   facturX: boolean;
+  /** Writing delivery notes, with their module on: what « Livrer » takes, as the API asks. */
+  deliver: boolean;
+}
+
+/** A quantity the API wrote above zero, "0.500" or "4.000": something left. */
+function aboveZero(quantity: string): boolean {
+  return /[1-9]/.test(quantity) && !quantity.trim().startsWith('-');
 }
 
 /** An amount the API wrote as zero at any scale, "0" or "0.000". */
@@ -102,6 +112,17 @@ export const invoiceMay = {
   facturX: (invoice: InvoiceRow, rights: InvoiceRights) =>
     rights.facturX && invoice.status !== 'draft' && invoice.status !== 'cancelled',
   printCopies: (invoice: InvoiceRow) => isOpen(invoice),
+  /**
+   * An issued invoice of goods hands them over afterwards on notes, as long as some are left: what it billed, less what
+   * its credit notes took back and what notes take. Its `deliveries` are empty for a draft, a credit note, a deposit, or
+   * whoever may not read notes.
+   */
+  deliver: (invoice: InvoiceRow, rights: InvoiceRights) =>
+    rights.deliver &&
+    isOpen(invoice) &&
+    !isCreditNote(invoice) &&
+    !invoice.deposit &&
+    invoice.deliveries.some((line) => aboveZero(line.left)),
 } as const;
 
 /** What a screen adds to the declaration: what only it knows, and what it does once an action changed the document. */
@@ -141,6 +162,9 @@ export class InvoiceActions {
       credit: this.auth.hasPermission('invoice.credit'),
       recurring: this.auth.hasModule(RECURRING_MODULE),
       facturX: country !== undefined && FACTUR_X_COUNTRIES.includes(country),
+      deliver:
+        this.auth.hasPermission('delivery_note.write') &&
+        this.auth.hasModule(DELIVERY_NOTES_MODULE),
     };
   }
 
@@ -254,6 +278,27 @@ export class InvoiceActions {
         effect: { kind: 'plain' },
         shown: (invoice) => invoiceMay.makeRecurring(invoice, rights),
         run: (invoice) => void this.makeRecurring(invoice),
+      },
+      {
+        id: 'deliver',
+        label: 'deliveries.actions.deliver',
+        icon: 'local_shipping',
+        group: 'create',
+        frequency: 'frequent',
+        // It drafts a note of what is left of every line of goods; validating that draft is where it is checked.
+        effect: { kind: 'plain' },
+        shown: (invoice) => invoiceMay.deliver(invoice, rights),
+        run: (invoice) => void this.deliver(invoice, false),
+      },
+      {
+        id: 'deliver-part',
+        label: 'deliveries.actions.deliver_part',
+        icon: 'tune',
+        group: 'create',
+        frequency: 'frequent',
+        effect: { kind: 'plain' },
+        shown: (invoice) => invoiceMay.deliver(invoice, rights),
+        run: (invoice) => void this.deliver(invoice, true),
       },
       {
         id: 'credit-note',
@@ -402,6 +447,35 @@ export class InvoiceActions {
       this.feedback.success('invoices.duplicated');
       await this.router.navigate(['/invoices', copy.id]);
     }
+  }
+
+  /**
+   * « Livrer » drafts a note of every line of goods for what is left of it; « Livrer une partie » asks how much of each
+   * first. The note opens next: it is checked and validated there, and moves no stock, since the invoice took the goods
+   * out when it was issued.
+   */
+  private async deliver(invoice: InvoiceRow, part: boolean): Promise<void> {
+    const companyId = this.companyId();
+    if (!companyId || this.facade.busy()) return;
+    // The words of the dialog and of the toast, read wherever the invoice is shown.
+    await this.texts.open(DELIVERIES_TEXTS);
+    let quantities: Record<string, string> | null = null;
+    if (part) {
+      const chosen = await firstValueFrom(
+        this.dialog
+          .open<DeliverPartDialog, DeliverableLine[], Record<string, string> | null>(
+            DeliverPartDialog,
+            { data: invoice.deliveries, autoFocus: 'first-tabbable' },
+          )
+          .afterClosed(),
+      );
+      if (!chosen) return;
+      quantities = chosen;
+    }
+    const noteId = await this.facade.deliver(companyId, invoice.id, quantities);
+    if (noteId === null) return;
+    this.feedback.success('deliveries.drafted');
+    await this.router.navigate(['/delivery-notes', noteId]);
   }
 
   /** Asks how often and from when, makes it, and offers the recurring invoices in the toast that says so. */

@@ -133,6 +133,8 @@ const draft: DeliveryNoteRow = {
   totalTax: '475.000',
   total: '2975.000',
   invoices: [],
+  quote: null,
+  invoice: null,
 };
 const validated: DeliveryNoteRow = {
   ...draft,
@@ -1041,7 +1043,11 @@ describe('DeliveryNotePage', () => {
     typeIn(over('delivery-note-delivered-on') as HTMLInputElement, '2026-09-20');
     typeIn(over('delivery-note-delivered-time') as HTMLInputElement, '24:00');
     await settle();
-    expect((over('delivery-note-deliver') as HTMLButtonElement).disabled).toBe(true);
+    // Pressed anyway, it delivers nothing and says why under the time.
+    over('delivery-note-deliver')!.click();
+    await settle();
+    expect(facade.deliver).not.toHaveBeenCalled();
+    expect(over('delivery-note-delivered-time-error')?.textContent).toContain('form.errors.time');
     typeIn(over('delivery-note-delivered-time') as HTMLInputElement, '9h05');
     await settle();
     over('delivery-note-deliver')!.click();
@@ -1116,6 +1122,45 @@ describe('DeliveryNotePage', () => {
     note.set({ ...validated, invoices: [] });
     await open('n1');
     expect(q('delivery-note-invoices')).toBeNull();
+  });
+
+  it('links to the quote it delivers, and says nothing of a quote when it delivers none', async () => {
+    note.set({ ...validated, quote: { quoteId: 'q1', number: 'DEV-2026-10-00003' } });
+    await open('n1');
+    const link = q('delivery-note-quote-link');
+    expect(link?.textContent?.trim()).toBe('DEV-2026-10-00003');
+    expect(link?.getAttribute('href')).toBe('/quotes/q1');
+
+    fixture.destroy();
+    note.set({ ...validated, quote: null });
+    await open('n1');
+    expect(q('delivery-note-quote')).toBeNull();
+  });
+
+  it('links to the issued invoice it hands over the goods of, says it is billed already, and offers no invoicing', async () => {
+    const ofInvoice = {
+      ...validated,
+      status: 'delivered' as const,
+      deliveryDate: '2026-09-20',
+      lines: validated.lines.map((line) => ({ ...line, sourceInvoiceLineId: 'il1' })),
+      invoice: { invoiceId: 'i9', number: 'FAC-2026-10-00009' },
+    };
+    note.set(ofInvoice);
+    await open('n1');
+    const link = q('delivery-note-invoice-link');
+    expect(link?.textContent?.trim()).toBe('FAC-2026-10-00009');
+    expect(link?.getAttribute('href')).toBe('/invoices/i9');
+    expect(q('delivery-note-billed-already')).not.toBeNull();
+    expect(q('document-action-invoice'), 'its invoice billed the goods already').toBeNull();
+    expect(q('document-action-invoice-part')).toBeNull();
+    expect(TestBed.inject(ScreenActions).next()?.id).not.toBe('invoice');
+
+    fixture.destroy();
+    note.set({ ...validated, status: 'delivered', deliveryDate: '2026-09-20' });
+    await open('n1');
+    expect(q('delivery-note-invoice')).toBeNull();
+    expect(q('delivery-note-billed-already')).toBeNull();
+    expect(q('document-action-invoice'), 'a note of its own goods is invoiced').not.toBeNull();
   });
 
   it('tells a delivered or a cancelled note only what it can still become', async () => {

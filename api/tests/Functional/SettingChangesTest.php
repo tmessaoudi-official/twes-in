@@ -91,6 +91,24 @@ final class SettingChangesTest extends ApiTestCase
         self::assertSame([30, 30], [$this->valueOf(self::TERMS), $this->valueOf(self::VALIDITY)]);
     }
 
+    /**
+     * Every key refused is named at once, as a form's field is: its key as the property path and, in the payload, the
+     * reason the screens translate and that text's parameters, so the page marks each field rather than saying « refusé ».
+     */
+    public function testEveryKeyRefusedIsNamedWithItsReason(): void
+    {
+        $this->save([[self::VALIDITY, 0, 0], [self::TERMS, 'soon', 0], ['reminders.stages', '7 ; 15', 0], ['document.accent', 'blue', 0]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([
+            ['propertyPath' => self::VALIDITY, 'reason' => 'whole_number_between', 'params' => ['min' => 1, 'max' => 365]],
+            ['propertyPath' => self::TERMS, 'reason' => 'not_a_whole_number', 'params' => []],
+            ['propertyPath' => 'reminders.stages', 'reason' => 'invalid_reminder_stages', 'params' => []],
+            ['propertyPath' => 'document.accent', 'reason' => 'not_a_colour', 'params' => []],
+        ], $this->refusals());
+        self::assertSame([30, 30], [$this->valueOf(self::TERMS), $this->valueOf(self::VALIDITY)]);
+    }
+
     public function testEachChangeSaysWhichVersionItRevises(): void
     {
         $this->sendJson('PUT', $this->path(), ['level' => 'company', 'changes' => [['key' => self::TERMS, 'value' => 45]]]);

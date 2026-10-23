@@ -16,6 +16,7 @@ use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Service\LotCode;
 use App\Shared\Domain\Service\TypedText;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * One line as it is written: what is delivered, how much of it in which unit, its net unit price and the taxes charged
@@ -45,10 +46,14 @@ final readonly class DeliveryNoteLineDetails
 
     /**
      * @param list<TaxComponent> $taxes
+     * @param Uuid|null          $sourceQuoteLineId   the line of the accepted quote it delivers, whose product, unit, price
+     *                                                and taxes it keeps; null for a line of the note's own
+     * @param Uuid|null          $sourceInvoiceLineId the line of the issued invoice whose goods it hands over, already out
+     *                                                of stock and billed; null otherwise
      *
      * @throws InvalidDeliveryNote
      */
-    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, array $taxes, ?string $lotCode = null)
+    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, array $taxes, ?string $lotCode = null, public ?Uuid $sourceQuoteLineId = null, public ?Uuid $sourceInvoiceLineId = null)
     {
         $description = TypedText::trimmed($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
@@ -73,7 +78,7 @@ final readonly class DeliveryNoteLineDetails
         $this->lotCode = self::lotCode($product, $lotCode);
     }
 
-    /** @return array{string|null, string, string, string, string, list<string>, string|null} what two lines are compared on */
+    /** @return array{string|null, string, string, string, string, list<string>, string|null, string|null, string|null} what two lines are compared on */
     public function values(): array
     {
         return [
@@ -84,6 +89,8 @@ final readonly class DeliveryNoteLineDetails
             $this->unitPriceNet,
             array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $this->taxes),
             $this->lotCode,
+            $this->sourceQuoteLineId?->toRfc4122(),
+            $this->sourceInvoiceLineId?->toRfc4122(),
         ];
     }
 

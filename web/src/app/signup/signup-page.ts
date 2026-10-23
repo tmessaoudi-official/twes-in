@@ -46,6 +46,7 @@ export class SignupPage implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    this.signup.forget();
     await this.signup.loadAvailability();
   }
 

@@ -18,9 +18,14 @@
   <p class="max-w-prose">{{ intro() | translate }}</p>
 
   @if (error(); as code) {
-    <p role="alert" data-testid="party-defaults-error" class="text-error">
-      {{ 'customers.defaults.errors.' + code | translate }}
-    </p>
+    <div role="alert" data-testid="party-defaults-error" class="text-error">
+      <p>{{ 'customers.defaults.errors.' + code | translate }}</p>
+      <app-setting-refusal-lines
+        [rows]="rows()"
+        [refusals]="unplaced()"
+        testId="party-defaults-refused"
+      />
+    </div>
   }
 
   @if (descriptor().sections.length > 0) {

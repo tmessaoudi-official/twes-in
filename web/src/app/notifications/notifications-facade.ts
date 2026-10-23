@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { DOCUMENT } from '@angular/common';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { REALTIME_CONNECTOR, type RealtimeConnection } from '../shared/realtime/realtime-connector';
 import { PhonePairing } from '../shared/scan/phone-pairing';
 import { NotificationsApi } from './notifications-api';
 import type { InboxEntry } from './notifications-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /**
  * The notification centre as signals, and the one realtime connection of the signed-in shell. The API's rows are
@@ -21,10 +22,14 @@ export class NotificationsFacade {
   private readonly live = inject(LiveChanges);
   private readonly pairing = inject(PhonePairing);
   private readonly document = inject(DOCUMENT);
-  private readonly itemsSignal = signal<readonly InboxEntry[]>([]);
-  private readonly unreadSignal = signal(0);
-  private readonly unreadByCompanySignal = signal<Readonly<Record<string, number>>>({});
-  private readonly errorSignal = signal(false);
+  private readonly itemsSignal = sessionSignal<readonly InboxEntry[]>([]);
+  private readonly unreadSignal = sessionSignal(0);
+  // What waits in each of the person's companies: kept across a switch, forgotten at sign-out.
+  private readonly unreadByCompanySignal = sessionSignal<Readonly<Record<string, number>>>(
+    {},
+    'person',
+  );
+  private readonly errorSignal = sessionSignal(false);
   private connection: RealtimeConnection | null = null;
 
   readonly items = this.itemsSignal.asReadonly();

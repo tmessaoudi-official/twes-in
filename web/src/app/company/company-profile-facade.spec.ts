@@ -47,6 +47,7 @@ describe('CompanyProfileFacade', () => {
     reviseProfile: vi.fn(),
     uploadLogo: vi.fn(),
     removeLogo: vi.fn(),
+    logoFile: vi.fn(),
   };
   let facade: CompanyProfileFacade;
 
@@ -113,6 +114,23 @@ describe('CompanyProfileFacade', () => {
 
     expect(await facade.removeLogo('c1')).toBe(true);
     expect(facade.profile()?.logoVersion).toBeNull();
+  });
+
+  it('reads the logo shown before a removal, and nothing when there is none or it cannot be read', async () => {
+    api.profile.mockResolvedValue(saved);
+    await facade.load('c1');
+    expect(await facade.currentLogo('c1')).toBeNull();
+    expect(api.logoFile).not.toHaveBeenCalled();
+
+    api.profile.mockResolvedValue({ ...saved, logoVersion: 'v1' });
+    await facade.load('c1');
+    const shown = new File(['x'], 'logo.png', { type: 'image/png' });
+    api.logoFile.mockResolvedValueOnce(shown);
+    expect(await facade.currentLogo('c1')).toBe(shown);
+    expect(api.logoFile).toHaveBeenCalledWith('c1', 'v1');
+
+    api.logoFile.mockRejectedValueOnce(new CompanyRefused('network'));
+    expect(await facade.currentLogo('c1')).toBeNull();
   });
 
   it('keeps the logo it had when the picture is refused, and says why', async () => {

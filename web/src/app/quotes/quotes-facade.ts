@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import type {
   CustomerOption,
   InvoiceDraftOption,
@@ -23,6 +23,7 @@ import type {
   QuoteStatusCounts,
 } from './quotes-types';
 import type { PreviewBody } from '../shared/documents/document-figures';
+import { sessionSignal } from '../shared/session/session-data';
 
 /**
  * The quotes of the company being worked in, the quote open on screen, its files and what its form offers. It is
@@ -31,12 +32,12 @@ import type { PreviewBody } from '../shared/documents/document-figures';
 @Injectable({ providedIn: 'root' })
 export class QuotesFacade implements LineCatalogue {
   private readonly api = inject(QuotesApi);
-  private readonly quotesSignal = signal<readonly QuoteRow[]>([]);
-  private readonly optionsSignal = signal<InvoiceOptions | null>(null);
-  private readonly quoteSignal = signal<QuoteRow | null>(null);
-  private readonly attachmentsSignal = signal<readonly QuoteAttachment[]>([]);
-  private readonly totalSignal = signal(0);
-  private readonly statusCountsSignal = signal<QuoteStatusCounts | null>(null);
+  private readonly quotesSignal = sessionSignal<readonly QuoteRow[]>([]);
+  private readonly optionsSignal = sessionSignal<InvoiceOptions | null>(null);
+  private readonly quoteSignal = sessionSignal<QuoteRow | null>(null);
+  private readonly attachmentsSignal = sessionSignal<readonly QuoteAttachment[]>([]);
+  private readonly totalSignal = sessionSignal(0);
+  private readonly statusCountsSignal = sessionSignal<QuoteStatusCounts | null>(null);
   private readonly pageRequests = new LatestRequest();
   private readonly countsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);
@@ -211,6 +212,19 @@ export class QuotesFacade implements LineCatalogue {
   /** The quote with its new deposit listed last, or null with the reason in `error`. */
   async deposit(companyId: string, id: string, share: DepositShare): Promise<QuoteRow | null> {
     return this.step(() => this.api.deposit(companyId, id, share));
+  }
+
+  /**
+   * « Livrer » or « Livrer une partie »: a draft delivery note of the accepted quote, every line for what is left of it
+   * or only the quantities given by quote line id; the note's id, or null with the reason in `error`. The page leaves
+   * for the note, which is where it is checked and validated.
+   */
+  async deliver(
+    companyId: string,
+    id: string,
+    quantities: Readonly<Record<string, string>> | null,
+  ): Promise<string | null> {
+    return this.state.writeAnswer(() => this.api.deliver(companyId, id, quantities));
   }
 
   /** Attaches a file, then reads the quote's files and count again. */

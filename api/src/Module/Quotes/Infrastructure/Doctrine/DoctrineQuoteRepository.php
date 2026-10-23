@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Quotes\Infrastructure\Doctrine;
 
 use App\Module\Quotes\Domain\Model\Quote;
+use App\Module\Quotes\Domain\Model\QuoteLine;
 use App\Module\Quotes\Domain\Repository\QuoteRepository;
 use App\Module\Quotes\Domain\ValueObject\QuoteSearch;
 use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
@@ -18,6 +19,7 @@ use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
@@ -149,6 +151,27 @@ final readonly class DoctrineQuoteRepository implements QuoteRepository
     public function numberTaken(Uuid $companyId, string $number): bool
     {
         return null !== $this->entityManager->getRepository(Quote::class)->findOneBy(['company' => $companyId, 'number' => $number]);
+    }
+
+    public function ofLineIdsInCompany(array $lineIds, Uuid $companyId, bool $locked): array
+    {
+        if ([] === $lineIds) {
+            return [];
+        }
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('q')
+            ->from(Quote::class, 'q')
+            ->where('q.id IN (SELECT IDENTITY(l.quote) FROM '.QuoteLine::class.' l WHERE l.id IN (:ids))')
+            ->andWhere('q.company = :company')
+            ->orderBy('q.id')
+            ->setParameter('ids', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $lineIds), ArrayParameterType::STRING)
+            ->setParameter('company', $companyId, 'uuid')
+            ->getQuery();
+        if ($locked) {
+            $query->setLockMode(LockMode::PESSIMISTIC_WRITE)->setHint(Query::HINT_REFRESH, true);
+        }
+
+        return Rows::entities($query->getResult(), Quote::class);
     }
 
     public function save(Quote $quote): void

@@ -158,9 +158,14 @@
                       [max]="most.max"
                       [value]="demoMostDraft() ?? most.value"
                       (input)="typedDemoMost($event)"
+                      [attr.aria-invalid]="numberSaid(most, demoMostDraft()) !== null"
                       data-testid="platform-demo-most"
                     />
-                    @if (most.min !== null && most.max !== null) {
+                    @if (numberSaid(most, demoMostDraft()); as said) {
+                      <mat-hint class="text-error" data-testid="platform-demo-most-error">{{
+                        said.key | translate: said.params
+                      }}</mat-hint>
+                    } @else if (most.min !== null && most.max !== null) {
                       <mat-hint>{{
                         'platform.demo.bounds' | translate: { min: most.min, max: most.max }
                       }}</mat-hint>
@@ -198,9 +203,14 @@
                       [max]="rows.max"
                       [value]="importRowsDraft() ?? rows.value"
                       (input)="typedImportRows($event)"
+                      [attr.aria-invalid]="numberSaid(rows, importRowsDraft()) !== null"
                       data-testid="platform-import-rows"
                     />
-                    @if (rows.min !== null && rows.max !== null) {
+                    @if (numberSaid(rows, importRowsDraft()); as said) {
+                      <mat-hint class="text-error" data-testid="platform-import-rows-error">{{
+                        said.key | translate: said.params
+                      }}</mat-hint>
+                    } @else if (rows.min !== null && rows.max !== null) {
                       <mat-hint>{{
                         'platform.imports.bounds' | translate: { min: rows.min, max: rows.max }
                       }}</mat-hint>
@@ -236,9 +246,20 @@
                         [type]="supportInput[channel]"
                         [value]="draft[channel]"
                         (input)="typedSupport(channel, $event)"
+                        [attr.aria-invalid]="refusalOf('settings', 'support.' + channel) !== null"
                         [attr.data-testid]="'platform-support-' + channel"
                       />
-                      <mat-hint>{{ 'platform.support.' + channel + '_hint' | translate }}</mat-hint>
+                      @if (refusalOf('settings', 'support.' + channel); as said) {
+                        <mat-hint
+                          class="text-error"
+                          [attr.data-testid]="'platform-support-' + channel + '-error'"
+                          >{{ said.key | translate: said.params }}</mat-hint
+                        >
+                      } @else {
+                        <mat-hint>{{
+                          'platform.support.' + channel + '_hint' | translate
+                        }}</mat-hint>
+                      }
                     </mat-form-field>
                   }
                 }
@@ -275,9 +296,16 @@
                       [max]="delay.max"
                       [value]="delayDraft()[delay.key] ?? delay.value"
                       (input)="typedDelay(delay.key, $event)"
+                      [attr.aria-invalid]="numberSaid(delay, delayDraft()[delay.key]) !== null"
                       [attr.data-testid]="'platform-delay-' + delay.key"
                     />
-                    @if (delay.min !== null && delay.max !== null) {
+                    @if (numberSaid(delay, delayDraft()[delay.key]); as said) {
+                      <mat-hint
+                        class="text-error"
+                        [attr.data-testid]="'platform-delay-' + delay.key + '-error'"
+                        >{{ said.key | translate: said.params }}</mat-hint
+                      >
+                    } @else if (delay.min !== null && delay.max !== null) {
                       <mat-hint>{{
                         'platform.delays.bounds' | translate: { min: delay.min, max: delay.max }
                       }}</mat-hint>
@@ -313,7 +341,8 @@
                 </a>
               }
             </div>
-            @for (company of waiting(); track company.id) {
+            @for (card of waitingCards(); track card.company.id) {
+              @let company = card.company;
               <mat-card appearance="outlined" [attr.data-testid]="'waiting-' + company.name">
                 <mat-card-content>
                   <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
@@ -329,26 +358,10 @@
                         }}
                       </span>
                     </div>
-                    <div class="flex gap-2">
-                      <button
-                        mat-flat-button
-                        type="button"
-                        (click)="approve(company.id)"
-                        [disabled]="busy()"
-                        [attr.data-testid]="'approve-' + company.name"
-                      >
-                        {{ 'platform.waiting.approve' | translate }}
-                      </button>
-                      <button
-                        mat-stroked-button
-                        type="button"
-                        (click)="reject(company.id)"
-                        [disabled]="busy()"
-                        [attr.data-testid]="'reject-' + company.name"
-                      >
-                        {{ 'platform.waiting.reject' | translate }}
-                      </button>
-                    </div>
+                    <app-document-actions
+                      [actions]="card.actions"
+                      label="platform.companies.actions.label"
+                    />
                   </div>
                 </mat-card-content>
               </mat-card>
@@ -397,9 +410,15 @@
                     <input
                       matInput
                       [value]="companyName()"
-                      (input)="companyName.set(typed($event))"
+                      (input)="companyName.set(typed($event)); forget('name')"
+                      [attr.aria-invalid]="refusalOf('new-company', 'name') !== null"
                       data-testid="platform-company-name"
                     />
+                    @if (refusalOf('new-company', 'name'); as said) {
+                      <mat-hint class="text-error" data-testid="platform-company-name-error">{{
+                        said.key | translate: said.params
+                      }}</mat-hint>
+                    }
                   </mat-form-field>
                   <app-select
                     [label]="'platform.companies.country' | translate"
@@ -417,9 +436,15 @@
                       matInput
                       type="email"
                       [value]="ownerEmail()"
-                      (input)="ownerEmail.set(typed($event))"
+                      (input)="ownerEmail.set(typed($event)); forget('email')"
+                      [attr.aria-invalid]="refusalOf('new-company', 'email') !== null"
                       data-testid="platform-company-owner"
                     />
+                    @if (refusalOf('new-company', 'email'); as said) {
+                      <mat-hint class="text-error" data-testid="platform-company-owner-error">{{
+                        said.key | translate: said.params
+                      }}</mat-hint>
+                    }
                   </mat-form-field>
                   <button
                     mat-flat-button
@@ -469,40 +494,30 @@
                           }}
                         }
                       </p>
+                    } @else {
+                      <p class="text-sm" [attr.data-testid]="'standing-' + company.name">
+                        {{ 'platform.subscription.unmanaged' | translate }}
+                      </p>
                     }
                   </div>
-                  <a
-                    mat-stroked-button
-                    routerLink="."
-                    [queryParams]="{ company: null }"
-                    queryParamsHandling="merge"
-                    data-testid="platform-company-close"
-                  >
-                    {{ 'platform.companies.close' | translate }}
-                  </a>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <app-document-actions
+                      [actions]="sheetActions()"
+                      label="platform.companies.actions.label"
+                    />
+                    <a
+                      mat-stroked-button
+                      routerLink="."
+                      [queryParams]="{ company: null }"
+                      queryParamsHandling="merge"
+                      data-testid="platform-company-close"
+                    >
+                      {{ 'platform.companies.close' | translate }}
+                    </a>
+                  </div>
                 </div>
 
                 <div class="mt-4 flex flex-wrap items-center gap-2">
-                  @if (company.status === 'pending') {
-                    <button
-                      mat-flat-button
-                      type="button"
-                      (click)="approve(company.id)"
-                      [disabled]="busy()"
-                      [attr.data-testid]="'approve-' + company.name"
-                    >
-                      {{ 'platform.waiting.approve' | translate }}
-                    </button>
-                    <button
-                      mat-stroked-button
-                      type="button"
-                      (click)="reject(company.id)"
-                      [disabled]="busy()"
-                      [attr.data-testid]="'reject-' + company.name"
-                    >
-                      {{ 'platform.waiting.reject' | translate }}
-                    </button>
-                  }
                   <mat-form-field subscriptSizing="dynamic">
                     <mat-label>{{ 'platform.companies.owner' | translate }}</mat-label>
                     <input
@@ -510,8 +525,16 @@
                       type="email"
                       [value]="ownerEmails()[company.id] ?? ''"
                       (input)="typedOwner(company.id, $event)"
+                      [attr.aria-invalid]="refusalOf('owner:' + company.id, 'email') !== null"
                       [attr.data-testid]="'owner-email-' + company.name"
                     />
+                    @if (refusalOf('owner:' + company.id, 'email'); as said) {
+                      <mat-hint
+                        class="text-error"
+                        [attr.data-testid]="'owner-email-' + company.name + '-error'"
+                        >{{ said.key | translate: said.params }}</mat-hint
+                      >
+                    }
                   </mat-form-field>
                   <button
                     mat-stroked-button
@@ -558,7 +581,7 @@
                         <button
                           mat-stroked-button
                           type="button"
-                          (click)="stopSubscription(company.id)"
+                          (click)="askStopSubscription(company)"
                           [disabled]="busy() || subscription() === null"
                           data-testid="subscription-stop"
                         >
@@ -595,6 +618,8 @@
             <ng-template appDataListCell="subscription" let-row>
               @if (row.subscription; as standing) {
                 {{ 'platform.subscription.stages.' + standing.stage | translate }}
+              } @else {
+                {{ 'platform.subscription.unmanaged' | translate }}
               }
             </ng-template>
           </app-data-list>
@@ -605,7 +630,7 @@
         <div class="flex flex-col gap-4">
           <h2 class="text-xl font-semibold">{{ 'platform.accounts.title' | translate }}</h2>
           <app-data-list
-            [descriptor]="accountsList"
+            [descriptor]="accountsList()"
             [rows]="accounts()"
             [loading]="platform.busy()"
             [failed]="platform.error() !== null"
@@ -644,40 +669,6 @@
                     | translate
                 }}
               </app-status-badge>
-            </ng-template>
-            <ng-template appDataListCell="actions" let-row>
-              <span class="flex flex-wrap gap-2">
-                @if (row.active) {
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    (click)="act(row.id, 'end-sessions')"
-                    [disabled]="busy()"
-                    [attr.data-testid]="'end-sessions-' + row.email"
-                  >
-                    {{ 'platform.accounts.end_sessions' | translate }}
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    (click)="act(row.id, 'deactivate')"
-                    [disabled]="busy()"
-                    [attr.data-testid]="'deactivate-' + row.email"
-                  >
-                    {{ 'platform.accounts.deactivate' | translate }}
-                  </button>
-                } @else {
-                  <button
-                    mat-flat-button
-                    type="button"
-                    (click)="act(row.id, 'reactivate')"
-                    [disabled]="busy()"
-                    [attr.data-testid]="'reactivate-' + row.email"
-                  >
-                    {{ 'platform.accounts.reactivate' | translate }}
-                  </button>
-                }
-              </span>
             </ng-template>
           </app-data-list>
         </div>
@@ -726,7 +717,7 @@
                       mat-flat-button
                       type="button"
                       [disabled]="busy()"
-                      (click)="confirmPayment(payment.id)"
+                      (click)="askConfirmPayment(payment)"
                       [attr.data-testid]="'payment-confirm-' + payment.id"
                     >
                       {{ 'platform.payments.confirm' | translate }}
@@ -735,7 +726,7 @@
                       mat-stroked-button
                       type="button"
                       [disabled]="busy()"
-                      (click)="rejectPayment(payment.id)"
+                      (click)="askRejectPayment(payment)"
                       [attr.data-testid]="'payment-reject-' + payment.id"
                     >
                       {{ 'platform.payments.reject' | translate }}

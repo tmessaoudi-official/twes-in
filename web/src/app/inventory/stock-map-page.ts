@@ -45,7 +45,10 @@ import { INVENTORY_TABS } from './inventory-nav';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { Immersive } from '../shared/ui/immersive';
 import { ScreenActions } from '../shared/actions/screen-actions';
-import type { ScreenAction } from '../shared/actions/screen-action';
+import type { ActionConfirm, ScreenAction } from '../shared/actions/screen-action';
+import { runAction } from '../shared/actions/run-action';
+import { ConfirmDialog } from '../shared/ui/confirm-dialog';
+import { MatDialog } from '@angular/material/dialog';
 import { isTypingTarget } from '../shared/actions/shortcuts';
 import {
   type StockDrawingRow,
@@ -327,6 +330,7 @@ export class StockMapPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly facade = inject(InventoryFacade);
   private readonly feedback = inject(Feedback);
+  private readonly dialog = inject(MatDialog);
   private readonly auth = inject(AuthFacade);
   private readonly settings = inject(SettingsFacade);
   private readonly route = inject(ActivatedRoute);
@@ -2748,15 +2752,43 @@ export class StockMapPage implements OnInit {
     }
   }
 
-  protected async removeFloor(row: StockFloorRow): Promise<void> {
+  /**
+   * Only a floor with no location drawn on it is offered, yet its walls and racks go with it and nothing draws them
+   * again: the question names it before anything goes.
+   */
+  protected removeFloor(row: StockFloorRow): void {
+    if (this.busy()) return;
+    runAction(
+      {
+        run: () => void this.removeFloorAsked(row),
+        confirm: {
+          kind: 'definitif',
+          title: 'inventory.plan.remove_floor_title',
+          message: 'inventory.plan.remove_floor_message',
+          messageParams: { name: row.name },
+          confirmLabel: 'inventory.plan.remove_floor',
+          keepLabel: 'inventory.plan.keep_floor',
+        },
+      },
+      (asked) =>
+        this.dialog
+          .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+            data: asked,
+            autoFocus: 'dialog',
+          })
+          .afterClosed(),
+    );
+  }
+
+  private async removeFloorAsked(row: StockFloorRow): Promise<void> {
     const companyId = this.company()?.id;
-    if (!companyId || this.busy()) return;
+    if (!companyId) return;
 
     const removed = await this.facade.deleteFloor(companyId, row.id);
     if (removed) {
       this.editingFloor.set(null);
       await this.showFloor(this.floors()[0]?.id ?? null);
-      this.feedback.success('inventory.plan.floor_removed');
+      this.feedback.effect('inventory.plan.floor_removed', {}, 'definitif');
     }
   }
 }

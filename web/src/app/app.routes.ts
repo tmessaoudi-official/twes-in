@@ -28,7 +28,9 @@ import { moduleGuard } from './shell/module-guard';
 import { textsOpened, textsPart } from './shared/i18n/texts-part';
 import { CHECK_TEXTS } from './shared/check/check-texts';
 import { WATCH_TEXTS } from './watch/watch-texts';
+import { STOCK_COUNT_TEXTS } from './inventory/stock-count-texts';
 import { RECORDS_TEXTS } from './shared/records/records-texts';
+import { DELIVERIES_TEXTS } from './shared/documents/deliveries-texts';
 import { SCHEDULE_TEXTS } from './shared/schedule/schedule-texts';
 
 export const routes: Routes = [
@@ -275,7 +277,7 @@ export const routes: Routes = [
       {
         path: 'invoices',
         title: 'nav.invoices',
-        canActivate: [moduleGuard(INVOICES_MODULE)],
+        canActivate: [moduleGuard(INVOICES_MODULE), textsOpened(DELIVERIES_TEXTS)],
         loadComponent: () => import('./invoices/invoices-page').then((m) => m.InvoicesPage),
       },
       {
@@ -295,7 +297,7 @@ export const routes: Routes = [
       {
         path: 'invoices/:invoiceId',
         title: 'titles.invoice',
-        canActivate: [moduleGuard(INVOICES_MODULE)],
+        canActivate: [moduleGuard(INVOICES_MODULE), textsOpened(DELIVERIES_TEXTS)],
         loadComponent: () => import('./invoices/invoice-page').then((m) => m.InvoicePage),
       },
       {
@@ -320,7 +322,7 @@ export const routes: Routes = [
       {
         path: 'quotes/:quoteId',
         title: 'titles.quote',
-        canActivate: [moduleGuard(QUOTES_MODULE)],
+        canActivate: [moduleGuard(QUOTES_MODULE), textsOpened(DELIVERIES_TEXTS)],
         loadComponent: () => import('./quotes/quote-page').then((m) => m.QuotePage),
       },
       {
@@ -341,28 +343,28 @@ export const routes: Routes = [
       {
         path: 'delivery-notes/:deliveryNoteId',
         title: 'titles.delivery_note',
-        canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
+        canActivate: [moduleGuard(DELIVERY_NOTES_MODULE), textsOpened(DELIVERIES_TEXTS)],
         loadComponent: () =>
           import('./delivery-notes/delivery-note-page').then((m) => m.DeliveryNotePage),
       },
       {
         path: 'stock',
         title: 'nav.stock',
-        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        canActivate: [moduleGuard(INVENTORY_MODULE), textsOpened(STOCK_COUNT_TEXTS)],
         loadComponent: () => import('./inventory/stock-page').then((m) => m.StockPage),
       },
       {
         // Count mode (docs/SPEC.md § 7, 2026-09-23 slice 8): a scanner walking the shelves.
         path: 'stock/count',
         title: 'nav.stock_count',
-        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        canActivate: [moduleGuard(INVENTORY_MODULE), textsOpened(STOCK_COUNT_TEXTS)],
         loadComponent: () => import('./inventory/stock-count-page').then((m) => m.StockCountPage),
       },
       {
         // A location label's QR code (slice 8): count mode, at that location.
         path: 'stock/locations/:location',
         title: 'nav.stock_count',
-        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        canActivate: [moduleGuard(INVENTORY_MODULE), textsOpened(STOCK_COUNT_TEXTS)],
         loadComponent: () => import('./inventory/stock-count-page').then((m) => m.StockCountPage),
       },
       {
@@ -391,7 +393,7 @@ export const routes: Routes = [
         path: 'stock/plan',
         title: 'titles.stock_plan',
         // The plan's texts are read on these pages only: they load with them (the screen texts budget).
-        ...textsPart('stock-plan', moduleGuard(INVENTORY_MODULE)),
+        ...textsPart('stock-plan', moduleGuard(INVENTORY_MODULE), textsOpened(STOCK_COUNT_TEXTS)),
         loadComponent: () => import('./inventory/stock-map-page').then((m) => m.StockMapPage),
       },
       {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { requestState } from '../shared/feedback/request-state';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type {
@@ -10,13 +10,14 @@ import type {
   NumberingChanges,
   NumberingSeriesRow,
 } from './company-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The establishments of the company being worked in, and how each of them numbers its documents. */
 @Injectable({ providedIn: 'root' })
 export class EstablishmentsFacade {
   private readonly api = inject(CompanyApi);
-  private readonly establishmentsSignal = signal<readonly EstablishmentRow[]>([]);
-  private readonly seriesSignal = signal<readonly NumberingSeriesRow[]>([]);
+  private readonly establishmentsSignal = sessionSignal<readonly EstablishmentRow[]>([]);
+  private readonly seriesSignal = sessionSignal<readonly NumberingSeriesRow[]>([]);
   private readonly state = requestState(codeOf);
 
   readonly establishments = this.establishmentsSignal.asReadonly();

@@ -20,6 +20,7 @@ use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\DomainEvents;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\ValueObject\Refusal;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -54,7 +55,7 @@ final readonly class ChangeSettings
         [$definition, $address] = $this->locate($context, $key, $level);
         $refusal = $definition->refusal($value);
         if (null !== $refusal) {
-            throw new InvalidSettingValue(\sprintf('%s: %s.', $key, $refusal));
+            throw new InvalidSettingValue([$key => $refusal]);
         }
         $value = $definition->normalize($value);
 
@@ -68,28 +69,39 @@ final readonly class ChangeSettings
 
     /**
      * Stores every key a page changed at one level, or none: each key's row is held and must still be at the version
-     * the page read, 0 meaning the page read no row there.
+     * the page read, 0 meaning the page read no row there. Every key it would not store is refused at once, a level the
+     * key is not kept at among them.
      *
      * @param list<SettingChange> $changes
      *
      * @throws UnknownSetting
-     * @throws SettingLevelRefused
      * @throws InvalidSettingValue
      * @throws RecordChanged
      */
     public function changeAll(SettingContext $context, SettingLevel $level, array $changes, ?Uuid $actorUserId): void
     {
         $located = [];
+        $refused = [];
         foreach ($changes as $change) {
-            if (isset($located[$change->key])) {
-                throw new InvalidSettingValue(\sprintf('%s: changed twice in one save.', $change->key));
+            if (isset($located[$change->key]) || isset($refused[$change->key])) {
+                $refused[$change->key] ??= new Refusal('invalid_value', 'changed twice in one save');
+                continue;
             }
-            [$definition, $address] = $this->locate($context, $change->key, $level);
+            try {
+                [$definition, $address] = $this->locate($context, $change->key, $level);
+            } catch (SettingLevelRefused $notHere) {
+                $refused[$change->key] = new Refusal('level_refused', $notHere->getMessage());
+                continue;
+            }
             $refusal = $definition->refusal($change->value);
             if (null !== $refusal) {
-                throw new InvalidSettingValue(\sprintf('%s: %s.', $change->key, $refusal));
+                $refused[$change->key] = $refusal;
+                continue;
             }
             $located[$change->key] = [$address, $definition->normalize($change->value), $change->version];
+        }
+        if ([] !== $refused) {
+            throw new InvalidSettingValue($refused);
         }
 
         $told = $this->transactions->run(function () use ($located, $actorUserId): array {

@@ -1,0 +1,14 @@
+{
+  "count_effect": {
+    "expected": "Expected here: {{expected}}",
+    "difference_up": "· difference: +{{difference}}",
+    "difference_down": "· difference: −{{difference}}",
+    "difference_same": "· no difference",
+    "also": "Also:",
+    "at_place": "{{quantity}} at {{place}}",
+    "separator": ", ",
+    "stray": "Nothing of this article is recorded at this location, which is not its place: recording adds what is counted here and takes nothing away elsewhere.",
+    "home": "Its place:",
+    "new_lot": "New lot: {{lot}} will be opened when recorded."
+  }
+}

@@ -49,6 +49,33 @@
             </span>
           </p>
         }
+        @if (note.quote; as quote) {
+          <p class="flex flex-wrap gap-x-1 text-sm" data-testid="delivery-note-quote">
+            <span>{{ 'deliveries.of_quote' | translate }}</span>
+            <a
+              class="underline"
+              [routerLink]="['/quotes', quote.quoteId]"
+              data-testid="delivery-note-quote-link"
+              >{{ quote.number ?? ('deliveries.quote_unnumbered' | translate) }}</a
+            >
+          </p>
+        }
+        @if (note.invoice; as invoice) {
+          <p class="flex flex-wrap gap-x-1 text-sm" data-testid="delivery-note-invoice">
+            <span>{{ 'invoice_deliveries.of_invoice' | translate }}</span>
+            <a
+              class="underline"
+              [routerLink]="['/invoices', invoice.invoiceId]"
+              data-testid="delivery-note-invoice-link"
+              >{{ invoice.number ?? ('invoice_deliveries.invoice_unnumbered' | translate) }}</a
+            >
+          </p>
+        }
+        @if (deliversInvoice()) {
+          <p class="text-sm" data-testid="delivery-note-billed-already">
+            {{ 'invoice_deliveries.billed_already' | translate }}
+          </p>
+        }
       }
     </div>
     <div class="flex flex-wrap items-center gap-2">

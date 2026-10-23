@@ -514,6 +514,81 @@ describe('InvoicesApi', () => {
     await kept;
   });
 
+  it('reads what an issued invoice still has to hand over, line by line, and the notes that hand it', async () => {
+    const pending = api.invoice('c1', 'i1');
+    http.expectOne('/api/companies/c1/invoices/i1').flush({
+      ...issued,
+      lines: [{ ...issued.lines[0], id: 'il1' }],
+      deliveredBy: [{ deliveryNoteId: 'n9', number: 'BL-2026-00009', status: 'delivered' }],
+      delivery: 'partly',
+      deliveries: [
+        {
+          lineId: 'il1',
+          quantity: '6.000',
+          returned: '1.000',
+          onNotes: '2.000',
+          delivered: '2.000',
+          left: '3.000',
+        },
+      ],
+    });
+    const invoice = await pending;
+    expect(invoice.delivery).toBe('partly');
+    expect(invoice.deliveredBy).toEqual([
+      { deliveryNoteId: 'n9', number: 'BL-2026-00009', status: 'delivered' },
+    ]);
+    expect(invoice.deliveries).toEqual([
+      {
+        lineId: 'il1',
+        description: 'Campagne',
+        quantity: '6.000',
+        returned: '1.000',
+        onNotes: '2.000',
+        delivered: '2.000',
+        left: '3.000',
+      },
+    ]);
+
+    const bare = api.invoice('c1', 'i2');
+    http.expectOne('/api/companies/c1/invoices/i2').flush({ ...issued, id: 'i2' });
+    expect(await bare, 'a reader of no notes is told of none').toMatchObject({
+      deliveredBy: [],
+      delivery: 'none',
+      deliveries: [],
+    });
+  });
+
+  it('drafts a delivery note of an issued invoice, whole or for the quantities given', async () => {
+    const whole = api.deliver('c1', 'i1', null);
+    const all = http.expectOne('/api/companies/c1/invoices/i1/deliveries');
+    expect(all.request.method).toBe('POST');
+    expect(all.request.body).toEqual({ quantities: null });
+    all.flush({ id: 'n1' });
+    expect(await whole).toBe('n1');
+
+    const part = api.deliver('c1', 'i1', { il1: '2' });
+    const some = http.expectOne('/api/companies/c1/invoices/i1/deliveries');
+    expect(some.request.body).toEqual({ quantities: { il1: '2' } });
+    some.flush({ id: 'n2' });
+    expect(await part).toBe('n2');
+
+    for (const [status, code] of [
+      [422, 'delivery_refused'],
+      [409, 'conflict'],
+      [404, 'not_found'],
+    ] as const) {
+      const refused = api.deliver('c1', 'i1', { il1: '99' });
+      http
+        .expectOne('/api/companies/c1/invoices/i1/deliveries')
+        .flush({}, { status, statusText: 'Refused' });
+      await expect(refused).rejects.toEqual(new InvoicesRefused(code));
+    }
+
+    const nameless = api.deliver('c1', 'i1', null);
+    http.expectOne('/api/companies/c1/invoices/i1/deliveries').flush({});
+    await expect(nameless).rejects.toBeInstanceOf(InvoicesRefused);
+  });
+
   it('turns a refusal into a code the screen translates', async () => {
     for (const [status, code] of [
       [404, 'not_found'],

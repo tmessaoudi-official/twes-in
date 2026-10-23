@@ -74,6 +74,16 @@ interface InvoiceRepository
     public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Invoice;
 
     /**
+     * The company's invoices holding any of these lines, in id order; with `$locked`, their rows held until the
+     * transaction this runs in ends, in that order, so two requests holding the same invoices wait rather than deadlock.
+     *
+     * @param list<Uuid> $lineIds
+     *
+     * @return list<Invoice>
+     */
+    public function ofLineIdsInCompany(array $lineIds, Uuid $companyId, bool $locked): array;
+
+    /**
      * The company's invoices that are not cancelled with a line invoicing any of these delivery note lines; credit notes
      * never invoice one.
      *

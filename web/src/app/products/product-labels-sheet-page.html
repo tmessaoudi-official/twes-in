@@ -11,18 +11,7 @@
       <a mat-button class="mt-2" routerLink="/products" data-testid="product-labels-back">{{
         'products.labels.back_to_list' | translate
       }}</a>
-      <mat-form-field class="w-32">
-        <mat-label>{{ 'products.labels.copies' | translate }}</mat-label>
-        <input
-          matInput
-          type="number"
-          min="1"
-          [max]="most"
-          data-testid="product-labels-copies"
-          [ngModel]="copies()"
-          (ngModelChange)="setCopies($event)"
-        />
-      </mat-form-field>
+      <app-label-copies [(count)]="copies" />
       <button
         mat-flat-button
         type="button"

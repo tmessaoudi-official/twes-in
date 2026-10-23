@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { WatchApi } from './watch-api';
 import {
   WatchSubjectGone,
@@ -8,6 +8,7 @@ import {
   type WatchRowPage,
   type WatchSummary,
 } from './watch-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The page of a subject being read; `gone` is a subject that has left the list, or that nobody here may see. */
 export type WatchRowsState =
@@ -20,9 +21,9 @@ export type WatchRowsState =
 @Injectable({ providedIn: 'root' })
 export class WatchFacade {
   private readonly api = inject(WatchApi);
-  private readonly summarySignal = signal<WatchSummary | null>(null);
-  private readonly errorSignal = signal<WatchError | null>(null);
-  private readonly rowsSignal = signal<WatchRowsState>({ status: 'loading' });
+  private readonly summarySignal = sessionSignal<WatchSummary | null>(null);
+  private readonly errorSignal = sessionSignal<WatchError | null>(null);
+  private readonly rowsSignal = sessionSignal<WatchRowsState>({ status: 'loading' });
 
   readonly summary = this.summarySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();

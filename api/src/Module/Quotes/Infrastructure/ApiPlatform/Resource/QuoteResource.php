@@ -22,6 +22,8 @@ use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\LineTotals;
 use App\Fiscal\Domain\Calculation\TaxTotal;
 use App\Fiscal\Infrastructure\ApiPlatform\Output\DocumentPreview;
+use App\Module\Quotes\Application\Delivery\QuoteDeliveries;
+use App\Module\Quotes\Application\Delivery\QuoteDeliveryNote;
 use App\Module\Quotes\Application\QuoteDeposit;
 use App\Module\Quotes\Application\QuoteInput;
 use App\Module\Quotes\Application\QuoteLineInput;
@@ -327,6 +329,34 @@ final class QuoteResource
     #[Groups([self::READ])]
     public array $deposits = [];
 
+    /**
+     * The delivery notes that are not cancelled delivering the accepted quote (POST .../quotes/{quoteId}/delivery-notes),
+     * drafts included, the oldest first; none for whoever may not read delivery notes.
+     *
+     * @var list<array{deliveryNoteId: string, number: string|null, status: string}>
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['deliveryNoteId', 'number', 'status'],
+            'properties' => [
+                'deliveryNoteId' => self::ID,
+                'number' => self::TEXT_OR_NULL,
+                'status' => ['type' => 'string', 'enum' => ['draft', 'validated', 'delivered', 'invoiced']],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $deliveryNotes = [];
+
+    /**
+     * How much of the quote its notes past their draft delivered: `none`, `partly`, or `whole` once every line is.
+     */
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => ['none', 'partly', 'whole']])]
+    #[Groups([self::READ])]
+    public string $delivery = 'none';
+
     /** Sent to draw a deposit: a percentage of the quote above 0 and below 100; or null, with an amount. */
     #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'example' => '30'])]
     #[Assert\Type('string', groups: [self::DEPOSIT])]
@@ -387,6 +417,9 @@ final class QuoteResource
                 'discountAmount' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$', 'example' => '150', 'description' => 'The line\'s whole discount as an amount, at most the line and at the currency\'s scale, in place of a rate: a line sending both is refused on `lines[i].discountAmount`. It stays the line\'s whatever its quantity.'],
                 'taxComponentIds' => ['type' => ['array', 'null'], 'items' => self::ID],
                 'net' => ['type' => 'string', 'readOnly' => true],
+                'id' => ['type' => 'string', 'format' => 'uuid', 'readOnly' => true, 'description' => 'The line, which a delivery note delivering the quote names. A revised draft\'s lines are new ones.'],
+                'onNotes' => ['type' => 'string', 'readOnly' => true, 'description' => 'What the delivery notes that are not cancelled take of the line, drafts included; 0 for whoever may not read delivery notes.'],
+                'delivered' => ['type' => 'string', 'readOnly' => true, 'description' => 'What of the line the notes past their draft delivered; 0 for whoever may not read delivery notes.'],
             ],
         ],
     ])]
@@ -445,7 +478,7 @@ final class QuoteResource
 
     /** @param \DateTimeImmutable $today the company's day, which says whether a sent quote has expired */
     /** @param list<QuoteDeposit> $deposits */
-    public static function of(Quote $quote, DocumentTotals $totals, \DateTimeImmutable $today, int $attachmentCount, array $deposits = []): self
+    public static function of(Quote $quote, DocumentTotals $totals, \DateTimeImmutable $today, int $attachmentCount, array $deposits = [], ?QuoteDeliveries $deliveries = null): self
     {
         $header = $quote->getHeader();
         $resource = new self();
@@ -482,7 +515,12 @@ final class QuoteResource
             'discountAmount' => $line->getDiscountAmount(),
             'taxComponentIds' => array_map(static fn (QuoteLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
             'net' => $figures->net,
+            'id' => $line->getId()->toRfc4122(),
+            'onNotes' => Decimal::format(Decimal::of($deliveries?->onNotes[$line->getId()->toRfc4122()] ?? '0'), 3),
+            'delivered' => Decimal::format(Decimal::of($deliveries?->delivered[$line->getId()->toRfc4122()] ?? '0'), 3),
         ], $quote->getLines(), $totals->lines);
+        $resource->deliveryNotes = array_map(static fn (QuoteDeliveryNote $note): array => ['deliveryNoteId' => $note->id, 'number' => $note->number, 'status' => $note->status], $deliveries->notes ?? []);
+        $resource->delivery = self::delivery($quote, $deliveries);
         $resource->subtotalNet = $totals->subtotalNet;
         $resource->documentDiscount = $totals->documentDiscount;
         $resource->savings = $totals->savings();
@@ -535,5 +573,26 @@ final class QuoteResource
     private static function uuid(?string $id): ?Uuid
     {
         return null === $id ? null : Uuid::fromString($id);
+    }
+
+    /** Whether what the notes past their draft took covers none, part or all of the quote's lines. */
+    private static function delivery(Quote $quote, ?QuoteDeliveries $deliveries): string
+    {
+        if (null === $deliveries) {
+            return 'none';
+        }
+        $some = false;
+        $all = true;
+        foreach ($quote->getLines() as $line) {
+            $delivered = Decimal::of($deliveries->delivered[$line->getId()->toRfc4122()] ?? '0');
+            $some = $some || $delivered->compare(0) > 0;
+            $all = $all && $delivered->compare(Decimal::of($line->getQuantity())) >= 0;
+        }
+
+        return match (true) {
+            $some && $all => 'whole',
+            $some => 'partly',
+            default => 'none',
+        };
     }
 }

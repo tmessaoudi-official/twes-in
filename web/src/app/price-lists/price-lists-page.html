@@ -47,6 +47,9 @@
             >
               <mat-label>{{ 'price_lists.fields.name' | translate }}</mat-label>
               <input matInput formControlName="name" required data-testid="price-list-name" />
+              <mat-error data-testid="price-list-name-error">{{
+                'form.errors.required' | translate
+              }}</mat-error>
             </mat-form-field>
             <app-select
               [label]="'price_lists.fields.scope' | translate"

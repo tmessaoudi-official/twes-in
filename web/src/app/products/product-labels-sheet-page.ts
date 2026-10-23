@@ -10,17 +10,16 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { Session } from '../shared/session/session';
-import { labelCode, MOST_LABEL_COPIES, ProductLabel } from './product-label';
+import { LabelCopies } from './label-copies';
+import { labelCode, ProductLabel } from './product-label';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { LabelCode, LabelledProduct, ProductsError } from './products-types';
 
@@ -40,16 +39,7 @@ export interface LeftOutProduct {
  */
 @Component({
   selector: 'app-product-labels-sheet-page',
-  imports: [
-    FormsModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    ProductLabel,
-    RouterLink,
-    TranslatePipe,
-  ],
+  imports: [MatButtonModule, MatIconModule, LabelCopies, ProductLabel, RouterLink, TranslatePipe],
   templateUrl: './product-labels-sheet-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -62,11 +52,11 @@ export class ProductLabelsSheetPage {
   /** From the query, `?id=…&id=…`: the products selected, in the order they were ticked. */
   readonly id = input<string | readonly string[]>();
 
-  protected readonly most = MOST_LABEL_COPIES;
   /** What the API answered; null while it is being read. */
   protected readonly products = signal<readonly LabelledProduct[] | null>(null);
   protected readonly error = signal<ProductsError | null>(null);
   protected readonly copies = signal(1);
+  private readonly copiesField = viewChild(LabelCopies);
 
   private readonly asked = computed((): readonly string[] => {
     const id = this.id();
@@ -112,12 +102,8 @@ export class ProductLabelsSheetPage {
     });
   }
 
-  protected setCopies(value: unknown): void {
-    const copies = Math.trunc(Number(value));
-    this.copies.set(Number.isFinite(copies) ? Math.min(Math.max(copies, 1), MOST_LABEL_COPIES) : 1);
-  }
-
   protected print(): void {
+    if (this.copiesField()?.reveal()) return;
     this.document.defaultView?.print();
   }
 

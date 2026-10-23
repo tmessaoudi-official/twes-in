@@ -153,6 +153,18 @@ final class InMemoryInvoices implements InvoiceRepository
         return $this->stored($id, $companyId);
     }
 
+    public function ofLineIdsInCompany(array $lineIds, Uuid $companyId, bool $locked): array
+    {
+        if ($locked && null !== $this->transactions && !$this->transactions->active()) {
+            throw new \LogicException('An invoice is locked inside a transaction.');
+        }
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $lineIds);
+        $holding = array_values(array_filter($this->ofCompany($companyId), static fn (Invoice $invoice): bool => [] !== array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => \in_array($line->getId()->toRfc4122(), $wanted, true))));
+        usort($holding, static fn (Invoice $a, Invoice $b): int => $a->getId()->toRfc4122() <=> $b->getId()->toRfc4122());
+
+        return $holding;
+    }
+
     public function carryingDeliveryNoteLines(Uuid $companyId, array $deliveryNoteLineIds): array
     {
         $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $deliveryNoteLineIds);

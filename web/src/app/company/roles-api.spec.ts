@@ -54,25 +54,45 @@ describe('RolesApi refusals', () => {
     expect(refused.code).toBe('step_up_required');
   });
 
+  it('deletes a role naming the version it was read at, and tells one revised since apart', async () => {
+    const removing = api.remove('c1', 'r1', 3);
+    const gone = http.expectOne((request) => request.url === '/api/companies/c1/roles/r1');
+    expect(gone.request.method).toBe('DELETE');
+    expect(gone.request.params.get('version')).toBe('3');
+    gone.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(removing).resolves.toBeUndefined();
+
+    const stale = api.remove('c1', 'r1', 2);
+    http
+      .expectOne((request) => request.url === '/api/companies/c1/roles/r1')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(stale).rejects.toMatchObject({ code: 'record_changed' });
+  });
+
   it('tells a role somebody holds by its reason, and who holds it by the parameters, never by the English detail', async () => {
-    const removed = api.remove('c1', 'r1');
-    http.expectOne({ method: 'DELETE', url: '/api/companies/c1/roles/r1' }).flush(
-      {
-        detail:
-          'role: The cashier role is held by sami@twes.local. Move them to another role before deleting it.',
-        violations: [
-          {
-            propertyPath: 'role',
-            message: 'x',
-            payload: {
-              reason: 'role_in_use',
-              params: { role: 'cashier', holders: 'sami@twes.local, ali@twes.local', more: 1 },
+    const removed = api.remove('c1', 'r1', 2);
+    http
+      .expectOne((request) => request.url === '/api/companies/c1/roles/r1')
+      .flush(
+        {
+          detail:
+            'role: The cashier role is held by sami@twes.local. Move them to another role before deleting it.',
+          violations: [
+            {
+              propertyPath: 'role',
+              message: 'x',
+              payload: {
+                reason: 'role_in_use',
+                params: { role: 'cashier', holders: 'sami@twes.local, ali@twes.local', more: 1 },
+              },
             },
-          },
-        ],
-      },
-      { status: 422, statusText: 'Unprocessable' },
-    );
+          ],
+        },
+        { status: 422, statusText: 'Unprocessable' },
+      );
     const refused = (await removed.then(
       () => {
         throw new Error('expected a refusal');

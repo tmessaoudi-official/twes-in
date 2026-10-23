@@ -13,9 +13,9 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\InvalidSettingValue;
-use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Infrastructure\ApiPlatform\Output\SettingRefusals;
 use App\Settings\Infrastructure\ApiPlatform\Resource\SettingChangesResource;
 use App\Settings\Infrastructure\ApiPlatform\Security\SettingAccess;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -42,8 +42,8 @@ final readonly class ChangeSettingsProcessor implements ProcessorInterface
             $this->change->changeAll($settingContext, $level, $data->input(), $this->access->callerId());
         } catch (UnknownSetting $unknown) {
             throw new NotFoundHttpException($unknown->getMessage(), $unknown);
-        } catch (SettingLevelRefused|InvalidSettingValue $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+        } catch (InvalidSettingValue $refused) {
+            throw SettingRefusals::of($refused);
         }
 
         return null;

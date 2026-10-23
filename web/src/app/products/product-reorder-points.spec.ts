@@ -14,7 +14,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { decimalShown } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { Session } from '../shared/session/session';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { provideQuietFeedback, RecordedFeedback, successToasts } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { ProductReorderPoints } from './product-reorder-points-facade';
 import { ProductReorderPointsSection } from './product-reorder-points';
@@ -232,6 +233,14 @@ describe('ProductReorderPointsSection', () => {
     expect(facade.set).toHaveBeenCalledWith('c1', 'p1', 'e-SIEGE', null, 7);
     expect(successToasts()).toContain('products.reorder.cleared');
     expect(moved).toEqual(['saved']);
+
+    // Undo first: « Annuler » sets the point it held again, on the version the product page holds then.
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    expect(said[0].action?.key).toBe('products.reorder.undo');
+    fixture.componentRef.setInput('version', 8);
+    said[0].action!.run();
+    await fixture.whenStable();
+    expect(facade.set).toHaveBeenLastCalledWith('c1', 'p1', 'e-SIEGE', '12.000', 8);
   });
 
   it('shows somebody who may not write the points and changes nothing', async () => {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
+import { sessionSignal } from '../shared/session/session-data';
 import { DataErasureApi, ErasureRefused, type Erasure } from './data-erasure-api';
 
 /**
@@ -10,7 +11,7 @@ import { DataErasureApi, ErasureRefused, type Erasure } from './data-erasure-api
 @Injectable({ providedIn: 'root' })
 export class PendingErasure {
   private readonly api = inject(DataErasureApi);
-  private readonly erasureSignal = signal<Erasure | null>(null);
+  private readonly erasureSignal = sessionSignal<Erasure | null>(null);
   readonly erasure = this.erasureSignal.asReadonly();
 
   /**

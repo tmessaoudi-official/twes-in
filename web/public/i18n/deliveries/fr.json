@@ -1,0 +1,46 @@
+{
+  "deliveries": {
+    "of_quote": "Livre le devis",
+    "quote_unnumbered": "un devis sans numéro",
+    "statuses": {
+      "partly": "Livré en partie",
+      "whole": "Livré"
+    },
+    "actions": {
+      "deliver": "Livrer",
+      "deliver_part": "Livrer une partie"
+    },
+    "drafted": "Le bon de livraison est créé en brouillon : vérifiez-le, puis validez-le quand les marchandises partent.",
+    "card": {
+      "title": "Livraisons",
+      "draft": "Brouillon",
+      "figures": "Sur les bons : {{onNotes}} sur {{quantity}}, dont {{delivered}} livré · reste : {{left}}",
+      "hint": "Chaque bon facturé reprend le prix et la remise acceptés au devis : facturez les bons validés depuis la liste des bons de livraison. Un devis livré par des bons ne se facture plus d’un bloc."
+    },
+    "part": {
+      "title": "Quantités à livrer",
+      "help": "Chaque ligne part de ce qu’il reste à livrer ; mettez 0 pour l’écarter de ce bon.",
+      "left": "Il en reste {{left}} à livrer",
+      "cancel": "Fermer",
+      "confirm": "Créer le bon"
+    }
+  },
+  "invoice_deliveries": {
+    "of_invoice": "Remet les marchandises de la facture",
+    "invoice_unnumbered": "une facture sans numéro",
+    "billed_already": "La facture a déjà facturé ces marchandises et les a sorties du stock à son émission : ce bon ne bouge pas le stock et ne se facture pas.",
+    "figures": "Facturé : {{quantity}}, repris par avoir : {{returned}} · sur les bons : {{onNotes}}, dont {{delivered}} livré · reste : {{left}}",
+    "hint": "Les marchandises sont sorties du stock à l’émission de la facture : ses bons ne disent que leur remise au client, sans bouger le stock ni se facturer."
+  },
+  "invoices": {
+    "errors": {
+      "delivery_refused": "Ce bon de livraison est refusé : chaque quantité est au plus ce qu’il reste à livrer de sa ligne, une fois déduits les avoirs et les autres bons."
+    }
+  },
+  "quotes": {
+    "errors": {
+      "delivery_refused": "Ce bon de livraison est refusé : chaque quantité est au plus ce qu’il reste à livrer de sa ligne, et une ligne au moins en reste.",
+      "delivery_whole": "Ce devis se facture d’un bloc : il porte une remise sur le total ou un acompte. Facturez-le, puis livrez depuis la facture."
+    }
+  }
+}

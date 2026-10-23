@@ -102,6 +102,14 @@ describe('ProductHomes', () => {
     expect(api.replaceHomes).toHaveBeenLastCalledWith('c1', 'p1', 'e2', [], 8);
   });
 
+  it('puts a home taken off back where it stood, so the main one is the main one again', async () => {
+    api.homes.mockResolvedValue([home('l2')]);
+    await facade.load('c1', 'p1');
+
+    expect(await facade.putBack('c1', 'p1', home('l1'), 8)).toBe('saved');
+    expect(api.replaceHomes).toHaveBeenCalledWith('c1', 'p1', 'e1', ['l1', 'l2'], 8);
+  });
+
   /**
    * « Monter » then « Retirer » in a breath: the second write must send the version the first left, so it is the
    * product's before the first says it is done, not once the product page has read the product again.

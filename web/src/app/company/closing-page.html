@@ -41,6 +41,10 @@
             />
             <app-day-calendar-button matSuffix [field]="closingDay" />
             <mat-hint>{{ 'company.closing.day_hint' | translate }}</mat-hint>
+            <mat-error data-testid="closing-day-error">{{
+              (form.controls.day.hasError('date') ? 'form.errors.date' : 'form.errors.required')
+                | translate
+            }}</mat-error>
           </mat-form-field>
           <button
             mat-flat-button

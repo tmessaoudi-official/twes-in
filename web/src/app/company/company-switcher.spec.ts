@@ -83,6 +83,25 @@ describe('CompanySwitcher', () => {
     expect(logo?.getAttribute('alt')).toBe('');
   });
 
+  it('draws the company in use by the session’s version, which a new logo refreshes, not the list read at start', async () => {
+    const root = await render({ ...acme, logoVersion: 'v2' });
+
+    const logo = root.querySelector<HTMLImageElement>('[data-testid="company-logo"]');
+    expect(logo?.getAttribute('src')).toBe('/api/companies/c1/logo?v=v2');
+  });
+
+  it('draws the company in use even while the list has not arrived', async () => {
+    companies.set([]);
+    try {
+      const root = await render(acme);
+
+      const logo = root.querySelector<HTMLImageElement>('[data-testid="company-logo"]');
+      expect(logo?.getAttribute('src')).toBe('/api/companies/c1/logo?v=v1');
+    } finally {
+      companies.set([acme, globex]);
+    }
+  });
+
   it('keeps the initial for a company without a logo', async () => {
     const root = await render(globex);
 

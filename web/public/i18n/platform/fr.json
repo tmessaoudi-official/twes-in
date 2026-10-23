@@ -47,7 +47,29 @@
       },
       "new": "Nouvelle entreprise",
       "close": "Fermer",
-      "no_owner": "Aucun propriétaire."
+      "no_owner": "Aucun propriétaire.",
+      "actions": {
+        "label": "Actions sur l’entreprise",
+        "approve": "Approuver",
+        "approve_title": "Approuver cette entreprise ?",
+        "approve_message": "{{name}} s’ouvre à ses membres, et ses propriétaires en sont prévenus par courrier. « Suspendre » la refermera.",
+        "restore": "Rétablir l’accès",
+        "restore_title": "Rétablir l’accès à cette entreprise ?",
+        "restore_message": "{{name}} s’ouvre de nouveau à ses membres, et ses propriétaires en sont prévenus par courrier. « Suspendre » la refermera.",
+        "reject": "Refuser",
+        "reject_title": "Refuser cette entreprise ?",
+        "reject_message": "{{name}} reste fermée à ses membres. « Rétablir l’accès » l’ouvrira plus tard.",
+        "suspend": "Suspendre",
+        "suspend_title": "Suspendre cette entreprise ?",
+        "suspend_message": "Les membres de {{name}} n’y ont plus accès, dès maintenant. Ses données restent intactes, et « Rétablir l’accès » la rouvre.",
+        "keep": "Ne rien changer"
+      },
+      "done": {
+        "approved": "{{name}} est approuvée.",
+        "restored": "L’accès à {{name}} est rétabli.",
+        "rejected": "{{name}} est refusée.",
+        "suspended": "{{name}} est suspendue."
+      }
     },
     "accounts": {
       "title": "Comptes",
@@ -64,6 +86,20 @@
         "active": "Actifs",
         "inactive": "Désactivés",
         "operator": "Opérateurs"
+      },
+      "keep": "Ne rien changer",
+      "end_sessions_title": "Terminer les sessions ?",
+      "end_sessions_message": "{{name}} est déconnecté sur chacun de ses appareils et doit se reconnecter. Une session terminée ne revient pas.",
+      "deactivate_title": "Désactiver ce compte ?",
+      "deactivate_message": "{{name}} ne pourra plus se connecter, et chacune de ses sessions prend fin. « Réactiver » lui rend l’accès.",
+      "done": {
+        "ended": "Les sessions de {{name}} ont pris fin.",
+        "deactivated": "Le compte de {{name}} est désactivé.",
+        "reactivated": "Le compte de {{name}} est réactivé."
+      },
+      "roles": {
+        "operator": "Opérateurs",
+        "member": "Membres"
       }
     },
     "errors": {
@@ -73,7 +109,8 @@
       "network": "Le serveur est injoignable.",
       "name_taken": "Une entreprise porte déjà ce nom.",
       "already_member": "Cette adresse appartient déjà à cette entreprise.",
-      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
+      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement.",
+      "invalid": "Rien n’a été enregistré : corrigez les champs marqués."
     },
     "subscription": {
       "open": "Abonnement",
@@ -86,9 +123,9 @@
       "grace_days": "Jours de tolérance",
       "unpaid_mode": "En cas d’impayé",
       "save": "Enregistrer l’abonnement",
-      "stop": "Ne plus gérer",
+      "stop": "Ne plus gérer et effacer les conditions",
       "saved": "L’abonnement a été enregistré.",
-      "stopped": "L’abonnement n’est plus géré.",
+      "stopped": "{{name}} n’est plus gérée : ses conditions sont effacées et elle a un accès complet.",
       "days_left": "{{days}} {days, plural, one {jour restant} other {jours restants}}",
       "units": {
         "day": "jours",
@@ -112,7 +149,11 @@
         "read_only": "Lecture seule",
         "locked": "Fermée"
       },
-      "hold_days": "Jours d’attente de confirmation"
+      "hold_days": "Jours d’attente de confirmation",
+      "stop_title": "Ne plus gérer cette entreprise ?",
+      "stop_message": "Les conditions de {{name}} (période, essai, payé jusqu’au, prix, délais) sont effacées, et rien ne les garde : ses membres retrouvent un accès complet. Pour la gérer de nouveau, il faudra saisir ses conditions.",
+      "keep": "Garder ses conditions",
+      "unmanaged": "Non géré : accès complet"
     },
     "payments": {
       "title": "Règlements à confirmer",
@@ -121,7 +162,12 @@
       "confirm": "Confirmer",
       "reject": "Refuser",
       "confirmed": "Le règlement a été confirmé.",
-      "rejected": "Le règlement a été refusé."
+      "rejected": "Le règlement a été refusé.",
+      "keep": "Laisser en attente",
+      "confirm_title": "Confirmer ce règlement ?",
+      "confirm_message": "Le règlement de {{name}} prolonge son abonnement du nombre de périodes indiqué : {{periods}}. Un nombre erroné se corrige dans ses conditions.",
+      "reject_title": "Refuser ce règlement ?",
+      "reject_message": "L’attente que ce règlement gardait à {{name}} prend fin tout de suite : si sa période payée est passée, son accès suit ses conditions. Elle peut déclarer un autre règlement."
     },
     "demand": {
       "title": "Modules attendus",
@@ -222,7 +268,8 @@
         "companies": "Entreprises",
         "state": "État",
         "created": "Créé le",
-        "actions": "Actions"
+        "actions": "Actions",
+        "role": "Rôle"
       }
     },
     "tab_counts": {
@@ -261,6 +308,9 @@
       "status_url_hint": "Lien en pied de chaque page, par exemple https://status.exemple.tn",
       "save": "Enregistrer",
       "saved": "Contact du support enregistré."
+    },
+    "numbers": {
+      "empty": "Indiquez un nombre."
     }
   }
 }

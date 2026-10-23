@@ -43,6 +43,8 @@ use App\Tests\Support\InMemoryStoredFiles;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\KeptNames;
+use App\Tests\Support\NoInvoicesToDeliver;
+use App\Tests\Support\NoQuotesToDeliver;
 use App\Tests\Support\RecordingDeliveryNoteTemplate;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
@@ -71,6 +73,8 @@ final class StoreIssuedDeliveryNotePdfTest extends TestCase
             new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new DeliveryNoteSettings(), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), new InMemorySettings())),
             new DocumentNames(new InMemoryTaxComponents()),
             new FakeTransactions(),
+            new NoQuotesToDeliver(),
+            new NoInvoicesToDeliver(),
         );
         $logger = new class extends AbstractLogger {
             /** @var list<array{string, string, array<array-key, mixed>}> */

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { CustomersApi } from '../customers/customers-api';
 import type { CustomerGroupRow } from '../customers/customers-types';
 import { ProductsApi } from '../products/products-api';
@@ -9,6 +9,7 @@ import type { PickOption } from '../shared/form/pick-field';
 import { PriceListsApi, PriceListsRefused } from './price-lists-api';
 import type { ProductFigures } from './price-lists-figures';
 import type { PriceListInput, PriceListRow, PriceListsError } from './price-lists-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** How many products or customers a picker offers for the words typed. */
 const PICK_SIZE = 10;
@@ -22,9 +23,9 @@ export class PriceListsFacade {
   private readonly api = inject(PriceListsApi);
   private readonly products = inject(ProductsApi);
   private readonly customers = inject(CustomersApi);
-  private readonly listsSignal = signal<readonly PriceListRow[]>([]);
-  private readonly groupsSignal = signal<readonly CustomerGroupRow[]>([]);
-  private readonly figuresSignal = signal<ReadonlyMap<string, ProductFigures>>(new Map());
+  private readonly listsSignal = sessionSignal<readonly PriceListRow[]>([]);
+  private readonly groupsSignal = sessionSignal<readonly CustomerGroupRow[]>([]);
+  private readonly figuresSignal = sessionSignal<ReadonlyMap<string, ProductFigures>>(new Map());
   private readonly state = requestState<PriceListsError>((error) =>
     error instanceof PriceListsRefused ? error.code : 'network',
   );

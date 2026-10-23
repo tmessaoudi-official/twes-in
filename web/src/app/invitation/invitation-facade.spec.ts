@@ -48,7 +48,6 @@ describe('InvitationFacade', () => {
     const accepted = await facade.accept('a-token', 'New Person', 'a-long-enough-password');
 
     expect(accepted).toBe(true);
-    expect(facade.accepted()).toBe(true);
     expect(api.accept).toHaveBeenCalledWith('a-token', 'New Person', 'a-long-enough-password');
   });
 
@@ -67,7 +66,6 @@ describe('InvitationFacade', () => {
     const accepted = await facade.accept('a-token', 'New Person', 'password');
 
     expect(accepted).toBe(false);
-    expect(facade.accepted()).toBe(false);
     expect(facade.error()).toBe('password_refused');
   });
 

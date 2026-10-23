@@ -178,11 +178,24 @@ export class CompanyProfilePage implements OnInit {
       this.feedback.success('company.profile.logo.saved');
   }
 
+  /** Undo first: nothing asks before the logo goes, and « Annuler » uploads the picture it showed again. */
   protected async removeLogo(): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    if (await this.facade.removeLogo(companyId))
-      this.feedback.success('company.profile.logo.removed');
+    const held = await this.facade.currentLogo(companyId);
+    if (!(await this.facade.removeLogo(companyId))) return;
+    this.feedback.success(
+      'company.profile.logo.removed',
+      {},
+      held === null
+        ? undefined
+        : { key: 'company.profile.logo.undo', run: () => void this.putLogoBack(companyId, held) },
+    );
+  }
+
+  private async putLogoBack(companyId: string, picture: File): Promise<void> {
+    if (await this.facade.uploadLogo(companyId, picture))
+      this.feedback.success('company.profile.logo.put_back');
   }
 
   protected async save(values: FormValues): Promise<void> {

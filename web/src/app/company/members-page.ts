@@ -155,7 +155,7 @@ export class MembersPage implements OnInit {
         label: 'members.remove',
         icon: 'person_remove',
         destructive: true,
-        run: (row) => void this.remove(row.userId),
+        run: (row) => void this.remove(row),
         disabled: () => this.busy(),
         shown: (row) => this.mayManage() && row.status === 'joined',
         confirm: (row) => ({
@@ -214,10 +214,11 @@ export class MembersPage implements OnInit {
     }
   }
 
-  protected async remove(userId: string): Promise<void> {
+  /** Said once done, naming who lost access as the question did; a refusal is said by the error line instead. */
+  protected async remove(row: MemberRow): Promise<void> {
     const companyId = this.company()?.id;
-    if (companyId) {
-      await this.members.remove(companyId, userId);
+    if (companyId && (await this.members.remove(companyId, row.userId))) {
+      this.feedback.effect('members.removed', { name: row.displayName }, 'corrigeable');
     }
   }
 }

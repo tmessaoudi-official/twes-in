@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\TaxComponent;
+use App\Module\DeliveryNotes\Application\Quotes\QuoteDiscounts;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
@@ -49,6 +50,7 @@ final readonly class InvoiceDeliveryNotes
         private Transactions $transactions,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private QuoteDiscounts $quoteDiscounts,
     ) {
     }
 
@@ -174,6 +176,8 @@ final readonly class InvoiceDeliveryNotes
                 DeliveryNoteStatus::Draft === $note->getStatus() => InvoicingCheckRow::DRAFT,
                 DeliveryNoteStatus::Cancelled === $note->getStatus() => InvoicingCheckRow::CANCELLED,
                 DeliveryNoteStatus::Invoiced === $note->getStatus() => InvoicingCheckRow::INVOICED,
+                // A note handing over an issued invoice's goods was billed by that invoice already.
+                $note->deliversInvoice() => InvoicingCheckRow::INVOICED,
                 !self::anythingLeft($note, $left) => InvoicingCheckRow::NOTHING_LEFT,
                 null !== $customer && !$note->getCustomer()->standingFor()->getId()->equals($customer) => InvoicingCheckRow::OTHER_CUSTOMER,
                 null !== $establishment && !$note->getEstablishment()->getId()->equals($establishment) => InvoicingCheckRow::OTHER_ESTABLISHMENT,
@@ -223,6 +227,9 @@ final readonly class InvoiceDeliveryNotes
             if (DeliveryNoteStatus::Validated !== $note->getStatus() && DeliveryNoteStatus::Delivered !== $note->getStatus()) {
                 throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a validated or delivered note is invoiced.', self::reference($note), $note->getStatus()->value));
             }
+            if ($note->deliversInvoice()) {
+                throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s hands over the goods of an issued invoice, which billed its goods: it is never invoiced again.', self::reference($note)));
+            }
         }
         $first = $notes[0];
         foreach ($notes as $note) {
@@ -258,7 +265,7 @@ final readonly class InvoiceDeliveryNotes
             throw new DeliveryNoteTransitionRefused(\sprintf('Nothing is left to invoice on these delivery notes%s.', null === $held ? '' : \sprintf(': they are on the invoice %s, which is not cancelled', $held->number ?? $held->id->toRfc4122())));
         }
 
-        $lines = [];
+        $parts = [];
         foreach ($notes as $note) {
             foreach ($note->getLines() as $line) {
                 $key = $line->getId()->toRfc4122();
@@ -266,19 +273,28 @@ final readonly class InvoiceDeliveryNotes
                 if (null === $quantity || (null === $quantities && $left[$key]->compare(0) <= 0)) {
                     continue;
                 }
-                // The note keeps the product it delivered; the invoice drafted from it names the one that product stands for now.
-                $product = $line->getProduct()?->standingFor();
-                $lines[] = new InvoiceLineOfNote(
-                    $product,
-                    $line->getDescription(),
-                    $quantity,
-                    $line->getUnit(),
-                    $line->getUnitPriceNet(),
-                    array_map(static fn (DeliveryNoteLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
-                    $line->getId(),
-                    LotCode::carried($product, $line->getLotCode()),
-                );
+                $parts[] = [$line, $quantity];
             }
+        }
+        // A note delivering an accepted quote bills the discount the customer accepted on it, shared among the deliveries.
+        $discounts = $this->quoteDiscounts->of($company, $parts);
+        $lines = [];
+        foreach ($parts as [$line, $quantity]) {
+            // The note keeps the product it delivered; the invoice drafted from it names the one that product stands for now.
+            $product = $line->getProduct()?->standingFor();
+            [$discountRate, $discountAmount] = $discounts[$line->getId()->toRfc4122()] ?? [null, null];
+            $lines[] = new InvoiceLineOfNote(
+                $product,
+                $line->getDescription(),
+                $quantity,
+                $line->getUnit(),
+                $line->getUnitPriceNet(),
+                array_map(static fn (DeliveryNoteLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
+                $line->getId(),
+                LotCode::carried($product, $line->getLotCode()),
+                $discountRate,
+                $discountAmount,
+            );
         }
         $references = array_values(array_unique(array_map(static fn (DeliveryNote $note): string => $note->getHeader()->customerReference ?? '', $notes)));
         $header = new InvoiceHeaderOfNotes(self::lastDelivery($notes), 1 === \count($references) ? $references[0] : null);

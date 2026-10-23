@@ -4,6 +4,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { StepUp } from '../shared/step-up/step-up';
 import type { FieldValue } from '../shared/form/form-types';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { PlatformApi, PlatformRefused } from './platform-api';
 import {
   COMPANY_COUNTRIES,
@@ -43,6 +44,12 @@ export class PlatformFacade {
   /** The version of each platform key's row when read, which a form's save sends back. */
   private versions: Readonly<Record<string, number>> = {};
   private readonly state = requestState(codeOf);
+  private readonly refusedSignal = signal<PlatformRefusals>({ at: null, refusals: [] });
+  /**
+   * The fields the last write was refused on and where it was written from (`settings`, `new-company`, `owner:<id>`):
+   * the page says each under its own field there, and a field typed in again forgets its own.
+   */
+  readonly refused = this.refusedSignal.asReadonly();
 
   private readonly accountsSignal = signal<readonly PlatformAccountRow[]>([]);
   private readonly accountsTotalSignal = signal(0);
@@ -199,15 +206,28 @@ export class PlatformFacade {
     return saved;
   }
 
-  async stopSubscription(companyId: string): Promise<boolean> {
-    return this.state.write(async () => {
-      await this.proven(() => this.api.stopSubscription(companyId));
+  /**
+   * True once the terms are erased, on the version they were read at. Refused as changed since, the subscription is
+   * read again, so the panel shows what is held now rather than terms another operator replaced.
+   */
+  async stopSubscription(companyId: string, version: number): Promise<boolean> {
+    const stopped = await this.state.write(async () => {
+      await this.proven(() => this.api.stopSubscription(companyId, version));
       this.subscriptionSignal.set(null);
       await this.refreshCompanies();
       await this.auth.refresh();
 
       return true;
     });
+    if (stopped === false && this.state.error() === 'record_changed') {
+      try {
+        this.subscriptionSignal.set(await this.api.subscription(companyId));
+      } catch (error) {
+        this.state.fail(error);
+      }
+    }
+
+    return stopped;
   }
 
   /** The account is shown as the platform answers it, so a refused action leaves it as it was. */
@@ -230,6 +250,7 @@ export class PlatformFacade {
     countryCode: CompanyCountry,
     ownerEmail: string,
   ): Promise<boolean> {
+    this.refusedSignal.set({ at: 'new-company', refusals: [] });
     return this.state.marked(async () => {
       this.state.clearError();
       let opened = false;
@@ -242,6 +263,7 @@ export class PlatformFacade {
         return true;
       } catch (error) {
         this.state.fail(error);
+        this.refusedAt('new-company')(error);
         return false;
       } finally {
         if (opened) {
@@ -253,10 +275,15 @@ export class PlatformFacade {
 
   /** An owner joins only once they accept, so the list read again shows the same owners until then. */
   async inviteOwner(companyId: string, email: string): Promise<boolean> {
-    return this.state.write(async () => {
-      await this.proven(() => this.api.inviteOwner(companyId, email));
-      await this.readCompanies();
-    });
+    const at = `owner:${companyId}`;
+    this.refusedSignal.set({ at, refusals: [] });
+    return this.state.write(
+      async () => {
+        await this.proven(() => this.api.inviteOwner(companyId, email));
+        await this.readCompanies();
+      },
+      { failed: this.refusedAt(at) },
+    );
   }
 
   approve(companyId: string): Promise<boolean> {
@@ -330,19 +357,23 @@ export class PlatformFacade {
   private async saveSettings(
     changes: readonly { key: string; value: FieldValue }[],
   ): Promise<boolean> {
-    const saved = await this.state.write(async () => {
-      await this.proven(() =>
-        this.api.saveSettings(
-          changes.map(({ key, value }) => {
-            const version = this.versions[key];
-            if (version === undefined) throw new Error(`No version was read for ${key}.`);
-            return { key, value, version };
-          }),
-        ),
-      );
-      this.holdSettings(await this.api.settings());
-      return true;
-    });
+    this.refusedSignal.set({ at: 'settings', refusals: [] });
+    const saved = await this.state.write(
+      async () => {
+        await this.proven(() =>
+          this.api.saveSettings(
+            changes.map(({ key, value }) => {
+              const version = this.versions[key];
+              if (version === undefined) throw new Error(`No version was read for ${key}.`);
+              return { key, value, version };
+            }),
+          ),
+        );
+        this.holdSettings(await this.api.settings());
+        return true;
+      },
+      { failed: this.refusedAt('settings') },
+    );
     if (!saved && this.state.error() === 'record_changed') {
       try {
         this.holdSettings(await this.api.settings());
@@ -384,6 +415,23 @@ export class PlatformFacade {
     );
   }
 
+  /** The fields a write was refused on, kept for the place it was written from; none for any other failure. */
+  private refusedAt(at: string): (error: unknown) => void {
+    return (error) =>
+      this.refusedSignal.set({
+        at,
+        refusals: error instanceof PlatformRefused ? error.refusals : [],
+      });
+  }
+
+  /** A field typed in again: its refusal no longer says what it holds. */
+  forgetRefusal(field: string): void {
+    this.refusedSignal.update((held) => ({
+      ...held,
+      refusals: held.refusals.filter((refusal) => refusal.field !== field),
+    }));
+  }
+
   /** A decided company leaves the waiting list, so the list is read again rather than edited in place. */
   private async decide(call: () => Promise<unknown>): Promise<boolean> {
     return this.state.write(async () => {
@@ -420,6 +468,12 @@ const ACCOUNT_COUNT_SEARCH: PlatformAccountSearch = {
   platformOperator: null,
   order: null,
 };
+
+/** What a write was refused on, field by field, and the place on the page it was written from. */
+export interface PlatformRefusals {
+  readonly at: string | null;
+  readonly refusals: readonly FieldRefusal[];
+}
 
 function codeOf(error: unknown): PlatformError {
   return error instanceof PlatformRefused ? error.code : 'network';

@@ -3,6 +3,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { sessionSignal } from '../shared/session/session-data';
 import { refusedByTheDemo } from '../shared/testing/said-answers';
 import { AuthApi, AuthRefused } from './auth-api';
 import { AuthFacade } from './auth-facade';
@@ -83,6 +84,73 @@ describe('AuthFacade', () => {
     expect(await facade.load()).toEqual(owner);
     expect(facade.status()).toBe('authenticated');
     expect(facade.me()?.company?.name).toBe('Demo');
+  });
+
+  describe('what the session kept', () => {
+    // A value kept the way every root facade keeps one, read back after each change of session.
+    const kept = () =>
+      TestBed.runInInjectionContext(() => {
+        const rows = sessionSignal<readonly string[]>([]);
+        const companies = sessionSignal<readonly string[]>([], 'person');
+        rows.set(['an invoice of Demo']);
+        companies.set(['Demo', 'Autre']);
+        return { rows, companies };
+      });
+
+    it('is forgotten when the person signs out', async () => {
+      api.me.mockResolvedValue(owner);
+      await facade.load();
+      const { rows, companies } = kept();
+      api.logout.mockResolvedValue(undefined);
+
+      await facade.logout();
+
+      expect(rows()).toEqual([]);
+      expect(companies()).toEqual([]);
+    });
+
+    it('is forgotten when the API says the session ended', async () => {
+      api.me.mockResolvedValue(owner);
+      await facade.load();
+      const { rows } = kept();
+
+      facade.sessionEnded();
+
+      expect(rows()).toEqual([]);
+    });
+
+    it('loses only the company’s part when the session moves to another company', async () => {
+      api.me.mockResolvedValueOnce(owner);
+      await facade.load();
+      const { rows, companies } = kept();
+      api.me.mockResolvedValueOnce({ ...owner, company: { ...owner.company!, id: 'c2' } });
+
+      await facade.load();
+
+      expect(rows()).toEqual([]);
+      expect(companies()).toEqual(['Demo', 'Autre']);
+    });
+
+    it('stays when the session is read again unchanged', async () => {
+      api.me.mockResolvedValue(owner);
+      await facade.load();
+      const { rows } = kept();
+
+      await facade.refresh();
+
+      expect(rows()).toEqual(['an invoice of Demo']);
+    });
+
+    it('stays when a sign-in is refused while nobody was signed in, so the sign-in page keeps what it read', async () => {
+      api.me.mockRejectedValue(new AuthRefused('authentication_required'));
+      await facade.load();
+      const { rows } = kept();
+      api.login.mockRejectedValue(new AuthRefused('invalid_credentials'));
+
+      await facade.login({ email: 'someone@example.test', password: 'wrong' });
+
+      expect(rows()).toEqual(['an invoice of Demo']);
+    });
   });
 
   it('load() resolves to anonymous when the API refuses', async () => {

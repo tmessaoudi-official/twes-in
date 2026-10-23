@@ -2,7 +2,8 @@
 
 import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
-import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { refusalsOf, SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import type {
   ArticleSubject,
   SettingLevel,
@@ -26,9 +27,13 @@ export class ArticleSettings {
   private readonly rowsSignal = signal<readonly SettingRow[]>([]);
   private readonly state = requestState(codeOf);
 
+  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
+
   readonly rows = this.rowsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** What the last write refused, each on its setting's field, until the next write. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   async load(companyId: string, subject: ArticleSubject): Promise<void> {
     await this.state.read(async () =>
@@ -63,10 +68,14 @@ export class ArticleSettings {
     subject: ArticleSubject,
     call: () => Promise<unknown>,
   ): Promise<boolean> {
-    return this.state.write(async () => {
-      await call();
-      this.rowsSignal.set(await this.api.chain(companyId, 'articles', subject));
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await call();
+        this.rowsSignal.set(await this.api.chain(companyId, 'articles', subject));
+      },
+      { failed: (error) => this.refusalsSignal.set(refusalsOf(error)) },
+    );
   }
 }
 

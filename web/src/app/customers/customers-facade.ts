@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ExportFormat } from '../shared/list/export-address';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
@@ -18,22 +18,23 @@ import type {
   CustomerSearch,
   CustomersError,
 } from './customers-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The customers of the company being worked in, their groups, the company's custom fields, and the open one's contacts. */
 @Injectable({ providedIn: 'root' })
 export class CustomersFacade {
   private readonly api = inject(CustomersApi);
   private readonly fields = inject(CustomFieldsApi);
-  private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
-  private readonly customersSignal = signal<readonly CustomerRow[]>([]);
-  private readonly totalSignal = signal(0);
+  private readonly customFieldsSignal = sessionSignal<readonly CustomFieldDefinition[]>([]);
+  private readonly customersSignal = sessionSignal<readonly CustomerRow[]>([]);
+  private readonly totalSignal = sessionSignal(0);
   private readonly pageRequests = new LatestRequest();
-  private readonly groupsSignal = signal<readonly CustomerGroupRow[]>([]);
-  private readonly optionsSignal = signal<CustomerOptions | null>(null);
-  private readonly customerSignal = signal<CustomerRow | null>(null);
-  private readonly contactsSignal = signal<readonly ContactRow[]>([]);
+  private readonly groupsSignal = sessionSignal<readonly CustomerGroupRow[]>([]);
+  private readonly optionsSignal = sessionSignal<CustomerOptions | null>(null);
+  private readonly customerSignal = sessionSignal<CustomerRow | null>(null);
+  private readonly contactsSignal = sessionSignal<readonly ContactRow[]>([]);
   private readonly state = requestState(codeOf);
-  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
 
   readonly customers = this.customersSignal.asReadonly();
   /** How many customers the last search found in all, the page shown being one part of them. */

@@ -19,6 +19,8 @@ export type InvoicesError =
   | 'missing_operation_category'
   /** A deposit came to more than its quote leaves once the quote's issued deposits are charged. */
   | 'deposit_beyond_quote'
+  /** « Livrer » refused a quantity: more than is left of its line of goods. */
+  | 'delivery_refused'
   | MentionDatumError
   | PartyIdentityError;
 
@@ -295,6 +297,40 @@ export interface SourceNote {
   number: string | null;
 }
 
+export type InvoiceDelivery = 'none' | 'partly' | 'whole';
+
+/** An issued invoice its notes handed part of the goods over is under way; one handed over whole is done. */
+export const INVOICE_DELIVERY_STAGES: Readonly<
+  Record<Exclude<InvoiceDelivery, 'none'>, LifecycleStage>
+> = {
+  partly: 'under-way',
+  whole: 'done',
+};
+
+export const INVOICE_DELIVERY_TONES = tonesOf(INVOICE_DELIVERY_STAGES);
+
+/** A delivery note handing over an issued invoice's goods, as the invoice lists it. */
+export interface InvoiceDeliveryNote {
+  deliveryNoteId: string;
+  /** Null while it is a draft. */
+  number: string | null;
+  status: 'draft' | 'validated' | 'delivered' | 'invoiced';
+}
+
+/**
+ * One line of goods an issued invoice billed, as its deliveries read: what it billed, what its credit notes took back
+ * into stock, what notes take (drafts included), what they handed over, and what is left to deliver.
+ */
+export interface InvoiceLineDelivery {
+  lineId: string;
+  description: string;
+  quantity: string;
+  returned: string;
+  onNotes: string;
+  delivered: string;
+  left: string;
+}
+
 export interface InvoiceRow {
   id: string;
   /** The version read, which a revision sends back; one saved since is refused as `record_changed`. */
@@ -310,6 +346,12 @@ export interface InvoiceRow {
   quoteId: string | null;
   /** The delivery notes its lines were taken from, by number; none for whoever may not open delivery notes. */
   deliveryNotes: SourceNote[];
+  /** The notes that are not cancelled handing over its goods once issued, drafts included, oldest first; none unseen. */
+  deliveredBy: InvoiceDeliveryNote[];
+  /** What those notes past their draft handed over: none, part, or every line of goods whole. */
+  delivery: InvoiceDelivery;
+  /** Each line of goods it billed, with what is delivered and left; none for a draft, a credit note or unseen. */
+  deliveries: InvoiceLineDelivery[];
   /** Null until the document is issued. */
   number: string | null;
   status: InvoiceStatus;

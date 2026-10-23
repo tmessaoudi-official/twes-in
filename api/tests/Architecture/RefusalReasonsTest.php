@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Architecture;
 
 use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
+use App\Settings\Application\SettingCatalog;
+use App\Settings\Domain\ValueObject\SettingChain;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Constraints\Composite;
@@ -118,6 +120,11 @@ final class RefusalReasonsTest extends KernelTestCase
         $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS));
         foreach ($files as $file) {
             \assert($file instanceof \SplFileInfo);
+            // The settings engine's refusals are said by the settings screens, which open their own texts beside these:
+            // every one a declared setting can answer is held to them below.
+            if (str_starts_with($file->getPathname(), "$root/Settings/")) {
+                continue;
+            }
             $source = (string) file_get_contents($file->getPathname());
             // The arguments up to the parenthesis that closes them, quoted text and nested calls included: a statement
             // ending `),` rather than `);` would otherwise run on into the next one's arguments.
@@ -183,11 +190,66 @@ final class RefusalReasonsTest extends KernelTestCase
         self::assertSame([], $missing);
     }
 
-    /** @return array<mixed> the screens' texts for a refusal, by reason */
-    private static function translated(): array
+    /**
+     * A settings save refuses a key with a reason its field is told in: every refusal a declared setting can answer has
+     * its text, in the screens' file or in the settings refusals' part the settings screens open, in every language,
+     * and every placeholder of that text among the refusal's parameters.
+     */
+    public function testEveryRefusalASettingCanAnswerIsTranslated(): void
     {
-        $texts = json_decode((string) file_get_contents(\dirname(__DIR__, 3).'/web/public/i18n/fr.json'), true, 512, \JSON_THROW_ON_ERROR);
-        self::assertIsArray($texts);
+        self::bootKernel();
+        $catalog = static::getContainer()->get(SettingCatalog::class);
+        $wrong = [];
+        $refusals = 0;
+        foreach (['fr', 'en', 'ar'] as $language) {
+            $translated = self::translated($language, self::SETTINGS_REFUSALS);
+            // What a save refuses a key with beyond its value: a level it is not kept at, a key named twice.
+            foreach (['level_refused', 'invalid_value'] as $ofTheSave) {
+                if (!\is_string($translated[$ofTheSave] ?? null)) {
+                    $wrong[] = \sprintf('a save: no %s text for %s', $language, $ofTheSave);
+                }
+            }
+            foreach (SettingChain::cases() as $chain) {
+                foreach ($catalog->ofChain($chain) as $definition) {
+                    foreach ($definition->refusals() as $refusal) {
+                        ++$refusals;
+                        $said = $translated[$refusal->reason] ?? null;
+                        if (!\is_string($said) || '' === $said) {
+                            $wrong[] = \sprintf('%s: no %s text for %s', $definition->key, $language, $refusal->reason);
+                            continue;
+                        }
+                        preg_match_all('/\{\{\s*(\w+)\s*\}\}/', $said, $named);
+                        foreach (array_diff($named[1], array_keys($refusal->params)) as $unfilled) {
+                            $wrong[] = \sprintf('%s: its %s text for %s names {{%s}}, which the refusal does not send', $definition->key, $language, $refusal->reason, $unfilled);
+                        }
+                    }
+                }
+            }
+        }
+
+        self::assertGreaterThan(300, $refusals, 'the declared settings are found');
+        self::assertSame([], $wrong);
+    }
+
+    /** The texts the settings screens open before saying a settings refusal, beside the screens' own file. */
+    private const string SETTINGS_REFUSALS = 'settings-refusals';
+
+    /** @return array<mixed> the screens' texts for a refusal, by reason, with those of a texts part over them */
+    private static function translated(string $language = 'fr', ?string $part = null): array
+    {
+        $translated = self::rejections(\dirname(__DIR__, 3).'/web/public/i18n/'.$language.'.json');
+        if (null !== $part) {
+            $translated = [...$translated, ...self::rejections(\dirname(__DIR__, 3).'/web/public/i18n/'.$part.'/'.$language.'.json')];
+        }
+
+        return $translated;
+    }
+
+    /** @return array<mixed> */
+    private static function rejections(string $file): array
+    {
+        $texts = json_decode((string) file_get_contents($file), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($texts, $file);
         self::assertIsArray($texts['import'] ?? null);
         $translated = $texts['import']['rejections'] ?? null;
         self::assertIsArray($translated);

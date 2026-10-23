@@ -140,7 +140,7 @@ final readonly class ErasureCatalogue
         }
         foreach ($this->references() as $reference) {
             if (ErasureReference::LINK === $reference->kind && \in_array($reference->target, array_map(static fn (ErasedRows $step): string => $step->table, $this->stepsOf($parts)), true)) {
-                $kinds[] = $reference->table;
+                $kinds[] = $reference->live ?? $reference->table;
             }
         }
 

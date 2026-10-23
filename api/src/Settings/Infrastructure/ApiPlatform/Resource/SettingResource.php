@@ -172,6 +172,10 @@ final class SettingResource
     #[Groups([self::READ])]
     public ?string $pattern = null;
 
+    /** The reason a value outside the pattern is refused with: a screen says the same sentence before it saves. */
+    #[Groups([self::READ])]
+    public ?string $patternReason = null;
+
     #[Assert\NotBlank(groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public string $level = '';
@@ -228,6 +232,7 @@ final class SettingResource
         $resource->max = $definition->max;
         $resource->maxLength = $definition->maxLength;
         $resource->pattern = $definition->pattern;
+        $resource->patternReason = $definition->patternReason;
 
         return $resource;
     }

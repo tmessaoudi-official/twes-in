@@ -2,6 +2,7 @@
 
 import { DestroyRef, inject, Injectable, type Signal, signal } from '@angular/core';
 import { Feedback } from '../feedback/feedback';
+import { sessionSignal } from '../session/session-data';
 
 /** Where a code came from: a scanner typing it, this device's camera, or a phone paired with this tab. */
 export type ScanSource = 'wedge' | 'camera' | 'phone';
@@ -57,7 +58,7 @@ export class ScanBus {
   private unclaimed: ((scan: Scan) => void) | null = null;
   private queue: Promise<unknown> = Promise.resolve();
   private readonly standing: Standing[] = [];
-  private readonly entries = signal<readonly ScanLogEntry[]>([]);
+  private readonly entries = sessionSignal<readonly ScanLogEntry[]>([]);
 
   /** The count typed before the next scan ("5×"); it applies to that scan alone. */
   readonly multiplier = signal<number | null>(null);

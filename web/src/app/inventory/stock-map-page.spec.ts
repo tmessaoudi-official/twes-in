@@ -70,6 +70,8 @@ class StaticLoader implements TranslateLoader {
             'Choisissez une forme : elle se pose au centre du plan, sélectionnée. Glissez-la ou tapez ses mesures, puis Enregistrer.',
           legend_items: { door: 'Porte', dock: 'Quai' },
           nothing_drawn: 'Rien n’est encore dessiné sur cet étage.',
+          remove_floor_message:
+            'L’étage « {{name}} » disparaît du plan, avec les murs dessinés dessus.',
           no_floor: 'Aucun étage n’est encore dessiné.',
           first: {
             title: 'Dessinez votre dépôt',
@@ -190,6 +192,7 @@ describe('StockMapPage', () => {
   const holdings = signal<ReadonlyMap<string, number>>(new Map());
   const refusedEntry = signal<string | null>(null);
   const facade = {
+    countContexts: vi.fn(async () => []),
     contents: contents.asReadonly(),
     holdings: holdings.asReadonly(),
     reloadHoldings: vi.fn(),
@@ -871,6 +874,41 @@ describe('StockMapPage', () => {
     await settle();
     // The ground floor carries a rectangle, so removing it is not offered at all rather than refused.
     expect(q('stock-floor-remove')).toBeNull();
+  });
+
+  /** Answers the open question; the last dialog, since one just closed can still be in the page for a frame. */
+  async function answer(choice: 'run' | 'keep'): Promise<void> {
+    const buttons = document.querySelectorAll(`[data-testid="confirm-${choice}"]`);
+    (buttons[buttons.length - 1] as HTMLElement).click();
+    await settle();
+  }
+
+  it('asks before it removes a floor, naming it, as final, since its walls go with it', async () => {
+    q('stock-floor-f2')!.click();
+    await settle();
+    q('stock-floor-edit')!.click();
+    await settle();
+
+    q('stock-floor-remove')!.click();
+    await settle();
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'L’étage « Étage 1 » disparaît du plan',
+    );
+    expect(document.querySelector('[data-testid="confirm-kind"]')?.getAttribute('data-kind')).toBe(
+      'definitif',
+    );
+    await answer('keep');
+    expect(facade.deleteFloor).not.toHaveBeenCalled();
+
+    q('stock-floor-remove')!.click();
+    await settle();
+    await answer('run');
+    await vi.waitFor(() => expect(facade.deleteFloor).toHaveBeenCalledWith('c1', 'f2'));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
+        expect.objectContaining({ key: 'inventory.plan.floor_removed', effect: 'definitif' }),
+      ),
+    );
   });
 
   it('adds a floor of the company’s only establishment', async () => {

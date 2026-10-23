@@ -12,6 +12,7 @@ namespace App\Identity\Infrastructure\ApiPlatform\Output;
 use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\CustomerScreen\CustomerScreenLock;
 use App\Identity\Domain\Repository\PasskeyRepository;
+use App\Identity\Domain\Repository\RecoveryCodeRepository;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Infrastructure\ApiPlatform\Resource\Me;
 use App\Identity\Infrastructure\Security\SecurityUser;
@@ -41,6 +42,7 @@ final readonly class MeFactory
         private CustomerScreenLock $customerScreen,
         private ReadSetting $settings,
         private DemoAccounts $demoAccounts,
+        private RecoveryCodeRepository $recoveryCodes,
     ) {
     }
 
@@ -57,7 +59,7 @@ final readonly class MeFactory
             array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => null !== $manifest->planned),
         ));
 
-        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()));
+        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user));
     }
 
     private function support(): MeSupport

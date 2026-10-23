@@ -36,6 +36,7 @@ import type {
   StockReceiptStockReceiptWriteValidationStockReceiptWrite as StockReceiptStockReceiptWrite,
   ReceiptCostReceiptCostRead,
   StockOnHandStockOnHandRead,
+  StockCountContextStockCountContextRead,
   ReceiptCostEntryReceiptCostEntryWriteValidationReceiptCostEntryWrite as ReceiptCostEntryWrite,
   StockLossAttachmentStockLossAttachmentRead,
 } from '../api/types.gen';
@@ -45,6 +46,7 @@ import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
   type CostBasis,
+  type CountContext,
   type InventoryError,
   type LocationHomeRow,
   type Whereabouts,
@@ -84,6 +86,8 @@ import { refusedFor } from '../shared/errors/said-already';
 
 /** How many products one question about stock on hand may name (`StockOnHandResource::MOST`). */
 const ON_HAND_MOST = 100;
+/** How many products one question about a count may name (`ReadCountContext::MOST`). */
+const COUNT_CONTEXT_MOST = 100;
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class InventoryRefused extends Error {
@@ -162,6 +166,41 @@ export class InventoryApi {
         onHand: item.onHand,
       }));
     });
+  }
+
+  /**
+   * What a count of these products would change, asked in the background while a count is typed or scanned, so it
+   * shows no activity. The API takes at most a hundred at once; a longer sheet is asked in parts.
+   */
+  async countContexts(companyId: string, productIds: readonly string[]): Promise<CountContext[]> {
+    const asked = [...new Set(productIds)];
+    const answers: CountContext[] = [];
+    for (let at = 0; at < asked.length; at += COUNT_CONTEXT_MOST) {
+      answers.push(
+        ...(await this.guard(async () => {
+          let params = new HttpParams();
+          for (const id of asked.slice(at, at + COUNT_CONTEXT_MOST)) {
+            params = params.append('productIds[]', id);
+          }
+          const answer = await firstValueFrom(
+            this.http.get<StockCountContextStockCountContextRead>(
+              `${path(companyId, 'stock-counts')}/context`,
+              { params, context: new HttpContext().set(SILENT, true) },
+            ),
+          );
+          return answer.items.map((item) => ({
+            productId: item.productId,
+            places: item.places.map((place) => ({
+              locationId: place.locationId,
+              lotCode: place.lotCode,
+              quantity: place.quantity,
+            })),
+            homeLocationIds: [...item.homeLocationIds],
+          }));
+        })),
+      );
+    }
+    return answers;
   }
 
   /**

@@ -24,7 +24,9 @@ use App\Identity\Application\Mfa\Totp\BeginTotpEnrolment;
 use App\ImportExport\Application\RunImport;
 use App\Inbox\Application\NotificationCentre;
 use App\Inbox\Application\NotificationPreferences;
+use App\Module\DeliveryNotes\Application\Invoices\DeliverInvoices;
 use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
+use App\Module\DeliveryNotes\Application\Quotes\DeliverQuotes;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\Merge\CarryMergedStock;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
@@ -87,6 +89,8 @@ final class CommandsAndQueriesTest extends TestCase
         DrawStockMap::class => 'it composes the venue and the stock locations, each recording its own entry',
         KeepStock::class => 'the movements are the record, each staged as a live change',
         MoveStockForDeliveryNotes::class => 'a part of validating or cancelling a delivery note, whose use case records it',
+        DeliverQuotes::class => 'the draft note goes through ManageDeliveryNotes, which records it with the quote it delivers',
+        DeliverInvoices::class => 'the draft note goes through ManageDeliveryNotes, which records it with the invoice it delivers',
         PhonePairings::class => 'a phone lent to a tab for a while, nothing the company keeps',
         MailInvitation::class => 'the worker mailing an invitation whose creation was recorded',
         AllocateNumber::class => 'a part of issuing, inside the transaction of the document it numbers, which records it',

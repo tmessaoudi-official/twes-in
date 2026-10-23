@@ -42,9 +42,9 @@ final class PlatformOwnerInvitationResource
     public const string WRITE = 'platform_owner_invitation:write';
 
     #[ApiProperty(identifier: false)]
-    #[Assert\NotBlank(groups: ['invite'])]
-    #[Assert\Email(groups: ['invite'])]
-    #[Assert\Length(max: 254, groups: ['invite'])]
+    #[Assert\NotBlank(groups: ['invite'], payload: ['reason' => 'value_required'])]
+    #[Assert\Email(groups: ['invite'], payload: ['reason' => 'invalid_email'])]
+    #[Assert\Length(max: 254, groups: ['invite'], payload: ['reason' => 'invalid_text', 'params' => ['max' => 254]])]
     #[Groups([self::READ, self::WRITE])]
     public string $email = '';
 

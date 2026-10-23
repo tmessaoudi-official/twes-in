@@ -307,6 +307,10 @@ export interface LineControls {
   lotCode: FormControl<string>;
   /** How the line's product is tracked, which decides whether the lot is asked; '' for a line naming no product. */
   productTracking: FormControl<ProductTracking | ''>;
+  /** The accepted quote's line this line delivers, kept as read so a revision keeps it; '' for a line of the note's own. */
+  sourceQuoteLineId: FormControl<string>;
+  /** The issued invoice's line whose goods this line hands over, kept as read; '' for a line of the note's own. */
+  sourceInvoiceLineId: FormControl<string>;
 }
 
 export type LineGroup = FormGroup<LineControls>;
@@ -380,6 +384,8 @@ export function lineGroup(line: DeliveryNoteLine | null, options: DeliveryNoteOp
       productTracking: new FormControl<ProductTracking | ''>(line?.productTracking ?? '', {
         nonNullable: true,
       }),
+      sourceQuoteLineId: new FormControl(line?.sourceQuoteLineId ?? '', { nonNullable: true }),
+      sourceInvoiceLineId: new FormControl(line?.sourceInvoiceLineId ?? '', { nonNullable: true }),
     },
     { validators: fitsUnit(options) },
   );
@@ -399,18 +405,19 @@ export function figuresReady(line: LineGroup): boolean {
 
 /**
  * What each line says of stock, from what the establishment holds of the products whose stock is kept. A validated note
- * takes out every line in its product's stock unit, so each such line is told what the note leaves.
+ * takes out every line in its product's stock unit, so each such line is told what the note leaves; a line handing over
+ * an issued invoice's goods takes nothing, since the invoice took them out when it was issued.
  */
 export function lineStock(
   lines: LinesArray,
   onHand: ReadonlyMap<string, OnHand>,
 ): (LineStock | null)[] {
   return stockOfLines(
-    lines.getRawValue().map(({ productId, unitId, quantity }) => ({
+    lines.getRawValue().map(({ productId, unitId, quantity, sourceInvoiceLineId }) => ({
       productId,
       unitId,
       quantity,
-      takes: true,
+      takes: sourceInvoiceLineId === '',
     })),
     onHand,
   );
@@ -451,6 +458,8 @@ export function applyProduct(
       productName: '',
       lotCode: '',
       productTracking: '',
+      sourceQuoteLineId: '',
+      sourceInvoiceLineId: '',
     });
     return;
   }
@@ -467,6 +476,9 @@ export function applyProduct(
     taxComponentIds: product.defaultTaxComponentIds.filter((id) => offered.has(id)),
     lotCode: sameProduct && product.tracking !== 'none' ? line.controls.lotCode.value : '',
     productTracking: product.tracking,
+    // Another product is a line of the note's own: the quote's line offered the one it named.
+    sourceQuoteLineId: sameProduct ? line.controls.sourceQuoteLineId.value : '',
+    sourceInvoiceLineId: sameProduct ? line.controls.sourceInvoiceLineId.value : '',
   });
 }
 
@@ -519,6 +531,8 @@ export function deliveryNoteInput(
         line.productTracking === 'lot' || line.productTracking === 'serial'
           ? text(line.lotCode)
           : null,
+      ...(line.sourceQuoteLineId === '' ? {} : { sourceQuoteLineId: line.sourceQuoteLineId }),
+      ...(line.sourceInvoiceLineId === '' ? {} : { sourceInvoiceLineId: line.sourceInvoiceLineId }),
     })),
   };
 }

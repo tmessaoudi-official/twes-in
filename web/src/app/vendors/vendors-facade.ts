@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import type { ExportFormat } from '../shared/list/export-address';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { FieldRefusal } from '../shared/form/field-refusals';
@@ -13,19 +13,20 @@ import type {
   VendorSearch,
   VendorsError,
 } from './vendors-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The vendors of the company being worked in, and the one open in the form. */
 @Injectable({ providedIn: 'root' })
 export class VendorsFacade {
   private readonly api = inject(VendorsApi);
   private readonly stepUp = inject(StepUp);
-  private readonly vendorsSignal = signal<readonly VendorRow[]>([]);
-  private readonly totalSignal = signal(0);
+  private readonly vendorsSignal = sessionSignal<readonly VendorRow[]>([]);
+  private readonly totalSignal = sessionSignal(0);
   private readonly pageRequests = new LatestRequest();
-  private readonly optionsSignal = signal<VendorOptions | null>(null);
-  private readonly vendorSignal = signal<VendorRow | null>(null);
+  private readonly optionsSignal = sessionSignal<VendorOptions | null>(null);
+  private readonly vendorSignal = sessionSignal<VendorRow | null>(null);
   private readonly state = requestState(codeOf);
-  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
 
   readonly vendors = this.vendorsSignal.asReadonly();
   /** How many vendors the last search found in all, the page shown being one part of them. */

@@ -20,7 +20,6 @@ import {
 } from '@angular/core';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { MatIconRegistry } from '@angular/material/icon';
-import { MatPaginatorIntl } from '@angular/material/paginator';
 import { provideRouter, TitleStrategy, withComponentInputBinding } from '@angular/router';
 import { provideTranslateCompiler, provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
@@ -37,7 +36,6 @@ import { csrfInterceptor } from './auth/csrf-interceptor';
 import { ApiSettings } from './shared/settings/api-settings';
 import { BrowserStorageSettings } from './shared/settings/browser-storage-settings';
 import { SettingsFacade } from './shared/settings/settings-facade';
-import { TranslatedPaginatorIntl } from './shared/list/translated-paginator-intl';
 import { activityInterceptor } from './shared/feedback/activity-interceptor';
 import { Feedback } from './shared/feedback/feedback';
 import { MaterialFeedback } from './shared/feedback/material-feedback';
@@ -113,8 +111,6 @@ export const appConfig: ApplicationConfig = {
     { provide: Camera, useClass: BrowserCamera },
     { provide: BarcodeReader, useClass: ZxingBarcodeReader },
     BrowserStorageSettings,
-    // Every paginator's labels follow the chosen language.
-    { provide: MatPaginatorIntl, useClass: TranslatedPaginatorIntl },
     // The approved component sheet draws every field as an outlined box (styles.scss sets its size and corners),
     // and a hint that wraps pushes the next field down instead of running into it.
     {

@@ -121,3 +121,54 @@ test('an e-mail the browser takes and the API refuses is said under the profile 
   await page.getByTestId('field-email').fill('compta@carthage.tn');
   await expect(page.getByTestId('field-error-email')).toHaveCount(0);
 });
+
+// One pixel, PNG: the smallest picture the logo upload takes.
+const PIXEL = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+test('a new logo shows at once at the head of the rail, without reloading the page', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  // The shared company's logo is put back as it was: its bytes are kept to upload again, or it is removed.
+  const before = await page.evaluate(async () => {
+    const me = (await (await fetch('/api/auth/me')).json()) as {
+      company: { id: string; logoVersion: string | null };
+    };
+    const { id, logoVersion } = me.company;
+    if (logoVersion === null) return { id, bytes: null };
+    const picture = await fetch(`/api/companies/${id}/logo?v=${logoVersion}`);
+    return {
+      id,
+      bytes: Array.from(new Uint8Array(await picture.arrayBuffer())),
+      type: picture.headers.get('content-type') ?? 'image/png',
+    };
+  });
+  await page.goto('/company/profile');
+  try {
+    await page
+      .getByTestId('profile-logo-input')
+      .setInputFiles({ name: 'logo.png', mimeType: 'image/png', buffer: PIXEL });
+    await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
+    await expect(page.getByTestId('profile-logo-image')).toBeVisible();
+    const shown = await page.getByTestId('profile-logo-image').getAttribute('src');
+
+    await expect(page.getByTestId('rail-company').getByTestId('company-logo')).toHaveAttribute(
+      'src',
+      shown ?? 'no logo shown on the profile',
+    );
+  } finally {
+    if (before.bytes === null) {
+      const url = `/api/companies/${before.id}/logo`;
+      expect((await sendProving(page, OPERATOR_PASSWORD, 'DELETE', url)).status).toBeLessThan(300);
+    } else {
+      await page
+        .getByTestId('profile-logo-input')
+        .setInputFiles({ name: 'logo', mimeType: before.type, buffer: Buffer.from(before.bytes) });
+      await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
+    }
+  }
+});

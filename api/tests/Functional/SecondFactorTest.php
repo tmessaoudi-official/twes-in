@@ -181,6 +181,9 @@ final class SecondFactorTest extends ApiTestCase
 
         $this->postJson('/api/auth/mfa/verify', ['code' => $codes[0]]);
         self::assertResponseIsSuccessful();
+        // The screen counts what is left, so it can ask for new codes before the last one goes.
+        $this->client->request('GET', '/api/auth/me');
+        self::assertSame(9, $this->section($this->json(), 'mfa')['recoveryCodes'] ?? null);
 
         $this->signOut();
         $this->login('someone@twes.local', self::PASSWORD);

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Settings\Domain\ValueObject;
 
+use App\Shared\Domain\ValueObject\Refusal;
 use BcMath\Number;
 
 /**
@@ -24,6 +25,7 @@ final readonly class SettingDefinition
     private const string KEY = '/^[a-z][a-z0-9_]*(\.[a-z0-9_<>-]+)+$/';
     private const string DECIMAL = '/^-?\d{1,15}(\.\d{1,6})?$/';
     private const string COLOUR = '/^#[0-9a-fA-F]{6}$/';
+    private const string REASON = '/^[a-z]+(_[a-z]+)+$/';
 
     /**
      * @param list<SettingLevel> $overridableAt the levels a value may be stored at
@@ -32,8 +34,11 @@ final readonly class SettingDefinition
      * @param int|string|null    $max           inclusive, as $min
      * @param string|null        $pattern       a regular expression a text value must match
      * @param string|null        $keyPattern    a regular expression, when the definition covers a family of keys
+     * @param string|null        $patternReason the reason a value outside the pattern is refused with, whose text says
+     *                                          the format with an example; required beside a pattern
      *
-     * @throws \InvalidArgumentException for a malformed key, a level outside the chain or a default it would refuse
+     * @throws \InvalidArgumentException for a malformed key, a level outside the chain, a pattern without its reason or a
+     *                                   default it would refuse
      */
     public function __construct(
         public string $key,
@@ -49,9 +54,14 @@ final readonly class SettingDefinition
         public ?int $maxLength = null,
         public ?string $pattern = null,
         public ?string $keyPattern = null,
+        public ?string $patternReason = null,
     ) {
         if (1 !== preg_match(self::KEY, $key)) {
             throw new \InvalidArgumentException(\sprintf('"%s" is not a setting key.', $key));
+        }
+        // A value refused by its shape alone would be told only « refusé »: the pattern names the sentence that says it.
+        if (null !== $pattern && (null === $patternReason || 1 !== preg_match(self::REASON, $patternReason))) {
+            throw new \InvalidArgumentException(\sprintf('%s: a pattern declares the reason it refuses a value with.', $key));
         }
         foreach ($overridableAt as $level) {
             if (!$chain->has($level)) {
@@ -65,7 +75,7 @@ final readonly class SettingDefinition
         if (null !== $default || SettingType::Json !== $type) {
             $refusal = $this->refusal($default);
             if (null !== $refusal) {
-                throw new \InvalidArgumentException(\sprintf('%s: its default is refused, %s.', $key, $refusal));
+                throw new \InvalidArgumentException(\sprintf('%s: its default is refused, %s.', $key, $refusal->message));
             }
         }
     }
@@ -85,17 +95,39 @@ final readonly class SettingDefinition
         return \in_array($level, $this->overridableAt, true);
     }
 
-    /** @return string|null why the value cannot be stored, or null when it can */
-    public function refusal(mixed $value): ?string
+    /**
+     * Why the value cannot be stored, or null when it can: the reason a screen says it in, that text's parameters and
+     * an English message beside them.
+     */
+    public function refusal(mixed $value): ?Refusal
     {
         return match ($this->type) {
-            SettingType::Bool => \is_bool($value) ? null : 'expected true or false',
+            SettingType::Bool => \is_bool($value) ? null : self::notYesOrNo(),
             SettingType::Int => $this->intRefusal($value),
             SettingType::Decimal, SettingType::Money => $this->decimalRefusal($value),
             SettingType::Text => $this->textRefusal($value),
-            SettingType::Enum => \is_string($value) && \in_array($value, $this->choices, true) ? null : 'expected one of '.implode(', ', $this->choices),
-            SettingType::Colour => \is_string($value) && 1 === preg_match(self::COLOUR, $value) ? null : 'expected a colour written #rrggbb',
+            SettingType::Enum => \is_string($value) && \in_array($value, $this->choices, true) ? null : new Refusal('unknown_choice', 'expected one of '.implode(', ', $this->choices)),
+            SettingType::Colour => \is_string($value) && 1 === preg_match(self::COLOUR, $value) ? null : new Refusal('not_a_colour', 'expected a colour written #rrggbb'),
             SettingType::Json => $this->jsonRefusal($value),
+        };
+    }
+
+    /**
+     * Every refusal this setting can answer, each with the parameters its text is given: what the screens' texts are
+     * held to, so no refusal reaches a field as a bare key.
+     *
+     * @return list<Refusal>
+     */
+    public function refusals(): array
+    {
+        return match ($this->type) {
+            SettingType::Bool => [self::notYesOrNo()],
+            SettingType::Int => [self::notAWholeNumber(), ...(null === $this->min && null === $this->max ? [] : [$this->outOfBounds(true)])],
+            SettingType::Decimal, SettingType::Money => [self::notANumber(), ...(is_numeric($this->min) || is_numeric($this->max) ? [$this->outOfBounds(false)] : [])],
+            SettingType::Text => [self::notText(), $this->tooLong(), ...(null === $this->pattern ? [] : [$this->outsidePattern()])],
+            SettingType::Enum => [new Refusal('unknown_choice', 'expected one of '.implode(', ', $this->choices))],
+            SettingType::Colour => [new Refusal('not_a_colour', 'expected a colour written #rrggbb')],
+            SettingType::Json => [new Refusal('invalid_value', 'expected a list or an object')],
         };
     }
 
@@ -105,60 +137,104 @@ final readonly class SettingDefinition
         return SettingType::Colour === $this->type && \is_string($value) ? strtolower($value) : $value;
     }
 
-    private function intRefusal(mixed $value): ?string
+    private function intRefusal(mixed $value): ?Refusal
     {
         if (!\is_int($value)) {
-            return 'expected a whole number';
+            return self::notAWholeNumber();
         }
-        if (null !== $this->min && $value < (int) $this->min) {
-            return 'expected at least '.$this->min;
-        }
-        if (null !== $this->max && $value > (int) $this->max) {
-            return 'expected at most '.$this->max;
+        if ((null !== $this->min && $value < (int) $this->min) || (null !== $this->max && $value > (int) $this->max)) {
+            return $this->outOfBounds(true);
         }
 
         return null;
     }
 
-    private function decimalRefusal(mixed $value): ?string
+    private function decimalRefusal(mixed $value): ?Refusal
     {
         if (!\is_string($value) || !is_numeric($value) || 1 !== preg_match(self::DECIMAL, $value)) {
-            return 'expected a decimal number written as text, with a dot';
+            return self::notANumber();
         }
         $number = new Number($value);
-        if (is_numeric($this->min) && $number < new Number($this->min)) {
-            return 'expected at least '.$this->min;
-        }
-        if (is_numeric($this->max) && $number > new Number($this->max)) {
-            return 'expected at most '.$this->max;
+        if ((is_numeric($this->min) && $number < new Number($this->min)) || (is_numeric($this->max) && $number > new Number($this->max))) {
+            return $this->outOfBounds(false);
         }
 
         return null;
     }
 
-    private function textRefusal(mixed $value): ?string
+    private function textRefusal(mixed $value): ?Refusal
     {
         if (!\is_string($value)) {
-            return 'expected text';
+            return self::notText();
         }
-        $limit = $this->maxLength ?? self::TEXT_MAX_LENGTH;
-        if (mb_strlen($value) > $limit) {
-            return \sprintf('expected at most %d characters', $limit);
+        if (mb_strlen($value) > ($this->maxLength ?? self::TEXT_MAX_LENGTH)) {
+            return $this->tooLong();
         }
 
-        return null === $this->pattern || 1 === preg_match($this->pattern, $value) ? null : 'expected text matching '.$this->pattern;
+        return null === $this->pattern || 1 === preg_match($this->pattern, $value) ? null : $this->outsidePattern();
     }
 
-    private function jsonRefusal(mixed $value): ?string
+    private function jsonRefusal(mixed $value): ?Refusal
     {
         if (!\is_array($value)) {
-            return 'expected a list or an object';
+            return new Refusal('invalid_value', 'expected a list or an object');
         }
         $encoded = json_encode($value);
         if (false === $encoded) {
-            return 'expected a value JSON can represent';
+            return new Refusal('invalid_value', 'expected a value JSON can represent');
         }
 
-        return \strlen($encoded) > self::JSON_MAX_BYTES ? \sprintf('expected at most %d bytes once encoded', self::JSON_MAX_BYTES) : null;
+        return \strlen($encoded) > self::JSON_MAX_BYTES ? new Refusal('invalid_value', \sprintf('expected at most %d bytes once encoded', self::JSON_MAX_BYTES)) : null;
+    }
+
+    /**
+     * A number outside its bounds is told both where it has both, so the person reads the whole range at once; a whole
+     * number's range is said as such.
+     */
+    private function outOfBounds(bool $whole): Refusal
+    {
+        $min = null === $this->min ? null : ($whole ? (int) $this->min : (string) $this->min);
+        $max = null === $this->max ? null : ($whole ? (int) $this->max : (string) $this->max);
+        if (null !== $min && null !== $max) {
+            return new Refusal($whole ? 'whole_number_between' : 'number_between', \sprintf('expected from %s to %s', $min, $max), ['min' => $min, 'max' => $max]);
+        }
+
+        if (null !== $min) {
+            return new Refusal('at_least', 'expected at least '.$min, ['min' => $min]);
+        }
+
+        return new Refusal('at_most', 'expected at most '.$max, null === $max ? [] : ['max' => $max]);
+    }
+
+    private function tooLong(): Refusal
+    {
+        $limit = $this->maxLength ?? self::TEXT_MAX_LENGTH;
+
+        return new Refusal('invalid_text', \sprintf('expected at most %d characters', $limit), ['max' => $limit]);
+    }
+
+    private function outsidePattern(): Refusal
+    {
+        return new Refusal($this->patternReason ?? 'invalid_value', 'expected text matching '.$this->pattern);
+    }
+
+    private static function notYesOrNo(): Refusal
+    {
+        return new Refusal('not_yes_or_no', 'expected true or false');
+    }
+
+    private static function notAWholeNumber(): Refusal
+    {
+        return new Refusal('not_a_whole_number', 'expected a whole number');
+    }
+
+    private static function notANumber(): Refusal
+    {
+        return new Refusal('not_a_number', 'expected a decimal number written as text, with a dot');
+    }
+
+    private static function notText(): Refusal
+    {
+        return new Refusal('invalid_value', 'expected text');
     }
 }

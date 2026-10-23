@@ -173,7 +173,7 @@ final class DeliveryNoteResource
     /** A day and a time to the minute on the company's clock, as a person writes when the goods arrived. */
     public const string LOCAL_MOMENT = 'Y-m-d\\TH:i';
     /** Nulls are answered: a draft's absent number and a line without a product read alike; no identifiers read `{}`. */
-    private const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
+    public const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
     private const array DAY = ['type' => 'string', 'format' => 'date'];
@@ -224,6 +224,34 @@ final class DeliveryNoteResource
     ])]
     #[Groups([self::READ])]
     public array $invoices = [];
+
+    /**
+     * The accepted quote the note delivers (POST .../quotes/{quoteId}/delivery-notes), where it links to; null for a note
+     * of no quote, or for whoever may not open quotes.
+     *
+     * @var array{quoteId: string, number: string|null}|null
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => ['object', 'null'],
+        'required' => ['quoteId', 'number'],
+        'properties' => ['quoteId' => self::ID, 'number' => self::TEXT_OR_NULL],
+    ])]
+    #[Groups([self::READ])]
+    public ?array $quote = null;
+
+    /**
+     * The issued invoice whose goods the note hands over (POST .../invoices/{invoiceId}/deliveries), where it links to;
+     * null for a note of no invoice, or for whoever may not open invoices.
+     *
+     * @var array{invoiceId: string, number: string|null}|null
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => ['object', 'null'],
+        'required' => ['invoiceId', 'number'],
+        'properties' => ['invoiceId' => self::ID, 'number' => self::TEXT_OR_NULL],
+    ])]
+    #[Groups([self::READ])]
+    public ?array $invoice = null;
 
     /** One of the company's active customers (GET .../delivery-note-options). */
     #[Assert\NotBlank(groups: [self::WRITE])]
@@ -353,6 +381,8 @@ final class DeliveryNoteResource
                 'unitPriceNet' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$', 'example' => '1250.5000'],
                 'taxComponentIds' => ['type' => ['array', 'null'], 'items' => self::ID],
                 'lotCode' => ['type' => ['string', 'null'], 'maxLength' => DeliveryNoteLineDetails::LOT_CODE_MAX, 'description' => 'The lot or serial handed over, for a product tracked by one.'],
+                'sourceQuoteLineId' => ['type' => ['string', 'null'], 'format' => 'uuid', 'description' => 'The accepted quote\'s line the line delivers, whose product, unit, price and taxes it keeps; sent back as read when the note is revised.'],
+                'sourceInvoiceLineId' => ['type' => ['string', 'null'], 'format' => 'uuid', 'description' => 'The issued invoice\'s line whose goods the line hands over, which that invoice billed and took out of stock: the line moves no stock and is never invoiced; sent back as read when the note is revised.'],
                 'net' => ['type' => 'string', 'readOnly' => true],
             ],
         ],
@@ -369,6 +399,8 @@ final class DeliveryNoteResource
             new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
         ], groups: [self::WRITE]),
         'lotCode' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'sourceQuoteLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        'sourceInvoiceLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
@@ -399,8 +431,12 @@ final class DeliveryNoteResource
     #[Groups([self::READ])]
     public string $total = '0';
 
-    /** @param list<CarryingInvoice> $invoices */
-    public static function of(DeliveryNote $note, DocumentTotals $totals, array $invoices = []): self
+    /**
+     * @param list<CarryingInvoice>                              $invoices
+     * @param array{quoteId: string, number: string|null}|null   $quote
+     * @param array{invoiceId: string, number: string|null}|null $invoice
+     */
+    public static function of(DeliveryNote $note, DocumentTotals $totals, array $invoices = [], ?array $quote = null, ?array $invoice = null): self
     {
         $header = $note->getHeader();
         $resource = new self();
@@ -410,6 +446,8 @@ final class DeliveryNoteResource
         $resource->status = $note->getStatus()->value;
         $resource->invoicedByInvoiceId = $note->getInvoicedByInvoiceId()?->toRfc4122();
         $resource->invoices = array_map(static fn (CarryingInvoice $invoice): array => ['invoiceId' => $invoice->id->toRfc4122(), 'number' => $invoice->number, 'status' => $invoice->status], $invoices);
+        $resource->quote = $quote;
+        $resource->invoice = $invoice;
         $resource->customerId = $note->getCustomer()->getId()->toRfc4122();
         $resource->customerName = $note->getCustomer()->standingFor()->getProfile()->name;
         $resource->establishmentId = $note->getEstablishment()->getId()->toRfc4122();
@@ -433,6 +471,8 @@ final class DeliveryNoteResource
             'unitPriceNet' => $line->getUnitPriceNet(),
             'taxComponentIds' => array_map(static fn (DeliveryNoteLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
             'lotCode' => $line->getLotCode(),
+            'sourceQuoteLineId' => $line->getSourceQuoteLineId()?->toRfc4122(),
+            'sourceInvoiceLineId' => $line->getSourceInvoiceLineId()?->toRfc4122(),
             'net' => $figures->net,
         ], $note->getLines(), $totals->lines);
         $resource->subtotalNet = $totals->subtotalNet;
@@ -462,6 +502,8 @@ final class DeliveryNoteResource
                 self::text($line, 'unitPriceNet'),
                 \is_array($taxIds) ? array_values(array_map(static fn (mixed $id): Uuid => Uuid::fromString(\is_string($id) ? $id : ''), $taxIds)) : null,
                 self::text($line, 'lotCode'),
+                self::uuid(self::text($line, 'sourceQuoteLineId')),
+                self::uuid(self::text($line, 'sourceInvoiceLineId')),
             );
         }
 

@@ -54,6 +54,10 @@ final readonly class DeliveryNotePage
         /** What fills the customer's exemption mention, `%reference%`; null leaves a mention that needs it unprinted. */
         public ?string $exemptionReference = null,
         public PrintedNames $names = new PrintedNames([], []),
+        /** The number of the accepted quote the note delivers, printed as its reference; null for none. */
+        public ?string $quoteNumber = null,
+        /** The number of the issued invoice whose goods the note hands over, printed as its reference; null for none. */
+        public ?string $invoiceNumber = null,
     ) {
     }
 }

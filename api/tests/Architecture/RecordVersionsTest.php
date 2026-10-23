@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Architecture;
 
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use ApiPlatform\Metadata\Resource\Factory\ResourceNameCollectionFactoryInterface;
 use App\Settings\Infrastructure\ApiPlatform\Payload\SettingChangeRow;
@@ -83,6 +85,71 @@ final class RecordVersionsTest extends KernelTestCase
         foreach ([...array_keys(self::WITHOUT), ...array_keys(self::BATCHES)] as $listed) {
             if (!\in_array($listed, $found, true)) {
                 $wrong[] = "$listed is listed but no PUT has that address";
+            }
+        }
+        self::assertSame([], $wrong);
+    }
+
+    /** Deleting what is no edited record, each for its reason: nobody saves over it, so no version is read. */
+    private const array DELETES_WITHOUT = [
+        '/companies/{companyId}/expenses/{expenseId}/attachments/{attachmentId}' => 'a file attached, never edited, and put back by its undo',
+        '/companies/{companyId}/quotes/{quoteId}/attachments/{attachmentId}' => 'a file attached, never edited, and put back by its undo',
+        '/companies/{companyId}/stock-movements/{movementId}/attachments/{attachmentId}' => 'a file attached, never edited, and put back by its undo',
+        '/companies/{companyId}/products/{productId}/photos/{photoId}' => 'a photo, never edited, and put back by its undo',
+        '/companies/{companyId}/invoices/{invoiceId}/payments/{paymentId}' => 'a payment recorded, never edited, taken back under the invoice\'s row lock',
+        '/companies/{companyId}/members/{userId}' => 'a membership, whose role is changed by its own action',
+        '/companies/{companyId}/products/{productId}/home-locations/{establishmentId}' => 'one place cleared, which moves the version the product\'s homes are checked against',
+        '/companies/{companyId}/products/{productId}/reorder-points/{establishmentId}' => 'one point cleared, set again as a whole',
+    ];
+
+    /**
+     * Deleting an edited record whose screen does not send the version it read yet (docs/SPEC.md § 7, 2026-10-17 16:04):
+     * each is a step of its own, struck off here once its delete names the version.
+     */
+    private const array DELETES_NOT_YET = [
+        '/companies/{companyId}/customer-groups/{groupId}',
+        '/companies/{companyId}/customers/{customerId}/contacts/{contactId}',
+        '/companies/{companyId}/expenses/{expenseId}',
+        '/companies/{companyId}/settings/{key}',
+        '/companies/{companyId}/stock-drawings/{drawingId}',
+        '/companies/{companyId}/stock-floors/{floorId}',
+        '/companies/{companyId}/stock-locations/{locationId}',
+        '/companies/{companyId}/stock-structures/{structureId}',
+    ];
+
+    public function testEveryDeleteOfAnEditedRecordNamesTheVersionItRead(): void
+    {
+        self::bootKernel();
+        $container = static::getContainer();
+        $metadata = $container->get(ResourceMetadataCollectionFactoryInterface::class);
+
+        $found = [];
+        $wrong = [];
+        foreach ($container->get(ResourceNameCollectionFactoryInterface::class)->create() as $class) {
+            foreach ($metadata->create($class) as $resource) {
+                foreach ($resource->getOperations() ?? [] as $operation) {
+                    if (!$operation instanceof Delete) {
+                        continue;
+                    }
+                    $template = (string) $operation->getUriTemplate();
+                    $found[] = $template;
+                    $version = $operation->getParameters()?->get('version', QueryParameter::class);
+                    $takes = $version instanceof QueryParameter && true === $version->getRequired();
+                    $listed = \array_key_exists($template, self::DELETES_WITHOUT) || \in_array($template, self::DELETES_NOT_YET, true);
+                    if ($takes && $listed) {
+                        $wrong[] = "$template names its version: strike it off the list";
+                    } elseif (!$takes && !$listed) {
+                        $wrong[] = "$template deletes without a required ?version=";
+                    }
+                }
+            }
+        }
+
+        // Fewer DELETEs found than there are means the discovery broke, not that the rule holds.
+        self::assertGreaterThanOrEqual(18, \count($found), 'every DELETE is read');
+        foreach ([...array_keys(self::DELETES_WITHOUT), ...self::DELETES_NOT_YET] as $listed) {
+            if (!\in_array($listed, $found, true)) {
+                $wrong[] = "$listed is listed but no DELETE has that address";
             }
         }
         self::assertSame([], $wrong);

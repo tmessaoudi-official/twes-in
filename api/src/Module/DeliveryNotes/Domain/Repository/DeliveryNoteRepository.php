@@ -66,6 +66,53 @@ interface DeliveryNoteRepository
      */
     public function lockedOfLineIdsInCompany(array $lineIds, Uuid $companyId): array;
 
+    /**
+     * How much of each quote line the company's notes take: those not cancelled, drafts included since a draft holds what
+     * it took, the note `$except` left out; with `$deliveredOnly` the drafts are left out too, which is what the quote
+     * has seen go.
+     *
+     * @param list<Uuid> $quoteLineIds
+     *
+     * @return array<string, string> decimal quantities by quote line id; a line no note takes is absent
+     */
+    public function quoteLineQuantities(Uuid $companyId, array $quoteLineIds, ?Uuid $except = null, bool $deliveredOnly = false): array;
+
+    /**
+     * The company's notes that are not cancelled delivering any of these quote lines, the oldest first.
+     *
+     * @param list<Uuid> $quoteLineIds
+     *
+     * @return list<DeliveryNote>
+     */
+    public function delivering(Uuid $companyId, array $quoteLineIds): array;
+
+    /**
+     * How much of each issued invoice line the company's notes hand over, counted as `quoteLineQuantities` counts.
+     *
+     * @param list<Uuid> $invoiceLineIds
+     *
+     * @return array<string, string> decimal quantities by invoice line id; a line no note takes is absent
+     */
+    public function invoiceLineQuantities(Uuid $companyId, array $invoiceLineIds, ?Uuid $except = null, bool $deliveredOnly = false): array;
+
+    /**
+     * The company's notes that are not cancelled handing over any of these invoice lines, the oldest first.
+     *
+     * @param list<Uuid> $invoiceLineIds
+     *
+     * @return list<DeliveryNote>
+     */
+    public function deliveringInvoiceLines(Uuid $companyId, array $invoiceLineIds): array;
+
+    /**
+     * The lines of the company's notes, whatever their state, delivering each of these quote lines.
+     *
+     * @param list<Uuid> $quoteLineIds
+     *
+     * @return array<string, list<Uuid>> delivery note line ids by quote line id; a line no note delivers is absent
+     */
+    public function linesDelivering(Uuid $companyId, array $quoteLineIds): array;
+
     /** Whether a delivery note of the company already carries this number. */
     public function numberTaken(Uuid $companyId, string $number): bool;
 

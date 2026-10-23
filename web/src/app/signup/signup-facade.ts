@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { requestState } from '../shared/feedback/request-state';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { SignupApi, SignupRefused } from './signup-api';
 import type {
   SignupAvailability,
@@ -9,6 +9,7 @@ import type {
   SignupDetails,
   SignupError,
 } from './signup-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 const CLOSED: SignupAvailability = { enabled: false, countries: [] };
 
@@ -16,10 +17,10 @@ const CLOSED: SignupAvailability = { enabled: false, countries: [] };
 @Injectable({ providedIn: 'root' })
 export class SignupFacade {
   private readonly api = inject(SignupApi);
-  private readonly availabilitySignal = signal<SignupAvailability | null>(null);
-  private readonly linkEmailSignal = signal<string | null>(null);
-  private readonly requestedSignal = signal(false);
-  private readonly completedSignal = signal<SignupCompleted | null>(null);
+  private readonly availabilitySignal = sessionSignal<SignupAvailability | null>(null);
+  private readonly linkEmailSignal = sessionSignal<string | null>(null);
+  private readonly requestedSignal = sessionSignal(false);
+  private readonly completedSignal = sessionSignal<SignupCompleted | null>(null);
   private readonly state = requestState<SignupError>((error) =>
     error instanceof SignupRefused ? error.code : 'network',
   );
@@ -31,6 +32,17 @@ export class SignupFacade {
   readonly completed = this.completedSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+
+  /**
+   * Drops how the last visit ended, its refusal included: this facade outlives the pages that read it, so a page
+   * opened again starts on its form, never on a link asked for, a signup finished or a refusal from before.
+   */
+  forget(): void {
+    this.requestedSignal.set(false);
+    this.completedSignal.set(null);
+    this.linkEmailSignal.set(null);
+    this.state.clearError();
+  }
 
   async loadAvailability(): Promise<SignupAvailability> {
     let availability = CLOSED;

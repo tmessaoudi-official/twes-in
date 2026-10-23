@@ -176,6 +176,8 @@ export class RecurringExpensesPage implements OnInit {
     filters: [
       {
         id: 'state',
+        // Several states at once: « Active » and « En pause » together are what still runs.
+        multiple: true,
         label: `${TEXTS}.columns.state`,
         value: (row) => recurringExpenseState(row),
         options: (['active', 'paused', 'ended'] as const).map((value) => ({

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { requestState } from '../shared/feedback/request-state';
 import {
   CustomFieldsApi,
@@ -12,12 +12,13 @@ import type {
   CustomFieldEntity,
   CustomFieldInput,
 } from '../shared/custom-fields/custom-fields-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The custom fields the company being worked in adds to one kind of record, retired ones included. */
 @Injectable({ providedIn: 'root' })
 export class CustomFieldsFacade {
   private readonly api = inject(CustomFieldsApi);
-  private readonly fieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
+  private readonly fieldsSignal = sessionSignal<readonly CustomFieldDefinition[]>([]);
   private readonly state = requestState(codeOf);
 
   readonly fields = this.fieldsSignal.asReadonly();

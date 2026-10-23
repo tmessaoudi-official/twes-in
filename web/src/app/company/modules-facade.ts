@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { requestState } from '../shared/feedback/request-state';
 import { ModulesApi, ModulesRefused, type ModulesError } from './modules-api';
 import type { ModuleRow } from './modules-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The modules of the company being worked in, and switching them. */
 @Injectable({ providedIn: 'root' })
 export class ModulesFacade {
   private readonly api = inject(ModulesApi);
   private readonly auth = inject(AuthFacade);
-  private readonly modulesSignal = signal<readonly ModuleRow[]>([]);
+  private readonly modulesSignal = sessionSignal<readonly ModuleRow[]>([]);
   private readonly state = requestState(codeOf);
 
   readonly modules = this.modulesSignal.asReadonly();

@@ -12,6 +12,8 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output;
 use App\Module\DeliveryNotes\Application\CarryingInvoice;
 use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\InvoicedLines;
+use App\Module\DeliveryNotes\Application\Invoices\DeliverableInvoices;
+use App\Module\DeliveryNotes\Application\Quotes\DeliverableQuotes;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteResource;
@@ -29,7 +31,10 @@ final readonly class DeliveryNoteView
 {
     private const string INVOICES = 'invoices';
 
-    public function __construct(private DeliveryNoteTotals $totals, private InvoicedLines $invoiced, private CompanyGuard $guard, private ModuleStates $modules)
+    private const string QUOTES = 'quotes';
+    private const string QUOTE_READ = 'quote.read';
+
+    public function __construct(private DeliveryNoteTotals $totals, private InvoicedLines $invoiced, private CompanyGuard $guard, private ModuleStates $modules, private DeliverableQuotes $quotes, private DeliverableInvoices $deliverable)
     {
     }
 
@@ -53,7 +58,107 @@ final readonly class DeliveryNoteView
         $mayOpen = $this->modules->isEnabled($company->getId(), self::INVOICES) && $this->guard->may($company, InvoicePermission::READ);
         $carrying = [] === $lines || !$mayOpen ? [] : $this->invoiced->carrying($company->getId(), $lines);
 
-        return array_map(fn (DeliveryNote $note): DeliveryNoteResource => DeliveryNoteResource::of($note, $this->totals->of($note), self::carryingNote($note, $carrying)), $notes);
+        $quoteOfLine = $this->quotesDelivered($notes);
+        $invoiceOfLine = $mayOpen ? $this->invoicesDelivered($notes) : [];
+
+        return array_map(fn (DeliveryNote $note): DeliveryNoteResource => DeliveryNoteResource::of($note, $this->totals->of($note), self::carryingNote($note, $carrying), self::quoteOf($note, $quoteOfLine), self::invoiceOf($note, $invoiceOfLine)), $notes);
+    }
+
+    /**
+     * The issued invoices whose goods the notes hand over, by invoice line id; asked only for whoever may open invoices.
+     *
+     * @param non-empty-list<DeliveryNote> $notes
+     *
+     * @return array<string, array{invoiceId: string, number: string|null}>
+     */
+    private function invoicesDelivered(array $notes): array
+    {
+        $sources = [];
+        foreach ($notes as $note) {
+            foreach ($note->getLines() as $line) {
+                $source = $line->getSourceInvoiceLineId();
+                if (null !== $source) {
+                    $sources[$source->toRfc4122()] = $source;
+                }
+            }
+        }
+        if ([] === $sources) {
+            return [];
+        }
+        $invoiceOfLine = [];
+        foreach ($this->deliverable->ofLines($notes[0]->getCompany(), array_values($sources), false) as $invoice) {
+            foreach ($invoice->lines as $line) {
+                $invoiceOfLine[$line->id->toRfc4122()] = ['invoiceId' => $invoice->id->toRfc4122(), 'number' => $invoice->number];
+            }
+        }
+
+        return $invoiceOfLine;
+    }
+
+    /**
+     * @param array<string, array{invoiceId: string, number: string|null}> $invoiceOfLine
+     *
+     * @return array{invoiceId: string, number: string|null}|null
+     */
+    private static function invoiceOf(DeliveryNote $note, array $invoiceOfLine): ?array
+    {
+        foreach ($note->getLines() as $line) {
+            $source = $line->getSourceInvoiceLineId()?->toRfc4122();
+            if (null !== $source && isset($invoiceOfLine[$source])) {
+                return $invoiceOfLine[$source];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The quotes the notes deliver, by quote line id, told as invoices are: only to whoever may open them.
+     *
+     * @param non-empty-list<DeliveryNote> $notes
+     *
+     * @return array<string, array{quoteId: string, number: string|null}>
+     */
+    private function quotesDelivered(array $notes): array
+    {
+        $sources = [];
+        foreach ($notes as $note) {
+            foreach ($note->getLines() as $line) {
+                $source = $line->getSourceQuoteLineId();
+                if (null !== $source) {
+                    $sources[$source->toRfc4122()] = $source;
+                }
+            }
+        }
+        $company = $notes[0]->getCompany();
+        if ([] === $sources || !$this->modules->isEnabled($company->getId(), self::QUOTES) || !$this->guard->may($company, self::QUOTE_READ)) {
+            return [];
+        }
+        $quoteOfLine = [];
+        foreach ($this->quotes->ofLines($company, array_values($sources), false) as $quote) {
+            foreach ($quote->lines as $line) {
+                $quoteOfLine[$line->id->toRfc4122()] = ['quoteId' => $quote->id->toRfc4122(), 'number' => $quote->number];
+            }
+        }
+
+        return $quoteOfLine;
+    }
+
+    /**
+     * @param array<string, array{quoteId: string, number: string|null}> $quoteOfLine
+     *
+     * @return array{quoteId: string, number: string|null}|null
+     */
+    private static function quoteOf(DeliveryNote $note, array $quoteOfLine): ?array
+    {
+        foreach ($note->getLines() as $line) {
+            $source = $line->getSourceQuoteLineId()?->toRfc4122();
+            if (null !== $source && isset($quoteOfLine[$source])) {
+                return $quoteOfLine[$source];
+            }
+        }
+
+        return null;
     }
 
     /**

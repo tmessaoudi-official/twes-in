@@ -88,11 +88,37 @@ final class RolesTest extends ApiTestCase
         self::assertSame(2, $this->json()['version']);
         self::assertSame(['customer.read'], $this->json()['permissions']);
 
-        $this->sendJson('DELETE', $this->path($created['id']));
+        $this->sendJson('DELETE', $this->path($created['id']).'?version=2');
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
 
         $this->getJson($this->path());
         self::assertNotContains('server', array_column($this->jsonList(), 'name'));
+    }
+
+    public function testADeleteNamesTheVersionItWasReadAt(): void
+    {
+        // Deleting a role erases what it permits: a screen that read it before someone else changed it would erase a
+        // role its person never saw, so the address names the version read, as a revision does.
+        $this->signedInAsOwner();
+        $this->postJson($this->path(), ['name' => 'waiter', 'permissions' => ['customer.read']]);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('DELETE', $this->path($id));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a delete naming no version');
+        self::assertSame([['propertyPath' => 'version', 'reason' => 'value_required', 'params' => null]], self::violationsOf($this->json()));
+        $this->sendJson('DELETE', $this->path($id).'?version=zero');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'version', 'reason' => 'invalid_value', 'params' => null]], self::violationsOf($this->json()));
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'waiter', 'permissions' => ['customer.read', 'product.read'], 'version' => 1]);
+        $this->sendJson('DELETE', $this->path($id).'?version=1');
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'read before the revision');
+        self::assertSame('/problems/record-changed', $this->json()['type']);
+        $this->getJson($this->path());
+        self::assertSame(['customer.read', 'product.read'], $this->roleNamed($this->jsonList(), 'waiter')['permissions'], 'still there, as revised');
+
+        $this->sendJson('DELETE', $this->path($id).'?version=2');
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
 
     public function testAFormOpenedBeforeAPermissionWasTakenAwayCannotGiveItBack(): void
@@ -168,7 +194,7 @@ final class RolesTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path($created['id']), ['name' => 'server', 'permissions' => ['product.read'], 'version' => 1]);
         self::assertResponseIsSuccessful();
-        $this->sendJson('DELETE', $this->path($created['id']));
+        $this->sendJson('DELETE', $this->path($created['id']).'?version=2');
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
 
         // The SET of actions, not their order: audit_log.at is a timestamp(0), so three requests inside one second
@@ -228,7 +254,7 @@ final class RolesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the release defines it, not the company');
         self::assertRefusedWith(RoleResource::BUILT_IN, $this->json());
 
-        $this->sendJson('DELETE', $this->path($ownerId));
+        $this->sendJson('DELETE', $this->path($ownerId).'?version=1');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertRefusedWith(RoleResource::BUILT_IN, $this->json());
     }
@@ -244,7 +270,7 @@ final class RolesTest extends ApiTestCase
         self::assertIsString($role['id']);
         $this->giveRoleTo('sami@twes.local', $role['id']);
 
-        $this->sendJson('DELETE', $this->path($role['id']));
+        $this->sendJson('DELETE', $this->path($role['id']).'?version=1');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         // The screen tells these two apart by the reason, never by the sentence: a reworded or translated message
         // must not silently turn "somebody holds it" into "the release owns it".
@@ -272,7 +298,7 @@ final class RolesTest extends ApiTestCase
         // by the rank rule such a holder grants nobody anything — which is the fail-closed behaviour row 104 kept.
         $this->inviteTo('invited@twes.local', 'runner');
 
-        $this->sendJson('DELETE', $this->path($role['id']));
+        $this->sendJson('DELETE', $this->path($role['id']).'?version=1');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('invited@twes.local', (string) $this->client->getResponse()->getContent());
         self::assertSame(

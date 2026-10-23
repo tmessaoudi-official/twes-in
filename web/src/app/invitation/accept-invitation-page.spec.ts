@@ -50,7 +50,7 @@ describe('AcceptInvitationPage', () => {
     offer: current.asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal<InvitationError | null>(null).asReadonly(),
-    accepted: signal(false).asReadonly(),
+    forget: vi.fn(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     accept: vi.fn(),
@@ -126,4 +126,13 @@ describe('AcceptInvitationPage', () => {
     expect(byTestId('invitation-error')).not.toBeNull();
     expect(byTestId('invitation-back')?.getAttribute('href')).toBe('/login');
   });
+
+  it.each([false, true])(
+    'leads back to the sign-in beside an offer too (an account already: %s), for whoever does not mean to join',
+    async (hasAccount) => {
+      await render({ ...offer, hasAccount });
+
+      expect(byTestId('invitation-back')?.getAttribute('href')).toBe('/login');
+    },
+  );
 });

@@ -32,7 +32,7 @@ describe('ForgotPasswordPage', () => {
   const requested = signal(false);
   const busy = signal(false);
   const error = signal<PasswordResetError | null>(null);
-  const facade = { requested, busy, error, request: vi.fn() };
+  const facade = { requested, busy, error, request: vi.fn(), forget: vi.fn() };
 
   beforeEach(async () => {
     requested.set(false);

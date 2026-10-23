@@ -18,8 +18,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { map } from 'rxjs';
+import { refusalParams } from '../shared/form/refusal-words';
+import { TextsParts } from '../shared/i18n/texts-part';
+import { SETTING_REFUSAL_TEXTS } from '../shared/settings/setting-refusals';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
@@ -28,10 +31,15 @@ import { mergeSavedVersion, type FieldConflict } from '../shared/form/form-merge
 import type { FormValues } from '../shared/form/form-types';
 import { Select, type SelectOption } from '../shared/form/select';
 import { DataList, DataListCell } from '../shared/list/data-list';
-import type { ListQuery } from '../shared/list/list-types';
+import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { CountBadge } from '../shared/ui/count-badge';
 import { SelectedTabInView } from '../shared/ui/selected-tab-in-view';
 import { StatusBadge } from '../shared/ui/status-badge';
+import { DocumentActions } from '../shared/ui/document-actions';
+import { onRecord, onRows } from '../shared/actions/record-action';
+import type { ActionConfirm, ActionKind } from '../shared/actions/screen-action';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import { companyActions } from './platform-actions';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { membershipRoleLabel } from './membership-role';
 import { PlatformFacade } from './platform-facade';
@@ -40,6 +48,7 @@ import {
   COMPANY_COUNTRIES,
   PLATFORM_TABS,
   type AccountAction,
+  type PlatformAccountRow,
   type CompanyCountry,
   type PlatformCompanyRow,
   type PlatformTab,
@@ -70,6 +79,35 @@ function numberTyped(held: PlatformNumber | null | undefined, typed: number | nu
   return typed !== null && typed !== (held?.value ?? null) ? 1 : 0;
 }
 
+/** What a field says under it: a text key and its params. */
+export interface FieldVerdict {
+  readonly key: string;
+  readonly params: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * Why a typed number cannot be saved, said on its field rather than only by a greyed button: emptied, not whole, or
+ * outside the bounds the platform declares; null while it is untouched or fits.
+ */
+function numberVerdict(
+  held: PlatformNumber | null | undefined,
+  typed: number | null | undefined,
+): FieldVerdict | null {
+  if (typed === null || typed === undefined || held === null || held === undefined) return null;
+  if (Number.isNaN(typed)) return { key: 'platform.numbers.empty', params: {} };
+  if (!Number.isInteger(typed)) return { key: 'import.rejections.not_a_whole_number', params: {} };
+  const { min, max } = held;
+  const below = min !== null && typed < min;
+  const above = max !== null && typed > max;
+  if (!below && !above) return null;
+  if (min !== null && max !== null) {
+    return { key: 'import.rejections.whole_number_between', params: { min, max } };
+  }
+  return below
+    ? { key: 'import.rejections.at_least', params: { min } }
+    : { key: 'import.rejections.at_most', params: { max } };
+}
+
 /** How many of these typed texts hold something. */
 function filled(texts: readonly string[]): number {
   return texts.filter((text) => text.trim() !== '').length;
@@ -82,6 +120,13 @@ const COMPANY_TONES: Readonly<Record<string, StatusTone>> = {
   suspended: 'neutral',
 };
 
+/** What the toast after each account action is said under. */
+const ACCOUNT_DONE: Readonly<Record<AccountAction, string>> = {
+  'end-sessions': 'ended',
+  deactivate: 'deactivated',
+  reactivate: 'reactivated',
+};
+
 /** The kinds of message the screens name; another is shown by its class name, as the worker's own commands show it. */
 const FAILED_KINDS: Readonly<Record<string, string>> = {
   InvitationToMail: 'invitation',
@@ -90,6 +135,10 @@ const FAILED_KINDS: Readonly<Record<string, string>> = {
 };
 import { Feedback } from '../shared/feedback/feedback';
 import { SubscriptionFacade } from '../licensing/subscription-facade';
+import type { WaitingPayment } from '../licensing/subscription-types';
+import { MatDialog } from '@angular/material/dialog';
+import { runAction } from '../shared/actions/run-action';
+import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 
 /**
@@ -116,6 +165,7 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
     DataList,
     DataListCell,
     StatusBadge,
+    DocumentActions,
     CountBadge,
     Select,
     DescriptorForm,
@@ -126,8 +176,11 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 export class PlatformPage implements OnInit {
   private readonly platform = inject(PlatformFacade);
   private readonly payments = inject(SubscriptionFacade);
+  private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
+  private readonly texts = inject(TextsParts);
 
   protected readonly tabs = PLATFORM_TABS;
   protected readonly roleLabel = membershipRoleLabel;
@@ -161,8 +214,80 @@ export class PlatformPage implements OnInit {
         : (source.rows.find((row) => row.id === source.id) ??
           (previous?.value?.id === source.id ? previous.value : null)),
   });
-  protected readonly companiesList = COMPANIES_LIST;
-  protected readonly accountsList = ACCOUNTS_LIST;
+  /** A company's actions, declared once for its row, its waiting card and its sheet. */
+  private readonly companyRecordActions = companyActions({
+    approve: (company) => void this.approve(company),
+    suspend: (company) => void this.suspend(company),
+    busy: () => this.busy(),
+  });
+  protected readonly companiesList: ListDescriptor<PlatformCompanyRow> = {
+    ...COMPANIES_LIST,
+    actions: onRows(this.companyRecordActions),
+  };
+  /** The open sheet's actions: its bar draws them, and the keys, Ctrl K and the « ? » sheet offer them. */
+  protected readonly sheetActions = computed(() =>
+    onRecord(this.companyRecordActions, this.opened(), this.busy()),
+  );
+  /** Each waiting company with its actions, built once per change rather than on every check of the template. */
+  protected readonly waitingCards = computed(() =>
+    this.platform.waiting().map((company) => ({
+      company,
+      actions: onRecord(this.companyRecordActions, company, this.busy()),
+    })),
+  );
+  /**
+   * An account's actions, declared on its list as a member's are on the company's (one canon of actions): reactivating
+   * is a button, what ends access sits behind « ⋮ » and asks first, naming the person.
+   */
+  protected readonly accountsList = computed<ListDescriptor<PlatformAccountRow>>(() => ({
+    ...ACCOUNTS_LIST,
+    actions: [
+      {
+        id: 'reactivate',
+        label: 'platform.accounts.reactivate',
+        icon: 'lock_open',
+        shown: (row) => !row.active,
+        disabled: () => this.busy(),
+        run: (row) => void this.act(row, 'reactivate'),
+      },
+      {
+        // Nothing brings a session back: whoever was signed in signs in again.
+        id: 'end-sessions',
+        label: 'platform.accounts.end_sessions',
+        icon: 'logout',
+        destructive: true,
+        shown: (row) => row.active,
+        disabled: () => this.busy(),
+        run: (row) => void this.act(row, 'end-sessions'),
+        confirm: (row) => ({
+          kind: 'definitif',
+          title: 'platform.accounts.end_sessions_title',
+          message: 'platform.accounts.end_sessions_message',
+          messageParams: { name: row.displayName },
+          confirmLabel: 'platform.accounts.end_sessions',
+          keepLabel: 'platform.accounts.keep',
+        }),
+      },
+      {
+        // « Réactiver » gives the account back, so this is corrected rather than final.
+        id: 'deactivate',
+        label: 'platform.accounts.deactivate',
+        icon: 'block',
+        rare: true,
+        shown: (row) => row.active,
+        disabled: () => this.busy(),
+        run: (row) => void this.act(row, 'deactivate'),
+        confirm: (row) => ({
+          kind: 'corrigeable',
+          title: 'platform.accounts.deactivate_title',
+          message: 'platform.accounts.deactivate_message',
+          messageParams: { name: row.displayName },
+          confirmLabel: 'platform.accounts.deactivate',
+          keepLabel: 'platform.accounts.keep',
+        }),
+      },
+    ],
+  }));
   protected readonly companiesTotal = this.platform.companiesTotal;
   protected readonly accountsTotal = this.platform.accountsTotal;
   protected readonly companyCount = this.platform.companyCount;
@@ -313,6 +438,7 @@ export class PlatformPage implements OnInit {
 
   constructor() {
     inject(UnsavedChanges).declare(this.cardChanges);
+    inject(ScreenActions).declare(this.sheetActions);
     // The terms typed in the open panel and not saved, against what the panel last read; counted where it counts.
     unsavedChanges(
       computed(() => (this.openedSubscription() === null ? null : this.subscriptionGroup())),
@@ -321,8 +447,36 @@ export class PlatformPage implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    // The words a setting's bounds and refusals are said in beyond the platform's own texts; a failure to read them
+    // leaves each field saying « Valeur refusée. », as every form does for a reason it has no words for.
+    void this.texts.open(SETTING_REFUSAL_TEXTS).catch(() => undefined);
     await this.platform.load();
     await this.payments.loadWaiting();
+  }
+
+  /**
+   * What a number's field says under it: why what is typed cannot be saved, else what the platform refused it with,
+   * else nothing (its bounds are hinted instead).
+   */
+  protected numberSaid(
+    held: PlatformNumber | null | undefined,
+    typed: number | null | undefined,
+  ): FieldVerdict | null {
+    return numberVerdict(held, typed) ?? (held ? this.refusalOf('settings', held.key) : null);
+  }
+
+  /** The refusal the platform answered a field written from that place with, in the screens' words. */
+  protected refusalOf(at: string, field: string): FieldVerdict | null {
+    const held = this.platform.refused();
+    if (held.at !== at) return null;
+    const refusal = held.refusals.find((each) => each.field === field);
+    if (refusal === undefined) return null;
+    const key = `import.rejections.${refusal.reason ?? ''}`;
+    const known = refusal.reason !== null && this.translate.instant(key) !== key;
+    return {
+      key: known ? key : 'import.rejections.invalid_value',
+      params: refusalParams(this.translate, refusal.params),
+    };
   }
 
   protected typedPeriods(declarationId: string, event: Event): void {
@@ -330,21 +484,65 @@ export class PlatformPage implements OnInit {
     this.periodsFor.update((held) => ({ ...held, [declarationId]: periods > 0 ? periods : 1 }));
   }
 
-  /** Confirming carries the company's covered time forward by that many periods. */
-  protected async confirmPayment(declarationId: string): Promise<void> {
-    const periods = this.periodsFor()[declarationId] ?? 1;
+  /**
+   * Confirming carries the company's covered time forward by that many periods, so it asks first, naming the company
+   * and the periods; a wrong count is corrected in the company's terms, which is why it says « corrigeable ».
+   */
+  protected askConfirmPayment(payment: WaitingPayment): void {
+    const periods = this.periodsFor()[payment.id] ?? 1;
+    this.ask(
+      {
+        kind: 'corrigeable',
+        title: 'platform.payments.confirm_title',
+        message: 'platform.payments.confirm_message',
+        messageParams: { name: payment.companyName, periods: String(periods) },
+        confirmLabel: 'platform.payments.confirm',
+        keepLabel: 'platform.payments.keep',
+      },
+      () => void this.confirmPayment(payment.id, periods),
+    );
+  }
+
+  /** Rejecting ends at once the hold the declaration kept on the company, which may then lose its access. */
+  protected askRejectPayment(payment: WaitingPayment): void {
+    this.ask(
+      {
+        kind: 'corrigeable',
+        title: 'platform.payments.reject_title',
+        message: 'platform.payments.reject_message',
+        messageParams: { name: payment.companyName },
+        confirmLabel: 'platform.payments.reject',
+        keepLabel: 'platform.payments.keep',
+      },
+      () => void this.rejectPayment(payment.id),
+    );
+  }
+
+  private async confirmPayment(declarationId: string, periods: number): Promise<void> {
     if (await this.payments.confirm(declarationId, periods, null)) {
-      this.feedback.success('platform.payments.confirmed');
+      this.feedback.effect('platform.payments.confirmed', {}, 'corrigeable');
       await this.platform.load();
     }
   }
 
-  /** Rejecting ends at once the hold the declaration kept on the company. */
-  protected async rejectPayment(declarationId: string): Promise<void> {
+  private async rejectPayment(declarationId: string): Promise<void> {
     if (await this.payments.reject(declarationId, null)) {
-      this.feedback.success('platform.payments.rejected');
+      this.feedback.effect('platform.payments.rejected', {}, 'corrigeable');
       await this.platform.load();
     }
+  }
+
+  /** The shared confirmation, the one every declared action asks through. */
+  private ask(confirm: ActionConfirm, run: () => void): void {
+    if (this.busy()) return;
+    runAction({ run, confirm }, (asked) =>
+      this.dialog
+        .open<ConfirmDialog, ActionConfirm, boolean>(ConfirmDialog, {
+          data: asked,
+          autoFocus: 'dialog',
+        })
+        .afterClosed(),
+    );
   }
 
   protected async turn(key: PlatformSwitch, value: boolean): Promise<void> {
@@ -371,8 +569,19 @@ export class PlatformPage implements OnInit {
     void this.platform.loadAccounts(accountSearch(query));
   }
 
-  protected async act(userId: string, action: AccountAction): Promise<void> {
-    await this.platform.actOnAccount(userId, action);
+  /** Done, the toast names the person and says the word its question said; refused, the page says why as before. */
+  protected async act(row: PlatformAccountRow, action: AccountAction): Promise<void> {
+    if (!(await this.platform.actOnAccount(row.id, action))) return;
+    const key = `platform.accounts.done.${ACCOUNT_DONE[action]}`;
+    const params = { name: row.displayName };
+    const kind = this.accountsList()
+      .actions?.find((declared) => declared.id === action)
+      ?.confirm?.(row).kind;
+    if (kind === undefined) {
+      this.feedback.success(key, params);
+    } else {
+      this.feedback.effect(key, params, kind);
+    }
   }
 
   protected async open(): Promise<void> {
@@ -393,8 +602,14 @@ export class PlatformPage implements OnInit {
     }
   }
 
+  /** A field typed in again: what the platform refused it with no longer says what it holds. */
+  protected forget(field: string | undefined): void {
+    if (field !== undefined) this.platform.forgetRefusal(field);
+  }
+
   protected typedOwner(companyId: string, event: Event): void {
     const value = this.typed(event);
+    this.forget('email');
     this.ownerEmails.update((typed) => ({ ...typed, [companyId]: value }));
   }
 
@@ -427,16 +642,19 @@ export class PlatformPage implements OnInit {
   protected typedSupport(channel: SupportChannel, event: Event): void {
     const value = (event.target as HTMLInputElement).value.trim();
     this.supportDraft.update((draft) => (draft === null ? draft : { ...draft, [channel]: value }));
+    this.platform.forgetRefusal(`support.${channel}`);
   }
 
   protected typedDelay(key: string, event: Event): void {
     const raw = (event.target as HTMLInputElement).value.trim();
     this.delayDraft.update((draft) => ({ ...draft, [key]: raw === '' ? Number.NaN : Number(raw) }));
+    this.platform.forgetRefusal(key);
   }
 
   protected typedDemoMost(event: Event): void {
     const raw = (event.target as HTMLInputElement).value.trim();
     this.demoMostDraft.set(raw === '' ? Number.NaN : Number(raw));
+    this.forget(this.platform.demo()?.most?.key);
   }
 
   protected async saveDemoMost(): Promise<void> {
@@ -452,6 +670,7 @@ export class PlatformPage implements OnInit {
   protected typedImportRows(event: Event): void {
     const raw = (event.target as HTMLInputElement).value.trim();
     this.importRowsDraft.set(raw === '' ? Number.NaN : Number(raw));
+    this.forget(this.platform.imports()?.rows?.key);
   }
 
   protected async saveImportRows(): Promise<void> {
@@ -499,12 +718,17 @@ export class PlatformPage implements OnInit {
       this.showTerms(this.subscription());
       this.feedback.success('platform.subscription.saved');
     } else if (this.platform.error() === 'record_changed') {
-      const theirs = subscriptionValues(this.subscription());
-      const merged = mergeSavedVersion(this.subscriptionGroup(), this.readTerms(), theirs);
-      this.readTerms.set(theirs);
-      this.subscriptionConflicts.set(merged.conflicts);
-      this.savedSince();
+      this.takeTheirTerms();
     }
+  }
+
+  /** What another operator held since comes into the panel; what was typed stays, and a term both changed is offered. */
+  private takeTheirTerms(): void {
+    const theirs = subscriptionValues(this.subscription());
+    const merged = mergeSavedVersion(this.subscriptionGroup(), this.readTerms(), theirs);
+    this.readTerms.set(theirs);
+    this.subscriptionConflicts.set(merged.conflicts);
+    this.savedSince();
   }
 
   /** A term both changed, settled: theirs is taken into the field, or what was typed stays. */
@@ -519,18 +743,63 @@ export class PlatformPage implements OnInit {
     );
   }
 
-  protected async stopSubscription(companyId: string): Promise<void> {
-    if (await this.platform.stopSubscription(companyId)) {
-      this.feedback.success('platform.subscription.stopped');
+  /**
+   * Stopping erases the company's terms, which nothing keeps afterwards (the audit names them only), so it asks first
+   * as « définitif », naming the company; managing it again means typing its terms anew.
+   */
+  protected askStopSubscription(company: PlatformCompanyRow): void {
+    const version = this.subscription()?.version;
+    if (version === undefined) return;
+    this.ask(
+      {
+        kind: 'definitif',
+        title: 'platform.subscription.stop_title',
+        message: 'platform.subscription.stop_message',
+        messageParams: { name: company.name },
+        confirmLabel: 'platform.subscription.stop',
+        keepLabel: 'platform.subscription.keep',
+      },
+      () => void this.stopSubscription(company, version),
+    );
+  }
+
+  private async stopSubscription(company: PlatformCompanyRow, version: number): Promise<void> {
+    if (await this.platform.stopSubscription(company.id, version)) {
+      this.feedback.effect('platform.subscription.stopped', { name: company.name }, 'definitif');
       this.showTerms(null);
+    } else if (this.platform.error() === 'record_changed') {
+      this.takeTheirTerms();
     }
   }
 
-  protected async approve(companyId: string): Promise<void> {
-    await this.platform.approve(companyId);
+  /** Opened, the toast names the company with the word its question said; refused, the page says why as before. */
+  private async approve(company: PlatformCompanyRow): Promise<void> {
+    const done = company.status === 'suspended' ? 'restored' : 'approved';
+    if (await this.platform.approve(company.id)) {
+      this.feedback.effect(
+        `platform.companies.done.${done}`,
+        { name: company.name },
+        this.companyKind('approve'),
+      );
+    }
   }
 
-  protected async reject(companyId: string): Promise<void> {
-    await this.platform.reject(companyId);
+  private async suspend(company: PlatformCompanyRow): Promise<void> {
+    const done = company.status === 'pending' ? 'rejected' : 'suspended';
+    if (await this.platform.reject(company.id)) {
+      this.feedback.effect(
+        `platform.companies.done.${done}`,
+        { name: company.name },
+        this.companyKind('suspend'),
+      );
+    }
+  }
+
+  /** The kind a company action's question says, read from its one declaration. */
+  private companyKind(id: string): ActionKind {
+    const effect = this.companyRecordActions.find((action) => action.id === id)?.effect;
+    return effect?.kind === 'corrigeable' || effect?.kind === 'definitif'
+      ? effect.kind
+      : 'annulable';
   }
 }

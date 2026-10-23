@@ -100,10 +100,13 @@ export class RolesApi {
     );
   }
 
-  async remove(companyId: string, roleId: string): Promise<void> {
+  /** Names the version the role was read at: one revised since answers `record_changed`, and stays. */
+  async remove(companyId: string, roleId: string, version: number): Promise<void> {
     await this.read(async () => {
       await firstValueFrom(
-        this.http.delete<void>(`${path(companyId)}/${encodeURIComponent(roleId)}`),
+        this.http.delete<void>(`${path(companyId)}/${encodeURIComponent(roleId)}`, {
+          params: { version: String(version) },
+        }),
       );
     });
   }

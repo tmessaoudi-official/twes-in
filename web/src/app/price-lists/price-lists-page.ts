@@ -5,6 +5,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  ElementRef,
   inject,
   type OnInit,
   signal,
@@ -31,6 +32,7 @@ import type { FieldConflict } from '../shared/form/form-merge';
 import { dirtyCount } from '../shared/form/dirty-count';
 import { editorActions } from '../shared/form/editor-actions';
 import { liveRecord } from '../shared/form/live-record';
+import { revealInvalid } from '../shared/form/reveal-invalid';
 import { RecordBar } from '../shared/form/record-bar';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { PartConflict } from '../shared/form/part-conflict';
@@ -148,6 +150,7 @@ export class PriceListsPage implements OnInit {
   private readonly live = inject(LiveChanges);
   private readonly deletes = inject(RecordDeletes);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   protected readonly scopes = SCOPES;
   protected readonly scopeOptions: SelectOption[] = SCOPES.map((known) => ({
@@ -506,11 +509,7 @@ export class PriceListsPage implements OnInit {
     const companyId = this.company()?.id;
     const editing = this.editing();
     if (!companyId || editing === null || this.busy()) return;
-    if (this.form.invalid || this.prices.invalid) {
-      this.form.markAllAsTouched();
-      this.prices.markAllAsTouched();
-      return;
-    }
+    if (revealInvalid([this.form, this.prices], this.host)) return;
     const value = {
       name: this.fields.name.value,
       customerGroupId: this.fields.customerGroupId.value,

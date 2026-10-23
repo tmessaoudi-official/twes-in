@@ -14,6 +14,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Licensing\Domain\Exception\InvalidSubscription;
 use App\Licensing\Domain\Model\Subscription;
 use App\Licensing\Domain\ValueObject\BillingPeriod;
@@ -24,6 +25,7 @@ use App\Licensing\Domain\ValueObject\UnpaidMode;
 use App\Licensing\Infrastructure\ApiPlatform\State\Processor\SetSubscriptionProcessor;
 use App\Licensing\Infrastructure\ApiPlatform\State\Processor\StopSubscriptionProcessor;
 use App\Licensing\Infrastructure\ApiPlatform\State\Provider\PlatformSubscriptionProvider;
+use App\Shared\Infrastructure\ApiPlatform\Payload\DeleteVersion;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -56,6 +58,9 @@ use Symfony\Component\Validator\Constraints as Assert;
             read: false,
             processor: StopSubscriptionProcessor::class,
             security: 'is_granted("'.self::PERMISSION.'")',
+            parameters: [
+                'version' => new QueryParameter(schema: DeleteVersion::SCHEMA, required: true, description: 'The version the subscription was read at; one set or stopped since answers 409.', constraints: []),
+            ],
         ),
     ],
 )]

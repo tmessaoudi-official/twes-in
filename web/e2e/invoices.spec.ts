@@ -971,3 +971,78 @@ test('the invoices selected are cashed at once, each for what it owes, and those
     expect(retired).toBe(200);
   }
 });
+
+test('an issued invoice is delivered by a note, which names it, moves no stock and is not invoiced again', async ({
+  page,
+}) => {
+  // « Bon de livraison » on an issued invoice of goods: the draft note it opens names the invoice, carries its line,
+  // and once validated the invoice reads « Livrée » and lists it, while the note offers no invoice of its own: the
+  // invoice billed the goods and took them out of stock when it was issued.
+  test.setTimeout(90_000);
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-INVDL-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  const productId = await aProduct(page, `E2E-INVDL-${run}`);
+  try {
+    const invoiceId = await page.evaluate(
+      async ([csrf, wanted, product]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+        const base = `/api/companies/${me.company.id}`;
+        const send = async (path: string, body: unknown): Promise<{ id: string }> => {
+          const response = await fetch(`${base}${path}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+            body: JSON.stringify(body),
+          });
+          if (!response.ok) throw new Error(`POST ${path} answered ${response.status}`);
+          return (await response.json()) as { id: string };
+        };
+        const listed = (await (
+          await fetch(`${base}/customers?q=${encodeURIComponent(wanted)}`)
+        ).json()) as { member: { id: string; number: string }[] };
+        const customer = listed.member.find((row) => row.number === wanted);
+        const invoice = await send('/invoices', {
+          customerId: customer?.id,
+          establishmentId: null,
+          supplyDate: null,
+          paymentTermsDays: null,
+          customerReference: null,
+          notesPrinted: null,
+          notesInternal: null,
+          discountAmount: null,
+          documentTaxComponentIds: [],
+          lines: [{ productId: product, quantity: '3', unitPriceNet: '10', taxComponentIds: [] }],
+        });
+        await send(`/invoices/${invoice.id}/issue`, null);
+        return invoice.id;
+      },
+      [CSRF, customerNumber, productId] as const,
+    );
+
+    await page.goto(`/invoices/${invoiceId}`);
+    const invoiceNumber = (await page.getByTestId('invoice-title').textContent())?.trim() ?? '';
+    expect(invoiceNumber).not.toBe('');
+    await page.getByTestId('document-action-deliver').click();
+    await expect(page).toHaveURL(/\/delivery-notes\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('delivery-note-invoice-link')).toHaveText(invoiceNumber);
+    await expect(page.getByTestId('line-0-quantity')).toHaveValue('3');
+    await page.getByTestId('document-action-validate').click();
+    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('delivery-note-invoice-link')).toHaveText(invoiceNumber);
+    // Its goods were billed by the invoice: the note is not invoiced again.
+    await expect(page.getByTestId('document-action-invoice')).toHaveCount(0);
+    await expect(page.getByTestId('document-action-invoice-part')).toHaveCount(0);
+
+    await page.getByTestId('delivery-note-invoice-link').click();
+    await expect(page).toHaveURL(new RegExp(`/invoices/${invoiceId}$`));
+    await expect(page.getByTestId('invoice-delivery')).toContainText(/Livré|Delivered/);
+    await expect(page.getByTestId('invoice-delivered-by-0')).toContainText(/Validé|Validated/);
+    await expect(page.getByTestId('document-action-deliver')).toHaveCount(0);
+    expect(await wcagViolations(page)).toEqual([]);
+  } finally {
+    await retire(page, customerNumber);
+    await forget(page, [productId]);
+  }
+});

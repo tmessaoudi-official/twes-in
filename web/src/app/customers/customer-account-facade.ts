@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { CustomersApi, CustomersRefused } from './customers-api';
 import type { CustomerAccount, CustomersError } from './customers-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The customer's running account as it stands today, or why it is not there. */
 @Injectable({ providedIn: 'root' })
 export class CustomerAccountFacade {
   private readonly api = inject(CustomersApi);
-  private readonly accountSignal = signal<CustomerAccount | null>(null);
-  private readonly errorSignal = signal<CustomersError | null>(null);
+  private readonly accountSignal = sessionSignal<CustomerAccount | null>(null);
+  private readonly errorSignal = sessionSignal<CustomersError | null>(null);
   private request = 0;
 
   readonly account = this.accountSignal.asReadonly();

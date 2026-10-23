@@ -16,6 +16,8 @@ use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
+use App\Module\DeliveryNotes\Application\Invoices\DeliverableInvoices;
+use App\Module\DeliveryNotes\Application\Quotes\DeliverableQuotes;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
@@ -45,6 +47,8 @@ final readonly class PrintDeliveryNote
         private ReadSetting $settings,
         private DocumentNames $names,
         private Transactions $transactions,
+        private DeliverableQuotes $quotes,
+        private DeliverableInvoices $invoices,
     ) {
     }
 
@@ -126,7 +130,25 @@ final readonly class PrintDeliveryNote
             QuantityTotals::ofUnits(array_map(static fn (DeliveryNoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $note->getLines()), $names),
             $printing->print->exemptionReference,
             $names,
+            $this->quoteNumber($note),
+            $this->invoiceNumber($note),
         )));
+    }
+
+    /** The number of the issued invoice whose goods the note hands over, printed as its reference: an issued invoice keeps its number. */
+    private function invoiceNumber(DeliveryNote $note): ?string
+    {
+        $sources = array_values(array_filter(array_map(static fn (DeliveryNoteLine $line): ?Uuid => $line->getSourceInvoiceLineId(), $note->getLines())));
+
+        return [] === $sources ? null : ($this->invoices->ofLines($note->getCompany(), $sources, false)[0]->number ?? null);
+    }
+
+    /** The number of the accepted quote the note delivers, printed as its reference: a sent quote keeps its number. */
+    private function quoteNumber(DeliveryNote $note): ?string
+    {
+        $sources = array_values(array_filter(array_map(static fn (DeliveryNoteLine $line): ?Uuid => $line->getSourceQuoteLineId(), $note->getLines())));
+
+        return [] === $sources ? null : ($this->quotes->ofLines($note->getCompany(), $sources, false)[0]->number ?? null);
     }
 
     private static function fileName(DeliveryNote $note): string

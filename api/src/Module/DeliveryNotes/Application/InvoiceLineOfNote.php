@@ -15,7 +15,8 @@ use App\Module\Products\Domain\Model\Product;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A delivery note line as an invoice line takes it: what the note says, the quantity invoiced and the line it names.
+ * A delivery note line as an invoice line takes it: what the note says, the quantity invoiced and the line it names,
+ * with its share of the discount of the quote line it delivers, when it delivers one.
  * The invoices check it as they check any line they are given, so a note that no longer makes one is refused there.
  */
 final readonly class InvoiceLineOfNote
@@ -30,6 +31,8 @@ final readonly class InvoiceLineOfNote
         public array $taxes,
         public Uuid $deliveryNoteLineId,
         public ?string $lotCode,
+        public ?string $discountRate = null,
+        public ?string $discountAmount = null,
     ) {
     }
 }

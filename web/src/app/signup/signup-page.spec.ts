@@ -52,6 +52,7 @@ describe('SignupPage', () => {
     error,
     loadAvailability: vi.fn(),
     request: vi.fn(),
+    forget: vi.fn(),
   };
 
   beforeEach(async () => {

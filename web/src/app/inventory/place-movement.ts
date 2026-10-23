@@ -24,8 +24,16 @@ import { unsavedChanges } from '../shared/form/dirty-count';
 import type { FormValues } from '../shared/form/form-types';
 import type { PickOption } from '../shared/form/pick-field';
 import { InventoryFacade } from './inventory-facade';
-import { movementForm, movementInput, movementValues } from './inventory-forms';
-import type { StockLevelRow, StockMovementInput, StockProductOption } from './inventory-types';
+import { locationLabels, movementForm, movementInput, movementValues } from './inventory-forms';
+import { countEffect } from './count-sheet';
+import { CountEffectNote } from './count-effect-note';
+import { startWith } from 'rxjs';
+import type {
+  CountContext,
+  StockLevelRow,
+  StockMovementInput,
+  StockProductOption,
+} from './inventory-types';
 
 /** What a line of « Ce qu'il y a ici » was asked to do: move it, count it where it is, or receive more of it there. */
 export interface MovementAsked {
@@ -50,7 +58,7 @@ export function quantityOf(quantity: string, decimals: number): string {
  */
 @Component({
   selector: 'app-place-movement',
-  imports: [MatButtonModule, MatIconModule, TranslatePipe, DescriptorForm],
+  imports: [MatButtonModule, MatIconModule, TranslatePipe, DescriptorForm, CountEffectNote],
   templateUrl: './place-movement.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -149,6 +157,19 @@ export class PlaceMovement implements OnInit {
       const productId = this.asked().line.productId;
       untracked(() => void this.readProduct(companyId, productId));
     });
+    effect(() => {
+      const companyId = this.companyId();
+      const asked = this.asked();
+      untracked(() => void this.readCountContext(companyId, asked));
+    });
+    effect((onCleanup) => {
+      const form = this.form();
+      if (form === null) return;
+      const subscription = form.valueChanges
+        .pipe(startWith(null))
+        .subscribe(() => this.typed.set(form.getRawValue()));
+      onCleanup(() => subscription.unsubscribe());
+    });
     // A place touched on the plan is the destination, as if chosen in the box.
     effect(() => {
       const destination = this.destination();
@@ -168,6 +189,40 @@ export class PlaceMovement implements OnInit {
       );
       onCleanup(() => subscription.unsubscribe());
     });
+  }
+
+  /** What the form holds as it is typed, which a count's note is said from. */
+  private readonly typed = signal<FormValues | null>(null);
+  /** What the API says of the line's product, read when a count is asked; null otherwise. */
+  private readonly countContext = signal<CountContext | null>(null);
+  protected readonly placeNames = computed<ReadonlyMap<string, string>>(() =>
+    locationLabels(this.facade.locations()),
+  );
+  /** What recording the count would change, said under the form as on the Stock page. */
+  protected readonly countNote = computed(() => {
+    const context = this.countContext();
+    const product = this.product();
+    const typed = this.typed();
+    if (this.asked().operation !== 'count' || context === null || product === null) return null;
+    const text = (id: string): string => {
+      const value = typed?.[id];
+      return typeof value === 'string' ? value : '';
+    };
+    return countEffect(context, this.facade.locations(), {
+      locationId: text('locationId'),
+      lotCode: text('lotCode'),
+      counted: text('quantity'),
+      tracking: product.tracking,
+    });
+  });
+
+  private async readCountContext(companyId: string, asked: MovementAsked): Promise<void> {
+    if (asked.operation !== 'count') {
+      this.countContext.set(null);
+      return;
+    }
+    const [context] = await this.facade.countContexts(companyId, [asked.line.productId]);
+    if (this.asked() === asked) this.countContext.set(context ?? null);
   }
 
   private async readProduct(companyId: string, productId: string): Promise<void> {

@@ -55,7 +55,7 @@ final class OpenApiTest extends KernelTestCase
         self::assertSame(['user', 'company', 'permissions', 'mfa', 'modules', 'plannedModules', 'customerScreenCompanyId', 'support', 'supportAccessUntil'], $this->required($schemas['Me']));
         self::assertSame(['phone', 'whatsapp', 'email'], $this->required($schemas['MeSupport']));
         self::assertSame(['key', 'planned'], $this->required($schemas['MePlannedModule']));
-        self::assertSame(['enrolled', 'required', 'totp', 'passkeys'], $this->required($schemas['MeMfa']));
+        self::assertSame(['enrolled', 'required', 'totp', 'passkeys', 'recoveryCodes'], $this->required($schemas['MeMfa']));
         self::assertSame(['id', 'email', 'displayName', 'locale', 'isPlatformOperator', 'demo'], $this->required($schemas['MeUser']));
         self::assertSame(['id', 'name', 'countryCode', 'currency', 'locale', 'timezone', 'status', 'role', 'access', 'subscription', 'logoVersion'], $this->required($schemas['MeCompany']));
         self::assertSame(['email', 'password'], $this->required($schemas['LoginRequest']));

@@ -72,6 +72,8 @@
     {#- Once delivered, when, to the minute on the company's clock: the seconds are kept, never printed. -#}
     {% if note.deliveredAt %}<div><dt>{{ 'delivery_note.delivery_date'|trans({}, t, locale) }}</dt><dd>{{ note.deliveredAt|date(dateFormat ~ ' H:i', note.company.timezone) }}</dd></div>
     {% elseif header.deliveryDate %}<div><dt>{{ 'delivery_note.delivery_date'|trans({}, t, locale) }}</dt><dd>{{ header.deliveryDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {% if page.quoteNumber %}<div><dt>{{ 'delivery_note.quote'|trans({}, t, locale) }}</dt><dd><bdi>{{ page.quoteNumber }}</bdi></dd></div>{% endif %}
+    {% if page.invoiceNumber %}<div><dt>{{ 'delivery_note.invoice'|trans({}, t, locale) }}</dt><dd><bdi>{{ page.invoiceNumber }}</bdi></dd></div>{% endif %}
     {% if header.customerReference %}<div><dt>{{ 'delivery_note.customer_reference'|trans({}, t, locale) }}</dt><dd><bdi>{{ header.customerReference }}</bdi></dd></div>{% endif %}
   </dl>
 

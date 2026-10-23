@@ -21,8 +21,12 @@ final readonly class ErasureReference
     public const string LINK = 'link';
     public const string IGNORE = 'ignore';
 
-    /** @param ?string $target the table it names, null for a column naming rows of several (an attachment's subject) */
-    private function __construct(public string $kind, public string $table, public string $column, public ?string $target, public string $why)
+    /**
+     * @param ?string $target the table it names, null for a column naming rows of several (an attachment's subject)
+     * @param ?string $live   the kind open screens reload on when a link is emptied or filled again, when it is not the
+     *                        table's own name (a line's screen is its document's)
+     */
+    private function __construct(public string $kind, public string $table, public string $column, public ?string $target, public string $why, public ?string $live = null)
     {
         foreach ([$table, $column, $target ?? 'any'] as $name) {
             if (1 !== preg_match('/^[a-z][a-z0-9_]*$/', $name)) {
@@ -36,9 +40,9 @@ final readonly class ErasureReference
         return new self(self::KEEP, $table, $column, $target, $why);
     }
 
-    public static function link(string $table, string $column, string $target, string $why): self
+    public static function link(string $table, string $column, string $target, string $why, ?string $live = null): self
     {
-        return new self(self::LINK, $table, $column, $target, $why);
+        return new self(self::LINK, $table, $column, $target, $why, $live);
     }
 
     public static function ignore(string $table, string $column, ?string $target, string $why): self

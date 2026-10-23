@@ -34,7 +34,7 @@ const owner: Me = {
     logoVersion: 'f1',
   },
   permissions: ['*'],
-  mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
+  mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
   modules: ['customers'],
   plannedModules: [
     { key: 'quotes', planned: 'v1' },

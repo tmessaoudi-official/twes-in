@@ -89,7 +89,7 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         // can be released from a group's limit by setting zero on it. A document has none: it is about the account.
         yield new SettingDefinition('credit.limit', SettingType::Money, '0', SettingChain::Parties, [SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer], 'settings.credit.limit', self::MODULE, min: '0');
 
-        yield new SettingDefinition('article.default_unit', SettingType::Text, 'C62', SettingChain::Articles, $articles, 'settings.article.default_unit', self::MODULE, pattern: '/^[A-Z0-9]{2,3}$/');
+        yield new SettingDefinition('article.default_unit', SettingType::Text, 'C62', SettingChain::Articles, $articles, 'settings.article.default_unit', self::MODULE, pattern: '/^[A-Z0-9]{2,3}$/', patternReason: 'invalid_unit_code');
         yield new SettingDefinition('article.stock_tracking', SettingType::Bool, false, SettingChain::Articles, $articles, 'settings.article.stock_tracking', self::MODULE);
         // How a new product is followed when it does not say: by lot or by serial number, per company or per category. A
         // product keeps its own value in its own column, so the product level is not offered here.

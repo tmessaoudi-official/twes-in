@@ -13,7 +13,8 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { StockLocationRow } from '../inventory/inventory-types';
 import { Session } from '../shared/session/session';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { provideQuietFeedback, RecordedFeedback, successToasts } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
 import { ProductHomes } from './product-homes-facade';
 import { ProductHomesSection } from './product-homes';
 import { groupByEstablishment } from './product-home-order';
@@ -73,6 +74,7 @@ describe('ProductHomesSection', () => {
     add: vi.fn(),
     move: vi.fn(),
     remove: vi.fn(),
+    putBack: vi.fn(async () => 'saved'),
   };
   const auth = { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }) };
   let fixture: ComponentFixture<ProductHomesSection>;
@@ -230,6 +232,14 @@ describe('ProductHomesSection', () => {
     expect(facade.remove).toHaveBeenCalledWith('c1', 'p1', home, 7);
     expect(successToasts()).toContain('products.homes.cleared');
     expect(moved).toEqual(['saved']);
+
+    // Undo first: « Annuler » puts it back where it stood, on the version the product page holds then.
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    expect(said[0].action?.key).toBe('products.homes.undo');
+    fixture.componentRef.setInput('version', 8);
+    said[0].action!.run();
+    await fixture.whenStable();
+    expect(facade.putBack).toHaveBeenCalledWith('c1', 'p1', home, 8);
   });
 
   /** A home is set with product.write; somebody who may only read one sees where it lives and changes nothing. */

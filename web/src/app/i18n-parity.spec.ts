@@ -35,6 +35,9 @@ import fr from '../../public/i18n/fr.json';
 import arPlatform from '../../public/i18n/platform/ar.json';
 import enPlatform from '../../public/i18n/platform/en.json';
 import frPlatform from '../../public/i18n/platform/fr.json';
+import arDeliveries from '../../public/i18n/deliveries/ar.json';
+import enDeliveries from '../../public/i18n/deliveries/en.json';
+import frDeliveries from '../../public/i18n/deliveries/fr.json';
 import arCheck from '../../public/i18n/check/ar.json';
 import enCheck from '../../public/i18n/check/en.json';
 import frCheck from '../../public/i18n/check/fr.json';
@@ -44,9 +47,15 @@ import frWatch from '../../public/i18n/watch/fr.json';
 import arSchedule from '../../public/i18n/schedule/ar.json';
 import enSchedule from '../../public/i18n/schedule/en.json';
 import frSchedule from '../../public/i18n/schedule/fr.json';
+import arSettingsRefusals from '../../public/i18n/settings-refusals/ar.json';
+import enSettingsRefusals from '../../public/i18n/settings-refusals/en.json';
+import frSettingsRefusals from '../../public/i18n/settings-refusals/fr.json';
 import arStockPlan from '../../public/i18n/stock-plan/ar.json';
 import enStockPlan from '../../public/i18n/stock-plan/en.json';
 import frStockPlan from '../../public/i18n/stock-plan/fr.json';
+import arStockCount from '../../public/i18n/stock-count/ar.json';
+import enStockCount from '../../public/i18n/stock-count/en.json';
+import frStockCount from '../../public/i18n/stock-count/fr.json';
 import arTwoFactor from '../../public/i18n/two-factor/ar.json';
 import enTwoFactor from '../../public/i18n/two-factor/en.json';
 import frTwoFactor from '../../public/i18n/two-factor/fr.json';
@@ -72,6 +81,7 @@ function keysOf(value: unknown, prefix = ''): string[] {
 const parts: Record<string, Record<string, unknown>> = {
   account: { fr: frAccount, en: enAccount, ar: arAccount },
   check: { fr: frCheck, en: enCheck, ar: arCheck },
+  deliveries: { fr: frDeliveries, en: enDeliveries, ar: arDeliveries },
   watch: { fr: frWatch, en: enWatch, ar: arWatch },
   'data-erasure': { fr: frDataErasure, en: enDataErasure, ar: arDataErasure },
   'demo-mails': { fr: frDemoMails, en: enDemoMails, ar: arDemoMails },
@@ -84,6 +94,8 @@ const parts: Record<string, Record<string, unknown>> = {
   records: { fr: frRecords, en: enRecords, ar: arRecords },
   reports: { fr: frReports, en: enReports, ar: arReports },
   schedule: { fr: frSchedule, en: enSchedule, ar: arSchedule },
+  'settings-refusals': { fr: frSettingsRefusals, en: enSettingsRefusals, ar: arSettingsRefusals },
+  'stock-count': { fr: frStockCount, en: enStockCount, ar: arStockCount },
   'stock-plan': { fr: frStockPlan, en: enStockPlan, ar: arStockPlan },
   'two-factor': { fr: frTwoFactor, en: enTwoFactor, ar: arTwoFactor },
 };

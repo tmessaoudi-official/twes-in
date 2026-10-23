@@ -128,6 +128,36 @@ describe('DeliveryNotesApi', () => {
     expect((await named)[0]?.excludedFamilies).toEqual(['vat']);
   });
 
+  it('reads the issued invoice a note hands over the goods of, and the invoice line each line delivers', async () => {
+    const pending = api.note('c1', 'n2');
+    http.expectOne('/api/companies/c1/delivery-notes/n2').flush({
+      id: 'n2',
+      version: 1,
+      number: null,
+      status: 'draft',
+      customerId: 'k1',
+      establishmentId: 'e1',
+      lines: [
+        {
+          quantity: '2.000',
+          unitId: 'u1',
+          unitPriceNet: '10.0000',
+          net: '20.000',
+          sourceInvoiceLineId: 'il1',
+        },
+      ],
+      subtotalNet: '20.000',
+      taxes: [],
+      totalTax: '0.000',
+      total: '20.000',
+      invoice: { invoiceId: 'i7', number: 'FAC-2026-00007' },
+    });
+    const note = await pending;
+    expect(note.invoice).toEqual({ invoiceId: 'i7', number: 'FAC-2026-00007' });
+    expect(note.lines[0]?.sourceInvoiceLineId).toBe('il1');
+    expect(note.lines[0]?.sourceQuoteLineId).toBeNull();
+  });
+
   it('reads a note with nulls where the API sent none and the name it was validated with', async () => {
     const pending = api.note('c1', 'n 1');
     http.expectOne('/api/companies/c1/delivery-notes/n%201').flush({
@@ -139,12 +169,21 @@ describe('DeliveryNotesApi', () => {
       customerName: 'Carthage',
       customerSnapshot: { number: 'CLI-1', name: 'Carthage Conseil' },
       issueDate: '2026-09-15',
-      lines: [{ quantity: '2.000', unitId: 'u1', unitPriceNet: '1250.0000', net: '2500.000' }],
+      lines: [
+        {
+          quantity: '2.000',
+          unitId: 'u1',
+          unitPriceNet: '1250.0000',
+          net: '2500.000',
+          sourceQuoteLineId: 'ql1',
+        },
+      ],
       subtotalNet: '2500.000',
       taxes: [{ code: 'TVA19', rate: '19', base: '2500.000', amount: '475.000' }],
       totalTax: '475.000',
       total: '2975.000',
       invoices: [{ invoiceId: 'i1', number: null, status: 'draft' }],
+      quote: { quoteId: 'q1', number: 'DEV-2026-00003' },
     });
 
     expect(await pending).toEqual({
@@ -181,6 +220,8 @@ describe('DeliveryNotesApi', () => {
           productName: null,
           productTracking: null,
           lotCode: null,
+          sourceQuoteLineId: 'ql1',
+          sourceInvoiceLineId: null,
           net: '2500.000',
         },
       ],
@@ -189,6 +230,8 @@ describe('DeliveryNotesApi', () => {
       totalTax: '475.000',
       total: '2975.000',
       invoices: [{ invoiceId: 'i1', number: null, status: 'draft' }],
+      quote: { quoteId: 'q1', number: 'DEV-2026-00003' },
+      invoice: null,
     });
   });
 

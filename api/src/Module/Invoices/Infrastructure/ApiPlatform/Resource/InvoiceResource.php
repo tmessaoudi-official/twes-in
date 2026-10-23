@@ -245,6 +245,58 @@ final class InvoiceResource
     #[Groups([self::READ])]
     public array $deliveryNotes = [];
 
+    /**
+     * The delivery notes that are not cancelled handing over the issued invoice's goods (POST .../invoices/{invoiceId}/
+     * deliveries), drafts included, the oldest first; none for whoever may not read delivery notes.
+     *
+     * @var list<array{deliveryNoteId: string, number: string|null, status: string}>
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['deliveryNoteId', 'number', 'status'],
+            'properties' => [
+                'deliveryNoteId' => self::ID,
+                'number' => self::TEXT_OR_NULL,
+                'status' => ['type' => 'string', 'enum' => ['draft', 'validated', 'delivered', 'invoiced']],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $deliveredBy = [];
+
+    /** How much of the issued invoice's goods its notes past their draft handed over: `none`, `partly`, or `whole` once every line is. */
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => ['none', 'partly', 'whole']])]
+    #[Groups([self::READ])]
+    public string $delivery = 'none';
+
+    /**
+     * Each line of goods the issued invoice billed itself, delivered afterwards through notes: what it billed, what its
+     * issued credit notes took back into stock, what the notes take (drafts included), what those past their draft
+     * handed over, and what is left to deliver. None for a draft, a credit note, a deposit, or whoever may not read
+     * delivery notes.
+     *
+     * @var list<array{lineId: string, quantity: string, returned: string, onNotes: string, delivered: string, left: string}>
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['lineId', 'quantity', 'returned', 'onNotes', 'delivered', 'left'],
+            'properties' => [
+                'lineId' => self::ID,
+                'quantity' => ['type' => 'string'],
+                'returned' => ['type' => 'string'],
+                'onNotes' => ['type' => 'string'],
+                'delivered' => ['type' => 'string'],
+                'left' => ['type' => 'string'],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $deliveries = [];
+
     /** Why a credit note corrects its invoice, stated when it is drafted and printed on it; null for an invoice. */
     #[Assert\NotBlank(normalizer: 'trim', groups: [self::CREDIT])]
     #[Assert\Length(max: Invoice::CREDIT_NOTE_REASON_MAX, groups: [self::CREDIT])]

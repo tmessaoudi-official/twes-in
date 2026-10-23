@@ -19,6 +19,7 @@ import { SubscriptionPage } from './subscription-page';
   template: `
     <app-signed-out-layout plain>
       <app-subscription-page />
+      <!-- way-out: signing out, beside the declaration that opens the company again -->
       <div>
         <button mat-stroked-button type="button" (click)="signOut()" data-testid="locked-sign-out">
           {{ 'auth.awaiting.sign_out' | translate }}

@@ -2,6 +2,7 @@
 
 import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import type { PreviewBody } from '../shared/documents/document-figures';
+import { minus } from '../shared/documents/per-unit';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import { inject, Injectable } from '@angular/core';
@@ -236,6 +237,32 @@ export class QuotesApi {
     );
   }
 
+  /**
+   * « Livrer » or « Livrer une partie »: a draft delivery note of the accepted quote, of every line for what is left of it,
+   * or with `quantities` (by quote line id) of those lines alone; answers the note's id. 409 when the quote is not
+   * accepted, is invoiced whole or has nothing left; 422 when its discount on the whole or a deposit keeps it whole, or a
+   * quantity is more than is left.
+   */
+  async deliver(
+    companyId: string,
+    id: string,
+    quantities: Readonly<Record<string, string>> | null,
+  ): Promise<string> {
+    try {
+      const body: { quantities: Record<string, string> | null } = {
+        quantities: quantities === null ? null : { ...quantities },
+      };
+      // The answer is the note as its own screen reads it; only its id is wanted here.
+      const note = await firstValueFrom(
+        this.http.post<{ id?: string }>(`${quotePath(companyId, id)}/delivery-notes`, body),
+      );
+      if (note.id === undefined) throw new Error('A delivery note came without its id.');
+      return note.id;
+    } catch (error) {
+      throw refusedFor(error, new QuotesRefused(deliveryCodeOf(error)));
+    }
+  }
+
   /** Drafts the accepted quote wholly into a new invoice, which the answer names; 409 when it already stands. */
   async invoice(companyId: string, id: string): Promise<QuoteRow> {
     return this.step(companyId, id, 'invoice', null);
@@ -370,6 +397,14 @@ function codeOf(error: unknown, invalid: QuotesError | undefined): QuotesError {
   }
 }
 
+/** A quote kept whole is named by the field the API refused; any other 422 is a quantity refused. */
+function deliveryCodeOf(error: unknown): QuotesError {
+  if (!(error instanceof HttpErrorResponse) || error.status !== 422)
+    return codeOf(error, undefined);
+  const field = refusedField(error);
+  return field === 'discountAmount' || field === 'deposits' ? 'delivery_whole' : 'delivery_refused';
+}
+
 /** An empty day is the API's own today, sent as no day at all. */
 const day = (value: string): string | null => (value.trim() === '' ? null : value.trim());
 
@@ -430,6 +465,20 @@ function toQuote(raw: QuoteQuoteRead | QuoteJsonldQuoteRead): QuoteRow {
       number: number ?? null,
       status,
       total,
+    })),
+    deliveryNotes: (raw.deliveryNotes ?? []).map(({ deliveryNoteId, number, status }) => ({
+      deliveryNoteId,
+      number: number ?? null,
+      status,
+    })),
+    delivery: raw.delivery ?? 'none',
+    deliveries: (raw.lines ?? []).map((line) => ({
+      lineId: line.id ?? '',
+      description: line.description ?? line.productName ?? '',
+      quantity: line.quantity,
+      onNotes: line.onNotes ?? '0',
+      delivered: line.delivered ?? '0',
+      left: minus(line.quantity, line.onNotes ?? '0'),
     })),
     attachmentCount: raw.attachmentCount ?? 0,
     customerReference: raw.customerReference ?? null,

@@ -175,6 +175,9 @@ const draft: InvoiceRow = {
   deposit: false,
   quoteId: null,
   deliveryNotes: [],
+  deliveredBy: [],
+  delivery: 'none',
+  deliveries: [],
   number: null,
   status: 'draft',
   customerId: 'k1',
@@ -1251,6 +1254,43 @@ describe('InvoicePage', () => {
     fixture.destroy();
     await open('i1');
     expect(q('invoice-quote')?.getAttribute('href')).toBe('/quotes/q1');
+  });
+
+  it('lists the notes handing over an issued invoice’s goods, what each line has left, and how far it is delivered', async () => {
+    invoice.set({
+      ...issued,
+      delivery: 'partly',
+      deliveredBy: [
+        { deliveryNoteId: 'n9', number: 'BL-2026-00009', status: 'delivered' },
+        { deliveryNoteId: 'n10', number: null, status: 'draft' },
+      ],
+      deliveries: [
+        {
+          lineId: 'l1',
+          description: 'Tour CNC',
+          quantity: '6.000',
+          returned: '1.000',
+          onNotes: '3.000',
+          delivered: '2.000',
+          left: '2.000',
+        },
+      ],
+    });
+    await open('i1');
+
+    expect(q('invoice-delivery')?.textContent).toContain('deliveries.statuses.partly');
+    expect(q('invoice-delivered-by-0')?.querySelector('a')?.getAttribute('href')).toBe(
+      '/delivery-notes/n9',
+    );
+    expect(q('invoice-delivered-by-0')?.textContent).toContain('BL-2026-00009');
+    expect(q('invoice-delivered-by-1')?.textContent).toContain('deliveries.card.draft');
+    expect(q('invoice-delivery-line-0')?.textContent).toContain('Tour CNC');
+
+    fixture.destroy();
+    invoice.set({ ...issued, deliveredBy: [], delivery: 'none', deliveries: [] });
+    await open('i1');
+    expect(q('invoice-delivery'), 'nothing handed over yet').toBeNull();
+    expect(q('invoice-deliveries')).toBeNull();
   });
 
   it('leads back to each delivery note its lines were taken from, and says nothing when none', async () => {

@@ -3,7 +3,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthFacade } from '../auth/auth-facade';
@@ -28,6 +28,9 @@ const base: InvoiceRow = {
   deposit: false,
   quoteId: null,
   deliveryNotes: [],
+  deliveredBy: [],
+  delivery: 'none',
+  deliveries: [],
   number: 'FAC-2026-00045',
   status: 'issued',
   customerId: 'k1',
@@ -225,6 +228,60 @@ describe('InvoiceActions', () => {
     granted.clear();
     expect(onPage(due)).toEqual(['pdf:frequent', 'print-duplicate:rare', 'print-current:rare']);
     expect(onPage(draft)).toEqual(['pdf:rare']);
+  });
+
+  it('offers « Livrer » on an issued invoice of goods with something left, to a writer of notes with the module on', async () => {
+    const left = (value: string) => ({
+      lineId: 'l1',
+      description: 'Tour CNC',
+      quantity: '6.000',
+      returned: '0.000',
+      onNotes: '0.000',
+      delivered: '0.000',
+      left: value,
+    });
+    const goods: InvoiceRow = { ...due, deliveries: [left('6.000')] };
+    const delivers = (invoice: InvoiceRow) =>
+      onPage(invoice).filter((id) => id.startsWith('deliver'));
+    expect(delivers(goods), 'no right to write notes').toEqual([]);
+
+    granted.add('delivery_note.write');
+    expect(delivers(goods), 'the module off').toEqual([]);
+    modules.add('delivery_notes');
+    expect(delivers(goods)).toEqual(['deliver:frequent', 'deliver-part:frequent']);
+    expect(onRow(goods)).toEqual(onPage(goods));
+    expect(delivers({ ...paid, deliveries: [left('0.500')] })).toHaveLength(2);
+    expect(delivers({ ...goods, deliveries: [left('0.000')] }), 'nothing left').toEqual([]);
+    expect(delivers({ ...goods, deliveries: [left('-2.000')] }), 'taken back beyond').toEqual([]);
+    expect(delivers({ ...goods, status: 'draft' }), 'a draft bills nothing yet').toEqual([]);
+    expect(delivers({ ...goods, status: 'cancelled' })).toEqual([]);
+    expect(delivers({ ...goods, deposit: true }), 'a deposit delivers no goods').toEqual([]);
+    expect(delivers({ ...creditNote, deliveries: [left('1.000')] })).toEqual([]);
+
+    const deliver = Object.assign(facade, { deliver: vi.fn().mockResolvedValue('n1') });
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    onRecord(actions().declare(), goods, false)
+      .find((action) => action.id === 'deliver')!
+      .run?.();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/delivery-notes', 'n1']));
+    expect(deliver.deliver).toHaveBeenCalledWith('c1', 'i1', null);
+    expect(dialog.open, '« Livrer » asks nothing').not.toHaveBeenCalled();
+
+    dialog.open.mockReturnValue({ afterClosed: () => of({ l1: '2' }) });
+    onRecord(actions().declare(), goods, false)
+      .find((action) => action.id === 'deliver-part')!
+      .run?.();
+    await vi.waitFor(() => expect(deliver.deliver).toHaveBeenCalledWith('c1', 'i1', { l1: '2' }));
+    expect(dialog.open.mock.calls[0]?.[1]).toMatchObject({ data: goods.deliveries });
+
+    deliver.deliver.mockClear();
+    dialog.open.mockReturnValue({ afterClosed: () => of(null) });
+    onRecord(actions().declare(), goods, false)
+      .find((action) => action.id === 'deliver-part')!
+      .run?.();
+    await vi.waitFor(() => expect(dialog.open).toHaveBeenCalledTimes(2));
+    expect(deliver.deliver, 'closing the dialog drafts nothing').not.toHaveBeenCalled();
   });
 
   it('offers the Factur-X files only where the company’s preset writes them, of an issued document', () => {

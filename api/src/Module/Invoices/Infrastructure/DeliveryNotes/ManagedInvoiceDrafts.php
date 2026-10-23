@@ -72,10 +72,11 @@ final readonly class ManagedInvoiceDrafts implements InvoiceDrafts
             $line->quantity,
             $line->unit,
             $line->unitPriceNet,
-            null,
+            $line->discountRate,
             $line->taxes,
             $line->deliveryNoteLineId,
             $line->lotCode,
+            discountAmount: $line->discountAmount,
         ), $lines);
     }
 }

@@ -17,7 +17,8 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
-import { PlatformFacade } from './platform-facade';
+import { PlatformFacade, type PlatformRefusals } from './platform-facade';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { PlatformPage } from './platform-page';
 import type {
   PlatformAccountRow,
@@ -37,6 +38,7 @@ import { Session } from '../shared/session/session';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
+import { ScreenActions } from '../shared/actions/screen-actions';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -52,7 +54,17 @@ class StaticLoader implements TranslateLoader {
           import_max_rows: 'Lignes au plus par fichier importé',
         },
       },
+      import: {
+        rejections: {
+          whole_number_between: 'Attendu : un nombre entier de {{min}} à {{max}}.',
+          not_a_whole_number: 'Attendu : un nombre entier.',
+          invalid_whatsapp:
+            'Un numéro WhatsApp s’écrit au format international (exemple : +216 20 123 456).',
+          value_required: 'Cette case doit être remplie.',
+        },
+      },
       platform: {
+        numbers: { empty: 'Indiquez un nombre.' },
         demo: { title: 'Démo', bounds: 'De {{min}} à {{max}} démos', save: 'Enregistrer' },
         imports: { title: 'Imports', bounds: 'De {{min}} à {{max}} lignes', save: 'Enregistrer' },
         failed: {
@@ -115,6 +127,11 @@ class StaticLoader implements TranslateLoader {
           end_sessions: 'Terminer les sessions',
           deactivate: 'Désactiver',
           reactivate: 'Réactiver',
+          keep: 'Ne rien changer',
+          end_sessions_title: 'Terminer les sessions ?',
+          end_sessions_message: '{{name}} est déconnecté sur chacun de ses appareils.',
+          deactivate_title: 'Désactiver ce compte ?',
+          deactivate_message: '{{name}} ne pourra plus se connecter.',
           states: { active: 'Actifs', inactive: 'Désactivés', operator: 'Opérateurs' },
         },
         companies: {
@@ -131,6 +148,17 @@ class StaticLoader implements TranslateLoader {
           no_owner: 'Aucun propriétaire.',
           countries: { TN: 'Tunisie', FR: 'France' },
           statuses: { pending: 'En attente', active: 'Active', suspended: 'Suspendue' },
+          actions: {
+            approve: 'Approuver',
+            approve_title: 'Approuver cette entreprise ?',
+            approve_message:
+              '{{name}} s’ouvre à ses membres, et ses propriétaires en sont prévenus par courrier.',
+            restore: 'Rétablir l’accès',
+            reject: 'Refuser',
+            reject_title: 'Refuser cette entreprise ?',
+            suspend: 'Suspendre',
+            keep: 'Ne rien changer',
+          },
         },
         payments: {
           title: 'Règlements à confirmer',
@@ -140,6 +168,19 @@ class StaticLoader implements TranslateLoader {
           reject: 'Refuser',
           confirmed: 'Le règlement a été confirmé.',
           rejected: 'Le règlement a été refusé.',
+          keep: 'Laisser en attente',
+          confirm_title: 'Confirmer ce règlement ?',
+          confirm_message: 'Le règlement de {{name}} couvre des périodes : {{periods}}.',
+          reject_title: 'Refuser ce règlement ?',
+          reject_message: 'L’attente que ce règlement gardait à {{name}} prend fin tout de suite.',
+        },
+        subscription: {
+          stop: 'Ne plus gérer et effacer les conditions',
+          stop_title: 'Ne plus gérer cette entreprise ?',
+          stop_message: 'Les conditions de {{name}} sont effacées, et rien ne les garde.',
+          keep: 'Garder ses conditions',
+          stopped: '{{name}} n’est plus gérée.',
+          unmanaged: 'Non géré : accès complet',
         },
         errors: {
           not_found: 'Introuvable',
@@ -251,7 +292,15 @@ describe('PlatformPage', () => {
   const waitingTotal = signal(1);
   const companiesTotal = signal(1);
   const accountsTotal = signal(1);
+  const refused = signal<PlatformRefusals>({ at: null, refusals: [] });
   const facade = {
+    refused: refused.asReadonly(),
+    // A plain function, which the reset of every mock below leaves as it is.
+    forgetRefusal: (field: string) =>
+      refused.update((held) => ({
+        ...held,
+        refusals: held.refusals.filter((refusal) => refusal.field !== field),
+      })),
     waitingTotal: waitingTotal.asReadonly(),
     companiesTotal: companiesTotal.asReadonly(),
     accountsTotal: accountsTotal.asReadonly(),
@@ -308,6 +357,7 @@ describe('PlatformPage', () => {
     demo.set(demoState);
     imports.set(importsState);
     error.set(null);
+    refused.set({ at: null, refusals: [] });
     accounts.set([account]);
     companies.set([row]);
     waitingPayments.set([declared]);
@@ -330,6 +380,7 @@ describe('PlatformPage', () => {
         provideRouter([]),
         ...provideQuietFeedback(),
         { provide: PlatformFacade, useValue: facade },
+        { provide: TextsParts, useValue: { open: vi.fn(() => Promise.resolve()) } },
         { provide: SubscriptionFacade, useValue: payments },
         {
           provide: AuthFacade,
@@ -522,16 +573,112 @@ describe('PlatformPage', () => {
     expect(query('platform-waiting-empty')?.textContent).toContain('Aucune entreprise en attente.');
   });
 
-  it('approves or rejects the company of that line', async () => {
+  it('asks before it approves a waiting company, saying its owners are mailed, then says it was', async () => {
     const { fixture, query } = await render();
 
-    query<HTMLButtonElement>('approve-Nouvelle Société')!.click();
+    const card = query('waiting-Nouvelle Société')!;
+    card.querySelector<HTMLButtonElement>('[data-testid="document-action-approve"]')!.click();
+    fixture.detectChanges();
     await fixture.whenStable();
-    expect(facade.approve).toHaveBeenCalledWith('c1');
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'Nouvelle Société s’ouvre à ses membres, et ses propriétaires en sont prévenus',
+    );
+    expect(facade.approve).not.toHaveBeenCalled();
 
-    query<HTMLButtonElement>('reject-Nouvelle Société')!.click();
+    await answer(fixture, 'run');
+    await vi.waitFor(() => expect(facade.approve).toHaveBeenCalledWith('c1'));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({
+          key: 'platform.companies.done.approved',
+          params: { name: 'Nouvelle Société' },
+          effect: 'corrigeable',
+        }),
+      ]),
+    );
+  });
+
+  it('asks before it refuses a waiting company, and refuses nothing when the answer is no', async () => {
+    const { fixture, query } = await render();
+
+    const card = query('waiting-Nouvelle Société')!;
+    card.querySelector<HTMLButtonElement>('[data-testid="document-action-suspend"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.querySelector('[data-testid="confirm-title"]')?.textContent).toContain(
+      'Refuser cette entreprise',
+    );
+    await answer(fixture, 'keep');
+    expect(facade.reject).not.toHaveBeenCalled();
+
+    card.querySelector<HTMLButtonElement>('[data-testid="document-action-suspend"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await answer(fixture, 'run');
+    await vi.waitFor(() => expect(facade.reject).toHaveBeenCalledWith('c1'));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({ key: 'platform.companies.done.rejected' }),
+      ]),
+    );
+  });
+
+  it('offers an open company its suspension, on its row and its sheet, which the keys and Ctrl K read', async () => {
+    companies.set([{ ...row, status: 'active' }]);
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+
+    const sheet = query('company-sheet-Nouvelle Société')!;
+    expect(sheet.querySelector('[data-testid="document-action-approve"]')).toBeNull();
+    // Rare, so behind the bar's « ⋮ » rather than under the pointer.
+    expect(sheet.querySelector('[data-testid="document-action-suspend"]')).toBeNull();
+    expect(
+      TestBed.inject(ScreenActions)
+        .actions()
+        .map((action) => [action.id, action.label]),
+    ).toEqual([['suspend', 'platform.companies.actions.suspend']]);
+    expect(query('row-action-approve-c1')).toBeNull();
+    expect(query('row-more-c1')).not.toBeNull();
+
+    TestBed.inject(ScreenActions).actions()[0].run!();
+    fixture.detectChanges();
     await fixture.whenStable();
     expect(facade.reject).toHaveBeenCalledWith('c1');
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({ key: 'platform.companies.done.suspended' }),
+      ]),
+    );
+  });
+
+  it('offers a suspended company its access back, and no second suspension', async () => {
+    companies.set([{ ...row, status: 'suspended' }]);
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+
+    const sheet = query('company-sheet-Nouvelle Société')!;
+    const restore = sheet.querySelector<HTMLButtonElement>(
+      '[data-testid="document-action-approve"]',
+    )!;
+    expect(restore.textContent).toContain('Rétablir l’accès');
+    expect(query('row-action-approve-c1')).not.toBeNull();
+    expect(
+      TestBed.inject(ScreenActions)
+        .actions()
+        .map((action) => action.id),
+    ).toEqual(['approve']);
+
+    restore.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await answer(fixture, 'run');
+    await vi.waitFor(() => expect(facade.approve).toHaveBeenCalledWith('c1'));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({
+          key: 'platform.companies.done.restored',
+          effect: 'corrigeable',
+        }),
+      ]),
+    );
   });
 
   it('shows the two signup switches as the platform holds them and turns one', async () => {
@@ -582,6 +729,70 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.saveDemoMost).toHaveBeenCalledWith(20);
+  });
+
+  it('says on the field why a typed count cannot be saved: emptied, not whole, or out of its bounds', async () => {
+    const { fixture, query } = await render();
+    const most = query<HTMLInputElement>('platform-demo-most')!;
+    expect(query('platform-demo-most-error')).toBeNull();
+    expect(most.getAttribute('aria-invalid')).toBe('false');
+
+    const says = (typed: string): string | undefined => {
+      most.value = typed;
+      most.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      return query('platform-demo-most-error')?.textContent?.trim();
+    };
+    expect(says('')).toBe('Indiquez un nombre.');
+    expect(most.getAttribute('aria-invalid')).toBe('true');
+    expect(says('4.5')).toBe('Attendu : un nombre entier.');
+    expect(says('200')).toBe('Attendu : un nombre entier de 3 à 100.');
+    expect(query<HTMLButtonElement>('platform-demo-save')!.disabled).toBe(true);
+    expect(says('20')).toBeUndefined();
+    expect(query('platform-demo')?.textContent).toContain('De 3 à 100 démos');
+
+    const delay = query<HTMLInputElement>('platform-delay-company.reopen_days')!;
+    delay.value = '';
+    delay.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(query('platform-delay-company.reopen_days-error')?.textContent?.trim()).toBe(
+      'Indiquez un nombre.',
+    );
+  });
+
+  it('says each value the platform refused under its own field, until it is typed again', async () => {
+    const { fixture, query } = await render();
+    refused.set({
+      at: 'settings',
+      refusals: [{ field: 'support.whatsapp', reason: 'invalid_whatsapp', params: {} }],
+    });
+    fixture.detectChanges();
+
+    const whatsapp = query<HTMLInputElement>('platform-support-whatsapp')!;
+    expect(query('platform-support-whatsapp-error')?.textContent).toContain('+216 20 123 456');
+    expect(whatsapp.getAttribute('aria-invalid')).toBe('true');
+    expect(query('platform-support-phone-error')).toBeNull();
+
+    whatsapp.value = '+216 20 123 457';
+    whatsapp.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(query('platform-support-whatsapp-error')).toBeNull();
+  });
+
+  it("says a refused company's name on the name it was opened with, not on a sheet's owner", async () => {
+    const { fixture, query } = await render('/?tab=companies');
+    query<HTMLButtonElement>('platform-company-new')!.click();
+    await fixture.whenStable();
+    refused.set({
+      at: 'new-company',
+      refusals: [{ field: 'name', reason: 'value_required', params: {} }],
+    });
+    fixture.detectChanges();
+
+    expect(query('platform-company-name-error')?.textContent?.trim()).toBe(
+      'Cette case doit être remplie.',
+    );
+    expect(query('platform-company-owner-error')).toBeNull();
   });
 
   it('saves how many rows an imported file may hold, within its bounds, and leaves it out of the delays', async () => {
@@ -739,34 +950,111 @@ describe('PlatformPage', () => {
     expect(line).toContain('Globex (Comptable)');
   });
 
-  it('ends the sessions of an active account or deactivates it', async () => {
+  /** Opens a row's « ⋮ » and takes one of its entries, as a person does; the menu lives in the overlay. */
+  async function fromRowMenu(
+    fixture: { whenStable(): Promise<unknown>; detectChanges(): void },
+    rowId: string,
+    actionId: string,
+  ): Promise<void> {
+    (document.querySelector(`[data-testid="row-more-${rowId}"]`) as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const entries = document.querySelectorAll(`[data-testid="row-menu-${actionId}-${rowId}"]`);
+    (entries[entries.length - 1] as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+  }
+
+  /** Answers the open question; the last dialog, since one just closed can still be in the page for a frame. */
+  async function answer(
+    fixture: { whenStable(): Promise<unknown>; detectChanges(): void },
+    choice: 'run' | 'keep',
+  ): Promise<void> {
+    const buttons = document.querySelectorAll(`[data-testid="confirm-${choice}"]`);
+    (buttons[buttons.length - 1] as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+  }
+
+  it('asks before it ends the sessions of an active account, naming the person, as final', async () => {
     const { fixture, query } = await render('/?tab=accounts');
 
     const line = query('account-nadia@acme.test')!;
     expect(line.textContent).toContain('Nadia');
     expect(line.textContent).toContain('Actif');
-    expect(query('reactivate-nadia@acme.test')).toBeNull();
+    // Nothing that ends access is drawn under the pointer: it waits behind « ⋮ ».
+    expect(line.querySelector('[data-testid^="row-action-end-sessions-"]')).toBeNull();
+    expect(line.querySelector('[data-testid^="row-action-deactivate-"]')).toBeNull();
+    expect(line.querySelector('[data-testid^="row-action-reactivate-"]')).toBeNull();
 
-    query<HTMLButtonElement>('end-sessions-nadia@acme.test')!.click();
-    await fixture.whenStable();
-    expect(facade.actOnAccount).toHaveBeenCalledWith('u1', 'end-sessions');
+    await fromRowMenu(fixture, 'u1', 'end-sessions');
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'Nadia est déconnecté',
+    );
+    expect(document.querySelector('[data-testid="confirm-kind"]')?.getAttribute('data-kind')).toBe(
+      'definitif',
+    );
+    await answer(fixture, 'keep');
+    expect(facade.actOnAccount).not.toHaveBeenCalled();
 
-    query<HTMLButtonElement>('deactivate-nadia@acme.test')!.click();
-    await fixture.whenStable();
-    expect(facade.actOnAccount).toHaveBeenCalledWith('u1', 'deactivate');
+    await fromRowMenu(fixture, 'u1', 'end-sessions');
+    await answer(fixture, 'run');
+    await vi.waitFor(() => expect(facade.actOnAccount).toHaveBeenCalledWith('u1', 'end-sessions'));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({
+          key: 'platform.accounts.done.ended',
+          params: { name: 'Nadia' },
+          effect: 'definitif',
+        }),
+      ]),
+    );
   });
 
-  it('only reactivates a deactivated account, which has no session left to end', async () => {
+  it('asks before it deactivates an account, saying it can be reactivated, and says it was', async () => {
+    const { fixture } = await render('/?tab=accounts');
+
+    await fromRowMenu(fixture, 'u1', 'deactivate');
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'Nadia ne pourra plus se connecter',
+    );
+    await answer(fixture, 'run');
+    await vi.waitFor(() => expect(facade.actOnAccount).toHaveBeenCalledWith('u1', 'deactivate'));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({
+          key: 'platform.accounts.done.deactivated',
+          effect: 'corrigeable',
+        }),
+      ]),
+    );
+  });
+
+  it('says nothing was done when the platform refuses an account action', async () => {
+    facade.actOnAccount.mockResolvedValue(false);
+    const { fixture } = await render('/?tab=accounts');
+
+    await fromRowMenu(fixture, 'u1', 'deactivate');
+    await answer(fixture, 'run');
+    await vi.waitFor(() => expect(facade.actOnAccount).toHaveBeenCalled());
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
+  });
+
+  it('only reactivates a deactivated account, which has no session left to end, at once', async () => {
     accounts.set([{ ...account, active: false }]);
 
     const { fixture, query } = await render('/?tab=accounts');
 
     expect(query('account-nadia@acme.test')!.textContent).toContain('Désactivé');
-    expect(query('deactivate-nadia@acme.test')).toBeNull();
-    expect(query('end-sessions-nadia@acme.test')).toBeNull();
-    query<HTMLButtonElement>('reactivate-nadia@acme.test')!.click();
+    expect(query('row-more-u1')).toBeNull();
+    query<HTMLButtonElement>('row-action-reactivate-u1')!.click();
     await fixture.whenStable();
     expect(facade.actOnAccount).toHaveBeenCalledWith('u1', 'reactivate');
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({ key: 'platform.accounts.done.reactivated', kind: 'success' }),
+      ]),
+    );
   });
 
   it('opens a company from its name, country and first owner, and says the invitation went out', async () => {
@@ -814,6 +1102,15 @@ describe('PlatformPage', () => {
       expect.objectContaining({ page: 1, statuses: [] }),
     );
     expect(query('platform-tab-count-companies')?.textContent).toContain('130');
+  });
+
+  // A state shown by absence: no subscription is a company licensing does not manage, with full access.
+  it('says a company with no subscription is not managed and has full access, on its line and its sheet', async () => {
+    const { query } = await render('/?tab=companies&company=c1');
+
+    const cell = query('company-Nouvelle Société')!.querySelector('[data-column="subscription"]');
+    expect(cell?.textContent).toContain('Non géré : accès complet');
+    expect(query('standing-Nouvelle Société')?.textContent).toContain('Non géré : accès complet');
   });
 
   it('opens the sheet of the company the address names and invites an owner from it', async () => {
@@ -872,21 +1169,155 @@ describe('PlatformPage', () => {
     query<HTMLButtonElement>('payment-confirm-p1')!.click();
     await fixture.whenStable();
 
-    expect(payments.confirm).toHaveBeenCalledWith('p1', 2, null);
+    // Asked first, naming the company and the periods it carries forward; kept, nothing is confirmed.
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'Le règlement de Nouvelle Société',
+    );
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'périodes : 2',
+    );
+    expect(document.querySelector('[data-testid="confirm-kind"]')?.getAttribute('data-kind')).toBe(
+      'corrigeable',
+    );
+    await answer(fixture, 'keep');
+    expect(payments.confirm).not.toHaveBeenCalled();
+
+    query<HTMLButtonElement>('payment-confirm-p1')!.click();
+    await fixture.whenStable();
+    await answer(fixture, 'run');
+
+    await vi.waitFor(() => expect(payments.confirm).toHaveBeenCalledWith('p1', 2, null));
     // The companies list is read again, since a confirmation moves the company's covered time.
-    expect(facade.load).toHaveBeenCalled();
-    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
-      { kind: 'success', key: 'platform.payments.confirmed', params: undefined },
-    ]);
+    await vi.waitFor(() => expect(facade.load).toHaveBeenCalled());
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({ key: 'platform.payments.confirmed', effect: 'corrigeable' }),
+      ]),
+    );
   });
 
-  it('rejects a payment without asking for periods', async () => {
+  it('asks before it rejects a payment, naming the company, without asking for periods', async () => {
     const { fixture, query } = await render('/?tab=payments');
 
     query<HTMLButtonElement>('payment-reject-p1')!.click();
     await fixture.whenStable();
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'gardait à Nouvelle Société',
+    );
+    await answer(fixture, 'run');
 
-    expect(payments.reject).toHaveBeenCalledWith('p1', null);
+    await vi.waitFor(() => expect(payments.reject).toHaveBeenCalledWith('p1', null));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({ key: 'platform.payments.rejected', effect: 'corrigeable' }),
+      ]),
+    );
+  });
+
+  it('asks before it stops managing a company, naming it and saying its terms are erased for good', async () => {
+    const held: PlatformSubscriptionRow = {
+      companyId: 'c1',
+      periodCount: 1,
+      periodUnit: 'month',
+      trialEndsOn: null,
+      paidThrough: '2026-12-31',
+      price: '600.000',
+      currency: 'TND',
+      graceDays: 3,
+      unpaidMode: null,
+      holdDays: null,
+      stage: 'paid',
+      access: 'full',
+      coveredUntil: '2026-12-31T23:59:59+01:00',
+      graceEndsAt: '2027-01-03T23:59:59+01:00',
+      daysLeft: 70,
+      updatedAt: '2026-10-17T10:00:00+00:00',
+      version: 3,
+    };
+    facade.openSubscription.mockImplementation(async (companyId: string) => {
+      openedSubscription.set(companyId);
+      subscription.set(held);
+    });
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+    query('subscription-Nouvelle Société')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(query('subscription-stop')?.textContent).toContain(
+      'Ne plus gérer et effacer les conditions',
+    );
+    query('subscription-stop')!.click();
+    await fixture.whenStable();
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'Les conditions de Nouvelle Société',
+    );
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'rien ne les garde',
+    );
+    expect(document.querySelector('[data-testid="confirm-kind"]')?.getAttribute('data-kind')).toBe(
+      'definitif',
+    );
+    await answer(fixture, 'keep');
+    expect(facade.stopSubscription).not.toHaveBeenCalled();
+
+    query('subscription-stop')!.click();
+    await fixture.whenStable();
+    await answer(fixture, 'run');
+
+    // Erased on the version the panel read, and said as final, naming the company.
+    await vi.waitFor(() => expect(facade.stopSubscription).toHaveBeenCalledWith('c1', 3));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({
+          key: 'platform.subscription.stopped',
+          params: { name: 'Nouvelle Société' },
+          effect: 'definitif',
+        }),
+      ]),
+    );
+  });
+
+  it('says the terms were changed since, and erases nothing, when another operator set them first', async () => {
+    facade.openSubscription.mockImplementation(async (companyId: string) => {
+      openedSubscription.set(companyId);
+      subscription.set({
+        companyId: 'c1',
+        periodCount: 1,
+        periodUnit: 'month',
+        trialEndsOn: null,
+        paidThrough: null,
+        price: null,
+        currency: null,
+        graceDays: null,
+        unpaidMode: null,
+        holdDays: null,
+        stage: 'trial',
+        access: 'full',
+        coveredUntil: '2026-12-31T23:59:59+01:00',
+        graceEndsAt: '2027-01-03T23:59:59+01:00',
+        daysLeft: 70,
+        updatedAt: '2026-10-17T10:00:00+00:00',
+        version: 2,
+      });
+    });
+    facade.stopSubscription.mockImplementationOnce(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+    query('subscription-Nouvelle Société')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    query('subscription-stop')!.click();
+    await fixture.whenStable();
+    await answer(fixture, 'run');
+
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        { kind: 'failure', key: 'live.saved_since', params: undefined },
+      ]),
+    );
   });
 
   it('says so when no payment waits', async () => {

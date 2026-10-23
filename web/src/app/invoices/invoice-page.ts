@@ -53,8 +53,11 @@ import { PartConflict } from '../shared/form/part-conflict';
 import { RecordChanged } from '../shared/form/record-changed';
 import { InvoicesFacade } from './invoices-facade';
 import {
+  INVOICE_DELIVERY_TONES,
   INVOICE_STATUS_TONES,
   INVOICE_STATUS_STAGES,
+  type InvoiceDeliveryNote,
+  type InvoiceLineDelivery,
   type CustomerOption,
   type InvoiceInput,
   type InvoiceRow,
@@ -219,6 +222,15 @@ export class InvoicePage {
   });
   protected readonly tones = INVOICE_STATUS_TONES;
   protected readonly stages = INVOICE_STATUS_STAGES;
+  protected readonly deliveryTones = INVOICE_DELIVERY_TONES;
+  /** The notes handing over the issued invoice's goods, the API telling them only to whoever may read notes. */
+  protected readonly deliveredBy = computed<InvoiceDeliveryNote[]>(
+    () => this.current()?.deliveredBy ?? [],
+  );
+  /** Each line of goods with what is delivered and left, shown once a note hands over any of it. */
+  protected readonly deliveries = computed<InvoiceLineDelivery[]>(() =>
+    this.deliveredBy().length > 0 ? (this.current()?.deliveries ?? []) : [],
+  );
   /** A credit note reverses revenue, so changing its draft takes the right to draft one, as the API asks. */
   private readonly mayTouch = computed(
     () => this.mayWrite() && (!this.isCreditNote() || this.mayCredit()),

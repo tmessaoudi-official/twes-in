@@ -74,6 +74,7 @@ export class FinishSignupPage implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    this.signup.forget();
     await Promise.all([this.signup.loadAvailability(), this.signup.loadLink(this.token())]);
   }
 

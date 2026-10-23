@@ -15,6 +15,8 @@ use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\QueryParameter;
+use App\Shared\Infrastructure\ApiPlatform\Payload\DeleteVersion;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Tenancy\Application\Role\RoleView;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -63,6 +65,9 @@ use Symfony\Component\Validator\Constraints as Assert;
             processor: DeleteRoleProcessor::class,
             security: 'is_granted("ROLE_USER")',
             read: false,
+            parameters: [
+                'version' => new QueryParameter(schema: DeleteVersion::SCHEMA, required: true, description: 'The version the role was read at; one revised since answers 409.', constraints: []),
+            ],
         ),
     ],
 )]

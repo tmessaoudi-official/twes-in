@@ -340,6 +340,26 @@ describe('PlatformFacade', () => {
     expect(facade.support()).toEqual({ ...SETTINGS.support, ...after });
   });
 
+  it('keeps the fields a save was refused on for the cards, and forgets one typed again', async () => {
+    await facade.load();
+    const whatsapp = { field: 'support.whatsapp', reason: 'invalid_whatsapp', params: {} };
+    const email = { field: 'support.email', reason: 'invalid_email', params: {} };
+    api.saveSettings.mockRejectedValue(new PlatformRefused('invalid', [whatsapp, email]));
+
+    expect(await facade.saveSupport({ whatsapp: '20 123', email: 'help' })).toBe(false);
+
+    expect(facade.error()).toBe('invalid');
+    expect(facade.refused()).toEqual({ at: 'settings', refusals: [whatsapp, email] });
+    facade.forgetRefusal('support.whatsapp');
+    expect(facade.refused()).toEqual({ at: 'settings', refusals: [email] });
+
+    // A company opened afterwards starts from nothing refused, and is refused where it was written.
+    const name = { field: 'name', reason: 'value_required', params: {} };
+    api.createCompany.mockRejectedValue(new PlatformRefused('invalid', [name]));
+    expect(await facade.openCompany('', 'TN', 'nadia@example.test')).toBe(false);
+    expect(facade.refused()).toEqual({ at: 'new-company', refusals: [name] });
+  });
+
   it('saves the delays changed, and shows what the platform then holds', async () => {
     await facade.load();
     api.saveSettings.mockResolvedValue(undefined);
@@ -464,7 +484,8 @@ describe('PlatformFacade', () => {
   it('stops managing a company, and names a refusal instead of throwing', async () => {
     api.stopSubscription.mockResolvedValue(undefined);
     api.companies.mockResolvedValue({ rows: [], total: 0 });
-    expect(await facade.stopSubscription('c1')).toBe(true);
+    expect(await facade.stopSubscription('c1', 2)).toBe(true);
+    expect(api.stopSubscription).toHaveBeenCalledWith('c1', 2);
     expect(facade.subscription()).toBeNull();
 
     api.setSubscription.mockRejectedValue(new PlatformRefused('refused'));
@@ -487,6 +508,35 @@ describe('PlatformFacade', () => {
     ).toBe(false);
     expect(facade.error()).toBe('refused');
     expect(api.subscription).not.toHaveBeenCalled();
+  });
+
+  it('reads the terms again when another operator changed them before they were erased', async () => {
+    const theirs = {
+      companyId: 'c1',
+      periodCount: 1,
+      periodUnit: 'month' as const,
+      trialEndsOn: null,
+      paidThrough: '2026-12-31',
+      price: '800.000',
+      currency: 'TND',
+      graceDays: null,
+      unpaidMode: null,
+      holdDays: null,
+      stage: 'paid' as const,
+      access: 'full' as const,
+      coveredUntil: '2026-12-31T23:59:59+01:00',
+      graceEndsAt: '2027-01-07T23:59:59+01:00',
+      daysLeft: 105,
+      updatedAt: '2026-09-17T10:00:00+00:00',
+      version: 3,
+    };
+    api.stopSubscription.mockRejectedValue(new PlatformRefused('record_changed'));
+    api.subscription.mockResolvedValue(theirs);
+
+    expect(await facade.stopSubscription('c1', 2)).toBe(false);
+
+    expect(facade.error()).toBe('record_changed');
+    expect(facade.subscription()).toEqual(theirs);
   });
 
   // docs/SPEC.md § 7, the step-up list: every platform write waits for the operator to prove who is at the screen.

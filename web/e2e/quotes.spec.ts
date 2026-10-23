@@ -383,3 +383,45 @@ test('an accepted quote takes a deposit invoice, which its final invoice gives b
     await retire(page, customerNumber);
   }
 });
+
+test('an accepted quote is delivered by a note, which names it, and is no longer invoiced as a whole', async ({
+  page,
+}) => {
+  // « Livrer » on an accepted quote: the draft note it opens names the quote, and once validated the quote reads
+  // « Livré », lists the note and offers its whole invoice no more, which would bill the goods twice.
+  test.setTimeout(90_000);
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-DL-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    const quoteUrl = await acceptedQuote(page, customerNumber, `Livraison ${run}`);
+    await page.goto(quoteUrl);
+    await expect(page.getByTestId('quote-status')).toContainText(/Accepté|Accepted/);
+    const quoteNumber = (await page.getByTestId('quote-title').textContent())?.trim() ?? '';
+    expect(quoteNumber).not.toBe('');
+    await expect(page.getByTestId('document-action-invoice')).toBeVisible();
+
+    await page.getByTestId('document-action-deliver').click();
+    await expect(page).toHaveURL(/\/delivery-notes\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('delivery-note-quote-link')).toHaveText(quoteNumber);
+    await expect(page.getByTestId('line-0-description')).toHaveValue(`Livraison ${run}`);
+    await page.getByTestId('document-action-validate').click();
+    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('delivery-note-quote-link')).toHaveText(quoteNumber);
+
+    await page.getByTestId('delivery-note-quote-link').click();
+    await expect(page).toHaveURL(new RegExp(`${quoteUrl}$`));
+    await expect(page.getByTestId('quote-delivery')).toContainText(/Livré|Delivered/);
+    await expect(page.getByTestId('quote-delivery-note-0')).toContainText(/Validé|Validated/);
+    await expect(page.getByTestId('quote-delivery-line-0')).toContainText(`Livraison ${run}`);
+    await expect(page.getByTestId('document-action-invoice')).toHaveCount(0);
+    await expect(page.getByTestId('document-action-deposit')).toHaveCount(0);
+    // Nothing is left to deliver: the note took the whole line.
+    await expect(page.getByTestId('document-action-deliver')).toHaveCount(0);
+    expect(await wcagViolations(page)).toEqual([]);
+  } finally {
+    await retire(page, customerNumber);
+  }
+});

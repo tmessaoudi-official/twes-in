@@ -18,6 +18,8 @@ use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
+use App\Module\DeliveryNotes\Application\Invoices\InvoiceLines;
+use App\Module\DeliveryNotes\Application\Quotes\QuoteLines;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
@@ -63,6 +65,8 @@ final readonly class ManageDeliveryNotes
         private DeliveryNoteLinePrices $linePrices,
         private ExcludedTaxFamilies $excluded,
         private RecordVersions $versions,
+        private QuoteLines $quoteLines,
+        private InvoiceLines $invoiceLines,
     ) {
     }
 
@@ -98,15 +102,19 @@ final readonly class ManageDeliveryNotes
         return $this->notes->ofIdInCompany($id, $company->getId()) ?? throw new DeliveryNoteNotFound();
     }
 
-    /** @throws InvalidDeliveryNote */
-    public function create(Company $company, DeliveryNoteInput $input, ?Uuid $actorUserId): DeliveryNote
+    /**
+     * @param array<string, string> $origin what the note was drawn from, as its audit entry says it
+     *
+     * @throws InvalidDeliveryNote
+     */
+    public function create(Company $company, DeliveryNoteInput $input, ?Uuid $actorUserId, array $origin = []): DeliveryNote
     {
-        return $this->transactions->run(function () use ($company, $input, $actorUserId): DeliveryNote {
-            [$establishment, $customer, $lines] = $this->checked($company, $input, null);
+        return $this->transactions->run(function () use ($company, $input, $actorUserId, $origin): DeliveryNote {
+            [$establishment, $customer, $lines] = $this->checked($company, $input, null, true);
             $note = DeliveryNote::create($company, $establishment, $customer, $input->header, $lines, $this->clock->now());
             $this->totals->checked($note);
             $this->notes->save($note);
-            $this->record($company, $note->getId(), self::CREATED, [], $actorUserId);
+            $this->record($company, $note->getId(), self::CREATED, $origin, $actorUserId);
 
             return $note;
         });
@@ -128,7 +136,7 @@ final readonly class ManageDeliveryNotes
             if (null !== $version) {
                 $this->versions->expect($note, $version);
             }
-            [$establishment, $customer, $lines] = $this->checked($company, $input, $note);
+            [$establishment, $customer, $lines] = $this->checked($company, $input, $note, true);
             $changed = $note->revise($establishment, $customer, $input->header, $lines, $this->clock->now());
             if ([] !== $changed) {
                 $this->totals->checked($note);
@@ -152,7 +160,7 @@ final readonly class ManageDeliveryNotes
     {
         $current = null === $id ? null : $this->get($company, $id);
         $current?->assertDraft('changes');
-        [$establishment, $customer, $lines] = $this->checked($company, $input, $current);
+        [$establishment, $customer, $lines] = $this->checked($company, $input, $current, false);
 
         // What a revision would make of the draft is a new note of the same parts, saved nowhere: a note's figures
         // depend on its lines alone.
@@ -160,11 +168,13 @@ final readonly class ManageDeliveryNotes
     }
 
     /**
-     * What the input names, found in the company and checked; what the note already names is kept even retired.
+     * What the input names, found in the company and checked; what the note already names is kept even retired, and so
+     * is what a quote line it delivers names. With `$locked`, the quotes its lines deliver are held until the
+     * transaction ends, so what is left of them cannot be taken twice.
      *
      * @return array{Establishment, Customer, list<DeliveryNoteLineDetails>}
      */
-    private function checked(Company $company, DeliveryNoteInput $input, ?DeliveryNote $current): array
+    private function checked(Company $company, DeliveryNoteInput $input, ?DeliveryNote $current, bool $locked): array
     {
         $customer = $this->customers->ofIdInCompany($input->customerId, $company->getId())
             ?? throw new InvalidDeliveryNote('customerId', 'No customer of this company has this id.');
@@ -180,9 +190,16 @@ final readonly class ManageDeliveryNotes
                 ?? throw new InvalidDeliveryNote('establishmentId', 'No establishment of this company has this id.');
         }
 
-        $kept = self::named($current);
+        [$inputs, $fromInvoices] = $this->invoiceLines->resolved($company, $input->lines, $customer, $establishment, $current, $locked);
+        [$inputs, $fromQuotes] = $this->quoteLines->resolved($company, $inputs, $customer, $establishment, $current, $locked);
+        $named = self::named($current);
+        $kept = [
+            'products' => [...$named['products'], ...$fromQuotes['products'], ...$fromInvoices['products']],
+            'units' => [...$named['units'], ...$fromQuotes['units'], ...$fromInvoices['units']],
+            'taxes' => [...$named['taxes'], ...$fromQuotes['taxes'], ...$fromInvoices['taxes']],
+        ];
         $lines = [];
-        foreach ($input->lines as $index => $line) {
+        foreach ($inputs as $index => $line) {
             try {
                 $lines[] = $this->line($company, $customer, $line, $kept);
             } catch (InvalidDeliveryNote $refused) {
@@ -217,7 +234,7 @@ final readonly class ManageDeliveryNotes
             ?? throw new InvalidDeliveryNote('unitPriceNet', 'A line without a product states its price.');
         $description = null === $line->description || '' === TypedText::trimmed($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
-        return new DeliveryNoteLineDetails($product, $description, $line->quantity, $unit, $price, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->lotCode);
+        return new DeliveryNoteLineDetails($product, $description, $line->quantity, $unit, $price, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->lotCode, $line->sourceQuoteLineId, $line->sourceInvoiceLineId);
     }
 
     /**

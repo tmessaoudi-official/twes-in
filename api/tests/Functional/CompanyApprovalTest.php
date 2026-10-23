@@ -102,6 +102,43 @@ final class CompanyApprovalTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testSuspendingAnOpenCompanyClosesItAndIsRecordedAsASuspension(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('nadia@example.test', 'password-1234', $company);
+        $this->signedInAsOperator();
+
+        $this->postJson($this->pathOf($company, 'reject'), []);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('suspended', $this->json()['status']);
+        // A company that was open is suspended, not refused: the journal says which.
+        self::assertSame(['company.suspended'], $this->auditActionsFor($company));
+        self::assertEmailCount(0);
+
+        $this->login('nadia@example.test', 'password-1234');
+        $this->getJson('/api/companies/'.$company->getId()->toRfc4122().'/members');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testASuspendedCompanyIsOpenedAgainAndItsOwnersAreTold(): void
+    {
+        $company = $this->pendingCompany('Nouvelle Société', 'nadia@example.test');
+        $this->signedInAsOperator();
+        $this->postJson($this->pathOf($company, 'reject'), []);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->pathOf($company, 'approve'), []);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('active', $this->json()['status']);
+        self::assertStringContainsString('Nouvelle Société', $this->lastMailTo('nadia@example.test'));
+        // Two writes inside one second tie on the journal's time: the set, never the order.
+        $actions = $this->auditActionsFor($company);
+        sort($actions);
+        self::assertSame(['company.approved', 'company.rejected'], $actions);
+    }
+
     public function testAnUnknownCompanyIsNotFound(): void
     {
         $this->signedInAsOperator();

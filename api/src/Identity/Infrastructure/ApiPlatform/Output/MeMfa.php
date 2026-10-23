@@ -23,6 +23,8 @@ final readonly class MeMfa
         #[ApiProperty(required: true)] public bool $required,
         #[ApiProperty(required: true)] public bool $totp = false,
         #[ApiProperty(required: true)] public int $passkeys = 0,
+        /** The unspent recovery codes: the screen asks for new ones before the last goes. */
+        #[ApiProperty(required: true)] public int $recoveryCodes = 0,
     ) {
     }
 }

@@ -51,6 +51,11 @@ export interface SettingRow {
   maxLength: number | null;
   /** A regular expression a text value must match, in the API's delimited form (`/^…$/`). */
   pattern: string | null;
+  /**
+   * The reason a value outside the pattern is refused with (`import.rejections.<reason>`): the field says the API's
+   * own sentence before it saves. Absent where the row was built without it.
+   */
+  patternReason?: string | null;
 }
 
 /** One key of a save, with the version its row held at the level when read, 0 for none. */

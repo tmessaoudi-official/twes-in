@@ -57,15 +57,19 @@ import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { DocumentActions } from '../shared/ui/document-actions';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { QuoteAnswerDialog, type QuoteAnswered } from './quote-answer-dialog';
+import { DeliverPartDialog } from '../shared/documents/deliver-part-dialog';
 import { QuoteDepositDialog, type QuoteDepositDialogData } from './quote-deposit-dialog';
 import { quoteForm, quoteInput, quoteValues, shownStatus } from './quote-forms';
 import { QuotesFacade } from './quotes-facade';
 import {
+  QUOTE_DELIVERY_TONES,
   QUOTE_STATUS_STAGES,
   QUOTE_STATUS_TONES,
   type DepositShare,
   type QuoteAttachment,
   type QuoteDeposit,
+  type QuoteDeliveryNote,
+  type QuoteLineDelivery,
   type QuoteInput,
 } from './quotes-types';
 import { QuantityTotalsView } from '../shared/documents/quantity-totals';
@@ -149,6 +153,13 @@ export class QuotePage {
   protected readonly mayReadInvoices = computed(
     () => this.auth.hasPermission('invoice.read') && this.auth.hasModule('invoices'),
   );
+  /** « Livrer » drafts a delivery note, which takes writing notes and the delivery notes module on, as the API asks. */
+  protected readonly mayDeliver = computed(
+    () => this.auth.hasPermission('delivery_note.write') && this.auth.hasModule('delivery_notes'),
+  );
+  protected readonly mayReadNotes = computed(
+    () => this.auth.hasPermission('delivery_note.read') && this.auth.hasModule('delivery_notes'),
+  );
 
   /** Null while a new quote is filled in; undefined until the quote asked for has been read. */
   protected readonly current = computed(() => {
@@ -162,6 +173,7 @@ export class QuotePage {
     return current ? shownStatus(current) : null;
   });
   protected readonly tones = QUOTE_STATUS_TONES;
+  protected readonly deliveryTones = QUOTE_DELIVERY_TONES;
   protected readonly stages = QUOTE_STATUS_STAGES;
   protected readonly editable = computed(() => {
     const current = this.current();
@@ -358,6 +370,9 @@ export class QuotePage {
     const busy = this.busy();
     const status = this.current()?.status;
     const invoiceId = this.current()?.invoiceId ?? null;
+    // A quote its notes deliver is invoiced through them: as a whole it would bill its goods twice.
+    const delivering = (this.current()?.deliveryNotes.length ?? 0) > 0;
+    const deliverable = this.deliverable();
     return [
       {
         id: 'save',
@@ -414,7 +429,12 @@ export class QuotePage {
         primary: true,
         disabled: busy,
         run: () => void this.invoice(),
-        shown: status === 'accepted' && invoiceId === null && this.mayWrite() && this.mayInvoice(),
+        shown:
+          status === 'accepted' &&
+          invoiceId === null &&
+          !delivering &&
+          this.mayWrite() &&
+          this.mayInvoice(),
       },
       {
         id: 'deposit',
@@ -423,7 +443,31 @@ export class QuotePage {
         // The dialog checks an amount against the currency's decimals, known once the options are read.
         disabled: busy || this.scale() === null,
         run: () => void this.deposit(),
-        shown: status === 'accepted' && invoiceId === null && this.mayWrite() && this.mayInvoice(),
+        shown:
+          status === 'accepted' &&
+          invoiceId === null &&
+          !delivering &&
+          this.mayWrite() &&
+          this.mayInvoice(),
+      },
+      {
+        id: 'deliver',
+        // Once a note delivers it, what is left is delivered next: invoicing it whole is no longer offered.
+        next: delivering,
+        primary: delivering,
+        label: 'deliveries.actions.deliver',
+        icon: 'local_shipping',
+        disabled: busy,
+        run: () => void this.deliver(false),
+        shown: deliverable,
+      },
+      {
+        id: 'deliver-part',
+        label: 'deliveries.actions.deliver_part',
+        icon: 'tune',
+        disabled: busy,
+        run: () => void this.deliver(true),
+        shown: deliverable,
       },
       {
         id: 'open-invoice',
@@ -731,6 +775,59 @@ export class QuotePage {
       this.feedback.success('quotes.deposit_drafted');
       await this.router.navigate(['/invoices', latest.invoiceId]);
     }
+  }
+
+  /**
+   * Whether « Livrer » is offered: an accepted quote not invoiced whole, with no discount on its total and no deposit
+   * (which only the invoice of the whole shares out or gives back), something left to deliver, and the right to.
+   */
+  protected readonly deliverable = computed(() => {
+    const quote = this.current();
+    return (
+      !!quote &&
+      quote.status === 'accepted' &&
+      quote.invoiceId === null &&
+      !hasWholeDiscount(quote.discountAmount) &&
+      quote.deposits.every((deposit) => deposit.status === 'cancelled') &&
+      quote.deliveries.some((line) => /[1-9]/.test(line.left) && !line.left.startsWith('-')) &&
+      this.mayWrite() &&
+      this.mayDeliver()
+    );
+  });
+
+  /** The notes delivering the quote and each line's figures, shown once a note delivers any of it. */
+  protected readonly deliveryNotes = computed<QuoteDeliveryNote[]>(
+    () => this.current()?.deliveryNotes ?? [],
+  );
+  protected readonly deliveries = computed<QuoteLineDelivery[]>(() =>
+    this.deliveryNotes().length > 0 ? (this.current()?.deliveries ?? []) : [],
+  );
+
+  /**
+   * « Livrer » drafts a note of every line for what is left of it; « Livrer une partie » asks how much of each first.
+   * The note opens next: it is checked and validated there, which is when the goods leave the stock.
+   */
+  protected async deliver(part: boolean): Promise<void> {
+    const companyId = this.company()?.id;
+    const quote = this.current();
+    if (!companyId || !quote || this.busy()) return;
+    let quantities: Record<string, string> | null = null;
+    if (part) {
+      const chosen = await firstValueFrom(
+        this.dialog
+          .open<DeliverPartDialog, QuoteLineDelivery[], Record<string, string> | null>(
+            DeliverPartDialog,
+            { data: quote.deliveries, autoFocus: 'first-tabbable' },
+          )
+          .afterClosed(),
+      );
+      if (!chosen) return;
+      quantities = chosen;
+    }
+    const noteId = await this.facade.deliver(companyId, quote.id, quantities);
+    if (noteId === null) return;
+    this.feedback.success('deliveries.drafted');
+    await this.router.navigate(['/delivery-notes', noteId]);
   }
 
   /** Every deposit but a cancelled draft, which never charged anything. */

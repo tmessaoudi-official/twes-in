@@ -280,6 +280,27 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         return $invoice instanceof Invoice ? $invoice : null;
     }
 
+    public function ofLineIdsInCompany(array $lineIds, Uuid $companyId, bool $locked): array
+    {
+        if ([] === $lineIds) {
+            return [];
+        }
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.id IN (SELECT IDENTITY(l.invoice) FROM '.InvoiceLine::class.' l WHERE l.id IN (:ids))')
+            ->andWhere('i.company = :company')
+            ->orderBy('i.id')
+            ->setParameter('ids', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $lineIds), ArrayParameterType::STRING)
+            ->setParameter('company', $companyId, 'uuid')
+            ->getQuery();
+        if ($locked) {
+            $query->setLockMode(LockMode::PESSIMISTIC_WRITE)->setHint(Query::HINT_REFRESH, true);
+        }
+
+        return Rows::entities($query->getResult(), Invoice::class);
+    }
+
     public function givingBack(Uuid $companyId, Uuid $depositId): array
     {
         $invoices = $this->entityManager->createQueryBuilder()

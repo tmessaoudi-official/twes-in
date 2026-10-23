@@ -60,7 +60,7 @@ final class SubscriptionsTest extends ApiTestCase
         self::assertSame(6, $body['periodCount']);
         self::assertSame('600.000', $body['price']);
 
-        $this->sendJson('DELETE', $this->subscriptionOf($company));
+        $this->sendJson('DELETE', $this->subscriptionOf($company).'?version=2');
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         $this->getJson($this->subscriptionOf($company));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
@@ -70,6 +70,63 @@ final class SubscriptionsTest extends ApiTestCase
             [$company->getId()->toRfc4122()],
         );
         self::assertSame(['subscription.set', 'subscription.set', 'subscription.stopped'], $actions);
+    }
+
+    /** The journal names the terms that changed, never what they hold: a price or a date stays out of it. */
+    public function testTheAuditNamesTheTermsChangedAndNeverTheirValues(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->signInOperator();
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms(['trialEndsOn' => $this->daysFromToday(14)]));
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([
+            'paidThrough' => $this->daysFromToday(30),
+            'price' => '600.000',
+            'currency' => 'TND',
+            'graceDays' => 3,
+            'version' => 1,
+        ]));
+        self::assertResponseIsSuccessful();
+        $this->sendJson('DELETE', $this->subscriptionOf($company).'?version=2');
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        $changes = array_map(
+            static fn (mixed $json): mixed => json_decode(\is_string($json) ? $json : 'null', true),
+            $this->em()->getConnection()->fetchFirstColumn(
+                "SELECT changes FROM audit_log WHERE entity_type = 'subscription' AND company_id = ? ORDER BY at, id",
+                [$company->getId()->toRfc4122()],
+            ),
+        );
+        self::assertSame([
+            ['fields' => ['period', 'trialEndsAt']],
+            ['fields' => ['trialEndsAt', 'paidUntil', 'price', 'currency', 'graceDays']],
+            ['fields' => ['period', 'paidUntil', 'price', 'currency', 'graceDays']],
+        ], $changes);
+    }
+
+    /** Stopping erases the terms, so it names the version it was read at, as every delete of an edited record does. */
+    public function testStoppingNamesTheVersionItWasReadAt(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->subscribe($company, ['paidThrough' => $this->daysFromToday(30)]);
+        $this->subscribe($company, ['paidThrough' => $this->daysFromToday(60)]);
+
+        $this->sendJson('DELETE', $this->subscriptionOf($company));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a stop naming no version');
+        self::assertContains(['propertyPath' => 'version', 'reason' => 'value_required', 'params' => []], $this->refusals());
+
+        $this->sendJson('DELETE', $this->subscriptionOf($company).'?version=one');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a version that is no number');
+
+        $this->sendJson('DELETE', $this->subscriptionOf($company).'?version=1');
+        $this->assertChangedSince('terms read before the last change');
+        $this->getJson($this->subscriptionOf($company));
+        self::assertResponseIsSuccessful('and the terms are still held');
+
+        $this->sendJson('DELETE', $this->subscriptionOf($company).'?version=2');
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->sendJson('DELETE', $this->subscriptionOf($company).'?version=2');
+        $this->assertChangedSince('terms another operator stopped since');
     }
 
     public function testTheTermsNameTheVersionTheyWereReadAtAndNoneReadAsNoneIsZero(): void
@@ -103,7 +160,7 @@ final class SubscriptionsTest extends ApiTestCase
         $this->getJson($this->subscriptionOf($company));
         self::assertSame(5, $this->json()['graceDays'], 'and nothing of them is written');
 
-        $this->sendJson('DELETE', $this->subscriptionOf($company));
+        $this->sendJson('DELETE', $this->subscriptionOf($company).'?version=2');
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$paid, 'version' => 2]));
         $this->assertChangedSince('terms read on a subscription stopped since');

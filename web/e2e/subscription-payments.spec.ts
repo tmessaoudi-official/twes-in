@@ -147,6 +147,9 @@ test('a locked company declares what it paid and the operator confirms it back o
     (response) => response.url().endsWith('/confirm') && response.request().method() === 'POST',
   );
   await page.getByTestId(`payment-confirm-${declarationId}`).click();
+  // Asked first, naming the company whose covered time it carries forward.
+  await expect(page.getByTestId('confirm-message')).toContainText(`Payante ${stamp}`);
+  await page.getByTestId('confirm-run').click();
   await proveIfHeldBack(page, OPERATOR_PASSWORD, confirmed);
   await expect(page.getByTestId(`payment-${declarationId}`)).toHaveCount(0);
 

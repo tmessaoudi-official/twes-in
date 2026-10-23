@@ -41,7 +41,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
+import { MatPaginatorIntl, MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
 import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { ActivatedRoute, type Params, Router, RouterLink } from '@angular/router';
@@ -49,6 +49,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FormatFacade } from '../i18n/format-facade';
 import { arrowAlongLine, scrolledFromStart, towardsEnd } from '../i18n/inline-direction';
 import { SettingsFacade } from '../settings/settings-facade';
+import { Feedback } from '../feedback/feedback';
 import {
   listPreferencesSetting,
   listViewsSetting,
@@ -92,6 +93,7 @@ import { FormsModule } from '@angular/forms';
 import { Select, type SelectOption } from '../form/select';
 import type { PickOption } from '../form/pick-field';
 import { ListFilterPanel } from './list-filter-panel';
+import { TranslatedPaginatorIntl } from './translated-paginator-intl';
 import {
   activeFilterChips,
   filterValues,
@@ -238,12 +240,17 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
     TranslatePipe,
   ],
   templateUrl: './data-list.html',
+  // The list brings its paginator's texts itself: provided at the root, they put Material's paginator, its select and
+  // the whole forms package on the first page.
+  providers: [{ provide: MatPaginatorIntl, useClass: TranslatedPaginatorIntl }],
   // Escape anywhere inside the list lets its selection go.
   host: { '(keydown)': 'onListKey($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DataList<Row> implements OnInit {
   private readonly settings = inject(SettingsFacade);
+  /** Optional: a list drawn where no toast is provided (a dialog's preview, a spec) still deletes its views. */
+  private readonly feedback = inject(Feedback, { optional: true });
   private readonly router = inject(Router, { optional: true });
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly document = inject(DOCUMENT);
@@ -1300,8 +1307,25 @@ export class DataList<Row> implements OnInit {
     this.settings.set(this.setting(), view.layout);
   }
 
+  /** Never silent: the toast names the view and offers it back where it stood, so nothing asks first. */
   protected deleteView(id: string): void {
-    this.settings.set(this.viewsSetting(), removeView(this.views(), id));
+    const before = this.views();
+    const at = before.findIndex((view) => view.id === id);
+    this.settings.set(this.viewsSetting(), removeView(before, id));
+    if (at < 0) return;
+    const gone = before[at];
+    this.feedback?.success(
+      'list.view_deleted',
+      { name: gone.name },
+      {
+        key: 'list.view_undo',
+        run: () => {
+          const now = this.views();
+          if (now.some((view) => view.id === gone.id)) return;
+          this.settings.set(this.viewsSetting(), [...now.slice(0, at), gone, ...now.slice(at)]);
+        },
+      },
+    );
   }
 
   protected onSort(sort: Sort): void {

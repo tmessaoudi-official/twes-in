@@ -106,6 +106,7 @@ describe('DocumentDesignPage', () => {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: signal([]).asReadonly(),
     load: vi.fn(),
     save: vi.fn(),
     clearError: vi.fn(() => error.set(null)),

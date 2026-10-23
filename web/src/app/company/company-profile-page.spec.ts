@@ -16,7 +16,13 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 import { CompanyProfileFacade } from './company-profile-facade';
 import { CompanyProfilePage } from './company-profile-page';
 import type { CompanyError, CompanyProfile } from './company-types';
-import { failureToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import {
+  failureToasts,
+  provideQuietFeedback,
+  type RecordedFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
 import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
@@ -82,6 +88,7 @@ describe('CompanyProfilePage', () => {
     clearError: vi.fn(),
     uploadLogo: vi.fn(),
     removeLogo: vi.fn(),
+    currentLogo: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Demo' } }),
@@ -129,6 +136,7 @@ describe('CompanyProfilePage', () => {
     facade.clearError.mockReset();
     facade.uploadLogo.mockReset().mockResolvedValue(true);
     facade.removeLogo.mockReset().mockResolvedValue(true);
+    facade.currentLogo.mockReset().mockResolvedValue(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
   });
 
@@ -197,14 +205,37 @@ describe('CompanyProfilePage', () => {
     expect(successToasts()).not.toContain('company.profile.logo.saved');
   });
 
-  it('removes the logo and says so', async () => {
+  it('removes the logo asking nothing, and « Annuler » uploads the picture it showed again', async () => {
+    const shown = new File(['png'], 'logo.png', { type: 'image/png' });
+    facade.currentLogo.mockResolvedValue(shown);
     profileSignal.set({ ...profile, logoVersion: 'v1' });
     await open();
     q('profile-logo-remove')!.click();
     await settle();
 
+    expect(facade.currentLogo).toHaveBeenCalledWith('c1');
     expect(facade.removeLogo).toHaveBeenCalledWith('c1');
-    expect(successToasts()).toContain('company.profile.logo.removed');
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    const removed = said.find((toast) => toast.key === 'company.profile.logo.removed');
+    expect(removed?.action?.key).toBe('company.profile.logo.undo');
+
+    removed!.action!.run();
+    await settle();
+    expect(facade.uploadLogo).toHaveBeenCalledWith('c1', shown);
+    expect(successToasts()).toContain('company.profile.logo.put_back');
+  });
+
+  it('offers no way back when the picture shown could not be read', async () => {
+    facade.currentLogo.mockResolvedValue(null);
+    profileSignal.set({ ...profile, logoVersion: 'v1' });
+    await open();
+    q('profile-logo-remove')!.click();
+    await settle();
+
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    expect(
+      said.find((toast) => toast.key === 'company.profile.logo.removed')?.action,
+    ).toBeUndefined();
   });
 
   it('puts the person on the first field in error when the bar saves a form that cannot be sent', async () => {

@@ -215,6 +215,18 @@ final class SettingsTest extends ApiTestCase
         $this->sendJson('PUT', $this->path().'/presentation.density', ['level' => 'user', 'value' => 'cosy']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'presentation.density', 'reason' => 'unknown_choice', 'params' => []]], $this->refusals());
+    }
+
+    /** A level the setting is not kept at is said on the setting, as a value it refuses is. */
+    public function testALevelRefusedIsSaidOnItsSetting(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+
+        $this->sendJson('PUT', $this->path().'/document.payment_terms_days', ['level' => 'user', 'value' => 10]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'document.payment_terms_days', 'reason' => 'level_refused', 'params' => []]], $this->refusals());
     }
 
     // docs/SPEC.md § 7, 2026-09-24 22:51, row 125: each person's own keys, which no company or role sets for them.

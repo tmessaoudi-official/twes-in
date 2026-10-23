@@ -44,6 +44,12 @@ class StaticLoader implements TranslateLoader {
           view: 'Consulter',
           edit: 'Modifier',
           new: 'Créer un rôle',
+          delete: 'Supprimer le rôle',
+          delete_title: 'Supprimer ce rôle ?',
+          delete_message: 'Le rôle « {{name}} » disparaît, avec la liste de ce qu’il permet.',
+          keep: 'Garder le rôle',
+          deleted: 'Rôle supprimé.',
+          changed_since: 'Le rôle « {{name}} » a été modifié entre-temps : rien n’a été supprimé.',
           everything: 'Le propriétaire a tous les droits',
           errors: {
             in_use: 'Des membres ont encore ce rôle.',
@@ -191,6 +197,61 @@ describe('RolesPage', () => {
     expect(q('role-delete-owner')).toBeNull();
   });
 
+  /** Answers the open question; the last dialog, since one just closed can still be in the page for a frame. */
+  async function answer(choice: 'run' | 'keep'): Promise<void> {
+    const buttons = document.querySelectorAll(`[data-testid="confirm-${choice}"]`);
+    (buttons[buttons.length - 1] as HTMLElement).click();
+    await settle();
+  }
+
+  it('asks before it deletes a role, naming it, as final, and deletes it on the version it read', async () => {
+    await open();
+
+    q('role-delete-barista')!.click();
+    await settle();
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'Le rôle « barista » disparaît',
+    );
+    expect(document.querySelector('[data-testid="confirm-kind"]')?.getAttribute('data-kind')).toBe(
+      'definitif',
+    );
+    await answer('keep');
+    expect(facade.remove).not.toHaveBeenCalled();
+
+    q('role-delete-barista')!.click();
+    await settle();
+    await answer('run');
+    await vi.waitFor(() => expect(facade.remove).toHaveBeenCalledWith('c1', 'r-barista', 1));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({ key: 'company.roles.deleted', effect: 'definitif' }),
+      ]),
+    );
+  });
+
+  it('keeps a role revised since the list was read, says so and reads the list again', async () => {
+    facade.remove.mockImplementation(async () => {
+      error.set('record_changed');
+      return false;
+    });
+    await open();
+    facade.load.mockClear();
+
+    q('role-delete-barista')!.click();
+    await settle();
+    await answer('run');
+
+    await vi.waitFor(() => expect(facade.load).toHaveBeenCalledWith('c1'));
+    expect(facade.clearError).toHaveBeenCalled();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+      expect.objectContaining({
+        kind: 'notice',
+        key: 'company.roles.changed_since',
+        params: { name: 'barista' },
+      }),
+    ]);
+  });
+
   it('draws the matrix grouped, with what the role already holds ticked', async () => {
     await open();
     q('role-open-barista')!.click();
@@ -233,6 +294,25 @@ describe('RolesPage', () => {
     expect(q('role-editor')).toBeNull();
     expect(unsaved.count()).toBe(0);
     expect(facade.revise).not.toHaveBeenCalled();
+  });
+
+  // A refusal said only by a disabled button: an emptied name greyed « Enregistrer » out and said nothing.
+  it('says an emptied name is needed under its field, puts the cursor there and saves nothing', async () => {
+    await open();
+    q('role-open-barista')!.click();
+    await settle();
+
+    const name = q('role-name') as HTMLInputElement;
+    name.value = '   ';
+    name.dispatchEvent(new Event('input'));
+    await settle();
+    expect((q('role-save') as HTMLButtonElement).disabled).toBe(false);
+    q('role-save')!.click();
+    await settle();
+
+    expect(facade.revise).not.toHaveBeenCalled();
+    expect(q('role-name-error')?.textContent).toContain('form.errors.required');
+    expect(document.activeElement).toBe(name);
   });
 
   it('saves the whole set of ticks, so unticking is the same request as ticking', async () => {

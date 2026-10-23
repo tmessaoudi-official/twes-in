@@ -73,6 +73,15 @@
                     <span class="text-sm opacity-80"
                       ><bdi>{{ line.reference }}</bdi></span
                     >
+                    @if (effects()[i]; as effect) {
+                      <app-count-effect-note
+                        class="mt-1"
+                        [effect]="effect"
+                        [decimals]="line.unitDecimals"
+                        [places]="placeNames()"
+                        [testId]="'stock-count-' + i + '-effect'"
+                      />
+                    }
                   </div>
                   @if (line.tracking !== 'none') {
                     <mat-form-field>
@@ -83,10 +92,14 @@
                         matInput
                         autocomplete="off"
                         required
+                        #lineField="ngModel"
                         [attr.data-testid]="'stock-count-' + i + '-lot'"
                         [ngModel]="line.lotCode"
                         (ngModelChange)="setLot(i, $event)"
                       />
+                      <mat-error [attr.data-testid]="'stock-count-' + i + '-lot-error'">{{
+                        'form.errors.required' | translate
+                      }}</mat-error>
                     </mat-form-field>
                   }
                   <mat-form-field class="w-36">
@@ -95,10 +108,19 @@
                       matInput
                       appDecimal
                       required
+                      [pattern]="quantityPattern"
+                      #lineField="ngModel"
+                      #counted="ngModel"
                       [attr.data-testid]="'stock-count-' + i + '-counted'"
                       [ngModel]="line.counted"
                       (ngModelChange)="setCounted(i, $event)"
                     />
+                    <mat-error [attr.data-testid]="'stock-count-' + i + '-counted-error'">{{
+                      (counted.hasError('required')
+                        ? 'form.errors.required'
+                        : 'inventory.count.counted_invalid'
+                      ) | translate
+                    }}</mat-error>
                   </mat-form-field>
                   <button
                     mat-icon-button

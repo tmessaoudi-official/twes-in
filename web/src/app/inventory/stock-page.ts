@@ -48,10 +48,12 @@ import {
   stockSearch,
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
-import { locationScanned } from './count-sheet';
+import { countEffect, locationScanned } from './count-sheet';
+import { CountEffectNote } from './count-effect-note';
 import { ReceiptPlacement } from './receipt-placement';
 import { addPlace, type Part, placement, toCountParts } from './split-receipt';
 import type {
+  CountContext,
   ReceiptCostView,
   StockOperation,
   StockProductOption,
@@ -80,6 +82,7 @@ import { addCount } from '../shared/scan/scan-lines';
     DescriptorForm,
     StatusBadge,
     ReceiptPlacement,
+    CountEffectNote,
   ],
   templateUrl: './stock-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -328,8 +331,18 @@ export class StockPage implements OnInit {
       const subscription = form.valueChanges.pipe(startWith(null)).subscribe(() => {
         const quantity = form.get('quantity')?.value;
         this.received.set(typeof quantity === 'string' ? quantity.trim() : '');
+        const text = (id: string): string => {
+          const value = form.get(id)?.value;
+          return typeof value === 'string' ? value : '';
+        };
+        this.countAt.set({ locationId: text('locationId'), lotCode: text('lotCode') });
       });
       onCleanup(() => subscription.unsubscribe());
+    });
+    // A count says what it changes before it is recorded: the product chosen is read when it is chosen.
+    effect(() => {
+      const productId = this.operation() === 'count' ? (this.product()?.id ?? null) : null;
+      untracked(() => void this.readCountContext(productId));
     });
     // The figures follow what is typed, a moment after the last key; only the latest answer is shown.
     effect((onCleanup) => {
@@ -346,6 +359,56 @@ export class StockPage implements OnInit {
         .subscribe(() => void this.askCost(form));
       onCleanup(() => subscription.unsubscribe());
     });
+  }
+
+  /** Where the open count is taken and of which lot, as the form holds them. */
+  private readonly countAt = signal({ locationId: '', lotCode: '' });
+  /** What the API says of the product being counted; null while none is chosen or it cannot be read. */
+  private readonly countContext = signal<CountContext | null>(null);
+  private countRequest = 0;
+  protected readonly placeNames = computed<ReadonlyMap<string, string>>(() =>
+    locationLabels(this.facade.locations()),
+  );
+  /** What recording the count on one place would change, said under the form. */
+  protected readonly countNote = computed(() => {
+    const context = this.countContext();
+    const product = this.product();
+    if (this.operation() !== 'count' || this.split() || context === null || product === null) {
+      return null;
+    }
+    return countEffect(context, this.facade.locations(), {
+      ...this.countAt(),
+      counted: this.received(),
+      tracking: product.tracking,
+    });
+  });
+  /** The same for each place of a count taken over several, each with its own figures. */
+  protected readonly partNotes = computed(() => {
+    const context = this.countContext();
+    const product = this.product();
+    if (this.operation() !== 'count' || !this.split() || context === null || product === null) {
+      return [];
+    }
+    return this.parts().map((part) => ({
+      locationId: part.locationId,
+      effect: countEffect(context, this.facade.locations(), {
+        locationId: part.locationId,
+        lotCode: this.countAt().lotCode,
+        counted: part.quantity,
+        tracking: product.tracking,
+      }),
+    }));
+  });
+
+  private async readCountContext(productId: string | null): Promise<void> {
+    const companyId = this.company()?.id;
+    const request = ++this.countRequest;
+    if (!companyId || productId === null) {
+      this.countContext.set(null);
+      return;
+    }
+    const [context] = await this.facade.countContexts(companyId, [productId]);
+    if (request === this.countRequest) this.countContext.set(context ?? null);
   }
 
   private async askCost(form: DescriptorFormGroup): Promise<void> {
@@ -543,6 +606,7 @@ export class StockPage implements OnInit {
     await Promise.all([
       this.facade.loadStockContext(companyId),
       this.search === null ? Promise.resolve() : this.facade.loadStock(companyId, this.search),
+      this.readCountContext(this.operation() === 'count' ? (this.product()?.id ?? null) : null),
     ]);
   }
 

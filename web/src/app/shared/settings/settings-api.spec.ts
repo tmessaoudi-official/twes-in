@@ -5,7 +5,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { SILENT } from '../feedback/activity-interceptor';
 import { RECORD_CHANGED } from '../errors/record-changed';
-import { SettingsApi, SettingsRefused } from './settings-api';
+import { TextsParts } from '../i18n/texts-part';
+import { refusalsOf, SettingsApi, SettingsRefused } from './settings-api';
 
 const density = {
   key: 'presentation.density',
@@ -30,10 +31,16 @@ const density = {
 describe('SettingsApi', () => {
   let api: SettingsApi;
   let http: HttpTestingController;
+  let opened: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    opened = vi.fn(() => Promise.resolve());
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TextsParts, useValue: { open: opened } },
+      ],
     });
     api = TestBed.inject(SettingsApi);
     http = TestBed.inject(HttpTestingController);
@@ -66,8 +73,10 @@ describe('SettingsApi', () => {
         max: null,
         maxLength: null,
         pattern: null,
+        patternReason: null,
       },
     ]);
+    expect(opened).not.toHaveBeenCalled();
   });
 
   it('reads what a parties setting holds across the company, the parties untold to who may not read customers', async () => {
@@ -145,6 +154,46 @@ describe('SettingsApi', () => {
     });
     request.flush(null, { status: 204, statusText: 'No Content' });
     await expect(saved).resolves.toBeUndefined();
+  });
+
+  it('places each setting a save refused on its field, with the words it is said in opened first', async () => {
+    const saved = api.changeAll('c1', 'company', [
+      { key: 'late_fees.tiers', value: '5 ; x', version: 0 },
+      { key: 'reminders.stages', value: '7, 15, 30, 45, 60, 90', version: 0 },
+    ]);
+    http.expectOne('/api/companies/c1/settings').flush(
+      {
+        violations: [
+          { propertyPath: 'late_fees.tiers', payload: { reason: 'invalid_late_fee_tiers' } },
+          {
+            propertyPath: 'reminders.stages[5]',
+            payload: { reason: 'at_most', params: { max: 5 } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+
+    const refused = await saved.then(
+      () => null,
+      (error: unknown) => error,
+    );
+    expect(refused).toBeInstanceOf(SettingsRefused);
+    expect(refusalsOf(refused)).toEqual([
+      { field: 'late_fees__tiers', reason: 'invalid_late_fee_tiers', params: {} },
+      { field: 'reminders__stages', reason: 'at_most', params: { max: 5 } },
+    ]);
+    expect(opened).toHaveBeenCalledWith('settings-refusals');
+  });
+
+  it('opens the words a field with a pattern is refused in when it reads its chain', async () => {
+    const rows = api.chain('c1', 'parties');
+    http
+      .expectOne('/api/companies/c1/settings?chain=parties')
+      .flush([{ ...density, pattern: '/^x$/', patternReason: 'invalid_reminder_stages' }]);
+
+    await expect(rows).resolves.toMatchObject([{ patternReason: 'invalid_reminder_stages' }]);
+    expect(opened).toHaveBeenCalledWith('settings-refusals');
   });
 
   it('tells a save made over a version saved since from another conflict', async () => {

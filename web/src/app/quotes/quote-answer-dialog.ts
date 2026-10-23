@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, ElementRef, inject, signal } from '@angular/core';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,6 +10,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
 import { FileDrop } from '../shared/form/file-drop';
+import { revealInvalid } from '../shared/form/reveal-invalid';
 import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 import { REFUSAL_REASON_MAX } from './quote-forms';
 
@@ -33,6 +34,7 @@ export interface QuoteAnswered {
   selector: 'app-quote-answer-dialog',
   imports: [
     FormsModule,
+    ReactiveFormsModule,
     DayInput,
     DayCalendarButton,
     FileDrop,
@@ -59,12 +61,14 @@ export interface QuoteAnswered {
             type="text"
             inputmode="numeric"
             autocomplete="off"
-            [ngModel]="day()"
-            (ngModelChange)="day.set($event)"
+            [formControl]="day"
             data-testid="quote-answered-on"
           />
           <app-day-calendar-button matSuffix [field]="dayField" />
           <mat-hint>{{ 'quotes.answer.answered_on_hint' | translate }}</mat-hint>
+          <mat-error data-testid="quote-answered-on-error">{{
+            'form.errors.date' | translate
+          }}</mat-error>
         </mat-form-field>
         @if (data.kind === 'accept') {
           <app-file-drop
@@ -95,13 +99,7 @@ export interface QuoteAnswered {
       <button mat-button type="button" (click)="ref.close(null)" data-testid="quote-answer-keep">
         {{ 'quotes.actions.keep' | translate }}
       </button>
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="!valid()"
-        (click)="answer()"
-        data-testid="quote-answer-confirm"
-      >
+      <button mat-flat-button type="button" (click)="answer()" data-testid="quote-answer-confirm">
         {{ 'quotes.answer.' + data.kind + '_confirm' | translate }}
       </button>
     </mat-dialog-actions>
@@ -113,18 +111,16 @@ export class QuoteAnswerDialog {
   protected readonly data = inject<QuoteAnswerDialogData>(MAT_DIALOG_DATA);
   protected readonly maxBytes = ATTACHMENT_MAX_BYTES;
   protected readonly reasonMax = REFUSAL_REASON_MAX;
-  protected readonly day = signal('');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  /** Empty is the company's today; anything else must be a day, which the day input says (`date`). */
+  protected readonly day = new FormControl('', { nonNullable: true });
   protected readonly reason = signal('');
   protected readonly signed = signal<File | null>(null);
 
-  protected readonly valid = computed(
-    () => this.day() === '' || /^\d{4}-\d{2}-\d{2}$/.test(this.day()),
-  );
-
   protected answer(): void {
-    if (!this.valid()) return;
+    if (revealInvalid(this.day, this.host)) return;
     this.ref.close({
-      answeredOn: this.day(),
+      answeredOn: this.day.value,
       refusalReason: this.data.kind === 'refuse' ? this.reason().trim() : '',
       signed: this.data.kind === 'accept' ? this.signed() : null,
     });

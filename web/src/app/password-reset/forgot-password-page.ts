@@ -34,6 +34,10 @@ export class ForgotPasswordPage {
   private readonly reset = inject(PasswordResetFacade);
   private readonly language = inject(LanguageFacade);
 
+  constructor() {
+    this.reset.forget();
+  }
+
   protected readonly requested = this.reset.requested;
   protected readonly busy = this.reset.busy;
   protected readonly error = this.reset.error;

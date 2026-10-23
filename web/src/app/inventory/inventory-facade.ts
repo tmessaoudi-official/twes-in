@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { InventoryApi, InventoryRefused } from './inventory-api';
 import type { PickAsked } from '../shared/form/pick-api';
 import type { ExportFormat } from '../shared/list/export-address';
 import type {
   CostBasis,
+  CountContext,
   InventoryError,
   LocationContents,
   StockDrawingRow,
@@ -34,6 +35,7 @@ import type {
   StockPlanSaved,
 } from './inventory-types';
 import type { PlanStep } from './stock-plan-draft';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** How many ids the stock product picker resolves in one question (its `ids` parameter's own bound). */
 const PICK_IDS_MOST = 20;
@@ -42,36 +44,36 @@ const PICK_IDS_MOST = 20;
 @Injectable({ providedIn: 'root' })
 export class InventoryFacade {
   private readonly api = inject(InventoryApi);
-  private readonly optionsSignal = signal<StockOptions | null>(null);
-  private readonly levelsSignal = signal<readonly StockLevelRow[]>([]);
-  private readonly totalSignal = signal(0);
+  private readonly optionsSignal = sessionSignal<StockOptions | null>(null);
+  private readonly levelsSignal = sessionSignal<readonly StockLevelRow[]>([]);
+  private readonly totalSignal = sessionSignal(0);
   private readonly pageRequests = new LatestRequest();
   /** What the list last asked for, so recording a movement reads that same page again. */
   private search: StockSearch | null = null;
-  private readonly locationsSignal = signal<readonly StockLocationRow[]>([]);
-  private readonly movementsSignal = signal<readonly StockMovementRow[]>([]);
-  private readonly movementsTotalSignal = signal(0);
-  private readonly valuationSignal = signal<StockValuation | null>(null);
+  private readonly locationsSignal = sessionSignal<readonly StockLocationRow[]>([]);
+  private readonly movementsSignal = sessionSignal<readonly StockMovementRow[]>([]);
+  private readonly movementsTotalSignal = sessionSignal(0);
+  private readonly valuationSignal = sessionSignal<StockValuation | null>(null);
   private readonly movementsRequests = new LatestRequest();
   /** What the movements list last asked for, so a movement arriving elsewhere reads that same page again. */
   private movementsSearch: StockMovementSearch | null = null;
-  private readonly floorsSignal = signal<readonly StockFloorRow[]>([]);
-  private readonly drawingsSignal = signal<readonly StockDrawingRow[]>([]);
+  private readonly floorsSignal = sessionSignal<readonly StockFloorRow[]>([]);
+  private readonly drawingsSignal = sessionSignal<readonly StockDrawingRow[]>([]);
   private readonly drawingsRequests = new LatestRequest();
-  private readonly holdingsSignal = signal<ReadonlyMap<string, number>>(new Map());
+  private readonly holdingsSignal = sessionSignal<ReadonlyMap<string, number>>(new Map());
   private readonly holdingsRequests = new LatestRequest();
   /** Which floor's rectangles are in hand, so a live change reads that same floor again. */
   private drawingsFloorId: string | null = null;
-  private readonly structuresSignal = signal<readonly StockStructureRow[]>([]);
+  private readonly structuresSignal = sessionSignal<readonly StockStructureRow[]>([]);
   private readonly structuresRequests = new LatestRequest();
   /** Which floor's building is in hand, so a live change reads that same floor again. */
   private structuresFloorId: string | null = null;
-  private readonly contentsSignal = signal<LocationContents | null>(null);
+  private readonly contentsSignal = sessionSignal<LocationContents | null>(null);
   private readonly contentsRequests = new LatestRequest();
-  private readonly whereaboutsSignal = signal<MapSearch | null>(null);
+  private readonly whereaboutsSignal = sessionSignal<MapSearch | null>(null);
   private readonly whereaboutsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);
-  private readonly refusedEntrySignal = signal<string | null>(null);
+  private readonly refusedEntrySignal = sessionSignal<string | null>(null);
 
   readonly options = this.optionsSignal.asReadonly();
   readonly levels = this.levelsSignal.asReadonly();
@@ -164,6 +166,18 @@ export class InventoryFacade {
   ): Promise<StockOnHand[]> {
     try {
       return await this.api.onHand(companyId, establishmentId, productIds);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * What a count of these products would change; none when it cannot be read (a person who may count without reading
+   * stock), since the count is recorded the same without it and the API still decides.
+   */
+  async countContexts(companyId: string, productIds: readonly string[]): Promise<CountContext[]> {
+    try {
+      return await this.api.countContexts(companyId, productIds);
     } catch {
       return [];
     }

@@ -42,7 +42,6 @@ export class AcceptInvitationPage implements OnInit {
   protected readonly offer = this.invitation.offer;
   protected readonly busy = this.invitation.busy;
   protected readonly error = this.invitation.error;
-  protected readonly accepted = this.invitation.accepted;
 
   protected readonly form = new FormGroup({
     displayName: new FormControl('', {
@@ -56,6 +55,7 @@ export class AcceptInvitationPage implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    this.invitation.forget();
     await this.invitation.load(this.token());
   }
 

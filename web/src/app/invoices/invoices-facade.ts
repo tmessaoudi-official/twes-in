@@ -2,7 +2,7 @@
 
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { ExportFormat } from '../shared/list/export-address';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
 import type { PickAsked } from '../shared/form/pick-api';
 import type {
@@ -28,17 +28,18 @@ import type {
   ProductOption,
 } from './invoices-types';
 import type { PreviewBody } from '../shared/documents/document-figures';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
 export class InvoicesFacade {
   private readonly api = inject(InvoicesApi);
-  private readonly invoicesSignal = signal<readonly InvoiceRow[]>([]);
-  private readonly optionsSignal = signal<InvoiceOptions | null>(null);
-  private readonly invoiceSignal = signal<InvoiceRow | null>(null);
-  private readonly summarySignal = signal<InvoiceSummary | null>(null);
-  private readonly totalSignal = signal(0);
-  private readonly statusCountsSignal = signal<InvoiceStatusCounts | null>(null);
+  private readonly invoicesSignal = sessionSignal<readonly InvoiceRow[]>([]);
+  private readonly optionsSignal = sessionSignal<InvoiceOptions | null>(null);
+  private readonly invoiceSignal = sessionSignal<InvoiceRow | null>(null);
+  private readonly summarySignal = sessionSignal<InvoiceSummary | null>(null);
+  private readonly totalSignal = sessionSignal(0);
+  private readonly statusCountsSignal = sessionSignal<InvoiceStatusCounts | null>(null);
   private readonly pages = new LatestRequest();
   private readonly counts = new LatestRequest();
   private readonly state = requestState(codeOf);
@@ -201,6 +202,19 @@ export class InvoicesFacade {
   /** The credit note drafted for an issued invoice, stating why, which becomes the document on screen. */
   async creditNote(companyId: string, id: string, reason: string): Promise<InvoiceRow | null> {
     return this.step(() => this.api.creditNote(companyId, id, reason));
+  }
+
+  /**
+   * « Livrer » or « Livrer une partie »: a draft delivery note of the issued invoice's goods, every line for what is left
+   * of it or only the quantities given by invoice line id; the note's id, or null with the reason in `error`. The page
+   * leaves for the note, which is where it is checked and validated.
+   */
+  async deliver(
+    companyId: string,
+    id: string,
+    quantities: Readonly<Record<string, string>> | null,
+  ): Promise<string | null> {
+    return this.state.writeAnswer(() => this.api.deliver(companyId, id, quantities));
   }
 
   /** A copy of the document as a new draft, which becomes the document on screen. */

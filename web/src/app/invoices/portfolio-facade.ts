@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import { InvoicesRefused } from './invoices-api';
 import type { InvoicesError } from './invoices-types';
 import { PortfolioApi } from './portfolio-api';
 import type { PortfolioRow, PortfolioSearch } from './portfolio-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The page of the company's cheques and traites the portfolio screen shows. */
 @Injectable({ providedIn: 'root' })
 export class PortfolioFacade {
   private readonly api = inject(PortfolioApi);
 
-  private readonly rowsSignal = signal<readonly PortfolioRow[]>([]);
-  private readonly totalSignal = signal(0);
+  private readonly rowsSignal = sessionSignal<readonly PortfolioRow[]>([]);
+  private readonly totalSignal = sessionSignal(0);
   private readonly state = requestState<InvoicesError>((error) =>
     error instanceof InvoicesRefused ? error.code : 'network',
   );

@@ -33,7 +33,7 @@ class StaticLoader implements TranslateLoader {
 describe('ResetPasswordPage', () => {
   const busy = signal(false);
   const error = signal<PasswordResetError | null>(null);
-  const facade = { busy, error, reset: vi.fn() };
+  const facade = { busy, error, reset: vi.fn(), forget: vi.fn() };
   const LONG = 'a-long-enough-password';
 
   beforeEach(async () => {

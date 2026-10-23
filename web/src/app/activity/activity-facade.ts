@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ActivityApi, ActivityRefused } from './activity-api';
 import type { ActivityError, ActivityRow, ActivitySearch } from './activity-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The page of the company's journal being read. */
 @Injectable({ providedIn: 'root' })
 export class ActivityFacade {
   private readonly api = inject(ActivityApi);
-  private readonly rowsSignal = signal<readonly ActivityRow[]>([]);
-  private readonly totalSignal = signal(0);
+  private readonly rowsSignal = sessionSignal<readonly ActivityRow[]>([]);
+  private readonly totalSignal = sessionSignal(0);
   private readonly state = requestState<ActivityError>((error) =>
     error instanceof ActivityRefused ? error.code : 'network',
   );

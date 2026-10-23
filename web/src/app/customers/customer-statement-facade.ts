@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 import { CustomersApi, CustomersRefused } from './customers-api';
 import type { CustomersError, CustomerStatement } from './customers-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The statement of account being read: the customer's account over the period asked for, or why it is not there. */
 @Injectable({ providedIn: 'root' })
 export class CustomerStatementFacade {
   private readonly api = inject(CustomersApi);
-  private readonly statementSignal = signal<CustomerStatement | null>(null);
+  private readonly statementSignal = sessionSignal<CustomerStatement | null>(null);
   private readonly state = requestState<CustomersError>((error) =>
     error instanceof CustomersRefused ? error.code : 'network',
   );

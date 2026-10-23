@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import type { PickAsked } from '../shared/form/pick-api';
 import { PurchasesApi, PurchasesRefused } from './purchases-api';
 import type {
@@ -15,19 +15,20 @@ import type {
   Receiving,
   VendorOption,
 } from './purchases-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The orders to vendors of the company being worked in, and the order open on screen. */
 @Injectable({ providedIn: 'root' })
 export class PurchasesFacade {
   private readonly api = inject(PurchasesApi);
-  private readonly ordersSignal = signal<readonly PurchaseOrderRow[]>([]);
-  private readonly orderSignal = signal<PurchaseOrderRow | null>(null);
-  private readonly totalSignal = signal(0);
-  private readonly statusCountsSignal = signal<PurchaseOrderStatusCounts | null>(null);
+  private readonly ordersSignal = sessionSignal<readonly PurchaseOrderRow[]>([]);
+  private readonly orderSignal = sessionSignal<PurchaseOrderRow | null>(null);
+  private readonly totalSignal = sessionSignal(0);
+  private readonly statusCountsSignal = sessionSignal<PurchaseOrderStatusCounts | null>(null);
   private readonly pageRequests = new LatestRequest();
   private readonly countsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);
-  private readonly refusedSignal = signal<string | null>(null);
+  private readonly refusedSignal = sessionSignal<string | null>(null);
 
   readonly orders = this.ordersSignal.asReadonly();
   /** The order open on screen, as the API last answered with it; null while a new one is filled in. */

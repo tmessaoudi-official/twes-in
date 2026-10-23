@@ -151,11 +151,14 @@ final readonly class ManageRoles
      * @throws RoleNotFound
      * @throws RoleNotEditable
      * @throws RoleInUse
+     * @throws RecordChanged
      */
-    public function delete(Company $company, Uuid $roleId, ?Uuid $actorUserId): void
+    public function delete(Company $company, Uuid $roleId, ?Uuid $actorUserId, int $version): void
     {
-        $this->transactions->run(function () use ($company, $roleId, $actorUserId): void {
+        $this->transactions->run(function () use ($company, $roleId, $actorUserId, $version): void {
             $role = $this->editable($company, $roleId);
+            // What it permits goes with it: a role revised since the screen read it is not erased unseen.
+            $this->versions->expect($role, $version);
 
             // Members first, then the addresses invited AT this role and not yet joined. The database lets the delete
             // through (an invitation's role is set to null, so accepted ones stay as history), and the person would

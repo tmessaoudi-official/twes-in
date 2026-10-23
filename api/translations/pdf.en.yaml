@@ -16,6 +16,8 @@ delivery_note:
     issue_date: 'Date'
     delivery_date: 'Delivery date'
     customer_reference: 'Your reference'
+    quote: 'Quote'
+    invoice: 'Invoice'
     remarks: 'Remarks'
     reception:
         title: 'Receipt'

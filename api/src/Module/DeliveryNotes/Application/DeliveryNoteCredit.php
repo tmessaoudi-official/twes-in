@@ -51,7 +51,8 @@ final readonly class DeliveryNoteCredit
         $lineIds = array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), $note->getLines());
         $taken = $this->invoiced->taken($company->getId(), $lineIds, true);
         try {
-            $total = Decimal::of($this->totals->of($note, $taken)->total);
+            // A note handing over an issued invoice's goods adds nothing: that invoice is already on the account.
+            $total = $note->deliversInvoice() ? Decimal::zero() : Decimal::of($this->totals->of($note, $taken)->total);
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
             throw new InvalidDeliveryNote($refused->field('quantity'), $refused->getMessage());
         }

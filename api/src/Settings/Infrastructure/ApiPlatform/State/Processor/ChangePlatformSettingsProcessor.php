@@ -16,14 +16,13 @@ use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\InvalidSettingValue;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
-use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
 use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Infrastructure\ApiPlatform\Output\SettingRefusals;
 use App\Settings\Infrastructure\ApiPlatform\Resource\SettingChangesResource;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
@@ -55,8 +54,8 @@ final readonly class ChangePlatformSettingsProcessor implements ProcessorInterfa
             $this->change->changeAll(new SettingContext(), SettingLevel::Platform, $changes, $account->getId());
         } catch (UnknownSetting $unknown) {
             throw new NotFoundHttpException($unknown->getMessage(), $unknown);
-        } catch (SettingLevelRefused|InvalidSettingValue $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+        } catch (InvalidSettingValue $refused) {
+            throw SettingRefusals::of($refused);
         }
 
         return null;

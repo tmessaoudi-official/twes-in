@@ -24,15 +24,27 @@ import { CompanySettings } from './company-settings-facade';
 import { FiscalFacade } from '../fiscal/fiscal-facade';
 import type { UnitRow } from '../fiscal/fiscal-types';
 import { SettingsPage } from './settings-page';
-import { failureToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import {
+  failureToasts,
+  provideQuietFeedback,
+  RecordedFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       nav: { settings: 'Valeurs par défaut' },
-      settings: { saved: 'Enregistré' },
+      settings: {
+        saved: 'Enregistré',
+        refused_line: '{{label}} : {{reason}}',
+        document: { payment_terms_days: 'Délai de paiement' },
+      },
+      import: { rejections: { at_least: 'Attendu : {{min}} ou plus.' } },
       modules: { whatsapp: 'Envoi par WhatsApp', zakat: 'Zakat' },
       coming: { whatsapp: { settings: 'Le numéro d’envoi et le texte des messages.' } },
       shell: { soon: 'Bientôt' },
@@ -80,10 +92,12 @@ const rackWidth: SettingRow = {
 describe('SettingsPage', () => {
   const rows = signal<readonly SettingRow[]>([terms, rackWidth]);
   const error = signal<SettingsError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const settings = {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     save: vi.fn(),
@@ -147,6 +161,7 @@ describe('SettingsPage', () => {
   beforeEach(() => {
     rows.set([terms]);
     error.set(null);
+    refusals.set([]);
     settings.clearError.mockReset();
     settings.load.mockReset().mockResolvedValue(undefined);
     settings.save.mockReset().mockResolvedValue(true);
@@ -321,6 +336,36 @@ describe('SettingsPage', () => {
     ]);
   });
 
+  it('says each refused setting on its field, and names in words one the form does not show', async () => {
+    rows.set([terms, rackWidth]);
+    await open();
+    settings.save.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        {
+          field: 'document__payment_terms_days',
+          reason: 'whole_number_between',
+          params: { min: 0, max: 365 },
+        },
+        { field: 'venue__shape__rack__depth', reason: 'at_least', params: { min: '0.250' } },
+      ]);
+      return false;
+    });
+    const input = q('field-document__payment_terms_days') as HTMLInputElement;
+    input.value = '60';
+    input.dispatchEvent(new Event('input'));
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(q('field-error-document__payment_terms_days')).not.toBeNull();
+    const unplaced = q('settings-refused');
+    expect(unplaced?.querySelectorAll('li')).toHaveLength(1);
+    expect(q('settings-refused-venue__shape__rack__depth')?.textContent).toContain('Attendu');
+    expect(q('settings-error')?.getAttribute('role')).toBe('alert');
+    expect(successToasts()).not.toContain('settings.saved');
+  });
+
   it('keeps what is typed when the chain is read again with the same content', async () => {
     await open();
     const input = q('field-document__payment_terms_days') as HTMLInputElement;
@@ -345,12 +390,36 @@ describe('SettingsPage', () => {
     expect((q('field-document__payment_terms_days') as HTMLInputElement).value).toBe('60');
   });
 
-  it('resets a value the company holds to the level above', async () => {
+  it('resets a value the company holds to the level above, says so naming it, and takes it back', async () => {
     await open();
     q('settings-reset-document.payment_terms_days')!.click();
     await settle();
 
     expect(settings.reset).toHaveBeenCalledWith('c1', 'document.payment_terms_days');
+    // Never « enregistré » for a value given up: the toast names it and offers it back.
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    expect(said).toEqual([
+      expect.objectContaining({
+        key: 'settings.overrides.reset_done',
+        params: { label: 'Délai de paiement' },
+        action: expect.objectContaining({ key: 'settings.overrides.undo' }),
+      }),
+    ]);
+
+    // Taken back on the version the reset left: the row is gone, so none.
+    rows.set([{ ...terms, levels: [], versions: {} }]);
+    settings.save.mockResolvedValue(true);
+    said[0].action!.run();
+    await settle();
+    expect(settings.save).toHaveBeenCalledWith('c1', [
+      { key: 'document.payment_terms_days', value: 45, version: 0 },
+    ]);
+    expect(said[1]).toEqual(
+      expect.objectContaining({
+        key: 'settings.overrides.put_back',
+        params: { label: 'Délai de paiement' },
+      }),
+    );
   });
 
   it('neither loads nor offers the form without the settings permission', async () => {

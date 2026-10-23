@@ -44,8 +44,8 @@ final class CompanyResource
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    #[Assert\NotBlank(groups: ['create'])]
-    #[Assert\Length(max: 160, groups: ['create'])]
+    #[Assert\NotBlank(groups: ['create'], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: 160, groups: ['create'], payload: ['reason' => 'invalid_text', 'params' => ['max' => 160]])]
     #[Groups([self::READ, self::WRITE])]
     public string $name = '';
 

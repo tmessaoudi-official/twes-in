@@ -28,6 +28,6 @@ final readonly class ProductReferenceSettings implements DeclaresSettings
 
     public function settings(): iterable
     {
-        yield new SettingDefinition(self::FORMAT, SettingType::Text, self::DEFAULT_FORMAT, SettingChain::Articles, [SettingLevel::Company, SettingLevel::ProductCategory], 'settings.article.reference_format', self::MODULE, maxLength: ReferenceFormat::MAX_LENGTH, pattern: ReferenceFormat::PATTERN);
+        yield new SettingDefinition(self::FORMAT, SettingType::Text, self::DEFAULT_FORMAT, SettingChain::Articles, [SettingLevel::Company, SettingLevel::ProductCategory], 'settings.article.reference_format', self::MODULE, maxLength: ReferenceFormat::MAX_LENGTH, pattern: ReferenceFormat::PATTERN, patternReason: 'invalid_reference_format');
     }
 }

@@ -28,6 +28,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_delivery_note_line_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_delivery_note_line_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_delivery_note_line_unit', columns: ['unit_id'])]
+#[ORM\Index(name: 'idx_delivery_note_line_source_quote_line', columns: ['source_quote_line_id'])]
+#[ORM\Index(name: 'idx_delivery_note_line_source_invoice_line', columns: ['source_invoice_line_id'])]
 class DeliveryNoteLine implements CompanyOwned
 {
     #[ORM\Id]
@@ -66,6 +68,20 @@ class DeliveryNoteLine implements CompanyOwned
     #[ORM\Column(length: DeliveryNoteLineDetails::LOT_CODE_MAX, nullable: true)]
     private ?string $lotCode;
 
+    /**
+     * The line of the accepted quote it delivers; null for a line of the note's own. An id rather than an association:
+     * quotes are their own module.
+     */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $sourceQuoteLineId;
+
+    /**
+     * The line of the issued invoice whose goods it hands over; null otherwise. That invoice took the goods out of stock
+     * and billed them, so this line moves no stock and is never invoiced. An id: invoices are their own module.
+     */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $sourceInvoiceLineId;
+
     /** @var Collection<int, DeliveryNoteLineTax> */
     #[ORM\OneToMany(targetEntity: DeliveryNoteLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
@@ -84,6 +100,8 @@ class DeliveryNoteLine implements CompanyOwned
         $this->unit = $details->unit;
         $this->unitPriceNet = $details->unitPriceNet;
         $this->lotCode = $details->lotCode;
+        $this->sourceQuoteLineId = $details->sourceQuoteLineId;
+        $this->sourceInvoiceLineId = $details->sourceInvoiceLineId;
         $this->taxes = new ArrayCollection();
         foreach ($details->taxes as $index => $tax) {
             $this->taxes->add(new DeliveryNoteLineTax($this, $index + 1, $tax));
@@ -112,7 +130,7 @@ class DeliveryNoteLine implements CompanyOwned
         }
     }
 
-    /** @return array{string|null, string, string, string, string, list<string>, string|null} compared the way DeliveryNoteLineDetails::values() is */
+    /** @return array{string|null, string, string, string, string, list<string>, string|null, string|null, string|null} compared the way DeliveryNoteLineDetails::values() is */
     public function values(): array
     {
         return [
@@ -123,7 +141,21 @@ class DeliveryNoteLine implements CompanyOwned
             $this->unitPriceNet,
             array_map(static fn (DeliveryNoteLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $this->getTaxes()),
             $this->lotCode,
+            $this->sourceQuoteLineId?->toRfc4122(),
+            $this->sourceInvoiceLineId?->toRfc4122(),
         ];
+    }
+
+    /** The line of the accepted quote it delivers; null for a line of the note's own. */
+    public function getSourceQuoteLineId(): ?Uuid
+    {
+        return $this->sourceQuoteLineId;
+    }
+
+    /** The line of the issued invoice whose goods it hands over; null otherwise. */
+    public function getSourceInvoiceLineId(): ?Uuid
+    {
+        return $this->sourceInvoiceLineId;
     }
 
     /** The lot or serial the line hands over; null when it names none. */

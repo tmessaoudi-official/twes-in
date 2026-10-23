@@ -38,6 +38,8 @@ const draft: DeliveryNoteRow = {
   totalTax: '0.000',
   total: '0.000',
   invoices: [],
+  quote: null,
+  invoice: null,
 };
 const input: DeliveryNoteInput = {
   customerId: 'k1',

@@ -153,4 +153,12 @@
       {{ 'signup.finish.errors.' + (error() ?? 'not_usable') | translate }}
     </p>
   }
+  <!-- Done, the card's own button leads to the sign-in; until then this does. -->
+  @if (!completed()) {
+    <p twesAuthAfter class="twes-auth-after">
+      <a routerLink="/login" data-testid="signup-finish-back">{{
+        'signup.back_to_login' | translate
+      }}</a>
+    </p>
+  }
 </app-signed-out-layout>

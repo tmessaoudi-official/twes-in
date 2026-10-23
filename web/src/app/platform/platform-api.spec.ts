@@ -121,11 +121,24 @@ describe('PlatformApi', () => {
       );
     await expect(refused).rejects.toEqual(new PlatformRefused('record_changed'));
 
-    const stopping = api.stopSubscription('c1');
-    const gone = http.expectOne('/api/platform/companies/c1/subscription');
+    // Stopping erases the terms, so it names the version they were read at, as a revision does.
+    const stopping = api.stopSubscription('c1', 4);
+    const gone = http.expectOne(
+      (request) => request.url === '/api/platform/companies/c1/subscription',
+    );
     expect(gone.request.method).toBe('DELETE');
+    expect(gone.request.params.get('version')).toBe('4');
     gone.flush(null, { status: 204, statusText: 'No Content' });
     await expect(stopping).resolves.toBeUndefined();
+
+    const stale = api.stopSubscription('c1', 3);
+    http
+      .expectOne((request) => request.url === '/api/platform/companies/c1/subscription')
+      .flush(
+        { type: '/problems/record-changed', status: 409 },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(stale).rejects.toEqual(new PlatformRefused('record_changed'));
   });
 
   // « Me prévenir » (row 150): how many companies wait for each planned module, the most asked for first.
@@ -443,6 +456,42 @@ describe('PlatformApi', () => {
     request.flush(null, { status: 204, statusText: 'No Content' });
 
     await done;
+  });
+
+  it('names each key a save was refused on with its reason, and a 422 naming none as refused', async () => {
+    const invalid = api.saveSettings([
+      { key: 'support.whatsapp', value: '20 123 456', version: 0 },
+      { key: 'demo.sandboxes_max', value: 500, version: 1 },
+    ]);
+    http.expectOne('/api/platform/settings').flush(
+      {
+        violations: [
+          { propertyPath: 'support.whatsapp', payload: { reason: 'invalid_whatsapp' } },
+          {
+            propertyPath: 'demo.sandboxes_max',
+            payload: { reason: 'whole_number_between', params: { min: 3, max: 100 } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(invalid).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [
+        { field: 'support.whatsapp', reason: 'invalid_whatsapp', params: {} },
+        {
+          field: 'demo.sandboxes_max',
+          reason: 'whole_number_between',
+          params: { min: 3, max: 100 },
+        },
+      ],
+    });
+
+    const unnamed = api.saveSettings([{ key: 'support.phone', value: '1', version: 1 }]);
+    http
+      .expectOne('/api/platform/settings')
+      .flush({ detail: 'refused' }, { status: 422, statusText: 'Unprocessable' });
+    await expect(unnamed).rejects.toMatchObject({ code: 'refused', refusals: [] });
   });
 
   it('tells a save made over a version saved since from another conflict', async () => {

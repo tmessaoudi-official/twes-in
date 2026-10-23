@@ -87,7 +87,7 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path('roles/'.$id), ['name' => 'barista', 'permissions' => ['customer.read', 'product.read'], 'version' => 1]);
         $this->assertStepUpRequired();
-        $this->sendJson('DELETE', $this->path('roles/'.$id));
+        $this->sendJson('DELETE', $this->path('roles/'.$id).'?version=1');
         $this->assertStepUpRequired();
         $held = $this->em()->getConnection()->fetchOne("SELECT permissions FROM role WHERE name = 'barista'");
         self::assertSame('["customer.read"]', $held, 'nothing changed while the proof was missing');

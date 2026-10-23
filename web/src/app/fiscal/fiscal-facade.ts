@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { requestState } from '../shared/feedback/request-state';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { FiscalApi, FiscalRefused } from './fiscal-api';
 import type {
   CustomerTaxRegimeRow,
@@ -11,14 +11,15 @@ import type {
   UnitInput,
   UnitRow,
 } from './fiscal-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The fiscal setup of one company: its taxes, its units and the regimes its customers may be under. */
 @Injectable({ providedIn: 'root' })
 export class FiscalFacade {
   private readonly api = inject(FiscalApi);
-  private readonly taxesSignal = signal<readonly TaxComponentRow[]>([]);
-  private readonly unitsSignal = signal<readonly UnitRow[]>([]);
-  private readonly regimesSignal = signal<readonly CustomerTaxRegimeRow[]>([]);
+  private readonly taxesSignal = sessionSignal<readonly TaxComponentRow[]>([]);
+  private readonly unitsSignal = sessionSignal<readonly UnitRow[]>([]);
+  private readonly regimesSignal = sessionSignal<readonly CustomerTaxRegimeRow[]>([]);
   private readonly state = requestState(codeOf);
 
   readonly taxes = this.taxesSignal.asReadonly();

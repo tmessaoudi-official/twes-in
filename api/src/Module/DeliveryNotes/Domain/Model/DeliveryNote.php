@@ -260,10 +260,22 @@ class DeliveryNote implements CompanyOwned
         );
     }
 
-    /** @return list<DeliveredQuantity> what each line delivers, in order: what `DeliveryNoteValidated` carries */
+    /**
+     * @return list<DeliveredQuantity> what each line takes out of stock, in order: what `DeliveryNoteValidated` carries.
+     *                                 A line handing over an issued invoice's goods takes nothing: the invoice took them.
+     */
     public function deliveredQuantities(): array
     {
-        return array_map(static fn (DeliveryNoteLine $line): DeliveredQuantity => new DeliveredQuantity($line->getProduct()?->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode()), $this->getLines());
+        return array_values(array_map(
+            static fn (DeliveryNoteLine $line): DeliveredQuantity => new DeliveredQuantity($line->getProduct()?->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode()),
+            array_filter($this->getLines(), static fn (DeliveryNoteLine $line): bool => null === $line->getSourceInvoiceLineId()),
+        ));
+    }
+
+    /** Whether it hands over an issued invoice's goods, which that invoice billed: such a note is never invoiced. */
+    public function deliversInvoice(): bool
+    {
+        return array_any($this->getLines(), static fn (DeliveryNoteLine $line): bool => null !== $line->getSourceInvoiceLineId());
     }
 
     /**

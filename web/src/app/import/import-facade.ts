@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { requestState } from '../shared/feedback/request-state';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Feedback } from '../shared/feedback/feedback';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { StepUp } from '../shared/step-up/step-up';
@@ -17,6 +17,7 @@ import type {
   ImportUndone,
   TextEncoding,
 } from './import-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /**
  * What the import screen knows: the guide for the subject it is on, and the answer to the last run.
@@ -31,12 +32,12 @@ export class ImportFacade {
   private readonly stepUp = inject(StepUp);
   private readonly records = inject(RecordDeletes);
 
-  private readonly guideSignal = signal<ImportGuide | null>(null);
-  private readonly reportSignal = signal<ImportReport | null>(null);
-  private readonly refusalSignal = signal<ImportRefusal | null>(null);
+  private readonly guideSignal = sessionSignal<ImportGuide | null>(null);
+  private readonly reportSignal = sessionSignal<ImportReport | null>(null);
+  private readonly refusalSignal = sessionSignal<ImportRefusal | null>(null);
   private readonly state = requestState(codeOf);
-  private readonly recentSignal = signal<readonly ImportRunSummary[]>([]);
-  private readonly undoneSignal = signal<ImportUndone | null>(null);
+  private readonly recentSignal = sessionSignal<readonly ImportRunSummary[]>([]);
+  private readonly undoneSignal = sessionSignal<ImportUndone | null>(null);
 
   readonly guide = this.guideSignal.asReadonly();
   readonly report = this.reportSignal.asReadonly();

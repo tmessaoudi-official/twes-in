@@ -110,6 +110,9 @@ const draft: QuoteRow = {
   refusalReason: null,
   invoiceId: null,
   deposits: [],
+  deliveryNotes: [],
+  delivery: 'none',
+  deliveries: [],
   attachmentCount: 0,
   customerReference: null,
   notesPrinted: null,
@@ -185,6 +188,7 @@ describe('QuotePage', () => {
     addToInvoice: vi.fn(),
     draftsOf: vi.fn(),
     deposit: vi.fn(),
+    deliver: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
     restoreAttachment: vi.fn(),
@@ -271,6 +275,7 @@ describe('QuotePage', () => {
         { invoiceId: 'd2', number: null, status: 'draft', total: '803.250' },
       ],
     });
+    facade.deliver.mockReset().mockResolvedValue('n9');
     facade.detach.mockReset().mockResolvedValue(true);
     facade.restoreAttachment.mockReset().mockResolvedValue(null);
     facade.pickCustomers.mockClear();
@@ -747,6 +752,146 @@ describe('QuotePage', () => {
     fixture.destroy();
     await open('q1');
     expect(q('document-action-deposit')).toBeNull();
+  });
+
+  describe('delivering an accepted quote by notes', () => {
+    const toDeliver: QuoteRow = {
+      ...accepted,
+      deliveries: [
+        {
+          lineId: 'ql1',
+          description: 'Perceuse',
+          quantity: '4.000',
+          onNotes: '0.000',
+          delivered: '0.000',
+          left: '4.000',
+        },
+        {
+          lineId: 'ql2',
+          description: 'Foret',
+          quantity: '2.000',
+          onNotes: '2.000',
+          delivered: '2.000',
+          left: '0.000',
+        },
+      ],
+    };
+
+    beforeEach(() => {
+      granted.add('delivery_note.write');
+      granted.add('delivery_note.read');
+      modules.add('delivery_notes');
+    });
+
+    it('offers it only to whoever may draft a note, then drafts every line and opens the note', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      quote.set(toDeliver);
+      modules.delete('delivery_notes');
+      await open('q1');
+      expect(q('document-action-deliver')).toBeNull();
+
+      modules.add('delivery_notes');
+      granted.delete('delivery_note.write');
+      fixture.destroy();
+      await open('q1');
+      expect(q('document-action-deliver')).toBeNull();
+
+      granted.add('delivery_note.write');
+      fixture.destroy();
+      await open('q1');
+      q('document-action-deliver')!.click();
+      await settle();
+
+      expect(facade.deliver).toHaveBeenCalledWith('c1', 'q1', null);
+      await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/delivery-notes', 'n9']));
+      expect(successToasts()).toContain('deliveries.drafted');
+    });
+
+    it('delivers a part: only the lines with something left, for the quantity given', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      quote.set(toDeliver);
+      await open('q1');
+
+      q('document-action-deliver-part')!.click();
+      await settle();
+      const quantity = over('deliver-part-quantity-0') as HTMLInputElement;
+      expect(quantity.value).toBe('4');
+      expect(over('deliver-part-quantity-1'), 'a line with nothing left is not offered').toBeNull();
+      typeIn(quantity, '1,5');
+      over('deliver-part-confirm')!.click();
+
+      await vi.waitFor(() =>
+        expect(facade.deliver).toHaveBeenCalledWith('c1', 'q1', { ql1: '1.5' }),
+      );
+      await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/delivery-notes', 'n9']));
+    });
+
+    it('drafts nothing when the dialog is dismissed or every quantity is zero', async () => {
+      quote.set(toDeliver);
+      await open('q1');
+
+      q('document-action-deliver-part')!.click();
+      await settle();
+      typeIn(over('deliver-part-quantity-0') as HTMLInputElement, '0');
+      await settle();
+      expect((over('deliver-part-confirm') as HTMLButtonElement).disabled).toBe(true);
+      over('deliver-part-cancel')!.click();
+      await settle();
+      expect(facade.deliver).not.toHaveBeenCalled();
+    });
+
+    it('is not offered for a quote kept whole by a discount on its total or a deposit, nor with nothing left', async () => {
+      quote.set({ ...toDeliver, discountAmount: '10.000' });
+      await open('q1');
+      expect(q('document-action-deliver')).toBeNull();
+      expect(q('document-action-deliver-part')).toBeNull();
+
+      quote.set({
+        ...toDeliver,
+        deposits: [{ invoiceId: 'd1', number: 'F-2026-0003', status: 'issued', total: '500.000' }],
+      });
+      fixture.destroy();
+      await open('q1');
+      expect(q('document-action-deliver')).toBeNull();
+
+      quote.set({
+        ...toDeliver,
+        deliveries: toDeliver.deliveries.map((line) => ({ ...line, left: '0.000' })),
+      });
+      fixture.destroy();
+      await open('q1');
+      expect(q('document-action-deliver')).toBeNull();
+    });
+
+    it('once a note delivers it, invoices it whole no more and shows its notes, its figures and how far it is delivered', async () => {
+      quote.set({
+        ...toDeliver,
+        delivery: 'partly',
+        deliveryNotes: [
+          { deliveryNoteId: 'n1', number: 'BL-2026-00004', status: 'validated' },
+          { deliveryNoteId: 'n2', number: null, status: 'draft' },
+        ],
+      });
+      await open('q1');
+
+      expect(q('document-action-invoice')).toBeNull();
+      expect(q('document-action-deposit')).toBeNull();
+      expect(q('document-action-deliver')).not.toBeNull();
+      expect(q('quote-delivery')?.textContent).toContain('deliveries.statuses.partly');
+      expect(q('quote-delivery-note-0')?.querySelector('a')?.getAttribute('href')).toBe(
+        '/delivery-notes/n1',
+      );
+      expect(q('quote-delivery-note-1')?.textContent).toContain('deliveries.card.draft');
+      expect(q('quote-delivery-line-0')?.textContent).toContain('Perceuse');
+
+      granted.delete('delivery_note.read');
+      fixture.destroy();
+      await open('q1');
+      expect(
+        q('quote-delivery-note-0')?.querySelector('a'),
+        'no link for whoever may not open it',
+      ).toBeNull();
+    });
   });
 
   it('links an invoiced quote to its invoice and invoices it no more', async () => {

@@ -137,6 +137,24 @@ describe('ClosingPage', () => {
     expect(TestBed.inject(UnsavedChanges).count()).toBe(1);
   });
 
+  // A day that is not one went on to the API, and an empty one was refused with nothing said under the field.
+  it.each([
+    ['31/02/2026', 'form.errors.date'],
+    ['', 'form.errors.required'],
+  ])(
+    'says « %s » is not a day to close through under the field, asking nothing',
+    async (typed, said) => {
+      await open({ closedThrough: null, writable: true });
+
+      await closeThrough(typed);
+
+      expect(dialog.open).not.toHaveBeenCalled();
+      expect(api.closeThrough).not.toHaveBeenCalled();
+      expect(q('closing-day-error')?.textContent).toContain(said);
+      expect(document.activeElement).toBe(q('closing-day'));
+    },
+  );
+
   it('says why a day was refused', async () => {
     await open({ closedThrough: '2026-09-30', writable: true });
     api.closeThrough.mockRejectedValue(new ClosingRefused('invalid'));

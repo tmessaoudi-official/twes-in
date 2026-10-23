@@ -170,6 +170,7 @@ describe('StockPage', () => {
     ),
     pickVendors: vi.fn(async () => [{ id: 'v1', number: 'F-001', name: 'Ben Salah' }]),
     receiptCost: vi.fn(),
+    countContexts: vi.fn(),
     record: vi.fn(),
     receiveSplit: vi.fn(),
     countSplit: vi.fn(),
@@ -220,6 +221,7 @@ describe('StockPage', () => {
     facade.loadStockContext.mockReset().mockResolvedValue(undefined);
     facade.loadStock.mockReset().mockResolvedValue(undefined);
     facade.receiptCost.mockReset().mockResolvedValue(null);
+    facade.countContexts.mockReset().mockResolvedValue([]);
     facade.record.mockReset().mockResolvedValue(true);
     facade.receiveSplit.mockReset().mockResolvedValue(true);
     facade.countSplit.mockReset().mockResolvedValue(true);
@@ -471,6 +473,24 @@ describe('StockPage', () => {
       q('stock-split')!.click();
       await settle();
     }
+
+    it('says what each place counted would change, row by row', async () => {
+      facade.countContexts.mockResolvedValue([
+        {
+          productId: 'p1',
+          places: [{ locationId: 'l2', lotCode: null, quantity: '4.000' }],
+          homeLocationIds: ['l2'],
+        },
+      ]);
+      await openCount();
+      type('placement-0-quantity', '6');
+      await settle();
+
+      expect(q('stock-count-effect')).toBeNull();
+      expect(q('stock-count-part-0-effect-difference')).not.toBeNull();
+      expect(q('stock-count-part-0-effect-elsewhere')).toBeNull();
+      expect(q('stock-count-part-1-effect-stray')).not.toBeNull();
+    });
 
     it('swaps the place and the quantity for rows, with no total to place', async () => {
       await openCount();
@@ -830,6 +850,36 @@ describe('StockPage', () => {
       expect(q('field-lotCode')).toBeNull();
       expect(values()).toMatchObject({ productId: '', quantity: '' });
     });
+  });
+
+  it('says what a count would change at the place chosen, before it is recorded', async () => {
+    facade.countContexts.mockResolvedValue([
+      {
+        productId: 'p1',
+        places: [{ locationId: 'l2', lotCode: null, quantity: '4.000' }],
+        homeLocationIds: ['l2'],
+      },
+    ]);
+    q('stock-count')!.click();
+    await settle();
+    await pick('field-productId', 'ART-1 · Portable');
+    type('field-quantity', '6');
+    await settle();
+
+    expect(facade.countContexts).toHaveBeenCalledWith('c1', ['p1']);
+    expect(q('stock-count-effect-difference')).not.toBeNull();
+    expect(q('stock-count-effect-stray')).toBeNull();
+
+    // At another place, where nothing of it is kept and which is not its home, it is said, never refused.
+    form().get('locationId')!.setValue('l1');
+    await settle();
+    expect(q('stock-count-effect-stray')).not.toBeNull();
+    q('stock-movement-save')!.click();
+    await settle();
+    expect(facade.record).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ operation: 'count', locationId: 'l1', quantity: '6' }),
+    );
   });
 
   it('records what a count found, and keeps the form when it is refused', async () => {

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\DeliveryNotes;
 
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\DeliveryNotes\Application\CarryingInvoice;
 use App\Module\DeliveryNotes\Application\InvoicedLines;
 use App\Module\Invoices\Domain\Model\Invoice;
@@ -32,6 +33,23 @@ final readonly class RepositoryInvoicedLines implements InvoicedLines
         $asked = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $deliveryNoteLineIds);
 
         return array_map(static fn (Invoice $invoice): CarryingInvoice => new CarryingInvoice($invoice->getId(), $invoice->getNumber(), $invoice->getStatus()->value, self::carried($invoice, $asked)), $this->invoices->carryingDeliveryNoteLines($companyId, $deliveryNoteLineIds));
+    }
+
+    public function discounts(Uuid $companyId, array $deliveryNoteLineIds): array
+    {
+        $asked = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $deliveryNoteLineIds);
+        $given = [];
+        foreach ($this->invoices->carryingDeliveryNoteLines($companyId, $deliveryNoteLineIds) as $invoice) {
+            foreach ($invoice->getLines() as $line) {
+                $source = $line->getSourceDeliveryNoteLineId()?->toRfc4122();
+                $amount = $line->getDiscountAmount();
+                if (null !== $source && null !== $amount && \in_array($source, $asked, true)) {
+                    $given[$source] = (string) Decimal::of($given[$source] ?? '0')->add(Decimal::of($amount));
+                }
+            }
+        }
+
+        return $given;
     }
 
     /**

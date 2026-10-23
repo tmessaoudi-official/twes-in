@@ -326,6 +326,31 @@ export class InvoicesApi {
     return this.step(companyId, id, 'credit-notes', body);
   }
 
+  /**
+   * « Livrer » or « Livrer une partie »: a draft delivery note of the issued invoice's goods, every line for what is left
+   * of it, or with `quantities` (by invoice line id) those lines alone; answers the note's id. 409 when the invoice is
+   * not issued, is a credit note or a deposit, or has nothing left; 422 when a quantity is more than is left.
+   */
+  async deliver(
+    companyId: string,
+    id: string,
+    quantities: Readonly<Record<string, string>> | null,
+  ): Promise<string> {
+    try {
+      const body: { quantities: Record<string, string> | null } = {
+        quantities: quantities === null ? null : { ...quantities },
+      };
+      // The answer is the note as its own screen reads it; only its id is wanted here.
+      const note = await firstValueFrom(
+        this.http.post<{ id?: string }>(`${invoicePath(companyId, id)}/deliveries`, body),
+      );
+      if (note.id === undefined) throw new Error('A delivery note came without its id.');
+      return note.id;
+    } catch (error) {
+      throw refusedFor(error, new InvoicesRefused(deliveryCodeOf(error)));
+    }
+  }
+
   /** Copies a document into a new draft; the answer is the copy. 409 for a credit note. */
   async duplicate(companyId: string, id: string): Promise<InvoiceRow> {
     return this.step(companyId, id, 'duplicate');
@@ -519,6 +544,13 @@ export function codeOf(error: unknown): InvoicesError {
   }
 }
 
+/** « Livrer » refused: any 422 is a quantity more than is left of its line. */
+function deliveryCodeOf(error: unknown): InvoicesError {
+  return error instanceof HttpErrorResponse && error.status === 422
+    ? 'delivery_refused'
+    : codeOf(error);
+}
+
 /** The settings a legal mention may wait for, as the API names them, and what the screen says for each. */
 const MENTION_DATA: Readonly<Record<string, InvoicesError>> = {
   'document.late_payment_rate': 'missing_late_payment_rate',
@@ -622,6 +654,24 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
       deliveryNoteId: note.deliveryNoteId,
       number: note.number,
     })),
+    deliveredBy: (raw.deliveredBy ?? []).map(({ deliveryNoteId, number, status }) => ({
+      deliveryNoteId,
+      number: number ?? null,
+      status,
+    })),
+    delivery: raw.delivery ?? 'none',
+    deliveries: (raw.deliveries ?? []).map((line) => {
+      const billed = (raw.lines ?? []).find((each) => each.id === line.lineId);
+      return {
+        lineId: line.lineId,
+        description: billed?.description ?? billed?.productName ?? '',
+        quantity: line.quantity,
+        returned: line.returned,
+        onNotes: line.onNotes,
+        delivered: line.delivered,
+        left: line.left,
+      };
+    }),
     number: raw.number ?? null,
     status: INVOICE_STATUSES.find((status) => status === raw.status) ?? 'draft',
     customerId: raw.customerId ?? '',

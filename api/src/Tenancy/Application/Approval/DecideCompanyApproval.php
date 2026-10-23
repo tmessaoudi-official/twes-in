@@ -23,14 +23,16 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * An operator's decision on a company that signed up (docs/SPEC.md § 7, 2026-09-15). Approving opens it to its members
- * and tells its owners; rejecting suspends it. A decision the company already carries changes nothing: no second mail,
- * no second audit entry.
+ * An operator's decision on a company (docs/SPEC.md § 7, 2026-09-15). Approving opens one that waits or was suspended to
+ * its members and tells its owners; rejecting suspends one that waits, and suspends an open one, recorded as a
+ * suspension. A decision the company already carries changes nothing: no second mail, no second audit entry.
  */
 final readonly class DecideCompanyApproval
 {
     public const string APPROVED = 'company.approved';
     public const string REJECTED = 'company.rejected';
+    /** An open company closed by an operator, whose suspend stays available at any time (docs/SPEC.md § 7, 2026-09-17). */
+    public const string SUSPENDED = 'company.suspended';
 
     public function __construct(
         private CompanyRepository $companies,
@@ -86,7 +88,7 @@ final readonly class DecideCompanyApproval
             $from = $company->getStatus();
             $company->suspend($this->clock->now());
             $this->companies->save($company);
-            $this->record($company, self::REJECTED, $from, $operatorId);
+            $this->record($company, Company::STATUS_ACTIVE === $from ? self::SUSPENDED : self::REJECTED, $from, $operatorId);
 
             return $company;
         });

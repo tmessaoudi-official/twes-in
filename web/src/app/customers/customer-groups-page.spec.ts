@@ -72,6 +72,7 @@ describe('CustomerGroupsPage', () => {
     rows: signal<readonly SettingRow[]>([]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    refusals: signal([]).asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     save: vi.fn(),

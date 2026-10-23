@@ -36,6 +36,7 @@ import { DemoBanner } from '../auth/demo-banner';
 import { AuthFacade } from '../auth/auth-facade';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { SubscriptionNoticeBar } from '../licensing/subscription-notice';
+import { CompanyFacade } from '../company/company-facade';
 import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
 import { Label } from '../shared/a11y/label';
@@ -175,6 +176,7 @@ const TOP_BAR_HEIGHT = '--twes-top-bar-height';
 })
 export class AppShell {
   private readonly auth = inject(AuthFacade);
+  private readonly companies = inject(CompanyFacade);
   private readonly unsaved = inject(UnsavedChanges);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
@@ -456,9 +458,13 @@ export class AppShell {
       },
       inject(DestroyRef),
     );
+    // The switcher's list too: a company joined, left or given a new logo is offered as it now is, not as it was when
+    // the shell opened.
     inject(LiveChanges).reloadOn(
       ['membership', 'role', 'module', 'company'],
-      () => this.auth.refresh(),
+      async () => {
+        await Promise.all([this.auth.refresh(), this.companies.load()]);
+      },
       inject(DestroyRef),
     );
     effect(() => {

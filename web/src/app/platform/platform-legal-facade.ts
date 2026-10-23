@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable } from '@angular/core';
 import { requestState } from '../shared/feedback/request-state';
 import type { LegalLanguage } from '../shared/legal/legal-api';
 import type { LegalPage } from '../shared/legal/legal-pages';
@@ -8,6 +8,7 @@ import { StepUp } from '../shared/step-up/step-up';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { PlatformLegalApi } from './platform-legal-api';
 import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-legal-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /**
  * The operator's legal pages (docs/SPEC.md § 8 row 148): where each page stands in each language, and the history of
@@ -17,11 +18,11 @@ import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-
 export class PlatformLegalFacade {
   private readonly api = inject(PlatformLegalApi);
   private readonly stepUp = inject(StepUp);
-  private readonly overviewSignal = signal<readonly LegalStatusRow[]>([]);
-  private readonly versionsSignal = signal<readonly LegalVersionRow[]>([]);
+  private readonly overviewSignal = sessionSignal<readonly LegalStatusRow[]>([]);
+  private readonly versionsSignal = sessionSignal<readonly LegalVersionRow[]>([]);
   /** A failure is one thing here, the API not reached or refusing: the page says so without a reason. */
   private readonly state = requestState<true>(() => true);
-  private readonly identitySignal = signal<Readonly<Record<string, string>>>({});
+  private readonly identitySignal = sessionSignal<Readonly<Record<string, string>>>({});
   private opened: { page: LegalPage; language: LegalLanguage } | null = null;
   /** The version of each placeholder's row when read, which a save sends back. */
   private identityVersions: Readonly<Record<string, number>> = {};

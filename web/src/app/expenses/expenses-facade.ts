@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { ExpensesApi, ExpensesRefused } from './expenses-api';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { PickAsked } from '../shared/form/pick-api';
@@ -21,24 +21,25 @@ import type {
   ExpenseVendorOption,
   TejFileAnswer,
 } from './expenses-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The expenses of the company being worked in, their categories, and the expense open with its files. */
 @Injectable({ providedIn: 'root' })
 export class ExpensesFacade {
   private readonly api = inject(ExpensesApi);
 
-  private readonly expensesSignal = signal<readonly ExpenseRow[]>([]);
-  private readonly optionsSignal = signal<ExpenseOptions | null>(null);
-  private readonly expenseSignal = signal<ExpenseRow | null>(null);
-  private readonly attachmentsSignal = signal<readonly ExpenseAttachment[]>([]);
-  private readonly categoriesSignal = signal<readonly ExpenseCategoryRow[]>([]);
-  private readonly totalSignal = signal(0);
-  private readonly statusCountsSignal = signal<ExpenseStatusCounts | null>(null);
-  private readonly summarySignal = signal<ExpenseSummary | null>(null);
+  private readonly expensesSignal = sessionSignal<readonly ExpenseRow[]>([]);
+  private readonly optionsSignal = sessionSignal<ExpenseOptions | null>(null);
+  private readonly expenseSignal = sessionSignal<ExpenseRow | null>(null);
+  private readonly attachmentsSignal = sessionSignal<readonly ExpenseAttachment[]>([]);
+  private readonly categoriesSignal = sessionSignal<readonly ExpenseCategoryRow[]>([]);
+  private readonly totalSignal = sessionSignal(0);
+  private readonly statusCountsSignal = sessionSignal<ExpenseStatusCounts | null>(null);
+  private readonly summarySignal = sessionSignal<ExpenseSummary | null>(null);
   private readonly pageRequests = new LatestRequest();
   private readonly countsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);
-  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
 
   readonly expenses = this.expensesSignal.asReadonly();
   /** How many expenses the last search found in all, the page shown being one part of them. */

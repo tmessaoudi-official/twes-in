@@ -167,6 +167,131 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
         return $this->locked('n.id IN (SELECT IDENTITY(l.deliveryNote) FROM '.DeliveryNoteLine::class.' l WHERE l.id IN (:ids))', $lineIds, $companyId);
     }
 
+    public function quoteLineQuantities(Uuid $companyId, array $quoteLineIds, ?Uuid $except = null, bool $deliveredOnly = false): array
+    {
+        return $this->sourceLineQuantities('sourceQuoteLineId', $companyId, $quoteLineIds, $except, $deliveredOnly);
+    }
+
+    public function invoiceLineQuantities(Uuid $companyId, array $invoiceLineIds, ?Uuid $except = null, bool $deliveredOnly = false): array
+    {
+        return $this->sourceLineQuantities('sourceInvoiceLineId', $companyId, $invoiceLineIds, $except, $deliveredOnly);
+    }
+
+    /**
+     * @param 'sourceQuoteLineId'|'sourceInvoiceLineId' $field         the line of the other document a note line names
+     * @param list<Uuid>                                $sourceLineIds
+     *
+     * @return array<string, string>
+     */
+    private function sourceLineQuantities(string $field, Uuid $companyId, array $sourceLineIds, ?Uuid $except, bool $deliveredOnly): array
+    {
+        if ([] === $sourceLineIds) {
+            return [];
+        }
+        $excluded = $deliveredOnly ? [DeliveryNoteStatus::Cancelled->value, DeliveryNoteStatus::Draft->value] : [DeliveryNoteStatus::Cancelled->value];
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('l.'.$field.' AS line', 'SUM(l.quantity) AS quantity')
+            ->from(DeliveryNoteLine::class, 'l')
+            ->join('l.deliveryNote', 'n')
+            ->where('n.company = :company')
+            ->andWhere('n.status NOT IN (:excluded)')
+            ->andWhere('l.'.$field.' IN (:lines)')
+            ->groupBy('l.'.$field)
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('excluded', $excluded, ArrayParameterType::STRING)
+            ->setParameter('lines', self::ids($sourceLineIds), ArrayParameterType::STRING);
+        if (null !== $except) {
+            $query->andWhere('n.id <> :except')->setParameter('except', $except, 'uuid');
+        }
+        $quantities = [];
+        foreach (Rows::row($query->getQuery()->getArrayResult()) as $row) {
+            $row = Rows::row($row);
+            $line = $row['line'] ?? null;
+            if (!$line instanceof Uuid) {
+                throw new \UnexpectedValueException('A source line the query groups by came back empty.');
+            }
+            $quantities[$line->toRfc4122()] = Rows::sum($row['quantity'] ?? null);
+        }
+
+        return $quantities;
+    }
+
+    public function delivering(Uuid $companyId, array $quoteLineIds): array
+    {
+        return $this->notesNaming('sourceQuoteLineId', $companyId, $quoteLineIds);
+    }
+
+    public function deliveringInvoiceLines(Uuid $companyId, array $invoiceLineIds): array
+    {
+        return $this->notesNaming('sourceInvoiceLineId', $companyId, $invoiceLineIds);
+    }
+
+    /**
+     * @param 'sourceQuoteLineId'|'sourceInvoiceLineId' $field
+     * @param list<Uuid>                                $sourceLineIds
+     *
+     * @return list<DeliveryNote>
+     */
+    private function notesNaming(string $field, Uuid $companyId, array $sourceLineIds): array
+    {
+        if ([] === $sourceLineIds) {
+            return [];
+        }
+        $notes = $this->entityManager->createQueryBuilder()
+            ->select('n')
+            ->from(DeliveryNote::class, 'n')
+            ->where('n.id IN (SELECT IDENTITY(l.deliveryNote) FROM '.DeliveryNoteLine::class.' l WHERE l.'.$field.' IN (:lines))')
+            ->andWhere('n.company = :company')
+            ->andWhere('n.status <> :cancelled')
+            ->orderBy('n.createdAt')
+            ->addOrderBy('n.id')
+            ->setParameter('lines', self::ids($sourceLineIds), ArrayParameterType::STRING)
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('cancelled', DeliveryNoteStatus::Cancelled->value)
+            ->getQuery()
+            ->getResult();
+
+        return Rows::entities($notes, DeliveryNote::class);
+    }
+
+    public function linesDelivering(Uuid $companyId, array $quoteLineIds): array
+    {
+        if ([] === $quoteLineIds) {
+            return [];
+        }
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('l.id AS id', 'l.sourceQuoteLineId AS line')
+            ->from(DeliveryNoteLine::class, 'l')
+            ->where('l.company = :company')
+            ->andWhere('l.sourceQuoteLineId IN (:lines)')
+            ->orderBy('l.id')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('lines', self::ids($quoteLineIds), ArrayParameterType::STRING)
+            ->getQuery()
+            ->getArrayResult();
+        $lines = [];
+        foreach (Rows::row($rows) as $row) {
+            $row = Rows::row($row);
+            [$id, $line] = [$row['id'] ?? null, $row['line'] ?? null];
+            if (!$id instanceof Uuid || !$line instanceof Uuid) {
+                throw new \UnexpectedValueException('A delivery note line the query names came back empty.');
+            }
+            $lines[$line->toRfc4122()][] = $id;
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @param list<Uuid> $ids
+     *
+     * @return list<string>
+     */
+    private static function ids(array $ids): array
+    {
+        return array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids);
+    }
+
     public function numberTaken(Uuid $companyId, string $number): bool
     {
         return null !== $this->entityManager->getRepository(DeliveryNote::class)->findOneBy(['company' => $companyId, 'number' => $number]);

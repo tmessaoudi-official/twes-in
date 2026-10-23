@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { requestState } from '../shared/feedback/request-state';
 import { StepUp } from '../shared/step-up/step-up';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, MemberRole, MemberRow } from './company-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The member list of one company, and the two things an administrator does to it. */
 @Injectable({ providedIn: 'root' })
@@ -13,7 +14,7 @@ export class MembersFacade {
   private readonly api = inject(CompanyApi);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
-  private readonly membersSignal = signal<readonly MemberRow[]>([]);
+  private readonly membersSignal = sessionSignal<readonly MemberRow[]>([]);
   private readonly state = requestState(codeOf);
 
   readonly members = this.membersSignal.asReadonly();

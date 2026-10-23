@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, CompanyOption } from './company-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /**
  * What the switcher shows and does. Switching changes the session on the server, so the signed-in state is
@@ -18,9 +19,10 @@ export class CompanyFacade {
   private readonly auth = inject(AuthFacade);
   private readonly unsaved = inject(UnsavedChanges);
   private readonly feedback = inject(Feedback);
-  private readonly companiesSignal = signal<readonly CompanyOption[]>([]);
-  private readonly switchingSignal = signal(false);
-  private readonly errorSignal = signal<CompanyError | null>(null);
+  // The companies the person belongs to: kept across a switch, forgotten at sign-out.
+  private readonly companiesSignal = sessionSignal<readonly CompanyOption[]>([], 'person');
+  private readonly switchingSignal = sessionSignal(false);
+  private readonly errorSignal = sessionSignal<CompanyError | null>(null);
 
   readonly companies = this.companiesSignal.asReadonly();
   readonly switching = this.switchingSignal.asReadonly();

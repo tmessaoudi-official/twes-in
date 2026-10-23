@@ -16,6 +16,8 @@ delivery_note:
     issue_date: 'Date'
     delivery_date: 'Date de livraison'
     customer_reference: 'Votre référence'
+    quote: 'Devis'
+    invoice: 'Facture'
     remarks: 'Remarques'
     reception:
         title: 'Réception'

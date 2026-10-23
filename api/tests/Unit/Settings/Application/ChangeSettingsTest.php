@@ -137,6 +137,34 @@ final class ChangeSettingsTest extends TestCase
         }
     }
 
+    /**
+     * A save says everything wrong with it at once, each refusal under its own key with its reason and parameters, so a
+     * page marks every field at once rather than one per attempt; nothing of it is kept.
+     */
+    public function testASaveRefusesEveryKeyItWouldNotStoreAtOnce(): void
+    {
+        try {
+            $this->change->changeAll($this->context, SettingLevel::Company, [
+                new SettingChange('presentation.density', 'cosy', 0),
+                new SettingChange('presentation.scheme', 'dark', 0),
+                new SettingChange('presentation.scan-recount-ms', 100, 0),
+                new SettingChange('presentation.shortcuts', ['new' => 'n'], 0),
+                new SettingChange('presentation.scheme', 'light', 0),
+            ], $this->userId);
+            self::fail('A save holding refused values was kept.');
+        } catch (InvalidSettingValue $refused) {
+            $said = array_map(static fn ($refusal): array => [$refusal->reason, $refusal->params], $refused->refusals);
+            self::assertSame([
+                'presentation.density' => ['unknown_choice', []],
+                'presentation.scan-recount-ms' => ['whole_number_between', ['min' => 200, 'max' => 5000]],
+                'presentation.shortcuts' => ['level_refused', []],
+                'presentation.scheme' => ['invalid_value', []],
+            ], $said);
+            self::assertStringContainsString('presentation.density', $refused->getMessage());
+            self::assertSame([], $this->settings->settings);
+        }
+    }
+
     public function testAResetFallsBackToTheNextLevel(): void
     {
         $this->change->change($this->context, 'presentation.density', SettingLevel::Company, 'compact', $this->userId);

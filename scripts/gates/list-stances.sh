@@ -3,8 +3,9 @@
 # What one list gains, every list of its kind is judged for: only the invoices list
 # had a selection among 27, and nothing asked the others. Every list a template draws (`<app-data-list>`) offers, or
 # says below why it does not, five things: selection, bulk actions (an `appDataListSelection` template), row actions
-# (its descriptor's `actions`, or a button in one of its cells), import (a link to `/imports/…`) and export
-# (`<app-list-export>`); the last two belong to the page, the first three to each list on it.
+# (its descriptor's `actions`), import (a link to `/imports/…`) and export (`<app-list-export>`); the last two belong
+# to the page, the first three to each list on it. A button drawn in a cell is not a row action and reds: it asks
+# nothing, folds nowhere and reaches no other surface, which is how « Comptes » once passed with text buttons.
 #
 # A list is keyed `<template path under web/src/app>#<the descriptor it is given>`, `()` dropped and an `@if (x; as y)`
 # alias read as `x`. Its descriptor is read from the component beside the template, following what it names into the
@@ -97,7 +98,6 @@ platform/platform-page|import=not-ruled
 platform/platform-page#accountsList|bulk=not-ruled
 platform/platform-page#accountsList|selection=not-ruled
 platform/platform-page#companiesList|bulk=not-ruled
-platform/platform-page#companiesList|row-actions=not-ruled
 platform/platform-page#companiesList|selection=not-ruled
 price-lists/price-lists-page|export=not-ruled
 price-lists/price-lists-page|import=not-ruled
@@ -203,6 +203,7 @@ def descriptor(path, name, depth=0):
 templates = subprocess.run(['git', 'ls-files', '--', APP + '*.html'], capture_output=True, text=True, check=True).stdout.split()
 offered = {}
 unread = []
+drawn = []
 pages = set()
 for template in templates:
     text = read(template)
@@ -228,7 +229,10 @@ for template in templates:
         cells = ''.join(re.findall(r'<ng-template\s+appDataListCell\b.*?</ng-template>', inner, re.S))
         offered[f'{key}|selection'] = bool(re.search(r'\[\(selected\)\]|\(selectedChange\)', tag.group(1)) or re.search(r'\bselection\s*:', body))
         offered[f'{key}|bulk'] = 'appDataListSelection' in inner
-        offered[f'{key}|row-actions'] = bool(re.search(r'\bactions\s*:\s*\[(?!\s*\])', body) or re.search(r'<button\b|<a\s[^>]*\bmat-', cells))
+        # Row actions are what the descriptor declares; a control drawn in a cell is none of them, and reds below.
+        offered[f'{key}|row-actions'] = bool(re.search(r'\bactions\s*:\s*(\[(?!\s*\])|onRows\()', body))
+        if re.search(r'<button\b|<a\s[^>]*\bmat-[\w-]*button\b|\(click\)', cells):
+            drawn.append(key)
     offered[f'{page}|import'] = 'routerLink="/imports/' in text
     offered[f'{page}|export'] = '<app-list-export' in text
 
@@ -238,6 +242,9 @@ if not pages:
     sys.exit(1)
 for key in unread:
     print(f'list-stances: FAIL — {key}: its descriptor could not be read, so no stance can be judged')
+    status = 1
+for key in drawn:
+    print(f'list-stances: FAIL — {key}: a cell draws a button; declare it in the descriptor\'s actions, which ask, fold and reach every surface')
     status = 1
 
 reasons = {}

@@ -195,6 +195,8 @@ export type PlatformError =
   | 'already_member'
   | 'step_up_required'
   | 'record_changed'
+  /** Refused on fields the answer names, each said under its own field. */
+  | 'invalid'
   | 'refused'
   | 'network';
 

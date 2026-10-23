@@ -460,6 +460,8 @@ function toNote(
       productName: line.productName ?? null,
       productTracking: line.productTracking == null ? null : trackingOf(line.productTracking),
       lotCode: line.lotCode ?? null,
+      sourceQuoteLineId: line.sourceQuoteLineId ?? null,
+      sourceInvoiceLineId: line.sourceInvoiceLineId ?? null,
       net: line.net ?? '',
     })),
     subtotalNet: raw.subtotalNet ?? '0',
@@ -476,6 +478,10 @@ function toNote(
       number: invoice.number,
       status: invoice.status,
     })),
+    quote: raw.quote ? { quoteId: raw.quote.quoteId, number: raw.quote.number ?? null } : null,
+    invoice: raw.invoice
+      ? { invoiceId: raw.invoice.invoiceId, number: raw.invoice.number ?? null }
+      : null,
   };
 }
 

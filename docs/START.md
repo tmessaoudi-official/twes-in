@@ -406,6 +406,14 @@ operator cannot deactivate their own account. Removing someone from one company 
 Company settings → **Security** → **Require two-step verification** turns it on for everyone in that company. Each member
 then enrols an authenticator app or a passkey at their next sign-in.
 
+### 5.8 A lost authenticator
+
+A person who is not required to keep a second factor signs in with a recovery code, then **Mon compte** → **Sécurité**
+removes the app and sets a new one up. A required account (every operator, and every member of a company that requires
+it) cannot remove its last factor: with a passkey it signs in with that and replaces the app; with neither a passkey nor
+a recovery code left, whoever runs the installation replaces its factors from the server with `bin/console
+app:mfa:replace <e-mail>` (docs/RUNBOOK.md « Replace a lost authenticator »). No operator can reset another's factors.
+
 ## 6. Start clean
 
 ```sh

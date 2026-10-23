@@ -63,7 +63,17 @@ out=$(run "$d" "$(stances "${ALL_BUT_ROWS[@]}")"); check "a list named through a
 d=$(repo); page "$d" '<app-data-list [descriptor]="list">
   <ng-template appDataListCell="actions" let-row><button type="button">Lock</button></ng-template>
 </app-data-list>' 'export class APage { protected readonly list = { id: "a", columns: [] }; }'
-out=$(run "$d" "$(stances "${ALL_BUT_ROWS[@]}")"); check "a button in a cell is a row action" $? 0 "$out" "OK"
+out=$(run "$d" "$(stances "${NONE[@]}")"); check "a button in a cell reds, and is no row action" $? 1 "$out" "x/a-page#list: a cell draws a button"
+out=$(run "$d" "$(stances "${ALL_BUT_ROWS[@]}")"); check "so row actions stay not offered beside it" $? 1 "$out" "x/a-page#list|row-actions is neither offered"
+
+d=$(repo); page "$d" '<app-data-list [descriptor]="list">
+  <ng-template appDataListCell="state" let-row><span (click)="act(row)">Lock</span></ng-template>
+</app-data-list>' 'export class APage { protected readonly list = { id: "a", actions: [OPEN] }; }'
+out=$(run "$d" "$(stances "${ALL_BUT_ROWS[@]}")"); check "a click handler in a cell reds even beside declared actions" $? 1 "$out" "a cell draws a button"
+
+d=$(repo); page "$d" '<app-data-list [descriptor]="list" />' \
+  'export class APage { protected readonly list = { id: "a", actions: onRows(A_ACTIONS) }; }'
+out=$(run "$d" "$(stances "${ALL_BUT_ROWS[@]}")"); check "actions bound from a record declaration through onRows are offered" $? 0 "$out" "OK"
 
 d=$(repo); page "$d" '<a routerLink="/imports/a">Import</a><app-list-export [address]="a()" />
 <app-data-list [descriptor]="list" />' 'export class APage { protected readonly list = { id: "a" }; }'

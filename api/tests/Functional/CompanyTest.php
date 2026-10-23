@@ -153,6 +153,8 @@ final class CompanyTest extends ApiTestCase
         $this->postJson('/api/companies', [...self::VALID, 'name' => '']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        // Said on the name's own field, in the screens' words.
+        self::assertSame([['propertyPath' => 'name', 'reason' => 'value_required', 'params' => []]], $this->refusals());
     }
 
     public function testAnUnknownCountryIsRefused(): void

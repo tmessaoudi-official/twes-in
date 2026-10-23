@@ -11,6 +11,8 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { Session } from '../session/session';
+import { provideQuietFeedback, RecordedFeedback } from '../testing/feedback';
+import { Feedback } from '../feedback/feedback';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import {
@@ -307,6 +309,15 @@ class StaticLoader implements TranslateLoader {
         selection_clear: 'Clear selection',
         loading: 'Loading…',
         failed: 'The list could not be loaded.',
+        paginator: {
+          items_per_page: 'Rows a page',
+          next: 'Next page',
+          previous: 'Previous page',
+          first: 'First page',
+          last: 'Last page',
+          range: '{{start}} to {{end}}, {{total}} in all',
+          empty: 'none of {{total}}',
+        },
       },
     });
   }
@@ -405,6 +416,7 @@ describe('DataList', () => {
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: storage },
         { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
+        ...provideQuietFeedback(),
       ],
     });
     if (saved) TestBed.inject(SettingsFacade).set(listPreferencesSetting('customers'), saved);
@@ -815,6 +827,15 @@ describe('DataList', () => {
 
     expect(views().map((kept) => kept.id)).toEqual(['v2']);
     expect(q('list-view-apply-v1')).toBeNull();
+
+    // Never silent: the toast names the view, and « Annuler » puts it back where it stood.
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    expect(said).toEqual([
+      expect.objectContaining({ key: 'list.view_deleted', params: { name: 'Mine' } }),
+    ]);
+    said[0].action!.run();
+    await settle();
+    expect(views().map((kept) => kept.id)).toEqual(['v1', 'v2']);
   });
 
   // The rows-per-page chooser is always reachable, and the size a person picks is theirs on every list.
@@ -870,6 +891,13 @@ describe('DataList', () => {
     });
 
     afterEach(() => server.destroy());
+
+    it("says its pages in the screen's words, with nothing provided at the root", () => {
+      // The list brings its own paginator texts: at the root they put Material's paginator, its select and the whole
+      // forms package on the first page.
+      expect(q('list-paginator')?.textContent).toContain('1 to 10, 30 in all');
+      expect(q('list-paginator')?.textContent).toContain('Rows a page');
+    });
 
     it('shows the page it was given as it is, counts the pages by the total, and asks for the first page', () => {
       expect(serverRowIds()).toEqual(['30', '29', '28', '27', '26', '25', '24', '23', '22', '21']);

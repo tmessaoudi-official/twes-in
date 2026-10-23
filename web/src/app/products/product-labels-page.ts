@@ -10,18 +10,17 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { Session } from '../shared/session/session';
-import { labelCode, MOST_LABEL_COPIES, ProductLabel } from './product-label';
+import { LabelCopies } from './label-copies';
+import { labelCode, ProductLabel } from './product-label';
 import { ProductsApi } from './products-api';
 import type { ProductBarcode, ProductRow } from './products-types';
 
@@ -35,12 +34,10 @@ import type { ProductBarcode, ProductRow } from './products-types';
 @Component({
   selector: 'app-product-labels-page',
   imports: [
-    FormsModule,
     MatButtonModule,
     MatCheckboxModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
+    LabelCopies,
     ProductLabel,
     RouterLink,
     TranslatePipe,
@@ -65,6 +62,7 @@ export class ProductLabelsPage {
   /** The codes the person ticked; until they tick one, the default code alone. */
   private readonly ticked = signal<readonly string[] | null>(null);
   protected readonly copies = signal(1);
+  private readonly copiesField = viewChild(LabelCopies);
 
   protected readonly printed = computed((): ProductBarcode | null => {
     const barcodes = this.product()?.barcodes ?? [];
@@ -103,12 +101,8 @@ export class ProductLabelsPage {
     });
   }
 
-  protected setCopies(value: unknown): void {
-    const copies = Math.trunc(Number(value));
-    this.copies.set(Number.isFinite(copies) ? Math.min(Math.max(copies, 1), MOST_LABEL_COPIES) : 1);
-  }
-
   protected print(): void {
+    if (this.copiesField()?.reveal()) return;
     this.document.defaultView?.print();
   }
 

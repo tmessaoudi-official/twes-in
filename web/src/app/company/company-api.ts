@@ -146,6 +146,20 @@ export class CompanyApi {
     );
   }
 
+  /**
+   * The picture the company shows now, as a file the upload takes again: what « Annuler » puts back after a removal.
+   * The API sniffs what it is, so the name only carries its kind.
+   */
+  async logoFile(companyId: string, version: string): Promise<File> {
+    return this.guard(async () => {
+      const picture = await firstValueFrom(
+        this.http.get(companyLogoUrl(companyId, version), { responseType: 'blob' }),
+      );
+      const kind = picture.type.startsWith('image/') ? picture.type.slice('image/'.length) : 'png';
+      return new File([picture], `logo.${kind === 'jpeg' ? 'jpg' : kind}`, { type: picture.type });
+    }, logoCodeOf);
+  }
+
   /** The company has no logo afterwards, whether or not it had one. */
   async removeLogo(companyId: string): Promise<void> {
     await this.guard(async () => {

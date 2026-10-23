@@ -50,6 +50,8 @@ use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStoredFiles;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\NoInvoicesToDeliver;
+use App\Tests\Support\NoQuotesToDeliver;
 use App\Tests\Support\RecordingDeliveryNoteTemplate;
 use App\Tests\Support\RecordingDomainEvents;
 use App\Tests\Support\ShippedFiscalPresets;
@@ -99,6 +101,8 @@ final class PrintDeliveryNoteTest extends TestCase
             new ReadSetting($resolve),
             $this->names = new DocumentNames($this->taxes),
             new FakeTransactions(),
+            new NoQuotesToDeliver(),
+            new NoInvoicesToDeliver(),
         );
         $now = $this->clock->now();
         $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);

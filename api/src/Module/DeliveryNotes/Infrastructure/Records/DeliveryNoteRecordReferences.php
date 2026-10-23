@@ -32,6 +32,10 @@ final readonly class DeliveryNoteRecordReferences implements DeclaresRecordRefer
         return [
             RecordReference::uses('delivery_note', 'invoiced_by_invoice_id', 'invoice', RecordMerge::Ignored, 'A note names the invoice that invoiced it, an issued one; one naming a draft keeps it.'),
             RecordReference::owned('delivery_note_line', 'delivery_note_id', 'delivery_note', RecordMerge::Ignored, 'A line is part of its draft: it goes with it and comes back with it.'),
+            RecordReference::uses('delivery_note_line', 'source_quote_line_id', 'quote', RecordMerge::Ignored, 'A delivery note line names the line of the accepted quote it delivers; a draft quote is never delivered.')
+                ->below('quote_line', 'quote_id'),
+            RecordReference::uses('delivery_note_line', 'source_invoice_line_id', 'invoice', RecordMerge::Ignored, 'A delivery note line names the line of the issued invoice whose goods it hands over; an issued invoice is never deleted.')
+                ->below('invoice_line', 'invoice_id'),
             RecordReference::owned('delivery_note_line_tax', 'line_id', 'delivery_note', RecordMerge::Ignored, 'A line\'s tax is part of its line: it goes before it and comes back after it.')
                 ->below('delivery_note_line', 'delivery_note_id'),
             RecordReference::uses('delivery_note_line', 'product_id', 'product', RecordMerge::Moves, 'A delivery note line names the product it delivers; merged, a draft delivers the product kept, a validated note what it printed.')

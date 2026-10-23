@@ -123,6 +123,19 @@ export function versioned(
   });
 }
 
+/**
+ * What the level holds of its own for a key, kept before a reset so the reset can be taken back; null when the level
+ * holds nothing, where a reset changes nothing to take back.
+ */
+export function heldAt(
+  rows: readonly SettingRow[],
+  key: string,
+  level: SettingLevel,
+): { value: FieldValue } | null {
+  const held = rows.find((row) => row.key === key)?.levels.find((each) => each.level === level);
+  return held === undefined ? null : { value: held.value as FieldValue };
+}
+
 /** The settings the level holds a value of its own for; a reset returns each to the level above. */
 export function overridesAt(
   rows: readonly SettingRow[],
@@ -237,6 +250,10 @@ function textField(id: string, label: string, row: SettingRow): FormField {
     ...(long ? { span: 2 as const } : {}),
     ...(row.maxLength === null ? {} : { maxLength: row.maxLength }),
     ...(pattern === undefined ? {} : { pattern }),
+    // The sentence the API refuses the value with, said before the save asks it.
+    ...(pattern === undefined || !row.patternReason
+      ? {}
+      : { patternError: `import.rejections.${row.patternReason}` }),
   };
 }
 

@@ -52,3 +52,21 @@ test('a forgotten password comes back through the mailed link, made by the worke
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId('greeting')).toContainText('Forgetful Person');
 });
+
+// The page is left and opened again inside the application, never reloaded: the facade it reads outlives it, and the
+// second visit must start on the form, not on how the first one ended (sent, or refused by the request limit).
+test('asking again after going back to sign in shows a fresh form', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByTestId('login-forgot').click();
+  await page.getByTestId('forgot-email').fill(`nobody-${Date.now()}@twes.local`);
+  await page.getByTestId('forgot-submit').click();
+  await expect(page.getByTestId('forgot-sent').or(page.getByTestId('forgot-error'))).toBeVisible();
+
+  await page.getByTestId('forgot-back').click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.getByTestId('login-forgot').click();
+
+  await expect(page.getByTestId('forgot-form')).toBeVisible();
+  await expect(page.getByTestId('forgot-sent')).toHaveCount(0);
+  await expect(page.getByTestId('forgot-error')).toHaveCount(0);
+});

@@ -1,0 +1,46 @@
+{
+  "deliveries": {
+    "of_quote": "Delivers the quote",
+    "quote_unnumbered": "an unnumbered quote",
+    "statuses": {
+      "partly": "Partly delivered",
+      "whole": "Delivered"
+    },
+    "actions": {
+      "deliver": "Deliver",
+      "deliver_part": "Deliver part"
+    },
+    "drafted": "The delivery note is drafted: check it, then validate it when the goods leave.",
+    "card": {
+      "title": "Deliveries",
+      "draft": "Draft",
+      "figures": "On notes: {{onNotes}} of {{quantity}}, {{delivered}} of it delivered · left: {{left}}",
+      "hint": "Each note invoiced carries the price and discount accepted on the quote: invoice the validated notes from the delivery notes list. A quote delivered by notes is no longer invoiced as a whole."
+    },
+    "part": {
+      "title": "Quantities to deliver",
+      "help": "Each line starts at what is left to deliver; enter 0 to leave it off this note.",
+      "left": "{{left}} left to deliver",
+      "cancel": "Close",
+      "confirm": "Draft the note"
+    }
+  },
+  "invoice_deliveries": {
+    "of_invoice": "Hands over the goods of the invoice",
+    "invoice_unnumbered": "an unnumbered invoice",
+    "billed_already": "The invoice already billed these goods and took them out of stock when it was issued: this note moves no stock and is not invoiced.",
+    "figures": "Billed: {{quantity}}, taken back by credit note: {{returned}} · on notes: {{onNotes}}, {{delivered}} of it delivered · left: {{left}}",
+    "hint": "The goods left stock when the invoice was issued: its notes only tell their handover to the customer, moving no stock and never invoiced."
+  },
+  "invoices": {
+    "errors": {
+      "delivery_refused": "This delivery note is refused: each quantity is at most what is left to deliver of its line, once its credit notes and other notes are taken off."
+    }
+  },
+  "quotes": {
+    "errors": {
+      "delivery_refused": "This delivery note is refused: each quantity is at most what is left to deliver of its line, and at least one line is left.",
+      "delivery_whole": "This quote is invoiced as a whole: it carries a discount on the total or a deposit. Invoice it, then deliver from the invoice."
+    }
+  }
+}

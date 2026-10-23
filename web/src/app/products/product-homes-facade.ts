@@ -103,6 +103,20 @@ export class ProductHomes {
     );
   }
 
+  /** A home taken off, put back where it stood in its establishment's order: the main one is the main one again. */
+  async putBack(
+    companyId: string,
+    productId: string,
+    home: ProductHomeRow,
+    version: number,
+  ): Promise<HomesWrite> {
+    return this.write(companyId, productId, home.establishmentId, version, (ids) =>
+      ids.includes(home.locationId)
+        ? ids
+        : [...ids.slice(0, home.position), home.locationId, ...ids.slice(home.position)],
+    );
+  }
+
   /**
    * The establishment's homes as a new list, written whole (an empty one clears them) and read again: the API keeps
    * the order. The version the write left is the product's before this says it is done, so a click straight after

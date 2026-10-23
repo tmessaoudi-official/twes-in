@@ -75,6 +75,12 @@ describe('StopMailPage', () => {
     expect(query('stop-mail-submit')?.textContent).toContain('Ne plus recevoir cet e-mail');
   });
 
+  it('offers a way to the notification choices before anything is stopped, so the page is never a dead end', async () => {
+    const { query } = await render();
+
+    expect(query('stop-mail-manage')?.getAttribute('href')).toBe('/account?tab=notifications');
+  });
+
   it('sends the link token, then says it is done and leads to where it is turned back on', async () => {
     const { fixture, query } = await render();
 

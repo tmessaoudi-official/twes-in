@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { requestState } from '../shared/feedback/request-state';
 import { StepUp } from '../shared/step-up/step-up';
 import { RolesApi, RolesRefused } from './roles-api';
 import type { PermissionGroupRow, RoleHolders, RoleRow } from './roles-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** The roles of the company being worked in, the catalogue they are ticked from, and the writes. */
 @Injectable({ providedIn: 'root' })
@@ -14,10 +15,10 @@ export class RolesFacade {
   private readonly api = inject(RolesApi);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
-  private readonly rolesSignal = signal<readonly RoleRow[]>([]);
-  private readonly groupsSignal = signal<readonly PermissionGroupRow[]>([]);
+  private readonly rolesSignal = sessionSignal<readonly RoleRow[]>([]);
+  private readonly groupsSignal = sessionSignal<readonly PermissionGroupRow[]>([]);
   private readonly state = requestState((error) => refusalOf(error).code);
-  private readonly heldSignal = signal<RoleHolders | null>(null);
+  private readonly heldSignal = sessionSignal<RoleHolders | null>(null);
 
   readonly roles = this.rolesSignal.asReadonly();
   readonly groups = this.groupsSignal.asReadonly();
@@ -60,8 +61,8 @@ export class RolesFacade {
     );
   }
 
-  async remove(companyId: string, roleId: string): Promise<boolean> {
-    return this.write(companyId, () => this.api.remove(companyId, roleId));
+  async remove(companyId: string, roleId: string, version: number): Promise<boolean> {
+    return this.write(companyId, () => this.api.remove(companyId, roleId, version));
   }
 
   clearError(): void {

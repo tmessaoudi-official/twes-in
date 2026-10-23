@@ -583,6 +583,25 @@ export interface StockOnHand {
   onHand: string;
 }
 
+/** One place and lot something moved in for a product, with what is there now. */
+export interface CountPlace {
+  locationId: string;
+  /** Null for a product kept without lots. */
+  lotCode: string | null;
+  /** A decimal string, below zero when more left than came in. */
+  quantity: string;
+}
+
+/**
+ * What a count of one product would change, read before it is recorded: every place and lot it ever held, an emptied
+ * one included, and the places it lives at (a place under one is at home too).
+ */
+export interface CountContext {
+  productId: string;
+  places: readonly CountPlace[];
+  homeLocationIds: readonly string[];
+}
+
 /** A floor as one step left it: its rectangles and building, with their versions, and what the step created. */
 export interface StockPlanSaved {
   drawings: StockDrawingRow[];

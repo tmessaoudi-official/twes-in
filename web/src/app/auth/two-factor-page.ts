@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { Location } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -42,6 +43,7 @@ import { SignedOutLayout } from './signed-out-layout';
 export class TwoFactorPage {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly stepUp = inject(StepUp);
   private readonly dialog = inject(MatDialog);
 
@@ -227,6 +229,18 @@ export class TwoFactorPage {
 
   protected async continue(): Promise<void> {
     await this.router.navigateByUrl('/');
+  }
+
+  /**
+   * An account nothing requires to use the check came here by choice, from Mon compte, the account menu or a company's
+   * security page, and leaves unchanged the way it came; opened first, it lands where the check is managed.
+   */
+  protected later(): void {
+    if (this.router.lastSuccessfulNavigation()?.previousNavigation) {
+      this.location.back();
+    } else {
+      void this.router.navigateByUrl('/account?tab=security');
+    }
   }
 
   protected async signOut(): Promise<void> {

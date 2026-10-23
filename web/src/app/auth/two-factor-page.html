@@ -277,9 +277,14 @@
         >
           {{ 'auth.two_factor.continue' | translate }}
         </button>
-      } @else {
+      } @else if (required) {
+        <!-- way-out: a required account's only one is signing out, until a factor is on -->
         <button mat-button type="button" (click)="signOut()" data-testid="two-factor-logout">
           {{ 'auth.logout' | translate }}
+        </button>
+      } @else {
+        <button mat-button type="button" (click)="later()" data-testid="two-factor-later">
+          {{ 'auth.two_factor.later' | translate }}
         </button>
       }
     }

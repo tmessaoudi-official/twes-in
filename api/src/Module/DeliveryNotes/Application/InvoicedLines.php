@@ -35,4 +35,14 @@ interface InvoicedLines
      * @return list<CarryingInvoice>
      */
     public function carrying(Uuid $companyId, array $deliveryNoteLineIds): array;
+
+    /**
+     * How much discount, as an amount, the invoices that are not cancelled already give on each line, drafts included:
+     * what a quote's amount discount has left to share among the parts of it still to invoice.
+     *
+     * @param list<Uuid> $deliveryNoteLineIds
+     *
+     * @return array<string, string> decimal amounts by delivery note line id; a line given none is absent
+     */
+    public function discounts(Uuid $companyId, array $deliveryNoteLineIds): array;
 }

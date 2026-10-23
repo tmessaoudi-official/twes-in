@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
@@ -103,6 +104,74 @@ final class InMemoryDeliveryNotes implements DeliveryNoteRepository
         $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $lineIds);
 
         return array_values(array_filter($this->ofCompany($companyId), static fn (DeliveryNote $note): bool => [] !== array_filter($note->getLines(), static fn (DeliveryNoteLine $line): bool => \in_array($line->getId()->toRfc4122(), $wanted, true))));
+    }
+
+    public function quoteLineQuantities(Uuid $companyId, array $quoteLineIds, ?Uuid $except = null, bool $deliveredOnly = false): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $quoteLineIds);
+        $sums = [];
+        foreach ($this->ofCompany($companyId) as $note) {
+            if (DeliveryNoteStatus::Cancelled === $note->getStatus() || ($deliveredOnly && DeliveryNoteStatus::Draft === $note->getStatus()) || (null !== $except && $note->getId()->equals($except))) {
+                continue;
+            }
+            foreach ($note->getLines() as $line) {
+                $source = $line->getSourceQuoteLineId()?->toRfc4122();
+                if (null !== $source && \in_array($source, $wanted, true)) {
+                    $sums[$source] = Decimal::format(Decimal::of($sums[$source] ?? '0')->add(Decimal::of($line->getQuantity())), 3);
+                }
+            }
+        }
+
+        return $sums;
+    }
+
+    public function invoiceLineQuantities(Uuid $companyId, array $invoiceLineIds, ?Uuid $except = null, bool $deliveredOnly = false): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $invoiceLineIds);
+        $sums = [];
+        foreach ($this->ofCompany($companyId) as $note) {
+            if (DeliveryNoteStatus::Cancelled === $note->getStatus() || ($deliveredOnly && DeliveryNoteStatus::Draft === $note->getStatus()) || (null !== $except && $note->getId()->equals($except))) {
+                continue;
+            }
+            foreach ($note->getLines() as $line) {
+                $source = $line->getSourceInvoiceLineId()?->toRfc4122();
+                if (null !== $source && \in_array($source, $wanted, true)) {
+                    $sums[$source] = Decimal::format(Decimal::of($sums[$source] ?? '0')->add(Decimal::of($line->getQuantity())), 3);
+                }
+            }
+        }
+
+        return $sums;
+    }
+
+    public function deliveringInvoiceLines(Uuid $companyId, array $invoiceLineIds): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $invoiceLineIds);
+
+        return array_values(array_filter($this->ofCompany($companyId), static fn (DeliveryNote $note): bool => DeliveryNoteStatus::Cancelled !== $note->getStatus() && [] !== array_filter($note->getLines(), static fn (DeliveryNoteLine $line): bool => \in_array($line->getSourceInvoiceLineId()?->toRfc4122(), $wanted, true))));
+    }
+
+    public function delivering(Uuid $companyId, array $quoteLineIds): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $quoteLineIds);
+
+        return array_values(array_filter($this->ofCompany($companyId), static fn (DeliveryNote $note): bool => DeliveryNoteStatus::Cancelled !== $note->getStatus() && [] !== array_filter($note->getLines(), static fn (DeliveryNoteLine $line): bool => \in_array($line->getSourceQuoteLineId()?->toRfc4122(), $wanted, true))));
+    }
+
+    public function linesDelivering(Uuid $companyId, array $quoteLineIds): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $quoteLineIds);
+        $lines = [];
+        foreach ($this->ofCompany($companyId) as $note) {
+            foreach ($note->getLines() as $line) {
+                $source = $line->getSourceQuoteLineId()?->toRfc4122();
+                if (null !== $source && \in_array($source, $wanted, true)) {
+                    $lines[$source][] = $line->getId();
+                }
+            }
+        }
+
+        return $lines;
     }
 
     public function numberTaken(Uuid $companyId, string $number): bool

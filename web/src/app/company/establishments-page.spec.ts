@@ -75,6 +75,7 @@ describe('EstablishmentsPage', () => {
     rows: signal([]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    refusals: signal([]).asReadonly(),
     load: vi.fn(async () => undefined),
     save: vi.fn(async () => true),
     reset: vi.fn(async () => true),

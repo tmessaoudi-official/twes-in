@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { changedSettingsAt, overridesAt, settingsForm, settingsValues } from './setting-forms';
+import {
+  changedSettingsAt,
+  heldAt,
+  overridesAt,
+  settingsForm,
+  settingsValues,
+} from './setting-forms';
 import type { SettingRow } from './settings-types';
 
 function row(
@@ -132,5 +138,15 @@ describe('settings at a level', () => {
     expect(overridesAt(rows, 'customer_group', true).map((setting) => setting.key)).toEqual([
       'document.payment_terms_days',
     ]);
+  });
+});
+
+describe('a reset taken back', () => {
+  it('keeps what the level held of its own, and nothing for a level holding nothing', () => {
+    expect(heldAt(rows, 'document.payment_terms_days', 'customer_group')).toEqual({ value: 45 });
+    // The company's 60 is held even though the group's 45 is what applies.
+    expect(heldAt(rows, 'document.payment_terms_days', 'company')).toEqual({ value: 60 });
+    expect(heldAt(rows, 'document.payment_terms_days', 'customer')).toBeNull();
+    expect(heldAt(rows, 'gone.key', 'company')).toBeNull();
   });
 });

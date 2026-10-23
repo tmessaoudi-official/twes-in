@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ReportsApi } from './reports-api';
 import {
@@ -11,6 +11,7 @@ import {
   type ReportQuery,
   type ReportResult,
 } from './reports-types';
+import { sessionSignal } from '../shared/session/session-data';
 
 /**
  * A report being read. `gone` is a report nobody here may read, of a module switched off, or that does not exist;
@@ -27,9 +28,9 @@ export type ReportState =
 @Injectable({ providedIn: 'root' })
 export class ReportsFacade {
   private readonly api = inject(ReportsApi);
-  private readonly catalogueSignal = signal<readonly ReportEntry[] | null>(null);
-  private readonly catalogueFailedSignal = signal(false);
-  private readonly reportSignal = signal<ReportState>({ status: 'loading' });
+  private readonly catalogueSignal = sessionSignal<readonly ReportEntry[] | null>(null);
+  private readonly catalogueFailedSignal = sessionSignal(false);
+  private readonly reportSignal = sessionSignal<ReportState>({ status: 'loading' });
   /** The latest report asked: an answer to an earlier question, slower than the next, is not shown over it. */
   private asked = 0;
 

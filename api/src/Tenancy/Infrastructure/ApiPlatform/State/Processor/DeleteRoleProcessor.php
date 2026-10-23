@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\StepUp\RecentProof;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\ApiPlatform\Payload\DeleteVersion;
 use App\Tenancy\Application\Role\ManageRoles;
 use App\Tenancy\Application\Role\RoleInUse;
 use App\Tenancy\Application\Role\RoleNotEditable;
@@ -35,9 +36,10 @@ final readonly class DeleteRoleProcessor implements ProcessorInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
         $this->proof->demand($this->guard->account()->getId());
+        $version = DeleteVersion::of($context);
 
         try {
-            $this->roles->delete($company, CompanyPath::identifier($uriVariables, 'roleId'), $this->guard->account()->getId());
+            $this->roles->delete($company, CompanyPath::identifier($uriVariables, 'roleId'), $this->guard->account()->getId(), $version);
         } catch (RoleNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);
         } catch (RoleNotEditable $refused) {

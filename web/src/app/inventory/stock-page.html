@@ -87,6 +87,35 @@
                   }
                 </div>
               }
+              @if (countNote(); as note) {
+                <app-count-effect-note
+                  class="mb-4 block"
+                  [effect]="note"
+                  [decimals]="decimals()"
+                  [places]="placeNames()"
+                  testId="stock-count-effect"
+                />
+              }
+              @if (partNotes().length > 0) {
+                <ul class="mb-4 flex list-none flex-col gap-2 p-0" data-testid="stock-count-parts">
+                  @for (part of partNotes(); track $index; let p = $index) {
+                    @if (part.effect; as effect) {
+                      <li class="flex flex-col gap-0.5">
+                        <span class="text-xs font-medium"
+                          ><bdi>{{ placeNames().get(part.locationId) }}</bdi></span
+                        >
+                        <app-count-effect-note
+                          [effect]="effect"
+                          [decimals]="decimals()"
+                          [places]="placeNames()"
+                          [brief]="true"
+                          [testId]="'stock-count-part-' + p + '-effect'"
+                        />
+                      </li>
+                    }
+                  }
+                </ul>
+              }
               @if (operation() === 'receive' && receiptCost(); as cost) {
                 <dl
                   class="mb-4 grid max-w-prose grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm"

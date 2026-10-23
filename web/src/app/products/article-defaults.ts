@@ -12,7 +12,8 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { resetTakenBack } from '../shared/settings/reset-taken-back';
 import { AuthFacade } from '../auth/auth-facade';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { DescriptorForm } from '../shared/form/descriptor-form';
@@ -33,6 +34,8 @@ import {
 import type { ArticleSubject, SettingChain } from '../shared/settings/settings-types';
 import { articleLevelOf, ArticleSettings } from './article-settings-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { SettingRefusalLines } from '../shared/settings/setting-refusal-lines';
 import { FiscalFacade } from '../fiscal/fiscal-facade';
 import { withUnitChoice } from '../settings/settings-forms';
 
@@ -44,13 +47,21 @@ const ARTICLE_CHAINS: readonly SettingChain[] = ['articles'];
  */
 @Component({
   selector: 'app-article-defaults',
-  imports: [MatButtonModule, TranslatePipe, DescriptorForm, RecordBar, RecordChanged],
+  imports: [
+    MatButtonModule,
+    TranslatePipe,
+    DescriptorForm,
+    RecordBar,
+    RecordChanged,
+    SettingRefusalLines,
+  ],
   templateUrl: './article-defaults.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ArticleDefaults {
   private readonly settings = inject(ArticleSettings);
   private readonly feedback = inject(Feedback);
+  private readonly translate = inject(TranslateService);
   private readonly auth = inject(AuthFacade);
   private readonly fiscal = inject(FiscalFacade);
 
@@ -58,6 +69,9 @@ export class ArticleDefaults {
 
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
+  protected readonly rows = this.settings.rows;
+  /** The settings the last save refused that no field of the form carries, named in the card's line. */
+  protected readonly unplaced = signal<readonly FieldRefusal[]>([]);
   protected readonly companyId = computed(() => this.auth.me()?.company?.id ?? null);
   protected readonly level = computed(() => articleLevelOf(this.subject()));
   protected readonly intro = computed(() =>
@@ -187,21 +201,31 @@ export class ArticleDefaults {
       changedSettingsAt(this.settings.rows(), values, this.level()),
       this.sync.version(),
     );
+    this.unplaced.set([]);
     if (changes.length === 0 || (await this.settings.save(companyId, this.subject(), changes))) {
       this.revision.update((revision) => revision + 1);
       this.feedback.success('products.defaults.saved');
     } else if (this.settings.error() === 'record_changed') {
       this.settings.clearError();
       await this.sync.savedElsewhere();
+    } else {
+      // Each refused setting under its own field; what no field here shows is named in the card's line.
+      const refused = this.settings.refusals();
+      this.unplaced.set(this.shownForm()?.showRefused(refused) ?? refused);
     }
   }
 
   protected async reset(key: string): Promise<void> {
     const companyId = this.companyId();
     if (!companyId || this.busy()) return;
-    if (await this.settings.reset(companyId, this.subject(), key)) {
-      this.revision.update((revision) => revision + 1);
-      this.feedback.success('products.defaults.saved');
-    }
+    const subject = this.subject();
+    await resetTakenBack(this.feedback, this.translate, {
+      key,
+      level: this.level(),
+      rows: () => this.settings.rows(),
+      reset: () => this.settings.reset(companyId, subject, key),
+      save: (changes) => this.settings.save(companyId, subject, changes),
+      written: () => this.revision.update((revision) => revision + 1),
+    });
   }
 }

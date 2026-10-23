@@ -2,7 +2,8 @@
 
 import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable, signal } from '@angular/core';
-import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { refusalsOf, SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import type {
   SettingRow,
@@ -19,9 +20,13 @@ export class CompanySettings {
   private readonly rowsSignal = signal<readonly SettingRow[]>([]);
   private readonly state = requestState(codeOf);
 
+  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
+
   readonly rows = this.rowsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** What the last write refused, each on its setting's field, until the next write. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
     await this.state.read(() => this.fetch(companyId));
@@ -49,14 +54,18 @@ export class CompanySettings {
   }
 
   private async write(companyId: string, call: () => Promise<unknown>): Promise<boolean> {
-    return this.state.write(async () => {
-      await call();
-      await this.fetch(companyId);
-      // What was just written is a value the whole application reads: the accent, the density, the language, the
-      // company's defaults. A live change never comes back to the tab that caused it, so this tab reads the chain
-      // again itself — otherwise the colour changed only after a refresh (developer, 2026-09-20).
-      this.live.refresh();
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await call();
+        await this.fetch(companyId);
+        // What was just written is a value the whole application reads: the accent, the density, the language, the
+        // company's defaults. A live change never comes back to the tab that caused it, so this tab reads the chain
+        // again itself — otherwise the colour changed only after a refresh (developer, 2026-09-20).
+        this.live.refresh();
+      },
+      { failed: (error) => this.refusalsSignal.set(refusalsOf(error)) },
+    );
   }
 }
 

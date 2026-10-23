@@ -75,9 +75,17 @@ export class CompanySwitcher implements OnInit {
     return `${country ?? company.countryCode} · ${company.currency}`;
   });
 
-  /** Where the logo of a listed company is read, or null when it has none (or the list has not arrived). */
+  /**
+   * Where a company's logo is read, or null when it has none. The company in use is read from the session, which a new
+   * logo refreshes at once (its change is heard as `company`); the list, read when the switcher opens, only names the
+   * others, and drew an uploaded logo only after a reload.
+   */
   protected logoOf(company: { readonly id: string }): string | null {
-    const version = this.companies().find((option) => option.id === company.id)?.logoVersion;
+    const current = this.current();
+    const version =
+      current !== null && current.id === company.id
+        ? current.logoVersion
+        : this.companies().find((option) => option.id === company.id)?.logoVersion;
     return version == null ? null : companyLogoUrl(company.id, version);
   }
 

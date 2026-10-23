@@ -23,6 +23,7 @@ import { LegalText } from '../shared/legal/legal-text';
     <app-signed-out-layout plain>
       <!-- A reading column centred under the brand: the text wrapped at its own width on the left of a wider box. -->
       <article class="twes-legal-page mx-auto flex w-full max-w-[44rem] flex-col gap-4">
+        <!-- way-out: « Retour », to the screen the page was opened from -->
         <p>
           <a
             href="/"

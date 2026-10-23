@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ListQuery } from '../shared/list/list-types';
-import { accountSearch, companySearch } from './platform-forms';
+import { ACCOUNTS_LIST, accountSearch, companySearch } from './platform-forms';
 
 const query = (over: Partial<ListQuery>): ListQuery => ({
   query: '',
@@ -45,7 +45,7 @@ describe('the platform lists', () => {
     ).toMatchObject({ statuses: [], countryCodes: [], order: null });
   });
 
-  it('turns the accounts state filter into what the API filters by', () => {
+  it('combines the accounts state and role facets into what the API filters by', () => {
     expect(accountSearch(query({ filters: { state: 'active' } }))).toMatchObject({
       active: true,
       platformOperator: null,
@@ -54,11 +54,39 @@ describe('the platform lists', () => {
       active: false,
       platformOperator: null,
     });
+    // A deactivated operator is found: the two facets combine rather than exclude each other.
+    expect(
+      accountSearch(query({ filters: { state: 'inactive', role: 'operator' } })),
+    ).toMatchObject({ active: false, platformOperator: true });
+    expect(accountSearch(query({ filters: { role: 'member' } }))).toMatchObject({
+      active: null,
+      platformOperator: false,
+    });
+    // Both values of a facet, or none, are every account: « Tous ».
+    expect(
+      accountSearch(query({ filters: { state: 'active,inactive', role: 'operator,member' } })),
+    ).toMatchObject({ active: null, platformOperator: null });
+    expect(accountSearch(query({}))).toMatchObject({ active: null, platformOperator: null });
+  });
+
+  it('reads an address or a saved view written with the old single state filter', () => {
     expect(accountSearch(query({ filters: { state: 'operator' } }))).toMatchObject({
       active: null,
       platformOperator: true,
     });
-    expect(accountSearch(query({}))).toMatchObject({ active: null, platformOperator: null });
+  });
+
+  it('offers the state and the role as two facets, each taking several values', () => {
+    expect(
+      ACCOUNTS_LIST.filters?.map((filter) => ({
+        id: filter.id,
+        multiple: filter.multiple === true,
+        options: filter.options?.map((option) => option.value),
+      })),
+    ).toEqual([
+      { id: 'state', multiple: true, options: ['active', 'inactive'] },
+      { id: 'role', multiple: true, options: ['operator', 'member'] },
+    ]);
   });
 
   it('sorts accounts by the key the API names for the column', () => {

@@ -30,4 +30,15 @@
       {{ 'notification_stop.submit' | translate }}
     </button>
   }
+  <!-- A block of its own, its one node at the root, so the layout projects it into its « after » slot. -->
+  @if (!done()) {
+    <p twesAuthAfter class="twes-auth-after">
+      <a
+        routerLink="/account"
+        [queryParams]="{ tab: 'notifications' }"
+        data-testid="stop-mail-manage"
+        >{{ 'notification_stop.account' | translate }}</a
+      >
+    </p>
+  }
 </app-signed-out-layout>

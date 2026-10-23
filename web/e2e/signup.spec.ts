@@ -118,7 +118,13 @@ test('somebody signs up, their company waits, an operator approves it, and the o
     const approved = page.waitForResponse(
       (response) => response.url().endsWith('/approve') && response.request().method() === 'POST',
     );
-    await page.getByTestId(`approve-${company}`).click();
+    await page
+      .getByTestId(`company-sheet-${company}`)
+      .getByTestId('document-action-approve')
+      .click();
+    // Approving mails the owners, which its question says before anything is sent.
+    await expect(page.getByTestId('confirm-message')).toContainText(company);
+    await page.getByTestId('confirm-run').click();
     expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, approved)).ok()).toBe(true);
     await expect(line).toHaveCount(0);
 

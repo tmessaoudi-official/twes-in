@@ -16,7 +16,11 @@ export type QuotesError =
   | 'file_refused'
   | 'files_full'
   | 'deposit_refused'
-  | 'deposit_pending';
+  | 'deposit_pending'
+  /** « Livrer » refused a quantity: more than is left of its line, or nothing left at all. */
+  | 'delivery_refused'
+  /** « Livrer » refused a quote invoiced as a whole: a discount on its total, or a deposit. */
+  | 'delivery_whole';
 
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'refused' | 'cancelled';
 export const QUOTE_STATUSES: readonly QuoteStatus[] = [
@@ -98,6 +102,12 @@ export interface QuoteRow {
   invoiceId: string | null;
   /** The deposit invoices drawn from it, cancelled drafts included, the oldest first. */
   deposits: QuoteDeposit[];
+  /** The delivery notes that are not cancelled delivering it, drafts included, the oldest first; none unseen. */
+  deliveryNotes: QuoteDeliveryNote[];
+  /** What its notes past their draft delivered: none, part, or every line whole. */
+  delivery: QuoteDelivery;
+  /** Each line's quantity, what notes take of it (drafts included) and what they delivered, by line, in order. */
+  deliveries: QuoteLineDelivery[];
   attachmentCount: number;
   customerReference: string | null;
   notesPrinted: string | null;
@@ -143,6 +153,36 @@ export interface QuoteDeposit {
   status: 'draft' | 'issued' | 'partially_paid' | 'paid' | 'cancelled';
   /** Tax and fixed charges included, at the currency's scale. */
   total: string;
+}
+
+export type QuoteDelivery = 'none' | 'partly' | 'whole';
+
+/** A quote its notes delivered part of is under way; one delivered whole is done. Undelivered, nothing is shown. */
+export const QUOTE_DELIVERY_STAGES: Readonly<
+  Record<Exclude<QuoteDelivery, 'none'>, LifecycleStage>
+> = {
+  partly: 'under-way',
+  whole: 'done',
+};
+
+export const QUOTE_DELIVERY_TONES = tonesOf(QUOTE_DELIVERY_STAGES);
+
+/** A delivery note delivering an accepted quote, as the quote lists it. */
+export interface QuoteDeliveryNote {
+  deliveryNoteId: string;
+  /** Null while it is a draft. */
+  number: string | null;
+  status: 'draft' | 'validated' | 'delivered' | 'invoiced';
+}
+
+/** One quote line as its deliveries read: `left` is its quantity less what notes take, drafts included. */
+export interface QuoteLineDelivery {
+  lineId: string;
+  description: string;
+  quantity: string;
+  onNotes: string;
+  delivered: string;
+  left: string;
 }
 
 /** A deposit asked for: a percentage of the quote, or an amount tax included; one of them. */

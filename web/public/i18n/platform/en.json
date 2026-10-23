@@ -47,7 +47,29 @@
       },
       "new": "New company",
       "close": "Close",
-      "no_owner": "No owner yet."
+      "no_owner": "No owner yet.",
+      "actions": {
+        "label": "Company actions",
+        "approve": "Approve",
+        "approve_title": "Approve this company?",
+        "approve_message": "{{name}} opens to its members, and its owners are told by mail. “Suspend” closes it again.",
+        "restore": "Restore access",
+        "restore_title": "Restore access to this company?",
+        "restore_message": "{{name}} opens to its members again, and its owners are told by mail. “Suspend” closes it again.",
+        "reject": "Reject",
+        "reject_title": "Reject this company?",
+        "reject_message": "{{name}} stays closed to its members. “Restore access” opens it later.",
+        "suspend": "Suspend",
+        "suspend_title": "Suspend this company?",
+        "suspend_message": "The members of {{name}} lose access to it, from now on. Its data stays intact, and “Restore access” reopens it.",
+        "keep": "Change nothing"
+      },
+      "done": {
+        "approved": "{{name}} is approved.",
+        "restored": "Access to {{name}} is restored.",
+        "rejected": "{{name}} is rejected.",
+        "suspended": "{{name}} is suspended."
+      }
     },
     "accounts": {
       "title": "Accounts",
@@ -64,6 +86,20 @@
         "active": "Active",
         "inactive": "Deactivated",
         "operator": "Operators"
+      },
+      "keep": "Change nothing",
+      "end_sessions_title": "End the sessions?",
+      "end_sessions_message": "{{name}} is signed out on every device and must sign in again. An ended session does not come back.",
+      "deactivate_title": "Deactivate this account?",
+      "deactivate_message": "{{name}} can no longer sign in, and every one of their sessions ends. “Reactivate” gives the access back.",
+      "done": {
+        "ended": "{{name}}’s sessions have ended.",
+        "deactivated": "{{name}}’s account is deactivated.",
+        "reactivated": "{{name}}’s account is reactivated."
+      },
+      "roles": {
+        "operator": "Operators",
+        "member": "Members"
       }
     },
     "errors": {
@@ -73,7 +109,8 @@
       "network": "The server could not be reached.",
       "name_taken": "A company already has that name.",
       "already_member": "That address already belongs to this company.",
-      "step_up_required": "Nothing changed: confirm it is you to make this change."
+      "step_up_required": "Nothing changed: confirm it is you to make this change.",
+      "invalid": "Nothing was saved: correct the fields marked."
     },
     "subscription": {
       "open": "Subscription",
@@ -86,9 +123,9 @@
       "grace_days": "Grace days",
       "unpaid_mode": "When unpaid",
       "save": "Save subscription",
-      "stop": "Stop managing",
+      "stop": "Stop managing and erase the terms",
       "saved": "The subscription has been saved.",
-      "stopped": "The subscription is no longer managed.",
+      "stopped": "{{name}} is no longer managed: its terms are erased and it has full access.",
       "days_left": "{{days}} {days, plural, one {day} other {days}} left",
       "units": {
         "day": "days",
@@ -112,7 +149,11 @@
         "read_only": "Read-only",
         "locked": "Locked"
       },
-      "hold_days": "Days a declared payment holds"
+      "hold_days": "Days a declared payment holds",
+      "stop_title": "Stop managing this company?",
+      "stop_message": "The terms of {{name}} (period, trial, paid through, price, delays) are erased, and nothing keeps them: its members get full access again. To manage it again, its terms must be typed anew.",
+      "keep": "Keep its terms",
+      "unmanaged": "Not managed: full access"
     },
     "payments": {
       "title": "Payments to confirm",
@@ -121,7 +162,12 @@
       "confirm": "Confirm",
       "reject": "Reject",
       "confirmed": "The payment was confirmed.",
-      "rejected": "The payment was rejected."
+      "rejected": "The payment was rejected.",
+      "keep": "Leave it waiting",
+      "confirm_title": "Confirm this payment?",
+      "confirm_message": "The payment of {{name}} extends its subscription by the number of periods given: {{periods}}. A wrong count is corrected in its terms.",
+      "reject_title": "Reject this payment?",
+      "reject_message": "The wait this payment held for {{name}} ends at once: if its paid period is over, its access follows its terms. It can declare another payment."
     },
     "demand": {
       "title": "Modules awaited",
@@ -222,7 +268,8 @@
         "companies": "Companies",
         "state": "State",
         "created": "Created",
-        "actions": "Actions"
+        "actions": "Actions",
+        "role": "Role"
       }
     },
     "tab_counts": {
@@ -261,6 +308,9 @@
       "status_url_hint": "Linked from the foot of every page, for example https://status.example.com",
       "save": "Save",
       "saved": "Support contact saved."
+    },
+    "numbers": {
+      "empty": "Enter a number."
     }
   }
 }

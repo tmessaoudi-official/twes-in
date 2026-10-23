@@ -22,6 +22,7 @@ import type { WatchSummary } from '../watch/watch-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { RequestActivity } from '../shared/feedback/request-activity';
 import { RecordedFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AppShell } from './app-shell';
@@ -224,6 +225,7 @@ describe('AppShell', () => {
     access: computed(() => me()?.company?.access ?? 'full'),
     logout: vi.fn(async () => true),
     sessionEnded: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     hasPermission: (permission: string) => permissions().includes(permission),
     hasModule: (module: string) => modules().includes(module),
   };
@@ -259,6 +261,7 @@ describe('AppShell', () => {
     sessionExpired,
     retryNow: vi.fn(),
     acknowledgeExpiry: vi.fn(() => sessionExpired.set(false)),
+    quietly: <T>(work: () => Promise<T>) => work(),
   };
 
   beforeEach(async () => {
@@ -847,6 +850,22 @@ describe('AppShell', () => {
     await fixture.whenStable();
 
     expect(CountingPage.built).toBe(before + 1);
+  });
+
+  it('reads the session and the switcher’s list again when the company or a membership changes', async () => {
+    // A new logo reached the session at once but the switcher drew the list read when the shell opened, until a reload.
+    await render();
+    companies.load.mockClear();
+    auth.refresh.mockClear();
+
+    await announceSaved('company', 'c1');
+
+    expect(auth.refresh).toHaveBeenCalledTimes(1);
+    expect(companies.load).toHaveBeenCalledTimes(1);
+
+    await announceSaved('membership', 'm1');
+
+    expect(companies.load).toHaveBeenCalledTimes(2);
   });
 
   it('keeps the screen it has when the session refreshes without changing company', async () => {

@@ -353,6 +353,25 @@ describe('TwoFactorPage', () => {
 
     expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);
     expect(rendered.query('two-factor-qr')).not.toBeNull();
+    expect(rendered.query('two-factor-later')).not.toBeNull();
+  });
+
+  // A page with no way out: an account nothing requires to use the check came here by choice and may leave unchanged.
+  it('lets an account nothing requires to use it leave without setting anything up', async () => {
+    const rendered = await render({ enrolled: false, required: false, totp: false, passkeys: 0 });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+    expect(rendered.query('two-factor-logout')).toBeNull();
+    rendered.query<HTMLButtonElement>('two-factor-later')?.click();
+    await settle(rendered.fixture);
+
+    expect(navigate).toHaveBeenCalledWith('/account?tab=security');
+  });
+
+  it('leaves an account a company requires to use it only the way out of signing out', async () => {
+    const rendered = await render({ enrolled: false, required: true, totp: false, passkeys: 0 });
+
+    expect(rendered.query('two-factor-later')).toBeNull();
     expect(rendered.query('two-factor-logout')).not.toBeNull();
   });
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { requestState } from '../shared/feedback/request-state';
 import { AuthFacade } from '../auth/auth-facade';
 import { StepUp } from '../shared/step-up/step-up';
@@ -10,6 +10,7 @@ import {
   type CompanySecurityError,
   CompanySecurityRefused,
 } from './company-security-api';
+import { sessionSignal } from '../shared/session/session-data';
 
 /** What the working company requires of its members' sign-in, and changing it. */
 @Injectable({ providedIn: 'root' })
@@ -17,7 +18,7 @@ export class CompanySecurityFacade {
   private readonly api = inject(CompanySecurityApi);
   private readonly auth = inject(AuthFacade);
   private readonly stepUp = inject(StepUp);
-  private readonly securitySignal = signal<CompanySecurity | null>(null);
+  private readonly securitySignal = sessionSignal<CompanySecurity | null>(null);
   private readonly state = requestState(codeOf);
 
   readonly security = this.securitySignal.asReadonly();

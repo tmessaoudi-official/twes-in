@@ -40,9 +40,14 @@ import type {
   SupportChannel,
 } from './platform-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 
 export class PlatformRefused extends Error {
-  constructor(readonly code: PlatformError) {
+  /** The fields a 422 named, each with its reason and params: a save refused says each on its own field. */
+  constructor(
+    readonly code: PlatformError,
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -240,10 +245,15 @@ export class PlatformApi {
     );
   }
 
-  /** Stops managing the company: it gets full access again, and the audit log keeps what was set. */
-  stopSubscription(companyId: string): Promise<void> {
+  /**
+   * Stops managing the company: its terms are erased, which nothing keeps afterwards (the audit log names them only),
+   * and it gets full access again. It names the version read, so terms set or stopped since refuse as `record_changed`.
+   */
+  stopSubscription(companyId: string, version: number): Promise<void> {
     return this.guard(async () => {
-      await firstValueFrom(this.http.delete(subscriptionPath(companyId)));
+      await firstValueFrom(
+        this.http.delete(subscriptionPath(companyId), { params: { version: String(version) } }),
+      );
     }, 'refused');
   }
 
@@ -283,7 +293,11 @@ export class PlatformApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new PlatformRefused(codeOf(error, conflict)));
+      const refusals =
+        error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
+      // A refusal that names its fields is said on them; the page line then only asks to correct what is marked.
+      const code = refusals.length > 0 ? 'invalid' : codeOf(error, conflict);
+      throw refusedFor(error, new PlatformRefused(code, refusals));
     }
   }
 }

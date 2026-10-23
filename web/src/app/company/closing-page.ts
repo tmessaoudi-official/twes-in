@@ -5,6 +5,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  ElementRef,
   inject,
   OnInit,
   signal,
@@ -21,6 +22,7 @@ import { runAction } from '../shared/actions/run-action';
 import { Feedback } from '../shared/feedback/feedback';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
+import { revealInvalid } from '../shared/form/reveal-invalid';
 import { todayIn } from '../shared/i18n/format';
 import { DayPipe } from '../shared/i18n/format-pipes';
 import { FormatFacade } from '../shared/i18n/format-facade';
@@ -55,6 +57,7 @@ export class ClosingPage implements OnInit {
   private readonly auth = inject(AuthFacade);
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
@@ -86,10 +89,8 @@ export class ClosingPage implements OnInit {
   protected close(): void {
     const companyId = this.company()?.id;
     const day = this.form.controls.day.value;
-    if (!companyId || day === '' || this.busy()) {
-      this.form.markAllAsTouched();
-      return;
-    }
+    // A day missing or not one is said under the field, the cursor there; a typed « 31/02 » went on to the API.
+    if (!companyId || this.busy() || revealInvalid(this.form, this.host)) return;
     runAction(
       {
         run: () => void this.closeThrough(companyId, day),

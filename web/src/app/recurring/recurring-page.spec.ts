@@ -27,6 +27,7 @@ import { failureToasts, provideQuietFeedback, successToasts } from '../shared/te
 import { RecurringApi, RecurringRefused } from './recurring-api';
 import { RecurringPage } from './recurring-page';
 import type { RecurringInvoiceRow } from './recurring-types';
+import { applyFilters } from '../shared/list/list-view';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -165,6 +166,19 @@ describe('RecurringPage', () => {
       expect.any(Function),
       expect.anything(),
     );
+  });
+
+  it('narrows by several states at once: « Active » and « En pause » together', async () => {
+    await open();
+    const filters = fixture.componentInstance['list']().filters ?? [];
+
+    expect(filters.map((filter) => [filter.id, filter.multiple])).toEqual([['state', true]]);
+    expect(
+      applyFilters([rent, over], filters, { state: 'active,paused' }).map((row) => row.id),
+    ).toEqual(['r1']);
+    expect(
+      applyFilters([rent, over], filters, { state: 'active,ended' }).map((row) => row.id),
+    ).toEqual(['r1', 'r2']);
   });
 
   it('sits beside the invoices as a tab of Factures', async () => {
