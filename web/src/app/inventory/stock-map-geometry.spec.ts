@@ -24,6 +24,10 @@ import {
   PLAN_ZOOM_MAX,
   type PlanFrame,
   centredIn,
+  floorLeast,
+  leavesFloor,
+  onTheFloor,
+  type PlanHandle,
   repeatedFrom,
   resizedTo,
   tracedTo,
@@ -533,6 +537,96 @@ describe('centredIn', () => {
   /** It carries the size through exactly: a company's 3,90 m rack is posed at 3,90, never re-measured. */
   it('never snaps the size it was given', () => {
     expect(centredIn(frame, 3.9, 0.6)).toMatchObject({ width: 3.9, depth: 0.6 });
+  });
+});
+
+/**
+ * The bound is checked on what the screen shows: a rectangle is kept as its unturned box, turned about its centre, so
+ * the floor's edge must stop its BODY. A 6 m × 0.2 m wall standing at 90° reaches 2.9 m left of its anchor, and before
+ * this it could never be dragged nearer the left edge than 2.9 m, and every stretch pushed it further away.
+ */
+describe('the floor’s edge stops the body the plan shows', () => {
+  const wall = (over: Partial<PlanRectangle> = {}): PlanRectangle =>
+    rect({ x: 4, y: 4, width: 6, depth: 0.2, height: 3, ...over });
+  const body = (shape: PlanRectangle) => planBounds([shape]);
+
+  it.each([
+    [0, 0, 0],
+    [90, -2.9, 2.9],
+    [180, 0, 0],
+    [270, -2.9, 2.9],
+    // (6 cos 15° + 0.2 sin 15°) / 2 − 3 = −0.0763…, (6 sin 15° + 0.2 cos 15°) / 2 − 0.1 = 0.773…, up to the millimetre.
+    [15, -0.076, 0.774],
+  ])(
+    'gives a wall turned %i° the least anchor that keeps its body on the floor',
+    (rotation, x, y) => {
+      expect(floorLeast(wall({ rotation }))).toEqual({ x, y });
+    },
+  );
+
+  it.each([0, 90, 180, 270, 15])(
+    'drags a wall turned %i° flush with the left and top edges, never short of them nor past them',
+    (rotation) => {
+      const moved = movedTo(wall({ rotation }), { x: 7, y: 4 }, { x: -20, y: -20 });
+      const reached = body(moved);
+
+      expect(reached.minX).toBeGreaterThanOrEqual(-0.0005);
+      expect(reached.minX).toBeLessThan(0.001);
+      expect(reached.minY).toBeGreaterThanOrEqual(-0.0005);
+      expect(reached.minY).toBeLessThan(0.001);
+      expect(leavesFloor(moved)).toBe(false);
+    },
+  );
+
+  it('moves a group holding a turned wall until the wall’s body meets the edge', () => {
+    const group = new Map([
+      ['wall', wall({ rotation: 90 })],
+      ['rack', rect({ x: 8, y: 6, width: 2, depth: 1 })],
+    ]);
+    const moved = shiftedGroup(group, -20, 0);
+
+    expect(body(moved.get('wall')!).minX).toBeCloseTo(0, 3);
+    // The whole group took the same step, so the rack kept its place beside the wall.
+    expect(moved.get('rack')!.x - moved.get('wall')!.x).toBeCloseTo(4, 3);
+  });
+
+  it('puts a turned wall back on the floor when posing it puts its body past an edge', () => {
+    expect(onTheFloor(wall({ x: 0, y: 0, rotation: 90 }))).toMatchObject({ x: 0, y: 2.9 });
+    expect(onTheFloor(wall({ x: -2.9, y: 3, rotation: 90 }))).toMatchObject({ x: -2.9, y: 3 });
+  });
+
+  /** Stretching a turned wall keeps the end not pulled exactly where it was: three stretches, no drift. */
+  it('stretches a turned wall three times holding its top end on the edge', () => {
+    let shape = wall({ x: -2.9, y: 2.9, rotation: 90 });
+    const far: PlanHandle = { hx: 1, hy: 0.5 };
+    for (const reach of [8, 9.5, 11]) {
+      const before = body(shape);
+      shape = resizedTo(shape, far, { x: 0.1, y: reach });
+
+      expect(body(shape).minX).toBeCloseTo(before.minX, 3);
+      expect(body(shape).minY).toBeCloseTo(0, 3);
+      expect(body(shape).maxY).toBeGreaterThan(before.maxY);
+      expect(Math.abs(body(shape).maxY - reach)).toBeLessThanOrEqual(SNAP_METRES);
+    }
+  });
+
+  it('stops the end pulled at the edge, and holds the other end where it was', () => {
+    const standing = wall({ x: -2.9, y: 3.9, rotation: 90 });
+    const pulled = resizedTo(standing, { hx: 0, hy: 0.5 }, { x: 0.1, y: -5 });
+
+    expect(body(pulled).minY).toBeGreaterThanOrEqual(-0.0005);
+    expect(body(pulled).minY).toBeLessThan(0.001);
+    expect(body(pulled).maxY).toBeCloseTo(body(standing).maxY, 3);
+    expect(pulled.width).toBeCloseTo(7, 2);
+  });
+
+  /** The screen's mirror of `PlanRect`: what a save refuses, and what it takes as it always did. */
+  it('says a rectangle leaves the floor exactly when the API refuses it', () => {
+    expect(leavesFloor(wall({ x: -2.9, rotation: 90 }))).toBe(false);
+    expect(leavesFloor(wall({ x: -2.902, rotation: 90 }))).toBe(true);
+    expect(leavesFloor(wall({ x: -0.001, rotation: 0 }))).toBe(true);
+    // An anchor of zero or more is taken as before, though the body of a turned deep box reaches past it.
+    expect(leavesFloor(rect({ x: 0, y: 0, width: 0.2, depth: 6, rotation: 90 }))).toBe(false);
   });
 });
 

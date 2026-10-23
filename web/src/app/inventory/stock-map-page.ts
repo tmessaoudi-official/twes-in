@@ -101,6 +101,8 @@ import {
   repeatedFrom,
   resizedTo,
   shiftedGroup,
+  leavesFloor,
+  onTheFloor,
   snapMetres,
   touchesBox,
   tracedTo,
@@ -1844,9 +1846,7 @@ export class StockMapPage implements OnInit {
    * API after the person has pressed it.
    */
   protected readonly repeatOffFloor = computed(
-    () =>
-      this.repeatPreview().length > 0 &&
-      this.repeatPreview().some((rect) => rect.x < 0 || rect.y < 0),
+    () => this.repeatPreview().length > 0 && this.repeatPreview().some(leavesFloor),
   );
 
   protected readonly repeatReady = computed(
@@ -2162,16 +2162,23 @@ export class StockMapPage implements OnInit {
     const turn =
       event.key.toLowerCase() === 'r' ? (event.shiftKey ? -SNAP_DEGREES : SNAP_DEGREES) : null;
     if (move !== undefined) {
-      this.place(shape.on, shape.id, {
-        ...shape.rect,
-        x: Math.max(0, shape.rect.x + move[0]),
-        y: Math.max(0, shape.rect.y + move[1]),
-      });
+      // The edge stops the body the plan shows, as a drag does: a turned wall goes flush with it, never short of it.
+      this.place(
+        shape.on,
+        shape.id,
+        onTheFloor({
+          ...shape.rect,
+          x: shape.rect.x + move[0],
+          y: shape.rect.y + move[1],
+        }),
+      );
     } else if (turn !== null) {
-      this.place(shape.on, shape.id, {
-        ...shape.rect,
-        rotation: snapAngle(shape.rect.rotation + turn),
-      });
+      // A turn that would swing the body past an edge brings it back onto the floor, as a group's turn does.
+      this.place(
+        shape.on,
+        shape.id,
+        onTheFloor({ ...shape.rect, rotation: snapAngle(shape.rect.rotation + turn) }),
+      );
     } else {
       return false;
     }

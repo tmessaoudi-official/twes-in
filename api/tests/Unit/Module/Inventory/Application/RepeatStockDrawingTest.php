@@ -136,6 +136,26 @@ final class RepeatStockDrawingTest extends TestCase
         self::assertSame(90, $copies[0]->getSpot()?->getRect()->rotation);
     }
 
+    /**
+     * The floor's edge is checked on the body the plan shows: a 3,9 m rack standing at 90° reaches 1,65 m left of its
+     * anchor, so copies stepped left go on below an anchor of zero until their BODY would leave the floor.
+     */
+    public function testATurnedRectangleIsRepeatedLeftUntilItsBodyMeetsTheEdge(): void
+    {
+        $source = $this->drawn('1', '4', 90);
+
+        $copies = $this->map->repeat($this->company, $source, 2, '0.600', PlanWay::Left, 'R2', $this->actor);
+        self::assertSame(['-0.200', '-1.400'], $this->sides($copies, 'x'));
+
+        try {
+            $this->map->repeat($this->company, $source, 3, '0.600', PlanWay::Left, 'R4', $this->actor);
+            self::fail('A copy whose body leaves the floor was placed.');
+        } catch (InvalidVenue $refused) {
+            self::assertSame('x', $refused->field);
+        }
+        self::assertCount(3, $this->spots->ofArea($this->ground));
+    }
+
     public function testARotationThatIsNotARightAngleIsRefused(): void
     {
         $source = $this->drawn('4', '4', 30);

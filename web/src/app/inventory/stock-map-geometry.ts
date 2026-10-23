@@ -223,8 +223,60 @@ export function touchesBox(from: PlanPoint, to: PlanPoint, rect: PlanRectangle):
 const millimetre = (value: number): number => Math.round(value * 1000) / 1000 || 0;
 
 /**
- * A group moved together: the same step for every rectangle. A rectangle past the floor's near corner is one the API
- * refuses, so the step is held back there for the whole group, which keeps its shape rather than squashing at the edge.
+ * The least anchor, x and y, at which a rectangle's BODY still stands on the floor — **the bound is checked on what
+ * the screen shows**. A rectangle is kept as its unturned box turned about its own centre, so a 6 m wall standing at
+ * 90° reaches 2.9 m left of its anchor: its anchor goes below zero before its body meets the edge, while a box deeper
+ * than it is wide, turned, reaches past its anchor the other way. Rounded up to the plan's millimetre, so a rectangle
+ * placed there never pokes out by a rounding. `PlanRect` on the API computes the same figures.
+ */
+export function floorLeast(rect: PlanRectangle): PlanPoint {
+  const radians = (rect.rotation * Math.PI) / 180;
+  const [cos, sin] = [Math.abs(Math.cos(radians)), Math.abs(Math.sin(radians))];
+  const across = (rect.width * cos + rect.depth * sin) / 2;
+  const down = (rect.width * sin + rect.depth * cos) / 2;
+
+  return {
+    x: upToMillimetre(across - rect.width / 2),
+    y: upToMillimetre(down - rect.depth / 2),
+  };
+}
+
+/** A rectangle moved the least it takes for its body to stand on the floor: not at all when it already does. */
+export function onTheFloor(rect: PlanRectangle): PlanRectangle {
+  const least = floorLeast(rect);
+
+  return {
+    ...rect,
+    x: millimetre(Math.max(least.x, rect.x)),
+    y: millimetre(Math.max(least.y, rect.y)),
+  };
+}
+
+/** Half the plan's millimetre: a body flush with the edge, kept to the millimetre, is on it. */
+const FLOOR_TOLERANCE = 0.0005;
+
+/**
+ * Whether the API refuses where a rectangle stands — the screen's mirror of `PlanRect`, so a repeat's preview says it
+ * would leave the floor exactly when a save would be refused. An anchor of zero or more is always taken (every plan
+ * saved while the anchor was the bound still is); one below zero only while the turned body stays on the floor.
+ */
+export function leavesFloor(rect: PlanRectangle): boolean {
+  const least = floorLeast(rect);
+
+  return (
+    rect.x < Math.min(0, least.x) - FLOOR_TOLERANCE ||
+    rect.y < Math.min(0, least.y) - FLOOR_TOLERANCE
+  );
+}
+
+/** Up to the millimetre, read from the micrometre first so a floating-point tail never rounds a whole one up. */
+function upToMillimetre(value: number): number {
+  return Math.ceil(Math.round(value * 1e6) / 1e3) / 1000 || 0;
+}
+
+/**
+ * A group moved together: the same step for every rectangle. A rectangle whose body would pass the floor's near edges
+ * is held there, and the step with it for the whole group, which keeps its shape rather than squashing at the edge.
  */
 export function shiftedGroup<K>(
   rects: ReadonlyMap<K, PlanRectangle>,
@@ -232,8 +284,8 @@ export function shiftedGroup<K>(
   dy: number,
 ): Map<K, PlanRectangle> {
   const all = [...rects.values()];
-  const across = Math.max(dx, -Math.min(...all.map((rect) => rect.x)));
-  const down = Math.max(dy, -Math.min(...all.map((rect) => rect.y)));
+  const across = Math.max(dx, ...all.map((rect) => floorLeast(rect).x - rect.x));
+  const down = Math.max(dy, ...all.map((rect) => floorLeast(rect).y - rect.y));
 
   return new Map(
     [...rects].map(([key, rect]) => [
@@ -447,19 +499,19 @@ export function pointerMetres(client: PlanPoint, frame: PlanFrame, box: PlanBox)
  * 0,25 m*); its size is carried through untouched, because a drag moves a rack and does not remeasure it
  * (docs/SPEC.md § 7, 2026-09-21 20:40).
  *
- * A floor starts at its own top-left corner and `PlanRect` refuses a negative distance, so a rectangle pushed past
- * the edge stops there rather than being sent and refused.
+ * A floor starts at its own top-left corner, so a rectangle pushed past the edge stops where its BODY meets it — a
+ * wall standing at 90° flush with the left edge, its unturned anchor below zero — rather than short of it or past it.
  */
 export function movedTo(
   origin: PlanRectangle,
   grabbedAt: PlanPoint,
   pointer: PlanPoint,
 ): PlanRectangle {
-  return {
+  return onTheFloor({
     ...origin,
-    x: onFloor(snapMetres(origin.x + pointer.x - grabbedAt.x)),
-    y: onFloor(snapMetres(origin.y + pointer.y - grabbedAt.y)),
-  };
+    x: snapMetres(origin.x + pointer.x - grabbedAt.x),
+    y: snapMetres(origin.y + pointer.y - grabbedAt.y),
+  });
 }
 
 /**
@@ -468,6 +520,10 @@ export function movedTo(
  * The work is done in the rectangle's OWN frame — the pointer is turned back about the centre by the rectangle's
  * rotation — so a rack standing at 90° grows longer when its end is pulled rather than wider. Only then is the new
  * box turned forward again, which is what keeps the held corner on the spot a person is looking at.
+ *
+ * The floor's edge stops the END PULLED, never the rectangle: moving the whole box back onto the floor is what pushed
+ * a turned wall away from the hand at every stretch. A body that already stood past an edge may stay there, never go
+ * further.
  */
 export function resizedTo(
   origin: PlanRectangle,
@@ -476,20 +532,47 @@ export function resizedTo(
 ): PlanRectangle {
   const centre = { x: origin.x + origin.width / 2, y: origin.y + origin.depth / 2 };
   const local = turn(pointer, centre, -origin.rotation);
-  const [left, width] = pulled(origin.x, origin.width, handle.hx, snapMetres(local.x));
-  const [top, depth] = pulled(origin.y, origin.depth, handle.hy, snapMetres(local.y));
+  const target = { x: snapMetres(local.x), y: snapMetres(local.y) };
+  const pulledTo = (to: PlanPoint): PlanRectangle => {
+    const [left, width] = pulled(origin.x, origin.width, handle.hx, tidy(to.x));
+    const [top, depth] = pulled(origin.y, origin.depth, handle.hy, tidy(to.y));
+    // The box changed size in its own frame, so its centre moved with it; turning that centre forward again puts
+    // the rectangle back under the corner that was held.
+    const moved = turn({ x: left + width / 2, y: top + depth / 2 }, centre, origin.rotation);
 
-  // The box changed size in its own frame, so its centre moved with it; turning that centre forward again puts the
-  // rectangle back under the corner that was held.
-  const moved = turn({ x: left + width / 2, y: top + depth / 2 }, centre, origin.rotation);
-
-  return {
-    ...origin,
-    x: onFloor(moved.x - width / 2),
-    y: onFloor(moved.y - depth / 2),
-    width,
-    depth,
+    return {
+      ...origin,
+      x: tidy(moved.x - width / 2),
+      y: tidy(moved.y - depth / 2),
+      width: tidy(width),
+      depth: tidy(depth),
+    };
   };
+
+  const before = planBounds([origin]);
+  const edge = { x: Math.min(0, before.minX), y: Math.min(0, before.minY) };
+  const fits = (rect: PlanRectangle): boolean => {
+    const body = planBounds([rect]);
+
+    return body.minX >= edge.x - FLOOR_TOLERANCE && body.minY >= edge.y - FLOOR_TOLERANCE;
+  };
+  const wanted = pulledTo(target);
+  if (fits(wanted)) return wanted;
+
+  // From the handle to where the hand is, the body's near edges move in straight lines, so the part of the way that
+  // keeps the body on the floor is one stretch from the handle: halving finds where it ends.
+  const from = handleAt(origin, handle);
+  const along = (share: number): PlanRectangle =>
+    pulledTo({ x: from.x + (target.x - from.x) * share, y: from.y + (target.y - from.y) * share });
+  let [kept, past] = [0, 1];
+  for (let step = 0; step < 40; step++) {
+    const middle = (kept + past) / 2;
+    if (fits(along(middle))) kept = middle;
+    else past = middle;
+  }
+  const stopped = along(kept);
+
+  return fits(stopped) ? stopped : origin;
 }
 
 /**
@@ -526,14 +609,14 @@ function spanned(from: number, to: number): [number, number] {
  * size is what the company said a rack of theirs measures and posing it is not the moment to re-measure it.
  */
 export function centredIn(frame: PlanFrame, width: number, depth: number): PlanRectangle {
-  return {
-    x: onFloor(snapMetres(frame.x + frame.width / 2 - width / 2)),
-    y: onFloor(snapMetres(frame.y + frame.height / 2 - depth / 2)),
+  return onTheFloor({
+    x: snapMetres(frame.x + frame.width / 2 - width / 2),
+    y: snapMetres(frame.y + frame.height / 2 - depth / 2),
     width,
     depth,
     rotation: 0,
     height: 0,
-  };
+  });
 }
 
 /** Which way a rectangle is repeated across the FLOOR — never across the rectangle, whatever angle it is set at. */

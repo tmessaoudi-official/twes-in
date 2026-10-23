@@ -25,9 +25,11 @@ final readonly class PlanRect
     public const int SCALE = 3;
     /** Far larger than any single floor a company draws, and small enough that a typo cannot break the view. */
     public const string LIMIT = '10000';
+    /** Half the plan's millimetre: a body flush with the edge, kept to the millimetre, is on it. */
+    private const float TOLERANCE = 0.0005;
 
     /**
-     * Numeric by CONSTRUCTION: `distance()` below builds each one from its own regex captures and refuses anything
+     * Numeric by CONSTRUCTION: `distance()` (and `position()` through it) builds each one from its own regex captures and refuses anything
      * else, so bcmath may take them as they are rather than every caller re-proving what this constructor already
      * guarantees.
      *
@@ -46,8 +48,8 @@ final readonly class PlanRect
     /** @throws InvalidVenue */
     public function __construct(string $x, string $y, string $width, string $depth, public int $rotation, string $height)
     {
-        $this->x = self::distance('x', $x, false);
-        $this->y = self::distance('y', $y, false);
+        $this->x = self::position('x', $x);
+        $this->y = self::position('y', $y);
         $this->width = self::distance('width', $width, true);
         $this->depth = self::distance('depth', $depth, true);
         // Zero is allowed: a preparation bay or a pallet square is marked out on the floor and has no volume.
@@ -55,6 +57,49 @@ final readonly class PlanRect
         if ($rotation < 0 || $rotation > 359) {
             throw new InvalidVenue('rotation', 'A rotation is a whole number of degrees from 0 to 359.');
         }
+        // The floor's edge is checked on the body the plan shows, not on the unturned box: a 6 m wall standing at 90°
+        // reaches 2.9 m left of its anchor, so it stands flush with the left edge at x = -2.9. An anchor of zero or more
+        // is taken as it always was, so no plan saved while the anchor was the bound is refused now.
+        [$leastX, $leastY] = $this->least();
+        if (bccomp($this->x, '0', self::SCALE) < 0 && (float) $this->x < $leastX - self::TOLERANCE) { // float: compared within half a millimetre
+            throw new InvalidVenue('x', 'x is below zero by more than the turn allows: the rectangle would leave the floor by its left side.');
+        }
+        if (bccomp($this->y, '0', self::SCALE) < 0 && (float) $this->y < $leastY - self::TOLERANCE) { // float: compared within half a millimetre
+            throw new InvalidVenue('y', 'y is below zero by more than the turn allows: the rectangle would leave the floor by its top side.');
+        }
+    }
+
+    /**
+     * The least anchor, x then y, at which the turned body still stands on the floor: half of what the body covers
+     * along each axis, less half the unturned side. The screen bounds every gesture by the same figures
+     * (`floorLeast` in stock-map-geometry.ts), and the database's CHECK says the same.
+     *
+     * @return array{float, float}
+     */
+    private function least(): array
+    {
+        $radians = deg2rad($this->rotation);
+        [$cos, $sin] = [abs(cos($radians)), abs(sin($radians))];
+        [$width, $depth] = [(float) $this->width, (float) $this->depth]; // float: a turn's sine is no decimal
+
+        return [($width * $cos + $depth * $sin) / 2 - $width / 2, ($width * $sin + $depth * $cos) / 2 - $depth / 2];
+    }
+
+    /**
+     * Where a rectangle stands along one axis, in metres from the floor's edge: below zero only for a turned body that
+     * still stands on the floor, which the constructor checks once the sides are known.
+     *
+     * @return numeric-string
+     *
+     * @throws InvalidVenue
+     */
+    private static function position(string $field, string $value): string
+    {
+        $typed = TypedText::trimmed($value);
+        $below = str_starts_with($typed, '-');
+        $metres = self::distance($field, $below ? substr($typed, 1) : $typed, false);
+
+        return $below && 0 !== bccomp($metres, '0', self::SCALE) ? bcmul($metres, '-1', self::SCALE) : $metres;
     }
 
     public function equals(self $other): bool

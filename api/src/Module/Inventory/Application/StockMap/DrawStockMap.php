@@ -375,8 +375,9 @@ final readonly class DrawStockMap
         for ($made = 1; $made <= $count; ++$made) {
             $away = bcmul($pitch, (string) $made, PlanRect::SCALE);
             $moved = $way->isBackwards() ? bcsub($way->isVertical() ? $rect->y : $rect->x, $away, PlanRect::SCALE) : bcadd($way->isVertical() ? $rect->y : $rect->x, $away, PlanRect::SCALE);
-            // A copy stepped past the floor's own corner is refused here, by the side it left by: PlanRect knows no
-            // distance below zero, so `-0.800` never becomes a rectangle in the first place.
+            // A copy stepped past the floor's own corner is refused here, by the side it left by: PlanRect takes an
+            // anchor below zero only while the turned body stays on the floor, so `-0.800` of an unturned rack never
+            // becomes a rectangle, while a wall standing at 90° may be repeated flush with the left edge.
             $steps[] = $way->isVertical()
                 ? new PlanRect($rect->x, $moved, $rect->width, $rect->depth, $rect->rotation, $rect->height)
                 : new PlanRect($moved, $rect->y, $rect->width, $rect->depth, $rect->rotation, $rect->height);

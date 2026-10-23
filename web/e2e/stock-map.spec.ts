@@ -1098,6 +1098,72 @@ test.describe('the drawn stock map', () => {
   });
 
   /**
+   * The bound is checked on what the screen shows: a 6 m rack standing at 90° goes flush with the floor's left edge,
+   * its unturned anchor at -2.9 m, where before it stopped 2.9 m short of it; the API keeps it there.
+   */
+  test('moves a turned rack flush with the left edge and keeps it there', async ({ page }) => {
+    const stamp = Date.now().toString().slice(-8);
+    const code = `TRN${stamp}`;
+    const floorName = `Tourné ${stamp}`;
+
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const fixture = await prepare(page, code);
+
+    try {
+      await page.evaluate(
+        async ([csrf, { companyId, establishmentId, locationId, level }, name]) => {
+          const base = `/api/companies/${companyId}`;
+          const send = async (url: string, body: unknown): Promise<{ id: string }> => {
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+              body: JSON.stringify(body),
+            });
+            if (!response.ok) throw new Error(`POST ${url} answered ${response.status}`);
+            return (await response.json()) as { id: string };
+          };
+          const floor = await send(`${base}/stock-floors`, {
+            establishmentId,
+            name,
+            level,
+            widthMetres: '20',
+            depthMetres: '12',
+          });
+          await send(`${base}/stock-floors/${floor.id}/drawings`, {
+            locationId,
+            x: '4',
+            y: '4',
+            width: '6',
+            depth: '0.2',
+            rotation: 90,
+            height: '2',
+          });
+        },
+        [CSRF, fixture, floorName] as const,
+      );
+
+      await page.goto('/stock/plan?mode=arrange');
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+      const rack = page.getByTestId(`stock-drawing-rect-${code}`);
+      await expect(rack).toHaveAttribute('x', '4');
+
+      // A metre at a time to the left: the body meets the edge at x = -2.9, and further presses leave it there.
+      await page.getByTestId(`stock-drawing-${code}`).click();
+      await page.getByTestId('stock-map-board').focus();
+      for (let press = 0; press < 9; press++) await page.keyboard.press('Shift+ArrowLeft');
+      await expect(rack).toHaveAttribute('x', '-2.9');
+
+      await savePlan(page, 1);
+      await page.reload();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+      await expect(rack).toHaveAttribute('x', '-2.9');
+    } finally {
+      if (!page.isClosed()) await clean(page, fixture, floorName);
+    }
+  });
+
+  /**
    * What a place holds, read on the plan and from « Emplacements ». The run's rack holds nothing, so no count is
    * written on it: a place that received goods could not be taken away afterwards, and would leak one per run into the
    * shared company. The counts themselves are certified by the API's functional test and the board's unit spec.

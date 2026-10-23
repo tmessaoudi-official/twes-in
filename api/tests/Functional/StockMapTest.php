@@ -165,6 +165,33 @@ final class StockMapTest extends ApiTestCase
         }
     }
 
+    /**
+     * The floor's edge is the body the plan shows: a 6 m wall standing at 90° stands flush with the left edge at
+     * x = -2.9, which the API and the database both keep, and 1 mm further is refused by its field.
+     */
+    public function testATurnedWallIsDrawnFlushWithTheLeftEdge(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $this->locations();
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
+        $ground = $this->stringAt($this->json(), 'id');
+        $wall = ['locationId' => $this->rackId, 'x' => '-2.9', 'y' => '2.9', 'width' => '6', 'depth' => '0.2', 'rotation' => 90];
+
+        $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing([...$wall, 'x' => '-2.901']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('left side', (string) $this->client->getResponse()->getContent());
+
+        $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing($wall));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->getJson($this->path('stock-floors', $ground).'/drawings');
+        self::assertSame([['-2.900', '2.900', 90]], array_map(static fn (array $row): array => [$row['x'] ?? null, $row['y'] ?? null, $row['rotation'] ?? null], $this->jsonList()));
+
+        // The building's own walls follow the same edge: the 6,9 m wall laid across the top, turned, and flush with it.
+        $this->postJson($this->path('stock-floors', $ground).'/structures', $this->piece(['x' => '4', 'y' => '-3.35', 'width' => '0.2', 'depth' => '6.9', 'rotation' => 270]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['4.000', '-3.350'], [$this->json()['x'], $this->json()['y']]);
+    }
+
     public function testAReaderDrawsNothingAndAnotherCompanysPlansAreNotThere(): void
     {
         $this->signedIn(['stock.read']);
