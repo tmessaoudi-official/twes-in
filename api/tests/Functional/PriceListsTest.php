@@ -74,7 +74,8 @@ final class PriceListsTest extends ApiTestCase
 
     public function testAWriterCreatesReadsRevisesAndDeletesAListWithItsPrices(): void
     {
-        $this->signedIn(['product.read', 'product.write']);
+        // Putting it back goes through the company's bin, which every role reads.
+        $this->signedIn(['company.read', 'product.read', 'product.write']);
 
         $this->postJson($this->lists(), ['name' => 'Revendeurs', 'customerGroupId' => $this->group, 'validFrom' => '2026-10-01', 'items' => [
             ['productId' => $this->screw, 'minQuantity' => '10', 'unitPriceNet' => '11.5'],
@@ -108,14 +109,24 @@ final class PriceListsTest extends ApiTestCase
         self::assertNull($this->json()['customerGroupId'], 'a save writes the whole scope');
         self::assertSame(['ART-002'], array_column($this->arrayAt($this->json(), 'items'), 'productReference'));
 
+        $connection = $this->em()->getConnection();
+        $prices = static fn (): array => $connection->fetchAllAssociative('SELECT * FROM price_list_item ORDER BY id');
+        $before = [$connection->fetchAllAssociative('SELECT * FROM price_list WHERE id = ?', [$id]), $prices()];
         $this->sendJson('DELETE', $this->lists($id));
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertResponseStatusCodeSame(Response::HTTP_METHOD_NOT_ALLOWED, 'one way to delete: the records\' own');
+        $this->postJson($this->removals(), ['subject' => 'price_list', 'ids' => [$id]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $removal = $this->json();
+        self::assertSame(['Revendeurs 2026'], array_column($this->arrayAt($removal, 'items'), 'label'));
         $this->getJson($this->lists());
         self::assertSame([], $this->jsonList());
-        $connection = $this->em()->getConnection();
-        self::assertEquals(0, $connection->fetchOne('SELECT COUNT(*) FROM price_list_item'), 'the rows go with their list');
+        self::assertSame([], $prices(), 'the rows go with their list');
+
+        $this->postJson($this->removals('/'.$this->stringAt($removal, 'id').'/restore'), null);
+        self::assertResponseIsSuccessful();
+        self::assertSame($before, [$connection->fetchAllAssociative('SELECT * FROM price_list WHERE id = ?', [$id]), $prices()], 'put back within the day with its prices, as it was');
         $actions = $connection->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'price_list' ORDER BY at, action");
-        self::assertEqualsCanonicalizing(['price_list.created', 'price_list.revised', 'price_list.revised', 'price_list.deleted'], $actions);
+        self::assertEqualsCanonicalizing(['price_list.created', 'price_list.revised', 'price_list.revised', 'price_list.deleted', 'price_list.restored'], $actions);
         self::assertEquals(0, $connection->fetchOne("SELECT COUNT(*) FROM audit_log WHERE entity_type = 'price_list' AND changes::text LIKE '%11.5%'"), 'the audit never keeps a price');
     }
 
@@ -233,10 +244,14 @@ final class PriceListsTest extends ApiTestCase
         $this->postJson($this->lists(), ['name' => 'Public']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 
-        foreach (['GET', 'DELETE'] as $method) {
-            $this->sendJson($method, $this->lists('0192b7a0-0000-7000-8000-0000000000aa'));
-            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $method);
-        }
+        $this->getJson($this->lists('0192b7a0-0000-7000-8000-0000000000aa'));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->postJson($this->removals(), ['subject' => 'price_list', 'ids' => ['0192b7a0-0000-7000-8000-0000000000aa']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->em()->getConnection()->insert('price_list', ['id' => '0192b7a0-0000-7000-8000-0000000000ab', 'name' => 'Comptoir', 'is_active' => 'true', 'created_at' => '2026-10-02 09:00:00', 'updated_at' => '2026-10-02 09:00:00', 'company_id' => $this->company->getId()->toRfc4122()]);
+        $this->postJson($this->removals(), ['subject' => 'price_list', 'ids' => ['0192b7a0-0000-7000-8000-0000000000ab']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'deleting a list takes writing products');
+        self::assertEquals(2, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM price_list'), 'both lists stay');
         $this->sendJson('PUT', $this->lists('0192b7a0-0000-7000-8000-0000000000aa'), ['name' => 'Mien', 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
@@ -410,6 +425,11 @@ final class PriceListsTest extends ApiTestCase
     private function lists(?string $id = null): string
     {
         return '/api/companies/'.$this->company->getId()->toRfc4122().'/price-lists'.(null === $id ? '' : '/'.$id);
+    }
+
+    private function removals(string $rest = ''): string
+    {
+        return '/api/companies/'.$this->company->getId()->toRfc4122().'/record-removals'.$rest;
     }
 
     private function price(string $productId, string $query = ''): string

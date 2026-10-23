@@ -35,7 +35,6 @@ describe('PriceListsFacade', () => {
     get: vi.fn(),
     create: vi.fn(),
     revise: vi.fn(),
-    remove: vi.fn(),
   };
   const products = { products: vi.fn(), product: vi.fn() };
   const customers = { groups: vi.fn(), customers: vi.fn(), customer: vi.fn() };
@@ -66,17 +65,15 @@ describe('PriceListsFacade', () => {
     expect(facade.busy()).toBe(false);
   });
 
-  it('reads the lists again after a save, a revision or a deletion', async () => {
+  it('reads the lists again after a save or a revision', async () => {
     api.create.mockResolvedValue(row);
     api.revise.mockResolvedValue(row);
-    api.remove.mockResolvedValue(undefined);
 
     expect(await facade.create('c1', input)).toBe(true);
     expect(await facade.revise('c1', 'l1', input, 1)).toBe('saved');
-    expect(await facade.remove('c1', 'l1')).toBe(true);
 
     expect(api.revise).toHaveBeenCalledWith('c1', 'l1', input, 1);
-    expect(api.list).toHaveBeenCalledTimes(3);
+    expect(api.list).toHaveBeenCalledTimes(2);
   });
 
   /** The page reads the open list again and says it; nothing is kept here as a refusal to show. */

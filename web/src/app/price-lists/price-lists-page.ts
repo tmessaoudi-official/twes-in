@@ -42,6 +42,7 @@ import { DayInput } from '../shared/form/day-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { Feedback } from '../shared/feedback/feedback';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
@@ -145,6 +146,7 @@ export class PriceListsPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
   private readonly live = inject(LiveChanges);
+  private readonly deletes = inject(RecordDeletes);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly scopes = SCOPES;
@@ -290,18 +292,12 @@ export class PriceListsPage implements OnInit {
         label: 'price_lists.delete_named',
         labelParams: (row) => ({ name: row.name }),
         icon: 'delete',
+        // Asks nothing: the toast offers « Annuler », and « Récemment supprimés » keeps the list a day, its prices with it.
         destructive: true,
+        undoable: true,
         run: (row) => void this.remove(row),
         disabled: () => this.busy(),
         shown: () => this.mayWrite(),
-        confirm: (row) => ({
-          kind: 'definitif',
-          title: 'price_lists.delete_title',
-          message: 'price_lists.delete_message',
-          messageParams: { name: row.name },
-          confirmLabel: 'price_lists.delete_confirm',
-          keepLabel: 'price_lists.keep',
-        }),
       },
     ],
   }));
@@ -557,6 +553,7 @@ export class PriceListsPage implements OnInit {
   protected async remove(row: PriceListRow): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    if (await this.facade.remove(companyId, row.id)) this.feedback.success('price_lists.deleted');
+    // The list reads again on the change the delete stages, and on its undo.
+    await this.deletes.remove(companyId, 'price_list', [{ id: row.id, label: row.name }]);
   }
 }

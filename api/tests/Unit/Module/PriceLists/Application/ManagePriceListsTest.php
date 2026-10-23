@@ -203,25 +203,13 @@ final class ManagePriceListsTest extends TestCase
         self::assertSame([], $list->getItems());
     }
 
-    public function testAListOfAnotherCompanyIsNotFoundAndDeletingAuditsOnce(): void
+    public function testAListOfAnotherCompanyIsNotFound(): void
     {
         $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $theirs = $this->manage->create($globex, $this->input('Public'), null);
-        try {
-            $this->manage->get($this->company, $theirs->getId());
-            self::fail("Another company's list was read.");
-        } catch (PriceListNotFound) {
-        }
-        $mine = $this->manage->create($this->company, $this->input('Mine'), null);
-        $count = \count($this->audit->entries);
 
-        $this->manage->delete($this->company, $mine->getId(), null);
-
-        self::assertSame([], $this->manage->list($this->company));
-        self::assertCount($count + 1, $this->audit->entries);
-        self::assertSame(ManagePriceLists::DELETED, $this->audit->entries[$count]->action);
         $this->expectException(PriceListNotFound::class);
-        $this->manage->delete($this->company, $theirs->getId(), null);
+        $this->manage->get($this->company, $theirs->getId());
     }
 
     /** @param list<PriceListItemInput>|null $items */

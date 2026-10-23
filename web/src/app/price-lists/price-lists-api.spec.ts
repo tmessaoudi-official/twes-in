@@ -117,14 +117,6 @@ describe('PriceListsApi', () => {
     await expect(taken).rejects.toEqual(new PriceListsRefused('name_taken'));
   });
 
-  it('deletes a list', async () => {
-    const gone = api.remove('c1', 'l1');
-    const request = http.expectOne('/api/companies/c1/price-lists/l1');
-    expect(request.request.method).toBe('DELETE');
-    request.flush(null, { status: 204, statusText: 'No Content' });
-    await expect(gone).resolves.toBeUndefined();
-  });
-
   it('names a refusal: a taken name, a missing list, a refused row, a denied right, no network', async () => {
     const answers: [number, string][] = [
       [409, 'name_taken'],

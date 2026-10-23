@@ -71,10 +71,4 @@ final readonly class DoctrinePriceListRepository implements PriceListRepository
         $this->entityManager->persist($list);
         $this->entityManager->flush();
     }
-
-    public function remove(PriceList $list): void
-    {
-        $this->entityManager->remove($list);
-        $this->entityManager->flush();
-    }
 }

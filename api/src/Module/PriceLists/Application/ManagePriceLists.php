@@ -36,7 +36,6 @@ final readonly class ManagePriceLists
     public const string ENTITY_TYPE = 'price_list';
     public const string CREATED = 'price_list.created';
     public const string REVISED = 'price_list.revised';
-    public const string DELETED = 'price_list.deleted';
 
     public function __construct(
         private PriceListRepository $lists,
@@ -113,16 +112,6 @@ final readonly class ManagePriceLists
             }
 
             return $list;
-        });
-    }
-
-    /** @throws PriceListNotFound */
-    public function delete(Company $company, Uuid $id, ?Uuid $actorUserId): void
-    {
-        $this->transactions->run(function () use ($company, $id, $actorUserId): void {
-            $list = $this->get($company, $id);
-            $this->lists->remove($list);
-            $this->record($company, $id, self::DELETED, [], $actorUserId);
         });
     }
 

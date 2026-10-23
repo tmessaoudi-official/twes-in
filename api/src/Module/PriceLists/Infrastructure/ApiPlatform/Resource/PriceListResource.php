@@ -11,7 +11,6 @@ namespace App\Module\PriceLists\Infrastructure\ApiPlatform\Resource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
@@ -20,7 +19,6 @@ use App\Module\PriceLists\Application\PriceListInput;
 use App\Module\PriceLists\Domain\Model\PriceList;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\Output\PriceListItemRow;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\State\Processor\CreatePriceListProcessor;
-use App\Module\PriceLists\Infrastructure\ApiPlatform\State\Processor\DeletePriceListProcessor;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\State\Processor\RevisePriceListProcessor;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\State\Provider\PriceListCollectionProvider;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\State\Provider\PriceListItemProvider;
@@ -68,12 +66,6 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: ['groups' => [self::READ]],
             denormalizationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
             validationContext: ['groups' => [self::WRITE, RecordVersion::REVISE]],
-        ),
-        new Delete(
-            uriTemplate: '/companies/{companyId}/price-lists/{priceListId}',
-            processor: DeletePriceListProcessor::class,
-            security: 'is_granted("ROLE_USER")',
-            read: false,
         ),
     ],
 )]

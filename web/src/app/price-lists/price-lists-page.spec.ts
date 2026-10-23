@@ -22,6 +22,7 @@ import { Session } from '../shared/session/session';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
+import { RecordDeletes } from '../shared/records/record-deletes';
 import { PriceListsFacade } from './price-lists-facade';
 import { PriceListsPage } from './price-lists-page';
 import type { ProductFigures } from './price-lists-figures';
@@ -97,14 +98,16 @@ describe('PriceListsPage', () => {
     open: vi.fn(),
     create: vi.fn(),
     revise: vi.fn(),
-    remove: vi.fn(),
     clearError: vi.fn(),
     pickProducts: vi.fn(async () => [{ id: 'p1', code: 'REF-1', name: 'Stylo' }]),
     pickCustomers: vi.fn(async () => []),
     pickCustomerIds: vi.fn(async () => []),
   };
 
+  const deletes = { remove: vi.fn() };
+
   beforeEach(async () => {
+    deletes.remove.mockReset().mockResolvedValue(true);
     Object.values(facade)
       .filter((value) => typeof value === 'function' && 'mockReset' in value)
       .forEach((fn) => (fn as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(true));
@@ -120,6 +123,7 @@ describe('PriceListsPage', () => {
         provideRouter([]),
         ...provideQuietFeedback(),
         { provide: PriceListsFacade, useValue: facade },
+        { provide: RecordDeletes, useValue: deletes },
         {
           provide: AuthFacade,
           useValue: {
@@ -174,6 +178,30 @@ describe('PriceListsPage', () => {
     await announceSaved('price_list', 'l9');
 
     expect(facade.load).toHaveBeenCalledWith('c1');
+  });
+
+  /** Opens a row's action, from the row or from its « ⋮ », whichever the width left it in. */
+  async function rowAction(id: string, rowId: string, settle: () => Promise<void>): Promise<void> {
+    const anywhere = (testId: string) =>
+      document.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+    const button = anywhere(`row-action-${id}-${rowId}`);
+    if (button !== null) {
+      button.click();
+    } else {
+      anywhere(`row-more-${rowId}`)!.click();
+      await settle();
+      anywhere(`row-menu-${id}-${rowId}`)!.click();
+    }
+    await settle();
+  }
+
+  it('deletes a list asking nothing, named by its name, as a record the toast takes back', async () => {
+    const { settle } = await render();
+
+    await rowAction('delete', 'l2', settle);
+
+    expect(document.querySelector('[data-testid="confirm-run"]')).toBeNull();
+    expect(deletes.remove).toHaveBeenCalledWith('c1', 'price_list', [{ id: 'l2', label: 'Gros' }]);
   });
 
   it('offers no way to add a list to someone who may not write', async () => {

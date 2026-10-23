@@ -112,7 +112,8 @@
         "payment_instrument": "{count, plural, zero {لا صكوك ولا كمبيالات} one {صك أو كمبيالة واحدة} two {صكين أو كمبيالتين} few {{{count}} صكوك أو كمبيالات} many {{{count}} صكًا أو كمبيالةً} other {{{count}} صك أو كمبيالة}}",
         "delivery_note": "{count, plural, zero {لا مسودات وصول تسليم} one {مسودة وصل تسليم واحدة} two {مسودتا وصل تسليم} few {{{count}} مسودات وصول تسليم} many {{{count}} مسودة وصل تسليم} other {{{count}} مسودة وصل تسليم}}",
         "recurring_invoice": "{count, plural, zero {لا فواتير دورية} one {فاتورة دورية واحدة} two {فاتورتين دوريتين} few {{{count}} فواتير دورية} many {{{count}} فاتورةً دوريةً} other {{{count}} فاتورة دورية}}",
-        "recurring_expense": "{count, plural, zero {لا مصاريف دورية} one {مصروف دوري واحد} two {مصروفان دوريان} few {{{count}} مصاريف دورية} many {{{count}} مصروفًا دوريًا} other {{{count}} مصروف دوري}}"
+        "recurring_expense": "{count, plural, zero {لا مصاريف دورية} one {مصروف دوري واحد} two {مصروفان دوريان} few {{{count}} مصاريف دورية} many {{{count}} مصروفًا دوريًا} other {{{count}} مصروف دوري}}",
+        "price_list": "{count, plural, zero {لا قوائم أسعار} one {قائمة أسعار واحدة} two {قائمتي أسعار} few {{{count}} قوائم أسعار} many {{{count}} قائمة أسعار} other {{{count}} قائمة أسعار}}"
       }
     },
     "mismatch": {

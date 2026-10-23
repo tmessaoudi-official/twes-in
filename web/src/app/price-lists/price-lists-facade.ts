@@ -80,10 +80,6 @@ export class PriceListsFacade {
     return 'changed';
   }
 
-  async remove(companyId: string, id: string): Promise<boolean> {
-    return this.write(companyId, () => this.api.remove(companyId, id));
-  }
-
   clearError(): void {
     this.state.clearError();
   }

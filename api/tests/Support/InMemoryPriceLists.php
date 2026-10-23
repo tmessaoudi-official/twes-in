@@ -75,6 +75,7 @@ final class InMemoryPriceLists implements PriceListRepository
         }
     }
 
+    /** Takes a list away, as the records engine's delete does in the database. */
     public function remove(PriceList $list): void
     {
         $this->lists = array_values(array_filter($this->lists, static fn (PriceList $l) => $l !== $list));

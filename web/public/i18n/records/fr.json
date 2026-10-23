@@ -112,7 +112,8 @@
         "payment_instrument": "{{count}} {count, plural, one {chèque ou traite} other {chèques ou traites}}",
         "delivery_note": "{{count}} {count, plural, one {brouillon de bon de livraison} other {brouillons de bon de livraison}}",
         "recurring_invoice": "{{count}} {count, plural, one {facture récurrente} other {factures récurrentes}}",
-        "recurring_expense": "{{count}} {count, plural, one {dépense récurrente} other {dépenses récurrentes}}"
+        "recurring_expense": "{{count}} {count, plural, one {dépense récurrente} other {dépenses récurrentes}}",
+        "price_list": "{{count}} {count, plural, one {tarif} other {tarifs}}"
       }
     },
     "mismatch": {

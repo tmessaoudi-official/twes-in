@@ -97,10 +97,6 @@ export class PriceListsApi {
     );
   }
 
-  async remove(companyId: string, id: string): Promise<void> {
-    await this.guard(async () => firstValueFrom(this.http.delete(path(companyId, id))));
-  }
-
   private async guard<T>(call: () => Promise<T>): Promise<T> {
     try {
       return await call();

@@ -3531,7 +3531,6 @@
     "add": "Nouveau tarif",
     "edit": "Modifier",
     "saved": "Le tarif a été enregistré.",
-    "deleted": "Le tarif a été supprimé.",
     "none": "Aucun tarif.",
     "always": "Toujours",
     "active": "Actif",
@@ -3539,10 +3538,6 @@
     "no_customer_found": "Aucun client trouvé.",
     "no_product_found": "Aucun produit trouvé.",
     "delete_named": "Supprimer {{name}}",
-    "delete_title": "Supprimer ce tarif ?",
-    "delete_message": "Le tarif {{name}} et ses prix seront supprimés. Les documents déjà émis ne changent pas.",
-    "delete_confirm": "Supprimer",
-    "keep": "Garder",
     "list": {
       "name": "Tarif",
       "scope": "Pour",
@@ -4002,7 +3997,8 @@
       "price_list": {
         "created": "a créé la liste de prix",
         "revised": "a modifié la liste de prix",
-        "deleted": "a supprimé la liste de prix"
+        "deleted": "a supprimé la liste de prix",
+        "restored": "a remis la liste de prix"
       },
       "vendor": {
         "created": "a créé le fournisseur",

@@ -31,6 +31,4 @@ interface PriceListRepository
     public function applicable(Uuid $companyId, \DateTimeImmutable $on, ?Uuid $customerId, ?Uuid $customerGroupId): array;
 
     public function save(PriceList $list): void;
-
-    public function remove(PriceList $list): void;
 }

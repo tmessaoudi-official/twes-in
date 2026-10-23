@@ -98,6 +98,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'price_list.created',
   'price_list.revised',
   'price_list.deleted',
+  'price_list.restored',
   'vendor.created',
   'vendor.revised',
   'vendor.deleted',
