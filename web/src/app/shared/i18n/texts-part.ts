@@ -9,9 +9,10 @@ import {
   TranslateService,
   type TranslationObject,
 } from '@ngx-translate/core';
-import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { filter, firstValueFrom } from 'rxjs';
+import { provideOverriddenLoader } from './overridden-loader';
 import { PluralCompiler } from './plural-compiler';
+import { laid, partTexts, TextOverrides } from './text-overrides';
 import { TextsApi } from './texts-api';
 
 /**
@@ -21,14 +22,18 @@ import { TextsApi } from './texts-api';
 @Injectable({ providedIn: 'root' })
 export class TextsParts {
   private readonly parts = new Set<TranslateService>();
+  /** Each page's part by the name of its files, which its wording is read by. */
+  private readonly names = new Map<TranslateService, string>();
   private readonly root = inject(TranslateService);
   private readonly api = inject(TextsApi);
+  private readonly overrides = inject(TextOverrides);
   private readonly injector = inject(Injector);
   /** The parts opened into the root, by name, each language's texts as fetched. */
   private readonly opened = new Map<string, Map<string, Promise<TranslationObject>>>();
 
-  add(part: TranslateService): void {
+  add(part: TranslateService, name: string): void {
     this.parts.add(part);
+    this.names.set(part, name);
   }
 
   /**
@@ -54,7 +59,7 @@ export class TextsParts {
     this.opened.set(name, languages);
     let texts = languages.get(language);
     if (texts === undefined) {
-      texts = this.api.part(name, language);
+      texts = this.laidPart(name, language);
       // A failed fetch is not kept, so the next screen that needs the texts asks again.
       texts.catch(() => languages.delete(language));
       languages.set(language, texts);
@@ -81,6 +86,31 @@ export class TextsParts {
     }
   }
 
+  /**
+   * Lays the texts worded otherwise again over every part, in a language they hold: another company entered, or a text
+   * changed. Each part's texts are replaced at once, never emptied first, so no page shows a key meanwhile.
+   */
+  async refresh(language: string): Promise<void> {
+    const opened = [...this.opened]
+      .filter(([, languages]) => languages.delete(language))
+      .map(([name]) => name);
+    await Promise.all([
+      ...[...this.names].map(async ([part, name]) => {
+        if (!part.getLangs().includes(language)) return;
+        part.setTranslation(language, await this.laidPart(name, language), false);
+      }),
+      ...opened.map((name) => this.fetch(name, language)),
+    ]);
+  }
+
+  private async laidPart(name: string, language: string): Promise<TranslationObject> {
+    const [texts, overrides] = await Promise.all([
+      this.api.part(name, language),
+      this.overrides.of(language),
+    ]);
+    return laid(texts, overrides[partTexts(name)]);
+  }
+
   /** Nothing when every opened part already has the language, so a switch waits no longer than it did without them. */
   load(language: string): Promise<unknown> | undefined {
     const missing = [...this.parts].filter((part) => !part.getLangs().includes(language));
@@ -95,20 +125,22 @@ export class TextsParts {
 }
 
 /** The route waits for its texts in the current language, so the page never shows a key. */
-const textsLoaded: CanActivateFn = () => {
-  const part = inject(TranslateService);
-  const parts = inject(TextsParts);
-  parts.add(part);
-  return firstValueFrom(
-    toObservable(part.isLoading, { injector: inject(Injector) }).pipe(
-      filter((loading) => !loading),
-    ),
-  ).then(() => {
-    const language = part.getCurrentLang();
-    if (language !== null) parts.share(language);
-    return true;
-  });
-};
+function textsLoaded(name: string): CanActivateFn {
+  return () => {
+    const part = inject(TranslateService);
+    const parts = inject(TextsParts);
+    parts.add(part, name);
+    return firstValueFrom(
+      toObservable(part.isLoading, { injector: inject(Injector) }).pipe(
+        filter((loading) => !loading),
+      ),
+    ).then(() => {
+      const language = part.getCurrentLang();
+      if (language !== null) parts.share(language);
+      return true;
+    });
+  };
+}
 
 /** The route waits for texts several screens read, opened into the root (`TextsParts.open`). */
 export function textsOpened(name: string): CanActivateFn {
@@ -132,10 +164,10 @@ export function textsPart(
   return {
     providers: [
       provideChildTranslateService({
-        loader: provideTranslateHttpLoader({ prefix: `/i18n/${name}/`, suffix: '.json' }),
+        loader: provideOverriddenLoader(`/i18n/${name}/`, partTexts(name)),
         compiler: provideTranslateCompiler(PluralCompiler),
       }),
     ],
-    canActivate: [...guards, textsLoaded],
+    canActivate: [...guards, textsLoaded(name)],
   };
 }

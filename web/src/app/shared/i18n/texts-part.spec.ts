@@ -18,6 +18,7 @@ import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { LanguageFacade } from './language-facade';
 import { PluralCompiler } from './plural-compiler';
+import { type ScreenOverrides, TextOverrides } from './text-overrides';
 import { TextsParts, textsOpened, textsPart } from './texts-part';
 
 @Component({
@@ -62,6 +63,8 @@ const PART = {
 describe('textsPart', () => {
   let http: HttpTestingController;
   let harness: RouterTestingHarness;
+  /** The texts the installation and the company word otherwise, as the API answers them. */
+  let worded: ScreenOverrides;
 
   /** Lets the router and the loaders run up to their next request. */
   function settled(): Promise<void> {
@@ -73,6 +76,7 @@ describe('textsPart', () => {
   }
 
   beforeEach(async () => {
+    worded = {};
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -91,6 +95,10 @@ describe('textsPart', () => {
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: Session, useValue: { me: () => null } },
+        {
+          provide: TextOverrides,
+          useValue: { of: () => Promise.resolve(worded), forget: () => undefined },
+        },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -218,5 +226,55 @@ describe('textsPart', () => {
     harness.detectChanges();
 
     expect(text()).toBe('Every 2 months · Yes');
+  });
+
+  it('lays the texts worded otherwise over the page’s own, the rest as shipped', async () => {
+    worded = { 'screen:part': { 'part.remove': 'Effacer' }, screen: { 'shared.yes': 'Non' } };
+    const navigation = TestBed.inject(Router).navigateByUrl('/part');
+    await settled();
+    http.expectOne('/i18n/part/fr.json').flush(PART.fr);
+    await navigation;
+    harness.detectChanges();
+
+    // The language's own file is the root loader's to word (`OverriddenLoader`); a page's part takes only its own.
+    expect(text()).toBe('Effacer · Oui · 2 éléments');
+  });
+
+  it('lays a new wording over an opened page at once, never showing a key meanwhile', async () => {
+    const navigation = TestBed.inject(Router).navigateByUrl('/part');
+    await settled();
+    http.expectOne('/i18n/part/fr.json').flush(PART.fr);
+    await navigation;
+    harness.detectChanges();
+
+    worded = { 'screen:part': { 'part.remove': 'Effacer' } };
+    const refreshing = TestBed.inject(TextsParts).refresh('fr');
+    await settled();
+    harness.detectChanges();
+    expect(text()).toBe('Supprimer · Oui · 2 éléments');
+    http.expectOne('/i18n/part/fr.json').flush(PART.fr);
+    await refreshing;
+    harness.detectChanges();
+
+    expect(text()).toBe('Effacer · Oui · 2 éléments');
+  });
+
+  it('lays a new wording over texts opened into the root as well', async () => {
+    const parts = TestBed.inject(TextsParts);
+    const root = TestBed.inject(TranslateService);
+    const opening = parts.open('shared-part');
+    await settled();
+    http.expectOne('/i18n/shared-part/fr.json').flush(OPENED.fr);
+    await opening;
+
+    worded = { 'screen:shared-part': { 'often.every': 'Chaque période' } };
+    const refreshing = parts.refresh('fr');
+    await settled();
+    http.expectOne('/i18n/shared-part/fr.json').flush(OPENED.fr);
+    await refreshing;
+    parts.share('fr');
+    await settled();
+
+    expect(root.instant('often.every', { every: 2 })).toBe('Chaque période');
   });
 });

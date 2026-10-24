@@ -446,7 +446,10 @@ describe('InvoicePage', () => {
         { provide: InventoryFacade, useValue: inventory },
         { provide: CustomerDisplay, useValue: display },
         { provide: RecurringApi, useValue: recurring },
-        { provide: TextsApi, useValue: { part: () => Promise.resolve({}) } },
+        {
+          provide: TextsApi,
+          useValue: { part: () => Promise.resolve({}), overrides: () => Promise.resolve({}) },
+        },
         { provide: AuthFacade, useValue: auth },
         { provide: RecordDeletes, useValue: deletes },
         { provide: FileSaver, useValue: saver },

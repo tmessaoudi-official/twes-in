@@ -22,7 +22,9 @@ import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { MatIconRegistry } from '@angular/material/icon';
 import { provideRouter, TitleStrategy, withComponentInputBinding } from '@angular/router';
 import { provideTranslateCompiler, provideTranslateService } from '@ngx-translate/core';
-import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
+import { provideOverriddenLoader } from './shared/i18n/overridden-loader';
+import { MAIN_TEXTS } from './shared/i18n/text-overrides';
+import { TextsOverlay } from './shared/i18n/texts-overlay';
 import { routes } from './app.routes';
 import { PageTitles } from './shared/a11y/page-titles';
 import { AuthFacade } from './auth/auth-facade';
@@ -77,11 +79,11 @@ export const appConfig: ApplicationConfig = {
       withNoXsrfProtection(),
     ),
     // The catalogue's default language first, and what a text missing in another language falls back to. Files live
-    // in public/i18n/<lang>.json.
+    // in public/i18n/<lang>.json, the texts the installation and the company word otherwise laid over them.
     provideTranslateService({
       lang: DEFAULT_LANGUAGE,
       fallbackLang: DEFAULT_LANGUAGE,
-      loader: provideTranslateHttpLoader({ prefix: '/i18n/', suffix: '.json' }),
+      loader: provideOverriddenLoader('/i18n/', MAIN_TEXTS),
       // A count is said in the form its language gives it (`{count, plural, one {…} other {…}}`).
       compiler: provideTranslateCompiler(PluralCompiler),
     }),
@@ -127,6 +129,8 @@ export const appConfig: ApplicationConfig = {
       // direction it gives the document.
       inject(DocumentDirection);
       inject(LanguageFacade);
+      // The texts the installation and the company word otherwise, laid again as a company is entered or a text changes.
+      inject(TextsOverlay);
       // The browser says once, early, that the application may be installed: heard before any page.
       inject(AppInstall);
       // Where the installation's passkeys work, read once before the sign-in page: a page at another address (a shop's

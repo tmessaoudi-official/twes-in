@@ -118,8 +118,8 @@ is a row laid over them at read time, never a rewritten file.
 | 1 | Table, shipped catalogue port and its copy in the images, the override and reset use cases with every refusal | M | done | 65b45c7a | api/src/Texts/** api/migrations/** infra/api/Dockerfile |
 | 2 | Read and write endpoints, permission, step-up, audit, live change | M | done | 7f97c7c7 | api/src/Texts/** |
 | 2b | The writers' catalogue: every overridable text with its original, the installation's and the company's value, `originalChanged`, searched and paged | M | done | ff00056d | api/src/Texts/** |
-| 3 | Mails and PDFs through the overrides | S | done | - | api/src/Texts/** |
-| 4 | Web: the merge at load, on entering a company, on parts, on a live change | M | todo | - | web/src/app/shared/i18n/** |
+| 3 | Mails and PDFs through the overrides | S | done | c710e621 | api/src/Texts/** |
+| 4 | Web: the merge at load, on entering a company, on parts, on a live change | M | done | - | web/src/app/shared/i18n/** |
 | 5 | « Textes » pages in Paramètres and /platform, texts in fr, en, ar, the guide | M | todo | - | web/src/app/settings/** web/src/app/platform/** web/public/i18n/** |
 <!-- /progress-block -->
 ### Blocked

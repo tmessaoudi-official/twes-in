@@ -292,7 +292,10 @@ describe('ExpensePage', () => {
         { provide: ExpensesFacade, useValue: facade },
         { provide: RecurringExpensesApi, useValue: recurring },
         { provide: RecordDeletes, useValue: deletes },
-        { provide: TextsApi, useValue: { part: () => Promise.resolve({}) } },
+        {
+          provide: TextsApi,
+          useValue: { part: () => Promise.resolve({}), overrides: () => Promise.resolve({}) },
+        },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
