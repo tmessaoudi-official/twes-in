@@ -275,6 +275,23 @@ services:
       GALLERY_ONLY:
       GALLERY_SCHEMES:
       GALLERY_WIDTHS:
+      # Every other variable a browser suite reads, passed through the same way (scripts/gates/e2e-environment.sh):
+      # CI turns on the configuration's CI mode (forbidOnly, the WebKit door required); MAILPIT_URL and the E2E_*
+      # account point a run at another stack's mails and operator; the rest are the design, menu, selection and video
+      # recorders' own choices.
+      CI:
+      MAILPIT_URL:
+      E2E_EMAIL:
+      E2E_CODES_EMAIL:
+      E2E_PASSWORD:
+      E2E_TOTP_SECRET:
+      PLAYWRIGHT_CHANNEL:
+      DESIGN_SHOTS_DIR:
+      MENUS_DIR:
+      RECORD_COMPANY:
+      SCHEME:
+      SHOTS:
+      VIDEOS_DIR:
       PLAYWRIGHT_BROWSERS_PATH: "${HOST_REPO:-${PWD}}/var/cache/ms-playwright"
     volumes:
       - "${HOST_REPO:-${PWD}}:${HOST_REPO:-${PWD}}"

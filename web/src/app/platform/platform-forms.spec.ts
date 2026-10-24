@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ListQuery } from '../shared/list/list-types';
-import { ACCOUNTS_LIST, accountSearch, companySearch } from './platform-forms';
+import { ACCOUNTS_LIST, accountSearch, COMPANIES_LIST, companySearch } from './platform-forms';
 
 const query = (over: Partial<ListQuery>): ListQuery => ({
   query: '',
@@ -94,5 +94,15 @@ describe('the platform lists', () => {
       key: 'active',
       direction: 'asc',
     });
+  });
+
+  // Both APIs read their words in a name (and an address the list does not show): each list draws its search.
+  it('offers a search on the companies and the accounts lists', () => {
+    for (const list of [COMPANIES_LIST, ACCOUNTS_LIST]) {
+      expect(
+        list.columns.filter((column) => column.filterable).map((column) => column.id),
+        list.id,
+      ).toEqual(['name']);
+    }
   });
 });

@@ -252,6 +252,7 @@ export function recordLink(row: Pick<ActivityRow, 'entityType' | 'entityId'>): u
 
 const RANGES: ListRangeFilter[] = [{ id: 'at', kind: 'day', label: 'activity.fields.at' }];
 
+// Its search box stands over the columns the API's `q` reads: who did it, the action and the kind of record.
 export const ACTIVITY_LIST: ListDescriptor<ActivityRow> = {
   id: 'activity',
   rowId: (row) => row.id,
@@ -271,13 +272,21 @@ export const ACTIVITY_LIST: ListDescriptor<ActivityRow> = {
       label: 'activity.fields.actor',
       value: (row) => row.actorName ?? '',
       hideable: false,
+      filterable: true,
       width: 180,
     },
-    { id: 'action', label: 'activity.fields.action', value: (row) => row.action, hideable: false },
+    {
+      id: 'action',
+      label: 'activity.fields.action',
+      value: (row) => row.action,
+      hideable: false,
+      filterable: true,
+    },
     {
       id: 'record',
       label: 'activity.fields.record',
       value: (row) => row.entityType,
+      filterable: true,
       // It carries the link that opens the record, and a hidden link is a record nobody can open.
       hideable: false,
     },

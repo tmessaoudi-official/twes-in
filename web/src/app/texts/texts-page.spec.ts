@@ -180,6 +180,28 @@ describe('TextsPage', () => {
     );
   });
 
+  // A few thousand texts a language: the list is found by what is typed into its own search, at both levels.
+  it.each(['company', 'installation'] as const)(
+    'offers the list’s search at the %s level and reads the texts that say what is typed',
+    async (level) => {
+      await open(level);
+      const search = fixture.nativeElement.querySelector(
+        '[data-testid="list-filter"]',
+      ) as HTMLInputElement | null;
+      expect(search).not.toBeNull();
+
+      search!.value = 'texts.title';
+      search!.dispatchEvent(new Event('input'));
+      await vi.waitFor(() =>
+        expect(facade.load).toHaveBeenLastCalledWith(
+          expect.anything(),
+          'fr',
+          expect.objectContaining({ words: 'texts.title', page: 1 }),
+        ),
+      );
+    },
+  );
+
   it('reads and writes the installation’s texts on the platform, with no company column', async () => {
     await open('installation');
 

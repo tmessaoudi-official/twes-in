@@ -5,6 +5,7 @@ import fr from '../../../public/i18n/fr.json';
 import {
   ACTIVITY_ACTIONS,
   ACTIVITY_KINDS,
+  ACTIVITY_LIST,
   actionKey,
   activitySearch,
   fieldKey,
@@ -94,5 +95,13 @@ describe('the activity journal list', () => {
     const names = Object.keys((at(fr, 'activity.field_names') ?? {}) as object);
     expect(names.length).toBeGreaterThan(10);
     expect(Object.keys((at(en, 'activity.field_names') ?? {}) as object)).toEqual(names);
+  });
+
+  // The API reads its words in the action, the kind of record and who did it: the list draws its search over them.
+  it('offers a search over the columns the API searches', () => {
+    const searched = ACTIVITY_LIST.columns
+      .filter((column) => column.filterable)
+      .map((column) => column.id);
+    expect(searched).toEqual(['actor', 'action', 'record']);
   });
 });

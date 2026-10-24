@@ -43,6 +43,8 @@ export const COMPANIES_LIST: ListDescriptor<PlatformCompanyRow> = {
       value: (row) => row.name,
       sortable: true,
       hideable: false,
+      // The API's `q` reads the name and its owners' addresses: this column holds the list's search box.
+      filterable: true,
     },
     {
       id: 'country',
@@ -130,6 +132,8 @@ export const ACCOUNTS_LIST: ListDescriptor<PlatformAccountRow> = {
       value: (row) => row.displayName,
       sortable: true,
       hideable: false,
+      // The API's `q` reads the name and the address: this column holds the list's search box.
+      filterable: true,
     },
     {
       id: 'companies',

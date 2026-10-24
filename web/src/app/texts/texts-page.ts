@@ -100,6 +100,7 @@ export class TextsPage implements OnInit {
   });
   protected readonly rowTestId = (view: TextView): string => `text-${view.row.domain}-${view.key}`;
 
+  // The four columns the catalogue's search reads (TextCatalogue::says), so the list draws its search box over them.
   protected readonly list = computed<ListDescriptor<TextView>>(() => ({
     id: this.installation() ? 'platform-texts' : 'company-texts',
     rowId: (view) => view.id,
@@ -111,6 +112,7 @@ export class TextsPage implements OnInit {
         label: 'texts.columns.original',
         value: (view) => view.original,
         hideable: false,
+        filterable: true,
         wraps: true,
         width: 240,
       },
@@ -118,6 +120,7 @@ export class TextsPage implements OnInit {
         id: 'installation',
         label: this.installation() ? 'texts.columns.yours' : 'texts.columns.installation',
         value: (view) => view.installation,
+        filterable: true,
         wraps: true,
         width: 240,
         priority: this.installation() ? 'high' : 'normal',
@@ -129,6 +132,7 @@ export class TextsPage implements OnInit {
               id: 'company',
               label: 'texts.columns.yours',
               value: (view: TextView) => view.company,
+              filterable: true,
               wraps: true,
               width: 240,
               priority: 'high' as const,
@@ -138,6 +142,7 @@ export class TextsPage implements OnInit {
         id: 'key',
         label: 'texts.columns.key',
         value: (view) => view.key,
+        filterable: true,
         defaultHidden: true,
         priority: 'low',
       },
