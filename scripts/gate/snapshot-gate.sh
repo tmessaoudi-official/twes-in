@@ -47,7 +47,7 @@ run() {
 }
 
 commit() {
-  local message=${1:-} green snap tree head parent commit branch
+  local message=${1:-} green snap tree head parent commit branch sign
   [[ -f "$message" ]] || refuse "commit needs a message file"
   green=$(ls -t "$records"/*.green 2>/dev/null | head -n 1)
   [[ -n "$green" ]] || refuse "no green snapshot to commit: run the gate first"
@@ -56,7 +56,11 @@ commit() {
   parent=$(git rev-parse "$snap^") || refuse "the green snapshot $snap is not in this repository"
   [[ "$parent" == "$head" ]] || refuse "master moved since snapshot ${snap:0:8} began from ${parent:0:8}: gate again on top of ${head:0:8}"
   branch=$(git symbolic-ref -q --short HEAD) || refuse "HEAD names no branch"
-  commit=$(git commit-tree "$tree" -p "$head" -F "$message") || refuse "the commit could not be made"
+  # commit-tree never reads commit.gpgsign: signed as `git commit` would sign it, or refused when the signature fails.
+  # The snapshot above is not, as no branch names it and a gate must never wait on a key.
+  sign=()
+  [[ "$(git config --type=bool commit.gpgsign)" == true ]] && sign=(-S)
+  commit=$(git commit-tree "${sign[@]}" "$tree" -p "$head" -F "$message") || refuse "the commit could not be made"
   # Moves the branch only from where the snapshot began: anything that moved it meanwhile makes this refuse.
   git update-ref -m "commit (snapshot gate): $(head -n 1 "$message")" "refs/heads/$branch" "$commit" "$head" || refuse "the branch moved while committing"
   rm -f "$green"

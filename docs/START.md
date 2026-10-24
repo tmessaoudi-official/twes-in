@@ -498,6 +498,8 @@ make commit-gated MSG=<message file>       # commits exactly the last green tree
 
 - `commit-gated` refuses a red tree, and a snapshot taken before master moved: gate again on top. What was staged or
   typed after the snapshot stays as it is, staged or not, for the next one.
+- It signs the commit as `git commit` would when `commit.gpgsign` is set, and refuses it, keeping the green tree,
+  when the signature fails (a locked key): unlock it and run it again.
 - The worktree is kept between runs, so `vendor/`, `node_modules/` and the caches are installed once; the first run
   takes a few minutes more. `make e2e` still runs here, alone: the live stack serves this tree.
 

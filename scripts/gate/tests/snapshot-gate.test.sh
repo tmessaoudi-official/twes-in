@@ -60,6 +60,32 @@ has "the commit prints the message's first line and the tree's status" "$out" "f
 
 out=$(cd "$d" && bash scripts/gate/snapshot-gate.sh commit "$d/msg" 2>&1); code=$?
 [[ $code -ne 0 ]] && ok "the same green tree is not committed twice" || ko "the same green tree is not committed twice" "$out"
+same "a repository that does not sign leaves the commit unsigned" "$(git -C "$d" cat-file commit HEAD | grep -c '^gpgsig ')" 0
+
+# A repository that signs its commits signs the gated one as `git commit` would: commit-tree alone never reads
+# commit.gpgsign. The signer is a stand-in, so no key of the machine is used.
+signer() {
+  local d=$1 exit=$2
+  printf '#!/usr/bin/env bash\ncat > /dev/null\n[[ %s -eq 0 ]] || exit %s\necho "[GNUPG:] SIG_CREATED D 1 8 00 0 TEST" >&2\nprintf -- "-----BEGIN PGP SIGNATURE-----\\n\\ndGVzdA==\\n-----END PGP SIGNATURE-----\\n"\n' "$exit" "$exit" > "$d/../$(basename "$d").gpg"
+  chmod +x "$d/../$(basename "$d").gpg"
+  git -C "$d" config gpg.program "$d/../$(basename "$d").gpg"
+  git -C "$d" config user.signingkey TEST
+  git -C "$d" config commit.gpgsign true
+}
+d=$(repo); signer "$d" 0; echo two > "$d/a.txt"; git -C "$d" add a.txt
+gate "$d" run > /dev/null; echo 'feat: signed' > "$d/msg"
+out=$(cd "$d" && bash scripts/gate/snapshot-gate.sh commit "$d/msg" 2>&1); code=$?
+same "a signed repository's gated commit succeeds" "$code" 0
+same "a repository that signs signs the gated commit" "$(git -C "$d" cat-file commit HEAD | grep -c '^gpgsig ')" 1
+same "the gate's own snapshot is never signed, so no gate asks for a key" "$(git -C "$d" cat-file commit "$(git -C "$d/.claude/worktrees/gate" rev-parse HEAD)" | grep -c '^gpgsig ')" 0
+
+d=$(repo); signer "$d" 1; echo two > "$d/a.txt"; git -C "$d" add a.txt
+gate "$d" run > /dev/null; echo 'feat: unsigned' > "$d/msg"
+head=$(git -C "$d" rev-parse HEAD); tree=$(git -C "$d" write-tree)
+out=$(cd "$d" && bash scripts/gate/snapshot-gate.sh commit "$d/msg" 2>&1); code=$?
+[[ $code -ne 0 ]] && ok "a signature that fails refuses the commit" || ko "a signature that fails refuses the commit" "$out"
+same "a refused signature leaves master where it was" "$(git -C "$d" rev-parse HEAD)" "$head"
+[[ -f "$d/var/claude/gates/$tree.green" ]] && ok "a refused signature keeps the green tree to commit again" || ko "a refused signature keeps the green tree to commit again"
 
 d=$(repo); echo red > "$d/a.txt"; git -C "$d" add a.txt
 out=$(GATE_EXIT=1 gate "$d" run); code=$?

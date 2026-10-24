@@ -731,3 +731,7 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   loaded Material Symbols made `document.fonts.load` reject at once, with no request sent, and every icon read as its
   name (`install.spec`, 8 runs in 30, green or red by shard order). `signIn` returns once the home has its icon font
   (`e2e/icon-font.ts`); a scenario that leaves a page it has just opened waits for it the same way (2026-10-23).
+- `git commit-tree` never reads `commit.gpgsign`: every `make commit-gated` from 21 to 23 Oct went to master unsigned
+  (76 commits with a recovery's `update-ref`, re-signed by a rewrite on 2026-10-24). A commit made through plumbing
+  passes `-S` itself; check `git log --format=%G?` after one. A gate test exporting `GIT_CONFIG_GLOBAL=/dev/null` cannot
+  see it: its fixture sets the repository's own `commit.gpgsign` and a stand-in `gpg.program`.
