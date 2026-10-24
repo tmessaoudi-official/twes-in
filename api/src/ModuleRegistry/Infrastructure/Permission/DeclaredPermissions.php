@@ -16,6 +16,7 @@ use App\ModuleRegistry\Infrastructure\ApiPlatform\Security\ModulePermission;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Application\Permission\PermissionGroup;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
+use App\Texts\Infrastructure\Security\TextsPermission;
 
 /**
  * The catalogue, collected from the modules that declare themselves and completed by the few permissions that belong
@@ -38,7 +39,7 @@ final readonly class DeclaredPermissions implements KnownPermissions
 {
     /** What a role may grant outside any module, in the order the screen reads them. */
     private const array UNMODULED = [
-        'company' => [ModulePermission::READ, ModulePermission::WRITE],
+        'company' => [ModulePermission::READ, ModulePermission::WRITE, TextsPermission::WRITE],
         'members' => [MemberPermission::READ, MemberPermission::WRITE, AuditPermission::READ],
         'fiscal' => [FiscalPermission::READ, FiscalPermission::WRITE],
     ];

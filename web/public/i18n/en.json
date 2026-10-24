@@ -115,7 +115,8 @@
   "permissions": {
     "company": {
       "read": "See the company",
-      "settings": "Change the company's settings"
+      "settings": "Change the company's settings",
+      "texts": "Change the application's texts"
     },
     "customer": {
       "read": "See customers",

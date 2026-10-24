@@ -9,23 +9,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Texts;
 
-use App\Audit\Application\AuditTrail;
-use App\Shared\Application\Languages;
 use App\Shared\Application\RecordChanged;
-use App\Shared\Application\Transactions;
 use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
 use App\Texts\Application\OverrideText;
+use App\Texts\Application\ShippedTexts;
 use App\Texts\Application\TextOverrideRefused;
 use App\Texts\Domain\Model\TextOverride;
-use App\Texts\Domain\Service\OverrideRules;
-use App\Texts\Domain\Service\TextLocks;
+use App\Texts\Domain\Repository\TextOverrideRepository;
 use App\Texts\Domain\ValueObject\TextAddress;
-use App\Texts\Infrastructure\Catalogue\ShippedTextFiles;
-use App\Texts\Infrastructure\Doctrine\DoctrineTextOverrideRepository;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
-use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -117,7 +111,7 @@ final class OverrideTextTest extends KernelTestCase
     public function testTheInstallationHoldsOneTextPerAddressEvenWhenTwoFirstTextsMeet(): void
     {
         self::bootKernel();
-        $overrides = new DoctrineTextOverrideRepository(static::getContainer()->get(EntityManagerInterface::class));
+        $overrides = static::getContainer()->get(TextOverrideRepository::class);
         $address = new TextAddress('ar', 'pdf', 'invoice.title');
 
         $overrides->save(new TextOverride(null, $address, 'فاتورة بيع', 'فاتورة', new \DateTimeImmutable()));
@@ -173,36 +167,13 @@ final class OverrideTextTest extends KernelTestCase
         return static::getContainer()->get(EntityManagerInterface::class)->getConnection();
     }
 
-    private function shipped(): ShippedTextFiles
+    private function shipped(): ShippedTexts
     {
-        return self::shippedFiles();
+        return static::getContainer()->get(ShippedTexts::class);
     }
 
-    private static function shippedFiles(): ShippedTextFiles
-    {
-        $container = static::getContainer();
-
-        return new ShippedTextFiles(
-            $container->get(Languages::class),
-            $container->getParameter('app.texts.screen_directory'),
-            $container->getParameter('kernel.project_dir').'/translations',
-        );
-    }
-
-    /** Built from the container's parts until an endpoint uses it and keeps it wired. */
     private function overrideText(): OverrideText
     {
-        $container = static::getContainer();
-
-        return new OverrideText(
-            $this->shipped(),
-            new TextLocks($container->getParameter('app.texts.locked')),
-            new OverrideRules($container->getParameter('app.texts.max_length')),
-            $container->get(Languages::class),
-            new DoctrineTextOverrideRepository($container->get(EntityManagerInterface::class)),
-            $container->get(AuditTrail::class),
-            $container->get(Transactions::class),
-            $container->get(ClockInterface::class),
-        );
+        return static::getContainer()->get(OverrideText::class);
     }
 }

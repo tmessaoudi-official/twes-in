@@ -39,6 +39,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         '^/api/scan-pairings/[0-9a-f-]{36}/(scans|choices|photos|realtime-token)$',
         '^/api/legal/[a-z]+/[a-z]{2}$',
         '^/api/legal/security\.txt$',
+        '^/api/texts/[A-Za-z0-9-]+$',
         '^/api/web-manifest$',
         '^/api/notification-preferences/stop$',
     ];
@@ -56,6 +57,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         'GET api_health',
         'GET api_health_deep',
         'GET api_legal_security_txt',
+        'GET api_texts',
         'GET api_web_manifest',
         'GET signup_availability',
         'GET signup_link',

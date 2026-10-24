@@ -22,6 +22,7 @@ trait RouteSweep
      */
     private const array PLACEHOLDERS = [
         '_format' => 'json',
+        'domain' => 'pdf',
         'format' => 'csv',
         'index' => 'index',
         'key' => ['signup.enabled', 'takings'],

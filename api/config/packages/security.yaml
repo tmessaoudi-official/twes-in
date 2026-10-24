@@ -75,6 +75,8 @@ security:
         - { path: '^/api/legal/[a-z]+/[a-z]{2}$', roles: PUBLIC_ACCESS, methods: [GET] }
         # security.txt (RFC 9116), mapped from /.well-known/ by the web server: whoever reports a flaw has no account.
         - { path: '^/api/legal/security\.txt$', roles: PUBLIC_ACCESS, methods: [GET] }
+        # The installation's screen texts, which a signed-out page lays over the files it loads: no printed label, no company's.
+        - { path: '^/api/texts/[A-Za-z0-9-]+$', roles: PUBLIC_ACCESS, methods: [GET] }
         # The web manifest, read by a browser before it offers to install the application, with no session by design.
         - { path: '^/api/web-manifest$', roles: PUBLIC_ACCESS, methods: [GET] }
         # A notification mail's stop link is followed from a mail client, with no session: its signed token is the
