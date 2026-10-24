@@ -14,11 +14,11 @@ box (`- [x]`) once a step is done; the steps run in this order, each needing the
 After step 1's `publish` job is green, open each link, then Danger Zone, Change visibility, Public, and type the
 package's name:
 
-- [ ] https://github.com/users/tmessaoudi-official/packages/container/twes-in-api/settings
-- [ ] https://github.com/users/tmessaoudi-official/packages/container/twes-in-web/settings
-- [ ] https://github.com/users/tmessaoudi-official/packages/container/twes-in-database/settings
+- [x] https://github.com/users/tmessaoudi-official/packages/container/twes-in-api/settings
+- [x] https://github.com/users/tmessaoudi-official/packages/container/twes-in-web/settings
+- [x] https://github.com/users/tmessaoudi-official/packages/container/twes-in-database/settings
 
-Check, logged out (prints `public`):
+Public: each answered an anonymous pull of `:master` on 2026-10-24 17:36. Check, logged out (prints `public`):
 
 ```sh
 docker logout ghcr.io; docker manifest inspect ghcr.io/tmessaoudi-official/twes-in-api:master >/dev/null && echo public
@@ -26,14 +26,16 @@ docker logout ghcr.io; docker manifest inspect ghcr.io/tmessaoudi-official/twes-
 
 ## 3. The first signed release — yours, your key signs it
 
-After step 2, on the commit CI published (the date is the day you tag; `.1` is that day's first release):
+After step 2, on the release freeze, a commit CI published (the script tags HEAD; the date is the day you tag, `.1`
+that day's first release). The freeze is `83a0ae48`; a later freeze is named in the plan's Status, row 22:
 
 ```sh
 cd /stack/projects/twes-in
-git fetch origin && git switch master && git pull --ff-only
-bash scripts/release/tag-release.sh ghcr.io/tmessaoudi-official v2026.10.19.1
-git verify-tag v2026.10.19.1
-git push origin v2026.10.19.1
+git fetch origin && git switch --detach 83a0ae48a8c4bef93fdaa2a86883b08ffec3b127
+bash scripts/release/tag-release.sh ghcr.io/tmessaoudi-official v2026.10.24.1
+git verify-tag v2026.10.24.1
+git push origin v2026.10.24.1
+git switch master
 ```
 
 - Tag the release freeze or a later commit: it carries `twes hold` (671dd623). No shop, the J-1 machine included, is
@@ -57,7 +59,12 @@ cp /stack/projects/twes-in/scripts/onprem/install.ps1 /media/$USER/<your-usb>/in
 - [ ] The fingerprint given to the shop by message or call, never through the repository alone:
       `0201 4686 9960 09C7 41A9 2ADF 0C53 7690 706E B7F5`
 
-## 6. The Windows test — yours, Monday or Tuesday
+## 6. The Windows test — yours, Sunday 25, from the tag of § 3
+
+If it finds something Claude cannot fix the same day, install day stays Monday and it is fixed on site (ruled
+2026-10-24 17:45): bring what failed, the command and its output. On install day, tell the owner that « À surveiller »
+reads about 4,000 because of the import's missing barcodes and categories; the first update takes those two out of the
+home's count (ruled 17:44).
 
 Two ways to run Docker on Windows; pick one at the shop (docs/START.md § 16 compares them):
 
