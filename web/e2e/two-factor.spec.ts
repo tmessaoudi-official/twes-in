@@ -286,3 +286,87 @@ test('a company that requires two-step verification sends its owner to set it up
   await signIn(page, owner, NEW_PASSWORD);
   await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
 });
+
+test('an account moves its authenticator to a new app, proving itself with its password, and the old app stops signing in', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(210_000);
+  const invited = `two-factor-replace-${Date.now()}@twes.local`;
+
+  await signInAsOperator(page);
+  await expect(page).toHaveURL(/\/$/);
+  await page.getByTestId('nav-settings').click();
+  await page.getByTestId('nav-members').click();
+  await page.getByTestId('member-email').fill(invited);
+  await page.getByTestId('member-add').click();
+  await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
+  await expect(toast(page)).toContainText('invitation');
+  const token = await invitationTokenFor(request, invited);
+
+  await page.context().clearCookies();
+  await page.goto(`/invitations/${token}`);
+  await page.getByTestId('invitation-name').fill('New Phone');
+  await page.getByTestId('invitation-password').fill(NEW_PASSWORD);
+  await page.getByTestId('invitation-submit').click();
+  await expect(page).toHaveURL(/\/login$/);
+
+  await signIn(page, invited, NEW_PASSWORD);
+  await expect(page.getByTestId('greeting')).toContainText('New Phone');
+  await page.goto('/two-factor');
+  await prove(page, NEW_PASSWORD);
+  const oldSecret = (await page.getByTestId('two-factor-secret').innerText()).replace(/\s/g, '');
+  await page.getByTestId('two-factor-code').fill(totp(oldSecret));
+  await page.getByTestId('two-factor-submit').click();
+  const recovery = page.getByTestId('two-factor-recovery-codes').locator('li');
+  await expect(recovery).toHaveCount(10);
+  const oldCodes = await recovery.allInnerTexts();
+  await page.getByTestId('two-factor-continue').click();
+  await expect(page.getByTestId('greeting')).toBeVisible();
+
+  // A new sign-in, as after the old phone was lost: the replacement asks the password, never the old app's code.
+  await signOut(page);
+  await nextStep(page);
+  await signIn(page, invited, NEW_PASSWORD);
+  await page.getByTestId('mfa-code').fill(oldCodes[0]!);
+  await page.getByTestId('mfa-submit').click();
+  await expect(page.getByTestId('greeting')).toContainText('New Phone');
+  await page.goto('/two-factor');
+  await expect(page.getByTestId('two-factor-enabled')).toBeVisible();
+  await page.getByTestId('two-factor-app-replace').click();
+  await proveIfAsked(page, NEW_PASSWORD, page.getByTestId('two-factor-replace-qr'));
+  await expect(page.getByTestId('two-factor-replace-qr').locator('svg')).toBeVisible();
+  const newSecret = (await page.getByTestId('two-factor-replace-secret').innerText()).replace(
+    /\s/g,
+    '',
+  );
+  expect(newSecret).not.toBe(oldSecret);
+  await expectAccessible(page, 'two-factor, replace');
+  await page.screenshot({ path: test.info().outputPath('two-factor-replace.png'), fullPage: true });
+
+  // A code from the old app does not confirm the new one; the new app's does, with a new set of recovery codes.
+  await page.getByTestId('two-factor-replace-code').fill(totp(oldSecret));
+  await page.getByTestId('two-factor-replace-submit').click();
+  await expect(page.getByTestId('two-factor-replace-error')).toBeVisible();
+  await page.getByTestId('two-factor-replace-code').fill(totp(newSecret));
+  await page.getByTestId('two-factor-replace-submit').click();
+  await expect(recovery).toHaveCount(10);
+  const newCodes = await recovery.allInnerTexts();
+  expect(newCodes.filter((code) => oldCodes.includes(code))).toEqual([]);
+  await expectAccessible(page, 'two-factor, replaced');
+  await page.getByTestId('two-factor-continue').click();
+  await expect(page.getByTestId('greeting')).toBeVisible();
+
+  // The old app's code no longer signs in; the new app's code does. Every proof and code since the enrolment counts
+  // against the five a user gets in five minutes, so the old recovery codes are left to AuthenticatorReplacementTest,
+  // which reads the stored set replaced, and to the first scenario, where a replaced set's code is refused.
+  await signOut(page);
+  await nextStep(page);
+  await signIn(page, invited, NEW_PASSWORD);
+  await page.getByTestId('mfa-code').fill(totp(oldSecret));
+  await page.getByTestId('mfa-submit').click();
+  await expect(page.getByTestId('login-error')).toBeVisible();
+  await page.getByTestId('mfa-code').fill(totp(newSecret));
+  await page.getByTestId('mfa-submit').click();
+  await expect(page.getByTestId('greeting')).toContainText('New Phone');
+});

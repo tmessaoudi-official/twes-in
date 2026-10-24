@@ -243,8 +243,14 @@ rotation now, not later.
 
 ## Replace a lost authenticator
 
-Untried on an instance; `ReplaceSecondFactorsCommandTest` runs the command against the test database. For an account
-that must have a second factor (every operator, and the members of a company that requires one) and lost the phone its
+First, whoever can still sign in replaces it themselves: with the old phone still working, a recovery code or a
+passkey, they open « Vérification en deux étapes » from the account menu, choose « Remplacer l'authentificateur », prove
+it is them with their password (or a passkey), scan the new code with the new app and type one of its codes. The old app
+keeps working until then; once confirmed it stops, new recovery codes are shown and every other session ends
+(`AuthenticatorReplacementTest`, `web/e2e/two-factor.spec.ts`). Nothing below is needed then.
+
+The server command is for the rest. Untried on an instance; `ReplaceSecondFactorsCommandTest` runs the command against
+the test database. For an account that must have a second factor (every operator, and the members of a company that requires one) and lost the phone its
 authenticator lived on, with no passkey and no recovery code left: on screen it cannot remove its last factor, and no
 operator can reset another's, so whoever runs the installation does it from the server.
 

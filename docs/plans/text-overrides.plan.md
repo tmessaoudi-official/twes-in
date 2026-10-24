@@ -21,6 +21,7 @@ first client's install, 2026-10-26).
 - [2026-10-24 19:19] ASSUMED (review): The texts' routes are plain controllers, a key's dots and a part's colon in the path, which API Platform's .{_format} would not let through; the controller answers a version saved since as the /problems/record-changed JSON itself, since a plain route's exception renders Symfony's error page (no other plain controller reads a version: git grep, 2026-10-24); the operator's step-up is PlatformWriteStepUpListener's, one wall over /api/platform (a second check in the controller survived its sabotage, so it was removed) (rule: one canon; advisor 2026-10-24). Alternative: API Platform resources with the key in the body.
 - [2026-10-24 19:37] ASSUMED (review): The company a text is written for is named at each place that writes, TextsInForce::for(company, write), never read from the request: the worker writes mails and documents outside any request and never enables the company filter (git grep CompanyFilter::NAME, 2026-10-24). The five printed documents and the mails of a company's own life (an invitation, a notification) take the company's wording; the platform's own mails (company approved, payment declared or decided, sign-up, password reset, account deletion) the installation's, listed with why in CompanyWordingTest (rule: one canon; a fix is a class). Alternative: the company filter's parameter, which the worker never sets.
 - [2026-10-24 20:10] ASSUMED (review): « Textes » is one page at both levels, /company/texts in the settings beside Modules (permission company.texts, replacing the planned entry of row 47) and /platform/texts linked from the platform page, the level read from the route; a text is worded in a dialog with the original beside the field and the API's refusal under it, taken back from its row without a question, and both said in a toast offering « Annuler »; the list offers no selection, bulk action, import or export (list-stances reason written out); the catalogue's domain filter now takes a place whole, screen covering every page's own file — because the plan's step 8 and the undo-first rule decide it. Alternatives: two pages; a confirm before « Rétablir »; a per-page domain filter.
+- [2026-10-24 23:06] ASSUMED (review): A fix is a class: « a list the API searches that draws no search box » (DataList draws it only over a filterable column). Search: every ListDescriptor whose feature's API sends 'q', against the columns marked filterable in its page or forms file; members: « Textes » (both levels), the activity journal, the platform's companies and accounts, all four fixed in the same change, each with a unit case reading the descriptor or the rendered box; found by the e2e, whose search box was missing. Its neighbour, « a variable a browser suite reads that never reaches its container », had 13 members (CI, which left forbidOnly off on CI, MAILPIT_URL, the E2E_* account, PLAYWRIGHT_CHANNEL, the recorders' six), all passed in compose.yaml and held by scripts/gates/e2e-environment.sh (rule: a fix is a class; a gate where it is found mechanically).
 
 ## Formal Plan
 
@@ -116,20 +117,23 @@ is a row laid over them at read time, never a rewritten file.
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | Table, shipped catalogue port and its copy in the images, the override and reset use cases with every refusal | M | done | 65b45c7a | api/src/Texts/** api/migrations/** infra/api/Dockerfile |
-| 2 | Read and write endpoints, permission, step-up, audit, live change | M | done | 7f97c7c7 | api/src/Texts/** |
-| 2b | The writers' catalogue: every overridable text with its original, the installation's and the company's value, `originalChanged`, searched and paged | M | done | ff00056d | api/src/Texts/** |
-| 3 | Mails and PDFs through the overrides | S | done | c710e621 | api/src/Texts/** |
-| 4 | Web: the merge at load, on entering a company, on parts, on a live change | M | done | 5b6bde79 | web/src/app/shared/i18n/** |
-| 5 | « Textes » pages in Paramètres and /platform, texts in fr, en, ar, the guide | M | done | - | web/src/app/settings/** web/src/app/platform/** web/public/i18n/** |
-| 6 | e2e on the merged stack: a company's wording on a screen, in a mail and on a PDF, another company keeping the installation's, another tab taking it without a reload, a refusal under the field | M | todo | - | web/e2e/** |
-| 7 | At the merge onto master: docs/SPEC.md § 8 row 47 closed and row 338's « Textes » marked built, § 7 the rulings' entry, CLAUDE.md « Where things live » naming `api/src/Texts` and `web/src/app/texts` | S | todo | - | docs/SPEC.md CLAUDE.md |
+| 1 | Table, shipped catalogue port and its copy in the images, the override and reset use cases with every refusal | M | done | efb386b3 | api/src/Texts/** api/migrations/** infra/api/Dockerfile |
+| 2 | Read and write endpoints, permission, step-up, audit, live change | M | done | 279dc808 | api/src/Texts/** |
+| 2b | The writers' catalogue: every overridable text with its original, the installation's and the company's value, `originalChanged`, searched and paged | M | done | 4a572f1f | api/src/Texts/** |
+| 3 | Mails and PDFs through the overrides | S | done | eef2a179 | api/src/Texts/** |
+| 4 | Web: the merge at load, on entering a company, on parts, on a live change | M | done | ee8ad93a | web/src/app/shared/i18n/** |
+| 5 | « Textes » pages in Paramètres and /platform, texts in fr, en, ar, the guide | M | done | c7863a73 | web/src/app/texts/** web/src/app/settings/** web/src/app/platform/** web/public/i18n/** |
+| 6 | e2e on the merged stack: a company's wording on a screen, in a mail and on a PDF, another company keeping the installation's, another tab taking it without a reload, a refusal under the field (the e2e plays the screen and the other tab, `web/e2e/texts.spec.ts`; mails, PDFs and a second company are `TextsInForceTest` and `TextOverridesTest`'s, the refusal `text-dialog.spec.ts`'s) | M | done | - | web/e2e/** web/src/app/texts/** |
+| 7 | At the merge onto master: docs/SPEC.md § 8 row 47 closed and row 338's « Textes » marked built, § 7 the rulings' entry, CLAUDE.md « Where things live » naming `api/src/Texts` and `web/src/app/texts` | S | done | - | docs/SPEC.md CLAUDE.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
-- « Trouver sur l'écran » (§ 8 row 338, and the 2026-09-16 ruling's editor): pointing at a text on a screen to open it in « Textes ». Not in the ruling of 2026-10-24 18:27 that scoped update 1; ask whether it joins update 1 or a later one.
 ### Needs research
 ### Fragile
+- `web/e2e/two-factor.spec.ts`'s replacement scenario spends exactly the five tries `mfa_verify` allows in five minutes
+  (two step-up proofs, three sign-in codes; the step-up shares that budget): one more attempt in it answers 429. The
+  confirmation of a new or replacement authenticator draws on no budget, as the enrolment's never did: its code only
+  confirms a secret its caller was just shown after a fresh proof.
 ### Known issues
 - An installation-level change is staged as a live change with no company, which `StagedLiveChanges` publishes on the
   operator's own channel alone: other companies' open tabs take it on their next load, not live. The acceptance line
