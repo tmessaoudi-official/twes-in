@@ -123,8 +123,8 @@ is a row laid over them at read time, never a rewritten file.
 | 3 | Mails and PDFs through the overrides | S | done | eef2a179 | api/src/Texts/** |
 | 4 | Web: the merge at load, on entering a company, on parts, on a live change | M | done | ee8ad93a | web/src/app/shared/i18n/** |
 | 5 | « Textes » pages in Paramètres and /platform, texts in fr, en, ar, the guide | M | done | c7863a73 | web/src/app/texts/** web/src/app/settings/** web/src/app/platform/** web/public/i18n/** |
-| 6 | e2e on the merged stack: a company's wording on a screen, in a mail and on a PDF, another company keeping the installation's, another tab taking it without a reload, a refusal under the field (the e2e plays the screen and the other tab, `web/e2e/texts.spec.ts`; mails, PDFs and a second company are `TextsInForceTest` and `TextOverridesTest`'s, the refusal `text-dialog.spec.ts`'s) | M | done | - | web/e2e/** web/src/app/texts/** |
-| 7 | At the merge onto master: docs/SPEC.md § 8 row 47 closed and row 338's « Textes » marked built, § 7 the rulings' entry, CLAUDE.md « Where things live » naming `api/src/Texts` and `web/src/app/texts` | S | done | - | docs/SPEC.md CLAUDE.md |
+| 6 | e2e on the merged stack: a company's wording on a screen, in a mail and on a PDF, another company keeping the installation's, another tab taking it without a reload, a refusal under the field (the e2e plays the screen and the other tab, `web/e2e/texts.spec.ts`; mails, PDFs and a second company are `TextsInForceTest` and `TextOverridesTest`'s, the refusal `text-dialog.spec.ts`'s) | M | done | 25632abb | web/e2e/** web/src/app/texts/** |
+| 7 | At the merge onto master: docs/SPEC.md § 8 row 47 closed and row 338's « Textes » marked built, § 7 the rulings' entry, CLAUDE.md « Where things live » naming `api/src/Texts` and `web/src/app/texts` | S | done | 25632abb | docs/SPEC.md CLAUDE.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
