@@ -19,6 +19,7 @@ use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\Barcode;
 use App\Module\Products\Domain\ValueObject\BarcodeLine;
 use App\Module\Products\Domain\ValueObject\BarcodeRole;
+use App\Module\Products\Domain\ValueObject\ProductCheckReason;
 use App\Module\Products\Domain\ValueObject\ProductCheckScope;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
@@ -100,7 +101,9 @@ final class ProductCheckTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
 
-        $scope = static::getContainer()->get(ProductCheckScopes::class)->of($this->company(), false);
+        $leftOut = static::getContainer()->getParameter('app.watch.product_check_left_out');
+        $scope = static::getContainer()->get(ProductCheckScopes::class)->of($this->company(), false)
+            ->without(...array_map(ProductCheckReason::from(...), $leftOut));
         $expected = [];
         foreach (static::getContainer()->get(ProductRepository::class)->search($this->company->getId(), new ProductSearch(active: true), new PageRequest(1, 100))->items as $product) {
             if ($product->getCheckMark()->marked || [] !== $product->checkReasons($scope)) {
@@ -117,6 +120,51 @@ final class ProductCheckTest extends ApiTestCase
         $params = array_column($rows, 'params', 'subjectId');
         self::assertSame(['product' => 'MARKED', 'reference' => 'MARKED', 'reasons' => '', 'marked' => 1, 'note' => 'à relire'], $params[$this->ids['MARKED']] ?? null);
         self::assertSame(['product' => 'BARE', 'reference' => 'BARE', 'reasons' => 'price_missing,vendor_missing,vat_missing,barcode_missing,category_missing', 'marked' => 0, 'note' => ''], $params[$this->ids['BARE']] ?? null);
+    }
+
+    public function testTheHomeLeavesOutWhatOnlyClearsProductByProductWhileTheListKeepsIt(): void
+    {
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        $vat = static::getContainer()->get(TaxComponentRepository::class)->ofCodeInCompany('TVA19', $this->company->getId());
+        self::assertNotNull($piece);
+        self::assertNotNull($vat);
+        $vendor = Vendor::create($this->company, 'F-002', new VendorProfile('Comaf'), new \DateTimeImmutable());
+        $this->em()->persist($vendor);
+        foreach (['NO-BARCODE', 'NO-CATEGORY', 'NEITHER'] as $reference) {
+            $category = 'NO-BARCODE' === $reference ? ProductCategory::create($this->company, 'Outillage', null, new \DateTimeImmutable()) : null;
+            if (null !== $category) {
+                $this->em()->persist($category);
+            }
+            $product = Product::create($this->company, $reference, new ProductDetails($reference, null, ProductKind::Goods, '10', '5'), $piece, $category, [$vat->getId()], new \DateTimeImmutable());
+            $product->replaceVendors([$vendor], new \DateTimeImmutable());
+            if ('NO-CATEGORY' === $reference) {
+                $product->replaceBarcodes([new BarcodeLine(BarcodeRole::Internal, new Barcode('CHK-NC'), 1)], new \DateTimeImmutable());
+            }
+            $this->em()->persist($product);
+            $this->ids[$reference] = $product->getId()->toRfc4122();
+        }
+        $this->em()->flush();
+
+        $this->signedIn(['company.read', 'product.read']);
+        $this->getJson($this->path('watch/'.ProductCheckWatch::TO_CHECK));
+        self::assertResponseIsSuccessful();
+        $rows = $this->jsonList();
+        $listed = array_column($rows, 'subjectId');
+        foreach (['NO-BARCODE', 'NO-CATEGORY', 'NEITHER'] as $reference) {
+            self::assertNotContains($this->ids[$reference], $listed, $reference.': a barcode or a category is added product by product, never a matter for the home');
+        }
+        self::assertContains($this->ids['BARE'], $listed, 'lacking a price, it still is');
+        $bare = array_column($rows, 'params', 'subjectId')[$this->ids['BARE']] ?? null;
+        self::assertIsArray($bare);
+        self::assertSame('price_missing,vendor_missing,vat_missing,barcode_missing,category_missing', $bare['reasons'] ?? null, 'a product listed names everything it lacks');
+
+        $this->getJson($this->path('products?toCheck=true'));
+        $references = array_column($this->jsonList(), 'reference');
+        foreach (['NO-BARCODE', 'NO-CATEGORY', 'NEITHER'] as $reference) {
+            self::assertContains($reference, $references, $reference.': the products list still finds it');
+        }
+        $this->getJson($this->path('products?checkReason=barcode_missing'));
+        self::assertContains('NO-BARCODE', array_column($this->jsonList(), 'reference'));
     }
 
     public function testAPersonMarksAProductWithANoteAndSaysItsPriceOfNothingIsMeant(): void

@@ -52,6 +52,9 @@ parameters:
     # parameters and run out of memory.
     app.debug.queries_kept: 2000
     app.debug.logs_kept: 2000
+    # The reasons of a product's « À vérifier » the home's « À surveiller » leaves out (ProductCheckWatch): what clears only
+    # product by product, which the products list's filter still finds. An import of 4,100 products lacking both read 4,013.
+    app.watch.product_check_left_out: ['barcode_missing', 'category_missing']
     # The hour, in the server's time, at which the data checks run each day (CheckDataEveryNight).
     app.data_check.at: '02:30'
     # How long a failed sign-in keeps the address typed and the network address it came from (at least 12 months: the
