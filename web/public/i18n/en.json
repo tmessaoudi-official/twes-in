@@ -3387,10 +3387,6 @@
       "meanwhile": "Meanwhile, taxes are set one by one:",
       "meanwhile_link": "Taxes"
     },
-    "texts": {
-      "heading": "Texts are being built",
-      "does": "Replace the application's words with yours (“Customer” as “Patient”, for example), in each language."
-    },
     "composites": {
       "heading": "Composite products are under construction",
       "does": "An item made of other items: a kit, a recipe or a set menu, with its quantities, its cost and the stock of each component."

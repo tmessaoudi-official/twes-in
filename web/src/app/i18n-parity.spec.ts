@@ -59,6 +59,9 @@ import frStockPlan from '../../public/i18n/stock-plan/fr.json';
 import arStockCount from '../../public/i18n/stock-count/ar.json';
 import enStockCount from '../../public/i18n/stock-count/en.json';
 import frStockCount from '../../public/i18n/stock-count/fr.json';
+import arTexts from '../../public/i18n/texts/ar.json';
+import enTexts from '../../public/i18n/texts/en.json';
+import frTexts from '../../public/i18n/texts/fr.json';
 import arTwoFactor from '../../public/i18n/two-factor/ar.json';
 import enTwoFactor from '../../public/i18n/two-factor/en.json';
 import frTwoFactor from '../../public/i18n/two-factor/fr.json';
@@ -101,6 +104,7 @@ const parts: Record<string, Record<string, unknown>> = {
   'settings-refusals': { fr: frSettingsRefusals, en: enSettingsRefusals, ar: arSettingsRefusals },
   'stock-count': { fr: frStockCount, en: enStockCount, ar: arStockCount },
   'stock-plan': { fr: frStockPlan, en: enStockPlan, ar: arStockPlan },
+  texts: { fr: frTexts, en: enTexts, ar: arTexts },
   'two-factor': { fr: frTwoFactor, en: enTwoFactor, ar: arTwoFactor },
 };
 

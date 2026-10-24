@@ -1,0 +1,61 @@
+{
+  "texts": {
+    "title": "Texts",
+    "title_installation": "Installation texts",
+    "intro_company": "Replace the application's words with yours, in each language: your screens, mails and printed documents take them at once. The tax mentions stay as the law writes them.",
+    "intro_installation": "The application's words for every company of this installation, in each language. Each company can still replace them with its own. The tax mentions stay as the law writes them.",
+    "language": "Language",
+    "none": "No text to change yet.",
+    "columns": {
+      "where": "Where",
+      "original": "Original text",
+      "installation": "Installation",
+      "yours": "Your text",
+      "key": "Key"
+    },
+    "where": {
+      "screen": "Screens",
+      "emails": "Mails",
+      "pdf": "Printed documents",
+      "imports": "Imports",
+      "roles": "Roles",
+      "other": "Other"
+    },
+    "filters": {
+      "place": "Where",
+      "changed": "Original",
+      "original_changed": "The original changed"
+    },
+    "actions": {
+      "edit": "Change the text",
+      "keep_mine": "Keep mine",
+      "reset": "Restore the original",
+      "take_original": "Take the original"
+    },
+    "dialog": {
+      "title": "Change the text",
+      "original": "Original text",
+      "installation": "Installation's text",
+      "value": "Your text",
+      "marks": "Keep these marks as they are: {{marks}}",
+      "close": "Close",
+      "save": "Save"
+    },
+    "refusals": {
+      "empty": "Write a text, or restore the original from the list.",
+      "too_long": "This text is too long: shorten it.",
+      "placeholders": "Keep the same marks as the original text, no more and no fewer, written the same way.",
+      "plural": "Keep the same forms as the original text for a number (one, other…), each within its braces.",
+      "locked": "This text cannot be changed: the law or the application sets it.",
+      "unknown_text": "This text no longer exists in this version: open the list again.",
+      "language": "This language is not offered for the screens.",
+      "changed": "This text was changed meanwhile: close it and open it again to see the saved text.",
+      "unavailable": "The text could not be saved: try again in a moment."
+    },
+    "saved": "Text saved.",
+    "reset_done": "Original text restored.",
+    "kept": "Your text is kept.",
+    "undone": "Change undone.",
+    "undo": "Undo"
+  }
+}

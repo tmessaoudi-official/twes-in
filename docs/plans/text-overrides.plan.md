@@ -20,6 +20,7 @@ first client's install, 2026-10-26).
 - [2026-10-24 19:19] ASSUMED (review): Every refused text answers 422 {error: <reason>}, unknown_text included; a member without company.texts meets the guard's 404 as a stranger does; the reads by a member and with no session carry the screens' files alone, the API's texts (a payment instruction may hold a bank account) shown only in the writers' catalogue (rule: one canon, never silent; advisor 2026-10-24). Alternative: 404 for unknown_text, 403 for a member.
 - [2026-10-24 19:19] ASSUMED (review): The texts' routes are plain controllers, a key's dots and a part's colon in the path, which API Platform's .{_format} would not let through; the controller answers a version saved since as the /problems/record-changed JSON itself, since a plain route's exception renders Symfony's error page (no other plain controller reads a version: git grep, 2026-10-24); the operator's step-up is PlatformWriteStepUpListener's, one wall over /api/platform (a second check in the controller survived its sabotage, so it was removed) (rule: one canon; advisor 2026-10-24). Alternative: API Platform resources with the key in the body.
 - [2026-10-24 19:37] ASSUMED (review): The company a text is written for is named at each place that writes, TextsInForce::for(company, write), never read from the request: the worker writes mails and documents outside any request and never enables the company filter (git grep CompanyFilter::NAME, 2026-10-24). The five printed documents and the mails of a company's own life (an invitation, a notification) take the company's wording; the platform's own mails (company approved, payment declared or decided, sign-up, password reset, account deletion) the installation's, listed with why in CompanyWordingTest (rule: one canon; a fix is a class). Alternative: the company filter's parameter, which the worker never sets.
+- [2026-10-24 20:10] ASSUMED (review): « Textes » is one page at both levels, /company/texts in the settings beside Modules (permission company.texts, replacing the planned entry of row 47) and /platform/texts linked from the platform page, the level read from the route; a text is worded in a dialog with the original beside the field and the API's refusal under it, taken back from its row without a question, and both said in a toast offering « Annuler »; the list offers no selection, bulk action, import or export (list-stances reason written out); the catalogue's domain filter now takes a place whole, screen covering every page's own file — because the plan's step 8 and the undo-first rule decide it. Alternatives: two pages; a confirm before « Rétablir »; a per-page domain filter.
 
 ## Formal Plan
 
@@ -119,11 +120,14 @@ is a row laid over them at read time, never a rewritten file.
 | 2 | Read and write endpoints, permission, step-up, audit, live change | M | done | 7f97c7c7 | api/src/Texts/** |
 | 2b | The writers' catalogue: every overridable text with its original, the installation's and the company's value, `originalChanged`, searched and paged | M | done | ff00056d | api/src/Texts/** |
 | 3 | Mails and PDFs through the overrides | S | done | c710e621 | api/src/Texts/** |
-| 4 | Web: the merge at load, on entering a company, on parts, on a live change | M | done | - | web/src/app/shared/i18n/** |
-| 5 | « Textes » pages in Paramètres and /platform, texts in fr, en, ar, the guide | M | todo | - | web/src/app/settings/** web/src/app/platform/** web/public/i18n/** |
+| 4 | Web: the merge at load, on entering a company, on parts, on a live change | M | done | 5b6bde79 | web/src/app/shared/i18n/** |
+| 5 | « Textes » pages in Paramètres and /platform, texts in fr, en, ar, the guide | M | done | - | web/src/app/settings/** web/src/app/platform/** web/public/i18n/** |
+| 6 | e2e on the merged stack: a company's wording on a screen, in a mail and on a PDF, another company keeping the installation's, another tab taking it without a reload, a refusal under the field | M | todo | - | web/e2e/** |
+| 7 | At the merge onto master: docs/SPEC.md § 8 row 47 closed and row 338's « Textes » marked built, § 7 the rulings' entry, CLAUDE.md « Where things live » naming `api/src/Texts` and `web/src/app/texts` | S | todo | - | docs/SPEC.md CLAUDE.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
+- « Trouver sur l'écran » (§ 8 row 338, and the 2026-09-16 ruling's editor): pointing at a text on a screen to open it in « Textes ». Not in the ruling of 2026-10-24 18:27 that scoped update 1; ask whether it joins update 1 or a later one.
 ### Needs research
 ### Fragile
 ### Known issues

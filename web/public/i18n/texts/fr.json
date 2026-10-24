@@ -1,0 +1,61 @@
+{
+  "texts": {
+    "title": "Textes",
+    "title_installation": "Textes de l’installation",
+    "intro_company": "Remplacez les mots de l’application par les vôtres, dans chaque langue : vos écrans, vos courriels et vos documents imprimés les prennent aussitôt. Les mentions fiscales restent celles de la loi.",
+    "intro_installation": "Les mots de l’application pour toutes les sociétés de cette installation, dans chaque langue. Chaque société peut encore les remplacer par les siens. Les mentions fiscales restent celles de la loi.",
+    "language": "Langue",
+    "none": "Aucun texte à modifier pour l’instant.",
+    "columns": {
+      "where": "Où",
+      "original": "Texte d’origine",
+      "installation": "Installation",
+      "yours": "Votre texte",
+      "key": "Clé"
+    },
+    "where": {
+      "screen": "Écrans",
+      "emails": "Courriels",
+      "pdf": "Documents imprimés",
+      "imports": "Imports",
+      "roles": "Rôles",
+      "other": "Autre"
+    },
+    "filters": {
+      "place": "Où",
+      "changed": "Original",
+      "original_changed": "L’original a changé"
+    },
+    "actions": {
+      "edit": "Modifier le texte",
+      "keep_mine": "Garder le mien",
+      "reset": "Rétablir l’original",
+      "take_original": "Prendre l’original"
+    },
+    "dialog": {
+      "title": "Modifier le texte",
+      "original": "Texte d’origine",
+      "installation": "Texte de l’installation",
+      "value": "Votre texte",
+      "marks": "Gardez ces repères tels quels : {{marks}}",
+      "close": "Fermer",
+      "save": "Enregistrer"
+    },
+    "refusals": {
+      "empty": "Écrivez un texte, ou rétablissez l’original depuis la liste.",
+      "too_long": "Ce texte est trop long : raccourcissez-le.",
+      "placeholders": "Gardez les mêmes repères que le texte d’origine, ni plus ni moins, écrits de la même façon.",
+      "plural": "Gardez les mêmes formes que le texte d’origine pour un nombre (one, other…), chacune entre ses accolades.",
+      "locked": "Ce texte ne peut pas être modifié : il est fixé par la loi ou par l’application.",
+      "unknown_text": "Ce texte n’existe plus dans cette version : rouvrez la liste.",
+      "language": "Cette langue n’est pas proposée pour les écrans.",
+      "changed": "Ce texte a été modifié entre-temps : fermez et rouvrez-le pour voir le texte enregistré.",
+      "unavailable": "Le texte n’a pas pu être enregistré : réessayez dans un instant."
+    },
+    "saved": "Texte enregistré.",
+    "reset_done": "Texte d’origine rétabli.",
+    "kept": "Votre texte est gardé.",
+    "undone": "Modification annulée.",
+    "undo": "Annuler"
+  }
+}

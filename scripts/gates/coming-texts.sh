@@ -14,8 +14,8 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 
 ROOT="$root" \
   PLANNED_FLOOR="${COMING_TEXTS_PLANNED_FLOOR:-15}" \
-  SETTINGS_FLOOR="${COMING_TEXTS_SETTINGS_FLOOR:-3}" \
-  ROWS_FLOOR="${COMING_TEXTS_ROWS_FLOOR:-8}" \
+  SETTINGS_FLOOR="${COMING_TEXTS_SETTINGS_FLOOR:-2}" \
+  ROWS_FLOOR="${COMING_TEXTS_ROWS_FLOOR:-7}" \
   python3 - <<'PY'
 import json, os, re, sys
 

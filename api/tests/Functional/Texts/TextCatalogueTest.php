@@ -47,6 +47,14 @@ final class TextCatalogueTest extends ApiTestCase
         $this->getJson($catalogue.'?q=auth.mfa.passkey_elsewhere');
         self::assertSame(['screen auth.mfa.passkey_elsewhere'], $this->found(), 'by its key');
 
+        // The screens are the language's file and every page's own: a filter on the screens finds both.
+        $this->getJson($catalogue.'?domain=screen&q=VERIFICATION%20en%20deux');
+        self::assertContains('screen:two-factor auth.two_factor.title', $this->found(), 'a page\'s own among the screens');
+        $this->getJson($catalogue.'?domain=screen:two-factor&q=auth.mfa.passkey_elsewhere');
+        self::assertSame([], $this->found(), 'a page\'s own file alone');
+        $this->getJson($catalogue.'?domain=scr');
+        self::assertSame(0, $this->json()['total'] ?? null, 'a domain is named whole');
+
         $this->getJson($catalogue.'?domain=pdf&q=total');
         self::assertNotContains('pdf totals.total', $this->found(), 'a locked text is never offered');
         self::assertContains('pdf totals.amount_due', $this->found());

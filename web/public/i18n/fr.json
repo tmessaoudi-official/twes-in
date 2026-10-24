@@ -3387,10 +3387,6 @@
       "meanwhile": "En attendant, les taxes se règlent une à une :",
       "meanwhile_link": "Taxes"
     },
-    "texts": {
-      "heading": "Les textes sont en construction",
-      "does": "Remplacer les mots de l’application par les vôtres (« Client » en « Patient », par exemple), dans chaque langue."
-    },
     "composites": {
       "heading": "Les produits composés sont en construction",
       "does": "Un article fait d’autres articles : un kit, une recette ou un menu, avec ses quantités, son coût de revient et le stock de chaque composant."

@@ -384,6 +384,21 @@
               >
             </p>
           </section>
+
+          <section class="flex flex-col gap-3" aria-labelledby="platform-texts-title">
+            <h2 id="platform-texts-title" class="text-xl font-semibold">
+              {{ 'platform.texts.title' | translate }}
+            </h2>
+            <p class="max-w-prose text-sm">{{ 'platform.texts.intro' | translate }}</p>
+            <p>
+              <a
+                mat-stroked-button
+                routerLink="/platform/texts"
+                data-testid="platform-texts-link"
+                >{{ 'platform.texts.link' | translate }}</a
+              >
+            </p>
+          </section>
         </div>
       }
 
@@ -775,6 +790,18 @@
           <p>
             <a mat-stroked-button routerLink="/platform/legal" data-testid="platform-legal-link">{{
               'platform.legal.link' | translate
+            }}</a>
+          </p>
+        </section>
+
+        <section class="flex flex-col gap-3" aria-labelledby="platform-texts-title">
+          <h2 id="platform-texts-title" class="text-xl font-semibold">
+            {{ 'platform.texts.title' | translate }}
+          </h2>
+          <p class="max-w-prose text-sm">{{ 'platform.texts.intro' | translate }}</p>
+          <p>
+            <a mat-stroked-button routerLink="/platform/texts" data-testid="platform-texts-link">{{
+              'platform.texts.link' | translate
             }}</a>
           </p>
         </section>

@@ -223,6 +223,13 @@ language, so what an operator wrote is never replaced. The operator edits and va
 facts the texts name are filled in at the top of that screen; once its security contact is,
 `/.well-known/security.txt` (RFC 9116) answers with it, and until then it answers 404.
 
+The application's own words are changed without a release, in each language, at two levels: the operator words them
+for the whole installation at `/platform/texts` (« Gérer les textes » on the platform page), and a company's owner, or a
+role given `company.texts`, words them for that company at `/company/texts` (« Textes » under the gear), over the
+installation's. Screens, mails and printed labels take them at once; the tax mentions are the law's and never offered.
+A release that changes an original a level worded keeps that level's wording and flags it « L’original a changé », with
+« Garder le mien » and « Prendre l’original ». The rows are `text_override`; `make reset` drops them with the rest.
+
 The seed loads no business rows. **`make fixtures`** adds two demo companies, which the operator owns:
 
 | Company | Country, currency | What it holds |

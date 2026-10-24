@@ -254,6 +254,15 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     section: 'customisation',
     permission: 'company.settings',
   },
+  {
+    // The application's words in the company's own, screens, mails and printed labels alike.
+    key: 'texts',
+    labelKey: 'nav.texts',
+    icon: 'translate',
+    route: '/company/texts',
+    section: 'customisation',
+    permission: 'company.texts',
+  },
 ];
 
 /** Where an entry not built yet opens: one shared page, keyed by the entry (docs/SPEC.md § 7, 2026-09-25 11:17). */
@@ -284,15 +293,6 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     section: 'fiscal',
     permission: 'company.settings',
     coming: { after: 'units', version: 'later', row: 52, meanwhile: '/fiscal/taxes' },
-  },
-  {
-    key: 'texts',
-    labelKey: 'nav.texts',
-    icon: 'translate',
-    route: `${COMING_SETTINGS_ROUTE}/texts`,
-    section: 'customisation',
-    permission: 'company.settings',
-    coming: { after: 'modules', version: 'later', row: 47 },
   },
 ];
 

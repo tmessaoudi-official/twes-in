@@ -311,6 +311,11 @@
     },
     "numbers": {
       "empty": "Indiquez un nombre."
+    },
+    "texts": {
+      "title": "Textes de l’installation",
+      "intro": "Les mots de l’application, sur les écrans, dans les courriels et sur les documents imprimés, tels que toutes les sociétés les lisent. Chacune peut encore les remplacer par les siens.",
+      "link": "Gérer les textes"
     }
   }
 }

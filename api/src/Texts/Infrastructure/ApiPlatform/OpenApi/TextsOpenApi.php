@@ -109,7 +109,7 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
 
         $find = [
             new Parameter('q', 'query', 'Words the text says in any wording, or its key; case and accents aside', false, schema: ['type' => 'string']),
-            new Parameter('domain', 'query', 'One file', false, schema: ['type' => 'string']),
+            new Parameter('domain', 'query', 'One file and its pages: `screen` is the language\'s file and every `screen:<part>`', false, schema: ['type' => 'string']),
             new Parameter('changed', 'query', 'Only the texts whose original changed since the reader\'s own was written', false, schema: ['type' => 'boolean']),
             new Parameter('page', 'query', 'From 1', false, schema: ['type' => 'integer', 'minimum' => 1]),
             new Parameter('itemsPerPage', 'query', 'Up to app.texts.catalogue_page_max', false, schema: ['type' => 'integer', 'minimum' => 1]),

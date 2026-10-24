@@ -533,6 +533,14 @@ export const routes: Routes = [
           import('./platform/platform-legal-page').then((m) => m.PlatformLegalPage),
       },
       {
+        // The application's texts as the installation words them for every company: the same page, at its level.
+        path: 'platform/texts',
+        title: 'nav.texts',
+        data: { level: 'installation' },
+        ...textsPart('texts', operatorGuard),
+        loadComponent: () => import('./texts/texts-page').then((m) => m.TextsPage),
+      },
+      {
         // The company settings, reached from the gear: a layout route with no path of its own, so the grouped
         // settings navigation sits beside each page and every page keeps its address.
         path: '',
@@ -648,6 +656,13 @@ export const routes: Routes = [
             path: 'company/modules',
             title: 'nav.modules',
             loadComponent: () => import('./company/modules-page').then((m) => m.ModulesPage),
+          },
+          {
+            // The application's texts as the company words them, over the installation's.
+            path: 'company/texts',
+            title: 'nav.texts',
+            ...textsPart('texts'),
+            loadComponent: () => import('./texts/texts-page').then((m) => m.TextsPage),
           },
           {
             // Reachable whatever the subscription says: a locked company reaches nothing else, and this is the

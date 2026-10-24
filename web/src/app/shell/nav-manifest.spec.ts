@@ -181,7 +181,7 @@ describe('the navigation manifest', () => {
       ['fiscal', ['taxes', 'units', 'closing']],
       ['team', ['members', 'roles', 'activity', 'support-access']],
       ['data', ['recently-deleted', 'data-erasure']],
-      ['customisation', ['custom-fields', 'modules']],
+      ['customisation', ['custom-fields', 'modules', 'texts']],
     ]);
     expect(SETTINGS_NAV.every((entry) => entry.permission !== undefined)).toBe(true);
     expect(DEV_NAV.every((entry) => entry.devOnly === true)).toBe(true);

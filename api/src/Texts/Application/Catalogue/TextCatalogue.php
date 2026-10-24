@@ -37,7 +37,7 @@ final readonly class TextCatalogue
 
         $found = [];
         foreach ($this->shipped->domains() as $domain) {
-            if (null !== $query->domain && $query->domain !== $domain) {
+            if (null !== $query->domain && !self::within($domain, $query->domain)) {
                 continue;
             }
             foreach ($this->shipped->texts($language, $domain) as $key => $original) {
@@ -63,6 +63,12 @@ final readonly class TextCatalogue
         }
 
         return ['items' => \array_slice($found, ($query->page - 1) * $query->perPage, $query->perPage), 'total' => \count($found)];
+    }
+
+    /** The domain asked for, or one of its pages: `screen` is the language's file and every page's own, `screen:<page>`. */
+    private static function within(string $domain, string $wanted): bool
+    {
+        return $domain === $wanted || str_starts_with($domain, $wanted.':');
     }
 
     /** Whether the key or any wording of the text holds what was looked for, its case and accents aside. */

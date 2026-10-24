@@ -55,6 +55,7 @@ declare -A exempt=(
   [web/src/app/signup/finish-signup-page.ts]="signed out: an account finished in one step"
   [web/src/app/signup/signup-page.ts]="signed out: an address typed and sent"
   [web/src/app/support-access/support-access-page.ts]="a length chosen for access granted in one step"
+  [web/src/app/texts/texts-page.ts]="the language the texts are listed in; a text is worded in a dialog, which closes with its question"
 )
 edits='buildFormGroup\(|new FormGroup|new FormControl|<app-descriptor-form|ngModel|\(input\)=|\(change\)=|\[formControl\]|formControlName'
 counts='unsavedChanges\(|listRecord\(|UnsavedChanges\)\.declare\('

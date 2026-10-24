@@ -1,0 +1,43 @@
+<section class="flex flex-col gap-4" data-testid="texts-page">
+  @if (installation()) {
+    <a
+      routerLink="/platform"
+      class="flex w-fit items-center gap-1 font-medium text-primary"
+      data-testid="texts-to-platform"
+    >
+      <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">arrow_back</mat-icon
+      >{{ 'hello.platform' | translate }}
+    </a>
+  }
+  <div class="twes-page-head flex flex-wrap items-end justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="texts-title">
+      {{ (installation() ? 'texts.title_installation' : 'texts.title') | translate }}
+    </h1>
+    <app-select
+      class="w-full max-w-72"
+      [label]="'texts.language' | translate"
+      [labelInside]="true"
+      [languages]="true"
+      [options]="languageOptions"
+      [ngModel]="language()"
+      (ngModelChange)="choose($event)"
+      testId="texts-language"
+    />
+  </div>
+  <p class="max-w-prose">
+    {{ (installation() ? 'texts.intro_installation' : 'texts.intro_company') | translate }}
+  </p>
+
+  <app-data-list
+    [descriptor]="list()"
+    [rows]="views()"
+    [loading]="loading()"
+    [failed]="failed()"
+    [total]="total()"
+    [rowTestId]="rowTestId"
+    (queryChange)="onQuery($event)"
+    testId="texts-list"
+    emptyKey="texts.none"
+    emptyTestId="texts-empty"
+  />
+</section>

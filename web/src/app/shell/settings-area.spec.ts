@@ -163,7 +163,8 @@ describe('SettingsArea', () => {
       ['nav-taxes', 'nav-units', 'nav-closing', 'nav-fiscal-preset'],
       // « Accès du support » is built since, and its owner's alone.
       ['nav-members', 'nav-roles'],
-      ['nav-custom-fields', 'nav-modules', 'nav-texts'],
+      // « Textes » is built since, and needs `company.texts`, which managing the settings does not give.
+      ['nav-custom-fields', 'nav-modules'],
     ]);
     const alerts = byTestId('nav-alerts');
     expect(alerts?.getAttribute('href')).toBe('/company/coming/alerts');
@@ -173,6 +174,16 @@ describe('SettingsArea', () => {
     expect(templates?.getAttribute('href')).toBe('/company/documents');
     expect(templates?.querySelector('[data-testid="soon"]')).toBeNull();
     expect(byTestId('nav-numbering')?.querySelector('[data-testid="soon"]')).toBeNull();
+  });
+
+  it('lists « Textes » for whoever may word the texts, a page of its own and never « Bientôt »', async () => {
+    showComing.set(true);
+    permissions.set(['company.settings', 'company.texts']);
+    const { byTestId } = await render();
+
+    const texts = byTestId('nav-texts');
+    expect(texts?.getAttribute('href')).toBe('/company/texts');
+    expect(texts?.querySelector('[data-testid="soon"]')).toBeNull();
   });
 
   // docs/SPEC.md § 7, 2026-09-26 12:05 (row 152): the Paramètres list folds by section like the main menu.
