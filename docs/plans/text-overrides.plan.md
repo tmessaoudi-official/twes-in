@@ -14,6 +14,8 @@ first client's install, 2026-10-26).
 - [2026-10-24 18:36] ASSUMED (review): The printed labels a mandatory mention or a legal status prints through stay locked, the rest of pdf is open (rule: guide but never choose a fiscal or legal answer; advisor agreed): locked format.*, invoice.corrects, invoice.reason, invoice.supply_date, invoice.operations*, invoice.fingerprint, line.unit_price, line.net, totals.subtotal, totals.total_net, totals.total_tax, totals.total, totals.withheld, watermark.*, demo.band, copy.*; open the titles (the developer's own « Facture » → « Facture de vente »), parties' and dates' labels, remarks, reception and agreement blocks, payment instructions, paid stamps, the statement. Alternative: lock the titles too, or open everything but the fiscal domain.
 - [2026-10-24 18:36] ASSUMED (review): company.texts.write goes to the owner's role alone, as 18:27 ruled « by its owner »; a custom role may be given it (rule: a recorded ruling dictates it). Alternative: the admin's role as well.
 - [2026-10-24 18:36] ASSUMED (review): A screen text is named by its file, domain screen or screen:<part>: the parts reuse the main file's top-level names (invoices in deliveries and invoice-bulk, auth in two-factor, settings in settings-refusals), so a key alone does not say which store to lay it on (rule: one canon; read from the files, 18:33). Alternative: one flat key space, which collides.
+- [2026-10-24 18:59] ASSUMED (review): One text_override table whose company_id is null for the installation's texts, its key (company, language, domain, text_key) NULLS NOT DISTINCT, as notification_preference; not CompanyOwned and named in CompanyColumnTest::NOT_SCOPED, every read naming its company, since the company filter would hide the installation's rows (rule: one canon, the notification_preference and setting precedents). Alternative: a level column and a level_id string, as setting.
+- [2026-10-24 18:59] ASSUMED (review): No updated_by column: who changed a text is the audit trail's (text.overridden, text.reset, by address and level, never the words), so no column names a person and the account erasure has nothing new to cover (rule: data over code, one canon). Alternative: an updated_by user column, covered by the erasure.
 
 ## Formal Plan
 
@@ -45,9 +47,11 @@ is a row laid over them at read time, never a rewritten file.
   and `invoice-bulk`, `auth` in `two-factor`): the overlay knows which service to lay it on.
 
 ### API (`api/src/Texts/`, a core context: no module switch, as Settings)
-1. `text_override`: `id`, `level` (`installation` | `company`), `company_id` (null for the installation), `language`,
-   `domain` (`screen` or an API domain), `key`, `value`, `original` (the shipped text when it was written), `version`,
-   `updated_at`, `updated_by`; unique on (level, company_id, language, domain, key). Company rows carry `CompanyOwned`.
+1. `text_override`: `id`, `company_id` (null for the installation), `language`, `domain` (`screen`, `screen:<part>` or
+   an API domain), `text_key`, `value`, `original` (the shipped text when it was written), `version`, `updated_at`;
+   unique on (company_id, language, domain, text_key) `NULLS NOT DISTINCT`. Not `CompanyOwned` (the filter would hide
+   the installation's rows): named in `CompanyColumnTest::NOT_SCOPED`, every read naming its company. Who wrote it is
+   the audit trail's. Tests run on the worktree's own database, `twes_test_w9` (`api/.env.test.local`, `TEST_TOKEN=_w9`).
 2. `ShippedTexts` port: reads the shipped catalogue. Screen texts are copied into the API image at build
    (`COPY web/public/i18n/ resources/screen-texts/` in `dev` and `prod`); tests read the tree's own copy; a test holds the
    copy equal to `web/public/i18n` (the `languages.json` pattern).
@@ -107,7 +111,7 @@ is a row laid over them at read time, never a rewritten file.
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | Table, shipped catalogue port and its copy in the images, the override and reset use cases with every refusal | M | todo | - | api/src/Texts/** api/migrations/** infra/api/Dockerfile |
+| 1 | Table, shipped catalogue port and its copy in the images, the override and reset use cases with every refusal | M | doing | - | api/src/Texts/** api/migrations/** infra/api/Dockerfile |
 | 2 | Read and write endpoints, permission, step-up, audit, live change | M | todo | - | api/src/Texts/** |
 | 3 | Mails and PDFs through the overrides | S | todo | - | api/src/Texts/** |
 | 4 | Web: the merge at load, on entering a company, on parts, on a live change | M | todo | - | web/src/app/shared/i18n/** |

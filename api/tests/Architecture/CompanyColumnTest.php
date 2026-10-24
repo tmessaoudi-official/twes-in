@@ -27,6 +27,7 @@ use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Model\Signup;
 use App\Tenancy\Domain\Model\SupportGrant;
+use App\Texts\Domain\Model\TextOverride;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\ToOneOwningSideMapping;
@@ -58,6 +59,7 @@ final class CompanyColumnTest extends KernelTestCase
         SupportGrant::class => "an owner's « Accès support », read across companies by an operator's switcher and before a company is resolved",
         Role::class => 'company_id is null for the built-in roles every company shares',
         Setting::class => 'company_id is null for platform settings',
+        TextOverride::class => 'company_id is null for the installation\'s texts',
         AuditLog::class => "company_id is null for platform events and an account's own",
         InboxItem::class => 'company_id is null for notifications that concern no company',
         NotificationPreference::class => "a person's own choice, read across their companies; company_id is null for a kind about the account",
