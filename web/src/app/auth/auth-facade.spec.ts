@@ -44,6 +44,8 @@ describe('AuthFacade', () => {
     verifySecondFactor: vi.fn(),
     beginTotpEnrolment: vi.fn(),
     confirmTotpEnrolment: vi.fn(),
+    beginTotpReplacement: vi.fn(),
+    confirmTotpReplacement: vi.fn(),
     regenerateRecoveryCodes: vi.fn(),
     recoveryCodesPasskeyOptions: vi.fn(),
     regenerateRecoveryCodesWithPasskey: vi.fn(),
@@ -276,6 +278,27 @@ describe('AuthFacade', () => {
     expect(facade.needsEnrolment()).toBe(false);
   });
 
+  it('replacing the authenticator hands the new secret, then the new codes counted, or the refusal', async () => {
+    api.beginTotpReplacement.mockResolvedValue({ secret: 'KRSX', provisioningUri: 'otpauth://x' });
+    expect(await facade.beginTotpReplacement()).toEqual({
+      ok: true,
+      enrolment: { secret: 'KRSX', provisioningUri: 'otpauth://x' },
+    });
+    api.beginTotpReplacement.mockRejectedValue(new AuthRefused('step_up_required'));
+    expect(await facade.beginTotpReplacement()).toEqual({ ok: false, error: 'step_up_required' });
+
+    api.confirmTotpReplacement.mockResolvedValue(['eeeee-fffff', 'ggggg-hhhhh']);
+    expect(await facade.confirmTotpReplacement('123456')).toEqual({
+      ok: true,
+      recoveryCodes: ['eeeee-fffff', 'ggggg-hhhhh'],
+    });
+    api.confirmTotpReplacement.mockRejectedValue(new AuthRefused('invalid_code'));
+    expect(await facade.confirmTotpReplacement('000000')).toEqual({
+      ok: false,
+      error: 'invalid_code',
+    });
+  });
+
   it('regenerating the recovery codes hands the new set back, or the refusal', async () => {
     api.regenerateRecoveryCodes.mockResolvedValue(['eeeee-fffff']);
     expect(await facade.regenerateRecoveryCodes('123456')).toEqual({
@@ -311,6 +334,11 @@ describe('AuthFacade', () => {
     api.regenerateRecoveryCodes.mockRejectedValue(new AuthRefused('invalid_code'));
     await facade.regenerateRecoveryCodes('000000');
     expect(facade.me()?.mfa.recoveryCodes).toBe(3);
+
+    // A new app brings its own set, counted the same way.
+    api.confirmTotpReplacement.mockResolvedValue(['h', 'i', 'j', 'k', 'l']);
+    await facade.confirmTotpReplacement('123456');
+    expect(facade.me()?.mfa.recoveryCodes).toBe(5);
   });
 
   it('replaces the recovery codes against a passkey the browser produces, or says why not', async () => {

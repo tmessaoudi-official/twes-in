@@ -37,65 +37,154 @@
           {{ 'auth.two_factor.app_title' | translate }}
         </h2>
         @if (totp()) {
-          <p class="font-medium">{{ 'auth.two_factor.regenerate_title' | translate }}</p>
-          <p>{{ 'auth.two_factor.regenerate_intro' | translate }}</p>
-          <form
-            [formGroup]="regenerateForm"
-            (ngSubmit)="regenerate()"
-            class="flex flex-col gap-2"
-            novalidate
-            data-testid="two-factor-regenerate-form"
-          >
-            <div class="twes-auth-field">
-              <label class="twes-field-label" for="two-factor-regenerate-code-input">{{
-                'auth.two_factor.code' | translate
-              }}</label>
-              <mat-form-field>
-                <input
-                  matInput
-                  id="two-factor-regenerate-code-input"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="one-time-code"
-                  formControlName="code"
-                  data-testid="two-factor-regenerate-code"
-                />
-                @if (regenerateForm.controls.code.hasError('required')) {
-                  <mat-error>{{ 'auth.two_factor.code_required' | translate }}</mat-error>
-                }
-              </mat-form-field>
+          @if (replacement(); as next) {
+            <p class="font-medium">{{ 'auth.two_factor.replace_title' | translate }}</p>
+            <p>{{ 'auth.two_factor.replace_intro' | translate }}</p>
+            <div class="mx-auto w-56" data-testid="two-factor-replace-qr">
+              <app-qr-code
+                [value]="next.provisioningUri"
+                [label]="'auth.two_factor.qr_label' | translate"
+              />
             </div>
-            @if (error(); as errorCode) {
-              <p role="alert" class="twes-auth-error" data-testid="two-factor-error">
+            <p class="text-sm">{{ 'auth.two_factor.secret_label' | translate }}</p>
+            <p
+              class="text-center font-mono text-lg tracking-wider"
+              data-testid="two-factor-replace-secret"
+            >
+              <bdi>{{ groupedReplacementSecret() }}</bdi>
+            </p>
+            <form
+              [formGroup]="replaceForm"
+              (ngSubmit)="confirmReplacement()"
+              class="flex flex-col gap-2"
+              novalidate
+              data-testid="two-factor-replace-form"
+            >
+              <div class="twes-auth-field">
+                <label class="twes-field-label" for="two-factor-replace-code-input">{{
+                  'auth.two_factor.replace_code' | translate
+                }}</label>
+                <mat-form-field>
+                  <input
+                    matInput
+                    id="two-factor-replace-code-input"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    formControlName="code"
+                    data-testid="two-factor-replace-code"
+                  />
+                  @if (replaceForm.controls.code.hasError('required')) {
+                    <mat-error>{{ 'auth.two_factor.code_required' | translate }}</mat-error>
+                  }
+                </mat-form-field>
+              </div>
+              @if (replaceError(); as errorCode) {
+                <p role="alert" class="twes-auth-error" data-testid="two-factor-replace-error">
+                  {{ 'auth.errors.' + errorCode | translate }}
+                </p>
+              }
+              <div class="flex flex-wrap gap-2">
+                <button
+                  mat-flat-button
+                  type="submit"
+                  [disabled]="submitting()"
+                  data-testid="two-factor-replace-submit"
+                >
+                  {{
+                    (submitting()
+                      ? 'auth.two_factor.confirming'
+                      : 'auth.two_factor.replace_confirm'
+                    ) | translate
+                  }}
+                </button>
+                <button
+                  mat-button
+                  type="button"
+                  (click)="cancelReplacement()"
+                  [disabled]="submitting()"
+                  data-testid="two-factor-replace-cancel"
+                >
+                  {{ 'auth.two_factor.replace_cancel' | translate }}
+                </button>
+              </div>
+            </form>
+          } @else {
+            <p class="font-medium">{{ 'auth.two_factor.regenerate_title' | translate }}</p>
+            <p>{{ 'auth.two_factor.regenerate_intro' | translate }}</p>
+            <form
+              [formGroup]="regenerateForm"
+              (ngSubmit)="regenerate()"
+              class="flex flex-col gap-2"
+              novalidate
+              data-testid="two-factor-regenerate-form"
+            >
+              <div class="twes-auth-field">
+                <label class="twes-field-label" for="two-factor-regenerate-code-input">{{
+                  'auth.two_factor.code' | translate
+                }}</label>
+                <mat-form-field>
+                  <input
+                    matInput
+                    id="two-factor-regenerate-code-input"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    formControlName="code"
+                    data-testid="two-factor-regenerate-code"
+                  />
+                  @if (regenerateForm.controls.code.hasError('required')) {
+                    <mat-error>{{ 'auth.two_factor.code_required' | translate }}</mat-error>
+                  }
+                </mat-form-field>
+              </div>
+              @if (error(); as errorCode) {
+                <p role="alert" class="twes-auth-error" data-testid="two-factor-error">
+                  {{ 'auth.errors.' + errorCode | translate }}
+                </p>
+              }
+              <button
+                mat-stroked-button
+                type="submit"
+                [disabled]="submitting()"
+                data-testid="two-factor-regenerate-submit"
+              >
+                {{
+                  (submitting() ? 'auth.two_factor.regenerating' : 'auth.two_factor.regenerate')
+                    | translate
+                }}
+              </button>
+            </form>
+            <button
+              mat-button
+              type="button"
+              class="self-start"
+              (click)="removeAuthenticator()"
+              [disabled]="submitting()"
+              data-testid="two-factor-app-remove"
+            >
+              {{ 'auth.two_factor.app_remove' | translate }}
+            </button>
+            @if (removeError(); as errorCode) {
+              <p role="alert" class="twes-auth-error" data-testid="two-factor-app-remove-error">
                 {{ 'auth.errors.' + errorCode | translate }}
               </p>
             }
             <button
               mat-stroked-button
-              type="submit"
+              type="button"
+              class="self-start"
+              (click)="startReplacement()"
               [disabled]="submitting()"
-              data-testid="two-factor-regenerate-submit"
+              data-testid="two-factor-app-replace"
             >
-              {{
-                (submitting() ? 'auth.two_factor.regenerating' : 'auth.two_factor.regenerate')
-                  | translate
-              }}
+              {{ 'auth.two_factor.replace' | translate }}
             </button>
-          </form>
-          <button
-            mat-button
-            type="button"
-            class="self-start"
-            (click)="removeAuthenticator()"
-            [disabled]="submitting()"
-            data-testid="two-factor-app-remove"
-          >
-            {{ 'auth.two_factor.app_remove' | translate }}
-          </button>
-          @if (removeError(); as errorCode) {
-            <p role="alert" class="twes-auth-error" data-testid="two-factor-app-remove-error">
-              {{ 'auth.errors.' + errorCode | translate }}
-            </p>
+            @if (replaceError(); as errorCode) {
+              <p role="alert" class="twes-auth-error" data-testid="two-factor-replace-error">
+                {{ 'auth.errors.' + errorCode | translate }}
+              </p>
+            }
           }
         } @else if (enrolment(); as pending) {
           <p>{{ 'auth.two_factor.scan' | translate }}</p>

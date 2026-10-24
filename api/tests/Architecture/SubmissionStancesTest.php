@@ -161,6 +161,8 @@ final class SubmissionStancesTest extends KernelTestCase
         '/auth/demo' => self::SESSION,
         '/auth/login' => self::SESSION,
         '/auth/logout' => self::SESSION,
+        '/auth/mfa/authenticator/replacement' => self::SESSION,
+        '/auth/mfa/authenticator/replacement/confirm' => self::SESSION,
         '/auth/mfa/enrolment' => self::SESSION,
         '/auth/mfa/enrolment/confirm' => self::SESSION,
         '/auth/mfa/passkey-login' => self::SESSION,

@@ -40,7 +40,13 @@
       "passkey_remove_title": "Remove this passkey?",
       "passkey_remove_message": "“{{name}}” will no longer sign you in. To use it again, you will add it again.",
       "keep": "Keep",
-      "passkey_recovery": "Get new recovery codes with a passkey"
+      "passkey_recovery": "Get new recovery codes with a passkey",
+      "replace": "Replace the app",
+      "replace_title": "New authenticator app",
+      "replace_intro": "Scan this code with the new app. The old one keeps working until you confirm with a code from the new one; your recovery codes are then replaced and your other sessions signed out.",
+      "replace_code": "Code from the new app",
+      "replace_confirm": "Use the new app",
+      "replace_cancel": "Keep the current app"
     }
   }
 }

@@ -17,7 +17,9 @@ use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\SecondFactorUnreadable;
 use App\Identity\Application\Mfa\Totp\AuthenticatorNotEnrolled;
 use App\Identity\Application\Mfa\Totp\BeginTotpEnrolment;
+use App\Identity\Application\Mfa\Totp\BeginTotpReplacement;
 use App\Identity\Application\Mfa\Totp\ConfirmTotpEnrolment;
+use App\Identity\Application\Mfa\Totp\ConfirmTotpReplacement;
 use App\Identity\Application\Mfa\Totp\RemoveAuthenticator;
 use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Application\StepUp\StepUpRequired;
@@ -57,6 +59,8 @@ final readonly class MfaController
         private RegenerateRecoveryCodes $regenerateRecoveryCodes,
         private SecondFactorLogin $secondFactorLogin,
         private RemoveAuthenticator $removeAuthenticator,
+        private BeginTotpReplacement $beginReplacement,
+        private ConfirmTotpReplacement $confirmReplacement,
     ) {
     }
 
@@ -139,6 +143,41 @@ final readonly class MfaController
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * Step one of moving the authenticator to a new phone or app: a new secret waits beside the one in force, which
+     * keeps signing in until a code from the new app confirms it. Asks a fresh proof, the password or a passkey.
+     */
+    #[Route('/api/auth/mfa/authenticator/replacement', name: 'api_auth_mfa_authenticator_replacement', methods: ['POST'])]
+    public function beginReplacement(): JsonResponse
+    {
+        try {
+            $replacement = $this->beginReplacement->handle($this->currentUserId());
+        } catch (AuthenticatorNotEnrolled) {
+            return new JsonResponse(['error' => 'totp_not_enrolled'], Response::HTTP_NOT_FOUND);
+        } catch (StepUpRequired) {
+            return new JsonResponse(['error' => 'step_up_required'], Response::HTTP_FORBIDDEN);
+        }
+
+        return new JsonResponse(['secret' => $replacement->secret, 'provisioningUri' => $replacement->provisioningUri]);
+    }
+
+    /**
+     * Step two: a code from the new app puts it in the old one's place, with new recovery codes shown once; every other
+     * session of the account ends. The code is checked against the secret this person was just shown, so a guess here
+     * gains nothing the guesser does not already hold.
+     */
+    #[Route('/api/auth/mfa/authenticator/replacement/confirm', name: 'api_auth_mfa_authenticator_replacement_confirm', methods: ['POST'])]
+    public function confirmReplacement(Request $request): JsonResponse
+    {
+        try {
+            $codes = $this->confirmReplacement->handle($this->currentUserId(), self::codeIn($request), $request->getSession()->getId());
+        } catch (SecondFactorRefused|SecondFactorUnreadable) {
+            return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return new JsonResponse(['recoveryCodes' => $codes]);
     }
 
     /**

@@ -40,7 +40,13 @@
       "passkey_remove_title": "Supprimer cette clé d’accès ?",
       "passkey_remove_message": "La clé « {{name}} » ne permettra plus de se connecter. Pour s’en servir à nouveau, il faudra l’ajouter de nouveau.",
       "keep": "Garder",
-      "passkey_recovery": "Obtenir de nouveaux codes de secours avec une clé d’accès"
+      "passkey_recovery": "Obtenir de nouveaux codes de secours avec une clé d’accès",
+      "replace": "Remplacer l’application",
+      "replace_title": "Nouvelle application d’authentification",
+      "replace_intro": "Scannez ce code avec la nouvelle application. L’ancienne continue de fonctionner jusqu’à ce que vous confirmiez avec un code de la nouvelle ; vos codes de secours seront alors remplacés et vos autres sessions fermées.",
+      "replace_code": "Code de la nouvelle application",
+      "replace_confirm": "Utiliser la nouvelle application",
+      "replace_cancel": "Garder l’application actuelle"
     }
   }
 }

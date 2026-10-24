@@ -80,6 +80,13 @@ class User
     private ?int $totpLastTimestep = null;
 
     /**
+     * A new app's secret waiting beside the one in force, ciphertext as that one is: the account keeps its factor until
+     * a code from the new app proves it was read, and only then does the new one take its place.
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $totpReplacementSecret = null;
+
+    /**
      * Rotated to force every session of this user out (admin-forced logout, password change): the security
      * token carries the stamp it was created with, and a mismatch on refresh means the token is stale.
      */
@@ -345,9 +352,57 @@ class User
         $this->updatedAt = $now ?? new \DateTimeImmutable();
     }
 
+    /**
+     * Stores a new app's secret beside the one in force, replacing one still waiting. Nothing about signing in changes:
+     * the app in force keeps working until confirmTotpReplacement.
+     */
+    public function beginTotpReplacement(string $cipherSecret, ?\DateTimeImmutable $now = null): void
+    {
+        if (!$this->hasTotp()) {
+            throw new \DomainException('There is no authenticator in force to replace.');
+        }
+
+        $this->totpReplacementSecret = $cipherSecret;
+        $this->updatedAt = $now ?? new \DateTimeImmutable();
+    }
+
+    /**
+     * The new app takes the place of the old in one step, never leaving the account without one: the timestep is the
+     * one the confirming code came from, spent as an enrolment's is.
+     */
+    public function confirmTotpReplacement(int $timestep, ?\DateTimeImmutable $now = null): void
+    {
+        if (!$this->hasTotp() || null === $this->totpReplacementSecret) {
+            throw new \DomainException('There is no replacement waiting to confirm.');
+        }
+
+        $now ??= new \DateTimeImmutable();
+        $this->totpSecret = $this->totpReplacementSecret;
+        $this->totpReplacementSecret = null;
+        $this->totpConfirmedAt = $now;
+        $this->totpLastTimestep = $timestep;
+        $this->updatedAt = $now;
+    }
+
+    /** The waiting secret sealed under another key, as resealTotpSecret does for the one in force. */
+    public function resealTotpReplacementSecret(string $cipherSecret): void
+    {
+        if (null === $this->totpReplacementSecret) {
+            throw new \DomainException('There is no waiting authenticator secret to reseal.');
+        }
+
+        $this->totpReplacementSecret = $cipherSecret;
+    }
+
+    public function getTotpReplacementSecret(): ?string
+    {
+        return $this->totpReplacementSecret;
+    }
+
     public function disableTotp(?\DateTimeImmutable $now = null): void
     {
         $this->totpSecret = null;
+        $this->totpReplacementSecret = null;
         $this->totpConfirmedAt = null;
         $this->totpLastTimestep = null;
         $this->updatedAt = $now ?? new \DateTimeImmutable();

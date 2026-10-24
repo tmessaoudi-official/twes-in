@@ -234,6 +234,33 @@ describe('AuthApi', () => {
     await expect(wrong).rejects.toEqual(new AuthRefused('invalid_code'));
   });
 
+  it('moves the authenticator to a new app in two steps, the code checked against the new one', async () => {
+    const enrolment = {
+      secret: 'KRSXG5CT',
+      provisioningUri: 'otpauth://totp/twes:op?secret=KRSXG5CT',
+    };
+    const begun = api.beginTotpReplacement();
+    http
+      .expectOne({ method: 'POST', url: '/api/auth/mfa/authenticator/replacement' })
+      .flush(enrolment);
+    expect(await begun).toEqual(enrolment);
+
+    const confirmed = api.confirmTotpReplacement('123456');
+    const request = http.expectOne({
+      method: 'POST',
+      url: '/api/auth/mfa/authenticator/replacement/confirm',
+    });
+    expect(request.request.body).toEqual({ code: '123456' });
+    request.flush({ recoveryCodes: ['aaaa-bbbb'] });
+    expect(await confirmed).toEqual(['aaaa-bbbb']);
+
+    const wrong = api.confirmTotpReplacement('000000');
+    http
+      .expectOne('/api/auth/mfa/authenticator/replacement/confirm')
+      .flush({ error: 'invalid_code' }, { status: 422, statusText: 'Unprocessable Content' });
+    await expect(wrong).rejects.toEqual(new AuthRefused('invalid_code'));
+  });
+
   it('replaces the recovery codes when given a current authenticator code', async () => {
     const pending = api.regenerateRecoveryCodes('123456');
     const request = http.expectOne({ method: 'POST', url: '/api/auth/mfa/recovery-codes' });

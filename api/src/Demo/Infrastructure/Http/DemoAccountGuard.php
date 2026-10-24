@@ -42,6 +42,8 @@ final readonly class DemoAccountGuard
         'api_auth_mfa_enrolment',
         'api_auth_mfa_enrolment_confirm',
         'api_auth_mfa_authenticator_remove',
+        'api_auth_mfa_authenticator_replacement',
+        'api_auth_mfa_authenticator_replacement_confirm',
         'api_auth_mfa_passkeys_options',
         'api_auth_mfa_passkeys_register',
         'api_auth_mfa_passkeys_remove',

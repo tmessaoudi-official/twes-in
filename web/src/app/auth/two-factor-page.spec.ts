@@ -65,6 +65,8 @@ describe('TwoFactorPage', () => {
     addPasskey: ReturnType<typeof vi.fn>;
     removePasskey: ReturnType<typeof vi.fn>;
     removeAuthenticator: ReturnType<typeof vi.fn>;
+    beginTotpReplacement: ReturnType<typeof vi.fn>;
+    confirmTotpReplacement: ReturnType<typeof vi.fn>;
   };
   let stepUp: { request: ReturnType<typeof vi.fn> };
   /** What the removal's confirmation answers: yes, unless a case keeps the factor. */
@@ -96,6 +98,14 @@ describe('TwoFactorPage', () => {
       addPasskey: vi.fn(),
       removePasskey: vi.fn(),
       removeAuthenticator: vi.fn(),
+      beginTotpReplacement: vi.fn().mockResolvedValue({
+        ok: true,
+        enrolment: {
+          secret: 'KRSXG5CTMVRXEZLU',
+          provisioningUri: 'otpauth://totp/twes-in:new?secret=KRSXG5CTMVRXEZLU',
+        },
+      }),
+      confirmTotpReplacement: vi.fn(),
     };
     stepUp = { request: vi.fn().mockResolvedValue(true) };
     dialog = { open: vi.fn(() => ({ afterClosed: () => of(true) })) };
@@ -459,6 +469,90 @@ describe('TwoFactorPage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-22 09:12: every factor is manageable, the authenticator included.
+  describe('moving the authenticator to a new app', () => {
+    const lone: MfaStatus = {
+      enrolled: true,
+      required: true,
+      totp: true,
+      passkeys: 0,
+      recoveryCodes: 10,
+    };
+
+    async function replaceWith(rendered: Awaited<ReturnType<typeof render>>, code: string) {
+      const input = rendered.query<HTMLInputElement>('two-factor-replace-code')!;
+      input.value = code;
+      input.dispatchEvent(new Event('input'));
+      rendered
+        .query<HTMLFormElement>('two-factor-replace-form')
+        ?.dispatchEvent(new Event('submit'));
+      await settle(rendered.fixture);
+    }
+
+    it('moves an account whose only factor it is to a new app, never removing the one in force', async () => {
+      const rendered = await render(lone);
+      facade.confirmTotpReplacement.mockResolvedValue({
+        ok: true,
+        recoveryCodes: ['iiiii-jjjjj', 'kkkkk-lllll'],
+      });
+
+      rendered.query<HTMLButtonElement>('two-factor-app-replace')?.click();
+      await settle(rendered.fixture);
+      expect(facade.beginTotpReplacement).toHaveBeenCalledTimes(1);
+      expect(rendered.query('two-factor-replace-qr')).not.toBeNull();
+      expect(rendered.query('two-factor-replace-secret')?.textContent?.trim()).toBe(
+        'KRSX G5CT MVRX EZLU',
+      );
+      await replaceWith(rendered, ' 654321 ');
+
+      expect(facade.confirmTotpReplacement).toHaveBeenCalledWith('654321');
+      const codes = [
+        ...(rendered.query('two-factor-recovery-codes')?.querySelectorAll('li') ?? []),
+      ];
+      expect(codes.map((item) => item.textContent?.trim())).toEqual(['iiiii-jjjjj', 'kkkkk-lllll']);
+      expect(facade.removeAuthenticator).not.toHaveBeenCalled();
+    });
+
+    it('says a refused code and keeps the new secret on screen to try again', async () => {
+      const rendered = await render(lone);
+      facade.confirmTotpReplacement.mockResolvedValue({ ok: false, error: 'invalid_code' });
+      rendered.query<HTMLButtonElement>('two-factor-app-replace')?.click();
+      await settle(rendered.fixture);
+
+      await replaceWith(rendered, '000000');
+
+      expect(rendered.query('two-factor-replace-error')?.textContent).toContain('Code incorrect');
+      expect(rendered.query('two-factor-replace-qr')).not.toBeNull();
+      expect(rendered.query<HTMLInputElement>('two-factor-replace-code')?.value).toBe('');
+      expect(rendered.query('two-factor-recovery-codes')).toBeNull();
+    });
+
+    it('asks who is at the screen first, and starts nothing when the proof is declined', async () => {
+      const rendered = await render(lone);
+      facade.beginTotpReplacement.mockResolvedValue({ ok: false, error: 'step_up_required' });
+      stepUp.request.mockResolvedValue(false);
+
+      rendered.query<HTMLButtonElement>('two-factor-app-replace')?.click();
+      await settle(rendered.fixture);
+
+      expect(stepUp.request).toHaveBeenCalledTimes(1);
+      expect(rendered.query('two-factor-replace-qr')).toBeNull();
+      expect(rendered.query('two-factor-replace-error')).toBeNull();
+    });
+
+    it('goes back to the app in force when the new one is not set up after all', async () => {
+      const rendered = await render(lone);
+      rendered.query<HTMLButtonElement>('two-factor-app-replace')?.click();
+      await settle(rendered.fixture);
+
+      rendered.query<HTMLButtonElement>('two-factor-replace-cancel')?.click();
+      await settle(rendered.fixture);
+
+      expect(rendered.query('two-factor-replace-qr')).toBeNull();
+      expect(rendered.query('two-factor-app-replace')).not.toBeNull();
+      expect(facade.confirmTotpReplacement).not.toHaveBeenCalled();
+    });
+  });
+
   it('removes the authenticator, and offers to set one up again', async () => {
     const rendered = await render(
       { enrolled: true, required: true, totp: true, passkeys: 1, recoveryCodes: 10 },

@@ -21,6 +21,7 @@ use App\Identity\Application\Login\PasswordAttempts;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\Mfa\ResealSecondFactors;
 use App\Identity\Application\Mfa\Totp\BeginTotpEnrolment;
+use App\Identity\Application\Mfa\Totp\BeginTotpReplacement;
 use App\ImportExport\Application\RunImport;
 use App\Inbox\Application\NotificationCentre;
 use App\Inbox\Application\NotificationPreferences;
@@ -68,6 +69,7 @@ final class CommandsAndQueriesTest extends TestCase
         ProvisionCompany::class => 'a part of creating a company and of the seed, inside their transaction',
         SyncCustomerTaxRegimes::class => 'release data converged at every start, which no person changes',
         BeginTotpEnrolment::class => 'a pending secret that changes nothing about the account; confirming it is audited',
+        BeginTotpReplacement::class => 'a new app\'s secret waiting beside the one in force, which changes nothing about signing in; confirming it is audited',
         PasskeyAssertions::class => "a passkey's signature counter, kept by the sign-in or step-up that audits it",
         NotificationCentre::class => 'whether a person has read their own notifications',
         NotificationPreferences::class => 'how a person chooses to be told their own notifications, as reading them is',

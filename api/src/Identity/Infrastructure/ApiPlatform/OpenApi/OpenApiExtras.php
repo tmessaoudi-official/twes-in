@@ -204,6 +204,28 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             summary: 'Confirm the authenticator and receive the recovery codes',
             requestBody: $codeBody,
         )));
+        $openApi->getPaths()->addPath('/api/auth/mfa/authenticator/replacement', new PathItem(post: new Operation(
+            operationId: 'beginAuthenticatorReplacement',
+            tags: ['Auth'],
+            responses: [
+                '200' => $jsonOf('MfaEnrolment', 'A new secret waiting beside the one in force, which keeps working until confirmed'),
+                '401' => $errorResponse('Not signed in'),
+                '403' => $errorResponse('No fresh proof of who is at the screen (step_up_required)'),
+                '404' => $errorResponse('No authenticator in force to replace'),
+            ],
+            summary: 'Start moving the authenticator to a new phone or app',
+        )));
+        $openApi->getPaths()->addPath('/api/auth/mfa/authenticator/replacement/confirm', new PathItem(post: new Operation(
+            operationId: 'confirmAuthenticatorReplacement',
+            tags: ['Auth'],
+            responses: [
+                '200' => $jsonOf('MfaRecoveryCodes', 'The new app is in force; new recovery codes, shown once; every other session ended'),
+                '401' => $errorResponse('Not signed in'),
+                '422' => $errorResponse('No replacement waiting, or the code is not the new app\'s'),
+            ],
+            summary: 'Confirm the new authenticator with one of its codes',
+            requestBody: $codeBody,
+        )));
         $openApi->getPaths()->addPath('/api/auth/mfa/recovery-codes', new PathItem(post: new Operation(
             operationId: 'regenerateRecoveryCodes',
             tags: ['Auth'],

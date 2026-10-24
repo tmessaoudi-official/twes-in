@@ -76,6 +76,16 @@ export class TwoFactorPage {
   protected readonly passkeyError = signal<LoginError | null>(null);
   /** Said under its own button, so a refused removal never reads as the recovery codes' form failing. */
   protected readonly removeError = signal<LoginError | null>(null);
+  /**
+   * A new app's secret waiting beside the authenticator in force, which keeps signing in until a code from the new app
+   * confirms it: the way to change phones without ever holding no factor, the only one for an account whose last
+   * factor it is.
+   */
+  protected readonly replacement = signal<TotpEnrolment | null>(null);
+  protected readonly replaceError = signal<LoginError | null>(null);
+  protected readonly replaceForm = new FormGroup({
+    code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+  });
   protected readonly submitting = signal(false);
   protected readonly form = new FormGroup({
     code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -91,12 +101,8 @@ export class TwoFactorPage {
     }),
   });
   /** The secret in groups of four, which is how people copy a key by hand. */
-  protected readonly groupedSecret = computed(
-    () =>
-      this.enrolment()
-        ?.secret.match(/.{1,4}/g)
-        ?.join(' ') ?? '',
-  );
+  protected readonly groupedSecret = computed(() => grouped(this.enrolment()?.secret));
+  protected readonly groupedReplacementSecret = computed(() => grouped(this.replacement()?.secret));
 
   constructor() {
     if (!this.enrolled()) {
@@ -213,6 +219,50 @@ export class TwoFactorPage {
     }
   }
 
+  /** A phone changed or lost: the new app's secret is shown, and the one in force keeps working until it is confirmed. */
+  protected async startReplacement(): Promise<void> {
+    if (this.submitting()) {
+      return;
+    }
+    this.submitting.set(true);
+    this.replaceError.set(null);
+    const outcome = await this.proven(() => this.auth.beginTotpReplacement());
+    this.submitting.set(false);
+    if (outcome.ok) {
+      this.replaceForm.reset();
+      this.replacement.set(outcome.enrolment);
+    } else if (outcome.error !== 'step_up_required') {
+      this.replaceError.set(outcome.error);
+    }
+  }
+
+  protected async confirmReplacement(): Promise<void> {
+    if (this.replaceForm.invalid || this.submitting()) {
+      this.replaceForm.markAllAsTouched();
+      return;
+    }
+    this.submitting.set(true);
+    this.replaceError.set(null);
+    const outcome = await this.auth.confirmTotpReplacement(
+      this.replaceForm.controls.code.value.trim(),
+    );
+    this.submitting.set(false);
+    this.replaceForm.reset();
+    if (outcome.ok) {
+      this.replacement.set(null);
+      this.recoveryCodes.set(outcome.recoveryCodes);
+    } else {
+      this.replaceError.set(outcome.error);
+    }
+  }
+
+  /** Not set up after all: the app in force stays, and the waiting secret is simply never confirmed. */
+  protected cancelReplacement(): void {
+    this.replacement.set(null);
+    this.replaceError.set(null);
+    this.replaceForm.reset();
+  }
+
   protected async removePasskey(passkey: PasskeySummary): Promise<void> {
     if (this.submitting()) {
       return;
@@ -327,4 +377,9 @@ export class TwoFactorPage {
       this.passkeys.set(outcome.passkeys);
     }
   }
+}
+
+/** A secret in groups of four, which is how people copy a key by hand. */
+function grouped(secret: string | undefined): string {
+  return secret?.match(/.{1,4}/g)?.join(' ') ?? '';
 }

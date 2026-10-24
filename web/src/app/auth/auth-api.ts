@@ -107,6 +107,23 @@ export class AuthApi {
     return [...answer.recoveryCodes];
   }
 
+  /** A new app's secret, waiting beside the authenticator in force, which keeps working until it is confirmed. */
+  async beginTotpReplacement(): Promise<TotpEnrolment> {
+    const answer = await send(
+      this.http.post<MfaEnrolment>('/api/auth/mfa/authenticator/replacement', {}),
+    );
+    return { secret: answer.secret, provisioningUri: answer.provisioningUri };
+  }
+
+  /** A code from the new app puts it in the old one's place; new recovery codes come back this once. */
+  async confirmTotpReplacement(code: string): Promise<string[]> {
+    const body: MfaCode = { code };
+    const answer = await send(
+      this.http.post<MfaRecoveryCodes>('/api/auth/mfa/authenticator/replacement/confirm', body),
+    );
+    return [...answer.recoveryCodes];
+  }
+
   /** A new set of recovery codes, proven by a current authenticator code; every earlier code stops working. */
   async regenerateRecoveryCodes(code: string): Promise<string[]> {
     const body: MfaCode = { code };

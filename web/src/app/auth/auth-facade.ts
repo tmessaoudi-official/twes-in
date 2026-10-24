@@ -164,6 +164,24 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
     }
   }
 
+  /** Moving the authenticator to a new app: its secret, waiting while the app in force keeps signing in. */
+  async beginTotpReplacement(): Promise<EnrolmentOutcome> {
+    try {
+      return { ok: true, enrolment: await this.api.beginTotpReplacement() };
+    } catch (error) {
+      return { ok: false, error: shownOf(error) };
+    }
+  }
+
+  /** The new app in force, and its new recovery codes counted at once, as a new set is. */
+  async confirmTotpReplacement(code: string): Promise<ConfirmationOutcome> {
+    try {
+      return { ok: true, recoveryCodes: this.counted(await this.api.confirmTotpReplacement(code)) };
+    } catch (error) {
+      return { ok: false, error: shownOf(error) };
+    }
+  }
+
   async regenerateRecoveryCodes(code: string): Promise<ConfirmationOutcome> {
     try {
       return {

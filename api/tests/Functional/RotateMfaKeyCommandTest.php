@@ -48,6 +48,25 @@ final class RotateMfaKeyCommandTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    public function testANewAppsSecretWaitingBesideTheOneInForceIsResealedToo(): void
+    {
+        // A replacement begun before the rotation is confirmed after it: its waiting secret moves to the new key as well.
+        $this->createUser('moving@twes.local', self::PASSWORD, authenticator: true);
+        $this->sealUnder(self::PREVIOUS, 'moving@twes.local', self::AUTHENTICATOR_SECRET);
+        $this->em()->getConnection()->executeStatement(
+            'UPDATE "user" SET totp_replacement_secret = ? WHERE email = ?',
+            [(new SodiumSecretCipher(self::PREVIOUS))->encrypt('KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU'), 'moving@twes.local'],
+        );
+
+        $tester = $this->rotate(self::PREVIOUS."\n");
+
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+        self::assertStringContainsString('Resealed 2 authenticator secrets', $tester->getDisplay());
+        $waiting = $this->em()->getConnection()->fetchOne('SELECT totp_replacement_secret FROM "user" WHERE email = ?', ['moving@twes.local']);
+        self::assertIsString($waiting);
+        self::assertSame('KRSXG5CTMVRXEZLUKRSXG5CTMVRXEZLU', static::getContainer()->get(SodiumSecretCipher::class)->decrypt($waiting));
+    }
+
     public function testASecretNoKeyOpensRefusesTheRunAndChangesNothing(): void
     {
         $this->createUser('first@twes.local', self::PASSWORD, authenticator: true);

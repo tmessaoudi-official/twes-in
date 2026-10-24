@@ -35,22 +35,28 @@ final readonly class ResealSecondFactors
             $resealed = [];
             $unreadable = 0;
             foreach ($this->users->withTotpSecret() as $user) {
-                $sealed = (string) $user->getTotpSecret();
-                if (null !== self::opened($this->current, $sealed)) {
-                    continue;
+                // The secret in force, and a new app's waiting beside it until confirmed: both move to the new key.
+                foreach (['inForce' => $user->getTotpSecret(), 'waiting' => $user->getTotpReplacementSecret()] as $which => $sealed) {
+                    if (null === $sealed || null !== self::opened($this->current, $sealed)) {
+                        continue;
+                    }
+                    $plain = self::opened($previous, $sealed);
+                    if (null === $plain) {
+                        ++$unreadable;
+                        continue;
+                    }
+                    $resealed[] = [$user, $which, $plain];
                 }
-                $plain = self::opened($previous, $sealed);
-                if (null === $plain) {
-                    ++$unreadable;
-                    continue;
-                }
-                $resealed[] = [$user, $plain];
             }
             if ($unreadable > 0) {
                 throw new SecondFactorsUnreadable($unreadable);
             }
-            foreach ($resealed as [$user, $plain]) {
-                $user->resealTotpSecret($this->current->encrypt($plain));
+            foreach ($resealed as [$user, $which, $plain]) {
+                if ('waiting' === $which) {
+                    $user->resealTotpReplacementSecret($this->current->encrypt($plain));
+                } else {
+                    $user->resealTotpSecret($this->current->encrypt($plain));
+                }
                 $this->users->save($user);
             }
 
