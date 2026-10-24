@@ -228,8 +228,8 @@ while IFS= read -r line; do
   # Run with this loop's input, as a block pasted into a terminal shares it: a command reading it cuts the list short.
   (cd "$shop" && bash -euo pipefail -c "${line#  }") >> "$WORK/restore.log" 2>&1 || { cat "$WORK/restore.log" >&2; fail "a restore command failed: ${line#  }"; }
 done < "$WORK/restore.txt"
-# The checkout, the stop, the two restores and the start: fewer ran means the list was cut, not that it worked.
-((ran == 5)) || { cat "$WORK/restore.log" >&2; fail "$ran restore commands ran, not the 5 twes restore-commands prints"; }
+# The hold, the checkout, the stop, the two restores, the hold ended and the start: fewer ran means the list was cut.
+((ran == 7)) || { cat "$WORK/restore.log" >&2; fail "$ran restore commands ran, not the 7 twes restore-commands prints"; }
 gone=$(sql "SELECT to_regclass('onprem_check_b') IS NULL" 2>&1) || true
 if [[ "$gone" != t ]]; then
   cat "$WORK/restore.log" >&2

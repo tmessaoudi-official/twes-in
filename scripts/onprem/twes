@@ -14,6 +14,8 @@
 #                                  schedule, then the update policy
 #   twes status                    what runs, its policy, address, health and backups
 #   twes restore-commands          what takes the installation back to the backup made before the last update
+#   twes hold on | off             a restore under way: tick and update act on nothing and start refuses, the start at
+#                                  boot included, until the hold ends; the restore's own commands hold and end it
 #   twes pin-key <file>            pins the developer's public release key: every release tag must verify against it
 #   twes install                   asks for the shop's facts, writes the values, pins the release key once its fingerprint
 #                                  is confirmed, installs the newest release and makes the operator; run again, it asks
@@ -30,7 +32,7 @@
 # checkout carries, which whoever forged a tag could change too.
 set -euo pipefail
 usage() {
-  echo "Usage: twes install | start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands | pin-key <file> | schedule" >&2
+  echo "Usage: twes install | start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands | hold (on | off) | pin-key <file> | schedule" >&2
   exit 2
 }
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -438,6 +440,7 @@ as_root() { if [[ "$(id -u)" == 0 ]]; then "$@"; else sudo "$@"; fi; }
 start() {
   local address why
   [[ -n "$(running)" ]] || refuse "nothing is deployed here yet: twes update installs the newest release"
+  ! on_hold || refuse "$(hold_said): once the restore is done, twes hold off, then twes start"
   # The boot's start, tick's and a shortcut clicked twice would otherwise run compose over each other: one waits for the
   # other, which ends within Docker's tries and a compose up.
   exec 9> "$state/start.lock"
@@ -454,15 +457,30 @@ start() {
   say "running: https://localhost here, https://$address from the shop's network (a phone trusts http://$address/root.crt once)"
 }
 
-# Each run reads no input: pasted as one block, docker compose run would take the lines after it as its own input.
+# A restore stops every container and outlasts a quarter hour: held, tick would otherwise start the installation again in
+# its middle, on a database being restored, and the start at boot after a power cut too.
+on_hold() { [[ -f "$state/hold" ]]; }
+hold_said() { echo "held for a restore since $(shop_day "$(recall hold)") $(shop_time "$(recall hold)")"; }
+hold() {
+  case "$1" in
+    on) now > "$state/hold"; say "held: tick and update act on nothing and twes start refuses until twes hold off" ;;
+    off) rm -f "$state/hold"; say "hold ended: tick and update act again; twes start starts the installation" ;;
+    *) usage ;;
+  esac
+}
+
+# Each run reads no input: pasted as one block, docker compose run would take the lines after it as its own input. The
+# lines after the checkout run the release gone back to, which may predate the hold: its file is removed by name.
 restore_commands() { # label, commit, address
   local dc="LAN_HOST=$3 bash scripts/deploy/deploy.sh --compose $values"
   cat <<EOF
 Nothing was deleted. To go back to the moment before the update, on the shop's computer, in $root:
+  bash scripts/onprem/twes hold on
   git checkout --detach $2
   $dc stop
   $dc run --rm --no-deps restore gosu postgres pgbackrest --stanza=twes --spool-path=/tmp --set=$1 --type=immediate --target-action=promote --delta restore < /dev/null
   $dc run --rm --no-deps restore restic restore latest --tag before-update --host twes --include /files --target / < /dev/null
+  rm -f $state/hold
   bash scripts/onprem/twes start
 docs/RUNBOOK.md, « Restore a shop », gives each step and what to check after it.
 EOF
@@ -478,6 +496,7 @@ restore_last() {
 
 update() {
   local auto=${1:-} newest current previous='' label='' failure address why
+  ! on_hold || refuse "$(hold_said): no update until twes hold off"
   exec 8> "$state/update.lock"
   flock -n 8 || { say "an update is already running"; return 0; }
   resume_cut_update held
@@ -689,6 +708,7 @@ tick() {
   exec 8> "$state/update.lock"
   flock -n 8 || return 0
   [[ -f "$state/lan-host" ]] || { say "not started yet: twes start"; return 0; }
+  if on_hold; then say "$(hold_said): nothing done until twes hold off"; return 0; fi
   resume_cut_update held
   address=$(lan_address)
   if [[ "$address" != "$(recall lan-host)" ]]; then
@@ -777,6 +797,7 @@ status() {
   echo "release:  $(tag_of "$(running)")"
   echo "address:  https://localhost, https://$(recall lan-host '(not started)')"
   echo "updates:  $(value UPDATE_POLICY) $(value UPDATE_WINDOW)"
+  ! on_hold || echo "held:     $(hold_said | sed 's/^held //'): twes hold off once it is done"
   echo "backups to: $(backups_place)"
   if [[ "$(value BACKUP_OFFSITE)" == on ]]; then
     echo "off site: on, copied every hour"
@@ -802,6 +823,7 @@ case "${1:-}" in
   tick) [[ $# -eq 1 ]] || usage; tick ;;
   status) [[ $# -eq 1 ]] || usage; status ;;
   restore-commands) [[ $# -eq 1 ]] || usage; restore_last ;;
+  hold) [[ $# -eq 2 ]] || usage; hold "$2" ;;
   pin-key) [[ $# -eq 2 ]] || usage; pin_key "$2" ;;
   install) [[ $# -eq 1 ]] || usage; install ;;
   schedule) [[ $# -eq 1 ]] || usage; schedule ;;

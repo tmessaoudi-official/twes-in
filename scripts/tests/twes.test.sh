@@ -325,6 +325,9 @@ out=$(twes "$d" restore-commands); check "restore-commands: what takes it back t
 check "  from the release it left" 0 0 "$out" "git checkout --detach $(git -C "$d/twes-in" rev-parse "$OLD^{commit}")"
 check "  at this machine's address" 0 0 "$out" "LAN_HOST=192.168.1.20 bash scripts/deploy/deploy.sh --compose $d/etc/install.env stop"
 check "  then started again" 0 0 "$out" "  bash scripts/onprem/twes start"
+check "  held first, before anything is stopped" 0 0 "$(grep -m 1 '^  ' <<<"$out")" "  bash scripts/onprem/twes hold on"
+# The steps after the checkout run the release gone back to, which may predate the hold: its file is removed by name.
+check "  the hold ended just before the start" 0 0 "$(grep -B 1 '^  bash scripts/onprem/twes start$' <<<"$out" | head -n 1)" "  rm -f $d/etc/state/hold"
 # Pasted as one block, a command reading its input would take the lines after it as that input, and they never run.
 runs=$(grep -c ' run --rm ' <<<"$out"); safe=$(grep -c ' run --rm .* < /dev/null$' <<<"$out")
 check "  safe to paste as one block: both restores read no input" 0 0 "$runs $safe" "2 2"
@@ -461,6 +464,21 @@ sed -i -e 's|^BACKUP_S3_ENDPOINT=.*|BACKUP_S3_ENDPOINT=s3.example|' -e 's|^BACKU
   -e 's|^BACKUP_S3_KEY=.*|BACKUP_S3_KEY=k|' -e 's|^BACKUP_S3_SECRET=.*|BACKUP_S3_SECRET=s|' "$d/etc/install.env"
 out=$(twes "$d" offsite on); check "  given, it is switched on" $? 0 "$(grep '^BACKUP_OFFSITE=' "$d/etc/install.env")" "BACKUP_OFFSITE=on"
 check "  and the installation started again over it" 0 0 "$(deployed)" "--again"
+
+# A restore stops every container and runs for longer than a quarter hour: held, nothing scheduled starts them again.
+d=$(installed)
+out=$(twes "$d" hold on); check "hold on: what is scheduled acts on nothing until the hold ends" $? 0 "$out" "twes hold off"
+out=$(ALL_BAD=1 twes "$d" tick); [[ "$(deployed)" != *--again* ]]; check "  held, an unhealthy tick starts nothing" $? 0 "$(deployed)" ""
+check "  and says it is held" 0 0 "$(cat "$d/etc/state/twes.log")" "held for a restore"
+[[ -z "$(told)" && -z "$(mailed)" ]]; check "  nor tells anyone the stopped installation is unhealthy" $? 0 "$(told)$(mailed)" ""
+out=$(ADDRESS=192.168.1.42 twes "$d" tick); [[ "$(deployed)" != *--again* ]]; check "  nor a new address" $? 0 "$(deployed)" ""
+out=$(twes "$d" start); check "  start refused while held, as the start at boot would run it mid-restore" $? 1 "$out" "held for a restore"
+[[ "$(deployed)" != *--again* ]]; check "  starting nothing" $? 0 "$(deployed)" ""
+out=$(twes "$d" update); check "  update refused while held" $? 1 "$out" "held for a restore"
+check "  twes status says so" 0 0 "$(twes "$d" status)" "held:     for a restore since 2026-10-21"
+out=$(twes "$d" hold off); check "hold off: what is scheduled acts again" $? 0 "$out" "hold ended"
+out=$(HEALTH_FAILS=1 twes "$d" tick); check "  an unhealthy tick starts it again" $? 0 "$(deployed)" "--again"
+out=$(twes "$d" hold); check "hold takes on or off" $? 2 "$out" "Usage"
 
 # tick
 d=$(installed)

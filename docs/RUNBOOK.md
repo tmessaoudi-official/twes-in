@@ -163,15 +163,19 @@ last update made there. They may be pasted as one block: each restore reads no i
 compose run` would otherwise take the lines after it as its own and they would never run. On the shop's computer, in the
 checkout:
 
-1. `git checkout --detach <the release before the update>`: the code that ran on that backup.
-2. `… deploy.sh --compose <values> stop`: every container stopped, no volume removed.
-3. `… run --rm --no-deps restore gosu postgres pgbackrest … --set=<label> --type=immediate --target-action=promote --delta
+1. `bash scripts/onprem/twes hold on`: the scheduled tick, an update and the start at boot act on nothing until the hold
+   ends; without it a tick in the middle of the restore starts the installation again on a database being written back.
+2. `git checkout --detach <the release before the update>`: the code that ran on that backup.
+3. `… deploy.sh --compose <values> stop`: every container stopped, no volume removed.
+4. `… run --rm --no-deps restore gosu postgres pgbackrest … --set=<label> --type=immediate --target-action=promote --delta
    restore < /dev/null`: the database's volume written back to the end of that backup; `--delta` rewrites only what differs.
-4. `… run --rm --no-deps restore restic restore latest --tag before-update --host twes --include /files --target / < /dev/null`: the
+5. `… run --rm --no-deps restore restic restore latest --tag before-update --host twes --include /files --target / < /dev/null`: the
    stored files as they were then.
-5. `bash scripts/onprem/twes start`: the release started again. Its migrate service waits until the restored database
+6. `rm -f <the values' folder>/state/hold`: the hold ended by its file's name, since the release gone back to may predate
+   `twes hold off`.
+7. `bash scripts/onprem/twes start`: the release started again. Its migrate service waits until the restored database
    takes writes, as it does once promoted.
-6. `twes status` must read health ok. Tell the shop the window between the backup and now: what was written in it is
+8. `twes status` must read health ok. Tell the shop the window between the backup and now: what was written in it is
    gone, and an invoice issued in it leaves a gap in its series to explain to their accountant.
 
 ## Restore a lost shop machine
@@ -187,14 +191,16 @@ It needs the off-site copy (`twes offsite on`, docs/START.md § 16): without it,
 2. In those values, `BACKUP_DIRECTORY` names an empty folder on the new backup drive and `BACKUP_FOLDER_ID=` is blank.
 3. `bash scripts/onprem/twes install`: it asks only what the values lack (the operator: give any, the restore replaces
    them), pins the release key and starts the newest release on an empty database.
-4. `… deploy.sh --compose ~/.twes-in/install.env stop`, then empty the backups' folder (it holds the empty database's
+4. `bash scripts/onprem/twes hold on` (install scheduled the quarter-hour tick, which would otherwise start the stack again
+   in the middle of steps 5 to 7 and write a new folder id), `… deploy.sh --compose ~/.twes-in/install.env stop`, then empty the backups' folder (it holds the empty database's
    first backup), and leave `BACKUP_FOLDER_ID=` blank again in the values.
 5. The folder from the bucket: `… run --rm --no-deps -T restore sh -c 'restic -o s3.bucket-lookup=<host|path, as
    BACKUP_S3_URI_STYLE> -r "$OFFSITE_REPOSITORY" restore latest --host twes --include /backup --target /' < /dev/null`.
 6. The database to the latest the folder holds: `… run --rm --no-deps restore gosu postgres pgbackrest --stanza=twes
    --spool-path=/tmp --type=default --delta restore < /dev/null`.
 7. The files: `… run --rm --no-deps restore restic restore latest --host twes --include /files --target / < /dev/null`.
-8. `bash scripts/onprem/twes start`: the folder is named again from its own `twes-in-backups.id`, the release started.
+8. `bash scripts/onprem/twes hold off`, then `bash scripts/onprem/twes start`: the folder is named again from its own
+   `twes-in-backups.id`, the release started.
    `twes status` must read health ok, then `… exec -T api bin/console app:invoices:verify-chain` and `app:data:check`.
 9. Tell the shop the window: what was written after the last off-site copy (an hour of the computer being on at most)
    is gone, and an invoice issued in it leaves a gap in its series to explain to their accountant.
