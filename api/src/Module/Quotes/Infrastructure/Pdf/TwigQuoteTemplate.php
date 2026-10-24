@@ -14,12 +14,13 @@ use App\Module\Quotes\Application\QuotePage;
 use App\Module\Quotes\Application\QuoteTemplate;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Application\Company\DemoCompanies;
+use App\Texts\Application\TextsInForce;
 use Twig\Environment;
 
 /** `templates/pdf/quote.html.twig`, worded from `translations/pdf.<language>.yaml`. */
 final readonly class TwigQuoteTemplate implements QuoteTemplate
 {
-    public function __construct(private Environment $twig, private CurrencyScales $scales, private CompanyLogo $logo, private DemoCompanies $demos)
+    public function __construct(private Environment $twig, private TextsInForce $texts, private CurrencyScales $scales, private CompanyLogo $logo, private DemoCompanies $demos)
     {
     }
 
@@ -27,7 +28,8 @@ final readonly class TwigQuoteTemplate implements QuoteTemplate
     {
         $company = $page->quote->getCompany();
 
-        return $this->twig->render('pdf/quote.html.twig', [
+        // In the wording the company gives its printed labels, else the installation's.
+        return $this->texts->for($company->getId(), fn (): string => $this->twig->render('pdf/quote.html.twig', [
             'page' => $page,
             'quote' => $page->quote,
             'header' => $page->quote->getHeader(),
@@ -38,6 +40,6 @@ final readonly class TwigQuoteTemplate implements QuoteTemplate
             'locale' => $page->language,
             'logo' => $this->logo->dataUri($company),
             'demo' => $this->demos->isDemo($company->getId()),
-        ]);
+        ]));
     }
 }

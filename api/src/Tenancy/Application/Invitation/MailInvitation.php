@@ -53,6 +53,7 @@ final readonly class MailInvitation
                 $company->getLocale(),
                 $company->getTimezone(),
                 $invitation->getExpiresAt(),
+                $company->getId(),
             );
         });
 

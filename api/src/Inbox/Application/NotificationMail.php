@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Inbox\Application;
 
+use Symfony\Component\Uid\Uuid;
+
 /**
  * One notification as a mail, in its reader's language and their order of a day and way of writing a number (`auto` for
  * the language's), with the token of the link that stops that kind's mail.
@@ -25,6 +27,8 @@ final readonly class NotificationMail
         public string $stopToken,
         public string $dateFormat = 'auto',
         public string $numberFormat = 'auto',
+        /** The company it is told in, whose wording the mail takes; null for what is about the account. */
+        public ?Uuid $companyId = null,
     ) {
     }
 }

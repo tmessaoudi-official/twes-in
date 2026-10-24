@@ -14,12 +14,13 @@ use App\Module\DeliveryNotes\Application\DeliveryNotePage;
 use App\Module\DeliveryNotes\Application\DeliveryNoteTemplate;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Application\Company\DemoCompanies;
+use App\Texts\Application\TextsInForce;
 use Twig\Environment;
 
 /** `templates/pdf/delivery_note.html.twig`, worded from `translations/pdf.<language>.yaml`. */
 final readonly class TwigDeliveryNoteTemplate implements DeliveryNoteTemplate
 {
-    public function __construct(private Environment $twig, private CurrencyScales $scales, private CompanyLogo $logo, private DemoCompanies $demos)
+    public function __construct(private Environment $twig, private TextsInForce $texts, private CurrencyScales $scales, private CompanyLogo $logo, private DemoCompanies $demos)
     {
     }
 
@@ -27,7 +28,8 @@ final readonly class TwigDeliveryNoteTemplate implements DeliveryNoteTemplate
     {
         $company = $page->note->getCompany();
 
-        return $this->twig->render('pdf/delivery_note.html.twig', [
+        // In the wording the company gives its printed labels, else the installation's.
+        return $this->texts->for($company->getId(), fn (): string => $this->twig->render('pdf/delivery_note.html.twig', [
             'page' => $page,
             'note' => $page->note,
             'header' => $page->note->getHeader(),
@@ -38,6 +40,6 @@ final readonly class TwigDeliveryNoteTemplate implements DeliveryNoteTemplate
             'locale' => $page->language,
             'logo' => $this->logo->dataUri($company),
             'demo' => $this->demos->isDemo($company->getId()),
-        ]);
+        ]));
     }
 }

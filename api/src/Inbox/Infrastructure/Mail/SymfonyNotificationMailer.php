@@ -13,6 +13,7 @@ use App\Inbox\Application\NotificationKinds;
 use App\Inbox\Application\NotificationMail;
 use App\Inbox\Application\NotificationMailer;
 use App\Shared\Infrastructure\Mail\MailFigures;
+use App\Texts\Application\TextsInForce;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -30,6 +31,7 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
 {
     public function __construct(
         private MailerInterface $mailer,
+        private TextsInForce $texts,
         private TranslatorInterface $translator,
         private NotificationKinds $kinds,
         private MailFigures $figures,
@@ -45,6 +47,14 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
     }
 
     public function send(NotificationMail $mail): void
+    {
+        // In the wording the company gives its texts, else the installation's.
+        $this->texts->for($mail->companyId, function () use ($mail): void {
+            $this->write($mail);
+        });
+    }
+
+    private function write(NotificationMail $mail): void
     {
         $key = str_replace('.', '_', $mail->type);
         $kind = $this->translator->trans("notification.kinds.$key", [], 'emails', $mail->locale);

@@ -55,6 +55,7 @@ final readonly class MailNotification
             $this->tokens->issue(new MailStop($userId, $companyId, $type)),
             $formats['dateFormat'],
             $formats['numberFormat'],
+            $companyId,
         ));
     }
 }

@@ -14,12 +14,13 @@ use App\Module\Purchases\Application\PurchaseOrderPage;
 use App\Module\Purchases\Application\PurchaseOrderTemplate;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Application\Company\DemoCompanies;
+use App\Texts\Application\TextsInForce;
 use Twig\Environment;
 
 /** `templates/pdf/purchase_order.html.twig`, worded from `translations/pdf.<language>.yaml`. */
 final readonly class TwigPurchaseOrderTemplate implements PurchaseOrderTemplate
 {
-    public function __construct(private Environment $twig, private CurrencyScales $scales, private CompanyLogo $logo, private DemoCompanies $demos)
+    public function __construct(private Environment $twig, private TextsInForce $texts, private CurrencyScales $scales, private CompanyLogo $logo, private DemoCompanies $demos)
     {
     }
 
@@ -27,7 +28,8 @@ final readonly class TwigPurchaseOrderTemplate implements PurchaseOrderTemplate
     {
         $company = $page->order->getCompany();
 
-        return $this->twig->render('pdf/purchase_order.html.twig', [
+        // In the wording the company gives its printed labels, else the installation's.
+        return $this->texts->for($company->getId(), fn (): string => $this->twig->render('pdf/purchase_order.html.twig', [
             'page' => $page,
             'order' => $page->order,
             'header' => $page->order->getHeader(),
@@ -40,6 +42,6 @@ final readonly class TwigPurchaseOrderTemplate implements PurchaseOrderTemplate
             'locale' => $page->language,
             'logo' => $this->logo->dataUri($company),
             'demo' => $this->demos->isDemo($company->getId()),
-        ]);
+        ]));
     }
 }

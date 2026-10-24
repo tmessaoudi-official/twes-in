@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\Mail;
 
 use App\Tenancy\Application\Invitation\InvitationMail;
 use App\Tenancy\Application\Invitation\InvitationMailer;
+use App\Texts\Application\TextsInForce;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -28,6 +29,7 @@ final readonly class SymfonyInvitationMailer implements InvitationMailer
 {
     public function __construct(
         private MailerInterface $mailer,
+        private TextsInForce $texts,
         private TranslatorInterface $translator,
         #[Autowire(param: 'app.mail.sender')]
         private string $sender,
@@ -37,6 +39,14 @@ final readonly class SymfonyInvitationMailer implements InvitationMailer
     }
 
     public function send(InvitationMail $mail): void
+    {
+        // In the wording the company gives its texts, else the installation's.
+        $this->texts->for($mail->companyId, function () use ($mail): void {
+            $this->write($mail);
+        });
+    }
+
+    private function write(InvitationMail $mail): void
     {
         $subject = $this->translator->trans(
             'invitation.subject',

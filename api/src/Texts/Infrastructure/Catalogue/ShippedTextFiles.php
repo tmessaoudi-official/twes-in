@@ -25,6 +25,9 @@ final class ShippedTextFiles implements ShippedTexts
     /** @var array<string, array<string, string>> each file's texts, by `<domain>|<language>` */
     private array $read = [];
 
+    /** @var list<string>|null */
+    private ?array $domains = null;
+
     public function __construct(
         private readonly Languages $languages,
         #[Autowire(param: 'app.texts.screen_directory')] private readonly string $screens,
@@ -38,6 +41,12 @@ final class ShippedTextFiles implements ShippedTexts
     }
 
     public function domains(): array
+    {
+        return $this->domains ??= $this->listed();
+    }
+
+    /** @return list<string> */
+    private function listed(): array
     {
         // Missing, every override would be refused as naming no text: an image built without its copy says so instead.
         is_file($this->screens.'/'.$this->languages->default().'.json')

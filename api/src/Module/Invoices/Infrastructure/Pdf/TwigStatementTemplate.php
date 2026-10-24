@@ -13,12 +13,13 @@ use App\Module\Invoices\Application\Statement\StatementPage;
 use App\Module\Invoices\Application\Statement\StatementTemplate;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Application\Company\DemoCompanies;
+use App\Texts\Application\TextsInForce;
 use Twig\Environment;
 
 /** `templates/pdf/statement.html.twig`, worded from `translations/pdf.<language>.yaml`. */
 final readonly class TwigStatementTemplate implements StatementTemplate
 {
-    public function __construct(private Environment $twig, private CompanyLogo $logo, private DemoCompanies $demos)
+    public function __construct(private Environment $twig, private TextsInForce $texts, private CompanyLogo $logo, private DemoCompanies $demos)
     {
     }
 
@@ -26,7 +27,8 @@ final readonly class TwigStatementTemplate implements StatementTemplate
     {
         $company = $page->company;
 
-        return $this->twig->render('pdf/statement.html.twig', [
+        // In the wording the company gives its printed labels, else the installation's.
+        return $this->texts->for($company->getId(), fn (): string => $this->twig->render('pdf/statement.html.twig', [
             'page' => $page,
             'statement' => $page->statement,
             'seller' => $page->seller,
@@ -35,6 +37,6 @@ final readonly class TwigStatementTemplate implements StatementTemplate
             'locale' => $page->language,
             'logo' => $this->logo->dataUri($company),
             'demo' => $this->demos->isDemo($company->getId()),
-        ]);
+        ]));
     }
 }

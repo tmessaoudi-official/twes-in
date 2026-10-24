@@ -17,12 +17,13 @@ use App\Module\Invoices\Application\Print\InvoiceTemplate;
 use App\Module\Invoices\Domain\Model\InvoiceLine;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Application\Company\DemoCompanies;
+use App\Texts\Application\TextsInForce;
 use Twig\Environment;
 
 /** `templates/pdf/invoice.html.twig`, worded from `translations/pdf.<language>.yaml`. */
 final readonly class TwigInvoiceTemplate implements InvoiceTemplate
 {
-    public function __construct(private Environment $twig, private CurrencyScales $scales, private CompanyLogo $logo, private DemoCompanies $demos)
+    public function __construct(private Environment $twig, private TextsInForce $texts, private CurrencyScales $scales, private CompanyLogo $logo, private DemoCompanies $demos)
     {
     }
 
@@ -33,7 +34,8 @@ final readonly class TwigInvoiceTemplate implements InvoiceTemplate
         // and its subtotal below the other.
         $sections = SectionSubtotals::of(array_map(static fn (InvoiceLine $line, array $fixed): array => [$line->getSection(), $fixed['net']], $page->invoice->getLines(), $page->figures->lines));
 
-        return $this->twig->render('pdf/invoice.html.twig', [
+        // In the wording the company gives its printed labels, else the installation's.
+        return $this->texts->for($company->getId(), fn (): string => $this->twig->render('pdf/invoice.html.twig', [
             'page' => $page,
             'invoice' => $page->invoice,
             'header' => $page->invoice->getHeader(),
@@ -47,6 +49,6 @@ final readonly class TwigInvoiceTemplate implements InvoiceTemplate
             'demo' => $this->demos->isDemo($company->getId()),
             'sectionStarts' => array_column(array_map(static fn (SectionSubtotal $section): array => ['at' => $section->firstLine, 'section' => $section], $sections), 'section', 'at'),
             'sectionEnds' => array_column(array_map(static fn (SectionSubtotal $section): array => ['at' => $section->lastLine(), 'section' => $section], $sections), 'section', 'at'),
-        ]);
+        ]));
     }
 }

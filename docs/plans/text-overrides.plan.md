@@ -19,6 +19,7 @@ first client's install, 2026-10-26).
 - [2026-10-24 19:19] ASSUMED (review): The permission is company.texts, in the company group beside company.settings, rather than company.texts.write: one action, worded as its neighbours are; the owner holds it through the wildcard (rule: one canon). Alternative: company.texts.write.
 - [2026-10-24 19:19] ASSUMED (review): Every refused text answers 422 {error: <reason>}, unknown_text included; a member without company.texts meets the guard's 404 as a stranger does; the reads by a member and with no session carry the screens' files alone, the API's texts (a payment instruction may hold a bank account) shown only in the writers' catalogue (rule: one canon, never silent; advisor 2026-10-24). Alternative: 404 for unknown_text, 403 for a member.
 - [2026-10-24 19:19] ASSUMED (review): The texts' routes are plain controllers, a key's dots and a part's colon in the path, which API Platform's .{_format} would not let through; the controller answers a version saved since as the /problems/record-changed JSON itself, since a plain route's exception renders Symfony's error page (no other plain controller reads a version: git grep, 2026-10-24); the operator's step-up is PlatformWriteStepUpListener's, one wall over /api/platform (a second check in the controller survived its sabotage, so it was removed) (rule: one canon; advisor 2026-10-24). Alternative: API Platform resources with the key in the body.
+- [2026-10-24 19:37] ASSUMED (review): The company a text is written for is named at each place that writes, TextsInForce::for(company, write), never read from the request: the worker writes mails and documents outside any request and never enables the company filter (git grep CompanyFilter::NAME, 2026-10-24). The five printed documents and the mails of a company's own life (an invitation, a notification) take the company's wording; the platform's own mails (company approved, payment declared or decided, sign-up, password reset, account deletion) the installation's, listed with why in CompanyWordingTest (rule: one canon; a fix is a class). Alternative: the company filter's parameter, which the worker never sets.
 
 ## Formal Plan
 
@@ -116,8 +117,8 @@ is a row laid over them at read time, never a rewritten file.
 |---|------|------|-------|----------|-------|
 | 1 | Table, shipped catalogue port and its copy in the images, the override and reset use cases with every refusal | M | done | 65b45c7a | api/src/Texts/** api/migrations/** infra/api/Dockerfile |
 | 2 | Read and write endpoints, permission, step-up, audit, live change | M | done | 7f97c7c7 | api/src/Texts/** |
-| 2b | The writers' catalogue: every overridable text with its original, the installation's and the company's value, `originalChanged`, searched and paged | M | done | - | api/src/Texts/** |
-| 3 | Mails and PDFs through the overrides | S | todo | - | api/src/Texts/** |
+| 2b | The writers' catalogue: every overridable text with its original, the installation's and the company's value, `originalChanged`, searched and paged | M | done | ff00056d | api/src/Texts/** |
+| 3 | Mails and PDFs through the overrides | S | done | - | api/src/Texts/** |
 | 4 | Web: the merge at load, on entering a company, on parts, on a live change | M | todo | - | web/src/app/shared/i18n/** |
 | 5 | « Textes » pages in Paramètres and /platform, texts in fr, en, ar, the guide | M | todo | - | web/src/app/settings/** web/src/app/platform/** web/public/i18n/** |
 <!-- /progress-block -->

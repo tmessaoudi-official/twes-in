@@ -43,6 +43,9 @@ use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\KeptNames;
 use App\Tests\Support\ShippedFiscalPresets;
+use App\Texts\Domain\Model\TextOverride;
+use App\Texts\Domain\ValueObject\TextAddress;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -304,6 +307,20 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         $html = $this->html(new DocumentDesign(), [], []);
 
         self::assertStringContainsString('<title>Facture d’acompte </title>', $html);
+    }
+
+    /** The printed labels are the company's own wording where it gave one, the installation's under it. */
+    public function testTheInvoicePrintsTheWordingOfTheCompanyItIsWrittenFor(): void
+    {
+        self::bootKernel();
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $company = $this->invoice->getCompany();
+        $em->persist($company);
+        $em->persist(new TextOverride(null, new TextAddress('fr', 'pdf', 'invoice.title'), 'Facture de vente', 'Facture', new \DateTimeImmutable()));
+        $em->persist(new TextOverride($company, new TextAddress('fr', 'pdf', 'invoice.title'), 'Facture client', 'Facture', new \DateTimeImmutable()));
+        $em->flush();
+
+        self::assertStringContainsString('<title>Facture client </title>', $this->html(new DocumentDesign(), [], []));
     }
 
     public function testALineDiscountIsPrintedAsItWasGivenAsARateOrAnAmount(): void
