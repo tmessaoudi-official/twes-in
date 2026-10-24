@@ -27,7 +27,8 @@ docker logout ghcr.io; docker manifest inspect ghcr.io/tmessaoudi-official/twes-
 ## 3. The first signed release — yours, your key signs it
 
 After step 2, on the release freeze, a commit CI published (the script tags HEAD; the date is the day you tag, `.1`
-that day's first release). The freeze is `83a0ae48`; a later freeze is named in the plan's Status, row 22:
+that day's first release: tagged on the 25th it is `v2026.10.25.1`, in all three lines). The freeze is `83a0ae48`; a
+later freeze is named in the plan's Status, row 22. The script pulls the three images itself:
 
 ```sh
 cd /stack/projects/twes-in
@@ -35,7 +36,7 @@ git fetch origin && git switch --detach 83a0ae48a8c4bef93fdaa2a86883b08ffec3b127
 bash scripts/release/tag-release.sh ghcr.io/tmessaoudi-official v2026.10.24.1
 git verify-tag v2026.10.24.1
 git push origin v2026.10.24.1
-git switch master
+git switch master && git pull --ff-only
 ```
 
 - Tag the release freeze or a later commit: it carries `twes hold` (671dd623). No shop, the J-1 machine included, is
