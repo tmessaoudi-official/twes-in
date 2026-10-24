@@ -92,6 +92,7 @@ final readonly class InvoiceWorkflow
      * @throws PartyIdentityMissing when the seller or the customer cannot be named as the law asks
      * @throws InvalidInvoice       on `lines[i]` when a line takes more of its delivery note than is left, or its note was cancelled
      * @throws InvalidInvoice       on `deposit` when a deposit invoice comes to more than its quote leaves once its other issued deposits are charged
+     *                              or its quote was billed otherwise since: its whole invoice stands, or notes that are not cancelled deliver it
      * @throws InvalidInvoice       on `lines[i].taxComponentIds` or `documentTaxComponentIds` when the customer's or the company's
      *                              regime, changed since the draft was saved, no longer charges one of its taxes
      * @throws InvalidInvoice       on `operationCategory` when the law asks what its operations are and neither a choice nor its lines say
@@ -267,6 +268,12 @@ final readonly class InvoiceWorkflow
     {
         $quoteId = $deposit->getQuoteId() ?? throw new \LogicException('A deposit is drawn from a quote.');
         $quote = $this->depositQuotes->heldNet($company, $quoteId) ?? throw new \LogicException('A deposit is drawn from a quote of its own company.');
+        // Read again under the quote's hold: a draft put back from « Récemment supprimés » was counted by nothing that
+        // billed the quote meanwhile, and issued it would bill what no invoice gives back.
+        $billed = $this->depositQuotes->billedOtherwise($company, $quoteId);
+        if (null !== $billed) {
+            throw new InvalidInvoice('deposit', $billed);
+        }
         $charged = Decimal::zero();
         foreach ($this->invoices->depositsOfQuotes($company->getId(), [$quoteId]) as $other) {
             if (!$other->getId()->equals($deposit->getId()) && !\in_array($other->getStatus(), [InvoiceStatus::Draft, InvoiceStatus::Cancelled], true)) {

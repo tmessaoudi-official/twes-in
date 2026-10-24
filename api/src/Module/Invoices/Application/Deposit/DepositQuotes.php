@@ -23,4 +23,10 @@ interface DepositQuotes
      * transaction ends, so that two deposits of it are issued one after the other; null when it is not the company's.
      */
     public function heldNet(Company $company, Uuid $quoteId): ?string;
+
+    /**
+     * Why the quote takes no more deposit, billed otherwise since: its whole invoice still stands, or delivery notes that
+     * are not cancelled deliver it, whose invoices give no deposit back. Null when neither, or when it is not the company's.
+     */
+    public function billedOtherwise(Company $company, Uuid $quoteId): ?string;
 }

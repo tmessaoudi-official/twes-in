@@ -259,6 +259,48 @@ final class QuoteDeliveriesTest extends ApiTestCase
         self::assertStringContainsString('is on an invoice drafted from it as a whole', $this->detail());
     }
 
+    /**
+     * A deposit draft in « Récemment supprimés » is counted by nothing that bills its quote otherwise: put back once the
+     * quote was invoiced through its notes or as a whole, it is refused at issue, before the series, naming the quote.
+     * Issued, it would bill money no invoice gives back.
+     */
+    public function testADepositPutBackFromTheBinIsRefusedAtIssueOnceItsQuoteWasBilledOtherwise(): void
+    {
+        $this->signedIn([...self::SELLER, 'company.read']);
+        foreach (['through its notes', 'as a whole'] as $way) {
+            $quoteId = $this->accepted();
+            $this->postJson($this->path('quotes', $quoteId).'/deposit-invoices', ['depositPercentage' => '30', 'depositAmount' => null]);
+            self::assertResponseIsSuccessful();
+            $depositId = $this->stringAt($this->listOf($this->json(), 'deposits')[0], 'invoiceId');
+            $this->postJson($this->path('record-removals'), ['subject' => 'invoice', 'ids' => [$depositId]]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            $removal = $this->stringAt($this->json(), 'id');
+            if ('as a whole' === $way) {
+                $this->postJson($this->path('quotes', $quoteId).'/invoice', null);
+                self::assertResponseIsSuccessful($way);
+                $invoiceId = $this->stringAt($this->json(), 'invoiceId');
+            } else {
+                $this->postJson($this->deliver($quoteId), ['quantities' => null]);
+                self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $way);
+                $noteId = $this->stringAt($this->json(), 'id');
+                $this->postJson($this->path('delivery-notes', $noteId).'/validate', null);
+                self::assertResponseIsSuccessful();
+                $this->postJson($this->path('invoices').'/from-delivery-notes', ['deliveryNoteIds' => [$noteId]]);
+                self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+                $invoiceId = $this->stringAt($this->json(), 'id');
+            }
+            $this->postJson($this->path('invoices', $invoiceId).'/issue', null);
+            self::assertResponseIsSuccessful($way);
+            $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+            self::assertResponseIsSuccessful();
+
+            $this->postJson($this->path('invoices', $depositId).'/issue', null);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $way.': the quote is billed already, and nothing would give the deposit back');
+            self::assertStringContainsString($this->quoteNumber($quoteId), $this->detail(), $way.': the refusal names the quote');
+            self::assertSame('draft', $this->em()->getConnection()->fetchOne('SELECT status FROM invoice WHERE id = ?', [$depositId]), $way.': refused before the series');
+        }
+    }
+
     public function testTheGoodsLeaveOnceWithTheNotesAndTheirInvoicesBillThePriceAndTheDiscountAccepted(): void
     {
         $this->signedIn(self::SELLER);
