@@ -13,11 +13,14 @@ use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
 use App\Fiscal\Application\DocumentNames;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Customers\Domain\ValueObject\CustomerSnapshot;
 use App\Module\DeliveryNotes\Application\Invoices\DeliverableInvoices;
+use App\Module\DeliveryNotes\Application\Invoices\InvoiceToDeliver;
 use App\Module\DeliveryNotes\Application\Quotes\DeliverableQuotes;
+use App\Module\DeliveryNotes\Application\Quotes\QuoteToDeliver;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
@@ -113,6 +116,8 @@ final readonly class PrintDeliveryNote
         $printing = $note->getPrintSettings() ?? DeliveryNotePrinting::today($this->settings, $note);
         // A note has no copy: what it prints once numbered is its original, which names things as it was validated with.
         $names = $note->getPrintedNames() ?? $this->names->now($note->getCompany(), $printing->language, array_map(static fn (DeliveryNoteLine $line): Unit => $line->getUnit(), $note->getLines()));
+        $quote = $this->quoteOf($note);
+        $invoice = $this->invoiceOf($note);
 
         return $this->renderer->render($this->template->html(new DeliveryNotePage(
             $note,
@@ -120,7 +125,9 @@ final readonly class PrintDeliveryNote
             $note->getCustomerSnapshot() ?? CustomerSnapshot::of($note->getCustomer()),
             $note->getSellerSnapshot() ?? SellerSnapshot::of($note->getCompany(), $note->getEstablishment()),
             $watermark,
-            $printing->showPrices,
+            // A note carries no discount: priced, a note of a discounted quote or invoice would print more than the
+            // document it names, which the customer signs.
+            $printing->showPrices && !self::discounted($note, $quote, $invoice),
             $printing->language,
             $printing->print->printedNotes,
             $printing->receptionBlock,
@@ -130,25 +137,52 @@ final readonly class PrintDeliveryNote
             QuantityTotals::ofUnits(array_map(static fn (DeliveryNoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $note->getLines()), $names),
             $printing->print->exemptionReference,
             $names,
-            $this->quoteNumber($note),
-            $this->invoiceNumber($note),
+            $quote?->number,
+            $invoice?->number,
         )));
     }
 
-    /** The number of the issued invoice whose goods the note hands over, printed as its reference: an issued invoice keeps its number. */
-    private function invoiceNumber(DeliveryNote $note): ?string
+    /** The issued invoice whose goods the note hands over; its number is printed as its reference: an issued invoice keeps its number. */
+    private function invoiceOf(DeliveryNote $note): ?InvoiceToDeliver
     {
         $sources = array_values(array_filter(array_map(static fn (DeliveryNoteLine $line): ?Uuid => $line->getSourceInvoiceLineId(), $note->getLines())));
 
-        return [] === $sources ? null : ($this->invoices->ofLines($note->getCompany(), $sources, false)[0]->number ?? null);
+        return [] === $sources ? null : ($this->invoices->ofLines($note->getCompany(), $sources, false)[0] ?? null);
     }
 
-    /** The number of the accepted quote the note delivers, printed as its reference: a sent quote keeps its number. */
-    private function quoteNumber(DeliveryNote $note): ?string
+    /** The accepted quote the note delivers; its number is printed as its reference: a sent quote keeps its number. */
+    private function quoteOf(DeliveryNote $note): ?QuoteToDeliver
     {
         $sources = array_values(array_filter(array_map(static fn (DeliveryNoteLine $line): ?Uuid => $line->getSourceQuoteLineId(), $note->getLines())));
 
-        return [] === $sources ? null : ($this->quotes->ofLines($note->getCompany(), $sources, false)[0]->number ?? null);
+        return [] === $sources ? null : ($this->quotes->ofLines($note->getCompany(), $sources, false)[0] ?? null);
+    }
+
+    /** Whether a line the note delivers was discounted on its quote or invoice, on the line or on the whole. */
+    private static function discounted(DeliveryNote $note, ?QuoteToDeliver $quote, ?InvoiceToDeliver $invoice): bool
+    {
+        $quoteLines = [];
+        foreach ($quote->lines ?? [] as $line) {
+            $quoteLines[$line->id->toRfc4122()] = self::lowers($line->discountRate) || self::lowers($line->discountAmount);
+        }
+        $invoiceLines = [];
+        foreach ($invoice->lines ?? [] as $line) {
+            $invoiceLines[$line->id->toRfc4122()] = $line->discounted;
+        }
+        foreach ($note->getLines() as $line) {
+            $quoteLine = $line->getSourceQuoteLineId()?->toRfc4122();
+            $invoiceLine = $line->getSourceInvoiceLineId()?->toRfc4122();
+            if ((null !== $quoteLine && (true === $quote?->documentDiscount || ($quoteLines[$quoteLine] ?? false))) || (null !== $invoiceLine && ($invoiceLines[$invoiceLine] ?? false))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function lowers(?string $discount): bool
+    {
+        return null !== $discount && 0 !== Decimal::of($discount)->compare(Decimal::zero());
     }
 
     private static function fileName(DeliveryNote $note): string

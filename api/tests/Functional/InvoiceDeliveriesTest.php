@@ -274,6 +274,29 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $html = (string) end(static::getContainer()->get(FakePdfRenderer::class)->rendered);
         self::assertStringContainsString('<dt>Facture</dt><dd><bdi>'.$this->invoiceNumber($invoiceId).'</bdi>', $html);
+        self::assertStringContainsString('250,000', $html, 'an invoice with no discount: the note prints its prices');
+    }
+
+    /**
+     * A delivery note carries no discount: priced, it would print more than the invoice it names billed, which the
+     * customer signs. A note handing over the goods of a discounted invoice prints no prices, a discount on its line or
+     * on the whole.
+     */
+    public function testANoteOfADiscountedInvoicePrintsNoPrices(): void
+    {
+        $this->signedIn(self::SELLER);
+        foreach (['on its line' => ['lines' => [['productId' => $this->productId, 'quantity' => '6', 'discountRate' => '10']]], 'on the whole' => ['discountAmount' => '100']] as $where => $changes) {
+            $invoiceId = $this->draft($changes);
+            $this->postJson($this->path('invoices', $invoiceId).'/issue', null);
+            self::assertResponseIsSuccessful($where);
+            $this->postJson($this->deliver($invoiceId), ['quantities' => null]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $where);
+            $this->client->request('GET', $this->path('delivery-notes', $this->stringAt($this->json(), 'id')).'/pdf');
+            self::assertResponseIsSuccessful();
+            $html = (string) end(static::getContainer()->get(FakePdfRenderer::class)->rendered);
+            self::assertStringContainsString('<dt>Facture</dt><dd><bdi>'.$this->invoiceNumber($invoiceId).'</bdi>', $html, $where);
+            self::assertStringNotContainsString('250,000', $html, $where.': no price the invoice did not bill');
+        }
     }
 
     /** The company as the entity manager knows it now: the test client reboots the kernel between requests. */
@@ -297,9 +320,10 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
-    private function draft(): string
+    /** @param array<string, mixed> $changes */
+    private function draft(array $changes = []): string
     {
-        $this->postJson($this->path('invoices'), [
+        $this->postJson($this->path('invoices'), [...[
             'customerId' => $this->customer->getId()->toRfc4122(),
             'establishmentId' => null,
             'supplyDate' => null,
@@ -313,7 +337,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
                 ['productId' => $this->productId, 'quantity' => '6'],
                 ['description' => 'Pose', 'quantity' => '1.5', 'unitId' => $this->unitId('HUR'), 'unitPriceNet' => '40', 'taxComponentIds' => [$this->taxId('TVA19')]],
             ],
-        ]);
+        ], ...$changes]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
         return $this->stringAt($this->json(), 'id');

@@ -301,6 +301,29 @@ final class QuoteDeliveriesTest extends ApiTestCase
         }
     }
 
+    /**
+     * A delivery note carries no discount: priced, it would print more than the quote it names, which the customer signs.
+     * A note delivering a quote line with a discount prints no prices; one delivering lines without prints them.
+     */
+    public function testANoteOfADiscountedQuoteLinePrintsNoPrices(): void
+    {
+        $this->signedIn(self::SELLER);
+        foreach (['a discount on the line' => [], 'no discount' => ['lines' => [['productId' => $this->productId, 'quantity' => '6']]]] as $case => $changes) {
+            $quoteId = $this->accepted($changes);
+            $this->postJson($this->deliver($quoteId), ['quantities' => null]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $case);
+            $this->client->request('GET', $this->path('delivery-notes', $this->stringAt($this->json(), 'id')).'/pdf');
+            self::assertResponseIsSuccessful();
+            $html = (string) end(static::getContainer()->get(FakePdfRenderer::class)->rendered);
+            self::assertStringContainsString($this->quoteNumber($quoteId), $html, $case);
+            if ([] === $changes) {
+                self::assertStringNotContainsString('250,000', $html, $case.': no price the quote did not accept');
+            } else {
+                self::assertStringContainsString('250,000', $html, $case.': its prices are the quote\'s');
+            }
+        }
+    }
+
     public function testTheGoodsLeaveOnceWithTheNotesAndTheirInvoicesBillThePriceAndTheDiscountAccepted(): void
     {
         $this->signedIn(self::SELLER);

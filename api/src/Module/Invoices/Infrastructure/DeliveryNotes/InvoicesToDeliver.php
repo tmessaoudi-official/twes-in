@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\DeliveryNotes;
 
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Module\DeliveryNotes\Application\Invoices\DeliverableInvoices;
 use App\Module\DeliveryNotes\Application\Invoices\InvoiceLineToDeliver;
@@ -49,6 +50,7 @@ final readonly class InvoicesToDeliver implements DeliverableInvoices
     private static function toDeliver(Invoice $invoice): InvoiceToDeliver
     {
         $returned = GoodsToDeliver::returned($invoice);
+        $wholeDiscounted = self::lowers($invoice->getHeader()->discountAmount);
 
         return new InvoiceToDeliver(
             $invoice->getId(),
@@ -68,7 +70,13 @@ final readonly class InvoicesToDeliver implements DeliverableInvoices
                 $line->getUnitPriceNet(),
                 array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
                 $returned[$line->getId()->toRfc4122()] ?? '0.000',
+                $wholeDiscounted || self::lowers($line->getDiscountRate()) || self::lowers($line->getDiscountAmount()),
             ), GoodsToDeliver::lines($invoice)),
         );
+    }
+
+    private static function lowers(?string $discount): bool
+    {
+        return null !== $discount && 0 !== Decimal::of($discount)->compare(Decimal::zero());
     }
 }

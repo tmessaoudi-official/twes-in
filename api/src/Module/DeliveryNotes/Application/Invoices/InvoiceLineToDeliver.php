@@ -22,7 +22,9 @@ final readonly class InvoiceLineToDeliver
 {
     /**
      * @param list<TaxComponent> $taxes
-     * @param string             $returned the decimal quantity the issued credit notes of the line took back into stock
+     * @param string             $returned   the decimal quantity the issued credit notes of the line took back into stock
+     * @param bool               $discounted whether a discount on the line or on the whole invoice lowered what it billed
+     *                                       below its price, which a note, carrying none, would print
      */
     public function __construct(
         public Uuid $id,
@@ -34,6 +36,7 @@ final readonly class InvoiceLineToDeliver
         public string $unitPriceNet,
         public array $taxes,
         public string $returned,
+        public bool $discounted,
     ) {
     }
 }
