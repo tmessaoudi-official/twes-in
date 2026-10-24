@@ -22,6 +22,8 @@ services:
       # The container's own dependencies, cache and logs, never the host's: its paths are /app, the host's are not.
       - api-vendor:/app/vendor
       - api-var:/app/var
+      # The screens' texts as the image copies them, live (app.texts.screen_directory).
+      - ./web/public/i18n:/app/resources/screen-texts:ro
       - ./infra/api/live-entrypoint.sh:/usr/local/bin/live-entrypoint:ro
       - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
 

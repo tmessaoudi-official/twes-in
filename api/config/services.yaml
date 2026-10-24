@@ -55,6 +55,22 @@ parameters:
     # The reasons of a product's « À vérifier » the home's « À surveiller » leaves out (ProductCheckWatch): what clears only
     # product by product, which the products list's filter still finds. An import of 4,100 products lacking both read 4,013.
     app.watch.product_check_left_out: ['barcode_missing', 'category_missing']
+    # Text overrides (docs/plans/text-overrides.plan.md). The screens' texts as shipped: the image's copy of the web's
+    # public/i18n, mounted over it in live mode, read from the tree itself in tests.
+    app.texts.screen_directory: '%kernel.project_dir%/resources/screen-texts'
+    # The longest text an override may say, in characters.
+    app.texts.max_length: 2000
+    # What no override may change, by domain: `*` a whole domain, an exact key, or `prefix.*`. The fiscal texts, and the
+    # printed labels a mandatory mention or a legal status prints through (TN Code de la TVA art. 18-II, FR CGI annexe II
+    # art. 242 nonies A, docs/fiscal/TN.md § 7, FR.md § 4): the HT and TTC figures, the withholding, what a credit note
+    # corrects, the operation's category and date, the marks of a draft, a duplicate or a demo, and the formats.
+    app.texts.locked:
+        fiscal: ['*']
+        pdf: ['format.*', 'invoice.corrects', 'invoice.reason', 'invoice.supply_date', 'invoice.operations', 'invoice.operations_goods', 'invoice.operations_services', 'invoice.operations_both', 'invoice.fingerprint', 'line.unit_price', 'line.net', 'totals.subtotal', 'totals.total_net', 'totals.total_tax', 'totals.total', 'totals.withheld', 'watermark.*', 'demo.*', 'copy.*']
+    # The printed labels a company or the operator may word their own way; with the locked ones they class every key of
+    # pdf, so a label added is classed in the change that adds it (ShippedTextsTest).
+    app.texts.open:
+        pdf: ['company.*', 'delivery_note.*', 'purchase_order.*', 'invoice.title', 'invoice.deposit_title', 'invoice.deposit_share_line', 'invoice.deposit_line', 'invoice.deduction_line', 'invoice.late_fee_line', 'invoice.credit_note_title', 'invoice.customer', 'invoice.customer_number', 'invoice.issue_date', 'invoice.due_date', 'invoice.customer_reference', 'invoice.payment', 'invoice.credit_transfer', 'invoice.payment_terms', 'invoice.remarks', 'quote.*', 'line.discount', 'line.description', 'line.quantity', 'line.unit', 'line.taxes', 'line.section_subtotal', 'totals.document_discount', 'totals.amount_due', 'totals.in_words', 'totals.in_words_credit_note', 'totals.savings', 'totals.quantities', 'totals.currency', 'payment.*', 'stamp.*', 'statement.*']
     # The hour, in the server's time, at which the data checks run each day (CheckDataEveryNight).
     app.data_check.at: '02:30'
     # How long a failed sign-in keeps the address typed and the network address it came from (at least 12 months: the
@@ -146,6 +162,14 @@ services:
         # interface with a single implementation). Values and tags are attributes on the classes and interfaces that
         # take them (docs/SPEC.md § 7, 2026-10-01); what stays here is what no attribute can say.
 
+    # Domain services take no framework attribute, so their values are named here.
+    App\Texts\Domain\Service\TextLocks:
+        arguments:
+            $locked: '%app.texts.locked%'
+    App\Texts\Domain\Service\OverrideRules:
+        arguments:
+            $maxLength: '%app.texts.max_length%'
+
     League\Flysystem\FilesystemOperator:
         factory: ['App\Files\Infrastructure\Flysystem\FilesystemFactory', 'create']
         arguments:
@@ -161,6 +185,8 @@ services:
 
 when@test:
     parameters:
+        # The tests read the web's own texts in the tree, which the image copies.
+        app.texts.screen_directory: '%kernel.project_dir%/../web/public/i18n'
         # The same rule for the realtime push: the rows are asserted, the push is the adapter's own unit test.
         app.realtime.push_enabled: false
         # No test reaches the network: the check answers "not breached" and the use case is exercised through

@@ -28,3 +28,4 @@ phpstan.neon
 # Tool caches
 /.php-cs-fixer.cache
 /.phpunit.cache/
+/resources/screen-texts/

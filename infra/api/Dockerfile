@@ -43,6 +43,8 @@ COPY api/composer.json api/composer.lock api/symfony.lock ./
 RUN composer install --no-scripts --no-autoloader --prefer-dist --no-progress --no-interaction
 
 COPY api/ ./
+# The screens' texts as shipped, which a text override is checked against (app.texts.screen_directory).
+COPY web/public/i18n/ resources/screen-texts/
 RUN composer dump-autoload --optimize --classmap-authoritative \
  && composer run-script post-install-cmd --no-interaction \
  && bin/console api:openapi:export --output=var/openapi.json
@@ -89,6 +91,8 @@ COPY api/composer.json api/composer.lock api/symfony.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress --no-interaction
 
 COPY api/ ./
+# The screens' texts as shipped, which a text override is checked against (app.texts.screen_directory).
+COPY web/public/i18n/ resources/screen-texts/
 # The cache is warmed here, not at start, so the preload list opcache.preload reads exists before the server does,
 # and the contract is exported as in dev, for a web image built over this one. Both boot the kernel, which refuses
 # to start in prod without secrets of its own (src/Shared/Infrastructure/DevelopmentKeys.php): these two commands
