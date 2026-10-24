@@ -39,6 +39,7 @@ final class PasswordResetTest extends ApiTestCase
 
         $this->postJson(self::RESET, ['token' => $token, 'newPassword' => self::NEXT]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame(['password_reset'], $this->securityNotices(), 'its owner is told by mail');
 
         $this->client->request('GET', '/api/auth/me');
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED, 'the session open before the reset is over');

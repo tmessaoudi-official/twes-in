@@ -15,6 +15,8 @@ use App\Identity\Application\Mfa\IssueRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\SecondFactorUnreadable;
 use App\Identity\Application\SecretCipher;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Transactions;
@@ -37,6 +39,7 @@ final readonly class ConfirmTotpEnrolment
         private SecretCipher $cipher,
         private AuditTrail $audit,
         private Transactions $transactions,
+        private SecurityNotices $notices,
     ) {
     }
 
@@ -77,6 +80,7 @@ final readonly class ConfirmTotpEnrolment
             $codes = $this->issueRecoveryCodes->handle($user, $now);
 
             $this->audit->record(new AuditEntry('user', $user->getId(), self::ENROLLED, $user->getId(), ['method' => 'totp']));
+            $this->notices->tell($user->getId(), SecurityChange::AuthenticatorAdded);
 
             return $codes;
         });

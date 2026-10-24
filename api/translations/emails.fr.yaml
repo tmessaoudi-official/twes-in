@@ -114,3 +114,36 @@ account_deletion:
     final: 'La suppression sera définitive dans %days% jours, le %date% : votre compte et vos préférences seront alors effacés, et votre adresse retirée du journal.'
     cancel: 'Pour garder votre compte, reconnectez-vous avant cette date : la suppression sera annulée.'
     not_you: 'Si vous n’êtes pas à l’origine de cette demande, reconnectez-vous et changez votre mot de passe.'
+security_notice:
+    subject: 'Sécurité de votre compte %product% : %change%'
+    authenticator_added:
+        heading: 'Vérification en deux étapes activée'
+        body: 'Une application d’authentification a été ajoutée à votre compte : elle vous sera demandée à chaque connexion.'
+    authenticator_replaced:
+        heading: 'Application d’authentification remplacée'
+        body: 'L’application d’authentification de votre compte a été remplacée par une nouvelle : l’ancienne ne permet plus de se connecter, de nouveaux codes de secours ont été créés et vos autres sessions ont été fermées.'
+    authenticator_removed:
+        heading: 'Application d’authentification retirée'
+        body: 'L’application d’authentification de votre compte a été retirée : elle ne vous sera plus demandée à la connexion.'
+    passkey_added:
+        heading: 'Clé d’accès ajoutée'
+        body: 'Une clé d’accès a été ajoutée à votre compte : elle permet de confirmer que c’est bien vous.'
+    passkey_removed:
+        heading: 'Clé d’accès retirée'
+        body: 'Une clé d’accès a été retirée de votre compte : elle ne permet plus de vous connecter.'
+    password_changed:
+        heading: 'Mot de passe changé'
+        body: 'Le mot de passe de votre compte a été changé.'
+    password_reset:
+        heading: 'Mot de passe réinitialisé'
+        body: 'Le mot de passe de votre compte a été réinitialisé par le lien envoyé à cette adresse.'
+    recovery_codes_renewed:
+        heading: 'Nouveaux codes de secours'
+        body: 'De nouveaux codes de secours ont été créés pour votre compte : les précédents ne fonctionnent plus.'
+    factors_replaced:
+        heading: 'Facteurs de connexion réinitialisés'
+        body: 'La personne qui gère votre installation a retiré les seconds facteurs de votre compte (application d’authentification, codes de secours et, le cas échéant, clés d’accès) et fermé toutes vos sessions. À votre prochaine connexion avec votre mot de passe, vous en configurerez un nouveau.'
+    passkey: 'Clé concernée :'
+    if_you: 'Si c’est vous, il n’y a rien à faire.'
+    not_you: 'Si ce n’est pas vous et que vous pouvez encore vous connecter, changez votre mot de passe dans « Mon compte », puis vérifiez « Vérification en deux étapes ».'
+    locked_out: 'Si vous ne pouvez plus vous connecter, utilisez « Mot de passe oublié » ou un code de secours, ou demandez à la personne qui gère votre installation.'

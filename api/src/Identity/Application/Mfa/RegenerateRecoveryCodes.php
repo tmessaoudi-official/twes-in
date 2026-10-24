@@ -12,6 +12,8 @@ namespace App\Identity\Application\Mfa;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\SecretCipher;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Transactions;
@@ -36,6 +38,7 @@ final readonly class RegenerateRecoveryCodes
         private SecretCipher $cipher,
         private AuditTrail $audit,
         private Transactions $transactions,
+        private SecurityNotices $notices,
     ) {
     }
 
@@ -83,6 +86,7 @@ final readonly class RegenerateRecoveryCodes
             $codes = $this->issueRecoveryCodes->handle($user, $now);
 
             $this->audit->record(new AuditEntry('user', $user->getId(), self::REGENERATED, $user->getId(), ['count' => \count($codes), 'method' => 'totp']));
+            $this->notices->tell($user->getId(), SecurityChange::RecoveryCodesRenewed);
 
             return $codes;
         });

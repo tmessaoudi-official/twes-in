@@ -22,6 +22,7 @@ final class CompanyWordingTest extends TestCase
     private const array INSTALLATION_VOICE = [
         'Identity/Infrastructure/Mail/SymfonyAccountDeletionMailer.php' => 'about a person\'s own account, in no company',
         'Identity/Infrastructure/Mail/SymfonyPasswordResetMailer.php' => 'about a person\'s own account, in no company',
+        'Identity/Infrastructure/Mail/SymfonySecurityNoticeMailer.php' => 'about a person\'s own account, in no company',
         'Tenancy/Infrastructure/Mail/SymfonySignupMailer.php' => 'before any company exists',
         'Tenancy/Infrastructure/Mail/SymfonyCompanyApprovalMailer.php' => 'the platform telling an owner its company is open',
         'Licensing/Infrastructure/Mail/SymfonySubscriptionMailer.php' => 'the platform and a company settling its subscription',

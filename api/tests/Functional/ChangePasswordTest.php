@@ -12,6 +12,7 @@ namespace App\Tests\Functional;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mime\Email as MimeEmail;
 
 /** A signed-in person changes their own password: checked against the current one, and every session ends after it. */
 final class ChangePasswordTest extends ApiTestCase
@@ -33,6 +34,13 @@ final class ChangePasswordTest extends ApiTestCase
 
         $this->sendJson('PUT', self::PATH, ['currentPassword' => self::PASSWORD, 'newPassword' => self::NEXT]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame(['password_changed'], $this->securityNotices(), 'its owner is told by mail');
+        // The worker sends it, in the account's language, to its address.
+        $this->deliverQueued();
+        $mail = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $mail);
+        self::assertSame('someone@twes.local', $mail->getTo()[0]->getAddress());
+        self::assertStringContainsString('Mot de passe changé', (string) $mail->getSubject());
 
         $this->client->request('GET', '/api/auth/me');
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED, 'the session that changed it is over too');

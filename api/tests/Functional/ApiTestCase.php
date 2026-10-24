@@ -13,6 +13,7 @@ use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\Email;
+use App\Identity\Infrastructure\Mail\SecurityNoticeToMail;
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
 use App\Identity\Infrastructure\Security\CsrfRequestListener;
@@ -568,6 +569,20 @@ abstract class ApiTestCase extends WebTestCase
         }
 
         return $queued;
+    }
+
+    /**
+     * The security notices the last request queued, by the change each tells (SecurityChange's values). Read it before
+     * the next request, as queued() is.
+     *
+     * @return list<string>
+     */
+    protected function securityNotices(): array
+    {
+        return array_values(array_map(
+            static fn (SecurityNoticeToMail $notice): string => $notice->change,
+            array_filter($this->queued(), static fn (object $message): bool => $message instanceof SecurityNoticeToMail),
+        ));
     }
 
     /** Hands what is queued to the bus as the worker would, until nothing is left; how many it handed. */

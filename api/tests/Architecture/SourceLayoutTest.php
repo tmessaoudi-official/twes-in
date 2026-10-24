@@ -80,6 +80,7 @@ final class SourceLayoutTest extends TestCase
         'App\Demo\Infrastructure\Messenger\SandboxToBuild',
         'App\Demo\Infrastructure\Scheduler\TendDemoSandboxesEveryFiveMinutes',
         'App\Erasure\Infrastructure\Scheduler\EndErasuresEveryQuarterHour',
+        'App\Identity\Infrastructure\Mail\SecurityNoticeToMail',
         'App\Identity\Infrastructure\Password\PasswordResetAsked',
         'App\Identity\Infrastructure\Scheduler\FinalizeAccountDeletionsEveryNight',
         'App\Identity\Infrastructure\Security\SecurityUser',

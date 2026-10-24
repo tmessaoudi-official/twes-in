@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Identity\Application\Mfa\IssueRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactors;
 use App\Identity\Application\PasskeyCeremonies;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Model\Passkey;
 use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Identity\Domain\Repository\UserRepository;
@@ -39,6 +41,7 @@ final readonly class RegisterPasskey
         private SecondFactors $secondFactors,
         private AuditTrail $audit,
         private Transactions $transactions,
+        private SecurityNotices $notices,
     ) {
     }
 
@@ -64,6 +67,7 @@ final readonly class RegisterPasskey
                 'passkey' => $passkey->getId()->toRfc4122(),
                 'recoveryCodesIssued' => $first,
             ]));
+            $this->notices->tell($user->getId(), SecurityChange::PasskeyAdded, $name);
 
             return new RegisteredPasskey($passkey, $codes);
         });

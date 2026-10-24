@@ -12,6 +12,8 @@ namespace App\Identity\Application\Password;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\PasswordHasher;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\PasswordResetRepository;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\Repository\UserSessionRepository;
@@ -37,6 +39,7 @@ final readonly class ResetPassword
         private Transactions $transactions,
         private ClockInterface $clock,
         private UserSessionRepository $sessions,
+        private SecurityNotices $notices,
     ) {
     }
 
@@ -79,6 +82,7 @@ final readonly class ResetPassword
                 $this->audit->record(new AuditEntry('user', $user->getId(), ChangePassword::BREACH_CHECK_SKIPPED, $user->getId(), ['reason' => 'the breach service could not be reached']));
             }
             $this->audit->record(new AuditEntry('user', $user->getId(), self::RESET, $user->getId()));
+            $this->notices->tell($user->getId(), SecurityChange::PasswordReset);
         });
     }
 }

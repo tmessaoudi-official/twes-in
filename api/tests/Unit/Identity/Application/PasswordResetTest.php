@@ -25,6 +25,7 @@ use App\Tests\Support\InMemoryPasswordResetMailer;
 use App\Tests\Support\InMemoryPasswordResets;
 use App\Tests\Support\InMemorySessions;
 use App\Tests\Support\InMemoryUsers;
+use App\Tests\Support\RecordedSecurityNotices;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
@@ -186,7 +187,7 @@ final class PasswordResetTest extends TestCase
             }
         };
 
-        return new ResetPassword($this->users, $this->resets, $hasher, new NewPasswordPolicy(new FakeBreachedPasswordCheck(false)), $this->audit, $this->transactions, $this->clock, $this->sessions);
+        return new ResetPassword($this->users, $this->resets, $hasher, new NewPasswordPolicy(new FakeBreachedPasswordCheck(false)), $this->audit, $this->transactions, $this->clock, $this->sessions, new RecordedSecurityNotices());
     }
 
     private function assertNotUsable(callable $act): void

@@ -113,3 +113,36 @@ account_deletion:
     final: 'The deletion becomes final in %days% days, on %date%: your account and preferences will then be erased, and your address taken out of the journal.'
     cancel: 'To keep your account, sign in again before that date: the deletion will be cancelled.'
     not_you: 'If you did not ask for this, sign in and change your password.'
+security_notice:
+    subject: 'Security of your %product% account: %change%'
+    authenticator_added:
+        heading: 'Two-step verification turned on'
+        body: 'An authenticator app was added to your account: it will be asked for at every sign-in.'
+    authenticator_replaced:
+        heading: 'Authenticator app replaced'
+        body: 'Your account’s authenticator app was replaced by a new one: the old one no longer signs in, new recovery codes were made and your other sessions were ended.'
+    authenticator_removed:
+        heading: 'Authenticator app removed'
+        body: 'Your account’s authenticator app was removed: it will no longer be asked for at sign-in.'
+    passkey_added:
+        heading: 'Passkey added'
+        body: 'A passkey was added to your account: it confirms it is really you.'
+    passkey_removed:
+        heading: 'Passkey removed'
+        body: 'A passkey was removed from your account: it no longer signs you in.'
+    password_changed:
+        heading: 'Password changed'
+        body: 'Your account’s password was changed.'
+    password_reset:
+        heading: 'Password reset'
+        body: 'Your account’s password was reset through the link sent to this address.'
+    recovery_codes_renewed:
+        heading: 'New recovery codes'
+        body: 'New recovery codes were made for your account: the previous ones no longer work.'
+    factors_replaced:
+        heading: 'Sign-in factors reset'
+        body: 'Whoever runs your installation removed your account’s second factors (authenticator app, recovery codes and, where asked, passkeys) and ended all your sessions. At your next sign-in with your password, you will set up a new one.'
+    passkey: 'Passkey:'
+    if_you: 'If this was you, there is nothing to do.'
+    not_you: 'If this was not you and you can still sign in, change your password in “My account”, then check “Two-step verification”.'
+    locked_out: 'If you can no longer sign in, use “Forgot password” or a recovery code, or ask whoever runs your installation.'

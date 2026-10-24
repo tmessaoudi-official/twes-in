@@ -15,6 +15,8 @@ use App\Identity\Application\Mfa\IssueRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\SecondFactorUnreadable;
 use App\Identity\Application\SecretCipher;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Application\Session\ManageSessions;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Repository\UserRepository;
@@ -38,6 +40,7 @@ final readonly class ConfirmTotpReplacement
         private AuditTrail $audit,
         private Transactions $transactions,
         private ManageSessions $sessions,
+        private SecurityNotices $notices,
     ) {
     }
 
@@ -72,6 +75,7 @@ final readonly class ConfirmTotpReplacement
             $this->users->save($user);
             $codes = $this->issueRecoveryCodes->handle($user, $now);
             $this->audit->record(new AuditEntry('user', $user->getId(), self::REPLACED, $user->getId(), []));
+            $this->notices->tell($user->getId(), SecurityChange::AuthenticatorReplaced);
 
             return $codes;
         });

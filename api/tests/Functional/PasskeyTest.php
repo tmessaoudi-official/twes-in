@@ -46,6 +46,7 @@ final class PasskeyTest extends ApiTestCase
         self::assertCount(10, $this->arrayAt($body, 'recoveryCodes'));
         self::assertSame('Laptop', $this->stringAt($this->section($body, 'passkey'), 'name'));
         self::assertSame(1, $this->audited('auth.passkey_registered'));
+        self::assertSame(['passkey_added'], $this->securityNotices(), 'its owner is told by mail');
 
         $this->getJson('/api/auth/me');
         $mfa = $this->section($this->json(), 'mfa');
@@ -268,6 +269,7 @@ final class PasskeyTest extends ApiTestCase
         $this->sendJson('DELETE', '/api/auth/mfa/passkeys/'.$first);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         self::assertSame(1, $this->audited('auth.passkey_removed'));
+        self::assertSame(['passkey_removed'], $this->securityNotices(), 'its owner is told by mail');
 
         $this->sendJson('DELETE', '/api/auth/mfa/passkeys/'.$second);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
@@ -307,6 +309,7 @@ final class PasskeyTest extends ApiTestCase
         self::assertCount(10, $codes);
         self::assertSame([], array_values(array_intersect($codes, $first)));
         self::assertSame(1, $this->audited('auth.recovery_codes_regenerated'));
+        self::assertSame(['recovery_codes_renewed'], $this->securityNotices(), 'its owner is told by mail');
 
         // An old code no longer finishes a login; a new one does.
         $this->signOut();

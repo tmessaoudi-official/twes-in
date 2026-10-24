@@ -12,6 +12,8 @@ namespace App\Identity\Application\Mfa\Totp;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\Mfa\LastSecondFactor;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Domain\Repository\PasskeyRepository;
@@ -35,6 +37,7 @@ final readonly class RemoveAuthenticator
         private AuditTrail $audit,
         private Transactions $transactions,
         private ConfirmStepUp $stepUp,
+        private SecurityNotices $notices,
     ) {
     }
 
@@ -62,6 +65,7 @@ final readonly class RemoveAuthenticator
             $user->disableTotp();
             $this->users->save($user);
             $this->audit->record(new AuditEntry('user', $user->getId(), self::REMOVED, $user->getId(), []));
+            $this->notices->tell($user->getId(), SecurityChange::AuthenticatorRemoved);
         });
     }
 }

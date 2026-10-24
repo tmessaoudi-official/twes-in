@@ -41,6 +41,7 @@ final class ReplaceSecondFactorsCommandTest extends ApiTestCase
 
         self::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         self::assertStringContainsString('authenticator app and 3 recovery codes', $tester->getDisplay());
+        self::assertSame(['factors_replaced'], $this->securityNotices(), 'its owner is told by mail');
         $user = $this->userOf('lost@twes.local');
         self::assertFalse($user->hasTotp());
         self::assertSame(0, $this->rowsFor('recovery_code', $user));

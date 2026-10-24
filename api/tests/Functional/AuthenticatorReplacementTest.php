@@ -88,6 +88,7 @@ final class AuthenticatorReplacementTest extends ApiTestCase
         self::assertCount(10, $codes);
         self::assertNotSame($before, $this->recoveryCodesFor(self::EMAIL));
         self::assertSame(1, $this->audited('auth.totp_replaced'));
+        self::assertSame(['authenticator_replaced'], $this->securityNotices(), 'its owner is told by mail');
 
         // The old app no longer signs in; the new one does.
         $this->signOut();

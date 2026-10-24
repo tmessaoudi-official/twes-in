@@ -22,6 +22,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemorySessions;
 use App\Tests\Support\InMemoryUsers;
+use App\Tests\Support\RecordedSecurityNotices;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
@@ -102,7 +103,7 @@ final class ChangePasswordTest extends TestCase
 
         $clock = new MockClock('2026-10-02 12:00:00');
 
-        return new ChangePassword($this->users, $hasher, new PasswordAttempts($hasher, new RecordFailedLogin($this->users, $this->audit, $clock, 5, 'PT15M'), $clock, $this->transactions), new NewPasswordPolicy(new FakeBreachedPasswordCheck($breached)), $this->audit, $this->transactions, $clock, new InMemorySessions());
+        return new ChangePassword($this->users, $hasher, new PasswordAttempts($hasher, new RecordFailedLogin($this->users, $this->audit, $clock, 5, 'PT15M'), $clock, $this->transactions), new NewPasswordPolicy(new FakeBreachedPasswordCheck($breached)), $this->audit, $this->transactions, $clock, new InMemorySessions(), new RecordedSecurityNotices());
     }
 
     private function assertRefused(string $reason, callable $act): void

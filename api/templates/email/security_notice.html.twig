@@ -1,0 +1,19 @@
+{# The mail telling an account's owner that how it signs in changed, whoever changed it. Plain, inline-styled HTML: mail clients strip stylesheets. #}
+<!DOCTYPE html>
+<html lang="{{ app.locale }}" dir="{{ text_direction(app.locale) }}">
+  <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+    <div dir="{{ text_direction(app.locale) }}" lang="{{ app.locale }}">
+      <h1 style="font-size: 20px;">{{ ('security_notice.' ~ change ~ '.heading')|trans({}, 'emails') }}</h1>
+      <p>{{ ('security_notice.' ~ change ~ '.body')|trans({}, 'emails') }}</p>
+      {% if passkeyName is not null %}
+        <p>{{ 'security_notice.passkey'|trans({}, 'emails') }} <bdi dir="auto">{{ passkeyName }}</bdi></p>
+      {% endif %}
+      {% if not fromServer %}
+        <p>{{ 'security_notice.if_you'|trans({}, 'emails') }}</p>
+        <p>{{ 'security_notice.not_you'|trans({}, 'emails') }}</p>
+        <p>{{ 'security_notice.locked_out'|trans({}, 'emails') }}</p>
+      {% endif %}
+      <p dir="auto" style="font-size: 12px; color: #888;">{{ productName }}</p>
+    </div>
+  </body>
+</html>

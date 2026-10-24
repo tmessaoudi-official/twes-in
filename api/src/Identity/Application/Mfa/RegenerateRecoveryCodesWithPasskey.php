@@ -13,6 +13,8 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
@@ -30,6 +32,7 @@ final readonly class RegenerateRecoveryCodesWithPasskey
         private IssueRecoveryCodes $issueRecoveryCodes,
         private AuditTrail $audit,
         private Transactions $transactions,
+        private SecurityNotices $notices,
     ) {
     }
 
@@ -52,6 +55,7 @@ final readonly class RegenerateRecoveryCodesWithPasskey
                 'count' => \count($codes),
                 'method' => 'passkey',
             ]));
+            $this->notices->tell($user->getId(), SecurityChange::RecoveryCodesRenewed);
 
             return $codes;
         });

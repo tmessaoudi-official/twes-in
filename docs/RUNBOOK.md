@@ -258,6 +258,8 @@ operator can reset another's, so whoever runs the installation does it from the 
 2. `docker compose … exec -T api bin/console app:mfa:replace <their e-mail> --force` (without `--force`, from a terminal,
    it asks first). Add `--with-passkeys` when a passkey may have lived on the lost phone. It answers what it removed,
    ends every session of the account and records `auth.second_factors_replaced` in the audit, with no one as its author.
+   The account is told by mail that its factors were reset, once the worker runs: if the worker is down, the mail
+   leaves when it comes back (`docker compose … ps worker`).
 3. They sign in with their password and are held at the set-up until they enrol a new authenticator or passkey; the new
    recovery codes come with it. Tell them to add a passkey too, so one lost phone no longer locks them out.
 

@@ -25,6 +25,7 @@ final class DemoMailReachTest extends TestCase
     private const array WRITERS = [
         'Identity/Infrastructure/Mail/SymfonyAccountDeletionMailer.php' => 'to the account deleted; a demo is refused deleting it',
         'Identity/Infrastructure/Mail/SymfonyPasswordResetMailer.php' => 'to the account\'s own address: a sandbox\'s owner, caught',
+        'Identity/Infrastructure/Mail/SymfonySecurityNoticeMailer.php' => 'to the account\'s own address: a sandbox\'s owner, caught',
         'Inbox/Infrastructure/Mail/SymfonyNotificationMailer.php' => 'to members, a sandbox\'s owner caught; the operators\' mailed kind skips sandboxes',
         'Licensing/Infrastructure/Mail/SymfonySubscriptionMailer.php' => 'to the company\'s owners: a sandbox\'s owner, caught',
         'Tenancy/Infrastructure/Mail/SymfonyCompanyApprovalMailer.php' => 'to the company\'s owner: a sandbox\'s owner, caught',

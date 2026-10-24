@@ -40,6 +40,7 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
         self::assertCount(10, $codes);
         self::assertSame([], array_values(array_intersect($codes, $this->firstCodes)));
         self::assertSame(1, $this->audited('auth.recovery_codes_regenerated'));
+        self::assertSame(['recovery_codes_renewed'], $this->securityNotices(), 'its owner is told by mail');
 
         // An old code no longer finishes a login; a new one does.
         $this->signOut();

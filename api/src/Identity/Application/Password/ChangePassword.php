@@ -13,6 +13,8 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\Login\PasswordAttempts;
 use App\Identity\Application\PasswordHasher;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\Repository\UserSessionRepository;
 use App\Shared\Application\Transactions;
@@ -40,6 +42,7 @@ final readonly class ChangePassword
         private Transactions $transactions,
         private ClockInterface $clock,
         private UserSessionRepository $sessions,
+        private SecurityNotices $notices,
     ) {
     }
 
@@ -71,6 +74,7 @@ final readonly class ChangePassword
                 $this->audit->record(new AuditEntry('user', $user->getId(), self::BREACH_CHECK_SKIPPED, $user->getId(), ['reason' => 'the breach service could not be reached']));
             }
             $this->audit->record(new AuditEntry('user', $user->getId(), self::CHANGED, $user->getId()));
+            $this->notices->tell($user->getId(), SecurityChange::PasswordChanged);
         });
     }
 

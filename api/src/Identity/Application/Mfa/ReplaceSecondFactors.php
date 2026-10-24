@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Identity\Domain\Repository\RecoveryCodeRepository;
 use App\Identity\Domain\Repository\UserRepository;
@@ -34,6 +36,7 @@ final readonly class ReplaceSecondFactors
         private PasskeyRepository $passkeys,
         private AuditTrail $audit,
         private Transactions $transactions,
+        private SecurityNotices $notices,
     ) {
     }
 
@@ -60,6 +63,7 @@ final readonly class ReplaceSecondFactors
             $this->users->save($user);
             // Which kinds of factor went, never how many or which device: the trail says what happened, not what was held.
             $this->audit->record(new AuditEntry('user', $user->getId(), self::REPLACED, null, ['factors' => $replaced->kinds()]));
+            $this->notices->tell($user->getId(), SecurityChange::FactorsReplaced);
 
             return $replaced;
         });

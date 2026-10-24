@@ -128,6 +128,7 @@ final class MfaEnrolmentTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         self::assertCount(10, $this->arrayAt($this->json(), 'recoveryCodes'));
+        self::assertSame(['authenticator_added'], $this->securityNotices(), 'its owner is told by mail');
 
         // And it is in force from the next sign-in.
         $this->signOut();
@@ -264,6 +265,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->stepUp(self::PASSWORD);
         $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame(['authenticator_removed'], $this->securityNotices(), 'its owner is told by mail');
         $this->getJson('/api/auth/me');
         self::assertFalse($this->boolAt($this->section($this->json(), 'mfa'), 'totp'));
         self::assertSame(1, $this->audited('auth.totp_removed'));
