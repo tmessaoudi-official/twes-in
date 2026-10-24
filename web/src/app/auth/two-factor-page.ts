@@ -62,7 +62,11 @@ export class TwoFactorPage {
   protected readonly enrolled = computed(() => this.auth.me()?.mfa.enrolled === true);
   /** Replacing the recovery codes takes an authenticator code, so only an account with one is offered it. */
   protected readonly totp = computed(() => this.auth.me()?.mfa.totp === true);
-  protected readonly passkeysSupported = inject(PasskeyClient).supported();
+  private readonly passkeyClient = inject(PasskeyClient);
+  /** A passkey offered only where this browser, at this address, can use one. */
+  protected readonly passkeysSupported = computed(() => this.passkeyClient.supported());
+  /** The address the installation's passkeys work at, when this page's is not one. */
+  protected readonly passkeysElsewhere = computed(() => this.passkeyClient.elsewhere());
   /** What the lock-out warning reads: the factors as the session holds them, a code spent or a passkey added at once. */
   protected readonly mfa = computed(() => this.auth.me()?.mfa ?? null);
   protected readonly enrolment = signal<TotpEnrolment | null>(null);

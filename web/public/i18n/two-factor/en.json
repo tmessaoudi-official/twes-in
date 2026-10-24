@@ -29,6 +29,7 @@
       "passkeys_intro": "A passkey confirms it is you with your fingerprint, face or device PIN, instead of a code.",
       "passkeys_none": "No passkey yet.",
       "passkeys_unsupported": "This browser cannot use passkeys.",
+      "passkeys_elsewhere": "This installation’s passkeys work only at {{address}}: open it to add or use one.",
       "passkey_name": "Name",
       "passkey_name_hint": "So you can tell your devices apart, for example Work laptop.",
       "passkey_name_required": "Give the passkey a name.",

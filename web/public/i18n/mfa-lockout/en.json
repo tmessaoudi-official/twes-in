@@ -1,6 +1,7 @@
 {
   "mfa_lockout": {
     "single_device": "Your account depends on a single device: add a passkey and keep your recovery codes ({count, plural, one {{{count}} is left} other {{{count}} are left}}). Without them, losing this device locks the account.",
+    "single_device_elsewhere": "Your account depends on a single device: keep your recovery codes ({count, plural, one {{{count}} is left} other {{{count}} are left}}) and add a passkey by opening {{address}}. Without them, losing this device locks the account.",
     "codes_none": "You have no recovery code left: get a new set.",
     "codes_low": "{count, plural, one {Only one recovery code is left} other {Only {{count}} recovery codes are left}}: get a new set before they run out.",
     "required": "Your company requires this check: with neither device nor recovery code, contact whoever hosts your installation, the only one who can restore access.",

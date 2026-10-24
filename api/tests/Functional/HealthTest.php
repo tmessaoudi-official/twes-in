@@ -22,7 +22,22 @@ final class HealthTest extends WebTestCase
         self::assertResponseHeaderSame('content-type', 'application/json');
         $body = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         // An image built with no version (here, the test kernel) says so rather than inventing one.
-        self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => null, 'commit' => null, 'mode' => 'test'], 'deployment' => null, 'statusUrl' => null], $body);
+        self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => null, 'commit' => null, 'mode' => 'test'], 'deployment' => null, 'statusUrl' => null, 'passkeys' => ['host' => 'localhost', 'address' => 'http://localhost:8090']], $body);
+    }
+
+    /**
+     * WebAuthn binds a passkey to one host, which every ceremony's options name already: the web reads it here, before
+     * anyone signs in, so a page opened at another address (a shop's network one) offers no passkey that cannot work
+     * and says where they do.
+     */
+    public function testHealthSaysWherePasskeysWork(): void
+    {
+        $client = static::createClient();
+        $client->request('GET', '/api/health');
+
+        $body = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($body);
+        self::assertSame(['host' => 'localhost', 'address' => 'http://localhost:8090'], $body['passkeys'] ?? null, 'the relying party\'s id and the first origin the API allows');
     }
 
     /**

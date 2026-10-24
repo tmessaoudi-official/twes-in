@@ -46,6 +46,7 @@
       "totp_not_enrolled": "Aucune application d’authentification n’est configurée.",
       "passkey_cancelled": "Aucune clé d’accès n’a été utilisée. Réessayez en suivant les indications de votre appareil.",
       "passkey_already_registered": "Cet appareil contient déjà une clé d’accès pour ce compte.",
+      "passkey_not_here": "Les clés d’accès ne fonctionnent pas à cette adresse.",
       "demo_busy": "La démo se prépare : réessayez dans un instant.",
       "demo_off": "La démo est fermée.",
       "unknown_country": "Pas de démo pour ce pays.",

@@ -137,7 +137,11 @@ export class AccountPage implements OnInit {
   protected readonly twoFactorOn = computed(() => this.auth.me()?.mfa.enrolled === true);
   /** What the lock-out warning reads; its two actions are done on the two-step page. */
   protected readonly mfa = computed(() => this.auth.me()?.mfa ?? null);
-  protected readonly passkeysSupported = inject(PasskeyClient).supported();
+  private readonly passkeyClient = inject(PasskeyClient);
+  /** A passkey offered only where this browser, at this address, can use one. */
+  protected readonly passkeysSupported = computed(() => this.passkeyClient.supported());
+  /** The address the installation's passkeys work at, when this page's is not one. */
+  protected readonly passkeysElsewhere = computed(() => this.passkeyClient.elsewhere());
   /** A demo visitor's throwaway account takes no password, second factor nor deletion of its own: the API refuses them. */
   protected readonly demo = computed(() => this.auth.me()?.user.demo === true);
 

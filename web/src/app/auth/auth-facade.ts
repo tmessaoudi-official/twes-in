@@ -197,7 +197,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
     return codes;
   }
 
-  /** Whether this browser can answer a passkey ceremony at all. */
+  /** Whether a passkey ceremony can be answered here: by this browser, at this page's address. */
   passkeySupported(): boolean {
     return this.passkeyClient.supported();
   }
@@ -425,22 +425,22 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
 }
 
 /**
- * The browser's refusals come down to two things a person can act on: this device already holds a passkey for the
- * account (WebAuthn's excludeCredentials, reported as InvalidStateError), or no passkey was used at all.
+ * The browser's refusals come down to three things a person can act on: this device already holds a passkey for the
+ * account (WebAuthn's excludeCredentials, reported as InvalidStateError), this page's address cannot use the
+ * installation's passkeys (SecurityError: they are bound to another host), or no passkey was used at all.
  */
 async function fromBrowser<T>(ceremony: () => Promise<T>): Promise<T> {
   try {
     return await ceremony();
   } catch (error) {
-    throw refusedFor(
-      error,
-      new AuthRefused(
-        error instanceof DOMException && error.name === 'InvalidStateError'
-          ? 'passkey_already_registered'
-          : 'passkey_cancelled',
-      ),
-    );
+    throw refusedFor(error, new AuthRefused(browserRefusal(error)));
   }
+}
+
+function browserRefusal(error: unknown): LoginError {
+  if (!(error instanceof DOMException)) return 'passkey_cancelled';
+  if (error.name === 'InvalidStateError') return 'passkey_already_registered';
+  return error.name === 'SecurityError' ? 'passkey_not_here' : 'passkey_cancelled';
 }
 
 /** What the dialog says about a proof that did not hold; a passkey the account lacks and one the browser did not give read alike. */

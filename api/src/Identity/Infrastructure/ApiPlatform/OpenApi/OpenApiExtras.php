@@ -63,7 +63,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
         ]);
         $schemas['Health'] = new \ArrayObject([
             'type' => 'object',
-            'required' => ['status', 'database', 'build', 'deployment', 'statusUrl'],
+            'required' => ['status', 'database', 'build', 'deployment', 'statusUrl', 'passkeys'],
             'properties' => [
                 'status' => ['type' => 'string', 'enum' => ['ok', 'degraded']],
                 'database' => ['type' => 'string', 'enum' => ['ok', 'unreachable']],
@@ -78,6 +78,15 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                 ],
                 'deployment' => ['type' => ['string', 'null'], 'description' => 'The deployment this is (dev, staging, prod), null when it names none'],
                 'statusUrl' => ['type' => ['string', 'null'], 'description' => 'The public status page (support.status_url), null when none is set or the database does not answer'],
+                'passkeys' => [
+                    'type' => 'object',
+                    'required' => ['host', 'address'],
+                    'description' => 'Where passkeys work: WebAuthn binds them to one host, and a page at another address cannot use them',
+                    'properties' => [
+                        'host' => ['type' => 'string', 'description' => 'The relying party id passkeys are bound to'],
+                        'address' => ['type' => ['string', 'null'], 'description' => 'The first origin the API allows for them, the address to open'],
+                    ],
+                ],
             ],
         ]);
 

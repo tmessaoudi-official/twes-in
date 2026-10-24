@@ -36,7 +36,8 @@
                 @if (mfa(); as status) {
                   <app-mfa-lockout
                     [mfa]="status"
-                    [passkeysSupported]="passkeysSupported"
+                    [passkeysSupported]="passkeysSupported()"
+                    [passkeysElsewhere]="passkeysElsewhere()"
                     (addPasskey)="toTwoFactor()"
                     (newCodes)="toTwoFactor()"
                   />

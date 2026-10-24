@@ -24,6 +24,8 @@ use Symfony\Component\Routing\Attribute\Route;
  * image was built as (scripts/build-version.sh), the kernel's environment and the deployment, which the web's footer
  * shows to everyone (docs/SPEC.md § 7, the build line). The source they name is public under the AGPL already. And the
  * monitor's public status page, which the same footer links to: read only while the database answers, where it is kept.
+ * And where passkeys work, the host WebAuthn binds them to and the first address the API allows, which every passkey
+ * ceremony's options name already: a page opened at another address, a shop's network one, offers none that cannot work.
  */
 final readonly class HealthController
 {
@@ -34,6 +36,9 @@ final readonly class HealthController
         #[Autowire(env: 'BUILD_COMMIT')] private string $commit,
         #[Autowire('%kernel.environment%')] private string $mode,
         #[Autowire(env: 'DEPLOY_ENV')] private string $deployment,
+        #[Autowire(param: 'app.webauthn.rp_id')] private string $passkeyHost,
+        /** @var list<string> */
+        #[Autowire(param: 'app.webauthn.origins')] private array $passkeyOrigins,
     ) {
     }
 
@@ -49,6 +54,7 @@ final readonly class HealthController
                 'build' => ['version' => self::given($this->version), 'commit' => self::given($this->commit), 'mode' => $this->mode],
                 'deployment' => self::given($this->deployment),
                 'statusUrl' => $reachable ? $this->statusUrl() : null,
+                'passkeys' => ['host' => $this->passkeyHost, 'address' => $this->passkeyOrigins[0] ?? null],
             ],
             $reachable ? Response::HTTP_OK : Response::HTTP_SERVICE_UNAVAILABLE,
         );

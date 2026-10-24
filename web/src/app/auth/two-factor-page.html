@@ -22,7 +22,8 @@
         @if (mfa(); as status) {
           <app-mfa-lockout
             [mfa]="status"
-            [passkeysSupported]="passkeysSupported"
+            [passkeysSupported]="passkeysSupported()"
+            [passkeysElsewhere]="passkeysElsewhere()"
             (addPasskey)="toPasskeyName()"
             (newCodes)="renewCodes()"
           />
@@ -209,7 +210,7 @@
               </li>
             }
           </ul>
-          @if (passkeysSupported) {
+          @if (passkeysSupported()) {
             <button
               mat-stroked-button
               type="button"
@@ -230,7 +231,7 @@
             {{ 'auth.errors.' + errorCode | translate }}
           </p>
         }
-        @if (passkeysSupported) {
+        @if (passkeysSupported()) {
           <form
             [formGroup]="passkeyForm"
             (ngSubmit)="addPasskey()"
@@ -269,6 +270,10 @@
               }}
             </button>
           </form>
+        } @else if (passkeysElsewhere(); as address) {
+          <p class="text-sm" data-testid="two-factor-passkeys-elsewhere">
+            {{ 'auth.two_factor.passkeys_elsewhere' | translate: { address } }}
+          </p>
         } @else {
           <p class="text-sm" data-testid="two-factor-passkeys-unsupported">
             {{ 'auth.two_factor.passkeys_unsupported' | translate }}

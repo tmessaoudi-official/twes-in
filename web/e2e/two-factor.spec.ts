@@ -106,6 +106,12 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   await expect(page).toHaveURL(/\/two-factor$/);
   await expect(page.getByTestId('two-factor-enabled')).toBeVisible();
   await expect(page.getByTestId('mfa-lockout-said')).toBeVisible();
+  // The suite talks to 127.0.0.1, an address the stack's passkeys, bound to localhost, cannot work at: the page offers
+  // none and says where they do, rather than a ceremony the browser refuses (passkeys.spec.ts talks to localhost).
+  await expect(page.getByTestId('two-factor-passkeys-elsewhere')).toContainText('localhost');
+  await expect(page.getByTestId('mfa-lockout-said')).toContainText('localhost');
+  await expect(page.getByTestId('two-factor-passkey-form')).toHaveCount(0);
+  await expect(page.getByTestId('mfa-lockout-add-passkey')).toHaveCount(0);
   await page.getByTestId('mfa-lockout-new-codes').click();
   await expect(page.getByTestId('two-factor-regenerate-code')).toBeFocused();
   await expectAccessible(page, 'two-factor, already on');
@@ -131,6 +137,7 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   await signIn(page, invited, NEW_PASSWORD);
   await expect(page.getByTestId('mfa-form')).toBeVisible();
   await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByTestId('mfa-passkey')).toHaveCount(0);
   await expectAccessible(page, 'login, code step');
   await page.screenshot({ path: test.info().outputPath('login-code-step.png'), fullPage: true });
   await nextStep(page);

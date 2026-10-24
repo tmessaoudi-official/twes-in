@@ -58,7 +58,9 @@ export class LoginPage {
   protected readonly error = signal<LoginError | null>(null);
   protected readonly apiStatus = inject(HealthFacade).status;
   /** Offered only where the browser can answer with a passkey at all. */
-  protected readonly passkeysSupported = inject(PasskeyClient).supported();
+  private readonly passkeyClient = inject(PasskeyClient);
+  /** A passkey offered only where this browser, at this address, can use one. */
+  protected readonly passkeysSupported = computed(() => this.passkeyClient.supported());
   private readonly signup = inject(SignupFacade);
   /** Offered only while the platform's operators have opened signup. */
   protected readonly signupOpen = computed(() => this.signup.availability()?.enabled === true);

@@ -46,6 +46,7 @@
       "totp_not_enrolled": "No authenticator app is set up.",
       "passkey_cancelled": "No passkey was used. Try again, and follow what your device asks.",
       "passkey_already_registered": "This device already holds a passkey for this account.",
+      "passkey_not_here": "Passkeys do not work at this address.",
       "demo_busy": "The demo is getting ready: try again in a moment.",
       "demo_off": "The demo is closed.",
       "unknown_country": "No demo for this country.",

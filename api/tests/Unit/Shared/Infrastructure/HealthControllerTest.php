@@ -30,11 +30,11 @@ final class HealthControllerTest extends TestCase
         };
 
         // No setting declared at all: reading one would throw, so the status page is not asked of a database that is down.
-        $response = (new HealthController($probe, self::settings(), '2026.10.07.5', 'a7adf55f', 'prod', ''))();
+        $response = (new HealthController($probe, self::settings(), '2026.10.07.5', 'a7adf55f', 'prod', '', 'twes.example.com', ['https://twes.example.com']))();
 
         self::assertSame(503, $response->getStatusCode());
-        // Still says which build answers: the footer reads it from a degraded API too.
-        self::assertSame(['status' => 'degraded', 'database' => 'unreachable', 'build' => ['version' => '2026.10.07.5', 'commit' => 'a7adf55f', 'mode' => 'prod'], 'deployment' => null, 'statusUrl' => null], json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR));
+        // Still says which build answers and where passkeys work: the footer and the sign-in page read a degraded API too.
+        self::assertSame(['status' => 'degraded', 'database' => 'unreachable', 'build' => ['version' => '2026.10.07.5', 'commit' => 'a7adf55f', 'mode' => 'prod'], 'deployment' => null, 'statusUrl' => null, 'passkeys' => ['host' => 'twes.example.com', 'address' => 'https://twes.example.com']], json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR));
     }
 
     public function testAReachableDatabaseYieldsOk(): void
@@ -46,10 +46,10 @@ final class HealthControllerTest extends TestCase
             }
         };
 
-        $response = (new HealthController($probe, self::settings(new SupportSettings()), '2026.10.07.5', 'a7adf55f', 'prod', ''))();
+        $response = (new HealthController($probe, self::settings(new SupportSettings()), '2026.10.07.5', 'a7adf55f', 'prod', '', 'localhost', []))();
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => '2026.10.07.5', 'commit' => 'a7adf55f', 'mode' => 'prod'], 'deployment' => null, 'statusUrl' => null], json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR));
+        self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => '2026.10.07.5', 'commit' => 'a7adf55f', 'mode' => 'prod'], 'deployment' => null, 'statusUrl' => null, 'passkeys' => ['host' => 'localhost', 'address' => null]], json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR));
     }
 
     private static function settings(SupportSettings ...$declared): ReadSetting

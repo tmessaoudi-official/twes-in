@@ -39,6 +39,8 @@ export type LoginError =
   | 'passkey_cancelled'
   // The browser refused because this device already holds a passkey for the account. Never sent by the API.
   | 'passkey_already_registered'
+  // The browser refused because the installation's passkeys are bound to another host. Never sent by the API.
+  | 'passkey_not_here'
   // « Essayer la démo »: switched off since the page loaded, no sandbox ready yet, and a country it does not offer.
   | 'demo_off'
   | 'demo_busy'

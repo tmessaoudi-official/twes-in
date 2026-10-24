@@ -33,6 +33,7 @@ import { customerScreenInterceptor } from './shared/customer-view/customer-scree
 import { supportReadOnlyInterceptor } from './shared/support/support-read-only-interceptor';
 import { demoRefusedInterceptor } from './shared/demo/demo-refused-interceptor';
 import { csrfInterceptor } from './auth/csrf-interceptor';
+import { PasskeyClient } from './auth/passkey-client';
 import { ApiSettings } from './shared/settings/api-settings';
 import { BrowserStorageSettings } from './shared/settings/browser-storage-settings';
 import { SettingsFacade } from './shared/settings/settings-facade';
@@ -128,6 +129,9 @@ export const appConfig: ApplicationConfig = {
       inject(LanguageFacade);
       // The browser says once, early, that the application may be installed: heard before any page.
       inject(AppInstall);
+      // Where the installation's passkeys work, read once before the sign-in page: a page at another address (a shop's
+      // network one) offers none, rather than a ceremony the browser refuses. Not awaited: the browser decides meanwhile.
+      void inject(PasskeyClient).read();
       trackNavigation();
     }),
   ],

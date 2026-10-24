@@ -475,6 +475,13 @@ describe('AuthFacade', () => {
       ok: false,
       error: 'passkey_already_registered',
     });
+
+    // The browser refuses a passkey bound to another host: retrying here cannot help, which « cancelled » would say.
+    client.create.mockRejectedValue(new DOMException('Not this domain.', 'SecurityError'));
+    expect(await facade.addPasskey('Work laptop')).toEqual({
+      ok: false,
+      error: 'passkey_not_here',
+    });
   });
 
   it('removes a passkey and stops counting it, or says why it stays', async () => {

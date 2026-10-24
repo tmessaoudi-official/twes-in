@@ -105,7 +105,7 @@
         {{ (submitting() ? 'auth.mfa.submitting' : 'auth.mfa.submit') | translate }}
       </button>
 
-      @if (passkeysSupported) {
+      @if (passkeysSupported()) {
         <p class="twes-auth-section-label" aria-hidden="true">{{ 'auth.mfa.other' | translate }}</p>
         <button
           type="button"

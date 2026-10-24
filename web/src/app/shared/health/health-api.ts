@@ -7,6 +7,9 @@ import type { Health } from '../../api/types.gen';
 
 export type ApiStatus = 'ok' | 'degraded' | 'unreachable';
 
+/** Where the installation's passkeys work: the host WebAuthn binds them to, and the address to open. */
+export type PasskeyPlace = Health['passkeys'];
+
 /** GET /api/health as the SPA reads it: three words, never an exception. */
 @Injectable({ providedIn: 'root' })
 export class HealthApi {
@@ -21,6 +24,16 @@ export class HealthApi {
             ? 'degraded'
             : 'unreachable',
         ),
+      ),
+    );
+  }
+
+  /** Where passkeys work, as the API says it, a degraded API too; null when nobody answered. */
+  passkeys(): Observable<PasskeyPlace | null> {
+    return this.http.get<Health>('/api/health').pipe(
+      map((body) => body.passkeys),
+      catchError((error: HttpErrorResponse) =>
+        of((error.error as Partial<Health> | null)?.passkeys ?? null),
       ),
     );
   }

@@ -31,6 +31,7 @@ const mfa = (status: Partial<MfaStatus>): MfaStatus => ({
   template: `<app-mfa-lockout
     [mfa]="status()"
     [passkeysSupported]="supported()"
+    [passkeysElsewhere]="elsewhere()"
     (addPasskey)="added = added + 1"
     (newCodes)="renewed = renewed + 1"
   />`,
@@ -38,6 +39,7 @@ const mfa = (status: Partial<MfaStatus>): MfaStatus => ({
 class Host {
   readonly status = signal(mfa({}));
   readonly supported = signal(true);
+  readonly elsewhere = signal<string | null>(null);
   added = 0;
   renewed = 0;
 }
@@ -82,10 +84,11 @@ describe('MfaLockout', () => {
     });
   });
 
-  async function render(status: MfaStatus, supported = true) {
+  async function render(status: MfaStatus, supported = true, elsewhere: string | null = null) {
     const fixture = TestBed.createComponent(Host);
     fixture.componentInstance.status.set(status);
     fixture.componentInstance.supported.set(supported);
+    fixture.componentInstance.elsewhere.set(elsewhere);
     fixture.detectChanges();
     await fixture.whenStable();
     const q = (id: string): HTMLElement | null =>
@@ -127,6 +130,14 @@ describe('MfaLockout', () => {
     expect(q('mfa-lockout-said')?.textContent).toContain('mfa_lockout.single_device');
     expect(q('mfa-lockout-add-passkey')).toBeNull();
     expect(q('mfa-lockout-new-codes')).toBeNull();
+  });
+
+  it('says where a passkey is added when this address cannot use one, and offers none here', async () => {
+    const { q } = await render(mfa({ recoveryCodes: 8 }), false, 'https://localhost');
+
+    expect(q('mfa-lockout-said')?.textContent).toContain('mfa_lockout.single_device_elsewhere');
+    expect(q('mfa-lockout-add-passkey')).toBeNull();
+    expect(q('mfa-lockout-new-codes')).not.toBeNull();
   });
 
   it('shows nothing to an account that holds several ways in', async () => {

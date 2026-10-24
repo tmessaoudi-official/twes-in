@@ -44,7 +44,11 @@ export function lockoutRisk(mfa: MfaStatus): LockoutRisk | null {
         data-testid="mfa-lockout"
       >
         <p class="m-0" data-testid="mfa-lockout-said">
-          @if (risk.singleDevice) {
+          @if (risk.singleDevice && passkeysElsewhere(); as address) {
+            {{
+              'mfa_lockout.single_device_elsewhere' | translate: { count: risk.codesLeft, address }
+            }}
+          } @else if (risk.singleDevice) {
             {{ 'mfa_lockout.single_device' | translate: { count: risk.codesLeft } }}
           } @else if (risk.codesLeft === 0) {
             {{ 'mfa_lockout.codes_none' | translate }}
@@ -87,6 +91,8 @@ export class MfaLockout {
   readonly mfa = input.required<MfaStatus>();
   /** whether this browser can make a passkey: the offer to add one is not made where it cannot */
   readonly passkeysSupported = input(true);
+  /** the address the installation's passkeys work at, when this page's is not one: the warning says where to add one */
+  readonly passkeysElsewhere = input<string | null>(null);
   /**
    * New codes take an authenticator code or a passkey this browser can use: an account with passkeys only, on a browser
    * that cannot use them, is not offered what it cannot do here.

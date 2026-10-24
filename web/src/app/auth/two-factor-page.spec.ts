@@ -69,6 +69,11 @@ describe('TwoFactorPage', () => {
   let stepUp: { request: ReturnType<typeof vi.fn> };
   /** What the removal's confirmation answers: yes, unless a case keeps the factor. */
   let dialog: { open: ReturnType<typeof vi.fn> };
+  /** This browser at this address: passkeys work here unless a case opens the page elsewhere. */
+  let passkeyClient: { supported: () => boolean; elsewhere: () => string | null };
+  beforeEach(() => {
+    passkeyClient = { supported: () => true, elsewhere: () => null };
+  });
 
   async function render(
     mfa: MfaStatus,
@@ -101,7 +106,7 @@ describe('TwoFactorPage', () => {
         provideRouter([]),
         { provide: AuthFacade, useValue: facade },
         { provide: Session, useExisting: AuthFacade },
-        { provide: PasskeyClient, useValue: { supported: () => true } },
+        { provide: PasskeyClient, useValue: passkeyClient },
         { provide: StepUp, useValue: stepUp },
         { provide: MatDialog, useValue: dialog },
         provideStillAppearance(),
@@ -643,6 +648,25 @@ describe('TwoFactorPage', () => {
 
     expect(facade.regenerateRecoveryCodesWithPasskey).toHaveBeenCalledTimes(1);
     expect(rendered.query('two-factor-recovery-codes')).not.toBeNull();
+  });
+
+  it('offers no passkey at an address that cannot use one, and says where they work', async () => {
+    passkeyClient = { supported: () => false, elsewhere: () => 'https://localhost' };
+    const { query } = await render({
+      enrolled: true,
+      required: false,
+      totp: true,
+      passkeys: 0,
+      recoveryCodes: 8,
+    });
+
+    expect(query('two-factor-passkeys-elsewhere')?.textContent).toContain(
+      'auth.two_factor.passkeys_elsewhere',
+    );
+    expect(query('two-factor-passkey-form')).toBeNull();
+    expect(query('two-factor-passkeys-unsupported')).toBeNull();
+    expect(query('mfa-lockout-said')?.textContent).toContain('mfa_lockout.single_device_elsewhere');
+    expect(query('mfa-lockout-add-passkey')).toBeNull();
   });
 
   it('says nothing to an account that holds an authenticator, a passkey and its codes', async () => {
