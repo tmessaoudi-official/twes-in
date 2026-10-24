@@ -28,6 +28,8 @@ final class TextsOpenApiTest extends KernelTestCase
 
         self::assertSame('installationScreenTexts', $paths->getPath('/api/texts/{language}')?->getGet()?->getOperationId());
         self::assertSame('companyScreenTexts', $paths->getPath('/api/companies/{companyId}/texts/{language}')?->getGet()?->getOperationId());
+        self::assertSame('installationTextCatalogue', $paths->getPath('/api/platform/texts/{language}/catalogue')?->getGet()?->getOperationId());
+        self::assertSame('companyTextCatalogue', $paths->getPath('/api/companies/{companyId}/texts/{language}/catalogue')?->getGet()?->getOperationId());
         $platform = $paths->getPath('/api/platform/texts/{language}/{domain}/{key}');
         self::assertNotNull($platform);
         self::assertSame('overrideInstallationText', $platform->getPut()?->getOperationId());
@@ -40,6 +42,8 @@ final class TextsOpenApiTest extends KernelTestCase
         self::assertSame(['value', 'version'], self::plain($schemas['TextOverrideChange'])['required'] ?? null);
         self::assertSame(['value', 'original', 'version'], self::plain($schemas['TextOverride'])['required'] ?? null);
         self::assertSame(['error', 'detail'], self::plain($schemas['TextOverrideRefusal'])['required'] ?? null);
+        self::assertSame(['domain', 'key', 'original', 'installation', 'company', 'version', 'originalChanged'], self::plain($schemas['TextCatalogueEntry'])['required'] ?? null);
+        self::assertSame(['items', 'total', 'page', 'itemsPerPage'], self::plain($schemas['TextCataloguePage'])['required'] ?? null);
     }
 
     /** @return array<array-key, mixed> */

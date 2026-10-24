@@ -66,6 +66,30 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
             ],
         ]);
 
+        $schemas['TextCatalogueEntry'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['domain', 'key', 'original', 'installation', 'company', 'version', 'originalChanged'],
+            'properties' => [
+                'domain' => ['type' => 'string'],
+                'key' => ['type' => 'string'],
+                'original' => ['type' => 'string', 'description' => 'The text this release ships.'],
+                'installation' => ['type' => ['string', 'null'], 'description' => 'The installation\'s wording, null where none.'],
+                'company' => ['type' => ['string', 'null'], 'description' => 'The company\'s own wording; always null in the installation\'s catalogue.'],
+                'version' => ['type' => 'integer', 'description' => 'The version of the reader\'s own level, 0 where it words nothing.'],
+                'originalChanged' => ['type' => 'boolean', 'description' => 'The reader\'s own wording was written over another original than this release ships.'],
+            ],
+        ]);
+        $schemas['TextCataloguePage'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['items', 'total', 'page', 'itemsPerPage'],
+            'properties' => [
+                'items' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/TextCatalogueEntry'], 'description' => 'In the files\' order: the screens, each page\'s own, then the API\'s.'],
+                'total' => ['type' => 'integer'],
+                'page' => ['type' => 'integer'],
+                'itemsPerPage' => ['type' => 'integer'],
+            ],
+        ]);
+
         $json = static fn (string $schema, string $description): Response => new Response($description, new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/'.$schema]))]));
         $language = new Parameter('language', 'path', 'A language the screens speak', true, schema: ['type' => 'string']);
         $company = new Parameter('companyId', 'path', 'The company', true, schema: ['type' => 'string', 'format' => 'uuid']);
@@ -83,6 +107,15 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
         ];
         $notSpoken = new Response('Not a language the screens speak');
 
+        $find = [
+            new Parameter('q', 'query', 'Words the text says in any wording, or its key; case and accents aside', false, schema: ['type' => 'string']),
+            new Parameter('domain', 'query', 'One file', false, schema: ['type' => 'string']),
+            new Parameter('changed', 'query', 'Only the texts whose original changed since the reader\'s own was written', false, schema: ['type' => 'boolean']),
+            new Parameter('page', 'query', 'From 1', false, schema: ['type' => 'integer', 'minimum' => 1]),
+            new Parameter('itemsPerPage', 'query', 'Up to app.texts.catalogue_page_max', false, schema: ['type' => 'integer', 'minimum' => 1]),
+        ];
+        $badQuery = new Response('invalid_query');
+
         $paths = $openApi->getPaths();
         $paths->addPath('/api/texts/{language}', new PathItem(get: new Operation(
             operationId: 'installationScreenTexts',
@@ -97,6 +130,20 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
             responses: ['200' => $json('ScreenTextOverrides', 'The installation\'s, the company\'s own over them'), '304' => new Response('Unchanged'), '401' => new Response('Not signed in'), '404' => $notSpoken],
             summary: 'The screens\' texts worded otherwise in a company',
             parameters: [$company, $language],
+        )));
+        $paths->addPath('/api/platform/texts/{language}/catalogue', new PathItem(get: new Operation(
+            operationId: 'installationTextCatalogue',
+            tags: ['Texts'],
+            responses: ['200' => $json('TextCataloguePage', 'Every text the installation may word otherwise'), '401' => new Response('Not signed in'), '403' => new Response('Not an operator'), '404' => $notSpoken, '422' => $badQuery],
+            summary: 'The texts an operator may word otherwise, found and paged',
+            parameters: [$language, ...$find],
+        )));
+        $paths->addPath('/api/companies/{companyId}/texts/{language}/catalogue', new PathItem(get: new Operation(
+            operationId: 'companyTextCatalogue',
+            tags: ['Texts'],
+            responses: ['200' => $json('TextCataloguePage', 'Every text the company may word otherwise'), '401' => new Response('Not signed in'), '404' => new Response('No such company for this person, or company.texts not held there; or not a language the screens speak'), '422' => $badQuery],
+            summary: 'The texts a company may word otherwise, beside the installation\'s, found and paged',
+            parameters: [$company, $language, ...$find],
         )));
         $paths->addPath('/api/platform/texts/{language}/{domain}/{key}', new PathItem(
             put: new Operation(

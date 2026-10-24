@@ -50,4 +50,13 @@ final class TypedTextTest extends TestCase
         self::assertNull(TypedText::trimmedOrNull("\u{200B} "));
         self::assertSame('Note', TypedText::trimmedOrNull("\u{00A0}Note"));
     }
+
+    /** What a search compares: the ends trimmed, the case and the accents and vowel marks gone, nothing else. */
+    public function testAFoldedTextKeepsItsLettersAlone(): void
+    {
+        self::assertSame('verification en deux etapes', TypedText::folded(" Vérification en deux ÉTAPES\u{00A0}"));
+        self::assertSame('facture n°', TypedText::folded('Facture N°'));
+        self::assertSame('فاتورة', TypedText::folded('فَاتُورَة'));
+        self::assertSame('', TypedText::folded("\u{200B}"));
+    }
 }

@@ -11,10 +11,14 @@ namespace App\Texts\Infrastructure\Http;
 
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Shared\Application\RecordChanged;
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Infrastructure\ApiPlatform\Output\RecordChangedProblem;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
+use App\Texts\Application\Catalogue\TextCatalogue;
+use App\Texts\Application\Catalogue\TextCatalogueEntry;
+use App\Texts\Application\Catalogue\TextCatalogueQuery;
 use App\Texts\Application\OverrideText;
 use App\Texts\Application\ReadTextOverrides;
 use App\Texts\Application\TextOverrideRefused;
@@ -22,6 +26,7 @@ use App\Texts\Domain\Model\TextOverride;
 use App\Texts\Domain\ValueObject\TextAddress;
 use App\Texts\Infrastructure\Security\TextsPermission;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -50,6 +55,9 @@ final readonly class TextsController
         private Security $security,
         private OverrideText $override,
         private ReadTextOverrides $read,
+        private TextCatalogue $catalogue,
+        #[Autowire(param: 'app.texts.catalogue_page_size')] private int $pageSize,
+        #[Autowire(param: 'app.texts.catalogue_page_max')] private int $pageMax,
     ) {
     }
 
@@ -64,6 +72,20 @@ final readonly class TextsController
     public function company(Request $request, string $companyId, string $language): Response
     {
         return $this->screens($request, $this->companyFor($companyId, TextsPermission::READ), $language);
+    }
+
+    #[Route('/api/platform/texts/{language}/catalogue', name: 'api_platform_text_catalogue', requirements: self::REQUIREMENTS, methods: ['GET'])]
+    public function installationCatalogue(Request $request, string $language): Response
+    {
+        $this->refuseUnlessOperator();
+
+        return $this->catalogue($request, null, $language);
+    }
+
+    #[Route('/api/companies/{companyId}/texts/{language}/catalogue', name: 'api_company_text_catalogue', requirements: self::REQUIREMENTS, methods: ['GET'])]
+    public function companyCatalogue(Request $request, string $companyId, string $language): Response
+    {
+        return $this->catalogue($request, $this->companyFor($companyId, TextsPermission::WRITE), $language);
     }
 
     #[Route('/api/platform/texts/{language}/{domain}/{key}', name: 'api_platform_text_write', requirements: self::REQUIREMENTS, methods: ['PUT'])]
@@ -111,6 +133,41 @@ final readonly class TextsController
         $response->isNotModified($request);
 
         return $response;
+    }
+
+    /** `q`, `domain`, `changed`, `page` from 1 and `itemsPerPage` up to app.texts.catalogue_page_max; anything else is refused. */
+    private function catalogue(Request $request, ?Company $company, string $language): Response
+    {
+        if (!$this->read->speaks($language)) {
+            throw new NotFoundHttpException(\sprintf('The screens do not speak %s.', $language));
+        }
+        $asked = $request->query;
+        $page = $asked->getString('page', '1');
+        $perPage = $asked->getString('itemsPerPage', (string) $this->pageSize);
+        $search = $asked->has('q') ? $asked->getString('q') : null;
+        $domain = $asked->has('domain') ? $asked->getString('domain') : null;
+        $changed = $asked->getString('changed', '0');
+        if (1 !== preg_match('/^[1-9][0-9]{0,5}$/', $page) || 1 !== preg_match('/^[1-9][0-9]{0,5}$/', $perPage) || (int) $perPage > $this->pageMax
+            || !\in_array($changed, ['0', '1', 'true', 'false'], true)) {
+            return new JsonResponse(['error' => 'invalid_query', 'detail' => \sprintf('page from 1, itemsPerPage from 1 to %d, q and domain a text, changed 1 or 0.', $this->pageMax)], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $query = new TextCatalogueQuery(TypedText::trimmedOrNull($search), TypedText::trimmedOrNull($domain), \in_array($changed, ['1', 'true'], true), (int) $page, (int) $perPage);
+        $found = $this->catalogue->page($company, $language, $query);
+
+        return new JsonResponse([
+            'items' => array_map(static fn (TextCatalogueEntry $entry): array => [
+                'domain' => $entry->domain,
+                'key' => $entry->key,
+                'original' => $entry->original,
+                'installation' => $entry->installation,
+                'company' => $entry->company,
+                'version' => $entry->version,
+                'originalChanged' => $entry->originalChanged,
+            ], $found['items']),
+            'total' => $found['total'],
+            'page' => $query->page,
+            'itemsPerPage' => $query->perPage,
+        ]);
     }
 
     private function write(Request $request, ?Company $company, TextAddress $address): Response

@@ -26,7 +26,7 @@ final readonly class LanguageNames
 
     public function documentLanguageOf(string $written): ?string
     {
-        $wanted = self::folded($written);
+        $wanted = TypedText::folded($written);
         if ('' === $wanted) {
             return null;
         }
@@ -36,20 +36,12 @@ final readonly class LanguageNames
                 $names[] = IntlLanguages::getName($tag, $screen);
             }
             foreach ($names as $name) {
-                if (self::folded($name) === $wanted) {
+                if (TypedText::folded($name) === $wanted) {
                     return $tag;
                 }
             }
         }
 
         return null;
-    }
-
-    private static function folded(string $text): string
-    {
-        $decomposed = \Normalizer::normalize(TypedText::trimmed($text), \Normalizer::FORM_D);
-        $plain = \is_string($decomposed) ? $decomposed : TypedText::trimmed($text);
-
-        return mb_strtolower((string) preg_replace('/\p{Mn}/u', '', $plain));
     }
 }

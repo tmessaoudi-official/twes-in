@@ -60,6 +60,9 @@ parameters:
     app.texts.screen_directory: '%kernel.project_dir%/resources/screen-texts'
     # The longest text an override may say, in characters.
     app.texts.max_length: 2000
+    # The texts a page of the writers' catalogue lists unless it asks another number, and the most it may ask.
+    app.texts.catalogue_page_size: 50
+    app.texts.catalogue_page_max: 200
     # What no override may change, by domain: `*` a whole domain, an exact key, or `prefix.*`. The fiscal texts, and the
     # printed labels a mandatory mention or a legal status prints through (TN Code de la TVA art. 18-II, FR CGI annexe II
     # art. 242 nonies A, docs/fiscal/TN.md § 7, FR.md § 4): the HT and TTC figures, the withholding, what a credit note

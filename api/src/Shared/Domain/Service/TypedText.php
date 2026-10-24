@@ -37,4 +37,16 @@ final class TypedText
 
         return '' === $value ? null : $value;
     }
+
+    /**
+     * What a search compares two texts by: trimmed, lower case, without the accents of a Latin letter or the vowel marks
+     * of an Arabic one (every combining mark, `\p{Mn}`, once decomposed). « Vérification » and « VERIFICATION » meet.
+     */
+    public static function folded(string $text): string
+    {
+        $text = self::trimmed($text);
+        $decomposed = \Normalizer::normalize($text, \Normalizer::FORM_D);
+
+        return mb_strtolower((string) preg_replace('/\p{Mn}/u', '', \is_string($decomposed) ? $decomposed : $text));
+    }
 }
