@@ -14,11 +14,14 @@ use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
+use App\Module\DeliveryNotes\Application\Invoices\InvoiceLines;
+use App\Module\DeliveryNotes\Application\Quotes\QuoteLines;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
+use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLineTax;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
 use App\Settings\Application\ReadSetting;
 use App\Shared\Application\DomainEvents;
@@ -54,6 +57,8 @@ final readonly class DeliveryNoteWorkflow
         private ReadSetting $settings,
         private DocumentNames $names,
         private ExcludedTaxFamilies $excluded,
+        private QuoteLines $quoteLines,
+        private InvoiceLines $invoiceLines,
     ) {
     }
 
@@ -147,6 +152,7 @@ final readonly class DeliveryNoteWorkflow
             throw new InvalidDeliveryNote('customerId', $note->getCustomer()->whySwitchedOff());
         }
         $this->chargedByItsRegimes($company, $note);
+        $this->stillDeliverable($company, $note);
         $allocated = $this->numbers->allocate($company, $note->getEstablishment(), self::DOCUMENT_TYPE);
         if ($this->notes->numberTaken($company->getId(), $allocated->number)) {
             throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()));
@@ -169,6 +175,30 @@ final readonly class DeliveryNoteWorkflow
         $this->record($company, $note, self::DELIVERED, ['deliveryDate' => $note->getHeader()->deliveryDate?->format('Y-m-d')], $actorUserId);
 
         return $note;
+    }
+
+    /**
+     * What the draft delivers of a quote or an invoice is checked again, under their locks, as it was when saved: a draft
+     * put back from « Récemment supprimés », or one a credit note or an invoice of the whole quote overtook, would
+     * otherwise deliver what is no longer left, its goods leaving stock and billed twice.
+     *
+     * @throws InvalidDeliveryNote
+     */
+    private function stillDeliverable(Company $company, DeliveryNote $note): void
+    {
+        $lines = array_map(static fn (DeliveryNoteLine $line): DeliveryNoteLineInput => new DeliveryNoteLineInput(
+            $line->getProduct()?->getId(),
+            $line->getDescription(),
+            $line->getQuantity(),
+            $line->getUnit()->getId(),
+            $line->getUnitPriceNet(),
+            array_map(static fn (DeliveryNoteLineTax $tax): Uuid => $tax->getTaxComponent()->getId(), $line->getTaxes()),
+            $line->getLotCode(),
+            $line->getSourceQuoteLineId(),
+            $line->getSourceInvoiceLineId(),
+        ), $note->getLines());
+        $this->invoiceLines->resolved($company, $lines, $note->getCustomer(), $note->getEstablishment(), $note, true);
+        $this->quoteLines->resolved($company, $lines, $note->getCustomer(), $note->getEstablishment(), $note, true);
     }
 
     /** Held until the transaction ends and read as it stands: a status check on it cannot be overtaken by another request. */

@@ -63,6 +63,8 @@ use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\NoInvoicesToDeliver;
+use App\Tests\Support\NoQuotesToDeliver;
 use App\Tests\Support\RecordingDomainEvents;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
@@ -118,6 +120,8 @@ final class DeliveryNoteWorkflowTest extends TestCase
             new ReadSetting($resolve),
             new DocumentNames($this->taxes),
             new ExcludedTaxFamilies(ShippedFiscalPresets::presets()),
+            NoQuotesToDeliver::lines($this->notes),
+            NoInvoicesToDeliver::lines($this->notes),
         );
         $now = $this->clock->now();
         $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);

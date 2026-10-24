@@ -217,6 +217,48 @@ final class QuoteDeliveriesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a quote invoiced whole draws no note');
     }
 
+    /**
+     * What a draft takes is checked when it is saved, and again when it is validated: a draft put back from « Récemment
+     * supprimés » would otherwise deliver what another note took meanwhile, or a quote invoiced as a whole meanwhile,
+     * its goods then leaving stock twice and billed twice.
+     */
+    public function testADraftPutBackFromTheBinIsCheckedAgainWhenValidated(): void
+    {
+        // « Récemment supprimés » is read in the company, as every role does.
+        $this->signedIn([...self::SELLER, 'company.read']);
+        $quoteId = $this->accepted();
+        [$lathe] = $this->quoteLineIds($quoteId);
+        $this->postJson($this->deliver($quoteId), ['quantities' => [$lathe => '4']]);
+        $binned = $this->stringAt($this->json(), 'id');
+        $removal = $this->binned($binned);
+        $this->postJson($this->deliver($quoteId), ['quantities' => [$lathe => '6']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'the deleted draft holds nothing');
+        $this->postJson($this->path('delivery-notes', $this->stringAt($this->json(), 'id')).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $onHand = $this->onHand();
+        $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->path('delivery-notes', $binned).'/validate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the six accepted are all on the other note');
+        self::assertStringContainsString('Only 0.000 of this quote line is left', $this->detail());
+        $this->getJson($this->path('delivery-notes', $binned));
+        self::assertSame(['draft', null], [$this->json()['status'], $this->json()['number']], 'it stays a draft, and takes no number');
+        self::assertSame($onHand, $this->onHand(), 'and nothing left stock');
+
+        $whole = $this->accepted();
+        $this->postJson($this->deliver($whole), ['quantities' => null]);
+        $binned = $this->stringAt($this->json(), 'id');
+        $removal = $this->binned($binned);
+        $this->postJson($this->path('quotes', $whole).'/invoice', null);
+        self::assertResponseIsSuccessful('with its only note deleted, the quote is invoiced as a whole');
+        $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path('delivery-notes', $binned).'/validate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'its goods are delivered from that invoice');
+        self::assertStringContainsString('is on an invoice drafted from it as a whole', $this->detail());
+    }
+
     public function testTheGoodsLeaveOnceWithTheNotesAndTheirInvoicesBillThePriceAndTheDiscountAccepted(): void
     {
         $this->signedIn(self::SELLER);
@@ -293,6 +335,15 @@ final class QuoteDeliveriesTest extends ApiTestCase
         self::assertNotNull($company);
 
         return $company;
+    }
+
+    /** Deletes the draft note into « Récemment supprimés »; the removal's id, which puts it back. */
+    private function binned(string $noteId): string
+    {
+        $this->postJson($this->path('record-removals'), ['subject' => 'delivery_note', 'ids' => [$noteId]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        return $this->stringAt($this->json(), 'id');
     }
 
     private function deliver(string $quoteId): string

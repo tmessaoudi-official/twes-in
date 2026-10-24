@@ -161,6 +161,47 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         self::assertStringContainsString('credit note', $this->detail());
     }
 
+    /**
+     * What a draft takes is checked when it is saved, and again when it is validated: a draft put back from « Récemment
+     * supprimés » after another note took the rest, or one a credit note overtook, would deliver what the invoice no
+     * longer bills.
+     */
+    public function testADraftIsCheckedAgainWhenValidatedAgainstWhatItsInvoiceStillLeaves(): void
+    {
+        // « Récemment supprimés » is read in the company, as every role does.
+        $this->signedIn([...self::SELLER, 'company.read']);
+        $this->received('10');
+        $invoiceId = $this->issued();
+        $lathe = $this->stringAt($this->invoiceLines($invoiceId)[0], 'id');
+
+        $this->postJson($this->deliver($invoiceId), ['quantities' => [$lathe => '4']]);
+        $binned = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('record-removals'), ['subject' => 'delivery_note', 'ids' => [$binned]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $removal = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->deliver($invoiceId), ['quantities' => null]);
+        self::assertSame(['6.000'], array_column($this->listOf($this->json(), 'lines'), 'quantity'), 'the deleted draft holds nothing');
+        $this->postJson($this->path('delivery-notes', $this->stringAt($this->json(), 'id')).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->path('delivery-notes', $binned).'/validate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the six billed are all on the other note');
+        self::assertStringContainsString('Only 0.000 of this invoice line is left', $this->detail());
+        $this->getJson($this->path('delivery-notes', $binned));
+        self::assertSame(['draft', null], [$this->json()['status'], $this->json()['number']], 'it stays a draft, and takes no number');
+
+        $other = $this->issued();
+        $line = $this->stringAt($this->invoiceLines($other)[0], 'id');
+        $this->postJson($this->deliver($other), ['quantities' => [$line => '6']]);
+        $overtaken = $this->stringAt($this->json(), 'id');
+        $this->credited($other, '2');
+        $this->postJson($this->path('delivery-notes', $overtaken).'/validate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note issued after the draft took two back');
+        self::assertStringContainsString('Only 4.000 of this invoice line is left', $this->detail());
+    }
+
     public function testWhatIsNotAnIssuedInvoiceOfTheCompanyOrNotTheCallersToDeliverIsRefused(): void
     {
         $this->signedIn(self::SELLER);
