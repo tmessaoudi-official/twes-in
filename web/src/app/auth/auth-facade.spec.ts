@@ -405,6 +405,9 @@ describe('AuthFacade', () => {
     client.get.mockRejectedValueOnce(new DOMException('Not allowed.', 'NotAllowedError'));
     expect(await facade.withPasskey()).toBe('no_passkey');
     expect(api.stepUpWithPasskey).not.toHaveBeenCalled();
+    // A passkey this address cannot use is not a wrong password: the dialog says no passkey was used.
+    client.get.mockRejectedValueOnce(new DOMException('Not this domain.', 'SecurityError'));
+    expect(await facade.withPasskey()).toBe('no_passkey');
 
     client.get.mockResolvedValue({ id: 'cred' });
     api.stepUpWithPasskey.mockResolvedValueOnce(undefined);

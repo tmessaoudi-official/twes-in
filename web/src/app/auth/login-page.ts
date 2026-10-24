@@ -61,6 +61,8 @@ export class LoginPage {
   private readonly passkeyClient = inject(PasskeyClient);
   /** A passkey offered only where this browser, at this address, can use one. */
   protected readonly passkeysSupported = computed(() => this.passkeyClient.supported());
+  /** The address the installation's passkeys work at, when this page's is not one: said where the choice would be. */
+  protected readonly passkeysElsewhere = computed(() => this.passkeyClient.elsewhere());
   private readonly signup = inject(SignupFacade);
   /** Offered only while the platform's operators have opened signup. */
   protected readonly signupOpen = computed(() => this.signup.availability()?.enabled === true);

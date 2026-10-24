@@ -134,8 +134,13 @@ test('a locked company declares what it paid and the operator confirms it back o
   // Written as the operator's screen writes an amount, with its currency.
   await expect(waiting.first()).toContainText(/600,000\s+TND/);
   await page.screenshot({ path: test.info().outputPath('platform-payments.png'), fullPage: true });
+  // The list is read for its subscription, a low column: on a laptop, beside the name and the owner's address, it gives
+  // way for width or not by a few pixels of this run's digits. A wide window shows it.
+  const laptop = page.viewportSize();
+  await page.setViewportSize({ width: 1600, height: 900 });
   await page.goto(`/platform?tab=companies&q=${encodeURIComponent(`Payante ${stamp}`)}`);
   await expect(page.getByTestId(`company-Payante ${stamp}`)).toContainText('Règlement en attente');
+  if (laptop) await page.setViewportSize(laptop);
   await page.goto('/platform?tab=payments');
 
   // Confirming carries the covered time forward, and the owner is back in the shell.

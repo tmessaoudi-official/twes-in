@@ -46,7 +46,7 @@
       "totp_not_enrolled": "No authenticator app is set up.",
       "passkey_cancelled": "No passkey was used. Try again, and follow what your device asks.",
       "passkey_already_registered": "This device already holds a passkey for this account.",
-      "passkey_not_here": "Passkeys do not work at this address.",
+      "passkey_not_here": "Passkeys do not work at this address: use a code, or open the application on the computer it is installed on.",
       "demo_busy": "The demo is getting ready: try again in a moment.",
       "demo_off": "The demo is closed.",
       "unknown_country": "No demo for this country.",
@@ -63,7 +63,8 @@
       "passkey": "Use a passkey",
       "recovery_hint": "Lost access to the app? A recovery code works in this field too.",
       "other": "Another way",
-      "passkey_detail": "Fingerprint, face or security key"
+      "passkey_detail": "Fingerprint, face or security key",
+      "passkey_elsewhere": "Your passkey works on the computer the application is installed on, at {{address}}. Here, enter your app’s code or a recovery code."
     },
     "two_factor": {
       "menu": "Two-step verification"

@@ -463,7 +463,15 @@ on_hold() { [[ -f "$state/hold" ]]; }
 hold_said() { echo "held for a restore since $(shop_day "$(recall hold)") $(shop_time "$(recall hold)")"; }
 hold() {
   case "$1" in
-    on) now > "$state/hold"; say "held: tick and update act on nothing and twes start refuses until twes hold off" ;;
+    on)
+      # A start, tick or update already running is waited for: begun before the hold, it would start the installation
+      # in the middle of the restore. Taken in tick's order, update's lock then start's, and given back once written.
+      exec 8> "$state/update.lock" 9> "$state/start.lock"
+      flock -w "${TWES_HOLD_WAIT:-900}" 8 && flock -w "${TWES_HOLD_WAIT:-900}" 9 \
+        || refuse "a start, tick or update is still running: read $state/twes.log, then twes hold on again"
+      now > "$state/hold"
+      exec 8>&- 9>&-
+      say "held: tick and update act on nothing and twes start refuses until twes hold off" ;;
     off) rm -f "$state/hold"; say "hold ended: tick and update act again; twes start starts the installation" ;;
     *) usage ;;
   esac

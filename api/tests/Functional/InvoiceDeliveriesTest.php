@@ -285,7 +285,12 @@ final class InvoiceDeliveriesTest extends ApiTestCase
     public function testANoteOfADiscountedInvoicePrintsNoPrices(): void
     {
         $this->signedIn(self::SELLER);
-        foreach (['on its line' => ['lines' => [['productId' => $this->productId, 'quantity' => '6', 'discountRate' => '10']]], 'on the whole' => ['discountAmount' => '100']] as $where => $changes) {
+        $discounts = [
+            'a rate on its line' => ['lines' => [['productId' => $this->productId, 'quantity' => '6', 'discountRate' => '10']]],
+            'an amount on its line' => ['lines' => [['productId' => $this->productId, 'quantity' => '6', 'discountAmount' => '30']]],
+            'on the whole' => ['discountAmount' => '100'],
+        ];
+        foreach ($discounts as $where => $changes) {
             $invoiceId = $this->draft($changes);
             $this->postJson($this->path('invoices', $invoiceId).'/issue', null);
             self::assertResponseIsSuccessful($where);

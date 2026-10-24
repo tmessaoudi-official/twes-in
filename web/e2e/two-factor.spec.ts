@@ -138,6 +138,7 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   await expect(page.getByTestId('mfa-form')).toBeVisible();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId('mfa-passkey')).toHaveCount(0);
+  await expect(page.getByTestId('mfa-passkey-elsewhere')).toContainText('localhost');
   await expectAccessible(page, 'login, code step');
   await page.screenshot({ path: test.info().outputPath('login-code-step.png'), fullPage: true });
   await nextStep(page);

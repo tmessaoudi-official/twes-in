@@ -47,6 +47,7 @@ class StaticLoader implements TranslateLoader {
           submitting: 'Vérification…',
           back: 'Retour',
           passkey: 'Utiliser une clé d’accès',
+          passkey_elsewhere: 'Clé d’accès : à l’adresse {{address}}',
         },
         errors: {
           invalid_credentials: 'Identifiants incorrects',
@@ -83,10 +84,16 @@ const me: Me = {
 };
 
 describe('LoginPage', () => {
-  const passkeyClient = { supported: () => true, get: vi.fn() };
+  const passkeyClient = {
+    supported: vi.fn(() => true),
+    elsewhere: vi.fn((): string | null => null),
+    get: vi.fn(),
+  };
 
   beforeEach(async () => {
     passkeyClient.get.mockReset();
+    passkeyClient.supported.mockReset().mockReturnValue(true);
+    passkeyClient.elsewhere.mockReset().mockReturnValue(null);
     await TestBed.configureTestingModule({
       imports: [LoginPage],
       providers: [
@@ -438,6 +445,16 @@ describe('LoginPage', () => {
     await settle(rendered.fixture);
 
     expect(navigate).toHaveBeenCalledWith('/');
+  });
+
+  it('offers no passkey at an address that cannot use one, and says where it works', async () => {
+    passkeyClient.supported.mockReturnValue(false);
+    passkeyClient.elsewhere.mockReturnValue('https://localhost');
+    const rendered = await render();
+    await passThePassword(rendered);
+
+    expect(rendered.query('mfa-passkey')).toBeNull();
+    expect(rendered.query('mfa-passkey-elsewhere')?.textContent).toContain('https://localhost');
   });
 
   it('shows a refused passkey and stays on the second step', async () => {

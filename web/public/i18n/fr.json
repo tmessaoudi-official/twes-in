@@ -46,7 +46,7 @@
       "totp_not_enrolled": "Aucune application d’authentification n’est configurée.",
       "passkey_cancelled": "Aucune clé d’accès n’a été utilisée. Réessayez en suivant les indications de votre appareil.",
       "passkey_already_registered": "Cet appareil contient déjà une clé d’accès pour ce compte.",
-      "passkey_not_here": "Les clés d’accès ne fonctionnent pas à cette adresse.",
+      "passkey_not_here": "Les clés d’accès ne fonctionnent pas à cette adresse : utilisez un code, ou ouvrez l’application sur l’ordinateur où elle est installée.",
       "demo_busy": "La démo se prépare : réessayez dans un instant.",
       "demo_off": "La démo est fermée.",
       "unknown_country": "Pas de démo pour ce pays.",
@@ -63,7 +63,8 @@
       "passkey": "Utiliser une clé d’accès",
       "recovery_hint": "Plus d’accès à l’application ? Un code de secours fonctionne aussi dans ce champ.",
       "other": "Autre moyen",
-      "passkey_detail": "Empreinte, visage ou clé de sécurité"
+      "passkey_detail": "Empreinte, visage ou clé de sécurité",
+      "passkey_elsewhere": "Votre clé d’accès fonctionne sur l’ordinateur où l’application est installée, à l’adresse {{address}}. Ici, saisissez le code de votre application ou un code de secours."
     },
     "two_factor": {
       "menu": "Vérification en deux étapes"

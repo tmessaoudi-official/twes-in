@@ -121,6 +121,10 @@
           </span>
           <mat-icon class="mat-icon-rtl-mirror">chevron_right</mat-icon>
         </button>
+      } @else if (passkeysElsewhere(); as address) {
+        <p class="text-sm" data-testid="mfa-passkey-elsewhere">
+          {{ 'auth.mfa.passkey_elsewhere' | translate: { address } }}
+        </p>
       }
     </form>
   }

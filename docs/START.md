@@ -875,8 +875,8 @@ backups in a folder of its own (`compose.backup-local.yaml`, copied off site whe
 built there: the images are pulled by the digests a release tag names (§ 14), and `scripts/onprem/twes` runs everything.
 
 **Two addresses, no name to buy.** The computer itself opens `https://localhost`, where passkeys work (a browser binds a
-passkey to a name, never to an address). At the network address the screens offer no passkey and say to open
-`https://localhost` for one, from where `/api/health` says they work (`passkeys`). A phone or another computer on the shop's network opens
+passkey to a name, never to an address). At the network address the screens offer no passkey and say they work on
+this computer, at `https://localhost`, from where `/api/health` says they work (`passkeys`); there a code signs in. A phone or another computer on the shop's network opens
 `https://<this computer's address>`, which `twes` reads at each start, since a router may hand out another; a fixed one
 goes in the values as `LAN_HOST`. With no network at all, the computer alone opens `https://localhost`. The edge's
 certificates come from its own authority: a phone trusts it once, from `http://<address>/root.crt`, then opens the

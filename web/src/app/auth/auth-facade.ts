@@ -454,6 +454,7 @@ function stepUpOutcome(error: unknown): StepUpOutcome {
       return 'network';
     case 'invalid_passkey':
     case 'passkey_cancelled':
+    case 'passkey_not_here':
       return 'no_passkey';
     default:
       return 'refused';

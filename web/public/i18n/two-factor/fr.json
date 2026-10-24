@@ -29,7 +29,7 @@
       "passkeys_intro": "Une clé d’accès confirme que c’est bien vous grâce à votre empreinte, votre visage ou le code de votre appareil, au lieu d’un code.",
       "passkeys_none": "Aucune clé d’accès pour l’instant.",
       "passkeys_unsupported": "Ce navigateur ne peut pas utiliser de clés d’accès.",
-      "passkeys_elsewhere": "Les clés d’accès de cette installation ne fonctionnent qu’à l’adresse {{address}} : ouvrez-la pour en ajouter une ou vous en servir.",
+      "passkeys_elsewhere": "Les clés d’accès de cette installation ne fonctionnent que sur l’ordinateur où elle est installée, à l’adresse {{address}} : ouvrez-la là pour en ajouter une ou vous en servir.",
       "passkey_name": "Nom",
       "passkey_name_hint": "Pour distinguer vos appareils, par exemple Ordinateur du bureau.",
       "passkey_name_required": "Donnez un nom à la clé d’accès.",

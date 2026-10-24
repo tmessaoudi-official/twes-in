@@ -479,6 +479,19 @@ check "  twes status says so" 0 0 "$(twes "$d" status)" "held:     for a restore
 out=$(twes "$d" hold off); check "hold off: what is scheduled acts again" $? 0 "$out" "hold ended"
 out=$(HEALTH_FAILS=1 twes "$d" tick); check "  an unhealthy tick starts it again" $? 0 "$(deployed)" "--again"
 out=$(twes "$d" hold); check "hold takes on or off" $? 2 "$out" "Usage"
+# A start, tick or update already running when the hold is asked for is waited for: begun before it, it would start
+# the installation in the middle of the restore.
+d=$(installed)
+( exec 9> "$d/etc/state/start.lock"; flock 9; sleep 3 ) & sleeper=$!
+sleep 0.5
+began=$SECONDS; out=$(twes "$d" hold on); code=$?; waited=$((SECONDS - began)); wait "$sleeper"
+(( code == 0 && waited >= 2 )); check "hold on waits for a start already running ($waited s)" $? 0 "$out" "held: tick and update"
+rm -f "$d/etc/state/hold"
+( exec 8> "$d/etc/state/update.lock"; flock 8; sleep 6 ) & sleeper=$!
+sleep 0.5
+out=$(TWES_HOLD_WAIT=1 twes "$d" hold on); check "  one still running after the wait: refused" $? 1 "$out" "still running"
+[[ ! -e "$d/etc/state/hold" ]]; check "  and nothing held" $? 0 "" ""
+wait "$sleeper"
 
 # tick
 d=$(installed)

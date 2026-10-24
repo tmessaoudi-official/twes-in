@@ -36,6 +36,9 @@ git verify-tag v2026.10.19.1
 git push origin v2026.10.19.1
 ```
 
+- Tag the release freeze or a later commit: it carries `twes hold` (671dd623). No shop, the J-1 machine included, is
+  installed from `v2026.10.22.1` or any tag before it: a way back to such a release runs its own script, which knows no
+  hold, so its restore runs unheld.
 - [ ] Tagged: `git verify-tag` says « Good signature » from key `0C537690706EB7F5`.
 - [ ] Pushed. A pushed tag is never moved.
 

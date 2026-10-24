@@ -308,7 +308,12 @@ final class QuoteDeliveriesTest extends ApiTestCase
     public function testANoteOfADiscountedQuoteLinePrintsNoPrices(): void
     {
         $this->signedIn(self::SELLER);
-        foreach (['a discount on the line' => [], 'no discount' => ['lines' => [['productId' => $this->productId, 'quantity' => '6']]]] as $case => $changes) {
+        $cases = [
+            'an amount off the line' => [[], false],
+            'a rate off the line' => [['lines' => [['productId' => $this->productId, 'quantity' => '6', 'discountRate' => '10']]], false],
+            'no discount' => [['lines' => [['productId' => $this->productId, 'quantity' => '6']]], true],
+        ];
+        foreach ($cases as $case => [$changes, $priced]) {
             $quoteId = $this->accepted($changes);
             $this->postJson($this->deliver($quoteId), ['quantities' => null]);
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $case);
@@ -316,10 +321,10 @@ final class QuoteDeliveriesTest extends ApiTestCase
             self::assertResponseIsSuccessful();
             $html = (string) end(static::getContainer()->get(FakePdfRenderer::class)->rendered);
             self::assertStringContainsString($this->quoteNumber($quoteId), $html, $case);
-            if ([] === $changes) {
-                self::assertStringNotContainsString('250,000', $html, $case.': no price the quote did not accept');
-            } else {
+            if ($priced) {
                 self::assertStringContainsString('250,000', $html, $case.': its prices are the quote\'s');
+            } else {
+                self::assertStringNotContainsString('250,000', $html, $case.': no price the quote did not accept');
             }
         }
     }
