@@ -737,6 +737,9 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   loaded Material Symbols made `document.fonts.load` reject at once, with no request sent, and every icon read as its
   name (`install.spec`, 8 runs in 30, green or red by shard order). `signIn` returns once the home has its icon font
   (`e2e/icon-font.ts`); a scenario that leaves a page it has just opened waits for it the same way (2026-10-23).
+- A row action is width on every row: a standing one takes a slot (two at most), the first that folds takes « ⋮ »'s. W6's
+  three folded movements gave `/stock` its first « ⋮ » and pushed its columns off a laptop; only `list-fit.spec.ts` saw
+  it. Run it after giving a list an action, and fold what is final or occasional (2026-10-25).
 - `git commit-tree` never reads `commit.gpgsign`: every `make commit-gated` from 21 to 23 Oct went to master unsigned
   (67, and 9 more on 10 Oct that a recovery rebuilt and moved there by `update-ref`; all re-signed on 2026-10-24). A commit made through plumbing
   passes `-S` itself; check `git log --format=%G?` after one. A gate test exporting `GIT_CONFIG_GLOBAL=/dev/null` cannot

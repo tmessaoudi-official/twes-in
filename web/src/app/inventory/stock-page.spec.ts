@@ -308,11 +308,17 @@ describe('StockPage', () => {
     // The day a lot is used by, as the screen writes every day (audit 2026-10-06, V-14).
     expect(row).toContain('31/01/2020');
     expect(row).not.toContain('2020-01-31');
-    expect(q('row-action-release-p1:l1:k1')).not.toBeNull();
-    expect(q('row-action-release-p1:l1:k1')?.getAttribute('aria-label') ?? '').toContain('Libérer');
     expect(q('stock-ART-1-000')?.textContent).not.toContain('Périmé');
+    // Final and occasional, it waits in the row's « ⋮ » beside the other occasional movements: a button of its own
+    // would widen every row's actions and push the list's columns off a laptop's page.
+    expect(q('row-action-release-p1:l1:k1')).toBeNull();
+    const inMenu = (testId: string): HTMLElement | null =>
+      document.body.querySelector(`.cdk-overlay-container [data-testid="${testId}"]`);
+    q('row-more-p1:l1:k1')!.click();
+    await settle();
+    expect(inMenu('row-menu-release-p1:l1:k1')?.textContent).toContain('Libérer');
 
-    q('row-action-release-p1:l1:k1')!.click();
+    inMenu('row-menu-release-p1:l1:k1')!.click();
     await settle();
     expect(facade.releaseLot).not.toHaveBeenCalled();
     expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
@@ -341,6 +347,13 @@ describe('StockPage', () => {
     expect(row).toContain('Libéré');
     expect(row).not.toContain('Périmé');
     expect(q('row-action-release-p1:l1:k1')).toBeNull();
+    q('row-more-p1:l1:k1')!.click();
+    await settle();
+    expect(
+      document.body.querySelector(
+        '.cdk-overlay-container [data-testid="row-menu-release-p1:l1:k1"]',
+      ),
+    ).toBeNull();
   });
 
   it("leads to a product's movements, and to the other stock screens through the tabs", () => {

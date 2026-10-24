@@ -134,6 +134,9 @@ export class StockPage implements OnInit {
         id: 'release',
         label: 'inventory.stock.release',
         icon: 'lock_open',
+        // Final and occasional, so in the « ⋮ » with the movements above: as a button it widened every row's actions by
+        // a slot, and the stock list's columns gave way on a laptop and on the widest page.
+        rare: true,
         run: (row) => void this.release(row),
         disabled: () => this.busy(),
         shown: (row) => this.mayWrite() && row.expired,
