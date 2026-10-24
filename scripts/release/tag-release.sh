@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Makes the release tag of HEAD (docs/RUNBOOK.md, « Promote »): an annotated vYYYY.MM.DD.N whose message names the three
-# images publish.sh pushed for this commit, by the digests the registry holds now, resolved once. deploy.sh --release
+# Makes the release tag of a commit, HEAD unless one is named (docs/RUNBOOK.md, « Promote »; `make release-tag`): an
+# annotated vYYYY.MM.DD.N whose message names the three images publish.sh pushed for that commit, by the digests the
+# registry holds now, resolved once. Any commit master holds can be tagged from any checkout: nothing is checked out. deploy.sh --release
 # deploys exactly those, so production runs what staging ran, and a tag pushed is the record of what a version was.
 # Tags only a commit master holds, whose three images say they were built from it. Never pushes: the tag goes up on the
 # developer's word, with the command it prints. The tag is signed: a shop updates only to a tag its pinned key verifies
 # (scripts/onprem/twes), so a forged tag on a stolen account names images no shop runs. The key is TWES_RELEASE_KEY,
-# else git's user.signingkey.
-# Usage: tag-release.sh <registry prefix, such as ghcr.io/owner> <tag>
+# else git's user.signingkey. The tag is verified once made, so what it prints is what a shop will check.
+# Usage: tag-release.sh <registry prefix, such as ghcr.io/owner> <tag> [<commit, HEAD by default>]
 set -euo pipefail
-[[ $# -eq 2 ]] || { echo "Usage: tag-release.sh <registry prefix> <tag vYYYY.MM.DD.N>" >&2; exit 2; }
-prefix=${1%/} tag=$2
+[[ $# -eq 2 || $# -eq 3 ]] || { echo "Usage: tag-release.sh <registry prefix> <tag vYYYY.MM.DD.N> [<commit>]" >&2; exit 2; }
+prefix=${1%/} tag=$2 commit=${3:-HEAD}
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 refuse() { echo "tag-release: refused — $*" >&2; exit 1; }
 
@@ -18,7 +19,7 @@ refuse() { echo "tag-release: refused — $*" >&2; exit 1; }
 ! git -C "$root" rev-parse -q --verify "refs/tags/$tag" >/dev/null || refuse "$tag exists; a release tag is never moved"
 key=${TWES_RELEASE_KEY:-$(git -C "$root" config --get user.signingkey || true)}
 [[ -n "$key" ]] || refuse "no signing key: set git's user.signingkey, or TWES_RELEASE_KEY, to the key shops have pinned"
-revision=$(git -C "$root" rev-parse HEAD)
+revision=$(git -C "$root" rev-parse -q --verify "$commit^{commit}") || refuse "$commit names no commit of this clone (git fetch first)"
 git -C "$root" merge-base --is-ancestor "$revision" refs/remotes/origin/master \
   || refuse "origin/master does not hold $revision: only what master published is released (git fetch, then check out a master commit)"
 
@@ -33,11 +34,12 @@ for part in api web database; do
   lines+=("TWES_${part^^}_IMAGE=$digest")
 done
 
-git -C "$root" tag -s -u "$key" "$tag" -F - <<EOF || refuse "git could not sign $tag with $key: is that key in this keyring, and its agent answering?"
+git -C "$root" tag -s -u "$key" "$tag" "$revision" -F - <<EOF || refuse "git could not sign $tag with $key: is that key in this keyring, and its agent answering?"
 twes-in $tag
 
 $(printf '%s\n' "${lines[@]}")
 EOF
-echo "tag-release: $tag made at $revision, naming:"
+git -C "$root" verify-tag "$tag" >/dev/null 2>&1 || { git -C "$root" tag -d "$tag" >/dev/null; refuse "$tag did not verify once signed, and was removed"; }
+echo "tag-release: $tag made and verified at $revision, naming:"
 printf '  %s\n' "${lines[@]:1}"
 echo "Push it, once staging has run this commit: git push origin $tag"

@@ -23,6 +23,8 @@ HOST_UID := $(shell id -u)
 HOST_GID := $(shell id -g)
 DOCKER_GID := $(shell stat -c %g /var/run/docker.sock 2>/dev/null)
 TOOLS_TMP := /tmp/twes-in-tools-$(HOST_UID)
+# Where CI's publish job pushes the images (scripts/release/publish.sh), which release-tag and point-master read.
+REGISTRY ?= ghcr.io/tmessaoudi-official
 export HOST_REPO HOST_GIT HOST_UID HOST_GID DOCKER_GID TOOLS_TMP
 export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES COMPOSE_FILE
 # WEB_ and API_BUILD_VERSION and _COMMIT for the images' build arguments, worked out only where an image is built.
@@ -33,7 +35,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-image gate-powershell in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-image gate-powershell in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -134,6 +136,13 @@ onprem-check:  ## the on-premises check (docs/START.md § 16): a shop's installa
 staging-check:  ## the staging check (docs/RUNBOOK.md): the working tree published to a local registry by publish.sh, followed by staging-follow.sh into a staging of its own, every container proved to run its digest with nothing built, then redeployed from the recorded release after its images were removed; its own compose project (twes-staging-check), removed at the end
 	bash scripts/staging/staging-check.sh
 
+release-tag:   ## the signed release tag of a commit master published (docs/RUNBOOK.md « Promote »): make release-tag TAG=vYYYY.MM.DD.N [COMMIT=<sha>, HEAD by default] [REGISTRY=…]; tagged and verified here, never pushed: it prints the push
+	@[ -n "$(TAG)" ] || { echo "make release-tag TAG=vYYYY.MM.DD.N [COMMIT=<sha>]" >&2; exit 2; }
+	bash scripts/release/tag-release.sh $(REGISTRY) $(TAG) $(or $(COMMIT),HEAD)
+point-master:  ## :master moved to a commit master published, either way (docs/RUNBOOK.md « Point :master »): make point-master COMMIT=<sha> [REGISTRY=…]; staging follows it, shops never read it
+	@[ -n "$(COMMIT)" ] || { echo "make point-master COMMIT=<sha>" >&2; exit 2; }
+	bash scripts/release/point-master.sh $(REGISTRY) $(COMMIT)
+
 monitor-check:  ## the monitor check (docs/START.md § 15): a deployment and its monitor (infra/monitor/) booted side by side from their values files, then Gatus must read the deep health green and take a backup's heartbeat, and an API and a web error must reach GlitchTip masked; its own compose projects (twes-monitor-check, twes-monitor-check-app), removed at the end
 	bash scripts/monitor/monitor-check.sh
 
@@ -199,6 +208,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/release-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/publish.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/tag-release.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/point-master.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/monitor-config.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/version-pins.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/host-tools.test.sh

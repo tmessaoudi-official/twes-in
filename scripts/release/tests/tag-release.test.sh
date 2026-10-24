@@ -47,7 +47,7 @@ tag_release() { # dir, tag, then extra environment
 message() { git -C "$1/repo" for-each-ref --format='%(contents)' "refs/tags/$2"; }
 
 d=$(fixture); head=$(git -C "$d/repo" rev-parse HEAD)
-out=$(tag_release "$d" v2026.10.13.1); check "a commit master holds is tagged" $? 0 "$out" "v2026.10.13.1"
+out=$(tag_release "$d" v2026.10.13.1); check "a commit master holds is tagged, and verified" $? 0 "$out" "v2026.10.13.1 made and verified"
 check "  as an annotated tag" 0 0 "$(git -C "$d/repo" cat-file -t refs/tags/v2026.10.13.1)" "tag"
 verified=$(git -C "$d/repo" verify-tag --raw v2026.10.13.1 2>&1); check "  signed by the release key" $? 0 "$verified" "VALIDSIG $KEY"
 check "  naming its commit" 0 0 "$(message "$d" v2026.10.13.1)" "TWES_REVISION=$head"
@@ -64,6 +64,17 @@ out=$(tag_release "$d" v2026.10.13.1 TWES_RELEASE_KEY=); check "git's user.signi
 d=$(fixture)
 out=$(tag_release "$d" v2026.10.13.1 TWES_RELEASE_KEY=0000000000000000); check "a key this keyring cannot sign with: refused" $? 1 "$out" "could not sign"
 git -C "$d/repo" rev-parse -q --verify refs/tags/v2026.10.13.1 >/dev/null; check "  and no tag is left" $? 1 "" ""
+
+d=$(fixture); first=$(git -C "$d/repo" rev-parse HEAD)
+echo x > "$d/repo/x"; git -C "$d/repo" add -A; git -C "$d/repo" commit -qm two
+git -C "$d/repo" update-ref refs/remotes/origin/master HEAD
+out=$(cd "$d/repo" && env CALLS="$d/calls" PATH="$d/bin:$PATH" LABEL_REV="$first" TWES_RELEASE_KEY="$KEY" bash scripts/release/tag-release.sh registry.invalid/o v2026.10.13.2 "${first:0:8}" 2>&1)
+check "an older commit master holds is tagged by name, HEAD elsewhere" $? 0 "$out" "made and verified at $first"
+check "  the tag points at that commit" 0 0 "$(git -C "$d/repo" rev-parse 'v2026.10.13.2^{commit}')" "$first"
+check "  its message names that commit" 0 0 "$(message "$d" v2026.10.13.2)" "TWES_REVISION=$first"
+check "  from that commit's own images" 0 0 "$(cat "$d/calls")" "pull -q registry.invalid/o/twes-in-api:sha-$first"
+out=$(cd "$d/repo" && env CALLS="$d/calls" PATH="$d/bin:$PATH" TWES_RELEASE_KEY="$KEY" bash scripts/release/tag-release.sh registry.invalid/o v2026.10.13.3 nosuchcommit 2>&1)
+check "a name that is no commit is refused" $? 1 "$out" "names no commit"
 
 d=$(fixture)
 out=$(tag_release "$d" v2026.10.13); check "a name that is not vYYYY.MM.DD.N is refused" $? 1 "$out" "vYYYY.MM.DD.N"

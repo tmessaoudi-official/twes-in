@@ -280,7 +280,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   publishes a port, and derives every address from `TWES_HOST`; every value is required and comes from one file outside
   the checkout, written once by `scripts/deploy/new-instance.sh` (`--staging` for staging's) and handed to compose by
   `scripts/deploy/deploy.sh`, which refuses anything but a clean checkout and takes a mode: `--release` (production: an
-  annotated `vYYYY.MM.DD.N` tag naming the three images by digest, written by `scripts/release/tag-release.sh`, started
+  annotated `vYYYY.MM.DD.N` tag naming the three images by digest, written by `scripts/release/tag-release.sh`
+  (`make release-tag TAG=… COMMIT=…`, any commit master published; `make point-master COMMIT=…` moves staging's `:master`
+  by hand, `scripts/release/point-master.sh`), started
   over `compose.release.yaml` with nothing built), `--staging <release file>` and `--build` (self-hosted, built from the
   tag). CI's `publish` job (`scripts/release/publish.sh`, behind the repository variable `PUBLISH_IMAGES`) pushes the
   images to GHCR by commit and moves `:master` forward only; staging pulls it with `scripts/deploy/staging-follow.sh`

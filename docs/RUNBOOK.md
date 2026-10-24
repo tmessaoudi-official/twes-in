@@ -67,20 +67,32 @@ commit is followed.
 
 ## Promote to production
 
-Untried end to end; `tag-release.sh` and `deploy.sh --release` each have their test (`scripts/release/tests/`,
-`scripts/tests/deploy.test.sh`).
+Untried end to end; `tag-release.sh`, `point-master.sh` and `deploy.sh --release` each have their test
+(`scripts/release/tests/`, `scripts/tests/deploy.test.sh`).
 
-1. Pick the commit staging runs and you have tried there: `tail -1 /etc/twes-in/releases/history` on staging.
-2. On your machine, at that commit of master (`git fetch && git checkout <commit>`):
-   `bash scripts/release/tag-release.sh ghcr.io/tmessaoudi-official v<YYYY.MM.DD.N>`. It refuses a commit master does
-   not hold and images that say they were built from another; it writes the three digests into the annotated tag and
-   signs it with your git `user.signingkey` (or `TWES_RELEASE_KEY`), which shops verify before taking it.
+1. Pick the commit staging runs and you have tried there: `tail -1 /etc/twes-in/releases/history` on staging. Any
+   commit master holds and CI published can be tagged, not only the last one; nothing is checked out.
+2. On your machine, in the main checkout: `git fetch origin`, then
+   `make release-tag TAG=v<YYYY.MM.DD.N> COMMIT=<commit>` (`scripts/release/tag-release.sh`; without `COMMIT`, HEAD).
+   It refuses a commit master does not hold, a commit whose three images were never published, images that say they
+   were built from another commit, and a tag that exists; it writes the three digests into the annotated tag, signs it
+   with your git `user.signingkey` (or `TWES_RELEASE_KEY`), which shops verify before taking it, and verifies it once
+   made. The date is the day you tag, `.N` that day's count of releases.
 3. Push the tag: `git push origin v<YYYY.MM.DD.N>`. A pushed tag is never moved.
 4. Announce the window (about 30 seconds of restart; migrations run at start, so a migration is written to be safe
    while the previous version still runs: expand first, contract in a later release).
 5. On production: `git fetch --tags && git checkout v<YYYY.MM.DD.N>` then
    `bash scripts/deploy/deploy.sh --release /etc/twes-in/deploy.env`.
 6. Check: the footer's build line, `/api/health`, the monitor's lines green, a sign-in.
+
+## Point :master
+
+`:master` is what staging follows; shops never read it. CI's publish job moves it only forward, so after a history
+rewrite (the re-signing of 2026-10-24 left it on 19f0ee08) or to put staging back on an older commit, move it by hand,
+logged in to GHCR with `write:packages`: `make point-master COMMIT=<commit>` (`scripts/release/point-master.sh`). It
+refuses a commit master does not hold and one whose three images are missing or built from another commit, moves none
+unless all three can, copies the per-commit images in the registry (nothing is built or pushed from your machine), and
+prints the commit `:master` left. Tested against a stand-in registry; untried against GHCR.
 
 ## Release to the shops
 
