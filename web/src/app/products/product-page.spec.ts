@@ -476,6 +476,45 @@ describe('ProductPage', () => {
     ).not.toContain('add_to');
   });
 
+  // Round 2: every action where its subject appears. Its stock is moved from the product, not only from Stock.
+  it('offers its stock and each movement of it, opening Stock’s form already naming it', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    product.set(laptop);
+    await open(laptop.id);
+    const actions = TestBed.inject(ScreenActions).actions();
+    const action = (id: string) => actions.find((each) => each.id === id);
+    expect(actions.map((each) => each.id)).toEqual(
+      expect.arrayContaining(['stock', 'stock_receive', 'stock_count', 'stock_move', 'stock_loss']),
+    );
+
+    action('stock_count')!.run!();
+    expect(navigate).toHaveBeenLastCalledWith(['/stock'], {
+      queryParams: { operation: 'count', product: laptop.id },
+    });
+    action('stock')!.run!();
+    expect(navigate).toHaveBeenLastCalledWith(['/stock'], { queryParams: { product: laptop.id } });
+  });
+
+  it('offers no stock of a service, nor its movements to whoever only reads stock', async () => {
+    product.set({ ...laptop, kind: 'service' });
+    await open(laptop.id);
+    let ids = TestBed.inject(ScreenActions)
+      .actions()
+      .map((each) => each.id);
+    expect(ids).toContain('save');
+    expect(ids).not.toContain('stock');
+
+    fixture.destroy();
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'stock.write');
+    product.set(laptop);
+    await open(laptop.id);
+    ids = TestBed.inject(ScreenActions)
+      .actions()
+      .map((each) => each.id);
+    expect(ids).toContain('stock');
+    expect(ids).not.toContain('stock_receive');
+  });
+
   it('offers no labels for a product not saved yet', async () => {
     await open(undefined);
     // The bar offers only what is shown, so the page's other actions prove the declaration was read.

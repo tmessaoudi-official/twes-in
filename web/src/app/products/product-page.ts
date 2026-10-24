@@ -56,6 +56,7 @@ import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import type { ScreenAction } from '../shared/actions/screen-action';
+import { movementAddress } from '../inventory/inventory-types';
 import { RecordBar } from '../shared/form/record-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 
@@ -444,6 +445,9 @@ export class ProductPage {
         },
         shown: standing && this.id() !== null && this.addTo.kinds().length > 0,
       },
+      // What is done to its stock, offered where the product is: each opens Stock's form already naming it, beside
+      // its stock place by place, and records nothing until saved there.
+      ...this.stockActions(standing),
       {
         // Printed labels, in a tab of their own to print.
         id: 'labels',
@@ -468,6 +472,48 @@ export class ProductPage {
       },
     ];
   });
+
+  /** A saved, active article kept in stock, for whoever reads its stock (and moves it, for the four movements). */
+  private stockActions(standing: boolean): ScreenAction[] {
+    const product = this.current();
+    if (
+      !standing ||
+      !product ||
+      product.kind !== 'goods' ||
+      !this.auth.hasModule('inventory') ||
+      !this.auth.hasPermission('stock.read')
+    ) {
+      return [];
+    }
+    const go = (address: { path: string[]; query: Record<string, string> }) => () =>
+      void this.router.navigate(address.path, { queryParams: address.query });
+    const moves = product.isActive && this.auth.hasPermission('stock.write');
+    return [
+      {
+        id: 'stock',
+        label: 'inventory.stock.view_stock',
+        icon: 'warehouse',
+        group: 'open',
+        run: go({ path: ['/stock'], query: { product: product.id } }),
+      },
+      ...(
+        [
+          ['receive', 'inventory.stock.receive', 'move_to_inbox'],
+          ['count', 'inventory.stock.count', 'checklist'],
+          ['move', 'inventory.stock.move', 'swap_horiz'],
+          ['loss', 'inventory.stock.loss', 'output'],
+        ] as const
+      ).map(([operation, label, icon]) => ({
+        id: `stock_${operation}`,
+        label,
+        icon,
+        group: 'create' as const,
+        rare: true,
+        run: go(movementAddress(operation, product.id)),
+        shown: moves,
+      })),
+    ];
+  }
 
   private async remove(): Promise<void> {
     const companyId = this.company()?.id;

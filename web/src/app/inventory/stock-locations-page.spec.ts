@@ -30,6 +30,7 @@ import {
   successToasts,
 } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -74,6 +75,7 @@ const options: StockOptions = {
 };
 
 describe('StockLocationsPage', () => {
+  const texts = { open: vi.fn<(name: string) => Promise<void>>(async () => undefined) };
   const error = signal<InventoryError | null>(null);
   const locations = signal<readonly StockLocationRow[]>([site, zone]);
   const facade = {
@@ -141,6 +143,7 @@ describe('StockLocationsPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: InventoryFacade, useValue: facade },
+        { provide: TextsParts, useValue: texts },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -217,9 +220,14 @@ describe('StockLocationsPage', () => {
       1,
     );
 
-    // The default location has nowhere to move its stock to, so it offers nothing at all rather than refusing;
+    // The default location has nowhere to move its stock to, so it offers no delete at all rather than refusing;
     // deleting is destructive, so where it is offered it sits behind "⋮".
-    expect(q('row-more-l1')).toBeNull();
+    q('row-more-l1')!.click();
+    await settle();
+    expect(inMenu('row-menu-count_here-l1')).not.toBeNull();
+    expect(inMenu('row-menu-delete-l1')).toBeNull();
+    (document.body.querySelector('.cdk-overlay-backdrop') as HTMLElement).click();
+    await settle();
     q('row-more-l2')!.click();
     await settle();
     inMenu('row-menu-delete-l2')!.click();
@@ -302,6 +310,13 @@ describe('StockLocationsPage', () => {
     expect(q('row-action-contents-l2')).not.toBeNull();
   });
 
+  // Round 2: every action where its subject appears. A place is counted from its row, in count mode there.
+  it('counts a place from its row, at the address its printed label carries', async () => {
+    q('row-more-l2')!.click();
+    await settle();
+    expect(inMenu('row-menu-count_here-l2')?.getAttribute('href')).toBe('/stock/locations/l2');
+  });
+
   /** A place the map has no drawing of is read from its row, in the same words the map uses. */
   it('opens what a place holds from its row', async () => {
     q('row-action-contents-l2')!.click();
@@ -310,5 +325,7 @@ describe('StockLocationsPage', () => {
     const title = document.body.querySelector('[data-testid="place-contents-title"]');
     expect(title?.textContent).toContain('Z1');
     expect(facade.loadContents).toHaveBeenLastCalledWith('c1', 'l2', '');
+    // A count asked from one of its lines says what it changes, in texts opened before the dialog.
+    expect(texts.open).toHaveBeenCalledWith('stock-count');
   });
 });

@@ -69,8 +69,8 @@ export class PlaceContents {
   readonly companyId = input.required<string>();
   readonly locationId = input.required<string>();
   /**
-   * Each line offers what is done with an article on a shelf (docs/SPEC.md § 7, 2026-10-09 23:19): the map's panel
-   * records the movement; « Emplacements » only reads, so it offers none.
+   * Each line offers what is done with an article on a shelf, wherever the shelf's contents are shown: the panel
+   * beside the plan and the dialog over « Emplacements » both record the movement it asks for.
    */
   readonly actions = input(false);
   /** A line's ⋮ asked to move, count or receive it. */

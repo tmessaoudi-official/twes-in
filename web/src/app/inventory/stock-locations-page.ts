@@ -43,6 +43,8 @@ import { INVENTORY_TABS } from './inventory-nav';
 import type { StockLocationRow } from './inventory-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { PlaceContentsDialog, type PlaceContentsDialogData } from './place-contents-dialog';
+import { TextsParts } from '../shared/i18n/texts-part';
+import { STOCK_COUNT_TEXTS } from './stock-count-texts';
 
 /** Where stock is kept: each establishment's tree under its default location; a location goes only once empty. */
 @Component({
@@ -71,6 +73,7 @@ export class StockLocationsPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly dialog = inject(MatDialog);
+  private readonly texts = inject(TextsParts);
 
   /**
    * Reading what a place holds is open to anyone who reads stock, the map or not; editing is what a writer came for;
@@ -85,7 +88,17 @@ export class StockLocationsPage implements OnInit {
         label: 'inventory.locations.contents',
         labelParams: (row) => ({ name: row.path }),
         icon: 'inventory_2',
-        run: (row) => this.showContents(row),
+        run: (row) => void this.showContents(row),
+      },
+      {
+        // Count mode at that place, the address its printed label carries: walking it with a scanner.
+        id: 'count_here',
+        label: 'inventory.locations.count_here',
+        labelParams: (row) => ({ name: row.path }),
+        icon: 'checklist',
+        link: (row) => ['/stock/locations', row.id],
+        rare: true,
+        shown: () => this.mayWrite(),
       },
       {
         id: 'edit',
@@ -202,9 +215,11 @@ export class StockLocationsPage implements OnInit {
     }
   }
 
-  protected showContents(row: StockLocationListRow): void {
+  protected async showContents(row: StockLocationListRow): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId) return;
+    // A count asked from a line says what it changes, in texts this route does not open by itself.
+    await this.texts.open(STOCK_COUNT_TEXTS);
     this.dialog.open<PlaceContentsDialog, PlaceContentsDialogData>(PlaceContentsDialog, {
       data: { companyId, locationId: row.id, path: row.path },
       width: '32rem',

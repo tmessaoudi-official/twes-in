@@ -13,11 +13,12 @@ import {
   untracked,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { debounceTime, startWith } from 'rxjs';
+import { debounceTime, map, startWith } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { unsavedChanges } from '../shared/form/dirty-count';
@@ -60,6 +61,7 @@ import type {
   StockVendorOption,
   StockSearch,
 } from './inventory-types';
+import { isStockOperation, movementAddress } from './inventory-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { ProductScans } from '../products/product-scans';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
@@ -108,6 +110,26 @@ export class StockPage implements OnInit {
         link: () => ['/stock/movements'],
         linkQuery: (row) => ({ productId: row.productId }),
       },
+      // What is done to a product at a place, offered on the row that shows it there; with a movement open its form
+      // is where that is done, so these wait until it is closed rather than replace what is typed in it.
+      ...(
+        [
+          ['count', 'inventory.stock.count_here', 'checklist'],
+          ['move', 'inventory.stock.move_from_here', 'swap_horiz'],
+          ['loss', 'inventory.stock.loss_here', 'output'],
+        ] as const
+      ).map(([operation, label, icon]) => ({
+        id: `${operation}_here`,
+        label,
+        labelParams: (row: StockListRow) => ({ name: row.productName }),
+        icon,
+        link: () => movementAddress(operation, '').path,
+        linkQuery: (row: StockListRow) =>
+          movementAddress(operation, row.productId, row.locationId).query,
+        // Occasional beside the row's own movements and a lot's release, so they wait in its « ⋮ ».
+        rare: true,
+        shown: () => this.mayWrite() && this.operation() === null,
+      })),
       {
         id: 'release',
         label: 'inventory.stock.release',
@@ -139,6 +161,26 @@ export class StockPage implements OnInit {
     `stock-${row.productReference}-${row.locationCode}`;
 
   protected readonly operation = signal<StockOperation | null>(null);
+  /**
+   * The movement the address asks for, from wherever its product or place is shown (a product's page, a row of this
+   * list): `?operation=count&product=<id>&location=<id>` opens that form already naming them, which a person still
+   * changes before saving. `product` and `location` are also the list's own picks, so the list beside the form shows
+   * that product's stock there. Nothing is recorded by opening it.
+   */
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly asked = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => ({
+        operation: params.get('operation'),
+        product: params.get('product'),
+        location: params.get('location'),
+      })),
+    ),
+    { initialValue: { operation: null, product: null, location: null } },
+  );
+  /** The address last opened, so a reload of the locations or a live change never opens it again over what is typed. */
+  private askedOpened: string | null = null;
   /**
    * The movement form, for the product chosen: a tracked one also asks its lot (docs/SPEC.md § 7, 2026-09-23 slice 7).
    * Choosing it rebuilds the form over what was typed, as a location arriving does.
@@ -301,6 +343,20 @@ export class StockPage implements OnInit {
     unsavedChanges(this.form, this.started);
     inject(UnsavedChanges).declare(this.partsTyped);
     inject(ScanBus).handle((scan) => this.scanned(scan));
+    // The address opens a movement once the places are read, which its form offers.
+    effect(() => {
+      const { operation: asked, product: productId, location: locationId } = this.asked();
+      const companyId = this.company()?.id;
+      const ready = this.facade.locations().length > 0;
+      if (!isStockOperation(asked)) {
+        this.askedOpened = null;
+        return;
+      }
+      const key = `${asked}|${productId ?? ''}|${locationId ?? ''}`;
+      if (!companyId || !ready || !this.mayWrite() || key === this.askedOpened) return;
+      this.askedOpened = key;
+      untracked(() => void this.openAsked(companyId, asked, productId, locationId));
+    });
     // The picker shows what the form names: the form carries the id, and only this page knows how that id reads.
     effect((onCleanup) => {
       const form = this.form();
@@ -655,6 +711,43 @@ export class StockPage implements OnInit {
   protected cancel(): void {
     this.operation.set(null);
     this.facade.clearError();
+    // Closed, the movement the address asked for is no longer asked: a reload does not open it again.
+    if (this.asked().operation !== null) {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { operation: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
+  }
+
+  /**
+   * Opens the movement the address names, on the product and the place it names: the place first and marked as the
+   * person's, so the product's home proposed after it does not replace it. What it names is the form's starting
+   * point, not something typed: leaving it untouched asks nothing.
+   */
+  private async openAsked(
+    companyId: string,
+    operation: StockOperation,
+    productId: string | null,
+    locationId: string | null,
+  ): Promise<void> {
+    if (this.operation() !== operation) this.open(operation);
+    const form = this.form();
+    if (form === null) return;
+    if (locationId !== null && this.facade.locations().some((place) => place.id === locationId)) {
+      const control = form.get('locationId');
+      control?.setValue(locationId);
+      control?.markAsDirty();
+    }
+    if (productId !== null) {
+      const [product] = await this.facade.pickProducts(companyId, { ids: [productId] });
+      if (product === undefined || this.operation() !== operation) return;
+      this.known.set(product.id, product);
+      (this.form() ?? form).get('productId')?.setValue(product.id);
+    }
+    this.started.set(this.form()?.getRawValue() ?? null);
   }
 
   protected async save(values: FormValues): Promise<void> {

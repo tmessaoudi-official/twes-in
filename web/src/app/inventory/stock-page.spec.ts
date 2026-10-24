@@ -7,7 +7,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -192,6 +192,12 @@ describe('StockPage', () => {
   const form = (): FormGroup =>
     (fixture.componentInstance as unknown as { form: () => FormGroup }).form();
 
+  /** The address a link leads to, as the router hands it over. */
+  async function addressed(query: string): Promise<void> {
+    await TestBed.inject(Router).navigateByUrl(`/?${query}`);
+    await settle();
+  }
+
   async function settle(): Promise<void> {
     fixture.detectChanges();
     await fixture.whenStable();
@@ -252,6 +258,10 @@ describe('StockPage', () => {
     });
     fixture = TestBed.createComponent(StockPage);
     await settle();
+  });
+
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
   });
 
   it('asks the API for the page the list wants, rather than reading the whole stock', () => {
@@ -338,6 +348,67 @@ describe('StockPage', () => {
       '/stock/movements?productId=p1',
     );
     expect(q('stock-locations-tab')?.getAttribute('href')).toBe('/stock/locations');
+  });
+
+  // Round 2: every action where its subject appears. A row is a product at a place; its movements open from it.
+  it('offers counting, moving and writing off a product from the row that shows it at its place', async () => {
+    const entry = (testId: string): string | null | undefined =>
+      document.body
+        .querySelector(`.cdk-overlay-container [data-testid="${testId}"]`)
+        ?.getAttribute('href');
+    q('row-more-p1:l1')!.click();
+    await settle();
+    expect(entry('row-menu-count_here-p1:l1')).toBe(
+      '/stock?operation=count&product=p1&location=l1',
+    );
+    expect(entry('row-menu-move_here-p1:l1')).toBe('/stock?operation=move&product=p1&location=l1');
+    expect(entry('row-menu-loss_here-p1:l1')).toBe('/stock?operation=loss&product=p1&location=l1');
+    document.body.querySelectorAll('.cdk-overlay-backdrop').forEach((backdrop) => {
+      (backdrop as HTMLElement).click();
+    });
+    await settle();
+    // With a movement open, its form is where that is done: nothing replaces what is typed there.
+    q('stock-receive')!.click();
+    await settle();
+    q('row-more-p1:l1')?.click();
+    await settle();
+    expect(entry('row-menu-count_here-p1:l1')).toBeUndefined();
+  });
+
+  it('opens the movement the address names, on its product and place, as a start rather than as typed', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await addressed('operation=count&product=p2&location=l2');
+    await vi.waitFor(() => expect(form().get('productId')!.value).toBe('p2'));
+    await settle();
+
+    expect(facade.pickProducts).toHaveBeenCalledWith('c1', { ids: ['p2'] });
+    expect(form().get('locationId')!.value).toBe('l2');
+    expect((q('field-productId') as HTMLInputElement).value).toContain('ART-2');
+    expect(unsaved.count()).toBe(0);
+    // A reload of the places, as a live change makes, opens nothing again over what is typed.
+    type('field-quantity', '4');
+    locationsSignal.set([site, rack]);
+    await settle();
+    expect(form().get('quantity')!.value).toBe('4');
+
+    q('stock-movement-cancel')!.click();
+    await settle();
+    expect(navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({ queryParams: { operation: null }, queryParamsHandling: 'merge' }),
+    );
+  });
+
+  it('keeps the product’s home from replacing the place the address names', async () => {
+    await addressed('operation=receive&product=p1&location=l1');
+    await vi.waitFor(() => expect(form().get('productId')!.value).toBe('p1'));
+    expect(form().get('locationId')!.value).toBe('l1');
+  });
+
+  it('opens nothing from an address naming a movement it does not know', async () => {
+    await addressed('operation=steal&product=p1');
+    expect(q('stock-movement-save')).toBeNull();
   });
 
   /** ART-1 lives at the rack, so that is what the receipt offers (docs/SPEC.md row 101). */
@@ -1031,5 +1102,9 @@ describe('StockPage', () => {
     expect(q('stock-receive')).toBeNull();
     expect(q('stock-count')).toBeNull();
     expect(q('stock-move')).toBeNull();
+    expect(q('row-action-count_here-p1:l1')).toBeNull();
+    // Nor through an address, which a reader may follow from a link.
+    await addressed('operation=count');
+    expect(q('stock-movement-save')).toBeNull();
   });
 });

@@ -2435,6 +2435,10 @@
       "release_keep": "Leave expired",
       "released": "Lot {{lot}} is released.",
       "movements_of": "Movements of {{name}}",
+      "view_stock": "View stock",
+      "count_here": "Count {{name}} here",
+      "move_from_here": "Move {{name}} from here",
+      "loss_here": "Write off {{name}} here",
       "fields": {
         "reference": "Reference",
         "product": "Product",
@@ -2565,6 +2569,7 @@
       "intro": "Each establishment has a default location at the top of its tree. A location can be deleted only once it holds no locations and no movements.",
       "add": "Add a location",
       "contents": "What {{name}} holds",
+      "count_here": "Count {{name}}",
       "saved": "The location was saved.",
       "none": "No locations yet.",
       "section": "Location",

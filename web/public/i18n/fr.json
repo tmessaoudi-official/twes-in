@@ -2435,6 +2435,10 @@
       "release_keep": "Laisser périmé",
       "released": "Le lot {{lot}} est libéré.",
       "movements_of": "Mouvements de {{name}}",
+      "view_stock": "Voir le stock",
+      "count_here": "Compter {{name}} ici",
+      "move_from_here": "Déplacer {{name}} d’ici",
+      "loss_here": "Déclarer une perte de {{name}} ici",
       "fields": {
         "reference": "Référence",
         "product": "Produit",
@@ -2565,6 +2569,7 @@
       "intro": "Chaque établissement a un emplacement par défaut, en tête de son arborescence. Un emplacement ne se supprime qu’une fois vide de sous-emplacements et de mouvements.",
       "add": "Ajouter un emplacement",
       "contents": "Ce qu’il y a dans {{name}}",
+      "count_here": "Compter {{name}}",
       "saved": "L’emplacement a été enregistré.",
       "none": "Aucun emplacement pour l’instant.",
       "section": "Emplacement",

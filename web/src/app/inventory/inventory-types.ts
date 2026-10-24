@@ -72,6 +72,32 @@ export const STOCK_SOURCE_TYPES: readonly StockSourceType[] = [
 /** What a person records: goods received, what a count found on the shelf, goods moved, or goods written off. */
 export type StockOperation = 'receive' | 'count' | 'move' | 'loss';
 
+export const STOCK_OPERATIONS: readonly StockOperation[] = ['receive', 'count', 'move', 'loss'];
+
+/** Whether a word an address carries names a movement this screen records. */
+export function isStockOperation(value: unknown): value is StockOperation {
+  return STOCK_OPERATIONS.some((operation) => operation === value);
+}
+
+/**
+ * The address of Stock's form for a movement, already naming its product and, where given, its place: what a product's
+ * page, a row of stock or a place's contents link to, so the action is offered wherever its subject appears.
+ */
+export function movementAddress(
+  operation: StockOperation,
+  productId: string,
+  locationId: string | null = null,
+): { path: string[]; query: Record<string, string> } {
+  return {
+    path: ['/stock'],
+    query: {
+      operation,
+      product: productId,
+      ...(locationId === null ? {} : { location: locationId }),
+    },
+  };
+}
+
 /** Why goods were written off: the API's list, in the order the form offers them. */
 export const STOCK_LOSS_REASONS = [
   'lost',
