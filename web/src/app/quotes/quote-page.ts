@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
@@ -48,6 +49,7 @@ import { FileDrop } from '../shared/form/file-drop';
 import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { liveRecord } from '../shared/form/live-record';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { PartConflict } from '../shared/form/part-conflict';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { RecordChanged } from '../shared/form/record-changed';
@@ -536,6 +538,19 @@ export class QuotePage {
   constructor() {
     this.unsaved.declare(this.customerChanges);
     inject(ScreenActions).declare(this.actions);
+    // A note's change is announced under the note, never under the quote it delivers: a quote past its draft is read
+    // again for how far its notes deliver it. No note delivers a draft, which keeps what is typed.
+    inject(LiveChanges).reloadOn(
+      ['delivery_note'],
+      async () => {
+        const companyId = this.company()?.id;
+        const id = this.id();
+        const current = this.current();
+        if (companyId && id !== null && current && current.status !== 'draft')
+          await this.facade.loadQuote(companyId, id);
+      },
+      inject(DestroyRef),
+    );
     takeInAdded({
       add: this.add,
       ready: () => {

@@ -727,3 +727,7 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   ImageMagick, which dropped the maskable icon's strokes and drew a bare tile. Chrome's `Page.getInstallabilityErrors`
   answers `[]` in Playwright's Chromium even for a manifest with no icon, so it proves nothing: assert what
   `Page.getAppManifest` parsed instead. `assertSame(1, preg_match(…))` does not narrow `$m[1]` for PHPStan (2026-10-22).
+- WebKit keeps an icon font a navigation cut short as failed for the next page: a reload landing while the home still
+  loaded Material Symbols made `document.fonts.load` reject at once, with no request sent, and every icon read as its
+  name (`install.spec`, 8 runs in 30, green or red by shard order). `signIn` returns once the home has its icon font
+  (`e2e/icon-font.ts`); a scenario that leaves a page it has just opened waits for it the same way (2026-10-23).

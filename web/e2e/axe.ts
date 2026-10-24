@@ -2,6 +2,7 @@
 
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
+import { iconFontLoaded } from './icon-font';
 
 /**
  * The WCAG 2.1 A and AA violations on the page as it rests, each with the elements it names. A toast that has just
@@ -56,15 +57,6 @@ export async function wcagViolations(page: Page): Promise<string[]> {
  * every icon button as its name in words and fails label-content-name-mismatch on all of them at once.
  */
 export async function axeAtRest(page: Page): Promise<AxeBuilder> {
-  await expect
-    .poll(
-      () =>
-        page.evaluate(async () => {
-          await document.fonts.load('24px "Material Symbols Outlined"');
-          return document.fonts.check('24px "Material Symbols Outlined"');
-        }),
-      { timeout: 30_000 },
-    )
-    .toBe(true);
+  await iconFontLoaded(page);
   return new AxeBuilder({ page });
 }

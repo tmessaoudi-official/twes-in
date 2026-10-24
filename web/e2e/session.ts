@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { readFileSync } from 'node:fs';
 import { type BrowserContext, expect, type Page } from '@playwright/test';
+import { iconFontLoaded } from './icon-font';
 import { totp } from './totp';
 
 // The seeded operator must carry a second factor (docs/SPEC.md § 7, 2026-09-15, S3), and every code check counts
@@ -53,6 +54,8 @@ export async function signIn(page: Page): Promise<void> {
   await page.evaluate((key) => localStorage.setItem(key, 'closed'), NOTICE_CLOSED);
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
+  // A scenario's next reload or page must not cut short the home's icon font, which WebKit then keeps as failed.
+  await iconFontLoaded(page);
 }
 
 /**

@@ -49,6 +49,7 @@ import { placedOutcome, scanIntoLines, scannedLot } from '../shared/scan/scan-li
 import { CustomerDisplay } from '../shared/customer-display/customer-display';
 import { linePriced } from '../shared/customer-display/line-price';
 import { liveRecord } from '../shared/form/live-record';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { PartConflict } from '../shared/form/part-conflict';
 import { RecordChanged } from '../shared/form/record-changed';
 import { InvoicesFacade } from './invoices-facade';
@@ -794,6 +795,16 @@ export class InvoicePage {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
     // declaration, so an action cannot be offered in one of them and missing from another.
     inject(ScreenActions).declare(this.actions);
+    // A note's change is announced under the note, never under the invoice it delivers: an issued invoice is read
+    // again for how far its notes deliver it. No note delivers a draft, which keeps what is typed.
+    inject(LiveChanges).reloadOn(
+      ['delivery_note'],
+      async () => {
+        const current = this.current();
+        if (current && current.status !== 'draft') await this.reread();
+      },
+      inject(DestroyRef),
+    );
     // Read again whenever the draft is read again: a save, another person's change, another document issued.
     effect(() => {
       const companyId = this.company()?.id;
