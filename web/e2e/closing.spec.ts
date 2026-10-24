@@ -30,3 +30,18 @@ test('closing the books asks first and says it cannot be taken back', async ({ p
   const [year, month, dayOfMonth] = (latest ?? '').split('-');
   await expect(page.getByTestId('closing-day')).toHaveValue(`${dayOfMonth}/${month}/${year}`);
 });
+
+/** A day that is not one is said under the field, and nothing is asked or sent. */
+test('a closing day that is not one is said under its field, asking nothing', async ({ page }) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+
+  await page.goto('/company/closing');
+  const day = page.getByTestId('closing-day');
+  await day.fill('31/02/2026');
+  await page.getByTestId('closing-close').click();
+
+  await expect(page.getByTestId('closing-day-error')).toBeVisible();
+  await expect(page.getByTestId('confirm-kind')).toHaveCount(0);
+  await expect(day).toBeFocused();
+});

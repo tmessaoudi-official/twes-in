@@ -152,7 +152,11 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
       const recoveryCodes = await this.api.confirmTotpEnrolment(code);
       // The factor is in force from now on; the state says so without another round trip.
       this.stateSignal.update(
-        (state) => state && { ...state, mfa: { ...state.mfa, enrolled: true, totp: true } },
+        (state) =>
+          state && {
+            ...state,
+            mfa: { ...state.mfa, enrolled: true, totp: true, recoveryCodes: recoveryCodes.length },
+          },
       );
       return { ok: true, recoveryCodes };
     } catch (error) {
@@ -162,7 +166,10 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
 
   async regenerateRecoveryCodes(code: string): Promise<ConfirmationOutcome> {
     try {
-      return { ok: true, recoveryCodes: await this.api.regenerateRecoveryCodes(code) };
+      return {
+        ok: true,
+        recoveryCodes: this.counted(await this.api.regenerateRecoveryCodes(code)),
+      };
     } catch (error) {
       return { ok: false, error: shownOf(error) };
     }
@@ -175,11 +182,19 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
       const credential = await fromBrowser(() => this.passkeyClient.get(options));
       return {
         ok: true,
-        recoveryCodes: await this.api.regenerateRecoveryCodesWithPasskey(credential),
+        recoveryCodes: this.counted(await this.api.regenerateRecoveryCodesWithPasskey(credential)),
       };
     } catch (error) {
       return { ok: false, error: shownOf(error) };
     }
+  }
+
+  /** A new set replaces every code left: the lock-out warning counts it at once, without another round trip. */
+  private counted(codes: string[]): string[] {
+    this.stateSignal.update(
+      (state) => state && { ...state, mfa: { ...state.mfa, recoveryCodes: codes.length } },
+    );
+    return codes;
   }
 
   /** Whether this browser can answer a passkey ceremony at all. */
@@ -279,7 +294,16 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
         (state) =>
           state && {
             ...state,
-            mfa: { ...state.mfa, enrolled: true, passkeys: state.mfa.passkeys + 1 },
+            mfa: {
+              ...state.mfa,
+              enrolled: true,
+              passkeys: state.mfa.passkeys + 1,
+              // The account's first factor issues its codes; a later passkey leaves them as they were.
+              recoveryCodes:
+                added.recoveryCodes.length > 0
+                  ? added.recoveryCodes.length
+                  : state.mfa.recoveryCodes,
+            },
           },
       );
       return { ok: true, ...added };

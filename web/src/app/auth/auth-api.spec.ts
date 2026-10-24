@@ -179,14 +179,16 @@ describe('AuthApi', () => {
 
   it('carries the second-factor status of the account', async () => {
     const pending = api.me();
-    http
-      .expectOne('/api/auth/me')
-      .flush({ ...owner, mfa: { enrolled: true, required: true, totp: false, passkeys: 2 } });
+    http.expectOne('/api/auth/me').flush({
+      ...owner,
+      mfa: { enrolled: true, required: true, totp: false, passkeys: 2, recoveryCodes: 10 },
+    });
     expect((await pending).mfa).toEqual({
       enrolled: true,
       required: true,
       totp: false,
       passkeys: 2,
+      recoveryCodes: 10,
     });
   });
 

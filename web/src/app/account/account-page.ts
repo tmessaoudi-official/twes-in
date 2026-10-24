@@ -20,6 +20,8 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { MfaLockout } from '../auth/mfa-lockout';
+import { PasskeyClient } from '../auth/passkey-client';
 import { SCANNING_MODULE } from '../shared/scan/scanning-module';
 import type { PasswordChangeOutcome } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
@@ -75,6 +77,7 @@ export type AccountTab = (typeof ACCOUNT_TABS)[number];
   selector: 'app-account-page',
   imports: [
     PasswordToggle,
+    MfaLockout,
     AccountDeletion,
     ConnectedDevices,
     NotificationChoices,
@@ -132,6 +135,9 @@ export class AccountPage implements OnInit {
     Math.max(0, this.tabs().indexOf(this.tab() as AccountTab)),
   );
   protected readonly twoFactorOn = computed(() => this.auth.me()?.mfa.enrolled === true);
+  /** What the lock-out warning reads; its two actions are done on the two-step page. */
+  protected readonly mfa = computed(() => this.auth.me()?.mfa ?? null);
+  protected readonly passkeysSupported = inject(PasskeyClient).supported();
   /** A demo visitor's throwaway account takes no password, second factor nor deletion of its own: the API refuses them. */
   protected readonly demo = computed(() => this.auth.me()?.user.demo === true);
 
@@ -225,6 +231,10 @@ export class AccountPage implements OnInit {
 
   constructor() {
     inject(UnsavedChanges).declare(this.passwordTyped);
+  }
+
+  protected toTwoFactor(): void {
+    void this.router.navigateByUrl('/two-factor');
   }
 
   ngOnInit(): void {

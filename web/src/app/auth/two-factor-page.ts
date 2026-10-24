@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -18,6 +25,7 @@ import { QrCode } from '../shared/qr/qr-code';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { StepUp } from '../shared/step-up/step-up';
 import { SignedOutLayout } from './signed-out-layout';
+import { MfaLockout } from './mfa-lockout';
 
 /**
  * Two-step verification for the signed-in account: an authenticator app, passkeys, and the recovery codes behind both.
@@ -36,6 +44,7 @@ import { SignedOutLayout } from './signed-out-layout';
     MatButtonModule,
     TranslatePipe,
     QrCode,
+    MfaLockout,
   ],
   templateUrl: './two-factor-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -46,6 +55,7 @@ export class TwoFactorPage {
   private readonly location = inject(Location);
   private readonly stepUp = inject(StepUp);
   private readonly dialog = inject(MatDialog);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   protected readonly required = this.auth.me()?.mfa.required === true;
   /** Any factor in force; read live, so a passkey added on this page counts at once. */
@@ -53,6 +63,8 @@ export class TwoFactorPage {
   /** Replacing the recovery codes takes an authenticator code, so only an account with one is offered it. */
   protected readonly totp = computed(() => this.auth.me()?.mfa.totp === true);
   protected readonly passkeysSupported = inject(PasskeyClient).supported();
+  /** What the lock-out warning reads: the factors as the session holds them, a code spent or a passkey added at once. */
+  protected readonly mfa = computed(() => this.auth.me()?.mfa ?? null);
   protected readonly enrolment = signal<TotpEnrolment | null>(null);
   protected readonly recoveryCodes = signal<string[] | null>(null);
   protected readonly error = signal<LoginError | null>(null);
@@ -227,6 +239,23 @@ export class TwoFactorPage {
     }
   }
 
+  /** The warning's « Ajouter une clé d'accès »: the cursor goes to the name a new passkey is given, on this page. */
+  protected toPasskeyName(): void {
+    this.focus('two-factor-passkey-name-input');
+  }
+
+  /**
+   * The warning's « Nouveaux codes de secours »: with an authenticator, the cursor goes to the code that buys them;
+   * with passkeys only, the passkey is asked for at once, as the passkey section's own button does.
+   */
+  protected async renewCodes(): Promise<void> {
+    if (this.totp()) {
+      this.focus('two-factor-regenerate-code-input');
+    } else {
+      await this.regenerateWithPasskey();
+    }
+  }
+
   protected async continue(): Promise<void> {
     await this.router.navigateByUrl('/');
   }
@@ -245,6 +274,13 @@ export class TwoFactorPage {
 
   protected async signOut(): Promise<void> {
     if (await this.auth.logout()) await this.router.navigateByUrl('/login');
+  }
+
+  private focus(id: string): void {
+    const field = this.host.querySelector<HTMLElement>(`#${id}`);
+    // Optional, as in the command palette: jsdom has none.
+    field?.scrollIntoView?.({ block: 'center' });
+    field?.focus();
   }
 
   private async begin(): Promise<void> {

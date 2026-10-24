@@ -19,6 +19,14 @@
     } @else {
       @if (enrolled()) {
         <p data-testid="two-factor-enabled">{{ 'auth.two_factor.enabled' | translate }}</p>
+        @if (mfa(); as status) {
+          <app-mfa-lockout
+            [mfa]="status"
+            [passkeysSupported]="passkeysSupported"
+            (addPasskey)="toPasskeyName()"
+            (newCodes)="renewCodes()"
+          />
+        }
       } @else if (required) {
         <p data-testid="two-factor-required">{{ 'auth.two_factor.required' | translate }}</p>
       }
@@ -283,9 +291,15 @@
           {{ 'auth.logout' | translate }}
         </button>
       } @else {
-        <button mat-button type="button" (click)="later()" data-testid="two-factor-later">
-          {{ 'auth.two_factor.later' | translate }}
-        </button>
+        <!-- Outside the shell there is no account menu: signing out stays here beside leaving for later. -->
+        <div class="flex flex-wrap gap-2">
+          <button mat-button type="button" (click)="later()" data-testid="two-factor-later">
+            {{ 'auth.two_factor.later' | translate }}
+          </button>
+          <button mat-button type="button" (click)="signOut()" data-testid="two-factor-logout">
+            {{ 'auth.logout' | translate }}
+          </button>
+        </div>
       }
     }
   </div>

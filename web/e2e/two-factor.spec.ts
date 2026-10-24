@@ -77,6 +77,8 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   const secret = (await page.getByTestId('two-factor-secret').innerText()).replace(/\s/g, '');
   await expectAccessible(page, 'two-factor, scan');
   await page.screenshot({ path: test.info().outputPath('two-factor-scan.png'), fullPage: true });
+  // Nothing requires it of this account, so the page outside the menu offers a way out without setting anything up.
+  await expect(page.getByTestId('two-factor-later')).toBeVisible();
 
   await page.getByTestId('two-factor-code').fill(totp(secret));
   await page.getByTestId('two-factor-submit').click();
@@ -93,9 +95,19 @@ test('an account turns on two-step verification, replaces its recovery codes, th
 
   // A new set of recovery codes, proven by a current authenticator code. Every attempt from here to the end counts
   // against the five a user gets in five minutes, which is why this comes before the sign-ins and not after.
-  await page.getByTestId('user-menu').click();
-  await page.getByTestId('two-factor-link').click();
+  // An authenticator alone holds the account: Mon compte says so in words, with what to do, and the two-step page too.
+  await page.goto('/account?tab=security');
+  await expect(page.getByTestId('mfa-lockout-said')).toContainText(
+    /seul appareil|single device|جهاز واحد/,
+  );
+  await expect(page.getByTestId('mfa-lockout-required')).toHaveCount(0);
+  await expectAccessible(page, 'account, security, one device');
+  await page.getByTestId('mfa-lockout-new-codes').click();
+  await expect(page).toHaveURL(/\/two-factor$/);
   await expect(page.getByTestId('two-factor-enabled')).toBeVisible();
+  await expect(page.getByTestId('mfa-lockout-said')).toBeVisible();
+  await page.getByTestId('mfa-lockout-new-codes').click();
+  await expect(page.getByTestId('two-factor-regenerate-code')).toBeFocused();
   await expectAccessible(page, 'two-factor, already on');
   await page.screenshot({
     path: test.info().outputPath('two-factor-regenerate.png'),
@@ -214,6 +226,8 @@ test('a company that requires two-step verification sends its owner to set it up
 
   // Every factor can be removed but the last one a company requires (docs/SPEC.md § 7, 2026-09-22 09:12).
   await page.goto('/two-factor');
+  // Its one device lost, only whoever hosts the installation could let this owner in again: the page says so.
+  await expect(page.getByTestId('mfa-lockout-required')).toContainText(/hébergeur|hosts|مستضيف/);
   await page.getByTestId('two-factor-app-remove').click();
   // A removed factor cannot be put back, so the removal says so first (docs/SPEC.md § 7, 2026-09-26 23:04).
   await expect(page.getByTestId('confirm-kind')).toHaveAttribute('data-kind', 'definitif');

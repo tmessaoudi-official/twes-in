@@ -278,6 +278,7 @@ function toState(me: Me): SignedInState {
       required: me.mfa.required,
       totp: me.mfa.totp,
       passkeys: me.mfa.passkeys,
+      recoveryCodes: me.mfa.recoveryCodes,
     },
   };
 }

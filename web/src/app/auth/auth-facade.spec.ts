@@ -33,7 +33,7 @@ const owner: SignedInState = {
   },
   permissions: ['*'],
   modules: ['customers'],
-  mfa: { enrolled: true, required: false, totp: true, passkeys: 0 },
+  mfa: { enrolled: true, required: false, totp: true, passkeys: 0, recoveryCodes: 10 },
 };
 
 describe('AuthFacade', () => {
@@ -236,14 +236,14 @@ describe('AuthFacade', () => {
     expect(facade.needsEnrolment()).toBe(false);
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: false, required: true, totp: false, passkeys: 0 },
+      mfa: { enrolled: false, required: true, totp: false, passkeys: 0, recoveryCodes: 0 },
     });
     await facade.load();
     expect(facade.needsEnrolment()).toBe(true);
 
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
+      mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
     });
     await facade.load();
     expect(facade.needsEnrolment()).toBe(false);
@@ -252,7 +252,7 @@ describe('AuthFacade', () => {
   it('confirming an enrolment hands back the recovery codes and marks the account enrolled', async () => {
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: false, required: true, totp: false, passkeys: 0 },
+      mfa: { enrolled: false, required: true, totp: false, passkeys: 0, recoveryCodes: 0 },
     });
     await facade.load();
     const enrolment = { secret: 'JBSWY3DPEHPK3PXP', provisioningUri: 'otpauth://totp/x' };
@@ -272,6 +272,7 @@ describe('AuthFacade', () => {
       recoveryCodes: ['aaaa-bbbb'],
     });
     expect(facade.me()?.mfa.enrolled).toBe(true);
+    expect(facade.me()?.mfa.recoveryCodes).toBe(1);
     expect(facade.needsEnrolment()).toBe(false);
   });
 
@@ -287,6 +288,29 @@ describe('AuthFacade', () => {
       ok: false,
       error: 'invalid_code',
     });
+  });
+
+  // The lock-out warning reads the count from the session: a new set is counted at once, without another round trip.
+  it('counts the codes each new set leaves, by an authenticator code or by a passkey', async () => {
+    api.me.mockResolvedValue({
+      ...owner,
+      mfa: { enrolled: true, required: false, totp: true, passkeys: 1, recoveryCodes: 2 },
+    });
+    await facade.load();
+
+    api.regenerateRecoveryCodes.mockResolvedValue(['a', 'b', 'c', 'd']);
+    await facade.regenerateRecoveryCodes('123456');
+    expect(facade.me()?.mfa.recoveryCodes).toBe(4);
+
+    api.recoveryCodesPasskeyOptions.mockResolvedValue({ challenge: 'rst' });
+    client.get.mockResolvedValue({ id: 'cred' });
+    api.regenerateRecoveryCodesWithPasskey.mockResolvedValue(['e', 'f', 'g']);
+    await facade.regenerateRecoveryCodesWithPasskey();
+    expect(facade.me()?.mfa.recoveryCodes).toBe(3);
+
+    api.regenerateRecoveryCodes.mockRejectedValue(new AuthRefused('invalid_code'));
+    await facade.regenerateRecoveryCodes('000000');
+    expect(facade.me()?.mfa.recoveryCodes).toBe(3);
   });
 
   it('replaces the recovery codes against a passkey the browser produces, or says why not', async () => {
@@ -411,7 +435,7 @@ describe('AuthFacade', () => {
   it('adds a passkey the browser creates against the API options, and counts it as a factor', async () => {
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: false, required: true, totp: false, passkeys: 0 },
+      mfa: { enrolled: false, required: true, totp: false, passkeys: 0, recoveryCodes: 0 },
     });
     await facade.load();
     api.passkeyRegistrationOptions.mockResolvedValue({ challenge: 'abc' });
@@ -425,7 +449,14 @@ describe('AuthFacade', () => {
     });
     expect(client.create).toHaveBeenCalledWith({ challenge: 'abc' });
     expect(api.registerPasskey).toHaveBeenCalledWith('Work laptop', { id: 'cred' });
-    expect(facade.me()?.mfa).toEqual({ enrolled: true, required: true, totp: false, passkeys: 1 });
+    expect(facade.me()?.mfa).toEqual({
+      enrolled: true,
+      required: true,
+      totp: false,
+      passkeys: 1,
+      // The first factor issued the account's codes, which the warning counts at once.
+      recoveryCodes: 1,
+    });
     expect(facade.needsEnrolment()).toBe(false);
   });
 
@@ -449,7 +480,7 @@ describe('AuthFacade', () => {
   it('removes a passkey and stops counting it, or says why it stays', async () => {
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: true, required: false, totp: false, passkeys: 1 },
+      mfa: { enrolled: true, required: false, totp: false, passkeys: 1, recoveryCodes: 10 },
     });
     await facade.load();
     api.removePasskey.mockRejectedValueOnce(new AuthRefused('mfa_last_factor'));
@@ -463,13 +494,14 @@ describe('AuthFacade', () => {
       required: false,
       totp: false,
       passkeys: 0,
+      recoveryCodes: 10,
     });
   });
 
   it('removes the authenticator and stops counting it, or says why it stays', async () => {
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: true, required: false, totp: true, passkeys: 1 },
+      mfa: { enrolled: true, required: false, totp: true, passkeys: 1, recoveryCodes: 10 },
     });
     await facade.load();
     api.removeAuthenticator.mockRejectedValueOnce(new AuthRefused('mfa_last_factor'));
@@ -478,7 +510,13 @@ describe('AuthFacade', () => {
 
     api.removeAuthenticator.mockResolvedValue(undefined);
     expect(await facade.removeAuthenticator()).toEqual({ ok: true });
-    expect(facade.me()?.mfa).toEqual({ enrolled: true, required: false, totp: false, passkeys: 1 });
+    expect(facade.me()?.mfa).toEqual({
+      enrolled: true,
+      required: false,
+      totp: false,
+      passkeys: 1,
+      recoveryCodes: 10,
+    });
   });
 
   it('finishes a pending login with a passkey, or reports the refusal', async () => {

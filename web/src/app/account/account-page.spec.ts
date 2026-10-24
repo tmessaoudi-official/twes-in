@@ -142,7 +142,7 @@ describe('AccountPage', () => {
     pinAtSignIn: vi.fn(),
   };
   const me = signal<{ mfa: MfaStatus; user: { demo: boolean } }>({
-    mfa: { enrolled: true, required: false, totp: true, passkeys: 0 },
+    mfa: { enrolled: true, required: false, totp: true, passkeys: 0, recoveryCodes: 10 },
     user: { demo: false },
   });
   const modules = signal<readonly string[]>(['scanning']);
@@ -230,7 +230,7 @@ describe('AccountPage', () => {
     showComing.set(true);
     companies.set([acme, globex]);
     me.set({
-      mfa: { enrolled: true, required: false, totp: true, passkeys: 0 },
+      mfa: { enrolled: true, required: false, totp: true, passkeys: 0, recoveryCodes: 10 },
       user: { demo: false },
     });
     for (const fn of [
@@ -271,16 +271,38 @@ describe('AccountPage', () => {
     expect(byTestId(root, 'account-two-factor-manage')?.getAttribute('href')).toBe('/two-factor');
 
     me.set({
-      mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
+      mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
       user: { demo: false },
     });
     fixture.detectChanges();
     expect(byTestId(root, 'account-two-factor')?.textContent).toContain('Désactivée');
   });
 
+  // One lost phone away from a locked account: Sécurité says so in words, and its action leads to the two-step page.
+  it('warns an account its authenticator alone holds, and its action opens the two-step page', async () => {
+    me.set({
+      mfa: { enrolled: true, required: true, totp: true, passkeys: 0, recoveryCodes: 3 },
+      user: { demo: false },
+    });
+    const root = await render('security');
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+    expect(byTestId(root, 'mfa-lockout-said')?.textContent).toContain('mfa_lockout.single_device');
+    expect(byTestId(root, 'mfa-lockout-required')?.textContent).toContain('mfa_lockout.required');
+    byTestId(root, 'mfa-lockout-new-codes')!.click();
+    expect(navigate).toHaveBeenCalledWith('/two-factor');
+
+    me.set({
+      mfa: { enrolled: true, required: true, totp: true, passkeys: 1, recoveryCodes: 10 },
+      user: { demo: false },
+    });
+    fixture.detectChanges();
+    expect(byTestId(root, 'mfa-lockout')).toBeNull();
+  });
+
   it('offers a demo visitor no password, second factor nor deletion of the account, which the API refuses', async () => {
     me.set({
-      mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
+      mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
       user: { demo: true },
     });
     const root = await render('security');

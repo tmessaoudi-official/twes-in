@@ -26,6 +26,7 @@ import { guardUnsaved } from './shared/form/unsaved-changes';
 import { customerScreenLock } from './customer-screen/customer-screen-lock';
 import { moduleGuard } from './shell/module-guard';
 import { textsOpened, textsPart } from './shared/i18n/texts-part';
+import { MFA_LOCKOUT_TEXTS } from './auth/mfa-lockout-texts';
 import { CHECK_TEXTS } from './shared/check/check-texts';
 import { WATCH_TEXTS } from './watch/watch-texts';
 import { STOCK_COUNT_TEXTS } from './inventory/stock-count-texts';
@@ -45,7 +46,7 @@ export const routes: Routes = [
     // other endpoint until it has, so the shell could not load.
     path: 'two-factor',
     title: 'titles.two_factor',
-    ...textsPart('two-factor', twoFactorGuard),
+    ...textsPart('two-factor', twoFactorGuard, textsOpened(MFA_LOCKOUT_TEXTS)),
     loadComponent: () => import('./auth/two-factor-page').then((m) => m.TwoFactorPage),
   },
   {
@@ -184,7 +185,7 @@ export const routes: Routes = [
         // « Mon compte »: the person's own account, apart from any company (docs/SPEC.md § 7, 2026-09-25 17:22).
         path: 'account',
         title: 'account.title',
-        ...textsPart('account'),
+        ...textsPart('account', textsOpened(MFA_LOCKOUT_TEXTS)),
         loadComponent: () => import('./account/account-page').then((m) => m.AccountPage),
       },
       {

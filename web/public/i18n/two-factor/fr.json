@@ -16,7 +16,7 @@
       "later": "Plus tard",
       "enabled": "La vérification en deux étapes est activée pour ce compte.",
       "regenerate_title": "Codes de secours",
-      "regenerate_intro": "Codes de secours utilisés ou perdus ? Saisissez un code de votre application d’authentification pour en obtenir de nouveaux. Les anciens codes ne fonctionneront plus.",
+      "regenerate_intro": "Codes de secours utilisés ou perdus ? Saisissez un code de votre application d’authentification pour en obtenir de nouveaux ; les anciens ne fonctionneront plus. Application perdue ? Connectez-vous avec un code de secours ou une clé d’accès, puis retirez l’application ci-dessous et ajoutez-en une autre.",
       "regenerate": "Obtenir de nouveaux codes de secours",
       "regenerating": "Génération…",
       "app_title": "Application d’authentification",

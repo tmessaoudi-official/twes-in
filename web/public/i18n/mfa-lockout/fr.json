@@ -1,0 +1,10 @@
+{
+  "mfa_lockout": {
+    "single_device": "Votre compte dépend d’un seul appareil : ajoutez une clé d’accès et gardez vos codes de secours ({count, plural, one {il en reste {{count}}} other {il en reste {{count}}}}). Sans eux, perdre cet appareil bloque le compte.",
+    "codes_none": "Il ne vous reste aucun code de secours : demandez-en de nouveaux.",
+    "codes_low": "{count, plural, one {Il ne vous reste qu’un code de secours} other {Il ne vous reste que {{count}} codes de secours}} : demandez-en de nouveaux avant d’en manquer.",
+    "required": "Votre entreprise exige cette vérification : sans appareil ni code de secours, contactez l’hébergeur de votre installation, seul à pouvoir rétablir l’accès.",
+    "add_passkey": "Ajouter une clé d’accès",
+    "new_codes": "Nouveaux codes de secours"
+  }
+}

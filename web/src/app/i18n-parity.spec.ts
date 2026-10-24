@@ -44,6 +44,9 @@ import frCheck from '../../public/i18n/check/fr.json';
 import arWatch from '../../public/i18n/watch/ar.json';
 import enWatch from '../../public/i18n/watch/en.json';
 import frWatch from '../../public/i18n/watch/fr.json';
+import arMfaLockout from '../../public/i18n/mfa-lockout/ar.json';
+import enMfaLockout from '../../public/i18n/mfa-lockout/en.json';
+import frMfaLockout from '../../public/i18n/mfa-lockout/fr.json';
 import arSchedule from '../../public/i18n/schedule/ar.json';
 import enSchedule from '../../public/i18n/schedule/en.json';
 import frSchedule from '../../public/i18n/schedule/fr.json';
@@ -93,6 +96,7 @@ const parts: Record<string, Record<string, unknown>> = {
   purchases: { fr: frPurchases, en: enPurchases, ar: arPurchases },
   records: { fr: frRecords, en: enRecords, ar: arRecords },
   reports: { fr: frReports, en: enReports, ar: arReports },
+  'mfa-lockout': { fr: frMfaLockout, en: enMfaLockout, ar: arMfaLockout },
   schedule: { fr: frSchedule, en: enSchedule, ar: arSchedule },
   'settings-refusals': { fr: frSettingsRefusals, en: enSettingsRefusals, ar: arSettingsRefusals },
   'stock-count': { fr: frStockCount, en: enStockCount, ar: arStockCount },

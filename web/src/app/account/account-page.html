@@ -33,6 +33,14 @@
                     >{{ 'account.two_factor_manage' | translate }}</a
                   >
                 </div>
+                @if (mfa(); as status) {
+                  <app-mfa-lockout
+                    [mfa]="status"
+                    [passkeysSupported]="passkeysSupported"
+                    (addPasskey)="toTwoFactor()"
+                    (newCodes)="toTwoFactor()"
+                  />
+                }
 
                 <form
                   class="flex max-w-md flex-col gap-3"

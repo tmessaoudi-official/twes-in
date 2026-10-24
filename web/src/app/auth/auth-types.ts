@@ -114,6 +114,8 @@ export interface MfaStatus {
   totp: boolean;
   /** how many passkeys the account has */
   passkeys: number;
+  /** the recovery codes not spent yet: the screens ask for new ones before the last goes */
+  recoveryCodes: number;
 }
 
 export interface SignedInState {

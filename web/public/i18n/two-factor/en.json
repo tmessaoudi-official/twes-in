@@ -16,7 +16,7 @@
       "later": "Later",
       "enabled": "Two-step verification is on for this account.",
       "regenerate_title": "Recovery codes",
-      "regenerate_intro": "Used or lost your recovery codes? Enter a code from your authenticator app to get a new set. The old codes stop working.",
+      "regenerate_intro": "Used or lost your recovery codes? Enter a code from your authenticator app to get a new set; the old codes stop working. Lost the app? Sign in with a recovery code or a passkey, then remove the app below and add another.",
       "regenerate": "Get new recovery codes",
       "regenerating": "Generating…",
       "app_title": "Authenticator app",

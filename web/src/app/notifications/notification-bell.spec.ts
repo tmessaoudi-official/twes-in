@@ -79,7 +79,7 @@ const inCompany = (id: string): SignedInState =>
     },
     permissions: ['*'],
     modules: ['customers'],
-    mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
+    mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
   }) satisfies SignedInState;
 
 // The clock reads 2026-09-14 10:00 in Tunis.
