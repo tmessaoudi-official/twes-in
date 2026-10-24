@@ -636,7 +636,13 @@ class Invoice implements CompanyOwned
                 continue;
             }
             $existing = $this->getLines()[$index];
-            $kept[$index] = self::detailsOf($existing, Decimal::format(Decimal::of($existing->getQuantity())->add(Decimal::of($line->quantity)), InvoiceLineDetails::QUANTITY_DECIMALS));
+            // Each part carries its own share of an amount discount: the line keeps both, or the rest is billed without its share.
+            $discounts = array_values(array_filter([$existing->getDiscountAmount(), $line->discountAmount], static fn (?string $amount): bool => null !== $amount));
+            $kept[$index] = self::detailsOf(
+                $existing,
+                Decimal::format(Decimal::of($existing->getQuantity())->add(Decimal::of($line->quantity)), InvoiceLineDetails::QUANTITY_DECIMALS),
+                [] === $discounts ? null : Decimal::format(Decimal::sum(array_map(Decimal::of(...), $discounts)), 3),
+            );
         }
         $this->writeLines([...$kept, ...$appended]);
         $this->updatedAt = $now;
@@ -656,7 +662,8 @@ class Invoice implements CompanyOwned
     }
 
     /** What a line of this draft says, with the quantity given. */
-    private static function detailsOf(InvoiceLine $line, string $quantity): InvoiceLineDetails
+    /** @param string|null $discountAmount the line's amount discount in place of its own; null keeps its own */
+    private static function detailsOf(InvoiceLine $line, string $quantity, ?string $discountAmount = null): InvoiceLineDetails
     {
         return new InvoiceLineDetails(
             $line->getProduct(),
@@ -670,7 +677,7 @@ class Invoice implements CompanyOwned
             $line->getLotCode(),
             $line->isReturned(),
             $line->getDeduction(),
-            $line->getDiscountAmount(),
+            $discountAmount ?? $line->getDiscountAmount(),
             $line->getSection(),
             $line->getCreditedLineId(),
         );

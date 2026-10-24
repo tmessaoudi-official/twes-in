@@ -317,6 +317,34 @@ final class QuoteDeliveriesTest extends ApiTestCase
         );
     }
 
+    public function testTheRestOfANoteLineAddedToTheDraftOfItsFirstPartKeepsTheWholeDiscountAccepted(): void
+    {
+        $this->signedIn(self::SELLER);
+        $this->getJson($this->path('stock-locations'));
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->productId, 'locationId' => $this->stringAt($this->jsonList()[0], 'id'), 'quantity' => '10']);
+        self::assertResponseIsSuccessful();
+        $quoteId = $this->accepted(['lines' => [['productId' => $this->productId, 'quantity' => '10', 'discountAmount' => '100']]]);
+        $this->postJson($this->deliver($quoteId), ['quantities' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $noteId = $this->stringAt($this->json(), 'id');
+        $noteLine = $this->em()->getConnection()->fetchOne('SELECT id FROM delivery_note_line WHERE delivery_note_id = ?', [$noteId]);
+        self::assertIsString($noteLine);
+        $this->postJson($this->path('delivery-notes', $noteId).'/validate', null);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->path('invoices').'/from-delivery-notes', ['deliveryNoteIds' => [$noteId], 'quantities' => [$noteLine => '4']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $draftId = $this->stringAt($this->json(), 'id');
+        self::assertSame('40.000', $this->listOf($this->json(), 'lines')[0]['discountAmount'], 'four of ten take four tenths of the discount');
+
+        // The rest joins the same line of the same draft, which then bills the whole line: the whole discount with it.
+        $this->postJson($this->path('invoices', $draftId).'/delivery-notes', ['deliveryNoteIds' => [$noteId]]);
+        self::assertResponseIsSuccessful();
+        $lines = $this->listOf($this->json(), 'lines');
+        self::assertCount(1, $lines);
+        self::assertSame(['10.000', '100.000', '12400.000'], [$lines[0]['quantity'], $lines[0]['discountAmount'], $lines[0]['net']]);
+    }
+
     public function testThePrintedNoteNamesTheQuoteItDelivers(): void
     {
         $this->signedIn(self::SELLER);
