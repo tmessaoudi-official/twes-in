@@ -31,7 +31,7 @@ EOF
   printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine@sha256:%s\n' "$CADDY_DIGEST" > "$d/compose.deploy.yaml"
   printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine@sha256:%s\n' "$CADDY_DIGEST" > "$d/compose.onprem.yaml"
   printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine@sha256:%s\n  glitchtip-db:\n    image: postgres:18.6-trixie\n' "$CADDY_DIGEST" > "$d/infra/monitor/compose.yaml"
-  printf 'FROM node:26.8.2-alpine AS build\nFROM nginx:1.31.5-alpine\n' > "$d/infra/web/Dockerfile"
+  printf 'FROM node:26.8.2-alpine AS build\nFROM nginx:1.31.5-alpine-slim\n' > "$d/infra/web/Dockerfile"
   printf 'FROM node:26.8.2-trixie-slim\nARG PLAYWRIGHT_VERSION=1.63.0\n' > "$d/infra/web/tools.Dockerfile"
   printf '{"packages":{"node_modules/@playwright/test":{"version":"1.63.0"}}}\n' > "$d/web/package-lock.json"
   printf 'DATABASE_URL="postgresql://twes:twes@127.0.0.1:5433/twes?serverVersion=18&charset=utf8"\n' > "$d/api/.env"

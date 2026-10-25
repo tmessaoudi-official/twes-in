@@ -35,7 +35,10 @@ CMD ["web-live"]
 HEALTHCHECK --interval=5s --timeout=3s --start-period=600s --retries=5 \
   CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1
 
-FROM nginx:1.31.7-alpine
+# The slim variant: the same nginx binary, built with the same modules (sub_filter for the CSP nonce, gzip, realip), less
+# the dynamic modules this configuration never loads (image_filter, xslt, geoip, njs, acme) and the libraries only they
+# pull in (freetype, fontconfig, libxpm, expat, brotli, curl), which carried every finding the full image had.
+FROM nginx:1.31.7-alpine-slim
 COPY infra/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist/web/browser /usr/share/nginx/html
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=5 \
