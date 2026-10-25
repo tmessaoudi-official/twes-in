@@ -53,6 +53,8 @@ final readonly class MfaController
         private Security $security,
         #[Target('mfa_verify')]
         private RateLimiterFactoryInterface $mfaVerifyLimiter,
+        #[Target('mfa_confirm')]
+        private RateLimiterFactoryInterface $mfaConfirmLimiter,
         private SecondFactorLockout $lockout,
         private BeginTotpEnrolment $beginEnrolment,
         private ConfirmTotpEnrolment $confirmEnrolment,
@@ -116,15 +118,15 @@ final readonly class MfaController
     }
 
     /**
-     * Step two: the code proves the authenticator agrees, and the recovery codes come back once. On the login code's
-     * budget: a guess that lands installs an app and hands over its recovery codes. No lock, though: a person setting up
-     * an app for the first time may well mistype it.
+     * Step two: the code proves the authenticator agrees, and the recovery codes come back once. Budgeted as tightly as
+     * the login code, since a guess that lands installs an app and hands over its recovery codes, but on a budget of its
+     * own: a person setting up an app may well mistype it, and must still prove who they are and sign in. No lock.
      */
     #[Route('/api/auth/mfa/enrolment/confirm', name: 'api_auth_mfa_enrolment_confirm', methods: ['POST'])]
     public function confirm(Request $request): JsonResponse
     {
         $userId = $this->currentUserId();
-        if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+        if (!$this->mfaConfirmLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
@@ -174,14 +176,15 @@ final readonly class MfaController
 
     /**
      * Step two: a code from the new app puts it in the old one's place, with new recovery codes shown once; every other
-     * session of the account ends. On the login code's budget: whoever holds a session left open may post codes here,
-     * and a guess that lands hands over ten recovery codes and signs the owner out everywhere.
+     * session of the account ends. Budgeted as tightly as the login code, since whoever holds a session left open may
+     * post codes here and a guess that lands hands over ten recovery codes and signs the owner out everywhere, but on
+     * the setup's own budget: a mistyped code from the new phone must not stop its owner signing in.
      */
     #[Route('/api/auth/mfa/authenticator/replacement/confirm', name: 'api_auth_mfa_authenticator_replacement_confirm', methods: ['POST'])]
     public function confirmReplacement(Request $request): JsonResponse
     {
         $userId = $this->currentUserId();
-        if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+        if (!$this->mfaConfirmLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
 

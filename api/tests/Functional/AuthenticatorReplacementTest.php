@@ -185,10 +185,10 @@ final class AuthenticatorReplacementTest extends ApiTestCase
         self::assertNull($this->userOf('someone@twes.local')->getTotpReplacementSecret());
     }
 
-    public function testGuessingTheNewAppsCodeMeetsTheSecondFactorsBudget(): void
+    public function testGuessingTheNewAppsCodeMeetsItsOwnBudget(): void
     {
         // A session left open is enough to post codes here, and a guess that lands hands over ten recovery codes and
-        // signs the owner out everywhere: the same six digits as at sign-in, so the same budget.
+        // signs the owner out everywhere: the same six digits as at sign-in, so as few tries.
         $this->operatorSignedIn();
         $secret = $this->begun();
         for ($attempt = 0; $attempt < 5; ++$attempt) {
@@ -200,6 +200,18 @@ final class AuthenticatorReplacementTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
         self::assertSame(['error' => 'too_many_attempts'], $this->json());
         self::assertSame(0, $this->audited('auth.totp_replaced'));
+    }
+
+    public function testMistypingTheNewAppsCodeLeavesTheSignInBudgetWhole(): void
+    {
+        // A person moving to a new phone who mistypes its code is still to prove it is them, and to sign in.
+        $this->operatorSignedIn();
+        $this->begun();
+        for ($attempt = 0; $attempt < 5; ++$attempt) {
+            $this->postJson(self::CONFIRM, ['code' => '000000']);
+        }
+
+        $this->stepUp(self::PASSWORD);
     }
 
     private function operatorSignedIn(): void

@@ -162,9 +162,9 @@ final class MfaEnrolmentTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
-    public function testGuessingTheEnrolmentCodeMeetsTheSecondFactorsBudget(): void
+    public function testGuessingTheEnrolmentCodeMeetsItsOwnBudget(): void
     {
-        // A guess that lands here installs an authenticator and hands over its recovery codes: the sign-in's budget.
+        // A guess that lands here installs an authenticator and hands over its recovery codes: as few tries as at sign-in.
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
         $this->stepUp(self::PASSWORD);
@@ -181,6 +181,20 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->signOut();
         $this->login('someone@twes.local', self::PASSWORD);
         self::assertArrayNotHasKey('mfaRequired', $this->json());
+    }
+
+    public function testMistypingTheEnrolmentCodeLeavesTheSignInBudgetWhole(): void
+    {
+        // Setting up an app and mistyping its code is ordinary: it must never stop the person proving it is them.
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+        $this->postJson('/api/auth/mfa/enrolment', []);
+        for ($attempt = 0; $attempt < 5; ++$attempt) {
+            $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => '000000']);
+        }
+
+        $this->stepUp(self::PASSWORD);
     }
 
     public function testConfirmingWithAWrongCodeLeavesItOff(): void
