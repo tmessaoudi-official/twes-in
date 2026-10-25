@@ -412,6 +412,14 @@ install() {
       --operator-password-stdin --without-company >&2 || refuse "the application did not make the operator: read its answer above, then twes install again"
     echo "$email" > "$state/operator"
   fi
+  # No demo on a shop's computer: a visitor would own a sandbox here. Asked at every install, as the application keeps
+  # an operator's own choice; one it could not write is said, never a refusal.
+  local demo
+  if demo=$(compose exec -T api bin/console app:demo:switch-off-at-install 2>&1); then
+    [[ "$demo" != *"demo switched off"* ]] || say "the demo is off on this computer (an operator switches it on in /platform, Démo)"
+  else
+    say "the demo could not be switched off ($(tr '\n' ' ' <<<"$demo" | sed 's/ *$//')): switch the demo off in /platform, Démo"
+  fi
   case "$(platform)" in
     linux | wsl) [[ "$scheduling" == no ]] || { step; schedule; } ;;
     macos) say "twes start and twes tick are not scheduled on macOS yet: run twes start after each start of the computer, and twes tick every quarter hour (docs/START.md section 16)" ;;

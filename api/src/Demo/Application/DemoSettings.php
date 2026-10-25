@@ -16,7 +16,8 @@ use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Domain\ValueObject\SettingType;
 
 /**
- * The demo, on by default on every installation, a shop's own included; the platform's operators switch it off. How many
+ * The demo, on by default; a shop's own installation switches it off as it installs (SwitchDemoOffAtInstall), and the
+ * platform's operators switch it on or off. How many
  * sandboxes may exist at once bounds what visitors cost the machine: every one is a whole company with its history.
  */
 final readonly class DemoSettings implements DeclaresSettings

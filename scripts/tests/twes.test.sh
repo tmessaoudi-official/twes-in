@@ -60,6 +60,7 @@ case "$mode" in
       "exec -T backup twes-backup before-update") [[ -n "${BACKUP_LABEL:-}" ]] || exit 1; echo "2026 twes-backup before-update: $BACKUP_LABEL" ;;
       "exec -T api bin/console app:installation:tell"*) echo "$*" >> "$TMPDIR/told"; [[ -z "${TELL_SAYS:-}" ]] || echo "$TELL_SAYS"; exit "${TELL_EXIT:-0}" ;;
       "exec -T api bin/console app:seed"*) { echo "$*"; cat; } > "$TMPDIR/seeded"; exit "${SEED_EXIT:-0}" ;;
+      "exec -T api bin/console app:demo:switch-off-at-install"*) echo "$*" >> "$TMPDIR/demo-off"; [[ "${DEMO_EXIT:-0}" != 0 ]] || echo "${DEMO_SAYS:-demo switched off}"; exit "${DEMO_EXIT:-0}" ;;
       "exec -T backup sh -c"*) [[ -z "${OUTCOMES_DOWN:-}" ]] || exit 1; printf '%b' "${OUTCOMES:-}" ;;
     esac ;;
 esac
@@ -124,7 +125,7 @@ shop() { # the clone, and its values beside it under its own folder
 }
 twes() { # shop folder, then the command
   local d=$1; shift
-  rm -f "$TMPDIR/deploy.calls" "$TMPDIR/curl.calls" "$TMPDIR/told" "$TMPDIR/mail.eml" "$TMPDIR/mail.netrc" "$TMPDIR/docker.tries" "$TMPDIR/seeded" \
+  rm -f "$TMPDIR/demo-off" "$TMPDIR/deploy.calls" "$TMPDIR/curl.calls" "$TMPDIR/told" "$TMPDIR/mail.eml" "$TMPDIR/mail.netrc" "$TMPDIR/docker.tries" "$TMPDIR/seeded" \
     "$TMPDIR/systemd.calls" "$TMPDIR/health.reads"
   mkdir -p "$d/units"
   (cd "$TMPDIR" && env PATH="$TMPDIR/bin:$PATH" TWES_VALUES="$d/etc/install.env" TWES_ROOT="$d/twes-in" TWES_PLATFORM="${PLATFORM:-linux}" TWES_SYSTEMD_DIR="$d/units" TWES_BIN_DIR="$d/bin" \
@@ -234,11 +235,15 @@ check "  which runs this checkout's twes" $? 2 "$out2" "Usage: twes install"
 check "  and the end of the install says how twes is typed" 0 0 "$out" "type twes"
 check "  the operator made through the application" 0 0 "$(head -n 1 "$TMPDIR/seeded")" "app:seed --no-interaction --operator-email=op@shop.test --operator-password-stdin --without-company"
 check "  the password on its input" 0 0 "$(sed -n 2p "$TMPDIR/seeded")" "a long passphrase 2026"
+check "  the demo switched off through the application, once the operator exists" 0 0 "$(cat "$TMPDIR/demo-off" 2>&1)" "app:demo:switch-off-at-install"
+check "  and said" 0 0 "$out" "the demo is off on this computer"
 [[ "$(head -n 1 "$TMPDIR/seeded")" != *passphrase* ]]; check "  never on its command line" $? 0 "$(head -n 1 "$TMPDIR/seeded")" ""
 [[ "$out" != *"a long passphrase"* && "$out" != *abcd* ]]; check "  and no secret said back" $? 0 "$out" ""
 out=$(twes "$d" install < /dev/null); check "install again: nothing asked, nothing redone" $? 0 "$out" "installed: $NEW"
 [[ "$out" != *"[1/"* ]]; check "  and no step said, one left being none worth counting" $? 0 "$out" ""
 [[ ! -e "$TMPDIR/seeded" && "$(deployed)" != *--release* ]]; check "  (no operator, no deployment)" $? 0 "$(deployed)" ""
+out=$(DEMO_SAYS='demo left as chosen' twes "$d" install < /dev/null); [[ "$out" != *"the demo is off"* ]]; check "  the demo asked again, an operator's choice kept and nothing said" $? 0 "$(cat "$TMPDIR/demo-off" 2>&1)" "app:demo:switch-off-at-install"
+out=$(DEMO_EXIT=1 twes "$d" install < /dev/null); check "  the application not switching the demo off: installed all the same, saying what to do" $? 0 "$out" "switch the demo off in /platform"
 out=$(PLATFORM=macos twes "$d" install); check "install again on macOS: scheduling said not built" $? 0 "$out" "not scheduled on macOS"
 out=$(PLATFORM=wsl DOCKER_OS='Docker Desktop' twes "$d" install); [[ "$out" != *scheduled* ]]; check "install again under WSL with Docker Desktop: scheduling left to install.ps1" $? 0 "$out" ""
 out=$(PLATFORM=wsl twes "$d" install); check "install again under WSL with Docker Engine: scheduled by systemd" $? 0 "$out" "scheduled: twes-in-start.service"
