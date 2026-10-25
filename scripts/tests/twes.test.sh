@@ -348,6 +348,15 @@ check "  the release written down as failed, so it is not applied again by itsel
 out=$(twes "$d" start); [[ "$out" != *"cut short"* ]]; check "  a start after it: nothing more to take back" $? 0 "$out" "running:"
 
 d=$(installed)
+out=$(RELEASE_CUT=before BACKUP_LABEL=$LABEL twes "$d" update)
+# Cut inside git's own checkout: git leaves its lock behind, and with it every later checkout refused.
+: > "$d/twes-in/.git/index.lock"
+out=$(twes "$d" start); check "cut inside the checkout, its lock left behind: the next start still takes the shop back" $? 0 "$out" "the update to $NEW was cut short: starting $OLD again"
+[[ "$(at_tag "$d")" == "$OLD" ]]; check "  checked out again" $? 0 "$(at_tag "$d")" ""
+check "  the developer mailed" 0 0 "$(subject)" "Mise à jour vers $NEW interrompue, $OLD a repris"
+[[ ! -e "$d/twes-in/.git/index.lock" ]]; check "  the lock gone" $? 0 "" ""
+
+d=$(installed)
 out=$(RELEASE_CUT=after BACKUP_LABEL=$LABEL twes "$d" update)
 out=$(twes "$d" tick); check "cut once deployed and before its health was read: tick takes the shop back" $? 0 "$out" "the update to $NEW was cut short: starting $OLD again"
 [[ "$(at_tag "$d")" == "$OLD" ]]; check "  checked out again" $? 0 "$(at_tag "$d")" ""

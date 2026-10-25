@@ -115,12 +115,21 @@ final readonly class MfaController
         return new JsonResponse(['secret' => $enrolment->secret, 'provisioningUri' => $enrolment->provisioningUri]);
     }
 
-    /** Step two: the code proves the authenticator agrees, and the recovery codes come back once. */
+    /**
+     * Step two: the code proves the authenticator agrees, and the recovery codes come back once. On the login code's
+     * budget: a guess that lands installs an app and hands over its recovery codes. No lock, though: a person setting up
+     * an app for the first time may well mistype it.
+     */
     #[Route('/api/auth/mfa/enrolment/confirm', name: 'api_auth_mfa_enrolment_confirm', methods: ['POST'])]
     public function confirm(Request $request): JsonResponse
     {
+        $userId = $this->currentUserId();
+        if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
         try {
-            $codes = $this->confirmEnrolment->handle($this->currentUserId(), self::codeIn($request));
+            $codes = $this->confirmEnrolment->handle($userId, self::codeIn($request));
         } catch (SecondFactorRefused|SecondFactorUnreadable) {
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -165,14 +174,19 @@ final readonly class MfaController
 
     /**
      * Step two: a code from the new app puts it in the old one's place, with new recovery codes shown once; every other
-     * session of the account ends. The code is checked against the secret this person was just shown, so a guess here
-     * gains nothing the guesser does not already hold.
+     * session of the account ends. On the login code's budget: whoever holds a session left open may post codes here,
+     * and a guess that lands hands over ten recovery codes and signs the owner out everywhere.
      */
     #[Route('/api/auth/mfa/authenticator/replacement/confirm', name: 'api_auth_mfa_authenticator_replacement_confirm', methods: ['POST'])]
     public function confirmReplacement(Request $request): JsonResponse
     {
+        $userId = $this->currentUserId();
+        if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
         try {
-            $codes = $this->confirmReplacement->handle($this->currentUserId(), self::codeIn($request), $request->getSession()->getId());
+            $codes = $this->confirmReplacement->handle($userId, self::codeIn($request), $request->getSession()->getId());
         } catch (SecondFactorRefused|SecondFactorUnreadable) {
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }

@@ -5,6 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdvendorsGetCollectionResponse,
+  ApiCompaniesCompanyIdvendorsVendorIdpurchasesGetCollectionResponse,
   VendorJsonldVendorRead,
   VendorOptionsVendorOptionsRead,
   VendorVendorRead,
@@ -20,6 +21,7 @@ import {
   type VendorCheckReason,
   type VendorInput,
   type VendorOptions,
+  type VendorPurchaseRow,
   type VendorRow,
   type VendorSearch,
   type VendorsError,
@@ -75,6 +77,41 @@ export class VendorsApi {
       if (page.totalItems === undefined)
         throw new Error('A page of vendors came without its total.');
       return { rows: page.member.map(toVendor), total: page.totalItems };
+    });
+  }
+
+  /** One page of what was bought from a vendor, newest day first, the undated last; 404 without the right to read costs. */
+  async purchases(
+    companyId: string,
+    vendorId: string,
+    page: number,
+    itemsPerPage: number,
+  ): Promise<ListPage<VendorPurchaseRow>> {
+    return this.guard(async () => {
+      const answer = await firstValueFrom(
+        this.http.get<ApiCompaniesCompanyIdvendorsVendorIdpurchasesGetCollectionResponse>(
+          `${path(companyId, 'vendors', vendorId)}/purchases`,
+          {
+            headers: { Accept: 'application/ld+json' },
+            params: new HttpParams().set('page', page).set('itemsPerPage', itemsPerPage),
+          },
+        ),
+      );
+      if (answer.totalItems === undefined)
+        throw new Error('A page of purchases came without its total.');
+      return {
+        rows: answer.member.map((raw) => ({
+          id: raw.id ?? '',
+          productId: raw.productId ?? '',
+          productReference: raw.productReference ?? '',
+          productName: raw.productName ?? '',
+          day: raw.purchasedOn ?? null,
+          invoice: raw.invoiceNumber ?? null,
+          quantity: raw.quantity ?? null,
+          unitCost: raw.unitCost ?? '',
+        })),
+        total: answer.totalItems,
+      };
     });
   }
 

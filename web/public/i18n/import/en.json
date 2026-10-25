@@ -155,7 +155,8 @@
       "vendors": "vendors",
       "opening_stock": "opening stock",
       "product_vendors": "product vendors",
-      "product_categories": "product categories"
+      "product_categories": "product categories",
+      "purchase_history": "purchase history"
     },
     "identity": "A row is found again by: {{columns}}. At most {{rows}} rows per file.",
     "no_company": "Choose a company to import a file.",
@@ -240,7 +241,8 @@
       "below_cost": "Sold under its cost price ({{cost}}).",
       "unit_to_confirm": "No unit: created in {{code}}, the default unit. Confirm it on its page.",
       "gross_reached": "Price including taxes {{gross}} cannot be reached: {{reached}} kept.",
-      "set_aside": "“{{value}}” set aside: {{why}} The record is marked “To check” with what the file held."
+      "set_aside": "“{{value}}” set aside: {{why}} The record is marked “To check” with what the file held.",
+      "date_kept_unknown": "Date “{{date}}” cannot be: the line is kept as “date unknown”."
     },
     "stock": {
       "stock_add": "Quantity to add",
@@ -298,6 +300,20 @@
       "name_note": "A category is found again by its name on the next import.",
       "parent": "Parent category",
       "parent_note": "The name of an existing category or of one on an earlier row of the file; left blank, the category is at the top level."
+    },
+    "purchase_history": {
+      "product_reference": "Product reference",
+      "product_reference_note": "The reference of the product as it already exists: import the products first.",
+      "vendor_number": "Supplier number",
+      "vendor_number_note": "The number of the supplier the line was bought from: import the suppliers first.",
+      "date": "Date",
+      "date_note": "The day of the purchase. Empty, or a day that cannot be, and the line is kept as “date unknown”, listed after the others.",
+      "invoice_number": "Invoice number",
+      "invoice_number_note": "The supplier’s invoice number, 64 characters at most.",
+      "quantity": "Quantity",
+      "quantity_note": "How many were bought; a return is written below zero.",
+      "unit_cost": "Unit cost",
+      "unit_cost_note": "What one unit cost, excluding taxes, at most four decimals. Only the history is filled: the cost price, the sale price and the stock do not move."
     }
   }
 }

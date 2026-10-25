@@ -1,0 +1,12 @@
+{
+  "purchase_history": {
+    "bought": "Bought",
+    "undated": "date unknown",
+    "invoice": "invoice {{number}}",
+    "quantity": "quantity {{quantity}}",
+    "tab": "Purchases",
+    "none": "No purchase imported for this supplier.",
+    "more": "Show more",
+    "count": "{{count}} {count, plural, one {purchase line} other {purchase lines}}"
+  }
+}

@@ -734,6 +734,27 @@ Cheville 10 mm,6191234567897
     }
 
     /**
+     * A company under the « forfaitaire » regime charges no VAT, so the price a shop wrote taxes included is the price it
+     * charges: nothing is taken off it for a VAT its invoices drop, and the shelf price says the same figure. Taking the
+     * VAT off sold every product about 16 % under its label.
+     */
+    public function testAForfaitaireCompanysPriceTaxesIncludedIsThePriceItCharges(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfaitaire'));
+        $this->em()->flush();
+
+        $this->import("reference,name,unit_code,unit_price_gross,default_tax_codes\nTE-1,Té 50,H87,14.244,TVA19\n");
+
+        self::assertSame([2], $this->json()['created'], json_encode($this->json()['rejected']) ?: '');
+        $this->em()->clear();
+        self::assertSame('14.2440', $this->product('TE-1')->getDetails()->unitPriceNet);
+        self::assertSame('14.244', static::getContainer()->get(CustomerPrice::class)->of($this->product('TE-1'), 1));
+    }
+
+    /**
      * A cost taxes included is refused on its own cell beside a cost without them, which could disagree, and where no
      * VAT rate says what to take off it: the row and the product naming none.
      */

@@ -1,0 +1,12 @@
+{
+  "purchase_history": {
+    "bought": "شراء",
+    "undated": "تاريخ غير معروف",
+    "invoice": "فاتورة {{number}}",
+    "quantity": "الكمية {{quantity}}",
+    "tab": "المشتريات",
+    "none": "لا توجد مشتريات مستوردة لهذا المزوّد.",
+    "more": "عرض المزيد",
+    "count": "{count, plural, zero {لا سطر شراء} one {سطر شراء واحد} two {سطرا شراء} few {{{count}} أسطر شراء} many {{{count}} سطر شراء} other {{{count}} سطر شراء}}"
+  }
+}

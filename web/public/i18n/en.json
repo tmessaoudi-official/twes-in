@@ -2078,7 +2078,8 @@
     "imports": {
       "categories": "Categories",
       "products": "Products",
-      "vendors": "Product vendors"
+      "vendors": "Product vendors",
+      "purchases": "Purchase history"
     },
     "none": "No products yet.",
     "no_company": "Choose a company first.",
@@ -2734,6 +2735,9 @@
       "number_taken": "Another vendor already has this number.",
       "invalid": "The change was refused. Check the registration numbers, the IBAN and the BIC.",
       "step_up_required": "Nothing changed: confirm it is you to make this change."
+    },
+    "tabs": {
+      "record": "Record"
     }
   },
   "expenses": {

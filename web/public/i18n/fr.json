@@ -2078,7 +2078,8 @@
     "imports": {
       "categories": "Catégories",
       "products": "Produits",
-      "vendors": "Fournisseurs des produits"
+      "vendors": "Fournisseurs des produits",
+      "purchases": "Historique des achats"
     },
     "none": "Aucun produit pour l’instant.",
     "no_company": "Choisissez d’abord une entreprise.",
@@ -2734,6 +2735,9 @@
       "number_taken": "Un autre fournisseur porte déjà ce numéro.",
       "invalid": "La modification a été refusée. Vérifiez les numéros d’immatriculation, l’IBAN et le BIC.",
       "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
+    },
+    "tabs": {
+      "record": "Fiche"
     }
   },
   "expenses": {

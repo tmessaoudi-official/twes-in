@@ -1,0 +1,57 @@
+<section class="flex flex-col gap-4" data-testid="vendor-purchases">
+  @if (total(); as count) {
+    <p class="text-sm opacity-80" data-testid="vendor-purchases-count">
+      {{ 'purchase_history.count' | translate: { count } }}
+    </p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="vendor-purchases-error" class="text-error">
+      {{ 'vendors.errors.' + code | translate }}
+    </p>
+  }
+
+  <ul class="flex flex-col gap-2" data-testid="vendor-purchases-list">
+    @for (row of rows(); track row.id) {
+      <li
+        class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+        [attr.data-testid]="'vendor-purchase-' + row.id"
+      >
+        <a
+          class="underline"
+          [routerLink]="['/products', row.productId]"
+          [attr.data-testid]="'vendor-purchase-' + row.id + '-product'"
+          ><bdi>{{ row.productReference }}</bdi> · <bdi>{{ row.productName }}</bdi></a
+        >
+        <span class="text-sm">
+          <span class="tabular-nums">{{ row.unitCost | amount: 4 }}</span>
+          ·
+          {{ row.day === null ? ('purchase_history.undated' | translate) : (row.day | day) }}
+          @if (row.invoice !== null) {
+            · <bdi>{{ 'purchase_history.invoice' | translate: { number: row.invoice } }}</bdi>
+          }
+          @if (row.quantity !== null) {
+            · {{ 'purchase_history.quantity' | translate: { quantity: (row.quantity | measure) } }}
+          }
+        </span>
+      </li>
+    } @empty {
+      @if (!busy() && error() === null) {
+        <li class="text-sm opacity-80" data-testid="vendor-purchases-none">
+          {{ 'purchase_history.none' | translate }}
+        </li>
+      }
+    }
+  </ul>
+
+  @if (more()) {
+    <button
+      mat-stroked-button
+      type="button"
+      class="self-start"
+      data-testid="vendor-purchases-more"
+      (click)="showMore()"
+    >
+      {{ 'purchase_history.more' | translate }}
+    </button>
+  }
+</section>

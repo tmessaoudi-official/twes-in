@@ -11,6 +11,7 @@ namespace App\Module\Products\Application;
 
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentCalculator;
 use App\Fiscal\Domain\Calculation\DocumentInput;
@@ -34,8 +35,10 @@ use Symfony\Component\Uid\Uuid;
  * quantity on one line of a document at its net price, with the line taxes the product starts a line with, counted by
  * the calculator every document uses, at the company's currency scale and VAT rounding. So a pack is priced as twelve
  * units on one line, exactly as the invoice for it would be, and a tax entering the VAT base (FODEC) is counted there.
- * No document tax (a stamp) and no customer's regime: this is the shelf price, for anyone. A price other than the shelf's
- * (a promotion's) is counted the same way when `$unitPriceNet` names it.
+ * No document tax (a stamp) and no customer's regime: this is the shelf price, for anyone. The company's own regime does
+ * apply, since it decides what every one of its documents charges: a « forfaitaire » company's VAT is never counted, so a
+ * price it wrote taxes included is the price it charges. A price other than the shelf's (a promotion's) is counted the
+ * same way when `$unitPriceNet` names it.
  */
 final readonly class CustomerPrice
 {
@@ -49,6 +52,7 @@ final readonly class CustomerPrice
         private TaxComponentRepository $taxes,
         private FiscalPresets $presets,
         private CurrencyScales $scales,
+        private ExcludedTaxFamilies $excluded,
     ) {
     }
 
@@ -138,6 +142,7 @@ final readonly class CustomerPrice
     private function lineTaxes(Company $company, array $ids): array
     {
         $taxes = [];
+        $excluded = $this->excluded->companyRegime($company)->excludedFamilies ?? [];
         foreach ($ids as $id) {
             $tax = Uuid::isValid($id) ? $this->taxes->ofIdInCompany(Uuid::fromString($id), $company->getId()) : null;
             // Refused as the product's own form refuses its line taxes, so a screen or an import says which.
@@ -147,6 +152,10 @@ final readonly class CustomerPrice
             $rate = $tax->getRate();
             if (TaxKind::PercentageLine !== $tax->getKind() || null === $rate) {
                 throw new InvalidProduct('defaultTaxComponentIds', \sprintf('%s is charged on a document, not on a line.', $tax->getCode()), 'tax_on_document', ['tax' => $tax->getName()]);
+            }
+            // Still one of its line taxes, so a product may name it, but its documents never charge it.
+            if (\in_array($tax->getFamily(), $excluded, true)) {
+                continue;
             }
             $taxes[] = TaxInput::percentage($tax->getCode(), Rate::fromPercentage($rate), $tax->entersVatBase());
         }

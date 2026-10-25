@@ -483,6 +483,17 @@ export class ProductsApi {
         newCost: raw.newCost ?? null,
         source: raw.source ?? 'edited',
         at: raw.at ?? '',
+        purchase:
+          raw.vendorId === null || raw.vendorId === undefined
+            ? null
+            : {
+                vendorId: raw.vendorId,
+                vendorNumber: raw.vendorNumber ?? '',
+                vendorName: raw.vendorName ?? '',
+                day: raw.purchasedOn ?? null,
+                invoice: raw.invoiceNumber ?? null,
+                quantity: raw.quantity ?? null,
+              },
       })),
     );
   }

@@ -587,6 +587,31 @@ describe('VendorPage', () => {
     expect(q('vendor-read-only')).toBeNull();
   });
 
+  it('offers « Achats » beside the record to whoever reads costs, never on a new vendor or one merged away', async () => {
+    const tabs = (): string[] =>
+      [...fixture.nativeElement.querySelectorAll('[role="tab"]')].map((tab: Element) =>
+        (tab.textContent ?? '').trim(),
+      );
+    vendor.set(sotumag);
+    await open('v1');
+    expect(tabs()).toEqual(['vendors.tabs.record', 'purchase_history.tab']);
+
+    fixture.destroy();
+    auth.hasPermission.mockImplementation((name: string) => name !== 'product.cost.read');
+    await open('v1');
+    expect(tabs()).toEqual(['vendors.tabs.record']);
+
+    fixture.destroy();
+    auth.hasPermission.mockReturnValue(true);
+    vendor.set({ ...sotumag, mergedInto: { id: 'v9', number: 'FRN-0009', name: 'Autre' } });
+    await open('v1');
+    expect(tabs()).toEqual(['vendors.tabs.record']);
+
+    fixture.destroy();
+    await open(undefined);
+    expect(tabs()).toEqual(['vendors.tabs.record']);
+  });
+
   it('shows a reader the vendor without a way to save it', async () => {
     auth.hasPermission.mockReturnValue(false);
     vendor.set(sotumag);

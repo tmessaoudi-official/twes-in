@@ -2,6 +2,7 @@
 
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -9,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -30,6 +32,12 @@ class StaticLoader implements TranslateLoader {
           source: { created: 'Création', edited: 'Modifié', receipt: 'Réception' },
         },
       },
+      purchase_history: {
+        bought: 'Achat',
+        undated: 'date inconnue',
+        invoice: 'facture {{number}}',
+        quantity: 'quantité {{quantity}}',
+      },
     });
   }
 }
@@ -39,7 +47,32 @@ const change = (
   oldCost: string | null,
   newCost: string | null,
   source: ProductCostChangeRow['source'],
-): ProductCostChangeRow => ({ id, oldCost, newCost, source, at: '2026-10-03T13:20:24+00:00' });
+): ProductCostChangeRow => ({
+  id,
+  oldCost,
+  newCost,
+  source,
+  at: '2026-10-03T13:20:24+00:00',
+  purchase: null,
+});
+
+const bought = (
+  id: string,
+  cost: string,
+  day: string | null,
+  invoice: string | null,
+  quantity: string | null,
+): ProductCostChangeRow => ({
+  ...change(id, null, cost, 'purchase'),
+  purchase: {
+    vendorId: 'v1',
+    vendorNumber: 'F-001',
+    vendorName: 'Sotumag',
+    day,
+    invoice,
+    quantity,
+  },
+});
 
 // docs/SPEC.md § 7: every change of a product's cost is kept, and read newest first by whoever may read costs.
 describe('ProductCostHistorySection', () => {
@@ -51,6 +84,7 @@ describe('ProductCostHistorySection', () => {
     load: vi.fn(),
   };
   const auth = { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }) };
+  const texts = { open: vi.fn() };
   let fixture: ComponentFixture<ProductCostHistorySection>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -70,12 +104,15 @@ describe('ProductCostHistorySection', () => {
       change('h1', null, '1000.0000', 'created'),
     ]);
     facade.load.mockReset().mockResolvedValue(undefined);
+    texts.open.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       imports: [ProductCostHistorySection],
       providers: [
         provideTranslateService({ lang: 'fr', loader: provideTranslateLoader(StaticLoader) }),
+        provideRouter([]),
         { provide: ProductCostHistory, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: TextsParts, useValue: texts },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -95,6 +132,29 @@ describe('ProductCostHistorySection', () => {
     const created = q('product-cost-change-h1')?.textContent ?? '';
     expect(created).toContain('—');
     expect(created).toContain('Création');
+  });
+
+  it('lists a past purchase with what one cost, its vendor, day, invoice and quantity, the undated said so', async () => {
+    rows.set([
+      bought('b2', '1.6882', '2024-02-03', 'FA-12', '72.000'),
+      bought('b1', '1.9000', null, null, null),
+    ]);
+    await open();
+
+    expect(texts.open).toHaveBeenCalledWith('purchase-history');
+    const dated = q('product-cost-change-b2')?.textContent ?? '';
+    expect(dated).toMatch(/1\D6882/);
+    expect(dated).toContain('Achat');
+    expect(dated).toContain('Sotumag');
+    expect(dated).toContain('facture FA-12');
+    expect(dated).toContain('quantité 72');
+    expect(dated).not.toContain('→');
+    // Its vendor opens from the line.
+    expect(q('product-cost-change-b2-vendor')?.getAttribute('href')).toBe('/vendors/v1');
+    const undated = q('product-cost-change-b1')?.textContent ?? '';
+    expect(undated).toContain('date inconnue');
+    expect(undated).not.toContain('facture');
+    expect(undated).not.toContain('quantité');
   });
 
   it('says so when the cost never changed', async () => {

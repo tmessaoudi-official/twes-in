@@ -96,6 +96,8 @@ export class ProductsPage implements OnInit {
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));
   /** Who a product is bought from is written with the product, while the company keeps vendors. */
   protected readonly mayImportVendors = computed(() => this.auth.hasModule('vendors'));
+  /** What a product was bought for is a cost, read only by whoever may read costs, as the API offers the file. */
+  protected readonly mayReadCost = computed(() => this.auth.hasPermission('product.cost.read'));
   protected readonly rowTestId = (row: ProductListRow): string => `product-${row.reference}`;
   /** Where the list's category filter searches: the categories already read, each named by its path. */
   protected readonly pickSources: Readonly<Record<string, ListPickSource>> = {

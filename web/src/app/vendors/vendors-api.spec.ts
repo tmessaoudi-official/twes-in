@@ -56,6 +56,73 @@ describe('VendorsApi', () => {
 
   afterEach(() => http.verify());
 
+  it('reads a page of what was bought from a vendor, with its total, naming a day not known', async () => {
+    const read = api.purchases('c1', 'v1', 2, 50);
+    const request = http.expectOne(
+      (r) => r.url === '/api/companies/c1/vendors/v1/purchases' && r.params.get('page') === '2',
+    );
+    expect(request.request.params.get('itemsPerPage')).toBe('50');
+    expect(request.request.headers.get('Accept')).toBe('application/ld+json');
+    request.flush({
+      member: [
+        {
+          id: 'b1',
+          productId: 'p1',
+          productReference: 'VIS-6X40',
+          productName: 'Vis 6x40',
+          purchasedOn: '2024-02-03',
+          invoiceNumber: 'FA-12',
+          quantity: '72.000',
+          unitCost: '1.6882',
+        },
+        {
+          id: 'b0',
+          productId: 'p2',
+          productReference: 'CH-8',
+          productName: 'Cheville 8',
+          purchasedOn: null,
+          invoiceNumber: null,
+          quantity: null,
+          unitCost: '1.9000',
+        },
+      ],
+      totalItems: 52,
+    });
+    expect(await read).toEqual({
+      rows: [
+        {
+          id: 'b1',
+          productId: 'p1',
+          productReference: 'VIS-6X40',
+          productName: 'Vis 6x40',
+          day: '2024-02-03',
+          invoice: 'FA-12',
+          quantity: '72.000',
+          unitCost: '1.6882',
+        },
+        {
+          id: 'b0',
+          productId: 'p2',
+          productReference: 'CH-8',
+          productName: 'Cheville 8',
+          day: null,
+          invoice: null,
+          quantity: null,
+          unitCost: '1.9000',
+        },
+      ],
+      total: 52,
+    });
+  });
+
+  it('says a vendor whose purchases may not be read is not there', async () => {
+    const read = api.purchases('c1', 'v1', 1, 50);
+    http
+      .expectOne((r) => r.url === '/api/companies/c1/vendors/v1/purchases')
+      .flush(null, { status: 404, statusText: 'Not Found' });
+    await expect(read).rejects.toEqual(new VendorsRefused('not_found'));
+  });
+
   it('names the file of what the list shows, with its words, choice and order and no page', () => {
     const search = {
       page: 2,

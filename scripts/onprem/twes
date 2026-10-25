@@ -571,7 +571,13 @@ take_back() { # newest, previous commit, label, address, what happened to the up
   local current
   current=$(tag_of "$2")
   listed "$1" failed-releases || echo "$1" >> "$state/failed-releases"
-  git -C "$root" checkout --quiet --detach "$2"
+  # Run under the update lock, so no other checkout of ours is writing: a lock git left is a cut checkout's, and kept it
+  # would refuse this one and every later start, before anyone is told. Forced, over what that checkout half wrote.
+  if [[ -e "$root/.git/index.lock" ]]; then
+    say "a checkout cut short left git's lock: removed"
+    rm -f "$root/.git/index.lock"
+  fi
+  git -C "$root" checkout --quiet --force --detach "$2"
   if LAN_HOST=$4 bash "$deploy" --again "$values" && deep_health 18 >/dev/null; then
     alert installation.rolled_back "Mise à jour vers $1 $6, $current a repris" \
       "La mise à jour vers $1 $5. $current a été redémarré sur le schéma actuel et répond.

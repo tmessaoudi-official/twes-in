@@ -34,7 +34,8 @@ final readonly class ProductRecordReferences implements DeclaresRecordReferences
         return [
             RecordReference::uses('product_vendor', 'vendor_id', 'vendor', RecordMerge::MovesOrDrops, 'A product bought from the vendor names it; merged, the product is bought from the vendor kept, once.')->droppingTwinsBy('product_id'),
             RecordReference::uses('product_barcode', 'supplier_id', 'vendor', RecordMerge::Moves, 'A vendor\'s own code for a product names it; merged, the code is the kept vendor\'s.'),
-            RecordReference::ignored('product_cost_change', 'source_id', null, 'A cost changes from a receipt, a movement or a hand edit, never from a record a person deletes or merges.'),
+            RecordReference::ignored('product_cost_change', 'source_id', null, 'A cost changes from a receipt, a movement or a hand edit, and a past purchase names the import it came from: never a record a person deletes or merges.'),
+            RecordReference::uses('product_cost_change', 'vendor_id', 'vendor', RecordMerge::Moves, 'A past purchase in a product\'s history names the vendor it was bought from; merged, the vendor kept.'),
             RecordReference::uses('product', 'merged_into_id', 'product', RecordMerge::Moves, 'A product merged away stands for the product it was merged into; merged on, for the product kept.'),
             RecordReference::owned('product_barcode', 'product_id', 'product', RecordMerge::Moves, 'A product\'s codes are its own; merged, they read the product kept.'),
             RecordReference::owned('product_vendor', 'product_id', 'product', RecordMerge::MovesOrDrops, 'The vendors a product is bought from are its own; merged, the product kept is bought from each, once.')->droppingTwinsBy('vendor_id'),

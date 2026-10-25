@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatTabsModule } from '@angular/material/tabs';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
@@ -31,6 +32,7 @@ import { RecordBar } from '../shared/form/record-bar';
 import { PURCHASES_MODULE } from '../purchases/purchases-nav';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
+import { VendorPurchasesSection } from './vendor-purchases';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
 
@@ -39,12 +41,14 @@ import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
   imports: [
     MatButtonModule,
     MatCardModule,
+    MatTabsModule,
     RouterLink,
     TranslatePipe,
     DescriptorForm,
     RecordBar,
     RecordChanged,
     CheckPanel,
+    VendorPurchasesSection,
   ],
   templateUrl: './vendor-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -65,6 +69,8 @@ export class VendorPage {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('vendor.write'));
+  /** « Achats » shows what each line cost: it takes the right to read costs, as the API does. */
+  protected readonly mayReadCost = computed(() => this.auth.hasPermission('product.cost.read'));
 
   /** Null while a new vendor is filled in; undefined until the vendor asked for has been read. */
   protected readonly current = computed(() => {

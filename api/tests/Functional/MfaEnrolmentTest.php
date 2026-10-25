@@ -162,6 +162,27 @@ final class MfaEnrolmentTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    public function testGuessingTheEnrolmentCodeMeetsTheSecondFactorsBudget(): void
+    {
+        // A guess that lands here installs an authenticator and hands over its recovery codes: the sign-in's budget.
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+        $this->postJson('/api/auth/mfa/enrolment', []);
+        $secret = $this->stringAt($this->json(), 'secret');
+        for ($attempt = 0; $attempt < 5; ++$attempt) {
+            $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => '000000']);
+        }
+
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertSame(['error' => 'too_many_attempts'], $this->json());
+        $this->signOut();
+        $this->login('someone@twes.local', self::PASSWORD);
+        self::assertArrayNotHasKey('mfaRequired', $this->json());
+    }
+
     public function testConfirmingWithAWrongCodeLeavesItOff(): void
     {
         $this->createUser('someone@twes.local', self::PASSWORD);

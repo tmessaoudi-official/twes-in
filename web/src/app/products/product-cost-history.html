@@ -13,14 +13,43 @@
         class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
         [attr.data-testid]="'product-cost-change-' + row.id"
       >
-        <span class="tabular-nums">
-          {{ row.oldCost === null ? '—' : (row.oldCost | amount: 4) }}
-          →
-          {{ row.newCost === null ? '—' : (row.newCost | amount: 4) }}
-        </span>
-        <span class="text-sm opacity-80">
-          {{ 'products.costs.source.' + row.source | translate }} · {{ row.at | moment }}
-        </span>
+        @if (row.purchase; as bought) {
+          <!-- A past purchase moved no cost: what one cost, then where, when, on which invoice and how many. -->
+          <span class="tabular-nums">{{
+            row.newCost === null ? '—' : (row.newCost | amount: 4)
+          }}</span>
+          <span class="text-sm opacity-80">
+            {{ 'purchase_history.bought' | translate }} ·
+            <a
+              class="underline"
+              [routerLink]="['/vendors', bought.vendorId]"
+              [attr.data-testid]="'product-cost-change-' + row.id + '-vendor'"
+              ><bdi>{{ bought.vendorName }}</bdi></a
+            >
+            ·
+            {{
+              bought.day === null ? ('purchase_history.undated' | translate) : (bought.day | day)
+            }}
+            @if (bought.invoice !== null) {
+              · <bdi>{{ 'purchase_history.invoice' | translate: { number: bought.invoice } }}</bdi>
+            }
+            @if (bought.quantity !== null) {
+              ·
+              {{
+                'purchase_history.quantity' | translate: { quantity: (bought.quantity | measure) }
+              }}
+            }
+          </span>
+        } @else {
+          <span class="tabular-nums">
+            {{ row.oldCost === null ? '—' : (row.oldCost | amount: 4) }}
+            →
+            {{ row.newCost === null ? '—' : (row.newCost | amount: 4) }}
+          </span>
+          <span class="text-sm opacity-80">
+            {{ 'products.costs.source.' + row.source | translate }} · {{ row.at | moment }}
+          </span>
+        }
       </li>
     } @empty {
       @if (!busy()) {

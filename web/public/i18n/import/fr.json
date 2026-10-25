@@ -155,7 +155,8 @@
       "vendors": "fournisseurs",
       "opening_stock": "stocks de départ",
       "product_vendors": "fournisseurs des produits",
-      "product_categories": "catégories de produits"
+      "product_categories": "catégories de produits",
+      "purchase_history": "historique des achats"
     },
     "identity": "Une ligne est retrouvée par : {{columns}}. Au plus {{rows}} lignes par fichier.",
     "no_company": "Choisissez une entreprise pour importer un fichier.",
@@ -240,7 +241,8 @@
       "below_cost": "Vendu sous son prix de revient ({{cost}}).",
       "unit_to_confirm": "Sans unité : créé en {{code}}, l’unité par défaut. Confirmez-la dans sa fiche.",
       "gross_reached": "Prix TTC {{gross}} impossible à atteindre : {{reached}} retenu.",
-      "set_aside": "« {{value}} » mis de côté : {{why}} La fiche est marquée « À vérifier » avec ce que le fichier tenait."
+      "set_aside": "« {{value}} » mis de côté : {{why}} La fiche est marquée « À vérifier » avec ce que le fichier tenait.",
+      "date_kept_unknown": "Date « {{date}} » impossible : la ligne est gardée en « date inconnue »."
     },
     "stock": {
       "stock_add": "Quantité à ajouter",
@@ -298,6 +300,20 @@
       "name_note": "Une catégorie est retrouvée par son nom au prochain import.",
       "parent": "Catégorie parente",
       "parent_note": "Le nom d’une catégorie existante ou d’une ligne plus haut dans le fichier ; vide, la catégorie est au premier niveau."
+    },
+    "purchase_history": {
+      "product_reference": "Référence produit",
+      "product_reference_note": "La référence du produit tel qu’il existe déjà : importez les produits d’abord.",
+      "vendor_number": "Numéro fournisseur",
+      "vendor_number_note": "Le numéro du fournisseur chez qui la ligne a été achetée : importez les fournisseurs d’abord.",
+      "date": "Date",
+      "date_note": "Le jour de l’achat. Vide, ou un jour impossible, et la ligne est gardée en « date inconnue », listée après les autres.",
+      "invoice_number": "Numéro de facture",
+      "invoice_number_note": "Le numéro de la facture du fournisseur, 64 caractères au plus.",
+      "quantity": "Quantité",
+      "quantity_note": "Combien ont été achetés ; un retour s’écrit sous zéro.",
+      "unit_cost": "Coût unitaire",
+      "unit_cost_note": "Ce qu’une unité a coûté, hors taxes, quatre décimales au plus. L’historique seul est rempli : le prix de revient, le prix de vente et le stock ne bougent pas."
     }
   }
 }

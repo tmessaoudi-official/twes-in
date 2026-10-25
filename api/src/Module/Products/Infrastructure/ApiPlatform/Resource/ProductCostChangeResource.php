@@ -18,8 +18,9 @@ use App\Module\Products\Infrastructure\ApiPlatform\State\Provider\ProductCostHis
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
- * What a product has cost the company over time, the latest changes first, as many as `ManageProducts::COST_HISTORY_LIMIT`.
- * Read with `product.cost.read`: whoever may not see a cost is told there is no such page.
+ * What a product has cost the company over time, the latest changes first, as many as `ManageProducts::COST_HISTORY_LIMIT`,
+ * and the past purchases read from a file, each at its day, those of no known day last. Read with `product.cost.read`:
+ * whoever may not see a cost is told there is no such page.
  */
 #[ApiResource(
     shortName: 'ProductCostChange',
@@ -51,8 +52,8 @@ final class ProductCostChangeResource
     #[Groups([self::READ])]
     public ?string $newCost = null;
 
-    /** @var 'created'|'edited'|'receipt'|'import' */
-    #[ApiProperty(writable: false, openapiContext: ['enum' => ['created', 'edited', 'receipt', 'import']])]
+    /** @var 'created'|'edited'|'receipt'|'import'|'purchase' */
+    #[ApiProperty(writable: false, openapiContext: ['enum' => ['created', 'edited', 'receipt', 'import', 'purchase']])]
     #[Groups([self::READ])]
     public string $source = 'edited';
 
@@ -70,6 +71,33 @@ final class ProductCostChangeResource
     #[Groups([self::READ])]
     public \DateTimeImmutable $at;
 
+    /** The vendor a past purchase was bought from, by identifier, number and name; none for a change of the cost. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $vendorId = null;
+
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $vendorNumber = null;
+
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $vendorName = null;
+
+    /** The day of a past purchase, `YYYY-MM-DD`; none when its file gave none that can be. */
+    #[ApiProperty(writable: false, openapiContext: ['format' => 'date'])]
+    #[Groups([self::READ])]
+    public ?string $purchasedOn = null;
+
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $invoiceNumber = null;
+
+    /** How many a past purchase was of, three decimals; a return below zero. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $quantity = null;
+
     public function __construct()
     {
         $this->at = new \DateTimeImmutable('@0');
@@ -85,6 +113,13 @@ final class ProductCostChangeResource
         $resource->sourceId = $change->getSourceId()?->toRfc4122();
         $resource->changedBy = $change->getChangedBy()?->toRfc4122();
         $resource->at = $change->getAt();
+        $vendor = $change->getVendor();
+        $resource->vendorId = $vendor?->getId()->toRfc4122();
+        $resource->vendorNumber = $vendor?->getNumber();
+        $resource->vendorName = $vendor?->getProfile()->name;
+        $resource->purchasedOn = $change->getPurchasedOn()?->format('Y-m-d');
+        $resource->invoiceNumber = $change->getInvoiceNumber();
+        $resource->quantity = $change->getQuantity();
 
         return $resource;
     }

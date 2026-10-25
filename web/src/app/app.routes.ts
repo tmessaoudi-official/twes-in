@@ -28,6 +28,7 @@ import { moduleGuard } from './shell/module-guard';
 import { textsOpened, textsPart } from './shared/i18n/texts-part';
 import { MFA_LOCKOUT_TEXTS } from './auth/mfa-lockout-texts';
 import { CHECK_TEXTS } from './shared/check/check-texts';
+import { PURCHASE_HISTORY_TEXTS } from './shared/i18n/purchase-history-texts';
 import { WATCH_TEXTS } from './watch/watch-texts';
 import { STOCK_COUNT_TEXTS } from './inventory/stock-count-texts';
 import { RECORDS_TEXTS } from './shared/records/records-texts';
@@ -429,6 +430,7 @@ export const routes: Routes = [
           moduleGuard(VENDORS_MODULE),
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
+          textsOpened(PURCHASE_HISTORY_TEXTS),
         ],
         loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
       },

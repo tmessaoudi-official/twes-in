@@ -150,8 +150,23 @@ export interface ProductMergedInto {
   name: string;
 }
 
-/** What moved a product's cost price: its creation, a person's edit, or a stock receipt that applied one. */
-export type ProductCostSource = 'created' | 'edited' | 'receipt' | 'import';
+/**
+ * What moved a product's cost price: its creation, a person's edit, a stock receipt that applied one or a file; or a
+ * past purchase a file brought into the history, which moved nothing.
+ */
+export type ProductCostSource = 'created' | 'edited' | 'receipt' | 'import' | 'purchase';
+
+/** A past purchase in a product's history: the vendor it was bought from, its day when known, its invoice, how many. */
+export interface ProductPastPurchase {
+  vendorId: string;
+  vendorNumber: string;
+  vendorName: string;
+  /** `YYYY-MM-DD`; null when the file gave no day that can be. */
+  day: string | null;
+  invoice: string | null;
+  /** Three decimals, below zero for a return. */
+  quantity: string | null;
+}
 
 /** One change of what a product costs the company, as the history lists it, the newest first. */
 export interface ProductCostChangeRow {
@@ -162,6 +177,8 @@ export interface ProductCostChangeRow {
   source: ProductCostSource;
   /** An instant, ISO. */
   at: string;
+  /** For a past purchase, what was bought where; null for a change of the cost. */
+  purchase: ProductPastPurchase | null;
 }
 
 /** A product that can stand in for another, with what is on hand of it when the person may read stock. */

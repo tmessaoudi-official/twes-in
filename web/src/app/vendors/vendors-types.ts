@@ -102,3 +102,18 @@ export interface VendorOptions {
   /** Null while the expenses module is off: the form then has no category field. */
   expenseCategories: VendorExpenseCategory[] | null;
 }
+
+/** A line bought from a vendor, as its « Achats » tab lists it: the product, its day when known, invoice, quantity, cost. */
+export interface VendorPurchaseRow {
+  id: string;
+  productId: string;
+  productReference: string;
+  productName: string;
+  /** `YYYY-MM-DD`; null when the file it came from gave no day that can be. */
+  day: string | null;
+  invoice: string | null;
+  /** Three decimals, below zero for a return. */
+  quantity: string | null;
+  /** What one cost before taxes, four decimals. */
+  unitCost: string;
+}

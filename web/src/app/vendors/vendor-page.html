@@ -48,43 +48,60 @@
     </p>
   }
 
-  @if (current(); as vendor) {
-    @if (vendor.toCheck || vendor.checkReasons.length > 0) {
-      <app-check-panel
-        testId="vendor-check"
-        heading="check.panel.missing_vendor"
-        [items]="checkItems()"
-        [marked]="vendor.toCheck"
-        [note]="vendor.checkNote"
-      />
-    }
-  }
+  <!-- What was bought from a vendor sits beside its record, as a customer's statement does. -->
+  <mat-tab-group data-testid="vendor-tabs" [preserveContent]="true">
+    <mat-tab [label]="'vendors.tabs.record' | translate">
+      <div class="flex flex-col gap-6 pt-4" data-testid="vendor-tab-record">
+        @if (current(); as vendor) {
+          @if (vendor.toCheck || vendor.checkReasons.length > 0) {
+            <app-check-panel
+              testId="vendor-check"
+              heading="check.panel.missing_vendor"
+              [items]="checkItems()"
+              [marked]="vendor.toCheck"
+              [note]="vendor.checkNote"
+            />
+          }
+        }
 
-  @if (form(); as form) {
-    @if (sync.changedBy(); as changedBy) {
-      <app-record-changed
-        [changedBy]="changedBy"
-        [conflictCount]="sync.conflicts().length"
-        (reload)="sync.reloadSaved(form)"
-      />
+        @if (form(); as form) {
+          @if (sync.changedBy(); as changedBy) {
+            <app-record-changed
+              [changedBy]="changedBy"
+              [conflictCount]="sync.conflicts().length"
+              (reload)="sync.reloadSaved(form)"
+            />
+          }
+          @if (descriptor(); as descriptor) {
+            <mat-card>
+              <mat-card-content>
+                <app-descriptor-form
+                  [descriptor]="descriptor"
+                  [form]="form"
+                  [updated]="sync.updated()"
+                  [conflicts]="sync.conflicts()"
+                  (resolved)="sync.resolve(form, $event)"
+                  testId="vendor-form"
+                  #mainForm
+                  [readOnly]="!editable()"
+                  (submitted)="save($event)"
+                >
+                </app-descriptor-form>
+              </mat-card-content>
+            </mat-card>
+          }
+        }
+      </div>
+    </mat-tab>
+    <!-- What a line cost is a cost; a vendor merged away has none left, they moved to the vendor kept. -->
+    @if (mayReadCost() && mergedAway() === null && current(); as vendor) {
+      @if (company(); as company) {
+        <mat-tab [label]="'purchase_history.tab' | translate">
+          <div class="pt-4" data-testid="vendor-tab-purchases">
+            <app-vendor-purchases [companyId]="company.id" [vendorId]="vendor.id" />
+          </div>
+        </mat-tab>
+      }
     }
-    @if (descriptor(); as descriptor) {
-      <mat-card>
-        <mat-card-content>
-          <app-descriptor-form
-            [descriptor]="descriptor"
-            [form]="form"
-            [updated]="sync.updated()"
-            [conflicts]="sync.conflicts()"
-            (resolved)="sync.resolve(form, $event)"
-            testId="vendor-form"
-            #mainForm
-            [readOnly]="!editable()"
-            (submitted)="save($event)"
-          >
-          </app-descriptor-form>
-        </mat-card-content>
-      </mat-card>
-    }
-  }
+  </mat-tab-group>
 </section>

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Products\Domain\Model;
 
 use App\Module\Products\Domain\ValueObject\CostChangeSource;
+use App\Module\Vendors\Domain\Model\Vendor;
 use App\Shared\Domain\Service\CompanyOwned;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\DBAL\Types\Types;
@@ -18,12 +19,15 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * One change of what a product costs the company, kept for good: the cost before and after, what moved it and who. Rows
- * are only ever added, so a product's history reads as the sequence of its costs.
+ * are only ever added, so a product's history reads as the sequence of its costs. A past purchase read from a file is a
+ * row of the same history that changes nothing: what one line of it cost, from which vendor, on which day when it is
+ * known, on which invoice and how many.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'product_cost_change')]
 #[ORM\Index(name: 'idx_product_cost_change_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_product_cost_change_product', columns: ['product_id'])]
+#[ORM\Index(name: 'idx_product_cost_change_vendor', columns: ['vendor_id'])]
 class ProductCostChange implements CompanyOwned
 {
     #[ORM\Id]
@@ -59,6 +63,22 @@ class ProductCostChange implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $at;
 
+    /** The vendor a past purchase was bought from; none for a change of the cost itself. */
+    #[ORM\ManyToOne(targetEntity: Vendor::class)]
+    #[ORM\JoinColumn(name: 'vendor_id', nullable: true)]
+    private ?Vendor $vendor = null;
+
+    /** The day a past purchase was made, when its file gives one that can be. */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $purchasedOn = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $invoiceNumber = null;
+
+    /** @var numeric-string|null how many a past purchase was of, a return below zero */
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $quantity = null;
+
     /**
      * @param numeric-string|null $oldCost
      * @param numeric-string|null $newCost
@@ -74,6 +94,24 @@ class ProductCostChange implements CompanyOwned
         $this->sourceId = $sourceId;
         $this->changedBy = $changedBy;
         $this->at = $now;
+    }
+
+    /**
+     * A past purchase of the product, read from the import run that names it: its unit cost as the cost after, nothing
+     * before, since it changed nothing.
+     *
+     * @param numeric-string      $unitCost
+     * @param numeric-string|null $quantity
+     */
+    public static function purchased(Product $product, Vendor $vendor, ?\DateTimeImmutable $purchasedOn, ?string $invoiceNumber, ?string $quantity, string $unitCost, Uuid $runId, ?Uuid $by, \DateTimeImmutable $now): self
+    {
+        $change = new self($product, null, $unitCost, CostChangeSource::Purchase, $runId, $by, $now);
+        $change->vendor = $vendor;
+        $change->purchasedOn = $purchasedOn;
+        $change->invoiceNumber = $invoiceNumber;
+        $change->quantity = $quantity;
+
+        return $change;
     }
 
     public function getId(): Uuid
@@ -121,5 +159,26 @@ class ProductCostChange implements CompanyOwned
     public function getAt(): \DateTimeImmutable
     {
         return $this->at;
+    }
+
+    public function getVendor(): ?Vendor
+    {
+        return $this->vendor;
+    }
+
+    public function getPurchasedOn(): ?\DateTimeImmutable
+    {
+        return $this->purchasedOn;
+    }
+
+    public function getInvoiceNumber(): ?string
+    {
+        return $this->invoiceNumber;
+    }
+
+    /** @return numeric-string|null */
+    public function getQuantity(): ?string
+    {
+        return $this->quantity;
     }
 }

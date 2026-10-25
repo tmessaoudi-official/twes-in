@@ -213,7 +213,7 @@ describe('ProductsPage', () => {
     expect(q('product-categories-link')).not.toBeNull();
   });
 
-  it('offers the files in the order they go: categories, products, then who sells each while vendors are kept', async () => {
+  it('offers the files in the order they go: categories, products, who sells each while vendors are kept, then what each was bought for to whoever reads costs', async () => {
     const entries = async (): Promise<(string | null | undefined)[]> => {
       q('products-import')?.click();
       await settle();
@@ -225,9 +225,10 @@ describe('ProductsPage', () => {
       '/imports/product-categories',
       '/imports/products',
       '/imports/product-vendors',
+      '/imports/purchase-history',
     ]);
 
-    // Who sells a product is a file of its own, whoever may read its cost or not.
+    // Who sells a product is a file of its own, whoever may read its cost or not; what it was bought for is a cost.
     fixture.destroy();
     auth.hasPermission.mockImplementation((name: string) => name !== 'product.cost.read');
     fixture = TestBed.createComponent(ProductsPage);

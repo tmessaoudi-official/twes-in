@@ -30,6 +30,16 @@
               >
                 {{ 'products.imports.vendors' | translate }}
               </a>
+              <!-- What each was bought for is a cost, and names its vendor. -->
+              @if (mayReadCost()) {
+                <a
+                  mat-menu-item
+                  routerLink="/imports/purchase-history"
+                  data-testid="products-import-purchases"
+                >
+                  {{ 'products.imports.purchases' | translate }}
+                </a>
+              }
             }
           </mat-menu>
           <a mat-flat-button routerLink="/products/new" data-testid="product-add">

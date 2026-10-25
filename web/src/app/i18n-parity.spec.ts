@@ -9,6 +9,9 @@ import frDataErasure from '../../public/i18n/data-erasure/fr.json';
 import arDemoMails from '../../public/i18n/demo-mails/ar.json';
 import enDemoMails from '../../public/i18n/demo-mails/en.json';
 import frDemoMails from '../../public/i18n/demo-mails/fr.json';
+import arPurchaseHistory from '../../public/i18n/purchase-history/ar.json';
+import enPurchaseHistory from '../../public/i18n/purchase-history/en.json';
+import frPurchaseHistory from '../../public/i18n/purchase-history/fr.json';
 import arPurchases from '../../public/i18n/purchases/ar.json';
 import enPurchases from '../../public/i18n/purchases/en.json';
 import frPurchases from '../../public/i18n/purchases/fr.json';
@@ -96,6 +99,7 @@ const parts: Record<string, Record<string, unknown>> = {
   install: { fr: frInstall, en: enInstall, ar: arInstall },
   'invoice-bulk': { fr: frInvoiceBulk, en: enInvoiceBulk, ar: arInvoiceBulk },
   platform: { fr: frPlatform, en: enPlatform, ar: arPlatform },
+  'purchase-history': { fr: frPurchaseHistory, en: enPurchaseHistory, ar: arPurchaseHistory },
   purchases: { fr: frPurchases, en: enPurchases, ar: arPurchases },
   records: { fr: frRecords, en: enRecords, ar: arRecords },
   reports: { fr: frReports, en: enReports, ar: arReports },
