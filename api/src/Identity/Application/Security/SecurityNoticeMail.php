@@ -17,6 +17,8 @@ final readonly class SecurityNoticeMail
         public string $locale,
         public SecurityChange $change,
         public ?string $passkeyName = null,
+        /** When the lock ends, for an account locked; null for every other change. */
+        public ?LockEnd $lockEnd = null,
     ) {
     }
 }

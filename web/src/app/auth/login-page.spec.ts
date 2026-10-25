@@ -51,7 +51,7 @@ class StaticLoader implements TranslateLoader {
         },
         errors: {
           invalid_credentials: 'Identifiants incorrects',
-          account_locked: 'Compte verrouillé',
+          account_disabled: 'Compte désactivé',
           invalid_code: 'Code incorrect',
           mfa_not_pending: 'Reconnectez-vous',
           network: 'Serveur injoignable',
@@ -326,10 +326,10 @@ describe('LoginPage', () => {
 
     http
       .expectOne('/api/auth/login')
-      .flush({ error: 'account_locked' }, { status: 401, statusText: 'Unauthorized' });
+      .flush({ error: 'account_disabled' }, { status: 401, statusText: 'Unauthorized' });
     await settle(fixture);
 
-    expect(query('login-error')?.textContent).toContain('Compte verrouillé');
+    expect(query('login-error')?.textContent).toContain('Compte désactivé');
     expect(query<HTMLInputElement>('password')?.value).toBe('');
     expect(query<HTMLInputElement>('email')?.value).toBe('owner@example.test');
   });

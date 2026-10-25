@@ -8,6 +8,8 @@ export type AuthStatus = 'unknown' | 'anonymous' | 'authenticated';
 
 export type LoginError =
   | 'invalid_credentials'
+  // Only once the password was right (the second factor's steps): the password step answers a locked account as it
+  // answers a wrong password, so the lock never says which guess was right.
   | 'account_locked'
   | 'account_disabled'
   | 'too_many_attempts'

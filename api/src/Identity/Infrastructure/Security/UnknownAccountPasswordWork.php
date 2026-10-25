@@ -16,9 +16,9 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordC
 use Symfony\Component\Security\Http\Event\LoginFailureEvent;
 
 /**
- * An address nobody registered is refused before any password is compared, so it would answer faster than a real
- * account, and the time alone would say which addresses exist. Hashing the guess with the accounts' own hasher costs
- * what a real comparison costs.
+ * An address nobody registered, and an account whose lock holds, are refused before any password is compared, so they
+ * would answer faster than a real account, and the time alone would say which addresses exist or are locked. Hashing
+ * the guess with the accounts' own hasher costs what a real comparison costs, and compares it with nothing.
  */
 #[AsEventListener]
 final readonly class UnknownAccountPasswordWork
@@ -29,7 +29,7 @@ final readonly class UnknownAccountPasswordWork
 
     public function __invoke(LoginFailureEvent $event): void
     {
-        if (!self::noSuchAccount($event->getException())) {
+        if (!self::refusedBeforeThePassword($event->getException())) {
             return;
         }
         $credentials = $event->getPassport()?->getBadge(PasswordCredentials::class);
@@ -39,10 +39,10 @@ final readonly class UnknownAccountPasswordWork
         $this->hashers->getPasswordHasher(SecurityUser::class)->hash($credentials->getPassword());
     }
 
-    private static function noSuchAccount(?\Throwable $exception): bool
+    private static function refusedBeforeThePassword(?\Throwable $exception): bool
     {
         for (; null !== $exception; $exception = $exception->getPrevious()) {
-            if ($exception instanceof UserNotFoundException) {
+            if ($exception instanceof UserNotFoundException || $exception instanceof LockedAccountRefused) {
                 return true;
             }
         }

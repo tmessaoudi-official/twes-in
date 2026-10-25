@@ -140,6 +140,12 @@ security_notice:
     recovery_codes_renewed:
         heading: 'Nouveaux codes de secours'
         body: 'De nouveaux codes de secours ont été créés pour votre compte : les précédents ne fonctionnent plus.'
+    account_locked:
+        heading: 'Compte verrouillé'
+        body: 'Votre compte a été verrouillé après plusieurs mots de passe ou codes erronés : personne ne peut s’y connecter pour l’instant, pas même avec le bon mot de passe.'
+    locked_until: 'Il reste verrouillé jusqu’au %moment% (fuseau horaire %zone%).'
+    unlock: 'Pour le déverrouiller tout de suite, choisissez un nouveau mot de passe avec « Mot de passe oublié » : le lien est envoyé à cette adresse.'
+    locked_not_you: 'Si ce n’est pas vous qui avez essayé, quelqu’un tente de deviner votre mot de passe : choisissez-en un que vous n’utilisez nulle part ailleurs, et activez la vérification en deux étapes.'
     factors_replaced:
         heading: 'Facteurs de connexion réinitialisés'
         body: 'La personne qui gère votre installation a retiré les seconds facteurs de votre compte (application d’authentification, codes de secours et, le cas échéant, clés d’accès) et fermé toutes vos sessions. À votre prochaine connexion avec votre mot de passe, vous en configurerez un nouveau.'

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Identity\Infrastructure;
 
+use App\Identity\Infrastructure\Security\LockedAccountRefused;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Identity\Infrastructure\Security\UnknownAccountPasswordWork;
 use PHPUnit\Framework\TestCase;
@@ -42,6 +43,19 @@ final class UnknownAccountPasswordWorkTest extends TestCase
         self::assertSame(['the guess'], $hasher->hashed);
     }
 
+    /** A locked account is refused before its password too, and must not answer faster than an unknown address. */
+    public function testALockedAccountCostsThePasswordHashingAndComparesNothing(): void
+    {
+        $hasher = new CountingHasher();
+
+        new UnknownAccountPasswordWork(new PasswordHasherFactory([SecurityUser::class => $hasher]))(
+            $this->failure(new LockedAccountRefused()),
+        );
+
+        self::assertSame(['the guess'], $hasher->hashed);
+        self::assertSame(0, $hasher->verified, 'hashed, never compared with the account’s own');
+    }
+
     public function testARealAccountsWrongPasswordWasAlreadyCompared(): void
     {
         $hasher = new CountingHasher();
@@ -71,6 +85,8 @@ final class CountingHasher implements PasswordHasherInterface
     /** @var list<string> */
     public array $hashed = [];
 
+    public int $verified = 0;
+
     public function hash(#[\SensitiveParameter] string $plainPassword): string
     {
         $this->hashed[] = $plainPassword;
@@ -80,6 +96,8 @@ final class CountingHasher implements PasswordHasherInterface
 
     public function verify(string $hashedPassword, #[\SensitiveParameter] string $plainPassword): bool
     {
+        ++$this->verified;
+
         return false;
     }
 

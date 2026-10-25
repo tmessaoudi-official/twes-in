@@ -169,8 +169,8 @@ describe('AuthApi', () => {
     const refused = api.login({ email: 'owner@example.test', password: 'wrong' });
     http
       .expectOne('/api/auth/login')
-      .flush({ error: 'account_locked' }, { status: 401, statusText: 'Unauthorized' });
-    await expect(refused).rejects.toEqual(new AuthRefused('account_locked'));
+      .flush({ error: 'account_disabled' }, { status: 401, statusText: 'Unauthorized' });
+    await expect(refused).rejects.toEqual(new AuthRefused('account_disabled'));
 
     const unreachable = api.me();
     http.expectOne('/api/auth/me').error(new ProgressEvent('error'));

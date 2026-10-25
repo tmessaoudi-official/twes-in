@@ -25,4 +25,6 @@ enum SecurityChange: string
     case PasswordReset = 'password_reset';
     case RecoveryCodesRenewed = 'recovery_codes_renewed';
     case FactorsReplaced = 'factors_replaced';
+    /** Wrong passwords or codes locked the account for a while: told once, when the lock is set, with when it ends. */
+    case AccountLocked = 'account_locked';
 }

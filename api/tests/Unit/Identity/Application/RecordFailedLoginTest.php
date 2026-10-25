@@ -12,10 +12,12 @@ namespace App\Tests\Unit\Identity\Application;
 use App\Identity\Application\Login\FailedLoginAttempt;
 use App\Identity\Application\Login\LoginAudit;
 use App\Identity\Application\Login\RecordFailedLogin;
+use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryUsers;
+use App\Tests\Support\RecordedSecurityNotices;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
@@ -23,6 +25,7 @@ final class RecordFailedLoginTest extends TestCase
 {
     private InMemoryUsers $users;
     private InMemoryAuditTrail $audit;
+    private RecordedSecurityNotices $notices;
     private MockClock $clock;
     private RecordFailedLogin $useCase;
 
@@ -30,8 +33,9 @@ final class RecordFailedLoginTest extends TestCase
     {
         $this->users = new InMemoryUsers();
         $this->audit = new InMemoryAuditTrail();
+        $this->notices = new RecordedSecurityNotices();
         $this->clock = new MockClock('2026-09-09 12:00:00');
-        $this->useCase = new RecordFailedLogin($this->users, $this->audit, $this->clock, 5, 'PT15M');
+        $this->useCase = new RecordFailedLogin($this->users, $this->audit, $this->notices, $this->clock, 5, 'PT15M');
     }
 
     public function testAWrongPasswordCountsAgainstTheAccountAndIsAudited(): void
@@ -63,6 +67,26 @@ final class RecordFailedLoginTest extends TestCase
         self::assertTrue($user->isLockedAt($this->clock->now()));
         self::assertFalse($user->isLockedAt($this->clock->now()->modify('+15 minutes')));
         self::assertTrue($this->audit->entries[4]->changes['locked']);
+    }
+
+    /** Its owner is told once, when the lock is set, with when it ends; never once per guess. */
+    public function testTheOwnerIsToldOnceWhenTheLockIsSet(): void
+    {
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $this->users->save($user);
+
+        for ($i = 0; $i < 4; ++$i) {
+            $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'BadCredentialsException', wrongCredential: true));
+        }
+        self::assertSame([], $this->notices->told);
+
+        for ($i = 0; $i < 3; ++$i) {
+            $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'BadCredentialsException', wrongCredential: true));
+        }
+
+        self::assertSame([SecurityChange::AccountLocked], $this->notices->told);
+        self::assertEquals([$this->clock->now()->modify('+15 minutes')], $this->notices->until);
+        self::assertTrue($user->getId()->equals($this->notices->userIds[0]));
     }
 
     public function testARefusalThatIsNotAWrongPasswordLeavesTheCounterAlone(): void

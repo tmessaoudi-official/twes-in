@@ -24,6 +24,7 @@ use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Identity\Domain\ValueObject\Email;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryUsers;
+use App\Tests\Support\RecordedSecurityNotices;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -144,7 +145,7 @@ final class ConfirmStepUpTest extends TestCase
 
     public function testALockedAccountIsRefusedEvenTheRightPasswordUntilTheLockEnds(): void
     {
-        $failures = new RecordFailedLogin($this->users, new InMemoryAuditTrail(), $this->clock, 5, 'PT15M');
+        $failures = new RecordFailedLogin($this->users, new InMemoryAuditTrail(), new RecordedSecurityNotices(), $this->clock, 5, 'PT15M');
         for ($i = 0; $i < 5; ++$i) {
             $failures->handle(new FailedLoginAttempt($this->user->getId(), 'someone@example.test', 'test', true));
         }

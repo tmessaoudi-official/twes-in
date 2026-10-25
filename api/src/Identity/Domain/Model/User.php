@@ -183,17 +183,24 @@ class User
         return null !== $this->lockedUntil && $this->lockedUntil > $now;
     }
 
-    /** A guess while the lock holds changes nothing: anyone could otherwise keep an owner locked out for good. */
-    public function recordFailedLogin(\DateTimeImmutable $now, int $lockAfter, \DateInterval $lockFor): void
+    /**
+     * A guess while the lock holds changes nothing: anyone could otherwise keep an owner locked out for good.
+     *
+     * @return bool whether this guess set the lock, which its owner is then told of once
+     */
+    public function recordFailedLogin(\DateTimeImmutable $now, int $lockAfter, \DateInterval $lockFor): bool
     {
         if ($this->isLockedAt($now)) {
-            return;
+            return false;
         }
         ++$this->failedLoginCount;
-        if ($this->failedLoginCount >= $lockAfter) {
+        $locks = $this->failedLoginCount >= $lockAfter;
+        if ($locks) {
             $this->lockedUntil = $now->add($lockFor);
         }
         $this->touch($now);
+
+        return $locks;
     }
 
     /** The lock lifted and the wrong guesses forgotten, as a password reset through the mailed link does. */

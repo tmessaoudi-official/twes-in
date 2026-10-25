@@ -19,8 +19,18 @@ final class RecordedSecurityNotices implements SecurityNotices
     /** @var list<SecurityChange> */
     public array $told = [];
 
-    public function tell(Uuid $userId, SecurityChange $change, ?string $passkeyName = null): void
+    /** @var list<Uuid> the account each notice was for, in the same order */
+    public array $userIds = [];
+
+    /** @var list<\DateTimeImmutable> the end of each lock told of */
+    public array $until = [];
+
+    public function tell(Uuid $userId, SecurityChange $change, ?string $passkeyName = null, ?\DateTimeImmutable $until = null): void
     {
         $this->told[] = $change;
+        $this->userIds[] = $userId;
+        if (null !== $until) {
+            $this->until[] = $until;
+        }
     }
 }

@@ -18,6 +18,9 @@ use Symfony\Component\Uid\Uuid;
  */
 interface SecurityNotices
 {
-    /** @param string|null $passkeyName the passkey added or removed, as its owner named it */
-    public function tell(Uuid $userId, SecurityChange $change, ?string $passkeyName = null): void;
+    /**
+     * @param string|null             $passkeyName the passkey added or removed, as its owner named it
+     * @param \DateTimeImmutable|null $until       when a lock ends
+     */
+    public function tell(Uuid $userId, SecurityChange $change, ?string $passkeyName = null, ?\DateTimeImmutable $until = null): void;
 }

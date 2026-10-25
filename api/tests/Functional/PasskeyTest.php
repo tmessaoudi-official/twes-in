@@ -196,6 +196,31 @@ final class PasskeyTest extends ApiTestCase
         self::assertSame('mfa_not_pending', $this->stringAt($this->json(), 'error'));
     }
 
+    /**
+     * A lock set while the second factor is owed (wrong codes count toward it) holds for a passkey as for a code: the
+     * password was already right, so saying it is locked tells nothing a guesser did not know.
+     */
+    public function testALockSetWhileTheSecondFactorIsOwedHoldsForAPasskeyToo(): void
+    {
+        $authenticator = new FakeAuthenticator();
+        $this->withPasskey('someone@twes.local', $authenticator);
+        $this->signOut();
+        $this->login('someone@twes.local', self::PASSWORD);
+        self::assertTrue($this->boolAt($this->json(), 'mfaRequired'));
+        $request = $this->requestOptions();
+        $this->em()->getConnection()->executeStatement(
+            'UPDATE "user" SET failed_login_count = 5, locked_until = ? WHERE email = ?',
+            [(new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s'), 'someone@twes.local'],
+        );
+
+        $this->postJson('/api/auth/mfa/passkey-login', ['credential' => $authenticator->assert($request)]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertSame('account_locked', $this->stringAt($this->json(), 'error'));
+        $this->getJson('/api/auth/me');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+    }
+
     public function testAPasskeyLoginSharesTheBudgetOfFiveAttempts(): void
     {
         $this->withPasskey('someone@twes.local', new FakeAuthenticator());

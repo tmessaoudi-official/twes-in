@@ -23,6 +23,7 @@ final readonly class SecurityNoticeToMailHandler
 
     public function __invoke(SecurityNoticeToMail $message): void
     {
-        $this->mail->handle(Uuid::fromString($message->userId), SecurityChange::from($message->change), $message->passkeyName);
+        $until = null === $message->until ? null : \DateTimeImmutable::createFromFormat(\DATE_ATOM, $message->until);
+        $this->mail->handle(Uuid::fromString($message->userId), SecurityChange::from($message->change), $message->passkeyName, false === $until ? null : $until);
     }
 }

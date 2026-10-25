@@ -184,10 +184,10 @@ describe('AuthFacade', () => {
     });
     expect(facade.isAuthenticated()).toBe(true);
 
-    api.login.mockRejectedValue(new AuthRefused('account_locked'));
+    api.login.mockRejectedValue(new AuthRefused('account_disabled'));
     expect(await facade.login({ email: 'owner@example.test', password: 'wrong' })).toEqual({
       status: 'refused',
-      error: 'account_locked',
+      error: 'account_disabled',
     });
     expect(facade.status()).toBe('anonymous');
   });

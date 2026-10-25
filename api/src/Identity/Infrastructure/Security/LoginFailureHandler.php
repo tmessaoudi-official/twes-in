@@ -22,8 +22,8 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationFailureHandlerI
  * factor: the credentials were accepted, so it answers 200 and the SPA asks for the code.
  *
  * A failed login answers JSON with a stable error code. Unknown email and wrong password are the same code:
- * the response must not reveal which accounts exist. A locked or disabled account says so, since only its
- * owner (who has just supplied the right credentials, or is about to) needs to know.
+ * the response must not reveal which accounts exist. So is a locked account, right password or wrong
+ * (`LockedAccountRefused`): its owner is told by mail. A disabled account says so once the password is right.
  */
 final class LoginFailureHandler implements AuthenticationFailureHandlerInterface
 {

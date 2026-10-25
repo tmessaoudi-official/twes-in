@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Identity;
 
+use App\Identity\Application\Security\LockEnd;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNoticeMail;
 use App\Identity\Application\Security\SecurityNoticeMailer;
@@ -69,6 +70,34 @@ final class SecurityNoticeMailTest extends KernelTestCase
         }
         self::assertCount(\count(SecurityChange::cases()), array_unique($subjects));
         self::assertStringContainsString('Application d’authentification remplacée', implode("\n", $subjects));
+    }
+
+    /**
+     * A lock is told with when it ends, as its reader writes a moment and in the zone named, and with the way to end it
+     * now; never the « if it was you » of a change someone made, since nobody signed in to make it.
+     */
+    public function testALockIsToldWithWhenItEndsAndHowToEndItNow(): void
+    {
+        self::bootKernel();
+        $mailer = static::getContainer()->get(SecurityNoticeMailer::class);
+        self::assertInstanceOf(SecurityNoticeMailer::class, $mailer);
+
+        $mailer->send(new SecurityNoticeMail('someone@twes.local', 'fr', SecurityChange::AccountLocked, lockEnd: new LockEnd('2026-10-25 14:30', 'Africa/Tunis', 'dmy')));
+        $mail = $this->lastMail();
+        $html = (string) $mail->getHtmlBody();
+
+        self::assertSame('Sécurité de votre compte twes-in : Compte verrouillé', str_replace("\u{a0}", ' ', (string) $mail->getSubject()));
+        self::assertStringContainsString('jusqu’au 25/10/2026 14:30 (fuseau horaire Africa/Tunis)', $html);
+        self::assertStringContainsString('Mot de passe oublié', $html);
+        self::assertStringNotContainsString('il n’y a rien à faire', $html);
+
+        foreach (ShippedLanguages::catalogue()->interface() as $language) {
+            $mailer->send(new SecurityNoticeMail('someone@twes.local', $language, SecurityChange::AccountLocked, lockEnd: new LockEnd('2026-10-25 14:30', 'UTC')));
+            $html = (string) $this->lastMail()->getHtmlBody();
+            self::assertStringNotContainsString('security_notice', $html, $language);
+            self::assertStringContainsString('UTC', $html, $language);
+            self::assertStringContainsString('14:30', $html, $language);
+        }
     }
 
     private function lastMail(): Email

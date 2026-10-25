@@ -21,8 +21,8 @@ final readonly class MessengerSecurityNotices implements SecurityNotices
     {
     }
 
-    public function tell(Uuid $userId, SecurityChange $change, ?string $passkeyName = null): void
+    public function tell(Uuid $userId, SecurityChange $change, ?string $passkeyName = null, ?\DateTimeImmutable $until = null): void
     {
-        $this->bus->dispatch(new SecurityNoticeToMail($userId->toRfc4122(), $change->value, $passkeyName));
+        $this->bus->dispatch(new SecurityNoticeToMail($userId->toRfc4122(), $change->value, $passkeyName, $until?->format(\DATE_ATOM)));
     }
 }

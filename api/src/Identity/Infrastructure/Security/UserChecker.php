@@ -16,10 +16,14 @@ use Symfony\Component\Security\Core\User\UserCheckerInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * Refuses locked and deactivated accounts once the password is known to be right (`AccountStateAfterPassword`), and
- * on every later request (post-auth, through the context listener). Never before the password: a wrong one must answer
- * as an unknown address does, or five guesses tell which addresses are real. The message keys are what the failure
- * handler returns to the client.
+ * A locked account is refused BEFORE its password is compared, as a wrong password is: told apart, the right password
+ * would answer differently from a wrong one, and the lock would tell a guesser which guess was right; told as locked,
+ * both would say the address is real. Its owner hears of the lock by mail instead (`RecordFailedLogin`).
+ *
+ * A deactivated account is refused once the password is known to be right (`AccountStateAfterPassword`), so a wrong
+ * one still answers as an unknown address does. Post-auth checks both again; by then the password was right, so
+ * `account_locked` there tells only someone who already holds it. The message keys are what the failure handler
+ * returns to the client.
  */
 final readonly class UserChecker implements UserCheckerInterface
 {
@@ -32,6 +36,9 @@ final readonly class UserChecker implements UserCheckerInterface
 
     public function checkPreAuth(UserInterface $user): void
     {
+        if ($user instanceof SecurityUser && $user->isLockedAt($this->clock->now())) {
+            throw new LockedAccountRefused();
+        }
     }
 
     public function checkPostAuth(UserInterface $user, ?TokenInterface $token = null): void

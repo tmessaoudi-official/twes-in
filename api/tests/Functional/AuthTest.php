@@ -136,10 +136,59 @@ final class AuthTest extends ApiTestCase
         $this->login('owner@example.test', self::PASSWORD);
 
         self::assertResponseStatusCodeSame(401);
-        self::assertSame(['error' => 'account_locked'], $this->json());
+        self::assertSame(['error' => 'invalid_credentials'], $this->json(), 'the lock is never told: telling it would say the address is real');
         $user = $this->reload($user);
         self::assertSame(5, $user->getFailedLoginCount());
         self::assertNotNull($user->getLockedUntil());
+    }
+
+    /**
+     * While the lock holds, no password is compared: the right one and a wrong one answer as an address nobody registered
+     * does, so the lock can no longer tell a guesser which guess was right, and neither counts toward the lock.
+     */
+    public function testWhileLockedTheRightAndTheWrongPasswordAnswerAlikeAndNeitherIsCompared(): void
+    {
+        $user = $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
+        for ($i = 0; $i < 5; ++$i) {
+            $this->login('owner@example.test', 'wrong');
+        }
+
+        $this->login('nobody@example.test', 'wrong');
+        $unknown = [$this->client->getResponse()->getStatusCode(), $this->json()];
+        $this->login('owner@example.test', self::PASSWORD);
+        $right = [$this->client->getResponse()->getStatusCode(), $this->json()];
+        $this->login('owner@example.test', 'another guess');
+        $wrong = [$this->client->getResponse()->getStatusCode(), $this->json()];
+
+        self::assertSame([401, ['error' => 'invalid_credentials']], $unknown);
+        self::assertSame($unknown, $right);
+        self::assertSame($unknown, $wrong);
+        self::assertSame(5, $this->reload($user)->getFailedLoginCount(), 'a guess made during the lock is not counted');
+        // Refused by the lock before the password step: a wrong password compared would be recorded as one.
+        $reasons = array_map(
+            static fn (AuditLog $row): mixed => $row->getChanges()['reason'] ?? null,
+            $this->em()->getRepository(AuditLog::class)->findBy(['action' => LoginAudit::LOGIN_FAILED, 'entityId' => $user->getId()]),
+        );
+        sort($reasons);
+        self::assertSame(['BadCredentialsException', 'BadCredentialsException', 'BadCredentialsException', 'BadCredentialsException', 'BadCredentialsException', 'LockedAccountRefused', 'LockedAccountRefused'], $reasons);
+    }
+
+    /** The owner hears of the lock once, when it is set, never once per guess: a lock is no way to flood their mailbox. */
+    public function testTheOwnerIsMailedOnceWhenTheLockIsSet(): void
+    {
+        $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
+        for ($i = 0; $i < 4; ++$i) {
+            $this->login('owner@example.test', 'wrong');
+            self::assertSame([], $this->securityNotices(), "no mail after guess $i");
+        }
+
+        $this->login('owner@example.test', 'wrong');
+        self::assertSame(['account_locked'], $this->securityNotices(), 'the guess that sets the lock tells its owner');
+
+        $this->login('owner@example.test', 'wrong');
+        self::assertSame([], $this->securityNotices());
+        $this->login('owner@example.test', self::PASSWORD);
+        self::assertSame([], $this->securityNotices());
     }
 
     public function testTenAttemptsFromOneAddressAreThrottledBeforeTheAccountIsEvenConsulted(): void

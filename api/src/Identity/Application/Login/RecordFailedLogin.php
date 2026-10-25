@@ -11,6 +11,8 @@ namespace App\Identity\Application\Login;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\UserRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -22,12 +24,16 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * credential counts: a refusal because the account is already locked (or disabled, or throttled) must not touch
  * the counter, otherwise retrying would extend the lock without end, which is a way to keep someone out of
  * their own account.
+ *
+ * The sign-in never says an account is locked, which would say the address is real: its owner is told by mail, once,
+ * by the guess that sets the lock, never by the ones refused while it holds, so a lock is no way to flood a mailbox.
  */
 final readonly class RecordFailedLogin
 {
     public function __construct(
         private UserRepository $users,
         private AuditTrail $audit,
+        private SecurityNotices $notices,
         private ClockInterface $clock,
         #[Autowire(param: 'app.auth.lock_after_failures')]
         private int $lockAfterFailures,
@@ -43,10 +49,13 @@ final readonly class RecordFailedLogin
 
         if (null !== $user && $attempt->wrongCredential) {
             $now = $this->clock->now();
-            $user->recordFailedLogin($now, $this->lockAfterFailures, new \DateInterval($this->lockDuration));
+            $locks = $user->recordFailedLogin($now, $this->lockAfterFailures, new \DateInterval($this->lockDuration));
             $this->users->save($user);
             $changes['failed_login_count'] = $user->getFailedLoginCount();
             $changes['locked'] = $user->isLockedAt($now);
+            if ($locks) {
+                $this->notices->tell($user->getId(), SecurityChange::AccountLocked, until: $user->getLockedUntil());
+            }
         }
 
         $this->audit->record(new AuditEntry(LoginAudit::ENTITY_TYPE, $user?->getId(), LoginAudit::LOGIN_FAILED, null, $changes));

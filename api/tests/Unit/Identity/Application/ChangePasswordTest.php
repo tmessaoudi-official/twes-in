@@ -103,7 +103,7 @@ final class ChangePasswordTest extends TestCase
 
         $clock = new MockClock('2026-10-02 12:00:00');
 
-        return new ChangePassword($this->users, $hasher, new PasswordAttempts($hasher, new RecordFailedLogin($this->users, $this->audit, $clock, 5, 'PT15M'), $clock, $this->transactions), new NewPasswordPolicy(new FakeBreachedPasswordCheck($breached)), $this->audit, $this->transactions, $clock, new InMemorySessions(), new RecordedSecurityNotices());
+        return new ChangePassword($this->users, $hasher, new PasswordAttempts($hasher, new RecordFailedLogin($this->users, $this->audit, new RecordedSecurityNotices(), $clock, 5, 'PT15M'), $clock, $this->transactions), new NewPasswordPolicy(new FakeBreachedPasswordCheck($breached)), $this->audit, $this->transactions, $clock, new InMemorySessions(), new RecordedSecurityNotices());
     }
 
     private function assertRefused(string $reason, callable $act): void

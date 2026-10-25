@@ -142,6 +142,12 @@ security_notice:
     factors_replaced:
         heading: 'Sign-in factors reset'
         body: 'Whoever runs your installation removed your account’s second factors (authenticator app, recovery codes and, where asked, passkeys) and ended all your sessions. At your next sign-in with your password, you will set up a new one.'
+    account_locked:
+        heading: 'Account locked'
+        body: 'Your account was locked after several wrong passwords or codes: nobody can sign in to it for now, not even with the right password.'
+    locked_until: 'It stays locked until %moment% (time zone %zone%).'
+    unlock: 'To unlock it now, choose a new password with “Forgot password”: the link is sent to this address.'
+    locked_not_you: 'If this was not you trying, someone is guessing your password: choose one you use nowhere else, and turn on two-step verification.'
     passkey: 'Passkey:'
     if_you: 'If this was you, there is nothing to do.'
     not_you: 'If this was not you and you can still sign in, change your password in “My account”, then check “Two-step verification”.'
