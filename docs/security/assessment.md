@@ -72,6 +72,31 @@ The 22 P3 are in the lens reports: among them, raw exception text in some 4xx an
 string, session ids stored raw, a notification stop token that never expires, `npm ci` running lifecycle scripts, no
 top-level `permissions:` in the workflows, and base images in Dockerfiles by tag rather than digest.
 
+## Class: an action that cuts a person's own access, or strands a company or the platform
+
+Swept on 2026-10-25 after the developer saw « Retirer » offered on their own row. Leaving a company, deleting one's
+account and removing someone are three different acts; none may happen by a slip, and none may leave a company with
+no owner or the platform with no operator.
+
+| Action | Guard | Evidence |
+|---|---|---|
+| Remove oneself from a company (« Retirer » on one's own row) | refused, own reason `own_membership`; not offered on one's own row | 7c5f82e2; `MembersTest` (only owner, one of two), `RemoveMemberTest`, `members-page.spec` |
+| Remove a company's last owner | refused, `last_owner` | `RemoveMember.php`; `RemoveMemberTest` |
+| Delete one's own account as a company's only owner, or as an operator | refused, the companies named | `DeleteOwnAccount.php:61` |
+| An operator deactivating their own account | refused | `ManageAccounts.php:67`; `PlatformAccountsTest::testAnOperatorCannotDeactivateTheirOwnAccount` |
+| Remove the last second factor a company requires (a passkey) | refused, `mfa_last_factor` | `RemovePasskey.php:63` |
+| Remove a required authenticator | refused: replaced, never removed | ruling 2026-10-25 09:40, `RemoveAuthenticator.php` |
+| Edit or delete a built-in role (the owner's) | refused | `RoleNotEditable` |
+| Every factor lost (phone and recovery codes) | not stranded: `app:mfa:replace <e-mail>` on the installation's console; an operator's on-screen reset stays refused | `ReplaceSecondFactorsCommand.php`; docs/RUNBOOK.md « Replace a lost authenticator » |
+| Password forgotten | reset by mail | the reset flow |
+
+Left as they are, with the reason:
+- A member with « user.write » on a custom role can remove permissions from the role they hold; the owner keeps every
+  right, so the company is never stranded.
+- Two operators deactivating each other in the same moment would leave none active; the installation's console seeds
+  an operator again (`app:seed`). Not worth a lock at one operator per shop.
+- Leaving a company on purpose has no screen yet: « Quitter l'entreprise » is its own act if it is ever wanted.
+
 ## Certified by execution, and not
 
 - By execution: the audits, the seven image scans, library linkage and loaded versions inside the images, the PHP
