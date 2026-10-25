@@ -64,6 +64,9 @@ cp /stack/projects/twes-in/scripts/onprem/install.ps1 /media/$USER/<your-usb>/in
 
 ## 6. The Windows test — yours, Sunday 25, from the tag of § 3
 
+The shop's computer already holds the J-1 install of `v2026.10.22.1`: it is wiped first, never updated in place
+(docs/release-26-install-day.md « Before § 3 »), then installed as below.
+
 If it finds something Claude cannot fix the same day, install day stays Monday and it is fixed on site (ruled
 2026-10-24 17:45): bring what failed, the command and its output. On install day, tell the owner that « À surveiller »
 reads 4,013 after the import (measured on a company holding the five files, 2026-10-25): 3,974 products, every one

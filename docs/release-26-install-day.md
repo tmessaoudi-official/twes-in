@@ -53,8 +53,14 @@ and one failed pull parks the release until someone runs `twes update` at the co
      is made. `install.ps1` registers it again.
    - `wsl --unregister Ubuntu` erases the checkout, the values, Docker Engine and every volume inside it: the database,
      the files, the authority and the local backups. It cannot be undone.
-   - If `docker-desktop` was listed: uninstall Docker Desktop (Settings > Apps; the installer refuses it beside
-     `-Engine Wsl`), then `wsl --unregister` any `docker-desktop` line still listed.
+   - If `docker-desktop` was listed: before `wsl --unregister Ubuntu`, also remove Docker Desktop's two tasks, which
+     start Ubuntu every quarter hour as `keep` does:
+     `Unregister-ScheduledTask -TaskPath '\twes-in\' -TaskName start -Confirm:$false` and the same for `tick`; then
+     uninstall Docker Desktop (Settings > Apps; the installer refuses it beside `-Engine Wsl`), and `wsl --unregister`
+     any `docker-desktop` line still listed.
+   - The certificate line reads the name Caddy gives its root, worked out rather than read on that computer: look first
+     with `Get-ChildItem Cert:\LocalMachine\Root | Where-Object Subject -like '*twes-in*'`; a name that does not match
+     leaves a stale root behind, nothing worse.
    - If « backups to: » named a folder: it keeps the old installation's backups, encrypted under its old passphrases,
      and its `twes-in-backups.id`, which a new install adopts and then cannot back up into. Give the new install
      another, empty folder, or empty that one.
