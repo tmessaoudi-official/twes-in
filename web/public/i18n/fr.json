@@ -201,6 +201,7 @@
       "unknown_user": "Aucun compte ne porte cette adresse. L’invitation arrive bientôt.",
       "already_member": "Cette personne fait déjà partie de l’entreprise.",
       "last_owner": "Une entreprise garde au moins un propriétaire.",
+      "own_membership": "Vous ne pouvez pas vous retirer vous-même de l’entreprise.",
       "forbidden": "Votre rôle dans cette entreprise ne le permet pas.",
       "not_found": "Entreprise introuvable.",
       "invalid": "Demande invalide.",

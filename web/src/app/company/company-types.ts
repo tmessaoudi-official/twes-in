@@ -94,6 +94,7 @@ export type CompanyError =
   | 'unknown_user'
   | 'already_member'
   | 'last_owner'
+  | 'own_membership'
   | 'forbidden'
   | 'code_taken'
   | 'not_found'

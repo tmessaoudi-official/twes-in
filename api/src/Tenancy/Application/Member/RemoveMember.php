@@ -18,7 +18,10 @@ use App\Tenancy\Domain\Repository\MembershipRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/** Takes someone out of a company, never the last owner: a company nobody owns can never be administered again. */
+/**
+ * Takes someone out of a company: never oneself, which is leaving, another act than removing someone, and never the last
+ * owner, as a company nobody owns can never be administered again.
+ */
 final readonly class RemoveMember
 {
     public const string ENTITY_TYPE = 'membership';
@@ -33,9 +36,12 @@ final readonly class RemoveMember
     ) {
     }
 
-    /** @throws NotAMember|LastOwner|RoleNotManageable */
+    /** @throws NotAMember|OwnMembership|LastOwner|RoleNotManageable */
     public function handle(Uuid $companyId, Uuid $userId, ?Uuid $actorUserId): void
     {
+        if (null !== $actorUserId && $actorUserId->equals($userId)) {
+            throw new OwnMembership('Nobody removes themselves from a company.');
+        }
         $this->transactions->run(function () use ($companyId, $userId, $actorUserId): void {
             $membership = $this->memberships->ofUserInCompany($userId, $companyId)
                 ?? throw new NotAMember(\sprintf('%s is not a member of that company.', $userId->toRfc4122()));

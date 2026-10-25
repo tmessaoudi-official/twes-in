@@ -255,17 +255,40 @@ final class MembersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
-    public function testTheLastOwnerCannotBeRemoved(): void
+    /**
+     * Removing someone and leaving are different acts: nobody takes themselves out through « Retirer », the only owner
+     * nor one of two, so a slip of the finger never cuts the person's own access. The last owner stays guarded below it.
+     */
+    public function testTheOnlyOwnerCannotRemoveThemselves(): void
+    {
+        $this->assertRemovingOneselfIsRefused(1);
+    }
+
+    public function testOneOfTwoOwnersCannotRemoveThemselves(): void
+    {
+        $this->assertRemovingOneselfIsRefused(2);
+    }
+
+    private function assertRemovingOneselfIsRefused(int $owners): void
     {
         $owner = $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
+        if (2 === $owners) {
+            // A second owner shares the first one's role: a company holds one role of each name.
+            $role = $this->em()->getRepository(Membership::class)->findOneBy(['user' => $owner])?->getRole();
+            self::assertNotNull($role);
+            $this->em()->persist(new Membership($this->createUser('second@twes.local', 'password-1234'), $this->company, $role));
+            $this->em()->flush();
+        }
         $this->login('owner@twes.local', 'password-1234');
         $this->stepUp('password-1234');
 
         $this->sendJson('DELETE', $this->path().'/'.$owner->getId()->toRfc4122());
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
-        // Told apart from an existing member by its reason, never by a word of its English detail.
-        self::assertSame([['propertyPath' => 'member', 'reason' => 'last_owner', 'params' => []]], $this->refusals());
+        // Told apart by its reason, never by a word of its English detail.
+        self::assertSame([['propertyPath' => 'member', 'reason' => 'own_membership', 'params' => []]], $this->refusals());
+        $this->getJson($this->path());
+        self::assertResponseIsSuccessful();
     }
 
     public function testAnAnonymousCallerIsRefused(): void

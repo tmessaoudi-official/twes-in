@@ -449,10 +449,15 @@ function codeOf(error: unknown): CompanyError {
     case 404:
       return 'not_found';
     case 409:
-      // The last owner is named by its reason; any other conflict here is a member already there.
-      return refusalsIn(error.error).some((refusal) => refusal.reason === 'last_owner')
-        ? 'last_owner'
-        : 'already_member';
+      // The last owner and oneself are named by their reason; any other conflict here is a member already there.
+      return (
+        refusalsIn(error.error)
+          .map((refusal) => refusal.reason)
+          .find(
+            (reason): reason is 'last_owner' | 'own_membership' =>
+              reason === 'last_owner' || reason === 'own_membership',
+          ) ?? 'already_member'
+      );
     case 422:
       return 'unknown_user';
     default:

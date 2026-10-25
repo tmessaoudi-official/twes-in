@@ -64,6 +64,8 @@ const owner: MemberRow = {
 };
 
 describe('MembersPage', () => {
+  // Who is signed in: someone else than the owner row, whom the removal cases act on.
+  let signedIn = 'u-me';
   const rows = signal<readonly MemberRow[]>([]);
   const error = signal<string | null>(null);
   const members = {
@@ -76,7 +78,7 @@ describe('MembersPage', () => {
     remove: vi.fn(),
   };
   const auth = {
-    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
+    me: () => ({ user: { id: signedIn }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
   };
   const role = (name: string, builtIn: boolean): RoleRow => ({
@@ -108,6 +110,7 @@ describe('MembersPage', () => {
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`)?.textContent?.trim() ?? null;
 
   beforeEach(async () => {
+    signedIn = 'u-me';
     rows.set([owner]);
     error.set(null);
     members.load.mockReset().mockResolvedValue(undefined);
@@ -226,6 +229,19 @@ describe('MembersPage', () => {
     await component.add();
 
     expect(unsaved.count()).toBe(0);
+  });
+
+  it("offers no « Retirer » on the signed-in person's own row: removing someone is not leaving", async () => {
+    signedIn = 'u1';
+    fixture.detectChanges();
+    const more = fixture.nativeElement.querySelector(
+      '[data-testid="row-more-u1"]',
+    ) as HTMLElement | null;
+    more?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(document.querySelectorAll('[data-testid="row-menu-remove-u1"]').length).toBe(0);
   });
 
   it('lists an open invitation as waiting, with nothing to remove', () => {

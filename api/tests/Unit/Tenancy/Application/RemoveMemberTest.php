@@ -13,6 +13,7 @@ use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Application\Member\LastOwner;
 use App\Tenancy\Application\Member\NotAMember;
+use App\Tenancy\Application\Member\OwnMembership;
 use App\Tenancy\Application\Member\RemoveMember;
 use App\Tenancy\Application\Member\RoleBounds;
 use App\Tenancy\Application\Member\RoleNotManageable;
@@ -86,6 +87,22 @@ final class RemoveMemberTest extends TestCase
         }
 
         self::assertNotNull($this->memberships->ofUserInCompany($only->getUser()->getId(), $this->company->getId()));
+    }
+
+    public function testNobodyRemovesThemselvesNotEvenOneOfTwoOwners(): void
+    {
+        $first = $this->join('one@twes.local', $this->owner);
+        $this->join('two@twes.local', $this->owner);
+        $self = $first->getUser()->getId();
+
+        try {
+            $this->remove->handle($this->company->getId(), $self, $self);
+            self::fail('removing oneself was not refused');
+        } catch (OwnMembership) {
+        }
+
+        self::assertNotNull($this->memberships->ofUserInCompany($self, $this->company->getId()));
+        self::assertSame([], $this->audit->entries);
     }
 
     public function testOneOfTwoOwnersCanBeRemoved(): void

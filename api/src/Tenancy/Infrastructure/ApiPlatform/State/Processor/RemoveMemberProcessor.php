@@ -15,6 +15,7 @@ use App\Identity\Infrastructure\StepUp\RecentProof;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Member\LastOwner;
 use App\Tenancy\Application\Member\NotAMember;
+use App\Tenancy\Application\Member\OwnMembership;
 use App\Tenancy\Application\Member\RemoveMember;
 use App\Tenancy\Application\Member\RoleNotManageable;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -45,6 +46,8 @@ final readonly class RemoveMemberProcessor implements ProcessorInterface
             $this->removeMember->handle($company->getId(), Uuid::fromString($userId), $this->guard->account()->getId());
         } catch (NotAMember $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
+        } catch (OwnMembership $own) {
+            throw DomainRule::conflict('member', $own->getMessage(), 'own_membership', [], $own);
         } catch (LastOwner $last) {
             // Told apart from a member already there by its reason: the screen never reads the English detail.
             throw DomainRule::conflict('member', $last->getMessage(), 'last_owner', [], $last);

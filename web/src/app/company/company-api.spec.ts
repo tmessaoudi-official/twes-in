@@ -159,6 +159,18 @@ describe('CompanyApi, the members', () => {
     );
     await expect(last).rejects.toEqual(new CompanyRefused('last_owner'));
 
+    const own = api.removeMember('c1', 'u2');
+    http.expectOne({ method: 'DELETE', url: '/api/companies/c1/members/u2' }).flush(
+      {
+        detail: 'member: Nobody removes themselves from a company.',
+        violations: [
+          { propertyPath: 'member', message: 'x', payload: { reason: 'own_membership' } },
+        ],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(own).rejects.toEqual(new CompanyRefused('own_membership'));
+
     const already = api.removeMember('c1', 'u2');
     http
       .expectOne({ method: 'DELETE', url: '/api/companies/c1/members/u2' })

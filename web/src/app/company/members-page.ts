@@ -157,7 +157,9 @@ export class MembersPage implements OnInit {
         destructive: true,
         run: (row) => void this.remove(row),
         disabled: () => this.busy(),
-        shown: (row) => this.mayManage() && row.status === 'joined',
+        // Removing someone is not leaving: one's own row offers no « Retirer », and the API refuses it as well.
+        shown: (row) =>
+          this.mayManage() && row.status === 'joined' && row.userId !== this.auth.me()?.user.id,
         confirm: (row) => ({
           kind: 'corrigeable',
           title: 'members.remove_title',

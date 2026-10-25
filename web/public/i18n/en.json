@@ -201,6 +201,7 @@
       "unknown_user": "No account holds that address. Invitations are coming.",
       "already_member": "That person already belongs to the company.",
       "last_owner": "A company keeps at least one owner.",
+      "own_membership": "You cannot remove yourself from the company.",
       "forbidden": "Your role in this company does not allow that.",
       "not_found": "Company not found.",
       "invalid": "Invalid request.",
