@@ -715,7 +715,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - A day a test sends or counts from is the company's, `ApiTestCase::dayOf($company, '-3 days')`, never PHP's `date()` or
   `new \DateTimeImmutable('today')`: between 23:00 and 00:00 UTC Tunis is already on the next day, the API reads the
   company's, and five suites went red on CI only in that hour. Run the whole API suite inside that window to find the
-  class's members (2026-10-21).
+  class's members (2026-10-21). A test's day helper reads the clock once per test (`$this->today ??= …`): read again
+  for the expectation, it crossed midnight in Tunis after the request and expected the next day (2026-10-26).
 - A unit case that opens a page several times outruns Vitest's five seconds once a gate loads the machine (the delivery
   note's « says nothing without stock » opened four): one page per case (`it.each`), never a longer timeout (2026-10-21).
 - Vitest's `toEqual` compares an `Error`'s `cause`: giving every feature refusal the HTTP answer as its cause reddened 69
