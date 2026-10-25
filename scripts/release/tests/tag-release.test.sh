@@ -36,6 +36,7 @@ echo "docker $*" >> "$CALLS"
 ref=''; shift 3
 while (($#)); do case "$1" in --format) shift ;; *) ref=$1 ;; esac; shift; done
 [[ -n "${MISSING:-}" && "$ref" == *"twes-in-$MISSING:"* ]] && { echo "ERROR: $ref: not found" >&2; exit 1; }
+[[ -z "${WARNS:-}" ]] || echo "WARNING: current commit information was not captured by the build" >&2
 printf '%s %s' "${DIGEST_SAYS:-sha256:$(printf '%s' "${ref%:*}" | sha256sum | cut -c1-64)}" "$LABEL_REV"
 EOF
   chmod +x "$d/bin/docker"
@@ -99,6 +100,9 @@ git -C "$d/repo" rev-parse -q --verify refs/tags/v2026.10.13.1 >/dev/null; check
 d=$(fixture)
 out=$(tag_release "$d" v2026.10.13.1 DIGEST_SAYS=latest); check "a registry that gives no digest: refused" $? 1 "$out" "gave no digest"
 git -C "$d/repo" rev-parse -q --verify refs/tags/v2026.10.13.1 >/dev/null; check "  and no tag is left" $? 1 "" ""
+
+d=$(fixture)
+out=$(tag_release "$d" v2026.10.13.1 WARNS=1); check "a warning docker prints beside its answer is no answer: tagged all the same" $? 0 "$out" "made and verified"
 
 d=$(fixture)
 out=$(tag_release "$d" v2026.10.13.1 NO_BUILDX=1); check "a docker without buildx: refused, saying what is needed" $? 1 "$out" "docker buildx"

@@ -38,7 +38,8 @@ for i in "${!parts[@]}"; do
   read_out=$(docker buildx imagetools inspect "$ref" \
     --format '{{.Manifest.Digest}} {{index .Image.Config.Labels "org.opencontainers.image.revision"}}' 2>&1) \
     || refuse "the registry has no $ref (docker: $(tr '\n' ' ' <<<"$read_out" | sed 's/ *$//')): was this commit published (scripts/release/publish.sh)?"
-  read -r digest built <<<"$read_out"
+  # The answer is its last line: a warning docker prints on stderr comes before it.
+  read -r digest built <<<"$(tail -n 1 <<<"$read_out")"
   [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || refuse "the registry gave no digest for $ref"
   [[ "${built:-}" == "$revision" ]] || refuse "$ref was built from ${built:-a commit it does not name}, not $revision"
   lines+=("TWES_${part^^}_IMAGE=$prefix/twes-in-$part@$digest")
