@@ -6,7 +6,8 @@
 #   postgres image         compose.yaml (CI runs the compose service, never a pin of its own) = the backup overlay's
 #                          image (infra/postgres/Dockerfile), which archives and restores beside that very server
 #   postgres major         also pgBackRest's data directory (infra/postgres/pgbackrest.conf pg1-path)
-#   Caddy                  compose.yaml's lan = compose.deploy.yaml's edge = the monitor's edge (infra/monitor/compose.yaml)
+#   Caddy                  compose.yaml's lan = compose.deploy.yaml's edge = a shop's edge (compose.onprem.yaml) = the
+#                          monitor's edge (infra/monitor/compose.yaml), tag and digest alike (release-overlay.sh wants both)
 #   monitor postgres       the monitor's error-tracker database (infra/monitor/compose.yaml) = compose.yaml's postgres,
 #                          so one bump moves every server this project runs
 #   serverVersion          every database address (compose.yaml, compose.prod.yaml's templates, compose.deploy.yaml, api/.env*) = the postgres image's major
@@ -52,6 +53,9 @@ edge_caddy=$(grab compose.deploy.yaml 'image: caddy:[^[:space:]"]+' | sed 's/^im
 if [[ -z "$lan_caddy" ]]; then problem "caddy image: found none in compose.yaml (the lan service)"
 elif [[ -z "$edge_caddy" ]]; then problem "caddy image: found none in compose.deploy.yaml (the edge service)"
 elif [[ "$edge_caddy" != "$lan_caddy" ]]; then problem "caddy image: compose.deploy.yaml's edge runs $(inline "$edge_caddy"), compose.yaml's lan $lan_caddy"; fi
+shop_caddy=$(grab compose.onprem.yaml 'image: caddy:[^[:space:]"]+' | sed 's/^image: //' | sort -u)
+if [[ -z "$shop_caddy" ]]; then problem "caddy image: found none in compose.onprem.yaml (a shop's edge)"
+elif [[ -n "$lan_caddy" && "$shop_caddy" != "$lan_caddy" ]]; then problem "caddy image: compose.onprem.yaml's edge runs $(inline "$shop_caddy"), compose.yaml's lan $lan_caddy"; fi
 monitor_caddy=$(grab infra/monitor/compose.yaml 'image: caddy:[^[:space:]"]+' | sed 's/^image: //' | sort -u)
 monitor_pg=$(grab infra/monitor/compose.yaml 'image: postgres:[^[:space:]"]+' | sed 's/^image: //' | sort -u)
 if [[ -z "$monitor_caddy" ]]; then problem "caddy image: found none in infra/monitor/compose.yaml (the monitor's edge)"
@@ -143,4 +147,4 @@ if ((${#problems[@]})); then
   exit 1
 fi
 printf 'version-pins: OK — 10 pins agree across their copies (postgres %s, Caddy %s, PHP %s, Node %s, Playwright %s, Symfony %s, Angular %s, registry %s, docker CLI %s)\n' \
-  "${compose_pg#postgres:}" "${lan_caddy#caddy:}" "$image_php" "$nvmrc" "$pw_lock" "$sf" "$core" "${onprem_registry#registry:}" "${docker_cli#docker:}"
+  "${compose_pg#postgres:}" "$(sed 's/^caddy://; s/@sha256:\(.\{12\}\).*/@\1…/' <<<"$lan_caddy")" "$image_php" "$nvmrc" "$pw_lock" "$sf" "$core" "${onprem_registry#registry:}" "${docker_cli#docker:}"

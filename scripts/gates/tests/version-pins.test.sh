@@ -3,6 +3,7 @@
 set -uo pipefail
 TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/version-pins.sh
+CADDY_DIGEST=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 # A tree in which every copy of every pin agrees, shaped like the real files.
@@ -14,7 +15,7 @@ services:
   postgres:
     image: postgres:18.6-trixie
   lan:
-    image: caddy:2.11.6-alpine
+    image: caddy:2.11.6-alpine@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   api:
     environment:
       DATABASE_URL: "postgresql://twes:x@postgres:5432/twes?serverVersion=18&charset=utf8"
@@ -27,8 +28,9 @@ COPY --from=docker:29.9.2-cli /usr/local/libexec/docker/cli-plugins/docker-compo
 EOF
   printf 'FROM postgres:18.6-trixie\nRUN apt-get install -y pgbackrest\n' > "$d/infra/postgres/Dockerfile"
   printf '[twes]\npg1-path=/var/lib/postgresql/18/docker\n' > "$d/infra/postgres/pgbackrest.conf"
-  printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine\n' > "$d/compose.deploy.yaml"
-  printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine\n  glitchtip-db:\n    image: postgres:18.6-trixie\n' > "$d/infra/monitor/compose.yaml"
+  printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine@sha256:%s\n' "$CADDY_DIGEST" > "$d/compose.deploy.yaml"
+  printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine@sha256:%s\n' "$CADDY_DIGEST" > "$d/compose.onprem.yaml"
+  printf 'services:\n  edge:\n    image: caddy:2.11.6-alpine@sha256:%s\n  glitchtip-db:\n    image: postgres:18.6-trixie\n' "$CADDY_DIGEST" > "$d/infra/monitor/compose.yaml"
   printf 'FROM node:26.8.2-alpine AS build\nFROM nginx:1.31.5-alpine\n' > "$d/infra/web/Dockerfile"
   printf 'FROM node:26.8.2-trixie-slim\nARG PLAYWRIGHT_VERSION=1.63.0\n' > "$d/infra/web/tools.Dockerfile"
   printf '{"packages":{"node_modules/@playwright/test":{"version":"1.63.0"}}}\n' > "$d/web/package-lock.json"
@@ -117,6 +119,15 @@ out=$(run "$d"); check "pgBackRest's data directory on another major than the im
 
 d=$(tree); sed -i '/pg1-path/d' "$d/infra/postgres/pgbackrest.conf"
 out=$(run "$d"); check "a pgBackRest configuration naming no data directory is refused" $? 1 "$out" "pgbackrest.conf"
+
+d=$(tree); sed -i 's/caddy:2.11.6-alpine/caddy:2.11.5-alpine/' "$d/compose.onprem.yaml"
+out=$(run "$d"); check "a shop's edge on another Caddy than the LAN door is named with its file" $? 1 "$out" "compose.onprem.yaml"
+
+d=$(tree); sed -i "s/@sha256:$CADDY_DIGEST/@sha256:$(printf 'b%.0s' {1..64})/" "$d/compose.onprem.yaml"
+out=$(run "$d"); check "a shop's edge on the same tag but another digest is refused" $? 1 "$out" "compose.onprem.yaml's edge runs"
+
+d=$(tree); rm "$d/compose.onprem.yaml"
+out=$(run "$d"); check "a missing shop overlay is refused, not skipped" $? 1 "$out" "compose.onprem.yaml"
 
 d=$(tree); sed -i 's/caddy:2.11.6-alpine/caddy:2.11.5-alpine/' "$d/infra/monitor/compose.yaml"
 out=$(run "$d"); check "the monitor's edge on another Caddy than the LAN door is named with its file" $? 1 "$out" "infra/monitor/compose.yaml"

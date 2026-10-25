@@ -60,12 +60,28 @@ and carry its diff over.
 | **Node** | `infra/web/Dockerfile`, `FROM node:<X.Y.Z>-alpine` (full version) | the same full version in `infra/web/tools.Dockerfile`'s `FROM node:<X.Y.Z>-trixie-slim` (**gate**), and the major in `web/.nvmrc` and `engines.node` in `web/package.json` (**gate**) | A patch: the two Dockerfiles. A new major: those and the other two | The gates run on the tools image's Node, the app on the image's: the gate refuses the two to differ |
 | **Docker CLI** (inside the `tools` image) | `infra/api/Dockerfile`, stage `tools`, `COPY --from=docker:<v>-cli` (two lines: the CLI and the Compose plugin) | the second line (**gate**) | Change both tags together, then `make tools-image` | Only the gates that start containers use it (`compose-log-rotation`, `forwarded-proto`, `access-log`, `live-proxy`); keep it near the host daemon's version |
 | **nginx** | `infra/web/Dockerfile`, `FROM nginx:<v>-alpine` | none | Change the tag | Config lives in `infra/web/nginx.conf`. Check the WebSocket proxy (`/connection/websocket`) still upgrades |
-| **Centrifugo** | `compose.yaml`, service `centrifugo` | none | Change the tag | A major can rename `CENTRIFUGO_*` settings: read its migration notes. The realtime e2e scenarios prove it |
-| **Gotenberg** | `compose.yaml`, service `gotenberg` | none | Change the tag | Look at a rendered invoice PDF, not only the tests: a renderer change moves margins (`api/tests/Unit/Shared/Infrastructure/PdfTemplateMarginsTest.php`) |
-| **Mailpit** | `compose.yaml`, service `mailpit` | none | Change the tag | Development-only mail catcher |
-| **Caddy** | `compose.yaml`, service `lan` | The deploy overlay's edge, `compose.deploy.yaml`, service `edge`, and the monitor's, `infra/monitor/compose.yaml`, service `edge` (**gate**) | Change the three tags | In development the HTTPS door for a phone (`infra/lan/Caddyfile`), proved by the phone-pairing e2e run locally; in a deployment the edge (`infra/edge/Caddyfile`), proved by `make deploy-check` (docs/START.md § 14). Read Caddy's release notes for its handling of `X-Forwarded-*` and `Strict-Transport-Security` |
+| **Centrifugo** | `compose.yaml`, service `centrifugo`, `image: <name>:<tag>@sha256:<index digest>` (**gate**: a started third-party image by tag and digest, `release-overlay.sh`) | none | Change the tag and the digest together (see "A third-party image's digest" below) | A major can rename `CENTRIFUGO_*` settings: read its migration notes. The realtime e2e scenarios prove it |
+| **Gotenberg** | `compose.yaml`, service `gotenberg`, `image: <name>:<tag>@sha256:<index digest>` (**gate**, as Centrifugo) | none | Change the tag and the digest together (below) | Look at a rendered invoice PDF, not only the tests: a renderer change moves margins (`api/tests/Unit/Shared/Infrastructure/PdfTemplateMarginsTest.php`) |
+| **Mailpit** | `compose.yaml`, service `mailpit` | none | Change the tag | Development-only mail catcher, behind the `mailpit` profile: no shop or server starts it, so it keeps a tag alone |
+| **Caddy** | `compose.yaml`, service `lan`, `image: caddy:<tag>@sha256:<index digest>` | The deploy overlay's edge, `compose.deploy.yaml`, service `edge`, a shop's, `compose.onprem.yaml`, service `edge`, and the monitor's, `infra/monitor/compose.yaml`, service `edge`, tag and digest alike (**gate**) | Change the four lines' tag and digest together (below) | In development the HTTPS door for a phone (`infra/lan/Caddyfile`), proved by the phone-pairing e2e run locally; in a deployment the edge (`infra/edge/Caddyfile`), proved by `make deploy-check` (docs/START.md § 14). Read Caddy's release notes for its handling of `X-Forwarded-*` and `Strict-Transport-Security` |
 | **Gatus** (the monitor, Apache-2.0) | `infra/monitor/compose.yaml`, service `gatus` | none | Change the tag, then `make monitor-check` | Runs on the monitor's own machine (docs/START.md § 15). Read its release notes for changes to the configuration keys `infra/monitor/gatus.yaml` uses (`ui.hide-*`, `external-endpoints`, `heartbeat`, the email and Telegram alerts); `scripts/gates/monitor-config.sh` reads that file |
 | **GlitchTip** (the error tracker, MIT) | `infra/monitor/compose.yaml`, service `glitchtip` | none | Change the tag, then `make monitor-check` | Started with `bin/run-all-in-one.sh` and no Valkey; its migrations run at start. Read its release notes for the settings the compose file names (`ENABLE_USER_REGISTRATION`, `VALKEY_URL`, `GLITCHTIP_MAX_EVENT_LIFE_DAYS`) and for the models `infra/monitor/bootstrap.py` uses |
+
+#### A third-party image's digest
+
+Every third-party image a shop or a server starts (Caddy, Gotenberg, Centrifugo) is named by its tag **and** its index
+digest, `caddy:2.11.7-alpine@sha256:…`. A tag is resolved on each machine when it pulls, and its publisher may rebuild it
+in place (Docker's official tags are), so two shops on one signed release could run different edges, neither the bytes
+staging ran. The digest fixes them, and the signed release tag fixes the commit that names them.
+`scripts/gates/release-overlay.sh` refuses a started service on a third-party image without both.
+
+Take the **index** (manifest list) digest, never one platform's manifest, so an arm64 machine finds its own image:
+
+```sh
+docker buildx imagetools inspect caddy:<new tag>     # the "Digest:" line under "MediaType: …index…" or "…manifest.list…"
+```
+
+Write `<name>:<tag>@sha256:<that digest>` in every copy, then `make gate-licences`.
 
 ### Frameworks and packages
 

@@ -42,7 +42,7 @@ services:
   edge:
     logging: *logging
     restart: unless-stopped
-    image: caddy:2.11.7-alpine
+    image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
     environment:
       TWES_HOST: "${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
       EDGE_TLS: "${EDGE_TLS:?set EDGE_TLS, the e-mail address the certificate authority writes to}"

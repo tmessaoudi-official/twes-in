@@ -38,7 +38,7 @@ services:
   edge:
     logging: *logging
     restart: unless-stopped
-    image: caddy:2.11.7-alpine
+    image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
     environment:
       LAN_HOST: "${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
     volumes:

@@ -136,7 +136,7 @@ services:
   # and a phone paired to a tab as a scanner (docs/SPEC.md § 7, 2026-09-23 09:45).
   centrifugo:
     logging: *logging
-    image: centrifugo/centrifugo:v6.10.1
+    image: centrifugo/centrifugo:v6.10.1@sha256:dc233a5bc45392c3717d9c5254b5c89c67e1871335c3ce55538429b9bf25b88b
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
       CENTRIFUGO_HTTP_API_KEY: "${REALTIME_API_KEY:-twes-in-development-realtime-api-key}"
@@ -174,7 +174,7 @@ services:
   # `docker compose up` leaves it off. Development only.
   lan:
     logging: *logging
-    image: caddy:2.11.7-alpine
+    image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
     profiles: [lan]
     environment:
       LAN_HOST: "${LAN_HOST:-localhost}"
@@ -190,7 +190,7 @@ services:
   # Renders PDFs from HTML (docs/SPEC.md § 2 PDF). Only the api calls it; the host port serves a host-side api process.
   gotenberg:
     logging: *logging
-    image: gotenberg/gotenberg:8.38.1
+    image: gotenberg/gotenberg:8.38.1@sha256:aa552cc115db488e0f0bcb07446aac13071ad51505b642c84bb894500907b42b
     ports:
       - "127.0.0.1:${GOTENBERG_PORT:-8094}:3000"
     healthcheck:

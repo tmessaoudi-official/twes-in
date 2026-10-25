@@ -7,7 +7,10 @@ pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 
 # The deployment's files as the real ones are shaped: three things built (the api's Dockerfile for api, worker and the
-# toolchain, the web's, the database's under infra/postgres), restore running the image the database builds.
+# toolchain, the web's, the database's under infra/postgres), restore running the image the database builds; two
+# third-party services started by tag and digest (a renderer, the edge), and a development one behind a profile by tag.
+# A shop's files beside them, its own edge pinned the same way.
+PIN="1.37@sha256:$(printf '0%.0s' {1..64})"
 project() {
   local d; d=$(mktemp -d)
   mkdir -p "$d/infra/api" "$d/infra/web" "$d/infra/postgres"
@@ -21,6 +24,11 @@ services:
   web:
     build: {context: ., dockerfile: infra/web/Dockerfile}
   postgres:
+    image: busybox
+  renderer:
+    image: busybox:PIN
+  mailpit:
+    profiles: [mailpit]
     image: busybox
   tools:
     profiles: [tools]
@@ -39,7 +47,11 @@ services:
     image: twes-in-postgres-backup
 EOF
   printf 'services:\n  backup:\n    environment:\n      BUCKET: "${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}"\n' > "$d/compose.backup-bucket.yaml"
-  printf 'services:\n  edge:\n    image: busybox\n    environment:\n      HOST: "${TWES_HOST:?set TWES_HOST}"\n' > "$d/compose.deploy.yaml"
+  printf 'services:\n  edge:\n    image: busybox:PIN\n    environment:\n      HOST: "${TWES_HOST:?set TWES_HOST}"\n' > "$d/compose.deploy.yaml"
+  printf 'services:\n  backup:\n    environment:\n      SCHEDULE: due\n' > "$d/compose.backup-local.yaml"
+  printf 'services:\n  backup:\n    environment:\n      OFFSITE: "${BACKUP_S3_BUCKET:?set BACKUP_S3_BUCKET}"\n' > "$d/compose.backup-offsite.yaml"
+  printf 'services:\n  edge:\n    image: busybox:PIN\n    environment:\n      HOST: "${LAN_HOST:?set LAN_HOST}"\n' > "$d/compose.onprem.yaml"
+  sed -i "s/busybox:PIN/busybox:$PIN/" "$d/compose.yaml" "$d/compose.deploy.yaml" "$d/compose.onprem.yaml"
   cat > "$d/compose.release.yaml" <<'EOF'
 services:
   api: {image: "${TWES_API_IMAGE:?set TWES_API_IMAGE}", build: !reset null}
@@ -55,7 +67,7 @@ run() { local out; out=$(bash "$GATE" --root "$1" 2>&1); echo "$?"; echo "$out";
 verdict() { local r; r=$(run "$2"); check "$1" "$(head -1 <<<"$r")" "$3" "$(tail -n +2 <<<"$r")" "$4"; }
 
 d=$(project)
-verdict "every built service runs its digest and builds nothing" "$d" 0 "6 services run a published image"
+verdict "every built service runs its digest and builds nothing, every third-party one its tag and digest" "$d" 0 "6 services run a published image by its digest, none builds, 3 images required, 4 third-party services started by tag and digest"
 
 d=$(project); sed -i 's/  web: {image: "${TWES_WEB_IMAGE:?set TWES_WEB_IMAGE}", build: !reset null}/  web: {image: "${TWES_WEB_IMAGE:?set TWES_WEB_IMAGE}"}/' "$d/compose.release.yaml"
 verdict "a service that keeps its build is refused" "$d" 1 "web still builds"
@@ -71,6 +83,21 @@ verdict "an image with a default is refused" "$d" 1 "TWES_WEB_IMAGE is not requi
 
 d=$(project); printf '  gotenberg:\n    build: {context: ., dockerfile: infra/gotenberg/Dockerfile}\n' >> "$d/compose.yaml"
 verdict "a new build the gate cannot name is refused" "$d" 1 "gotenberg builds something this gate cannot name"
+
+d=$(project); sed -i "s/busybox:$PIN/busybox:1.37/" "$d/compose.deploy.yaml"
+verdict "a server's third-party image named by tag alone is refused" "$d" 1 "the server starts edge on busybox:1.37: name it by tag and index digest"
+
+d=$(project); sed -i "s/busybox:$PIN/busybox:1.37/" "$d/compose.onprem.yaml"
+verdict "a shop's third-party image named by tag alone is refused" "$d" 1 "the shop starts edge on busybox:1.37: name it by tag and index digest"
+
+d=$(project); sed -i "s/busybox:$PIN/busybox@sha256:$(printf '0%.0s' {1..64})/" "$d/compose.yaml"
+verdict "a digest without its tag, which says no version, is refused" "$d" 1 "the server starts renderer on busybox@sha256:"
+
+d=$(project); sed -i '/profiles: \[mailpit\]/d' "$d/compose.yaml"
+verdict "a development service by tag that loses its profile, and so starts, is refused" "$d" 1 "the shop starts mailpit on busybox"
+
+d=$(project); rm "$d/compose.onprem.yaml"
+verdict "a missing shop overlay is refused" "$d" 1 "found no compose.onprem.yaml"
 
 d=$(project); rm "$d/compose.release.yaml"
 verdict "a missing overlay is refused" "$d" 1 "found no compose.release.yaml"

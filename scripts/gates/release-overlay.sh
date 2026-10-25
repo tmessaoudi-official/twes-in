@@ -8,7 +8,12 @@
 #   no build   none of them keeps a build, so a server that lacks the image pulls it rather than builds its checkout
 #   digest     each runs exactly TWES_API_IMAGE, TWES_WEB_IMAGE or TWES_DATABASE_IMAGE, as its build says
 #   required   the three have no default: a server missing one stops before starting anything
-# The toolchain (the tools profile) is development's, never deployed, and left out.
+#   pinned     every other service a server or a shop starts (merged as scripts/deploy/deploy.sh merges each, the shop
+#              with its off-site copy on) runs a third-party image named by tag AND index digest,
+#              <name>:<tag>@sha256:<64 hex>: a tag is resolved on the machine at pull time and the publisher may move it,
+#              while the signed release tag fixes the commit, and so these digests with it (docs/UPDATE.md)
+# The toolchain (the tools profile) is development's, never deployed, and left out; so is any service behind a profile,
+# which neither installation starts (mailpit, the development LAN door).
 # Usage: release-overlay.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -21,7 +26,7 @@ finish() {
     printf '  %s\n' "${problems[@]}"
     exit 1
   fi
-  printf 'release-overlay: OK — %d services run a published image by its digest, none builds, %d images required\n' "$covered" "${#IMAGES[@]}"
+  printf 'release-overlay: OK — %d services run a published image by its digest, none builds, %d images required, %d third-party services started by tag and digest\n' "$covered" "${#IMAGES[@]}" "$pinned"
   exit 0
 }
 
@@ -37,10 +42,13 @@ values=(TWES_HOST=$HOST EDGE_TLS=gate@twes.invalid POSTGRES_PASSWORD=gate-postgr
   MONITOR_HEARTBEAT_TOKEN=h SENTRY_DSN=https://gate@errors.$HOST/1)
 for name in "${!IMAGES[@]}"; do values+=("$name=${IMAGES[$name]}"); done
 deployment=(-f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml -f compose.deploy.yaml)
-for f in compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-bucket.yaml compose.deploy.yaml compose.release.yaml; do
+# A shop's files, as deploy.sh layers them for TWES_INSTALL=onprem with BACKUP_OFFSITE=on (the larger of its two sets).
+shop=(-f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-local.yaml -f compose.backup-offsite.yaml -f compose.onprem.yaml)
+for f in compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-bucket.yaml compose.deploy.yaml compose.release.yaml \
+  compose.backup-local.yaml compose.backup-offsite.yaml compose.onprem.yaml; do
   [[ -f "$root/$f" ]] || problem "found no $f"
 done
-covered=0
+covered=0 pinned=0
 ((${#problems[@]})) && finish
 env_file=$(mktemp); trap 'rm -f "$env_file"' EXIT
 compose() {
@@ -79,5 +87,22 @@ for name in "${!IMAGES[@]}"; do
   for value in "${values[@]}"; do [[ "$value" == "$name="* ]] || without+=("$value"); done
   out=$(compose release "${without[@]}")
   if [[ $? -eq 0 || "$out" != *"$name"* ]]; then problem "$name is not required: a server without it would run something else"; fi
+done
+
+# What each installation starts, the release overlay on and no profile asked for: every service not on one of the three
+# published images runs a third-party one, which must be named by tag and digest.
+ours=$(printf '%s\n' "${IMAGES[@]}" | jq -Rsc 'split("\n") | map(select(. != ""))')
+for installation in server shop; do
+  if [[ "$installation" == server ]]; then files=("${deployment[@]}"); else files=("${shop[@]}"); fi
+  printf '%s\n' "${values[@]}" LAN_HOST=192.0.2.10 > "$env_file"
+  started=$(cd "$root" && env -i PATH="$PATH" HOME="$HOME" docker compose --env-file "$env_file" "${files[@]}" -f compose.release.yaml config --format json 2>&1) \
+    || { problem "docker compose config failed on the $installation's files with compose.release.yaml: $started"; continue; }
+  while IFS=$'\t' read -r service image; do
+    [[ -n "$service" ]] || continue
+    pinned=$((pinned+1))
+    [[ "$image" =~ ^[^@[:space:]]+:[A-Za-z0-9_.-]+@sha256:[0-9a-f]{64}$ ]] \
+      || problem "the $installation starts $service on $image: name it by tag and index digest, <name>:<tag>@sha256:<64 hex> (docs/UPDATE.md)"
+  done < <(jq -r --argjson ours "$ours" '.services | to_entries[]
+    | select((.value.image // "") as $i | $ours | index($i) | not) | "\(.key)\t\(.value.image // "(no image)")"' <<<"$started")
 done
 finish
