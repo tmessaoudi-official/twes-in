@@ -127,7 +127,7 @@ twes() { # shop folder, then the command
   rm -f "$TMPDIR/deploy.calls" "$TMPDIR/curl.calls" "$TMPDIR/told" "$TMPDIR/mail.eml" "$TMPDIR/mail.netrc" "$TMPDIR/docker.tries" "$TMPDIR/seeded" \
     "$TMPDIR/systemd.calls" "$TMPDIR/health.reads"
   mkdir -p "$d/units"
-  (cd "$TMPDIR" && env PATH="$TMPDIR/bin:$PATH" TWES_VALUES="$d/etc/install.env" TWES_ROOT="$d/twes-in" TWES_PLATFORM="${PLATFORM:-linux}" TWES_SYSTEMD_DIR="$d/units" \
+  (cd "$TMPDIR" && env PATH="$TMPDIR/bin:$PATH" TWES_VALUES="$d/etc/install.env" TWES_ROOT="$d/twes-in" TWES_PLATFORM="${PLATFORM:-linux}" TWES_SYSTEMD_DIR="$d/units" TWES_BIN_DIR="$d/bin" \
     TWES_HEALTH_PAUSE=0 TWES_DOCKER_PAUSE=0 TWES_DOCKER_TRIES=4 TWES_NOW="${AT:-$NOON}" bash "$d/twes-in/scripts/onprem/twes" "$@" 2>&1)
 }
 at_tag() { git -C "$1/twes-in" describe --exact-match --tags HEAD 2>/dev/null; }
@@ -223,6 +223,10 @@ check "  updates applied by themselves at night, the window proposed taken" 0 0 
 check "  the release key's fingerprint shown before it is pinned" 0 0 "$out" "$FPR"
 check "  pinned" 0 0 "$(GNUPGHOME=$d/etc/release-keys gpg --batch --with-colons --list-keys 2>/dev/null)" "$FPR"
 check "  the newest signed release deployed" 0 0 "$(at_tag "$d")" "$NEW"
+check "  a twes shortcut made" 0 0 "$(cat "$d/bin/twes" 2>&1)" "exec bash '$d/twes-in/scripts/onprem/twes' \"\$@\""
+out2=$(env TWES_VALUES="$d/etc/install.env" TWES_ROOT="$d/twes-in" PATH="$TMPDIR/bin:$PATH" bash "$d/bin/twes" bogus 2>&1)
+check "  which runs this checkout's twes" $? 2 "$out2" "Usage: twes install"
+check "  and the end of the install says how twes is typed" 0 0 "$out" "type twes"
 check "  the operator made through the application" 0 0 "$(head -n 1 "$TMPDIR/seeded")" "app:seed --no-interaction --operator-email=op@shop.test --operator-password-stdin --without-company"
 check "  the password on its input" 0 0 "$(sed -n 2p "$TMPDIR/seeded")" "a long passphrase 2026"
 [[ "$(head -n 1 "$TMPDIR/seeded")" != *passphrase* ]]; check "  never on its command line" $? 0 "$(head -n 1 "$TMPDIR/seeded")" ""
@@ -288,6 +292,13 @@ out=$(BACKUPS=$TMPDIR/nowhere/at/all answers | twes "$d" install); check "a back
 d=$(bare)
 out=$(CONFIRM=no answers | twes "$d" install); check "the fingerprint not confirmed: refused" $? 1 "$out" "not pinned"
 [[ ! -d "$d/etc/release-keys" && "$(deployed)" != *--release* ]]; check "  nothing pinned, nothing deployed" $? 0 "$(deployed)" ""
+d=$(bare)
+spaced=$(sed -E 's/(.{4})/\1 /g' <<<"${FPR,,}")
+out=$(CONFIRM="$spaced" answers | twes "$d" install); check "the fingerprint typed back, spaced and in small letters: taken as yes" $? 0 "$out" "installed: $NEW"
+check "  pinned" 0 0 "$(GNUPGHOME=$d/etc/release-keys gpg --batch --with-colons --list-keys 2>/dev/null)" "$FPR"
+d=$(bare)
+out=$(CONFIRM="$OTHER" answers | twes "$d" install); check "another key's fingerprint typed: refused, saying it is not the one shown" $? 1 "$out" "not the fingerprint shown"
+[[ ! -d "$d/etc/release-keys" ]]; check "  nothing pinned" $? 0 "" ""
 d=$(bare)
 out=$(PW2='another one entirely' answers | twes "$d" install); check "the operator's two passwords differ: refused" $? 1 "$out" "differ"
 [[ ! -e "$TMPDIR/seeded" ]]; check "  no operator made" $? 0 "" ""

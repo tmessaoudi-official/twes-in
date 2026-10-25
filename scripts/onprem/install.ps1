@@ -120,7 +120,13 @@ $distributions = @()
 if ($LASTEXITCODE -eq 0) { $distributions = @(& wsl.exe --list --quiet | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
 if ($distributions -notcontains $Distribution) {
     & wsl.exe --install --distribution $Distribution
-    Stop-Install "WSL and $Distribution are being installed. Restart Windows if asked, open $Distribution once from the Start menu to make its user, then run this again."
+    # A recent WSL opens the new Ubuntu at once to make its user and returns once its shell closes: go on when it now
+    # answers as that user. A restart Windows still needs, or a user never made (root answers), stops here.
+    $distributions = @(& wsl.exe --list --quiet 2>$null | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($distributions -notcontains $Distribution -or (Invoke-Ubuntu 'test $(id -u) -ne 0') -ne 0) {
+        Stop-Install "WSL and $Distribution are being installed. Restart Windows if asked, open $Distribution once from the Start menu to make its user, then run this again."
+    }
+    Write-Host "twes-in: $Distribution is installed and has its user; going on"
 }
 & wsl.exe --set-default $Distribution
 if ((Invoke-Ubuntu 'true') -ne 0) { Stop-Install "$Distribution does not start: open it once from the Start menu, then run this again." }
@@ -316,3 +322,4 @@ if ($Engine -eq 'Desktop') {
 $shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'twes-in.url'
 Set-Content -Path $shortcut -Value "[InternetShortcut]`r`nURL=https://localhost/`r`n" -Encoding ASCII
 Write-Host "twes-in: done. Open https://localhost here; a phone on the shop's network opens http://<this computer's address>/root.crt once, then the HTTPS address twes status names."
+Write-Host "twes-in: twes is typed in a new $Distribution window (twes status), or from PowerShell: wsl -d $Distribution --cd ~ -- bash twes-in/scripts/onprem/twes status"

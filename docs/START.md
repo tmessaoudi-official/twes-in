@@ -935,11 +935,13 @@ numberofports=1` (and 443), `net start winnat`: a port excluded by hand is never
 the edge. That is the fix Docker's and WSL's users give; it is untried here.
 
 `scripts/onprem/install.ps1` does what is still missing and stops at each step that needs a person, to be run again
-after it: WSL and Ubuntu (a restart, then Ubuntu opened once to make its user), Docker Desktop (started once, its terms
+after it: WSL and Ubuntu (a restart if Windows asks, and Ubuntu opened once to make its user: when WSL opens it
+itself right after installing it, `exit` there and the installer goes on), Docker Desktop (started once, its terms
 accepted, « Start Docker Desktop when you sign in » ticked, WSL integration on for Ubuntu), git, gpg, curl and flock in
 Ubuntu, the checkout at the newest release tag, which it verifies against the release key's fingerprint it carries
 itself (`-ReleaseKey`, the developer's by default) before anything from the checkout runs, then `twes install` in
-Ubuntu. Bring `install.ps1` from the developer (a USB key, a mail from them), not from the repository: it is what
+Ubuntu, which asks to confirm the release key with `yes` or the fingerprint typed back, and puts a `twes` command in
+`~/.local/bin` (a new Ubuntu window finds it; from PowerShell, `wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes`). Bring `install.ps1` from the developer (a USB key, a mail from them), not from the repository: it is what
 vouches for the checkout. On Windows' side it then trusts the
 edge's authority (Edge and Chrome read Windows' store; Firefox only once « Allow Firefox to automatically trust
 third-party root certificates you install » is ticked), schedules `twes start` at each sign-in and `twes tick` every

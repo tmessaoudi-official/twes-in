@@ -307,7 +307,7 @@ address_asked() { # prompt
 urlencode() { local LC_ALL=C s=$1 out='' c i; for ((i = 0; i < ${#s}; i++)); do c=${s:i:1}; case "$c" in [A-Za-z0-9._~-]) out+=$c ;; *) printf -v c '%%%02X' "'$c"; out+=$c ;; esac; done; printf '%s' "$out"; }
 
 install() {
-  local sender password alert folder listing fingerprint email first second
+  local sender password alert folder listing fingerprint confirmed typed email first second
   if [[ -z "$(value MAILER_DSN)" ]]; then
     sender=$(address_asked "The shop's Gmail address, which mails leave from:")
     password=$(ask "Its app password (Google Account > Security > App passwords):" secret)
@@ -352,13 +352,20 @@ install() {
   if [[ "$(value BACKUP_OFFSITE)" != on ]]; then
     say "no copy leaves this computer: a stolen, burnt or encrypted computer loses every backup with it; give a bucket's values (BACKUP_S3_*) in $values, then twes offsite on: the folder is copied there every hour"
   fi
+  # Before the first update, so a refusal's « twes install again » can already be typed as twes.
+  shortcut
   if ! keyring gpg --batch --with-colons --list-keys 2>/dev/null | grep -q '^pub:'; then
     listing=$(gpg --batch --with-colons --show-keys "$root/infra/onprem/release-key.asc" 2>/dev/null) || listing=''
     fingerprint=$(awk -F: '$1 == "pub" { want = 1; next } want && $1 == "fpr" { print $10; exit }' <<<"$listing")
     [[ -n "$fingerprint" ]] || refuse "the checkout holds no release key at infra/onprem/release-key.asc"
     echo "The release key this checkout names: $(sed -E 's/(.{4})/\1 /g' <<<"$fingerprint")" >&2
-    [[ "$(ask "Type yes if it is the fingerprint the developer gave you:")" == yes ]] \
-      || refuse "the release key was not pinned: nothing is installed from a key no one confirmed"
+    # Typing the fingerprint back is a confirmation too, its spaces and letter case left aside.
+    confirmed=$(ask "Type yes if it is the fingerprint the developer gave you (or type that fingerprint):")
+    typed=$(tr -d '[:space:]' <<<"$confirmed" | tr '[:lower:]' '[:upper:]')
+    if [[ "$confirmed" != yes && "$typed" != "$fingerprint" ]]; then
+      [[ "$typed" =~ ^[0-9A-F]{40}$ ]] && refuse "the fingerprint typed is not the fingerprint shown: nothing is pinned, ask the developer"
+      refuse "the release key was not pinned: nothing is installed from a key no one confirmed"
+    fi
     pin_key "$root/infra/onprem/release-key.asc"
   fi
   if [[ -z "$(running)" ]]; then update || refuse "the first install did not finish: read the lines above, then twes install again"; fi
@@ -376,6 +383,19 @@ install() {
     macos) say "twes start and twes tick are not scheduled on macOS yet: run twes start after each start of the computer, and twes tick every quarter hour (docs/START.md section 16)" ;;
   esac
   say "installed: $(tag_of "$(running)"), https://localhost on this computer; the operator is $(cat "$state/operator")"
+  case "$(platform)" in
+    wsl) say "from now on type twes status, twes update… in a new Ubuntu window; from PowerShell: wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status" ;;
+    *) say "from now on type twes status, twes update… in a new terminal" ;;
+  esac
+}
+
+# A twes command on the PATH: Ubuntu's ~/.profile puts ~/.local/bin there once it exists, from the next window on.
+shortcut() {
+  local dir=${TWES_BIN_DIR:-$HOME/.local/bin}
+  [[ "$root" != *"'"* ]] || { say "no twes shortcut: the checkout's path holds a quote ($root)"; return 0; }
+  mkdir -p "$dir"
+  printf '#!/usr/bin/env bash\nexec bash %s "$@"\n' "'$root/scripts/onprem/twes'" > "$dir/twes"
+  chmod 755 "$dir/twes"
 }
 
 # A path as a systemd unit reads it: quoted, a percent sign doubled, as systemd takes % for its specifiers. A double
