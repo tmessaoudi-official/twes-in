@@ -161,29 +161,40 @@ Once § 6 is installed and healthy, at the shop, in Edge on `https://localhost`.
 `var/claude/client-excel/out/` (never committed): copy the folder to the USB key with the installer. Each file is
 previewed first; import it only when the preview says 0 refused.
 
-1. **The demo off.** Signed in as the operator: `/platform`, card « Démo », untick « Démo ouverte aux visiteurs
-   (« Essayer la démo ») », save. A shop's own computer offers no demo to a visitor (ruled 2026-10-20 01:34).
+1. **The demo off, and how to reach you.** Signed in as the operator: `/platform`, card « Démo », untick « Démo
+   ouverte aux visiteurs (« Essayer la démo ») », save. A shop's own computer offers no demo to a visitor (ruled
+   2026-10-20 01:34). Then the card « Contact du support »: your phone, WhatsApp and e-mail, save.
    - [ ] Done; signed out, the sign-in page offers no « Essayer la démo ».
-2. **The VAT regime before any product.** Signed in as the owner: « Paramètres », « Profil de la société », « Régime de
-   TVA »: « Régime normal » (ruled 2026-10-25 11:29: the shop is régime réel), then « Enregistrer ». The products file
-   writes prices with taxes; the regime decides what is kept as the price before taxes, so it is set first.
-   - [ ] « Régime normal » saved.
-3. **The five files, in order**, each from « Produits », « Importer » (the vendors' from « Fournisseurs »):
+2. **The shop's company and its owner.** A shop's installation makes no company (docs/START.md § 5.1). Still the
+   operator, `/platform`, « Entreprises »: the shop's name, country Tunisie, « Ouvrir l’entreprise » (it shows « En
+   attente »); on its row, « Adresse du propriétaire »: the owner's e-mail, « Inviter un propriétaire ». The invitation
+   leaves from the shop's Gmail: the owner opens it (on the phone is fine), follows the link, gives a name and a password
+   of 12 characters or more. The company turns active once the owner accepts. Sign the operator out.
+   - [ ] The invitation mail arrived (if not: `twes status`, then docs/START.md § 9, the row « … invitation mail never arrives »).
+   - [ ] The owner signed in at `https://localhost` and sees the shop's company.
+3. **The company's facts, the VAT regime and the stock, before any product.** Signed in as the owner: « Paramètres »,
+   « Profil de la société »: matricule fiscal, address; « Régime de TVA »: « Régime normal » (ruled 2026-10-25 11:29:
+   the shop is régime réel), then « Enregistrer ». The products file writes prices with taxes; the regime decides what
+   is kept as the price before taxes, so it is set first. Then « Valeurs par défaut », section « Produits »: tick
+   « Suivre le stock », « Enregistrer » (ruled 2026-10-19 12:01, D10; it is read for every product whenever it is
+   asked, so ticking it later still reaches every product, but the counts below assume it ticked).
+   - [ ] Facts and « Régime normal » saved. · [ ] « Suivre le stock » ticked.
+4. **The five files, in order**, each from « Produits », « Importer » (the vendors' from « Fournisseurs »):
 
    | # | File | Screen | Switches | Expected |
    |---|---|---|---|---|
    | 1 | `1-vendors.csv` | Fournisseurs › Importer | none | 39 created |
    | 2 | `2-categories.csv` | Produits › Importer › Catégories | none | 2 created |
    | 3 | `3-products.csv` | Produits › Importer › Produits | tick both: « Donner les taxes par défaut aux nouveaux produits qui n’en nomment pas » and « Importer désactivés les nouveaux produits sans prix de vente » | 4,100 created, about 70 s to preview and as much to import |
-   | 4 | `4-product-vendors.csv` | Produits › Importer › Fournisseurs des produits | none | 4,138 created |
-   | 5 | `5-price-history.csv` | Produits › Importer › Historique des achats | none | 4,582 created, about 10 s to preview and as much to import; 67 lines say « date inconnue » for a day written 0202-09-30 |
+   | 4 | `4-product-vendors.csv` | Produits › Importer › Fournisseurs des produits | none | 4,138 created, about 50 s to preview and as much to import |
+   | 5 | `5-price-history.csv` | Produits › Importer › Historique des achats | none | 4,582 created, about 15 s to preview and as much to import; 67 lines say « date inconnue » for a day written 0202-09-30 |
 
    Keep every column the screen pairs, « À vérifier » (`to_check`) included: setting it aside drops the 1,873 marks
    the conversion left on what it could not read for sure. The history moves no cost, price or stock: it fills each
    product's « Historique des coûts » and each vendor's « Achats ». Its lines of no known day (the workbook gave none)
    are kept as « date inconnue », listed last.
    - [ ] 1 · [ ] 2 · [ ] 3 · [ ] 4 · [ ] 5, each 0 refused.
-4. **What to tell the owner the same day.**
+5. **What to tell the owner the same day.**
    - 126 products came without a sale price: they are imported switched off at price 0, so the counter does not offer
      them and a scan says « retiré de la vente ». « Produits », filter « Actif » set to « Inactif »: enter each price,
      then switch it on.
@@ -229,10 +240,3 @@ previewed first; import it only when the preview says 0 refused.
 - [ ] Your monitor at home: a VM or device of its own, on a network segment that cannot reach the machine holding your
   release-signing key and GitHub credentials; a DDNS name pointing at it, ports 80 and 443 forwarded to it; then
   `scripts/monitor/new-monitor.sh` and `docs/START.md` § 15. Until it runs, problems reach you only by the shop's mail.
-- [ ] On the shop's installation, signed in as the shop's owner, « Paramètres » (the gear), « Valeurs par défaut »,
-  section « Produits »: tick « Suivre le stock », then « Enregistrer ». A new company keeps no stock until it is ticked:
-  an order received and an invoice issued move nothing (the trade chosen at sign-up, which would tick it for a shop, is
-  not built yet).
-- [ ] On the shop's installation, signed in as its operator, `/platform`, card « Contact du support »: your phone, WhatsApp
-  and e-mail. They are what « Aide » shows under « Nous contacter » on every screen; left empty, the shop sees no way to
-  reach you.
