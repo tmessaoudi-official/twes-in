@@ -170,7 +170,9 @@ for part in api web database; do
     found=$(docker image inspect --format '{{.Id}}' "$image" 2>&1) \
       || refuse "$image is not on this machine any more (docker: $found): deploy the release with --release while the network answers"
   else
-    docker pull -q "$image" >/dev/null
+    # Its own progress shown, on stderr where whatever reads this script's output never takes it: a first install
+    # downloads for minutes, and a quiet pull read as a hang.
+    docker pull "$image" >&2
   fi
   built=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")
   [[ "$built" == "$revision" ]] || refuse "$image was built from ${built:-a commit it does not name}, not $revision"

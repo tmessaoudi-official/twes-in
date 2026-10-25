@@ -1004,6 +1004,11 @@ root on this computer; keep the computer's accounts to the shop's own, and the a
 | `twes pin-key <file>` | pins a public release key: every release tag must verify against it |
 | `twes schedule` | Linux, and Docker Engine inside WSL (`-Engine Wsl`): system units running `twes start` at boot and `twes tick` every quarter hour as this account, once Docker runs (`sudo` asks for the password) |
 
+`twes install` and `twes update` say where they stand, on stderr and in `state/twes.log`: `[2/4] downloading and starting
+v… (usually 5-10 min, by the link) — next: reading its health through the edge`, then `[2/4] done in 6m 40s` (or
+`failed after`); a run with one step or none left says nothing of the kind. The images' download shows Docker's own
+progress (`deploy.sh --release` pulls without `-q`, on stderr).
+
 **Backups.** The computer is off at night, so its backups run when due: every half hour the schedule runs each step whose
 last success is older than its period (a full backup weekly, a differential daily, the dump and the files daily, a
 read-back weekly, the off-site copy hourly), the outcomes kept in a volume of their own. Both repositories are

@@ -46,6 +46,30 @@ zone=${TWES_ZONE:-Africa/Tunis}
 release_tags='v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*'
 
 say() { printf '%s twes %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$state/twes.log"; }
+# Where an install or an update stands, so a download of minutes is not taken for a hang: « [2/4] what (usually how
+# long) — next: what », then « [2/4] done in 3m 12s » when it ends, on stderr and in the log. A plan of one step says
+# nothing, as there is nothing to count. Its time is the shell's own clock: TWES_NOW stands still in the tests.
+steps=() step_at=0 step_began='' then_steps=()
+plan_steps() { steps=("$@"); step_at=0; step_began=''; } # each "what|usually", usually possibly empty
+progress() { printf '%s twes %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$state/twes.log"; printf '%s\n' "$*" >&2; }
+step() {
+  local entry what usually line
+  step_end
+  ((step_at < ${#steps[@]})) || return 0
+  entry=${steps[$step_at]} step_at=$((step_at + 1))
+  ((${#steps[@]} >= 2)) || return 0
+  what=${entry%%|*} usually=${entry#*|}
+  line="[$step_at/${#steps[@]}] $what${usually:+ (usually $usually)}"
+  if ((step_at < ${#steps[@]})); then line+=" — next: ${steps[$step_at]%%|*}"; else line+=" — the last step"; fi
+  progress "$line"
+  step_began=$SECONDS
+}
+step_end() { # [how it ended: done in, by default, or failed after]
+  local s
+  [[ -n "$step_began" ]] || return 0
+  s=$((SECONDS - step_began)) step_began=''
+  if ((s < 60)); then progress "[$step_at/${#steps[@]}] ${1:-done in} ${s}s"; else progress "[$step_at/${#steps[@]}] ${1:-done in} $((s / 60))m $((s % 60))s"; fi
+}
 refuse() { echo "twes: refused — $*" >&2; exit 1; }
 value() { awk -v k="$1" 'index($0, k "=") == 1 { v = substr($0, length(k) + 2) } END { print v }' "$values"; }
 now() { echo "${TWES_NOW:-$(date +%s)}"; }
@@ -368,8 +392,19 @@ install() {
     fi
     pin_key "$root/infra/onprem/release-key.asc"
   fi
+  # What is left after the release, counted with update's own steps when there is one to install.
+  local scheduling=no
+  case "$(platform)" in
+    linux) scheduling=yes ;;
+    wsl) docker_desktop || scheduling=yes ;;
+  esac
+  then_steps=()
+  [[ -s "$state/operator" ]] || then_steps+=("making the platform operator|")
+  [[ "$scheduling" == no ]] || then_steps+=("giving twes start and twes tick to systemd (sudo may ask this account's password)|")
   if [[ -z "$(running)" ]]; then update || refuse "the first install did not finish: read the lines above, then twes install again"; fi
+  ((${#steps[@]})) || plan_steps ${then_steps[@]+"${then_steps[@]}"}
   if [[ ! -s "$state/operator" ]]; then
+    step
     email=$(address_asked "The platform operator's mail address (the developer's sign-in):")
     first=$(ask "Their password:" secret); second=$(ask "Again:" secret)
     [[ "$first" == "$second" ]] || refuse "the two passwords differ: twes install again"
@@ -378,10 +413,10 @@ install() {
     echo "$email" > "$state/operator"
   fi
   case "$(platform)" in
-    linux) schedule ;;
-    wsl) docker_desktop || schedule ;;
+    linux | wsl) [[ "$scheduling" == no ]] || { step; schedule; } ;;
     macos) say "twes start and twes tick are not scheduled on macOS yet: run twes start after each start of the computer, and twes tick every quarter hour (docs/START.md section 16)" ;;
   esac
+  step_end
   say "installed: $(tag_of "$(running)"), https://localhost on this computer; the operator is $(cat "$state/operator")"
   case "$(platform)" in
     wsl) say "from now on type twes status, twes update… in a new Ubuntu window; from PowerShell: wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status" ;;
@@ -542,14 +577,24 @@ update() {
     say "$newest was refused here: it is applied only by hand (twes update), once its signature verifies"; return 0
   fi
   verified "$newest" "$current" || return 1
+  # Counted from here, once there is something to do; an install's steps after the release follow.
+  local plan=()
+  if [[ -n "$previous" ]]; then
+    plan+=("backing up the database and the files|" "downloading and starting $newest: its images, then the database's migrations|a few minutes")
+  else
+    plan+=("downloading and starting $newest: its images, then the database's migrations|5-10 min, by the link")
+  fi
+  plan_steps "${plan[@]}" "reading its health through the edge|under a minute, 3 min at most" ${then_steps[@]+"${then_steps[@]}"}
   address=$(recall lan-host)
   [[ -n "$address" ]] || address=$(lan_address)
   echo "$address" > "$state/lan-host"
 
   if [[ -n "$previous" ]]; then
     why=$(backup_folder_ready) || refuse "$why: no update without it, as an update backs up first"
+    step
     label=$(compose exec -T backup twes-backup before-update | sed -n 's/.*before-update: //p' | tail -n 1) || label=''
     if [[ ! "$label" =~ ^[0-9]{8}-[0-9]{6}F(_[0-9]{8}-[0-9]{6}[DI])?$ ]]; then
+      step_end "failed after"
       alert installation.backup_failed "Mise à jour annulée : la sauvegarde d'avant n'a pas été faite" \
         "La sauvegarde prise avant la mise à jour vers $newest n'a pas abouti : rien n'a été changé, $current tourne toujours." \
         "version=$newest" "step=before-update"
@@ -562,9 +607,11 @@ update() {
   # Written before the checkout moves: an update cut short (the computer switched off, a task's time limit) leaves the
   # checkout on a release nothing answered for, and the next start or tick takes the shop back from what is written here.
   [[ -z "$previous" ]] || printf '%s %s %s\n' "$newest" "$previous" "$label" > "$state/update-in-progress"
+  step
   git -C "$root" checkout --quiet --detach "$newest"
-  if LAN_HOST=$address bash "$deploy" --release "$values" && failure=$(deep_health 18); then
+  if LAN_HOST=$address bash "$deploy" --release "$values" && { step; failure=$(deep_health 18); }; then
     rm -f "$state/update-in-progress"
+    step_end
     say "updated to $newest"
     if [[ -f "$state/failed-releases" ]]; then
       awk -v t="$newest" '$0 != t' "$state/failed-releases" > "$state/failed-releases.new"
@@ -572,6 +619,7 @@ update() {
     fi
     return 0
   fi
+  step_end "failed after"
   failure=${failure:-the start}
   echo "$newest" >> "$state/failed-releases"
   if [[ -z "$previous" ]]; then

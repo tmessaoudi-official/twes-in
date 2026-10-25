@@ -25,7 +25,7 @@ mkdir -p "$TMPDIR/bin"
 cat > "$TMPDIR/bin/docker" <<'EOF'
 #!/usr/bin/env bash
 case "$1" in
-  pull) echo "${@: -1}" >> "$TMPDIR/docker.pulled" ;;
+  pull) echo "${@: -1}" >> "$TMPDIR/docker.pulled"; [[ "$*" == *" -q"* ]] || echo "${@: -1}: Pull complete" ;;
   image) [[ -z "${IMAGE_MISSING:-}" ]] || { echo "Error: No such image: ${@: -1}" >&2; exit 1; }; printf '%s\n' "${LABEL_REV:-}" ;;
   compose)
     # The merged configuration deploy.sh reads the secrets from: those SECRETS names, each from its variable.
@@ -115,6 +115,7 @@ d=$(repo); e=$(envfile); head=$(git -C "$d" rev-parse HEAD); annotate "$d" "twes
 
 $(release_lines "$head")"
 out=$(run "$d" --release "$e"); check "an annotated release tag deploys its images" $? 0 "$out" "v2026.10.12.1"
+check "  each download showing its own progress, never quiet" 0 0 "$out" "twes-in-web@sha256:$DIGEST: Pull complete"
 check "by their digests, over the release overlay, building nothing" 0 0 "$(called)" "-f compose.deploy.yaml -f compose.release.yaml up -d --no-build --wait"
 check "the api image is the tag's" 0 0 "$(called)" "TWES_API_IMAGE=ghcr.invalid/o/twes-in-api@sha256:$DIGEST"
 check "the database image is the tag's" 0 0 "$(called)" "TWES_DATABASE_IMAGE=ghcr.invalid/o/twes-in-database@sha256:$DIGEST"
