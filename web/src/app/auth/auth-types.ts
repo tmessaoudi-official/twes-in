@@ -26,6 +26,8 @@ export type LoginError =
   | 'passkey_not_found'
   // An authenticator removal with none in force, from another tab that removed it first.
   | 'totp_not_enrolled'
+  // An authenticator removal refused: the account must carry a second factor, so it is replaced, never removed.
+  | 'mfa_authenticator_required'
   // A password change that did not go through (the API's own reasons).
   | 'current_password'
   | 'too_short'

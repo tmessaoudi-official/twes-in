@@ -57,7 +57,11 @@ export class TwoFactorPage {
   private readonly dialog = inject(MatDialog);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
-  protected readonly required = this.auth.me()?.mfa.required === true;
+  /**
+   * The account must carry a second factor: an operator's, or a member's of any company requiring one. Read live, so a
+   * requirement switched on or off elsewhere withdraws or offers the authenticator's removal at once.
+   */
+  protected readonly required = computed(() => this.auth.me()?.mfa.required === true);
   /** Any factor in force; read live, so a passkey added on this page counts at once. */
   protected readonly enrolled = computed(() => this.auth.me()?.mfa.enrolled === true);
   /** Replacing the recovery codes takes an authenticator code, so only an account with one is offered it. */

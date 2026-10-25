@@ -542,8 +542,11 @@ describe('AuthFacade', () => {
       mfa: { enrolled: true, required: false, totp: true, passkeys: 1, recoveryCodes: 10 },
     });
     await facade.load();
-    api.removeAuthenticator.mockRejectedValueOnce(new AuthRefused('mfa_last_factor'));
-    expect(await facade.removeAuthenticator()).toEqual({ ok: false, error: 'mfa_last_factor' });
+    api.removeAuthenticator.mockRejectedValueOnce(new AuthRefused('mfa_authenticator_required'));
+    expect(await facade.removeAuthenticator()).toEqual({
+      ok: false,
+      error: 'mfa_authenticator_required',
+    });
     expect(facade.me()?.mfa.totp).toBe(true);
 
     api.removeAuthenticator.mockResolvedValue(undefined);

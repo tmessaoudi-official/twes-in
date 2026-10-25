@@ -23,11 +23,15 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       auth: {
-        two_factor: { title: 'Vérification en deux étapes' },
+        two_factor: {
+          title: 'Vérification en deux étapes',
+          app_remove_required: 'Exigée : seulement remplacée',
+        },
         errors: {
           invalid_code: 'Code incorrect',
           passkey_cancelled: 'Aucune clé utilisée',
           mfa_last_factor: 'Dernier facteur',
+          mfa_authenticator_required: 'Exigée par une entreprise',
         },
       },
     });
@@ -555,18 +559,24 @@ describe('TwoFactorPage', () => {
 
   it('removes the authenticator, and offers to set one up again', async () => {
     const rendered = await render(
-      { enrolled: true, required: true, totp: true, passkeys: 1, recoveryCodes: 10 },
+      { enrolled: true, required: false, totp: true, passkeys: 1, recoveryCodes: 10 },
       [laptop],
     );
-    facade.removeAuthenticator.mockResolvedValueOnce({ ok: false, error: 'mfa_last_factor' });
+    // Required meanwhile, from another tab or by an owner: the API's refusal is said under the button.
+    facade.removeAuthenticator.mockResolvedValueOnce({
+      ok: false,
+      error: 'mfa_authenticator_required',
+    });
     rendered.query<HTMLButtonElement>('two-factor-app-remove')?.click();
     await settle(rendered.fixture);
-    expect(rendered.query('two-factor-app-remove-error')?.textContent).toContain('Dernier facteur');
+    expect(rendered.query('two-factor-app-remove-error')?.textContent).toContain(
+      'Exigée par une entreprise',
+    );
     expect(rendered.query('two-factor-error')).toBeNull();
 
     facade.removeAuthenticator.mockImplementation(async () => {
       facade.me.set(
-        signedIn({ enrolled: true, required: true, totp: false, passkeys: 1, recoveryCodes: 10 }),
+        signedIn({ enrolled: true, required: false, totp: false, passkeys: 1, recoveryCodes: 10 }),
       );
       return { ok: true };
     });
@@ -578,6 +588,35 @@ describe('TwoFactorPage', () => {
     expect(rendered.query('two-factor-app-remove-error')).toBeNull();
     expect(rendered.query('two-factor-app-start')).not.toBeNull();
     expect(facade.beginTotpEnrolment).not.toHaveBeenCalled();
+  });
+
+  // While a second factor is required the authenticator is replaced, never removed, a passkey beside it or not.
+  it('offers only to replace an authenticator a second factor requires, and says why', async () => {
+    const rendered = await render(
+      { enrolled: true, required: true, totp: true, passkeys: 1, recoveryCodes: 10 },
+      [laptop],
+    );
+
+    expect(rendered.query('two-factor-app-remove')).toBeNull();
+    expect(rendered.query('two-factor-app-remove-required')?.textContent).toContain(
+      'Exigée : seulement remplacée',
+    );
+    expect(rendered.query('two-factor-app-replace')).not.toBeNull();
+
+    // Read live: the requirement lifted, removing is offered; required again, it is withdrawn.
+    facade.me.set(
+      signedIn({ enrolled: true, required: false, totp: true, passkeys: 1, recoveryCodes: 10 }),
+    );
+    await settle(rendered.fixture);
+    expect(rendered.query('two-factor-app-remove')).not.toBeNull();
+    expect(rendered.query('two-factor-app-remove-required')).toBeNull();
+
+    facade.me.set(
+      signedIn({ enrolled: true, required: true, totp: true, passkeys: 1, recoveryCodes: 10 }),
+    );
+    await settle(rendered.fixture);
+    expect(rendered.query('two-factor-app-remove')).toBeNull();
+    expect(facade.removeAuthenticator).not.toHaveBeenCalled();
   });
 
   it('starts the set-up again once the authenticator, the last factor, is removed', async () => {

@@ -57,7 +57,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             'properties' => [
                 'error' => [
                     'type' => 'string',
-                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required', 'mfa_already_enrolled', 'invalid_passkey', 'mfa_last_factor', 'passkey_not_found', 'demo_off', 'demo_busy', 'unknown_country', 'demo_refused'],
+                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required', 'mfa_already_enrolled', 'invalid_passkey', 'mfa_last_factor', 'mfa_authenticator_required', 'passkey_not_found', 'demo_off', 'demo_busy', 'unknown_country', 'demo_refused'],
                 ],
             ],
         ]);

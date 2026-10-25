@@ -42,6 +42,7 @@
       "mfa_already_enrolled": "La vérification en deux étapes est déjà activée pour ce compte.",
       "invalid_passkey": "Cette clé d’accès n’a pas pu être vérifiée. Réessayez ou utilisez un autre moyen de connexion.",
       "mfa_last_factor": "Une entreprise dont vous êtes membre exige la vérification en deux étapes : votre dernier moyen de vérification ne peut pas être supprimé.",
+      "mfa_authenticator_required": "La vérification en deux étapes est exigée pour votre compte : l’application d’authentification ne peut pas être supprimée, seulement remplacée.",
       "passkey_not_found": "Cette clé d’accès n’existe plus.",
       "totp_not_enrolled": "Aucune application d’authentification n’est configurée.",
       "passkey_cancelled": "Aucune clé d’accès n’a été utilisée. Réessayez en suivant les indications de votre appareil.",

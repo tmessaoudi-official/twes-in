@@ -232,22 +232,23 @@ test('a company that requires two-step verification sends its owner to set it up
   await page.getByTestId('two-factor-continue').click();
   await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
 
-  // Every factor can be removed but the last one a company requires (docs/SPEC.md § 7, 2026-09-22 09:12).
+  // While a second factor is required the authenticator is replaced, never removed: the page offers no removal and
+  // says why beside « Remplacer l'application ».
   await page.goto('/two-factor');
   // Its one device lost, only whoever hosts the installation could let this owner in again: the page says so.
   await expect(page.getByTestId('mfa-lockout-required')).toContainText(/hébergeur|hosts|مستضيف/);
-  await page.getByTestId('two-factor-app-remove').click();
-  // A removed factor cannot be put back, so the removal says so first (docs/SPEC.md § 7, 2026-09-26 23:04).
-  await expect(page.getByTestId('confirm-kind')).toHaveAttribute('data-kind', 'definitif');
-  await expect(page.getByTestId('confirm-message')).toContainText('ne seront plus acceptés');
-  await expectAccessible(page, 'two-factor, asked before removing the authenticator');
-  await page.screenshot({ path: test.info().outputPath('two-factor-remove-asked.png') });
-  await page.getByTestId('confirm-run').click();
-  const refused = page.getByTestId('two-factor-app-remove-error');
-  await proveIfAsked(page, NEW_PASSWORD, refused);
-  await expect(refused).toContainText('exige');
+  await expect(page.getByTestId('two-factor-app-remove-required')).toContainText(
+    'seulement remplacée',
+  );
+  await expect(page.getByTestId('two-factor-app-replace')).toBeVisible();
+  await expect(page.getByTestId('two-factor-app-remove')).toHaveCount(0);
+  await expectAccessible(page, 'two-factor, the authenticator a company requires');
   await page.screenshot({ path: test.info().outputPath('two-factor-kept.png'), fullPage: true });
-  await expect(page.getByTestId('two-factor-app-remove')).toBeVisible();
+  // The API holds it too, for a tab drawn before the requirement.
+  expect(await sendProving(page, NEW_PASSWORD, 'DELETE', '/api/auth/mfa/authenticator')).toEqual({
+    status: 409,
+    body: { error: 'mfa_authenticator_required' },
+  });
   await page.goto('/');
   await expect(page.getByTestId('greeting')).toContainText('Secure Owner');
 
@@ -272,7 +273,13 @@ test('a company that requires two-step verification sends its owner to set it up
 
   // Required no more, the authenticator goes, a phone lost or replaced, and the page offers to set one up again.
   await page.goto('/two-factor');
+  await expect(page.getByTestId('two-factor-app-remove-required')).toHaveCount(0);
   await page.getByTestId('two-factor-app-remove').click();
+  // A removed factor cannot be put back, so the removal says so first (docs/SPEC.md § 7, 2026-09-26 23:04).
+  await expect(page.getByTestId('confirm-kind')).toHaveAttribute('data-kind', 'definitif');
+  await expect(page.getByTestId('confirm-message')).toContainText('ne seront plus acceptés');
+  await expectAccessible(page, 'two-factor, asked before removing the authenticator');
+  await page.screenshot({ path: test.info().outputPath('two-factor-remove-asked.png') });
   await page.getByTestId('confirm-run').click();
   const scan = page.getByTestId('two-factor-qr');
   await proveIfAsked(page, NEW_PASSWORD, scan);

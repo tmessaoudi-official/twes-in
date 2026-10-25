@@ -390,8 +390,8 @@ describe('AuthApi', () => {
     const kept = api.removeAuthenticator();
     http
       .expectOne('/api/auth/mfa/authenticator')
-      .flush({ error: 'mfa_last_factor' }, { status: 409, statusText: 'Conflict' });
-    await expect(kept).rejects.toEqual(new AuthRefused('mfa_last_factor'));
+      .flush({ error: 'mfa_authenticator_required' }, { status: 409, statusText: 'Conflict' });
+    await expect(kept).rejects.toEqual(new AuthRefused('mfa_authenticator_required'));
   });
 
   it('answers a pending login with a passkey', async () => {

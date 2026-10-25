@@ -284,23 +284,29 @@ final class MfaEnrolmentTest extends ApiTestCase
         self::assertTrue($this->boolAt($this->section($this->json(), 'mfa'), 'totp'));
     }
 
-    public function testTheAuthenticatorACompanyRequiresIsKeptWhenItIsTheLastFactor(): void
+    public function testTheAuthenticatorACompanyRequiresIsKept(): void
     {
         $company = $this->createCompany('Secure');
         $company->requireMfa(true);
         $this->createUser('someone@twes.local', self::PASSWORD, $company, authenticator: true);
         $this->login('someone@twes.local', self::PASSWORD);
-        $this->stepUp(self::PASSWORD);
 
+        // Refused before any proof is asked: a proof given for a removal that cannot happen would be asked for nothing.
+        $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('mfa_authenticator_required', $this->stringAt($this->json(), 'error'));
+
+        $this->stepUp(self::PASSWORD);
         $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
-        self::assertSame('mfa_last_factor', $this->stringAt($this->json(), 'error'));
+        self::assertSame('mfa_authenticator_required', $this->stringAt($this->json(), 'error'));
+        self::assertSame([], $this->securityNotices(), 'nothing changed, so nothing is mailed');
         $this->getJson('/api/auth/me');
         self::assertTrue($this->boolAt($this->section($this->json(), 'mfa'), 'totp'));
     }
 
-    public function testAnOperatorKeepsTheAuthenticatorThatIsTheirLastFactor(): void
+    public function testAnOperatorKeepsTheirAuthenticator(): void
     {
         // Every operator carries a second factor, whatever company they belong to (docs/SPEC.md § 7, 2026-09-15, S3).
         $this->createUser('op@twes.local', self::PASSWORD, operator: true);
@@ -310,7 +316,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
-        self::assertSame('mfa_last_factor', $this->stringAt($this->json(), 'error'));
+        self::assertSame('mfa_authenticator_required', $this->stringAt($this->json(), 'error'));
     }
 
     public function testRemovingAnAuthenticatorNeedsASession(): void

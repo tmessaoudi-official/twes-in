@@ -276,8 +276,8 @@ final class PasskeyTest extends ApiTestCase
         self::assertSame('mfa_last_factor', $this->stringAt($this->json(), 'error'));
     }
 
-    // docs/SPEC.md § 7, 2026-09-22 09:12: the authenticator goes while a passkey stands in for it, and that passkey stays.
-    public function testAnAuthenticatorGoesWhileAPasskeyStandsInForIt(): void
+    // While a second factor is required the authenticator is replaced, never removed, a passkey beside it or not.
+    public function testARequiredAuthenticatorStaysThoughAPasskeyStandsBesideIt(): void
     {
         $company = $this->createCompany('Secure');
         $company->requireMfa(true);
@@ -288,11 +288,46 @@ final class PasskeyTest extends ApiTestCase
         [$passkey] = $this->listedIds();
 
         $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
-        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
-
-        $this->sendJson('DELETE', '/api/auth/mfa/passkeys/'.$passkey);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
-        self::assertSame('mfa_last_factor', $this->stringAt($this->json(), 'error'));
+        self::assertSame('mfa_authenticator_required', $this->stringAt($this->json(), 'error'));
+        $this->getJson('/api/auth/me');
+        self::assertTrue($this->boolAt($this->section($this->json(), 'mfa'), 'totp'));
+
+        // The passkey is not the last factor while the authenticator stays, so it may go.
+        $this->sendJson('DELETE', '/api/auth/mfa/passkeys/'.$passkey);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
+    public function testAnOperatorsAuthenticatorStaysThoughAPasskeyStandsBesideIt(): void
+    {
+        $this->createUser('op@twes.local', self::PASSWORD, operator: true, authenticator: true);
+        $this->login('op@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+        $this->registerPasskey(new FakeAuthenticator());
+
+        $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('mfa_authenticator_required', $this->stringAt($this->json(), 'error'));
+    }
+
+    public function testACompanyRequiringItKeepsTheAuthenticatorWhileAnotherIsTheOneOpen(): void
+    {
+        // The sign-in opens « Relaxed », first by name; « Strict » requiring it is enough, or switching would be the way round.
+        $strict = $this->createCompany('Strict');
+        $strict->requireMfa(true);
+        $relaxed = $this->createCompany('Relaxed');
+        $this->em()->flush();
+        $user = $this->createUser('someone@twes.local', self::PASSWORD, $relaxed, authenticator: true);
+        $this->addMembership($user, $strict);
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+        $this->registerPasskey(new FakeAuthenticator());
+
+        $this->sendJson('DELETE', '/api/auth/mfa/authenticator');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('mfa_authenticator_required', $this->stringAt($this->json(), 'error'));
     }
 
     public function testAPasskeyReplacesTheRecoveryCodesOfAnAccountWhoseOnlyFactorItIs(): void
