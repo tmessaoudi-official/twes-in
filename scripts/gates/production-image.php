@@ -48,6 +48,11 @@ if ('-1' !== ini_get('zend.assertions')) {
 if (!$off('display_errors')) {
     $problems[] = 'display_errors is on (php.ini-production turns it off)';
 }
+// Nothing here reads an upload's progress, and its handler on multipart requests was PHP2Shell's way in
+// (CVE-2026-109618, fixed in PHP 8.5.12): off, so an engine flaw of that class has one door fewer.
+if (!$off('session.upload_progress.enabled')) {
+    $problems[] = 'session.upload_progress.enabled is on: nothing reads upload progress (infra/api/conf.d/10-app.ini turns it off)';
+}
 if ('0' !== ini_get('opcache.validate_timestamps')) {
     $problems[] = 'opcache.validate_timestamps is not 0: every request checks every file for a change';
 }
