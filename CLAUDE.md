@@ -36,7 +36,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - **One `advisor()` call at goal start and one at goal end**, not per commit. One reviewer panel
   once, when the POC works, against a frozen commit, of four lenses in two waves of two (`.claude/agents/`:
   domain correctness, tenancy and security, completeness, usability and misuse); reviewers write to
-  `var/claude/` and return one line; spawn them unnamed.
+  `var/claude/` and return one line; spawn them unnamed. A **workflow hunt** of four more lenses (`lifecycle-reviewer`,
+  `persona-reviewer`, `freshness-reviewer`, `mistake-recovery-reviewer`: each state's actions, each role's jobs, each
+  write's stale viewers, each input's way back) maps the code before a release and whenever a change adds a status, a
+  role, a write or an input; hunters driving the real screens follow the push (docs/SPEC.md § 7, 2026-10-26 00:07).
 - **Say what was and was not certified by execution** in a goal's completion note, in one
   sentence each. "Tests pass" is not a claim about a container coming up.
 - **A fix is a class** (developer ruling, docs/SPEC.md § 7): every fix, decision or finding names its class (a silent
