@@ -215,7 +215,8 @@ final class AuthTest extends ApiTestCase
 
     /**
      * A wrong password tells nothing about the account: a locked or a deactivated one answers it as an address nobody
-     * registered does, so five guesses no longer say which addresses are real. Only the right password hears why.
+     * registered does, so five guesses no longer say which addresses are real. Only the right password hears that an
+     * account is deactivated; a locked one answers the right password as a wrong one too, and its owner hears by mail.
      */
     public function testALockedOrDeactivatedAccountAnswersAWrongPasswordAsAnUnknownAddressDoes(): void
     {
