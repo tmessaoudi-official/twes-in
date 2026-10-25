@@ -161,14 +161,18 @@ Once § 6 is installed and healthy, at the shop, in Edge on `https://localhost`.
 `var/claude/client-excel/out/` (never committed): copy the folder to the USB key with the installer. Each file is
 previewed first; import it only when the preview says 0 refused.
 
-1. **The demo off, and how to reach you.** Signed in as the operator: `/platform`, card « Démo », untick « Démo
+1. **The demo off, and how to reach you.** Bring your phone with an authenticator app: an operator must carry a second
+   factor, and `twes install` made yours with a password alone, so the first sign-in sends you to « Vérification en
+   deux étapes » to scan its code and keep the ten recovery codes (in your password manager, never on the shop's computer).
+   Then, signed in as the operator: `/platform`, card « Démo », untick « Démo
    ouverte aux visiteurs (« Essayer la démo ») », save. A shop's own computer offers no demo to a visitor (ruled
    2026-10-20 01:34). Then the card « Contact du support »: your phone, WhatsApp and e-mail, save.
    - [ ] Done; signed out, the sign-in page offers no « Essayer la démo ».
 2. **The shop's company and its owner.** A shop's installation makes no company (docs/START.md § 5.1). Still the
    operator, `/platform`, « Entreprises »: the shop's name, country Tunisie, « Ouvrir l’entreprise » (it shows « En
    attente »); on its row, « Adresse du propriétaire »: the owner's e-mail, « Inviter un propriétaire ». The invitation
-   leaves from the shop's Gmail: the owner opens it (on the phone is fine), follows the link, gives a name and a password
+   leaves from the shop's Gmail; its link names this computer's network address, so the owner opens it in Edge on this
+   computer (a phone only once it has fetched `http://<address>/root.crt`, § 6), follows the link, gives a name and a password
    of 12 characters or more. The company turns active once the owner accepts. Sign the operator out.
    - [ ] The invitation mail arrived (if not: `twes status`, then docs/START.md § 9, the row « … invitation mail never arrives »).
    - [ ] The owner signed in at `https://localhost` and sees the shop's company.
