@@ -91,9 +91,12 @@ waits as plan row 18, first after this release. Until then, at the computer: `tw
    backups' folder; whether the computer stays on at night (`no`: the shop's closing time), then the daily update
    window it proposes, Enter to take it; `yes` only if the fingerprint matches; the operator's e-mail and password,
    twice; under route B, Ubuntu's password once, for systemd's units. The backups' folder is a path inside Ubuntu, made
-   before the question, or the install refuses it: for a USB disk lettered `E:`,
-   `wsl -d Ubuntu -- mkdir -p /mnt/e/twes-in-backups`, then answer `/mnt/e/twes-in-backups`. After the wipe above, a
-   folder holding the test's backups is never given here.
+   before the question, or the install refuses it. For a USB disk lettered `E:`, first `wsl -d Ubuntu -- findmnt
+   /mnt/e`: it must print a line (`drvfs` or `9p`). If it prints nothing, Ubuntu does not see the disk, and a folder
+   made there would sit on the computer's own disk while you believe it on the USB: plug the disk in, `wsl --shutdown`,
+   then `findmnt` again. Only once it prints: `wsl -d Ubuntu -- mkdir -p /mnt/e/twes-in-backups`, and answer
+   `/mnt/e/twes-in-backups`. Still nothing: answer blank (this disk) and tell me; mounting the disk is not built yet.
+   After the wipe above, a folder holding the test's backups is never given here.
 4. Checks: `wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status` reads healthy; `https://localhost` opens in
    Edge without a warning; a phone opens `http://<the computer's address>/root.crt` once, then the HTTPS address
    `twes status` names.
