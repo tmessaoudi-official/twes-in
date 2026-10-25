@@ -77,7 +77,8 @@ Untried end to end; `tag-release.sh`, `point-master.sh` and `deploy.sh --release
    It refuses a commit master does not hold, a commit whose three images were never published, images that say they
    were built from another commit, and a tag that exists; it writes the three digests into the annotated tag, signs it
    with your git `user.signingkey` (or `TWES_RELEASE_KEY`), which shops verify before taking it, and verifies it once
-   made. The date is the day you tag, `.N` that day's count of releases.
+   made. It reads each image's label and digest from the registry without pulling it (`docker buildx imagetools`, a
+   few seconds an image, one line each). The date is the day you tag, `.N` that day's count of releases.
 3. Push the tag: `git push origin v<YYYY.MM.DD.N>`. A pushed tag is never moved.
 4. Announce the window (about 30 seconds of restart; migrations run at start, so a migration is written to be safe
    while the previous version still runs: expand first, contract in a later release).

@@ -18,7 +18,9 @@ gpg --batch --quiet --pinentry-mode loopback --passphrase '' --quick-gen-key 'tw
 KEY=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" { print $10; exit }')
 
 # A checkout whose origin/master holds its HEAD, and a docker that answers from the environment: LABEL_REV the commit
-# every image says it was built from (HEAD when unset), MISSING a part the registry has no image of.
+# every image says it was built from (HEAD when unset), MISSING a part the registry has no image of, NO_BUILDX a docker
+# without buildx, DIGEST_SAYS what the registry gives in place of a digest. It reads the registry through buildx's
+# imagetools, as the real one does, and answers nothing else: a pull would fail the case.
 fixture() {
   local d; d=$(mktemp -d)
   mkdir -p "$d/repo/scripts/release" "$d/bin"
@@ -28,14 +30,13 @@ fixture() {
   cat > "$d/bin/docker" <<'EOF'
 #!/usr/bin/env bash
 echo "docker $*" >> "$CALLS"
-ref=${@: -1}
-case "$1" in
-  pull) [[ -n "${MISSING:-}" && "$ref" == *"twes-in-$MISSING:"* ]] && { echo "manifest unknown" >&2; exit 1; } ;;
-  image|inspect)
-    if [[ "$*" == *RepoDigests* ]]; then printf '%s@sha256:%s\n' "${ref%:*}" "$(printf '%s' "${ref%:*}" | sha256sum | cut -c1-64)"
-    else printf '%s\n' "$LABEL_REV"; fi ;;
-esac
-exit 0
+[[ "$1 ${2:-}" == "buildx version" ]] && { [[ -z "${NO_BUILDX:-}" ]] || { echo "docker: unknown command: docker buildx" >&2; exit 1; }; exit 0; }
+[[ "$1 ${2:-} ${3:-}" == "buildx imagetools inspect" ]] || { echo "the stand-in answers no docker $1" >&2; exit 9; }
+[[ -z "${NO_BUILDX:-}" ]] || exit 1
+ref=''; shift 3
+while (($#)); do case "$1" in --format) shift ;; *) ref=$1 ;; esac; shift; done
+[[ -n "${MISSING:-}" && "$ref" == *"twes-in-$MISSING:"* ]] && { echo "ERROR: $ref: not found" >&2; exit 1; }
+printf '%s %s' "${DIGEST_SAYS:-sha256:$(printf '%s' "${ref%:*}" | sha256sum | cut -c1-64)}" "$LABEL_REV"
 EOF
   chmod +x "$d/bin/docker"
   echo "$d"
@@ -51,8 +52,13 @@ out=$(tag_release "$d" v2026.10.13.1); check "a commit master holds is tagged, a
 check "  as an annotated tag" 0 0 "$(git -C "$d/repo" cat-file -t refs/tags/v2026.10.13.1)" "tag"
 verified=$(git -C "$d/repo" verify-tag --raw v2026.10.13.1 2>&1); check "  signed by the release key" $? 0 "$verified" "VALIDSIG $KEY"
 check "  naming its commit" 0 0 "$(message "$d" v2026.10.13.1)" "TWES_REVISION=$head"
-check "  and each image by the digest the registry holds" 0 0 "$(message "$d" v2026.10.13.1)" "TWES_WEB_IMAGE=registry.invalid/o/twes-in-web@sha256:"
-check "  resolved from the commit's own sha tag" 0 0 "$(cat "$d/calls")" "pull -q registry.invalid/o/twes-in-database:sha-$head"
+check "  and each image by the digest the registry holds" 0 0 "$(message "$d" v2026.10.13.1)" \
+  "TWES_WEB_IMAGE=registry.invalid/o/twes-in-web@sha256:$(printf '%s' registry.invalid/o/twes-in-web | sha256sum | cut -c1-64)"
+check "  resolved from the commit's own sha tag" 0 0 "$(cat "$d/calls")" "buildx imagetools inspect registry.invalid/o/twes-in-database:sha-$head"
+! grep -q " pull" "$d/calls"; check "  read from the registry, nothing pulled" $? 0 "$(cat "$d/calls")" ""
+check "  one line per image as it is read" 0 0 "$out" "[1/3] twes-in-api:sha-${head:0:12}"
+check "  saying which comes next" 0 0 "$out" "next: twes-in-web"
+check "  and the last" 0 0 "$out" "[3/3] twes-in-database"
 check "  and says how to push it, which it never does itself" 0 0 "$out" "git push origin v2026.10.13.1"
 ! grep -q "push" "$d/calls"; check "  and pushes nothing to the registry" $? 0 "$(cat "$d/calls")" ""
 
@@ -72,7 +78,7 @@ out=$(cd "$d/repo" && env CALLS="$d/calls" PATH="$d/bin:$PATH" LABEL_REV="$first
 check "an older commit master holds is tagged by name, HEAD elsewhere" $? 0 "$out" "made and verified at $first"
 check "  the tag points at that commit" 0 0 "$(git -C "$d/repo" rev-parse 'v2026.10.13.2^{commit}')" "$first"
 check "  its message names that commit" 0 0 "$(message "$d" v2026.10.13.2)" "TWES_REVISION=$first"
-check "  from that commit's own images" 0 0 "$(cat "$d/calls")" "pull -q registry.invalid/o/twes-in-api:sha-$first"
+check "  from that commit's own images" 0 0 "$(cat "$d/calls")" "buildx imagetools inspect registry.invalid/o/twes-in-api:sha-$first"
 out=$(cd "$d/repo" && env CALLS="$d/calls" PATH="$d/bin:$PATH" TWES_RELEASE_KEY="$KEY" bash scripts/release/tag-release.sh registry.invalid/o v2026.10.13.3 nosuchcommit 2>&1)
 check "a name that is no commit is refused" $? 1 "$out" "names no commit"
 
@@ -87,7 +93,15 @@ out=$(tag_release "$d" v2026.10.13.1); check "a commit master does not hold is r
 
 d=$(fixture)
 out=$(tag_release "$d" v2026.10.13.1 MISSING=web); check "a commit whose image was never published is refused" $? 1 "$out" "twes-in-web:sha-"
+check "  saying what the registry answered" 0 0 "$out" "not found"
 git -C "$d/repo" rev-parse -q --verify refs/tags/v2026.10.13.1 >/dev/null; check "  and no tag is left" $? 1 "" ""
+
+d=$(fixture)
+out=$(tag_release "$d" v2026.10.13.1 DIGEST_SAYS=latest); check "a registry that gives no digest: refused" $? 1 "$out" "gave no digest"
+git -C "$d/repo" rev-parse -q --verify refs/tags/v2026.10.13.1 >/dev/null; check "  and no tag is left" $? 1 "" ""
+
+d=$(fixture)
+out=$(tag_release "$d" v2026.10.13.1 NO_BUILDX=1); check "a docker without buildx: refused, saying what is needed" $? 1 "$out" "docker buildx"
 
 d=$(fixture)
 out=$(tag_release "$d" v2026.10.13.1 LABEL_REV="$(printf 'c%.0s' {1..40})"); check "an image built from another commit is refused" $? 1 "$out" "built from cccccccc"
