@@ -67,6 +67,54 @@ $ErrorActionPreference = 'Stop'
 # wsl.exe writes UTF-16 unless told otherwise, which PowerShell would read as text full of NUL characters.
 $env:WSL_UTF8 = '1'
 
+# Where the installer stands, so a step of minutes is not taken for a hang: each section says its place, what it does,
+# how long it usually takes and what comes next, and the one before says its time once it ends. Section 2 is Docker
+# Desktop's and 4b Docker Engine's, so either engine counts six. Every figure is "usually", never a promise.
+if ($Engine -eq 'Desktop') {
+    $script:steps = @(
+        @{ What = "WSL and $Distribution"; Usually = 'a few minutes the first time' }
+        @{ What = 'Docker Desktop'; Usually = '' }
+        @{ What = "git, gpg, curl and flock in $Distribution"; Usually = '' }
+        @{ What = 'the checkout at the newest release, its signature verified'; Usually = '' }
+        @{ What = 'twes install: the shop''s facts, the release, the operator'; Usually = '~5-10 min the first time, mostly the images download by the link; the migrations under 1 min' }
+        @{ What = 'Windows'' side: the authority trusted, the scheduled tasks, the shortcut'; Usually = '' }
+    )
+} else {
+    $script:steps = @(
+        @{ What = "WSL and $Distribution"; Usually = 'a few minutes the first time' }
+        @{ What = "git, gpg, curl and flock in $Distribution"; Usually = '' }
+        @{ What = 'the checkout at the newest release, its signature verified'; Usually = '' }
+        @{ What = "Docker Engine inside $Distribution"; Usually = '~3-5 min the first time' }
+        @{ What = 'twes install: the shop''s facts, the release, the operator, the systemd units'; Usually = '~5-10 min the first time, mostly the images download by the link; the migrations under 1 min' }
+        @{ What = 'Windows'' side: the authority trusted, the keep task, the firewall rule, the shortcut'; Usually = '' }
+    )
+}
+$script:stepAt = 0
+$script:stepClock = $null
+function Format-Elapsed([TimeSpan]$Span) {
+    $seconds = [int][Math]::Floor($Span.TotalSeconds)
+    if ($seconds -lt 60) { return "${seconds}s" }
+    return "$([int][Math]::Floor($seconds / 60))m $($seconds % 60)s"
+}
+function Complete-Step {
+    if ($null -eq $script:stepClock) { return }
+    $script:stepClock.Stop()
+    Write-Host "twes-in: step $($script:stepAt)/$($script:steps.Count) done in $(Format-Elapsed $script:stepClock.Elapsed)"
+    $script:stepClock = $null
+}
+function Write-Step {
+    Complete-Step
+    $script:stepAt++
+    $count = $script:steps.Count
+    if ($script:stepAt -gt $count) { return }
+    $step = $script:steps[$script:stepAt - 1]
+    $line = "twes-in: step $($script:stepAt)/${count}: $($step.What)"
+    if ($step.Usually) { $line += " (usually $($step.Usually))" }
+    if ($script:stepAt -lt $count) { $line += " - next: $($script:steps[$script:stepAt].What)" } else { $line += ' - the last step' }
+    Write-Host $line -ForegroundColor Cyan
+    $script:stepClock = [Diagnostics.Stopwatch]::StartNew()
+}
+
 function Stop-Install([string]$Why) {
     Write-Host "twes-in: $Why" -ForegroundColor Yellow
     exit 1
@@ -115,6 +163,7 @@ foreach ($line in (& netsh.exe interface ipv4 show excludedportrange protocol=tc
 }
 
 # --- 1. WSL and Ubuntu ------------------------------------------------------------------------------------------------
+Write-Step
 & wsl.exe --status *> $null
 $distributions = @()
 if ($LASTEXITCODE -eq 0) { $distributions = @(& wsl.exe --list --quiet | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
@@ -137,6 +186,8 @@ if ($Engine -eq 'Wsl') {
 }
 
 # --- 2. Docker Desktop ------------------------------------------------------------------------------------------------
+# Under -Engine Wsl, only the check that Docker Desktop is absent: part of step 1's time, no step of its own.
+if ($Engine -eq 'Desktop') { Write-Step }
 $dockerDesktop = Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'
 if ($Engine -eq 'Wsl') {
     # Its WSL integration puts its own docker in Ubuntu, which would answer instead of Docker Engine.
@@ -169,6 +220,7 @@ if ($Engine -eq 'Desktop') {
 }
 
 # --- 3. The tools inside Ubuntu ---------------------------------------------------------------------------------------
+Write-Step
 if ((Invoke-Ubuntu 'command -v git && command -v gpg && command -v curl && command -v flock' ) -ne 0) {
     if ((Invoke-Ubuntu 'apt-get update -q && apt-get install -y -q git gnupg curl util-linux' -AsRoot) -ne 0) {
         Stop-Install "git, gpg, curl and flock could not be installed in ${Distribution}: is the internet reachable?"
@@ -176,6 +228,7 @@ if ((Invoke-Ubuntu 'command -v git && command -v gpg && command -v curl && comma
 }
 
 # --- 4. The checkout, at the newest release ---------------------------------------------------------------------------
+Write-Step
 if ((Invoke-Ubuntu "test -d ~/twes-in/.git || git clone --quiet '$Repository' ~/twes-in") -ne 0) {
     Stop-Install "the checkout could not be cloned from $Repository into $Distribution's ~/twes-in."
 }
@@ -227,6 +280,7 @@ function Add-WslSetting([string]$Section, [string]$Key, [string]$Value) {
     return $true
 }
 if ($Engine -eq 'Wsl') {
+    Write-Step
     # Never stopped for being idle: what runs inside is the shop's till. Mirrored: Ubuntu shares Windows' addresses, so a
     # phone reaches the edge at this computer's own address.
     $idle = Add-WslSetting -Section 'general' -Key 'instanceIdleTimeout' -Value '-1'
@@ -253,11 +307,14 @@ if ($Engine -eq 'Wsl') {
 }
 
 # --- 5. The installation itself ---------------------------------------------------------------------------------------
-# It asks its questions on this console, so its output is not taken through PowerShell's pipeline.
+# It asks its questions on this console, so its output is not taken through PowerShell's pipeline. It counts its own
+# steps, [1/4] and on, inside this one.
+Write-Step
 & wsl.exe -d $Distribution --cd '~' -- bash twes-in/scripts/onprem/twes install
 if ($LASTEXITCODE -ne 0) { Stop-Install 'the installation did not finish: read the lines above, then run this again.' }
 
 # --- 6. Windows' side -------------------------------------------------------------------------------------------------
+Write-Step
 # The installation's own authority, so https://localhost opens without a warning on this computer. Edge and Chrome read
 # Windows' store; Firefox only once "Allow Firefox to automatically trust third-party root certificates you install" is
 # ticked in its settings.
@@ -321,5 +378,6 @@ if ($Engine -eq 'Desktop') {
 
 $shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'twes-in.url'
 Set-Content -Path $shortcut -Value "[InternetShortcut]`r`nURL=https://localhost/`r`n" -Encoding ASCII
+Complete-Step
 Write-Host "twes-in: done. Open https://localhost here; a phone on the shop's network opens http://<this computer's address>/root.crt once, then the HTTPS address twes status names."
 Write-Host "twes-in: twes is typed in a new $Distribution window (twes status), or from PowerShell: wsl -d $Distribution --cd ~ -- bash twes-in/scripts/onprem/twes status"

@@ -934,8 +934,9 @@ administrator, before Hyper-V starts: `net stop winnat`, `netsh int ipv4 add exc
 numberofports=1` (and 443), `net start winnat`: a port excluded by hand is never handed out again, and stays free for
 the edge. That is the fix Docker's and WSL's users give; it is untried here.
 
-`scripts/onprem/install.ps1` does what is still missing and stops at each step that needs a person, to be run again
-after it: WSL and Ubuntu (a restart if Windows asks, and Ubuntu opened once to make its user: when WSL opens it
+`scripts/onprem/install.ps1` says where it stands at each of its six steps (`twes-in: step 5/6: twes install: … (usually
+~5-10 min the first time, …) - next: …`, then `step 5/6 done in 7m 3s`), does what is still missing and stops at each
+step that needs a person, to be run again after it: WSL and Ubuntu (a restart if Windows asks, and Ubuntu opened once to make its user: when WSL opens it
 itself right after installing it, `exit` there and the installer goes on), Docker Desktop (started once, its terms
 accepted, « Start Docker Desktop when you sign in » ticked, WSL integration on for Ubuntu), git, gpg, curl and flock in
 Ubuntu, the checkout at the newest release tag, which it verifies against the release key's fingerprint it carries
