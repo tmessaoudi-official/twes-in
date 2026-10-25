@@ -8,7 +8,9 @@ details; this page is the order to follow.
 1. Wipe the J-1 test install (« Before § 3 » below).
 2. **The training install**: §§ 3, 4 and 5, the backups' folder left blank at § 3 step 3 and the five values not
    saved. The owner practises everything on their own company and files, invoices included. Nothing printed leaves the
-   shop: those documents are wiped with the rest.
+   shop, and nothing is sent by mail outside it: this install mails through the shop's real Gmail, so a customer typed
+   in training is made up or carries the shop's own address, never a real customer's. Your second factor's recovery
+   codes from this install are void with it.
 3. **Wipe again**: « Before § 3 » steps 3 and 4, before the first real sale.
 4. **The final install**: §§ 3, 4 and 5 again, this time with the USB backups' folder and the five values saved, then
    §§ 6 and 7. From here on the shop's data is never wiped (§ 7).

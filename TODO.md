@@ -213,7 +213,7 @@ previewed first; import it only when the preview says 0 refused.
 
 ## Also waiting on you
 
-- [ ] Once installed, whichever route: copy these five values off the shop's computer, into your password manager and a
+- [ ] Once the final install is done (not the training one), whichever route: copy these five values off the shop's computer, into your password manager and a
   sealed copy offline. `twes install` printed them as it began, among much else. If the computer's disk dies, no backup
   can be read without the two passphrases, and every authenticator enrolled is lost without the MFA key. Print them in
   PowerShell, copy them, then close the window:
