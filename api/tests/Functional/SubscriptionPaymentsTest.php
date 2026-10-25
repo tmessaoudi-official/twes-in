@@ -32,6 +32,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 final class SubscriptionPaymentsTest extends ApiTestCase
 {
+    private ?\DateTimeImmutable $today = null;
+
     private bool $operatorCreated = false;
 
     public function testACompanyDeclaresAPaymentWhichKeepsItOpenUntilTheOperatorDecides(): void
@@ -501,7 +503,16 @@ final class SubscriptionPaymentsTest extends ApiTestCase
 
     private function day(int $days): string
     {
-        return new \DateTimeImmutable('today', new \DateTimeZone('Africa/Tunis'))->modify(\sprintf('%+d days', $days))->format('Y-m-d');
+        return $this->today()->modify(\sprintf('%+d days', $days))->format('Y-m-d');
+    }
+
+    /**
+     * The test's own day, read once: a test crossing midnight between the request it sends and what it expects would
+     * otherwise compare two days, as one did at 23:00 UTC, midnight in Tunis.
+     */
+    private function today(): \DateTimeImmutable
+    {
+        return $this->today ??= new \DateTimeImmutable('today', new \DateTimeZone('Africa/Tunis'));
     }
 
     private function subscriptionOf(Company $company): string

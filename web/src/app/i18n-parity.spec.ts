@@ -21,6 +21,9 @@ import frRecords from '../../public/i18n/records/fr.json';
 import arReports from '../../public/i18n/reports/ar.json';
 import enReports from '../../public/i18n/reports/en.json';
 import frReports from '../../public/i18n/reports/fr.json';
+import arRoles from '../../public/i18n/roles/ar.json';
+import enRoles from '../../public/i18n/roles/en.json';
+import frRoles from '../../public/i18n/roles/fr.json';
 import en from '../../public/i18n/en.json';
 import arInvoiceBulk from '../../public/i18n/invoice-bulk/ar.json';
 import enInvoiceBulk from '../../public/i18n/invoice-bulk/en.json';
@@ -103,6 +106,7 @@ const parts: Record<string, Record<string, unknown>> = {
   purchases: { fr: frPurchases, en: enPurchases, ar: arPurchases },
   records: { fr: frRecords, en: enRecords, ar: arRecords },
   reports: { fr: frReports, en: enReports, ar: arReports },
+  roles: { fr: frRoles, en: enRoles, ar: arRoles },
   'mfa-lockout': { fr: frMfaLockout, en: enMfaLockout, ar: arMfaLockout },
   schedule: { fr: frSchedule, en: enSchedule, ar: arSchedule },
   'settings-refusals': { fr: frSettingsRefusals, en: enSettingsRefusals, ar: arSettingsRefusals },

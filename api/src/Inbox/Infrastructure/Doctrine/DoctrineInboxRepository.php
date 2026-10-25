@@ -48,12 +48,13 @@ final readonly class DoctrineInboxRepository implements InboxRepository
     public function latestFor(Uuid $recipientId, int $limit): array
     {
         // The id breaks ties between rows written in the same second: it is a UUIDv7, so it sorts by time too.
+        /** @var list<InboxItem> $items */
         $items = $this->entityManager->createQuery(
             'SELECT i FROM '.InboxItem::class.' i WHERE i.recipient = :recipient AND '.self::STILL_A_MEMBER.'
              ORDER BY i.createdAt DESC, i.id DESC',
         )->setParameter('recipient', $recipientId, 'uuid')->setMaxResults($limit)->getResult();
 
-        return array_values(array_filter(\is_array($items) ? $items : [], static fn (mixed $item): bool => $item instanceof InboxItem));
+        return $items;
     }
 
     public function unreadCountFor(Uuid $recipientId): int

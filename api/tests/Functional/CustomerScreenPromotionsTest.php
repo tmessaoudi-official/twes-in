@@ -30,6 +30,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class CustomerScreenPromotionsTest extends ApiTestCase
 {
+    private ?\DateTimeImmutable $today = null;
+
     private Company $company;
     private string $screw;
     private string $nut;
@@ -133,7 +135,16 @@ final class CustomerScreenPromotionsTest extends ApiTestCase
 
     private function day(string $modifier): string
     {
-        return new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->modify($modifier)->format('Y-m-d');
+        return $this->today()->modify($modifier)->format('Y-m-d');
+    }
+
+    /**
+     * The test's own day, read once: a test crossing midnight between the request it sends and what it expects would
+     * otherwise compare two days, as one did at 23:00 UTC, midnight in Tunis.
+     */
+    private function today(): \DateTimeImmutable
+    {
+        return $this->today ??= new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()));
     }
 
     /** @param list<string> $ids */

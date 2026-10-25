@@ -35,7 +35,7 @@ run() {
   local -A ini=(
     [display_errors]=0 [zend.assertions]=-1 [opcache.validate_timestamps]=0 [opcache.memory_consumption]=256
     [opcache.max_accelerated_files]=32531 [opcache.interned_strings_buffer]=32 [realpath_cache_ttl]=600
-    [opcache.preload]="$d/config/preload.php"
+    [opcache.preload]="$d/config/preload.php" [session.upload_progress.enabled]=0
   )
   local kv; for kv in "$@"; do ini[${kv%%=*}]=${kv#*=}; done
   local args=() k; for k in "${!ini[@]}"; do args+=(-d "$k=${ini[$k]}"); done
@@ -48,6 +48,7 @@ out=$(APP_ENV_UNDER_TEST=dev run "$d"); check "an image left in dev mode is refu
 out=$(WORKER_UNDER_TEST= run "$d"); check "an image serving in classic mode, a kernel booted per request, is refused" $? 1 "$out" "worker"
 out=$(run "$d" zend.assertions=1); check "assertions still compiled in are refused" $? 1 "$out" "zend.assertions"
 out=$(run "$d" display_errors=1); check "errors shown to the visitor are refused" $? 1 "$out" "display_errors"
+out=$(run "$d" session.upload_progress.enabled=1); check "upload progress left on is refused" $? 1 "$out" "session.upload_progress.enabled"
 out=$(run "$d" opcache.validate_timestamps=1); check "OPcache checking every file's time is refused" $? 1 "$out" "opcache.validate_timestamps"
 out=$(run "$d" opcache.memory_consumption=128); check "the default OPcache memory is refused" $? 1 "$out" "opcache.memory_consumption"
 out=$(run "$d" opcache.max_accelerated_files=10000); check "the default OPcache file count is refused" $? 1 "$out" "opcache.max_accelerated_files"

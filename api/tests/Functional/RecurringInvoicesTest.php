@@ -40,6 +40,8 @@ use Symfony\Component\Uid\Uuid;
  */
 final class RecurringInvoicesTest extends ApiTestCase
 {
+    private ?\DateTimeImmutable $today = null;
+
     private const array WEEK = ['unit' => 'week', 'every' => 1];
 
     private Company $company;
@@ -459,7 +461,16 @@ final class RecurringInvoicesTest extends ApiTestCase
     /** The company's day, `$offset` days from today. */
     private function day(int $offset): string
     {
-        return new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()))->modify(\sprintf('%+d days', $offset))->format('Y-m-d');
+        return $this->today()->modify(\sprintf('%+d days', $offset))->format('Y-m-d');
+    }
+
+    /**
+     * The test's own day, read once: a test crossing midnight between the request it sends and what it expects would
+     * otherwise compare two days, as one did at 23:00 UTC, midnight in Tunis.
+     */
+    private function today(): \DateTimeImmutable
+    {
+        return $this->today ??= new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
     }
 
     private function issued(string $net): string

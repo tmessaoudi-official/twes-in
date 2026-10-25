@@ -1,0 +1,41 @@
+{
+  "company": {
+    "roles": {
+      "title": "Roles",
+      "intro": "What each role is allowed to do. The roles shipped with the product can be read but not changed; create your own for how you work.",
+      "no_company": "Choose a company to manage its roles.",
+      "built_in": "shipped",
+      "member_count": "{{count}} {count, plural, one {member} other {members}}",
+      "view": "View",
+      "edit": "Edit",
+      "delete": "Delete the role",
+      "new": "Create a role",
+      "editing": "Role “{{name}}”",
+      "name": "Role name",
+      "everything": "The owner holds every right there is, including those later releases add.",
+      "save": "Save",
+      "close": "Close",
+      "saved": "Role saved.",
+      "deleted": "Role deleted.",
+      "errors": {
+        "network": "The server cannot be reached. Try again.",
+        "not_found": "No such role.",
+        "name_taken": "This company already has a role with that name.",
+        "in_use": "Members still hold this role. Move them to another one before deleting it.",
+        "in_use_holders": "The “{{role}}” role is still held by: {{holders}}.",
+        "in_use_holders_more": "The “{{role}}” role is still held by: {{holders}} and others.",
+        "built_in": "This role is shipped with the product and cannot be changed.",
+        "unknown_permission": "One of the ticked rights does not exist. Reload the page.",
+        "not_held": "You can only give a role the permissions you hold yourself.",
+        "invalid": "That save was refused.",
+        "step_up_required": "Nothing changed: confirm it is you to make this change."
+      },
+      "name_conflict": "The name was changed in the saved version too.",
+      "permissions_conflict": "The permissions were changed in the saved version too.",
+      "delete_title": "Delete this role?",
+      "delete_message": "The “{{name}}” role goes, with the list of what it permits: nothing puts it back.",
+      "keep": "Keep the role",
+      "changed_since": "The “{{name}}” role was changed in the meantime: nothing was deleted. Read it again before deleting it."
+    }
+  }
+}
