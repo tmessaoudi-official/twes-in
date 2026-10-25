@@ -244,7 +244,7 @@ rotation now, not later.
 ## Replace a lost authenticator
 
 First, whoever can still sign in replaces it themselves: with the old phone still working, a recovery code or a
-passkey, they open « Vérification en deux étapes » from the account menu, choose « Remplacer l'authentificateur », prove
+passkey, they open « Vérification en deux étapes » from the account menu, choose « Remplacer l’application », prove
 it is them with their password (or a passkey), scan the new code with the new app and type one of its codes. The old app
 keeps working until then; once confirmed it stops, new recovery codes are shown and every other session ends
 (`AuthenticatorReplacementTest`, `web/e2e/two-factor.spec.ts`). Nothing below is needed then.

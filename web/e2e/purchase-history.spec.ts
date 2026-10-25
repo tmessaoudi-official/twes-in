@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test, type Page } from '@playwright/test';
+import { wcagViolations } from './axe';
 import { runDigits } from './run';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
@@ -18,7 +19,11 @@ test('a file of past purchases fills a product cost history and its vendor « Ac
   await signIn(page);
   await inACompany(page, CSRF);
   await imported(page, 'vendors', `number,name\n${vendor},Sotumag ${run}\n`);
-  await imported(page, 'products', `reference,name\n${product},Vis achetée ${run}\n`);
+  await imported(
+    page,
+    'products',
+    `reference,name,unit_price_net\n${product},Vis achetée ${run},2.5\n`,
+  );
 
   await page.goto('/products');
   await page.getByTestId('products-import').click();
@@ -50,6 +55,7 @@ test('a file of past purchases fills a product cost history and its vendor « Ac
   await expect(lines.nth(0)).toContainText(`Sotumag ${run}`);
   await expect(lines.nth(1)).toContainText('date inconnue');
   await expect(lines.nth(2)).toContainText('date inconnue');
+  expect(await wcagViolations(page), 'the cost history').toEqual([]);
 
   // On the vendor: « Achats » lists the same lines, each opening its product.
   await lines.nth(0).getByRole('link').click();
@@ -60,6 +66,7 @@ test('a file of past purchases fills a product cost history and its vendor « Ac
   await expect(bought).toHaveCount(3);
   await expect(bought.nth(0)).toContainText('quantité 72');
   await expect(bought.nth(2)).toContainText('date inconnue');
+  expect(await wcagViolations(page), 'the vendor « Achats »').toEqual([]);
   await bought.nth(0).getByRole('link').click();
   await expect(page).toHaveURL(new RegExp(`/products/${productId}$`));
 });
@@ -82,7 +89,7 @@ async function imported(page: Page, subject: string, csv: string): Promise<void>
     },
     [CSRF, subject, csv] as const,
   );
-  expect(answer.status, `importing ${subject}`).toBe(200);
+  expect(answer.status, `importing ${subject}: ${JSON.stringify(answer.body)}`).toBe(200);
   expect(answer.body.rejected ?? []).toEqual([]);
 }
 

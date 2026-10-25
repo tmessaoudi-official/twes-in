@@ -26,19 +26,20 @@ docker logout ghcr.io; docker manifest inspect ghcr.io/tmessaoudi-official/twes-
 
 ## 3. The first signed release — yours, your key signs it
 
-After step 2, on the release freeze or any later commit CI published: the tool tags the commit you name, nothing is
-checked out (docs/RUNBOOK.md « Promote to production »). The date is the day you tag, `.1` that day's first release:
-tagged on the 25th it is `v2026.10.25.1`, in both lines. The freeze is `83a0ae48`; a later freeze is named in the plan's
-Status, row 22. The tool pulls the three images, refuses what was not published from that commit, signs and verifies:
+After step 2, once CI is green on the release-26 batch (plan row 141), its `publish` job included: the tool tags the
+commit you name, nothing is checked out (docs/RUNBOOK.md « Promote to production »). The date is the day you tag, `.1`
+that day's first release: tagged on the 25th it is `v2026.10.25.1`, in both lines. The release is master's head as CI
+published it; tag it before anything else is pushed. The tool pulls the three images, refuses what was not published
+from that commit, signs and verifies:
 
 ```sh
-cd /stack/projects/twes-in && git fetch origin
-make release-tag TAG=v2026.10.24.1 COMMIT=83a0ae48a8c4bef93fdaa2a86883b08ffec3b127
-git push origin v2026.10.24.1
+cd /stack/projects/twes-in && git fetch origin && git log -1 --format='%H %s' origin/master
+make release-tag TAG=v2026.10.25.1 COMMIT=$(git rev-parse origin/master)
+git push origin v2026.10.25.1
 ```
 
-Staging's `:master` still names 19f0ee08 from before the history was re-signed; to put it on the freeze (logged in to
-GHCR with write:packages; shops never read it): `make point-master COMMIT=83a0ae48a8c4bef93fdaa2a86883b08ffec3b127`.
+To put staging's `:master` on it too (logged in to GHCR with write:packages; shops never read it):
+`make point-master COMMIT=$(git rev-parse origin/master)`.
 
 - Tag the release freeze or a later commit: it carries `twes hold` (671dd623). No shop, the J-1 machine included, is
   installed from `v2026.10.22.1` or any tag before it: a way back to such a release runs its own script, which knows no
@@ -65,8 +66,11 @@ cp /stack/projects/twes-in/scripts/onprem/install.ps1 /media/$USER/<your-usb>/in
 
 If it finds something Claude cannot fix the same day, install day stays Monday and it is fixed on site (ruled
 2026-10-24 17:45): bring what failed, the command and its output. On install day, tell the owner that « À surveiller »
-reads about 4,000 because of the import's missing barcodes and categories; the first update takes those two out of the
-home's count (ruled 17:44).
+reads 4,013 after the import (measured on a company holding the five files, 2026-10-25): 3,974 products, every one
+imported switched on (4,100 less the 126 without a price), still to have its unit confirmed and its stock counted, and
+the 39 vendors with their « À vérifier » mark. It goes down as each product's unit is confirmed and its stock
+counted (« Compter le stock »), not by an update: the update that left barcodes and categories out of it is already in
+this release.
 
 Two ways to run Docker on Windows; pick one at the shop (docs/START.md § 16 compares them):
 
@@ -150,6 +154,43 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
 - [ ] A container stopped: `wsl -d Ubuntu -- bash -c 'docker stop $(docker ps -q --filter name=worker)'`; within a
       quarter hour `twes status` is healthy again and
       `wsl -d Ubuntu --cd ~ -- grep 'starting the installation again' .twes-in/state/twes.log` shows the line.
+
+## 7. Install day — the shop's own data, in this order
+
+Once § 6 is installed and healthy, at the shop, in Edge on `https://localhost`. The five files are this machine's
+`var/claude/client-excel/out/` (never committed): copy the folder to the USB key with the installer. Each file is
+previewed first; import it only when the preview says 0 refused.
+
+1. **The demo off.** Signed in as the operator: `/platform`, card « Démo », untick « Démo ouverte aux visiteurs
+   (« Essayer la démo ») », save. A shop's own computer offers no demo to a visitor (ruled 2026-10-20 01:34).
+   - [ ] Done; signed out, the sign-in page offers no « Essayer la démo ».
+2. **The VAT regime before any product.** Signed in as the owner: « Paramètres », « Profil de la société », « Régime de
+   TVA »: « Régime normal » (ruled 2026-10-25 11:29: the shop is régime réel), then « Enregistrer ». The products file
+   writes prices with taxes; the regime decides what is kept as the price before taxes, so it is set first.
+   - [ ] « Régime normal » saved.
+3. **The five files, in order**, each from « Produits », « Importer » (the vendors' from « Fournisseurs »):
+
+   | # | File | Screen | Switches | Expected |
+   |---|---|---|---|---|
+   | 1 | `1-vendors.csv` | Fournisseurs › Importer | none | 39 created |
+   | 2 | `2-categories.csv` | Produits › Importer › Catégories | none | 2 created |
+   | 3 | `3-products.csv` | Produits › Importer › Produits | tick both: « Donner les taxes par défaut aux nouveaux produits qui n’en nomment pas » and « Importer désactivés les nouveaux produits sans prix de vente » | 4,100 created, about 70 s to preview and as much to import |
+   | 4 | `4-product-vendors.csv` | Produits › Importer › Fournisseurs des produits | none | 4,138 created |
+   | 5 | `5-price-history.csv` | Produits › Importer › Historique des achats | none | 4,582 created, about 10 s to preview and as much to import; 67 lines say « date inconnue » for a day written 0202-09-30 |
+
+   Keep every column the screen pairs, « À vérifier » (`to_check`) included: setting it aside drops the 1,873 marks
+   the conversion left on what it could not read for sure. The history moves no cost, price or stock: it fills each
+   product's « Historique des coûts » and each vendor's « Achats ». Its lines of no known day (the workbook gave none)
+   are kept as « date inconnue », listed last.
+   - [ ] 1 · [ ] 2 · [ ] 3 · [ ] 4 · [ ] 5, each 0 refused.
+4. **What to tell the owner the same day.**
+   - 126 products came without a sale price: they are imported switched off at price 0, so the counter does not offer
+     them and a scan says « retiré de la vente ». « Produits », filter « Actif » set to « Inactif »: enter each price,
+     then switch it on.
+   - 1,655 products' prices before taxes were worked out at 19 % because the workbook gave no rate for them (each carries
+     « TVA à vérifier »): for one sold at another rate, correct its tax, then type its price with taxes again, as the
+     price kept before taxes is not worked out again by itself.
+   - « À vérifier » on a product or a vendor is the conversion's doubt, said on the record: clear it once checked.
 
 ## Also waiting on you
 

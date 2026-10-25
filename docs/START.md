@@ -162,7 +162,7 @@ that scripts can compute codes. You can also add it to any authenticator app to 
   `make e2e` runs, and if you are locked out, wait five minutes rather than trying again.
 - A code from a phone authenticator only works if you added **this** secret to it; a secret enrolled any other way
   is not the one the seed stored.
-- « Remplacer l'authentificateur » on this operator puts a new secret in force: from then on `make operator-code` and
+- « Remplacer l’application » on this operator puts a new secret in force: from then on `make operator-code` and
   every browser scenario signing in as the operator are refused on that stack: the seed enrols only an operator with no
   authenticator, so only `make reset`, which wipes the stack's data, brings the known secret back. Try
   the replacement on an invited account instead, as `web/e2e/two-factor.spec.ts` does.
