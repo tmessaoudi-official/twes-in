@@ -533,6 +533,10 @@ wait "$sleeper"
 # tick
 d=$(installed)
 out=$(ADDRESS=192.168.1.42 twes "$d" tick); check "a new network address: started again at it" $? 0 "$(deployed)" "LAN_HOST=192.168.1.42 --again"
+check "  and the owners and operators told the address phones now open" 0 0 "$(told)" "installation.address_moved from=192.168.1.20 to=192.168.1.42"
+d=$(installed)
+out=$(NO_ROUTE=1 twes "$d" tick); check "no network at all: started again on this computer alone" $? 0 "$(deployed)" "LAN_HOST=127.0.0.1 --again"
+[[ "$(told)" != *address_moved* ]]; check "  and no phone told to open an address none can reach" $? 0 "$(told)" ""
 d=$(installed)
 out=$(ALL_BAD=1 twes "$d" tick); check "unhealthy: the developer told" $? 0 "$(subject)" "ne va pas bien (queue)"
 check "  and the operators" 0 0 "$(told)" "installation.unhealthy check=queue"

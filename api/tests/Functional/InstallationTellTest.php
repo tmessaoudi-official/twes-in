@@ -104,6 +104,30 @@ final class InstallationTellTest extends ApiTestCase
         self::assertSame([], $this->em()->getConnection()->fetchFirstColumn("SELECT type FROM inbox_item WHERE type LIKE 'installation.%' OR type = 'data.check_failed'"));
     }
 
+    /** A phone saved the old address: whoever hands phones out at the shop, its owners, and the operators learn the new one. */
+    public function testAMovedAddressIsToldToEachCompanysOwnersAndToTheOperatorsButNotToADemoVisitor(): void
+    {
+        $shop = $this->createCompany('Quincaillerie');
+        $owner = $this->createUser('owner@shop.test', self::PASSWORD, $shop);
+        $this->createUser('clerk@shop.test', self::PASSWORD, $shop, ['company.read'], Role::MEMBER);
+        $operator = $this->createUser('operator@twes.local', self::PASSWORD, operator: true);
+        $this->readySandbox('TN');
+        $this->em()->flush();
+
+        $tester = $this->tell('installation.address_moved', 'from=192.168.1.20', 'to=192.168.1.42');
+
+        self::assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
+        $told = $this->told('installation.address_moved');
+        self::assertEqualsCanonicalizing([
+            [$owner->getId()->toRfc4122(), $shop->getId()->toRfc4122()],
+            [$operator->getId()->toRfc4122(), null],
+        ], array_map(static fn (array $row): array => [$row['recipient_id'], $row['company_id']], $told));
+        self::assertSame(['from' => '192.168.1.20', 'to' => '192.168.1.42'], json_decode($this->stringAt($told[0], 'payload'), true));
+
+        $refused = $this->tell('installation.address_moved', 'from=192.168.1.42', 'to=https://evil.example/x');
+        self::assertSame(Command::INVALID, $refused->getStatusCode(), $refused->getDisplay());
+    }
+
     /** The bell's preferences offer each kind to whom it is told; none is mailed here, the script mails on its own. */
     public function testTheKindsAreDeclaredForTheirAudienceAndMailedByTheScriptAlone(): void
     {
@@ -113,6 +137,11 @@ final class InstallationTellTest extends ApiTestCase
         self::assertSame(NotificationAudience::Company, $release->audience);
         self::assertSame(Role::OWNER, $release->role);
         self::assertFalse($release->mailed);
+        $moved = $kinds->get('installation.address_moved');
+        self::assertNotNull($moved);
+        self::assertSame(NotificationAudience::Company, $moved->audience);
+        self::assertSame(Role::OWNER, $moved->role);
+        self::assertFalse($moved->mailed);
         foreach (['rolled_back', 'update_failed', 'update_refused', 'unhealthy', 'backup_failed', 'backup_stopped'] as $name) {
             $kind = $kinds->get('installation.'.$name);
             self::assertNotNull($kind, $name);

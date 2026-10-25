@@ -714,7 +714,8 @@
       "installation_update_refused": "The update to {{version}} was refused: it is not signed by this installation’s release key. Nothing changed.",
       "installation_unhealthy": "The installation’s health check fails: {{check}}.",
       "installation_backup_failed": "The backup “{{step}}” failed.",
-      "installation_backup_stopped": "The backups no longer run."
+      "installation_backup_stopped": "The backups no longer run.",
+      "installation_address_moved": "This computer’s network address changed: phones now open https://{{to}} (it was {{from}}). A phone that saved the old one must open the new one."
     },
     "kinds": {
       "membership_added": "Added to a company",
@@ -749,7 +750,8 @@
       "installation_update_refused": "Update refused",
       "installation_unhealthy": "Installation unhealthy",
       "installation_backup_failed": "Backup failed",
-      "installation_backup_stopped": "Backups stopped"
+      "installation_backup_stopped": "Backups stopped",
+      "installation_address_moved": "New address for phones"
     }
   },
   "invitation": {

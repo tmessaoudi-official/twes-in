@@ -16,16 +16,21 @@ use App\Installation\Application\TellInstallation;
 use App\Tenancy\Domain\Model\Role;
 
 /**
- * A release out is each company's owners' to know; the rest is the operators'. None is mailed from here: the
+ * A release out and a moved address are each company's owners' to know; the rest is the operators'. None is mailed from here: the
  * installation script mails its own alerts, which must leave even when the application is what is down.
  */
 final readonly class InstallationNotificationKinds implements DeclaresNotificationKinds
 {
     public function notificationKinds(): array
     {
-        $kinds = [new NotificationKind(TellInstallation::UPDATE_AVAILABLE, NotificationAudience::Company, role: Role::OWNER, mailed: false)];
+        // A moved address reaches the operators too, with no company: their bell offers it among the platform's.
+        $owners = [TellInstallation::UPDATE_AVAILABLE, TellInstallation::ADDRESS_MOVED];
+        $kinds = [];
+        foreach ($owners as $type) {
+            $kinds[] = new NotificationKind($type, NotificationAudience::Company, role: Role::OWNER, mailed: false);
+        }
         foreach (TellInstallation::kinds() as $type) {
-            if (TellInstallation::UPDATE_AVAILABLE !== $type) {
+            if (!\in_array($type, $owners, true)) {
                 $kinds[] = new NotificationKind($type, NotificationAudience::Platform, mailed: false);
             }
         }

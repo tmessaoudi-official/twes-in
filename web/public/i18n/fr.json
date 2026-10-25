@@ -714,7 +714,8 @@
       "installation_update_refused": "La mise à jour vers {{version}} a été refusée : elle n’est pas signée par la clé de publication de cette installation. Rien n’a changé.",
       "installation_unhealthy": "Le contrôle de santé de l’installation échoue : {{check}}.",
       "installation_backup_failed": "La sauvegarde « {{step}} » a échoué.",
-      "installation_backup_stopped": "Les sauvegardes ne tournent plus."
+      "installation_backup_stopped": "Les sauvegardes ne tournent plus.",
+      "installation_address_moved": "L’adresse de cet ordinateur sur le réseau a changé : les téléphones ouvrent maintenant https://{{to}} (avant : {{from}}). Un téléphone qui avait gardé l’ancienne doit ouvrir la nouvelle."
     },
     "kinds": {
       "membership_added": "Ajout à une société",
@@ -749,7 +750,8 @@
       "installation_update_refused": "Mise à jour refusée",
       "installation_unhealthy": "Installation en mauvaise santé",
       "installation_backup_failed": "Sauvegarde en échec",
-      "installation_backup_stopped": "Sauvegardes arrêtées"
+      "installation_backup_stopped": "Sauvegardes arrêtées",
+      "installation_address_moved": "Nouvelle adresse pour les téléphones"
     }
   },
   "invitation": {

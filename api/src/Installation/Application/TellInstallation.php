@@ -19,7 +19,8 @@ use App\Tenancy\Domain\Repository\MembershipRepository;
 /**
  * What a shop's installation script (scripts/onprem/twes) tells about the installation it runs: a release out goes to
  * each company's owners, who decide when it is applied, but never to a demo sandbox's, a visitor who decides nothing
- * here; an update that failed or was rolled back, a health check that fails and backups that failed or stopped go to
+ * here; a new network address, which every phone that saved the old one must open instead, goes to those owners and
+ * to the operators; an update that failed or was rolled back, a health check that fails and backups that failed or stopped go to
  * the platform's operators, who mend them. The script also mails its own alerts, since the application may be what is
  * down; here they reach the bell once it answers.
  *
@@ -35,6 +36,7 @@ final readonly class TellInstallation
     public const string UNHEALTHY = 'installation.unhealthy';
     public const string BACKUP_FAILED = 'installation.backup_failed';
     public const string BACKUP_STOPPED = 'installation.backup_stopped';
+    public const string ADDRESS_MOVED = 'installation.address_moved';
 
     /** Each kind's parameters, true when required. */
     private const array PARAMETERS = [
@@ -45,6 +47,7 @@ final readonly class TellInstallation
         self::UNHEALTHY => ['check' => true],
         self::BACKUP_FAILED => ['step' => true, 'version' => false],
         self::BACKUP_STOPPED => ['step' => true],
+        self::ADDRESS_MOVED => ['from' => true, 'to' => true],
     ];
 
     /** A release tag, a backup label, a step, the names of failing checks or an HTTP code: letters, digits and a few marks. */
@@ -78,7 +81,7 @@ final readonly class TellInstallation
         if (self::UPDATE_AVAILABLE === $kind) {
             return $this->tellOwners($kind, $payload);
         }
-        $told = 0;
+        $told = self::ADDRESS_MOVED === $kind ? $this->tellOwners($kind, $payload) : 0;
         foreach ($this->users->platformOperators() as $operator) {
             $this->notifications->publish(new Notification('user:'.$operator->getId()->toRfc4122(), $kind, $payload));
             ++$told;

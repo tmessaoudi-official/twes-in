@@ -191,6 +191,7 @@ describe('installation notifications', () => {
       'installation.unhealthy': 'sync_problem',
       'installation.backup_failed': 'cloud_off',
       'installation.backup_stopped': 'cloud_off',
+      'installation.address_moved': 'smartphone',
     };
     for (const [type, icon] of Object.entries(icons)) {
       expect(notificationKey(type)).toBe(`notifications.types.${type.replace('.', '_')}`);

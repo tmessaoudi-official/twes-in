@@ -59,6 +59,7 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'installation.unhealthy',
   'installation.backup_failed',
   'installation.backup_stopped',
+  'installation.address_moved',
 ] as const;
 
 /** "membership.added" → "notifications.types.membership_added"; an unknown type → the generic key. */
@@ -243,6 +244,7 @@ const RECORDS = new Map<string, NotificationRecord>([
   ['installation.unhealthy', { icon: 'sync_problem', route: null, permission: null }],
   ['installation.backup_failed', { icon: 'cloud_off', route: null, permission: null }],
   ['installation.backup_stopped', { icon: 'cloud_off', route: null, permission: null }],
+  ['installation.address_moved', { icon: 'smartphone', route: null, permission: null }],
 ]);
 
 export function notificationRecord(type: string): NotificationRecord {

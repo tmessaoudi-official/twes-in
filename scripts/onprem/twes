@@ -802,8 +802,13 @@ tick() {
   resume_cut_update held
   address=$(lan_address)
   if [[ "$address" != "$(recall lan-host)" ]]; then
-    say "the network address moved from $(recall lan-host) to $address"
+    local moved_from
+    moved_from=$(recall lan-host)
+    say "the network address moved from $moved_from to $address"
     flock -u 8; start; flock -n 8 || return 0
+    # A phone saved the old address: the owners and the operators are told the new one, unless it is this computer
+    # alone, which no phone reaches.
+    [[ "$address" == 127.* ]] || tell installation.address_moved "from=$moved_from" "to=$address"
   fi
   deliver_held
   send_held_mails
