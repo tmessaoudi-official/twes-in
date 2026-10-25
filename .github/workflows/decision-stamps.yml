@@ -8,6 +8,10 @@ on:
     paths:
       - docs/SPEC.md
 
+# Every job reads the checkout and nothing more (security map F9: the default token's rights depend on a repository setting).
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

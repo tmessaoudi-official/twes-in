@@ -18,7 +18,8 @@ while read -r file line; do row "${line##* }" "$file" ""; done < <(
     | grep -v '[$]' | sed 's/:[[:space:]]*image:/ image:/' | sort -u
   grep -HoE '^FROM [^[:space:]]+:[^[:space:]]+|COPY --from=[^[:space:]]+:[^[:space:]]+' infra/api/Dockerfile infra/web/Dockerfile infra/web/tools.Dockerfile \
     infra/postgres/Dockerfile infra/powershell/Dockerfile | sed -E 's/:(FROM |COPY --from=)/ /'
-  grep -HoE '^REGISTRY_IMAGE=[^[:space:]]+' scripts/onprem/onprem-check.sh scripts/staging/staging-check.sh | sed 's/:REGISTRY_IMAGE=/ /')
+  grep -HoE '^(REGISTRY|TRIVY)_IMAGE=[^[:space:]]+' scripts/onprem/onprem-check.sh scripts/staging/staging-check.sh \
+    scripts/security/image-scan.sh | sed -E 's/:(REGISTRY|TRIVY)_IMAGE=/ /')
 
 echo
 echo "Runtimes"

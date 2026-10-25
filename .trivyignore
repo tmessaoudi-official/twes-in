@@ -1,0 +1,416 @@
+# Trivy's ignore list for the weekly image scan (scripts/security/image-scan.sh, .github/workflows/image-scan.yml).
+# Only a CRITICAL or HIGH with a fix fails the scan; one without a fix is shown and never listed here.
+# Seeded from the triage of 2026-10-25 (docs/security/assessment.md, its CVE table): each entry is the id with the date
+# Trivy stops ignoring it (exp:), then one comment line per image and package holding the verdict and the reason.
+# Review every entry by its date: the scan fails again on it once the date has passed. One list serves every image, so
+# an id ignored for one image is ignored for all; the comment names each image it was triaged for.
+# A REACHABLE entry is here only because no fixed release of that image exists yet: take the release when it does.
+
+CVE-2026-111497 exp:2026-11-25
+#   HIGH caddy: brotli-libs — NOT REACHABLE: the caddy binary is static and links no brotli; libcurl alone pulls it in; fixed in Alpine, arrives with the tag's rebuild
+#   HIGH gotenberg: libbrotli1 — REACHABLE, LOW: through LibreOffice and Chromium on api-built input only; unpublished; with the next Gotenberg
+
+CVE-2026-78669 exp:2026-11-25
+#   HIGH caddy (the edge): Go stdlib, x/net — REACHABLE, DoS, LOW: HTTP/2 and range-request CPU floods on the only published port, no data exposed; no Caddy release carries Go 1.26.9 yet: move the edge when one does (assessment S7)
+#   HIGH gotenberg: Go modules (golang.org/x/net) — NOT REACHABLE, triaged as a group, not per id: Gotenberg publishes no port and is reached only by the api with its own documents; with the next Gotenberg
+#   HIGH gotenberg: Go stdlib — NOT REACHABLE: Gotenberg publishes no port and is reached only by the api; with the next Gotenberg
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-111943 exp:2026-11-25
+#   HIGH caddy: Go stdlib — NOT REACHABLE on a shop, LOW on a server: Caddy as a TLS client: ACME to the CA on a server only, and it needs a mis-issued intermediate; no fixed Caddy release
+#   HIGH gotenberg: Go stdlib — NOT REACHABLE: Gotenberg publishes no port and is reached only by the api; with the next Gotenberg
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-78667 exp:2026-11-25
+#   HIGH caddy (the edge): Go stdlib, x/net — REACHABLE, DoS, LOW: HTTP/2 and range-request CPU floods on the only published port, no data exposed; no Caddy release carries Go 1.26.9 yet: move the edge when one does (assessment S7)
+#   HIGH gotenberg: Go stdlib — NOT REACHABLE: Gotenberg publishes no port and is reached only by the api; with the next Gotenberg
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-97031 exp:2026-11-25
+#   HIGH caddy: Go stdlib — NOT REACHABLE: ECH is configured in no Caddyfile; no fixed Caddy release
+#   HIGH gotenberg: Go stdlib — NOT REACHABLE: Gotenberg publishes no port and is reached only by the api; with the next Gotenberg
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-110136 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110137 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110138 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110139 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110140 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110141 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110143 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110144 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110145 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110146 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110147 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110148 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110149 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110150 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110151 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110152 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110153 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110154 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110155 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110156 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110157 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110158 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110159 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110160 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110161 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110162 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110163 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110164 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110165 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110166 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110167 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110168 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110169 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110170 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110171 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110172 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110913 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110917 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110918 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110919 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110920 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110921 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-110922 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-112993 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113006 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113011 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113017 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113025 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113030 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113033 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113037 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113039 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113043 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113057 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113068 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113073 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113074 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113081 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113082 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113091 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113113 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113115 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113117 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113128 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113130 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113134 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113137 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113143 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113161 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113165 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113207 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113210 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113216 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113217 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113233 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113234 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113242 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113252 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113264 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113266 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113273 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113274 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113278 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113285 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113293 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113295 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113305 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113314 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113315 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113319 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113321 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113323 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113324 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113334 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113341 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-113344 exp:2026-11-25
+#   HIGH gotenberg: chromium — REACHABLE, LOW: Chromium renders api-built HTML (user text escaped by Twig) and the company's raster logo, sent by an authenticated owner; Gotenberg publishes no port on a shop or a server; fixed only by a Gotenberg release, 8.38.1 is the newest
+
+CVE-2026-66046 exp:2026-11-25
+#   HIGH gotenberg: libexpat1 — REACHABLE, LOW: through LibreOffice and Chromium on api-built input only; unpublished; with the next Gotenberg
+
+CVE-2026-76956 exp:2026-11-25
+#   HIGH gotenberg: libexpat1 — REACHABLE, LOW: through LibreOffice and Chromium on api-built input only; unpublished; with the next Gotenberg
+
+CVE-2026-76957 exp:2026-11-25
+#   HIGH gotenberg: libexpat1 — REACHABLE, LOW: through LibreOffice and Chromium on api-built input only; unpublished; with the next Gotenberg
+
+CVE-2026-77214 exp:2026-11-25
+#   HIGH gotenberg: libexpat1 — REACHABLE, LOW: through LibreOffice and Chromium on api-built input only; unpublished; with the next Gotenberg
+
+CVE-2026-93990 exp:2026-11-25
+#   HIGH gotenberg: libexpat1 — REACHABLE, LOW: through LibreOffice and Chromium on api-built input only; unpublished; with the next Gotenberg
+
+GHSA-cxf3-9h37-7rr8 exp:2026-11-25
+#   CRITICAL gotenberg: labstack/echo — NOT REACHABLE: the vulnerable Proxy middleware is not compiled into /usr/bin/gotenberg; no Gotenberg release carries echo 5.4.1 yet
+
+GHSA-9969-6676-49h5 exp:2026-11-25
+#   HIGH gotenberg: labstack/echo — NOT REACHABLE: the vulnerable Proxy middleware is not compiled into /usr/bin/gotenberg; no Gotenberg release carries echo 5.4.1 yet
+
+CVE-2026-56854 exp:2026-11-25
+#   HIGH gotenberg: Go modules (golang.org/x/crypto) — NOT REACHABLE, triaged as a group, not per id: Gotenberg publishes no port and is reached only by the api with its own documents; with the next Gotenberg
+
+CVE-2026-46603 exp:2026-11-25
+#   HIGH gotenberg: Go modules (golang.org/x/image) — NOT REACHABLE, triaged as a group, not per id: Gotenberg publishes no port and is reached only by the api with its own documents; with the next Gotenberg
+
+CVE-2026-56851 exp:2026-11-25
+#   HIGH gotenberg: Go modules (golang.org/x/text) — NOT REACHABLE, triaged as a group, not per id: Gotenberg publishes no port and is reached only by the api with its own documents; with the next Gotenberg
+
+CVE-2025-68121 exp:2026-11-25
+#   CRITICAL database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2025-61726 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2025-61729 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-25679 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-27145 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-32280 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-32281 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-32283 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-33811 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-33814 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-33818 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-39820 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-39821 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-39822 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-39836 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-42499 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-42504 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-56853 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-56858 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-56859 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-56860 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-56862 exp:2026-11-25
+#   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20

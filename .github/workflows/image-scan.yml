@@ -1,0 +1,30 @@
+# The image scan (scripts/security/image-scan.sh, docs/UPDATE.md): every image a shop or a server runs, our three at
+# :master and each third-party one by the digest the compose files pin, read by Trivy for known vulnerabilities in its
+# operating system and its binaries. Nothing else does: the licence job's audit reads the Composer and npm packages
+# alone, and an image is rebuilt only on a push. Weekly, so a fixable CRITICAL or HIGH shows within a week of its
+# advisory, and by hand. Fails on one with a fix that .trivyignore does not hold, with its verdict and expiry date.
+# Not one of ci.yml's required checks: it does not run on a push.
+name: image-scan
+
+on:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+# The job reads the checkout and pulls public images; its token may do nothing more.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Trivy runs as an image pinned by its digest (the script names it), never through aquasecurity/trivy-action,
+      # which the March 2026 compromise went through (GHSA-69fq-xp46-6x23).
+      - run: bash scripts/security/image-scan.sh "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"

@@ -13,6 +13,11 @@ on:
       - docs/plans/**
   pull_request:
 
+# Every job reads the checkout and nothing more, but publish, which pushes the images and asks for packages: write
+# itself (security map F9: the default token's rights depend on a repository setting).
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
