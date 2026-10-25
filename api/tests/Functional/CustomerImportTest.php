@@ -429,6 +429,26 @@ final class CustomerImportTest extends ApiTestCase
         self::assertSame('Sonia Ben Ali', $this->customer('CLI-0009')->getProfile()->name);
     }
 
+    /** A workbook declaring a document type is refused whole, with a reason of its own the screen words, and nothing is read. */
+    public function testAnXlsxDeclaringADocumentTypeIsRefusedWithItsOwnReason(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $path = (string) tempnam(sys_get_temp_dir(), 'import-test-');
+        (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Xlsx, [['number', 'name', 'kind'], ['CLI-0009', 'Sonia Ben Ali', 'individual']]);
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path));
+        $zip->addFromString('xl/sharedStrings.xml', '<?xml version="1.0"?><!DOCTYPE sst [<!ENTITY e "x">]><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>&e;</t></si></sst>');
+        $zip->close();
+        $contents = (string) file_get_contents($path);
+        unlink($path);
+
+        $this->import($contents, name: 'customers.xlsx');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('xml_doctype', $this->json()['error']);
+        self::assertSame(0, $this->customers());
+    }
+
     /**
      * A discount Excel shows as « 5 % » holds 0.05: read as written, the customer would get a twentieth of one percent.
      * The row is refused, saying how to write it (docs/SPEC.md § 7, 2026-10-09 10:40, ruling 7).

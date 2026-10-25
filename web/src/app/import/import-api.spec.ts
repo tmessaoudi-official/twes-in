@@ -208,6 +208,18 @@ describe('ImportApi', () => {
     });
   });
 
+  it('keeps the reason a workbook declaring a document type is refused with', async () => {
+    const found = api.run('c1', 'customers', new File(['PK'], 'customers.xlsx'), 'create', true);
+    http
+      .expectOne('/api/companies/c1/imports/customers')
+      .flush(
+        { error: 'xml_doctype', columns: [], encoding: null },
+        { status: 422, statusText: 'Unprocessable Content' },
+      );
+    const refused = (await found.catch((error: unknown) => error)) as ImportNotKept;
+    expect(refused.refusal?.reason).toBe('xml_doctype');
+  });
+
   it('reads the pairing the last import kept, a heading set aside included', async () => {
     const pending = api.guide('c1', 'customers');
     http.expectOne('/api/companies/c1/imports/customers').flush({

@@ -35,7 +35,9 @@ export interface ImportRefusal {
     | 'missing_columns'
     | 'too_many_rows'
     | 'invalid_pairing'
-    | 'unreadable_encoding';
+    | 'unreadable_encoding'
+    // A workbook part declaring a document type, refused before anything parses it.
+    | 'xml_doctype';
   /** The columns the reason names, empty when it names none. */
   columns: readonly string[];
   /** The row cap, for `too_many_rows`. */

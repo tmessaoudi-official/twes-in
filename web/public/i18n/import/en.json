@@ -219,6 +219,7 @@
     "refusals": {
       "invalid_request": "The request was not understood.",
       "unreadable": "The file is neither a readable .csv nor a readable .xlsx.",
+      "xml_doctype": "This workbook holds a document type declaration (DOCTYPE), which no spreadsheet application writes: it is refused for safety. Open it in Excel or LibreOffice and save it again as .xlsx, or start from the template.",
       "empty": "The file holds no row.",
       "unknown_columns": "These headings name no column: {{columns}}. Choose where each one goes under “Your headings”, or start again from the template.",
       "duplicate_columns": "Columns given twice: {{columns}}.",

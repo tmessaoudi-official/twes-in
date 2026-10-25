@@ -359,6 +359,55 @@ final class SpreadsheetTest extends TestCase
         self::assertSame([1 => ['number', 'name'], 2 => ['A-1', 'Alpha']], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx)));
     }
 
+    /**
+     * No workbook Excel, LibreOffice or openspout writes carries a document type declaration, and libxml2's handling of
+     * one is where its known flaws are (CVE-2026-6653, no fix in the image's Debian): a part declaring one is refused
+     * with its own reason before any XML of the file is parsed, whatever the part is called or how it is encoded.
+     */
+    #[DataProvider('declaredDocumentTypes')]
+    public function testAWorkbookWhosePartDeclaresADocumentTypeIsRefusedBeforeItIsParsed(string $part, string $xml): void
+    {
+        $path = $this->path('xlsx');
+        (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Xlsx, [['number', 'name'], ['A-1', 'Alpha']]);
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path));
+        self::assertTrue($zip->addFromString($part, $xml));
+        $zip->close();
+
+        try {
+            iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx));
+            self::fail('a part declaring a document type was read');
+        } catch (UnreadableSpreadsheet $refused) {
+            self::assertSame(UnreadableSpreadsheet::DOCUMENT_TYPE, $refused->reason);
+            self::assertNull($refused->getPrevious(), 'refused by the scan, not by a parser that met the declaration');
+        }
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function declaredDocumentTypes(): iterable
+    {
+        $strings = '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1"><si><t>&e;</t></si></sst>';
+        $declaration = '<!DOCTYPE sst [<!ENTITY e "Alpha">]>';
+
+        yield 'in the shared strings' => ['xl/sharedStrings.xml', '<?xml version="1.0" encoding="UTF-8"?>'."\n".$declaration.$strings];
+        yield 'written in lower case' => ['xl/sharedStrings.xml', '<?xml version="1.0"?><!doctype sst>'.$strings];
+        yield 'in a relationships part' => ['xl/_rels/workbook.xml.rels', '<?xml version="1.0"?><!DOCTYPE Relationships><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>'];
+        yield 'in a part with no .xml name' => ['xl/worksheets/sheet9.bin', '<?xml version="1.0"?><!DOCTYPE worksheet><worksheet/>'];
+        yield 'encoded in UTF-16' => ['xl/sharedStrings.xml', "\xFF\xFE".mb_convert_encoding('<?xml version="1.0" encoding="UTF-16"?>'.$declaration.$strings, 'UTF-16LE', 'UTF-8')];
+        // EBCDIC, which libxml2 recognises from its first bytes: « <?xml » then « <!DOCTYPE x> » in code page 037.
+        yield 'encoded in EBCDIC' => ['xl/sharedStrings.xml', "\x4C\x6F\xA7\x94\x93\x40\x6F\x6E\x4C\x5A\xC4\xD6\xC3\xE3\xE8\xD7\xC5\x40\xA7\x6E"];
+        // Across the boundary between two chunks of the scan, which reads a part a piece at a time.
+        yield 'astride two chunks' => ['xl/sharedStrings.xml', '<?xml version="1.0"?><!--'.str_repeat(' ', OpenSpoutReader::SCAN_CHUNK - 30).'-->'.$declaration.$strings];
+    }
+
+    public function testAWorkbookWithNoDocumentTypeIsReadAsBefore(): void
+    {
+        $path = $this->path('xlsx');
+        (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Xlsx, [['number', 'name'], ['A-1', '<!DOCTYPE html> typed in a cell']]);
+
+        self::assertSame([1 => ['number', 'name'], 2 => ['A-1', '<!DOCTYPE html> typed in a cell']], iterator_to_array((new OpenSpoutReader(self::MAX_INFLATED_BYTES))->rows($path, SpreadsheetFormat::Xlsx)));
+    }
+
     public function testAFileThatIsNotASpreadsheetIsRefusedByName(): void
     {
         $path = $this->path('xlsx');

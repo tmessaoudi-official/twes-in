@@ -20,6 +20,7 @@ use ApiPlatform\OpenApi\OpenApi;
 use App\ImportExport\Application\Undo\ImportNotUndoable;
 use App\ImportExport\Application\UnreadableImport;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
+use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
 /**
@@ -88,7 +89,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
             'type' => 'object',
             'required' => ['error'],
             'properties' => [
-                'error' => ['type' => 'string', 'enum' => ['invalid_request', UnreadableImport::UNREADABLE, UnreadableImport::EMPTY, UnreadableImport::UNKNOWN_COLUMNS, UnreadableImport::DUPLICATE_COLUMNS, UnreadableImport::MISSING_COLUMNS, UnreadableImport::TOO_MANY_ROWS]],
+                'error' => ['type' => 'string', 'enum' => ['invalid_request', UnreadableImport::UNREADABLE, UnreadableImport::EMPTY, UnreadableImport::UNKNOWN_COLUMNS, UnreadableImport::DUPLICATE_COLUMNS, UnreadableImport::MISSING_COLUMNS, UnreadableImport::TOO_MANY_ROWS, UnreadableImport::INVALID_PAIRING, UnreadableImport::UNREADABLE_ENCODING, UnreadableSpreadsheet::DOCUMENT_TYPE]],
                 'columns' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'The columns the reason names.'],
                 'limit' => ['type' => ['integer', 'null'], 'description' => 'The row cap, for `too_many_rows`.'],
             ],

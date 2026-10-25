@@ -244,6 +244,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/language-literals.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/logical-direction.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/additive-migrations.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/xml-reads.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/decision-stamps.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/screen-texts-budget.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/build-version.test.sh
@@ -313,6 +314,7 @@ in-gate-licences:
 	bash scripts/gates/language-literals.sh
 	bash scripts/gates/logical-direction.sh
 	bash scripts/gates/additive-migrations.sh
+	bash scripts/gates/xml-reads.sh
 	bash scripts/gates/decision-stamps.sh
 	bash scripts/gates/screen-texts-budget.sh
 

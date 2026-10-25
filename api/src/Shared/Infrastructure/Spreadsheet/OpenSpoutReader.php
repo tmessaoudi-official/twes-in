@@ -26,6 +26,12 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  */
 final class OpenSpoutReader implements SpreadsheetReader
 {
+    /** How much of a part the document type scan reads at a time. */
+    public const int SCAN_CHUNK = 65536;
+
+    /** « DOCTYPE » in EBCDIC, the same in every one of its code pages (the « <! » before it is not). */
+    private const string EBCDIC_DOCTYPE = "\xC4\xD6\xC3\xE3\xE8\xD7\xC5";
+
     /**
      * @param int    $maxInflatedBytes what a workbook's parts may inflate to, together: a few kilobytes of zip can hold gigabytes
      * @param string $copies           where a CSV in another encoding is written out in UTF-8 while it is read; empty for
@@ -83,6 +89,7 @@ final class OpenSpoutReader implements SpreadsheetReader
 
         if (SpreadsheetFormat::Xlsx === $format) {
             $this->refuseWhatInflatesTooFar($path);
+            self::refuseDeclaredDocumentTypes($path);
         }
 
         try {
@@ -141,6 +148,63 @@ final class OpenSpoutReader implements SpreadsheetReader
             }
         } finally {
             $zip->close();
+        }
+    }
+
+    /**
+     * No workbook a spreadsheet application writes declares a document type, and libxml2, which openspout and
+     * `XlsxPercentCells` parse with, has had its flaws in handling one (CVE-2026-6653, unfixed in the image's Debian): a
+     * workbook any of whose parts declares one is refused before anything parses it. Every part is read, whatever its
+     * name, since a relationship may name a sheet anything. Read a piece at a time, the end of each piece carried into
+     * the next, with NUL bytes dropped so that a part in UTF-16 or UTF-32 reads as ASCII would; EBCDIC, which libxml2
+     * also recognises, is looked for by its own bytes. Called after `refuseWhatInflatesTooFar`, which bounds the reading.
+     *
+     * @throws UnreadableSpreadsheet
+     */
+    private static function refuseDeclaredDocumentTypes(string $path): void
+    {
+        $zip = new \ZipArchive();
+        if (true !== $zip->open($path, \ZipArchive::RDONLY)) {
+            // Not a zip at all: the reader says so in its own words.
+            return;
+        }
+        try {
+            for ($index = 0; $index < $zip->numFiles; ++$index) {
+                $part = $zip->getStreamIndex($index);
+                if (false === $part) {
+                    // A part that cannot be read cannot be vouched for.
+                    throw new UnreadableSpreadsheet(\sprintf('"%s" has a part that cannot be read.', basename($path)));
+                }
+                try {
+                    self::refuseADeclarationIn($part, $path);
+                } finally {
+                    fclose($part);
+                }
+            }
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /**
+     * @param resource $part
+     *
+     * @throws UnreadableSpreadsheet
+     */
+    private static function refuseADeclarationIn($part, string $path): void
+    {
+        $carried = '';
+        while (!feof($part)) {
+            $piece = fread($part, self::SCAN_CHUNK);
+            if (false === $piece) {
+                throw new UnreadableSpreadsheet(\sprintf('"%s" has a part that cannot be read.', basename($path)));
+            }
+            $text = $carried.str_replace("\0", '', $piece);
+            if (false !== stripos($text, '<!DOCTYPE') || str_contains($text, self::EBCDIC_DOCTYPE)) {
+                throw new UnreadableSpreadsheet(\sprintf('"%s" declares a document type.', basename($path)), reason: UnreadableSpreadsheet::DOCUMENT_TYPE);
+            }
+            // The longer needle less one byte: a declaration cut between two pieces is found whole in the next.
+            $carried = substr($text, -(\strlen('<!DOCTYPE') - 1));
         }
     }
 

@@ -219,6 +219,7 @@
     "refusals": {
       "invalid_request": "La demande n’a pas été comprise.",
       "unreadable": "Le fichier n’est ni un .csv ni un .xlsx lisible.",
+      "xml_doctype": "Ce classeur contient une déclaration de type de document (DOCTYPE), qu’aucun tableur n’écrit : il est refusé par sécurité. Ouvrez-le dans Excel ou LibreOffice et enregistrez-le de nouveau en .xlsx, ou repartez du modèle.",
       "empty": "Le fichier ne contient aucune ligne.",
       "unknown_columns": "Ces en-têtes ne nomment aucune colonne : {{columns}}. Choisissez où va chacun dans « Vos en-têtes », ou repartez du modèle.",
       "duplicate_columns": "Colonnes en double : {{columns}}.",
