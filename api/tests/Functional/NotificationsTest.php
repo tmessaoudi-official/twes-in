@@ -158,6 +158,41 @@ final class NotificationsTest extends ApiTestCase
         self::assertSame($expected, $counts, 'a JSON object has no order, so the keys are sorted before comparing');
     }
 
+    /**
+     * Removal ends access to a company, its notifications included: a member removed from one no longer lists, counts,
+     * opens or marks what it told them, while their own account's notices and another company's stay (security map
+     * access F1).
+     */
+    public function testAMemberRemovedFromACompanyNoLongerListsItsNotifications(): void
+    {
+        $globex = $this->createCompany('Globex');
+        $this->addMembership($this->owner, $globex);
+        $own = $this->item($this->owner, 'membership.added', '2026-09-13 09:00:00');
+        $acme = $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:10:00', $this->company);
+        $left = $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:20:00', $globex);
+        $this->login('owner@twes.local', 'password-1234');
+        $this->getJson('/api/me/notifications');
+        self::assertSame(3, $this->json()['unread'], 'all three while a member of both');
+
+        $this->em()->getConnection()->executeStatement('DELETE FROM membership WHERE user_id = ? AND company_id = ?', [$this->owner->getId()->toRfc4122(), $globex->getId()->toRfc4122()]);
+
+        $this->getJson('/api/me/notifications');
+        self::assertResponseIsSuccessful();
+        $body = $this->json();
+        $listed = array_map(static fn (mixed $item): mixed => \is_array($item) ? $item['id'] : null, $this->arrayAt($body, 'items'));
+        self::assertSame([$acme->getId()->toRfc4122(), $own->getId()->toRfc4122()], $listed);
+        self::assertSame(2, $body['unread']);
+
+        $this->postJson('/api/me/notifications/'.$left->getId()->toRfc4122().'/read', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->postJson('/api/me/notifications/read-all', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->em()->clear();
+        self::assertFalse($this->em()->find(InboxItem::class, $left->getId())?->isRead() ?? true, 'the left company’s item is not touched');
+        self::assertTrue($this->em()->find(InboxItem::class, $acme->getId())?->isRead() ?? false);
+    }
+
     public function testMarkingWithoutTheCsrfHeaderIsRefused(): void
     {
         $this->login('owner@twes.local', 'password-1234');

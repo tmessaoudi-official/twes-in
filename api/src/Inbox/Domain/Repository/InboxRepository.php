@@ -12,6 +12,10 @@ namespace App\Inbox\Domain\Repository;
 use App\Inbox\Domain\Model\InboxItem;
 use Symfony\Component\Uid\Uuid;
 
+/**
+ * What a recipient reads, counts, opens or marks is their own notifications of no company and those of the companies
+ * they still belong to: a notification of a company they were removed from is theirs no longer.
+ */
 interface InboxRepository
 {
     /** Writes every item together: one notification fanned out to a company is one write. */

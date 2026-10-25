@@ -26,6 +26,13 @@ final readonly class DoctrineInboxRepository implements InboxRepository
         WHERE p.user = i.recipient AND p.type = i.type AND p.bell = false
           AND (p.company = i.company OR (p.company IS NULL AND i.company IS NULL)))';
 
+    /**
+     * A company's notification is its recipient's only while they are still a member of it: removal ends access to the
+     * company, what it told them included. One with no company (the account's own, an operator's) always is.
+     */
+    private const string STILL_A_MEMBER = '(i.company IS NULL OR EXISTS (SELECT 1 FROM '.Membership::class.' m
+        WHERE m.user = i.recipient AND m.company = i.company))';
+
     public function __construct(private EntityManagerInterface $entityManager)
     {
     }
@@ -41,17 +48,18 @@ final readonly class DoctrineInboxRepository implements InboxRepository
     public function latestFor(Uuid $recipientId, int $limit): array
     {
         // The id breaks ties between rows written in the same second: it is a UUIDv7, so it sorts by time too.
-        return $this->entityManager->getRepository(InboxItem::class)->findBy(
-            ['recipient' => $recipientId],
-            ['createdAt' => 'DESC', 'id' => 'DESC'],
-            $limit,
-        );
+        $items = $this->entityManager->createQuery(
+            'SELECT i FROM '.InboxItem::class.' i WHERE i.recipient = :recipient AND '.self::STILL_A_MEMBER.'
+             ORDER BY i.createdAt DESC, i.id DESC',
+        )->setParameter('recipient', $recipientId, 'uuid')->setMaxResults($limit)->getResult();
+
+        return array_values(array_filter(\is_array($items) ? $items : [], static fn (mixed $item): bool => $item instanceof InboxItem));
     }
 
     public function unreadCountFor(Uuid $recipientId): int
     {
         return (int) $this->entityManager->createQuery(
-            'SELECT COUNT(i.id) FROM '.InboxItem::class.' i WHERE i.recipient = :recipient AND i.readAt IS NULL AND '.self::NOT_MUTED,
+            'SELECT COUNT(i.id) FROM '.InboxItem::class.' i WHERE i.recipient = :recipient AND i.readAt IS NULL AND '.self::NOT_MUTED.' AND '.self::STILL_A_MEMBER,
         )->setParameter('recipient', $recipientId, 'uuid')->getSingleScalarResult();
     }
 
@@ -75,14 +83,18 @@ final readonly class DoctrineInboxRepository implements InboxRepository
 
     public function ofRecipient(Uuid $recipientId, Uuid $itemId): ?InboxItem
     {
-        return $this->entityManager->getRepository(InboxItem::class)->findOneBy(['id' => $itemId, 'recipient' => $recipientId]);
+        $item = $this->entityManager->createQuery(
+            'SELECT i FROM '.InboxItem::class.' i WHERE i.id = :id AND i.recipient = :recipient AND '.self::STILL_A_MEMBER,
+        )->setParameter('id', $itemId, 'uuid')->setParameter('recipient', $recipientId, 'uuid')->getOneOrNullResult();
+
+        return $item instanceof InboxItem ? $item : null;
     }
 
     public function markAllReadFor(Uuid $recipientId, \DateTimeImmutable $at): void
     {
         // One statement rather than a load-and-flush: a busy inbox should not be read into memory to be stamped.
         $this->entityManager->createQuery(
-            'UPDATE '.InboxItem::class.' i SET i.readAt = :at WHERE i.recipient = :recipient AND i.readAt IS NULL',
+            'UPDATE '.InboxItem::class.' i SET i.readAt = :at WHERE i.recipient = :recipient AND i.readAt IS NULL AND '.self::STILL_A_MEMBER,
         )
             ->setParameter('at', $at, 'datetime_immutable')
             ->setParameter('recipient', $recipientId, 'uuid')
