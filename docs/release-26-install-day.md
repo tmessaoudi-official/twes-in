@@ -25,6 +25,51 @@ it. Never tag 2ccf0bb7, whose CI was red. A pushed tag is never moved.
 - Bring a phone with an authenticator app, the shop's Gmail address and its app password, and a USB disk for the local
   backups. Ask whether the shop's computer stays on at night.
 
+## Before § 3: the test installation already on the shop's computer
+
+That computer runs the J-1 test, `v2026.10.22.1`, Docker inside Ubuntu (`-Engine Wsl`, 1db0d485), with the test's
+data and secrets. It is wiped and installed again from `v2026.10.25.1`: never updated in place, never left to update
+by itself. Kept, `v2026.10.22.1` stays the release a failed update rolls back to, and its own `twes` has no
+`twes hold` and no repair of git's lock (TODO.md § 3). Waiting decides nothing either: an update happens only inside
+the window, half an hour after a start, once a day; a computer off in its window never updates and nobody is told,
+and one failed pull parks the release until someone runs `twes update` at the computer.
+
+1. **Only after § 1's `git push origin v2026.10.25.1`.** The installer checks out the newest tag; before the push it
+   installs `v2026.10.22.1` again. The `install.ps1` on the key is this tree's: the one inside the tag `v2026.10.22.1`
+   stops at its release step.
+2. **Optional, about ten minutes: rehearse the update there first.** The update path has never run against GHCR on a
+   shop's computer (docs/RUNBOOK.md « Release to the shops »), and this box is about to be wiped anyway:
+   `wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes update` must end « updated to v2026.10.25.1 », then
+   `twes status` reads health ok. Whatever it says, note it and go on.
+3. **Read what is there.** `wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status`: note its « backups to: »
+   line. `wsl -l -v`: a `docker-desktop` line means Docker Desktop was tried too.
+4. **Wipe**, in PowerShell as administrator:
+   ```powershell
+   Unregister-ScheduledTask -TaskPath '\twes-in\' -TaskName keep -Confirm:$false
+   wsl --unregister Ubuntu
+   Get-ChildItem Cert:\LocalMachine\Root | Where-Object Subject -like '*twes-in (cette installation)*' | Remove-Item
+   ```
+   - `keep` goes first: it starts Ubuntu as root every quarter hour, which would start the new Ubuntu before its user
+     is made. `install.ps1` registers it again.
+   - `wsl --unregister Ubuntu` erases the checkout, the values, Docker Engine and every volume inside it: the database,
+     the files, the authority and the local backups. It cannot be undone.
+   - If `docker-desktop` was listed: uninstall Docker Desktop (Settings > Apps; the installer refuses it beside
+     `-Engine Wsl`), then `wsl --unregister` any `docker-desktop` line still listed.
+   - If « backups to: » named a folder: it keeps the old installation's backups, encrypted under its old passphrases,
+     and its `twes-in-backups.id`, which a new install adopts and then cannot back up into. Give the new install
+     another, empty folder, or empty that one.
+   - A phone that trusted the old `root.crt` drops it (Android: Settings, Security, Credentials; iPhone: Settings,
+     General, VPN & Device Management) and fetches the new one; the authenticator's old « twes-in » entry goes once
+     the new one is scanned; the five old secret values are void.
+5. **Then § 3 from its step 2.** `install.ps1 -Engine Wsl` installs Ubuntu again (open it once, make its user and
+   password), then Docker Engine, the checkout at `v2026.10.25.1`, `twes install` and `keep`; `.wslconfig` and the
+   firewall rule stay as they are. `twes status` reads `release: v2026.10.25.1`; the footer's build line reads
+   `2026.10.25.4`, `abfb8ca1` for the screens and `bd2b7ecd` for the API.
+
+No screen updates the installation: « Mettre à jour maintenant » is ruled (SPEC § 7, 2026-10-20 01:01 and 01:34) and
+waits as plan row 18, first after this release. Until then, at the computer: `twes status` says what runs, and
+`twes update` takes the newest signed release at once, backed up first, outside the window too.
+
 ## 3. Install on the shop's Windows computer
 
 1. PowerShell: the build must be 22621 or more for route B, and no range listed may hold 80 or 443:
