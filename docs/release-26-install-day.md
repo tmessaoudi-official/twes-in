@@ -32,7 +32,8 @@ data and secrets. It is wiped and installed again from `v2026.10.25.1`: never up
 by itself. Kept, `v2026.10.22.1` stays the release a failed update rolls back to, and its own `twes` has no
 `twes hold` and no repair of git's lock (TODO.md § 3). Waiting decides nothing either: an update happens only inside
 the window, half an hour after a start, once a day; a computer off in its window never updates and nobody is told,
-and one failed pull parks the release until someone runs `twes update` at the computer.
+and one failed pull parks the release until someone runs `twes update` at the computer. This is the one wipe: it
+holds no client data. Once the shop's data is in, no new version ever wipes it (§ 7).
 
 1. **Only after § 1's `git push origin v2026.10.25.1`.** The installer checks out the newest tag; before the push it
    installs `v2026.10.22.1` again. The `install.ps1` on the key is this tree's: the one inside the tag `v2026.10.22.1`
@@ -86,8 +87,13 @@ waits as plan row 18, first after this release. Until then, at the computer: `tw
 2. PowerShell as administrator, `D:` being the USB key, run again after each restart it asks for:
    - route A, Docker Desktop: `powershell -ExecutionPolicy Bypass -File D:\install.ps1`
    - route B, Docker inside Ubuntu, starting with nobody signed in: `powershell -ExecutionPolicy Bypass -File D:\install.ps1 -Engine Wsl`
-3. `twes install` asks the Gmail address and its app password, who is alerted, the backups' folder, `yes` only if the
-   fingerprint matches, then the operator's e-mail and password.
+3. `twes install` asks, in this order: the shop's Gmail address and its app password; who is alerted (you); the
+   backups' folder; whether the computer stays on at night (`no`: the shop's closing time), then the daily update
+   window it proposes, Enter to take it; `yes` only if the fingerprint matches; the operator's e-mail and password,
+   twice; under route B, Ubuntu's password once, for systemd's units. The backups' folder is a path inside Ubuntu, made
+   before the question, or the install refuses it: for a USB disk lettered `E:`,
+   `wsl -d Ubuntu -- mkdir -p /mnt/e/twes-in-backups`, then answer `/mnt/e/twes-in-backups`. After the wipe above, a
+   folder holding the test's backups is never given here.
 4. Checks: `wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status` reads healthy; `https://localhost` opens in
    Edge without a warning; a phone opens `http://<the computer's address>/root.crt` once, then the HTTPS address
    `twes status` names.
@@ -118,7 +124,7 @@ pairs, « À vérifier » included.
 |---|---|---|---|---|
 | 1 | `1-vendors.csv` | Fournisseurs › Importer | none | 39 created |
 | 2 | `2-categories.csv` | Produits › Importer › Catégories | none | 2 created |
-| 3 | `3-products.csv` | Produits › Importer › Produits | tick both: the default taxes, and unpriced products imported switched off | 4,100 created, about 75 s each step |
+| 3 | `3-products.csv` | Produits › Importer › Produits | tick both: the default taxes, and unpriced products imported switched off | 4,100 created, about 70 s each step |
 | 4 | `4-product-vendors.csv` | Produits › Importer › Fournisseurs des produits | none | 4,138 created, about 50 s each step |
 | 5 | `5-price-history.csv` | Produits › Importer › Historique des achats | none | 4,582 created, about 15 s each step; 67 lines « date inconnue » |
 
@@ -138,5 +144,8 @@ Reload the page after an import: a product's cost history and a vendor's « Acha
 - A USB disk stays plugged in for the local backups.
 - An off-site bucket (Backblaze B2 or Cloudflare R2): its `BACKUP_S3_*` values in the shop's values, then
   `twes offsite on`.
-- The update window: `twes policy auto HH:MM-HH:MM`, 02:00–05:00 if the computer stays on at night, otherwise the hour
-  after closing.
+- The update window `twes install` set: `twes status`, line « updates ». A computer switched off at closing never
+  reaches an hour after closing, and then no release is ever applied, with nobody told: ask the owner to leave it on at
+  night (`twes policy auto 02:00-05:00`), or take each release by hand on a visit (`twes update`).
+- From now on the shop's data is never wiped to take a new version (plan, AGREED 2026-10-25 17:59): every release
+  comes through `twes update`, which backs up first, migrates in place and rolls back an unhealthy release.
