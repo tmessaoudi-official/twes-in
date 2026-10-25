@@ -744,3 +744,7 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   (67, and 9 more on 10 Oct that a recovery rebuilt and moved there by `update-ref`; all re-signed on 2026-10-24). A commit made through plumbing
   passes `-S` itself; check `git log --format=%G?` after one. A gate test exporting `GIT_CONFIG_GLOBAL=/dev/null` cannot
   see it: its fixture sets the repository's own `commit.gpgsign` and a stand-in `gpg.program`.
+- A rate limiter is spent by a person's whole path, not by one endpoint: putting the setup confirms on `mfa_verify` let a
+  step-up, an enrolment, a recovery-code sign-in, a step-up and one typo exhaust it, and the right code answered 429 (red
+  on CI only, 2ccf0bb7). Before giving an endpoint a limiter, list every endpoint already on it and run every e2e walking
+  more than one of them (`git grep` the limiter's name over `api/src`, the routes over `web/e2e`) (2026-10-25).
