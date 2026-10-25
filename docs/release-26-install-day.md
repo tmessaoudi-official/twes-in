@@ -3,6 +3,20 @@
 The brief of TODO.md §§ 3 to 7 for the first client (install Monday 2026-10-26). TODO.md keeps the checkboxes and the
 details; this page is the order to follow.
 
+## The day's order (ruled 2026-10-25 19:02, this release only)
+
+1. Wipe the J-1 test install (« Before § 3 » below).
+2. **The training install**: §§ 3, 4 and 5, the backups' folder left blank at § 3 step 3 and the five values not
+   saved. The owner practises everything on their own company and files, invoices included. Nothing printed leaves the
+   shop: those documents are wiped with the rest.
+3. **Wipe again**: « Before § 3 » steps 3 and 4, before the first real sale.
+4. **The final install**: §§ 3, 4 and 5 again, this time with the USB backups' folder and the five values saved, then
+   §§ 6 and 7. From here on the shop's data is never wiped (§ 7).
+
+Redone at the final install: Ubuntu's user, the fingerprint, Gmail (the same app password serves), your second factor
+(remove the phone's old « twes-in » entry), the authority on Windows and the phones, the company, the owner's
+invitation, the profile, « Suivre le stock » and the five imports. About an hour more, mostly downloads.
+
 ## 1. Tag and release (on the developer's machine)
 
 ```sh
