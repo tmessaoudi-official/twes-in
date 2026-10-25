@@ -18,8 +18,17 @@ app() {
   printf 'log {\n\tformat filter {\n\t\trequest>uri regexp [0-9A-Fa-f]{32,} [token]\n\t}\n}\n' > "$d/log-filter.caddy"
   # The served process's status, as the kernel writes it: real, effective, saved and filesystem uid.
   printf 'Name:\tfrankenphp\nUid:\t%s\nGid:\t10001\t10001\t10001\t10001\n' "${3:-10001	10001	10001	10001}" > "$d/status"
+  # The packages dpkg holds, as the purged production stage leaves them: the runtime's own, gcc-14-base among them, and
+  # a compiler removed with its configuration kept; and a path holding no compiler.
+  package libc6 'install ok installed' > "$d/dpkg-status"
+  package gcc-14-base 'install ok installed' >> "$d/dpkg-status"
+  package libstdc++6 'install ok installed' >> "$d/dpkg-status"
+  package gcc 'deinstall ok config-files' >> "$d/dpkg-status"
+  mkdir -p "$d/bin"; printf '#!/bin/sh\n' > "$d/bin/php"; chmod +x "$d/bin/php"
   echo "$d"
 }
+# One stanza of /var/lib/dpkg/status: name, then status.
+package() { printf 'Package: %s\nStatus: %s\nPriority: optional\nVersion: 1\n\n' "$1" "$2"; }
 # The production ini, with one value replaced when a case names it.
 run() {
   local d=$1; shift
@@ -30,7 +39,7 @@ run() {
   )
   local kv; for kv in "$@"; do ini[${kv%%=*}]=${kv#*=}; done
   local args=() k; for k in "${!ini[@]}"; do args+=(-d "$k=${ini[$k]}"); done
-  CADDY_GLOBAL_OPTIONS=${CADDY_UNDER_TEST-import $d/log-filter.caddy} FRANKENPHP_CONFIG=${WORKER_UNDER_TEST-worker ./public/index.php} APP_ENV=${APP_ENV_UNDER_TEST:-prod} php -n "${args[@]}" "$GATE" "$d" "$d/status" 2>&1
+  CADDY_GLOBAL_OPTIONS=${CADDY_UNDER_TEST-import $d/log-filter.caddy} FRANKENPHP_CONFIG=${WORKER_UNDER_TEST-worker ./public/index.php} APP_ENV=${APP_ENV_UNDER_TEST:-prod} php -n "${args[@]}" "$GATE" "$d" "$d/status" "$d/dpkg-status" "$d/bin" 2>&1
 }
 
 echo "production-image check"
@@ -53,4 +62,12 @@ d=$(app false yes "10001	0	10001	10001"); out=$(run "$d"); check "a server whose
 d=$(app); out=$(CADDY_UNDER_TEST= run "$d"); check "a server whose logs keep a link's token is refused" $? 1 "$out" "CADDY_GLOBAL_OPTIONS"
 d=$(app); : > "$d/log-filter.caddy"; out=$(run "$d"); check "an imported file that filters nothing is refused" $? 1 "$out" "CADDY_GLOBAL_OPTIONS"
 d=$(app); rm "$d/status"; out=$(run "$d"); check "a status that cannot be read is refused, not taken as fine" $? 1 "$out" "status"
+d=$(app); package gcc 'install ok installed' >> "$d/dpkg-status"; out=$(run "$d"); check "an image still holding gcc is refused" $? 1 "$out" "C toolchain is installed (gcc)"
+d=$(app); package gcc-14 'install ok installed' >> "$d/dpkg-status"; out=$(run "$d"); check "an image holding gcc's versioned package alone is refused" $? 1 "$out" "C toolchain is installed (gcc-14)"
+d=$(app); package linux-libc-dev 'install ok installed' >> "$d/dpkg-status"; out=$(run "$d"); check "an image still holding the kernel headers is refused" $? 1 "$out" "linux-libc-dev"
+d=$(app); package make 'install ok installed' >> "$d/dpkg-status"; out=$(run "$d"); check "an image still holding make is refused" $? 1 "$out" "C toolchain is installed (make)"
+d=$(app); printf '#!/bin/sh\n' > "$d/bin/cc"; chmod +x "$d/bin/cc"; out=$(run "$d"); check "a cc on the path, whatever put it there, is refused" $? 1 "$out" "$d/bin/cc"
+d=$(app); printf '#!/bin/sh\n' > "$d/bin/gcc-14"; chmod +x "$d/bin/gcc-14"; out=$(run "$d"); check "a versioned gcc on the path is refused" $? 1 "$out" "$d/bin/gcc-14"
+d=$(app); printf '#!/bin/sh\n' > "$d/bin/make"; chmod +x "$d/bin/make"; out=$(run "$d"); check "make on the path is refused" $? 1 "$out" "$d/bin/make"
+d=$(app); rm "$d/dpkg-status"; out=$(run "$d"); check "a package list that cannot be read is refused, not taken as fine" $? 1 "$out" "dpkg-status cannot be read"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

@@ -14,12 +14,14 @@ declare(strict_types=1);
  * the wrong ini, a composer install without --no-dev all still serve every request, only slower or with more exposed.
  *
  * Usage, against the prod compose stack: docker compose -f compose.yaml -f compose.prod.yaml exec -T api php < scripts/gates/production-image.php
- * or: php production-image.php [APP_DIR] [STATUS_FILE] (defaults: the current directory, and /proc/1/status, the
- * server's own, which the check's test replaces with a written one).
+ * or: php production-image.php [APP_DIR] [STATUS_FILE] [DPKG_STATUS] [SEARCH_PATH] (defaults: the current directory,
+ * /proc/1/status, the server's own, /var/lib/dpkg/status and $PATH, which the check's test replaces with written ones).
  */
 
 $app = rtrim($argv[1] ?? (string) getcwd(), '/');
 $status = $argv[2] ?? '/proc/1/status';
+$dpkg = $argv[3] ?? '/var/lib/dpkg/status';
+$searchPath = $argv[4] ?? (string) getenv('PATH');
 $problems = [];
 
 $env = $_SERVER['APP_ENV'] ?? getenv('APP_ENV');
@@ -86,6 +88,36 @@ if (null === $uids) {
     $problems[] = \sprintf('the server runs as root (uids %s): the image sets no USER of its own', implode(' ', $uids));
 }
 
+// No C toolchain: the base image keeps the one PHP's extensions are built with, and the production stage purges it
+// (infra/api/Dockerfile), since a compiler left in place lets a flaw in the code build a native tool where it stands.
+// Read from the packages dpkg holds installed and from the commands the path finds, so neither a package nor a binary
+// left by another way passes; a package list that cannot be read is a failure, not a pass.
+if (!is_readable($dpkg)) {
+    $problems[] = \sprintf('%s cannot be read: whether a C toolchain is installed cannot be told', $dpkg);
+} else {
+    $toolchain = [];
+    foreach (preg_split('/\n\s*\n/', (string) file_get_contents($dpkg)) ?: [] as $stanza) {
+        if (preg_match('/^Package: (\S+)$/m', $stanza, $package) && preg_match('/^Status: install ok installed$/m', $stanza)
+            && preg_match('/^(gcc|g\+\+|cpp)(-\d+)?$|^(make|binutils|libc6-dev|linux-libc-dev)$/', $package[1])) {
+            $toolchain[] = $package[1];
+        }
+    }
+    if ([] !== $toolchain) {
+        $problems[] = \sprintf('a C toolchain is installed (%s): the production stage purges what the base image built with', implode(', ', $toolchain));
+    }
+}
+$found = [];
+foreach (array_filter(explode(':', $searchPath)) as $directory) {
+    foreach (array_merge(['cc', 'c++', 'gcc', 'make'], array_map('basename', glob($directory.'/gcc-[0-9]*') ?: [])) as $command) {
+        if (is_file($directory.'/'.$command) && is_executable($directory.'/'.$command)) {
+            $found[] = $directory.'/'.$command;
+        }
+    }
+}
+if ([] !== $found) {
+    $problems[] = \sprintf('a compiler or make is on the path (%s)', implode(', ', array_unique($found)));
+}
+
 if ([] !== $problems) {
     fwrite(\STDOUT, \sprintf("production-image: FAIL — %d problem(s):\n", count($problems)));
     foreach ($problems as $problem) {
@@ -93,4 +125,4 @@ if ([] !== $problems) {
     }
     exit(1);
 }
-fwrite(\STDOUT, "production-image: OK — prod mode, worker mode, production ini, Symfony's OPcache values, preload warmed, no dev packages, not root, tokens filtered from the logs\n");
+fwrite(\STDOUT, "production-image: OK — prod mode, worker mode, production ini, Symfony's OPcache values, preload warmed, no dev packages, not root, tokens filtered from the logs, no C toolchain\n");

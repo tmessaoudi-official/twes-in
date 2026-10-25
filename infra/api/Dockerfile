@@ -84,6 +84,18 @@ HEALTHCHECK NONE
 FROM base AS prod
 
 ENV APP_ENV=prod
+# The base image keeps the C toolchain PHP's extensions are built with (its PHPIZE_DEPS: gcc, g++, make, autoconf,
+# dpkg-dev, libc6-dev, and what they pulled in: gcc-14, cpp, binutils, linux-libc-dev), so that an image built over it
+# can add more. Every extension this one needs was built in base; a server has no use for a compiler, and one left in
+# place lets a flaw in the code build a native tool where it stands. Removed here, in the production stage alone: dev
+# and tools keep it. The base marks gcc-14, cpp and the rest as installed by hand, so --auto-remove alone keeps them:
+# each is named, read from what is installed, so the architecture's own names (gcc-14-x86-64-linux-gnu) go as well.
+# gcc-14-base and the libraries a program runs on (libgcc-s1, libstdc++6) are not matched and stay.
+# scripts/gates/production-image.php refuses an image that still holds gcc, cc, make or linux-libc-dev.
+# hadolint ignore=SC2046
+RUN apt-get purge -y --auto-remove $(dpkg-query -W -f '${Package}\n' | grep -E \
+      '^(autoconf|binutils(-.+)?|cpp(-.+)?|dpkg-dev|file|g\+\+(-.+)?|gcc(-[0-9]+)?(-[a-z0-9_-]+-linux-gnu)?|libc6-dev|libgcc-[0-9]+-dev|libstdc\+\+-[0-9]+-dev|linux-libc-dev|make|pkg-config|re2c)$') \
+ && rm -rf /var/lib/apt/lists/*
 RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 COPY infra/api/conf.d/20-app.prod.ini "$PHP_INI_DIR/conf.d/"
 
