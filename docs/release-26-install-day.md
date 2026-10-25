@@ -34,8 +34,19 @@ it. Never tag 2ccf0bb7, whose CI was red. A pushed tag is never moved.
 
 ## 2. Before leaving for the shop
 
-- `cp scripts/onprem/install.ps1 /media/$USER/<usb>/install.ps1`, and `var/claude/client-excel/out/` (the five files)
-  onto the same key.
+- The USB key holds three things, copied after § 1 (`<usb>` is the key's folder under `/media/$USER/`):
+
+  | On the key | What it is | Copied with |
+  |---|---|---|
+  | `install.ps1` | the installer, from the release itself | `git show v2026.10.25.1:scripts/onprem/install.ps1 > /media/$USER/<usb>/install.ps1` |
+  | `release-26-install-day.md` | this page, to read at the shop without the internet (Notepad opens it) | `cp docs/release-26-install-day.md /media/$USER/<usb>/` |
+  | `client/` with the five files | `1-vendors.csv` to `5-price-history.csv`, the shop's data for § 5 | `mkdir -p /media/$USER/<usb>/client && cp var/claude/client-excel/out/*.csv /media/$USER/<usb>/client/` |
+
+  Then `ls -l /media/$USER/<usb> /media/$USER/<usb>/client` shows three entries and five files, and `sync` before
+  pulling the key out. `report.md` stays here: it is your reading, not the shop's. Nothing else goes on the key: the
+  release key and the images come from GitHub, verified against the fingerprint `install.ps1` carries. The key holds
+  the shop's prices and vendors: keep it with you, and empty it once the final install is done.
+- At the shop the files are read from the key, `D:\client\…` when the key is `D:` (§ 5's « Importer » picks each one).
 - The fingerprint to the shop by message or call, never through the repository alone:
   `0201 4686 9960 09C7 41A9 2ADF 0C53 7690 706E B7F5`.
 - Bring a phone with an authenticator app, the shop's Gmail address and its app password, and a USB disk for the local
