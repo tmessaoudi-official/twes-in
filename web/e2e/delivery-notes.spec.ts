@@ -250,6 +250,65 @@ test('a draft is validated and delivered in one step', async ({ page }) => {
   }
 });
 
+// « Reçu par »: who received is typed on the draft and added to the customer's contacts, printed in the note issued
+// at « Valider et livrer », then put right afterwards; the original keeps the name it was issued with, and the copy said
+// « livrée » names the one put right.
+test('who received is named on the draft, kept with the note issued, then put right', async ({
+  page,
+}) => {
+  // A draft, its issue, a correction through a dialog scanned for accessibility, and two PDFs rendered.
+  test.setTimeout(60_000);
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-RCV-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    await page.goto('/delivery-notes/new');
+    await page.getByTestId('delivery-note-customer').fill(customerNumber);
+    await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+    await page.getByTestId('line-0-description').fill(`Remis en main propre ${run}`);
+    await page.getByTestId('line-0-quantity').fill('1');
+    await page.getByTestId('line-0-price').fill('100');
+    await choose(page, 'line-0-taxes', /19/);
+    await page.getByTestId('delivery-note-receiver-name').fill('Karim Jaziri');
+    await page.getByTestId('delivery-note-receiver-add').getByRole('checkbox').check();
+    await page.getByTestId('document-action-save').click();
+    await expect(page).toHaveURL(/\/delivery-notes\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('delivery-note-received-by')).toContainText('Karim Jaziri');
+
+    await page.getByTestId('document-action-validate-deliver').click();
+    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('delivery-note-status')).toContainText(/Livré|Delivered/);
+    await expect(page.getByTestId('delivery-note-received-by')).toContainText('Karim Jaziri');
+
+    // Put right: the customer's contacts now hold the name typed, and another name is typed in its place.
+    await page.getByTestId('document-more').click();
+    await page.getByTestId('document-menu-correct-receiver').click();
+    const name = page.getByTestId('receiver-dialog-name');
+    await expect(name).toHaveValue('Karim Jaziri');
+    await name.fill('');
+    await expect(page.getByTestId('receiver-dialog-contact')).toHaveText(['Karim Jaziri']);
+    await name.fill('Leila Ben Ali');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.screenshot({ path: test.info().outputPath('receiver-corrected-asked.png') });
+    await page.getByTestId('receiver-dialog-save').click();
+    await expect(page.getByTestId('receiver-dialog-save')).toHaveCount(0);
+    await expect(page.getByTestId('delivery-note-received-by')).toContainText('Leila Ben Ali');
+
+    const original = (await page.getByTestId('document-action-pdf').getAttribute('href')) ?? '';
+    await page.getByTestId('document-more').click();
+    const copy = (await page.getByTestId('document-menu-pdf-delivered').getAttribute('href')) ?? '';
+    await page.keyboard.press('Escape');
+    expect(await download(page, original)).toMatchObject({ status: 200, magic: '%PDF-' });
+    const delivered = await download(page, copy);
+    expect(delivered).toMatchObject({ status: 200, magic: '%PDF-' });
+    expect(delivered.disposition).toContain('-delivered');
+  } finally {
+    await retire(page, customerNumber);
+  }
+});
+
 // Round 2: a related field offers its link. The note's address starts from where the customer's goods go, and one
 // part of it is corrected rather than all typed again.
 test('a note takes the customer’s address with one press, then one part of it is corrected', async ({

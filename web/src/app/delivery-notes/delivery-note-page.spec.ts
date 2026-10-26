@@ -162,6 +162,8 @@ const draft: DeliveryNoteRow = {
   invoices: [],
   quote: null,
   invoice: null,
+  receivedBy: null,
+  receiverRule: 'optional',
 };
 const validated: DeliveryNoteRow = {
   ...draft,
@@ -169,6 +171,8 @@ const validated: DeliveryNoteRow = {
   number: 'BL-2026-00001',
   issueDate: '2026-09-15',
   recordedCustomerName: 'Carthage Conseil',
+  receivedBy: null,
+  receiverRule: 'optional',
 };
 
 describe('DeliveryNotePage', () => {
@@ -183,6 +187,12 @@ describe('DeliveryNotePage', () => {
     error: error.asReadonly(),
     refusals: refusals.asReadonly(),
     loadNote: vi.fn(),
+    receivers: vi.fn(async () => []),
+    correctReceiver: vi.fn(),
+    deliveredCopyUrl: vi.fn(
+      (companyId: string, id: string) =>
+        `/api/companies/${companyId}/delivery-notes/${id}/pdf/delivered`,
+    ),
     pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
     ),
@@ -506,6 +516,18 @@ describe('DeliveryNotePage', () => {
       expect(inventory.onHand).toHaveBeenCalledTimes(1);
     });
 
+    it('reads what is on hand again when anyone records stock, so the line never says what was taken since', async () => {
+      note.set(draft);
+      await open('n1');
+      await settle();
+      expect(inventory.onHand).toHaveBeenCalledTimes(1);
+
+      await announceSaved('stock', 'm1');
+      await settle();
+      expect(inventory.onHand).toHaveBeenCalledTimes(2);
+      expect(inventory.onHand).toHaveBeenLastCalledWith('c1', 'e1', ['p1']);
+    });
+
     it('reads the shelves again when the note is made at another establishment', async () => {
       shownOptions.set({
         ...options,
@@ -670,6 +692,28 @@ describe('DeliveryNotePage', () => {
       expect(navigate).toHaveBeenCalledWith(['/delivery-notes', 'n9'], { replaceUrl: true }),
     );
     expect(successToasts()).toContain('delivery_notes.saved');
+  });
+
+  it("names who will receive on a new note: a name typed, added to the customer's contacts when ticked", async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    await pick('delivery-note-customer', 'CLI-1 · Carthage');
+    await pick('line-0-product', 'ART-1 · Portable 14"');
+    type('delivery-note-receiver-name', ' Karim Jaziri ');
+    await settle();
+    const add = q('delivery-note-receiver-add')?.querySelector('input');
+    expect(add, 'a name that is no contact may be added to them').toBeTruthy();
+    add!.click();
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+
+    expect(facade.create).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({
+        receivedBy: { contactId: null, name: 'Karim Jaziri', addToContacts: true },
+      }),
+    );
   });
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: a line's figures show the French decimal comma and take a comma or a point.
@@ -1191,7 +1235,7 @@ describe('DeliveryNotePage', () => {
     expect((over('delivery-note-delivered-on') as HTMLInputElement).value).toBe('21/09/2026');
     expect((over('delivery-note-delivered-time') as HTMLInputElement).value).toBe('00:30');
     over('delivery-note-deliver')!.click();
-    await vi.waitFor(() => expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', null));
+    await vi.waitFor(() => expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', null, null));
 
     // A round recorded at its end: the moment written is sent as the company's clock reads it.
     facade.deliver.mockClear();
@@ -1210,7 +1254,7 @@ describe('DeliveryNotePage', () => {
     await settle();
     over('delivery-note-deliver')!.click();
     await vi.waitFor(() =>
-      expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20T09:05'),
+      expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20T09:05', null),
     );
 
     // Cancelling is destructive, so it is behind "⋮" and asks before it runs.
@@ -1254,7 +1298,11 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-fixed')).toBeNull();
     expect(q('document-action-deliver')).toBeNull();
     expect(q('delivery-note-delivered-on')).toBeNull();
-    expect(await inMenu('document-menu-')).toEqual([]);
+    // The copy saying who received, and putting that right, stay offered once the goods are invoiced.
+    expect(await inMenu('document-menu-')).toEqual([
+      'document-menu-pdf-delivered',
+      'document-menu-correct-receiver',
+    ]);
     expect(q('document-action-pdf')).not.toBeNull();
   });
 
@@ -1326,7 +1374,8 @@ describe('DeliveryNotePage', () => {
     await open('n1');
     expect(q('delivery-note-fixed')?.textContent).toContain('attend sa facture');
     expect(q('delivery-note-fixed')?.textContent).not.toContain('livré.');
-    expect(await inMenu('document-menu-')).toEqual([]);
+    // Who received is put right after the delivery; a cancelled note keeps it as it was.
+    expect(await inMenu('document-menu-')).toEqual(['document-menu-correct-receiver']);
 
     note.set({ ...validated, status: 'cancelled' });
     await settle();

@@ -24,6 +24,7 @@ import type {
 } from './delivery-notes-types';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 
 /** The delivery notes of the company being worked in, the note open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
@@ -201,13 +202,33 @@ export class DeliveryNotesFacade {
     companyId: string,
     id: string,
     delivered: string | null,
+    receivedBy: ReceiverChoice | null = null,
   ): Promise<FormAnswer<DeliveryNoteRow>> {
     const answer = await this.state.writeOrRefuse(
-      () => this.api.deliver(companyId, id, delivered),
+      () => this.api.deliver(companyId, id, delivered, receivedBy),
       (error) => (error instanceof DeliveryNotesRefused ? error.refusals : []),
     );
     if (answer !== null && 'kept' in answer) this.noteSignal.set(answer.kept);
     return answer;
+  }
+
+  /** Who received, put right on a numbered note; asked in a dialog, which says a refusal under its field. */
+  async correctReceiver(
+    companyId: string,
+    id: string,
+    receivedBy: ReceiverChoice | null,
+  ): Promise<FormAnswer<DeliveryNoteRow>> {
+    const answer = await this.state.writeOrRefuse(
+      () => this.api.correctReceiver(companyId, id, receivedBy),
+      (error) => (error instanceof DeliveryNotesRefused ? error.refusals : []),
+    );
+    if (answer !== null && 'kept' in answer) this.noteSignal.set(answer.kept);
+    return answer;
+  }
+
+  /** The customer's contacts « Reçu par » offers; none when they cannot be read, which the screen says. */
+  async receivers(companyId: string, customerId: string): Promise<ReceiverContact[]> {
+    return this.pick(() => this.api.receivers(companyId, customerId));
   }
 
   async cancel(companyId: string, id: string): Promise<DeliveryNoteRow | null> {
@@ -302,6 +323,10 @@ export class DeliveryNotesFacade {
 
   pdfUrl(companyId: string, id: string): string {
     return this.api.pdfUrl(companyId, id);
+  }
+
+  deliveredCopyUrl(companyId: string, id: string): string {
+    return this.api.deliveredCopyUrl(companyId, id);
   }
 
   clearError(): void {

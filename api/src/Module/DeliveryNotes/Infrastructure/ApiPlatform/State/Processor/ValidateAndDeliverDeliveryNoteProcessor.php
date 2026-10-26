@@ -30,7 +30,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Numbers a draft and marks it delivered now, both or neither. It takes what each step takes: validating, and writing
- * notes, which delivering one is; a caller missing either is answered as validate and deliver answer it, 404.
+ * notes, which delivering one is; a caller missing either is answered as validate and deliver answer it, 404. A body
+ * may name who received the goods; none, whoever the draft names.
  *
  * @implements ProcessorInterface<mixed, DeliveryNoteResource>
  */
@@ -48,7 +49,7 @@ final readonly class ValidateAndDeliverDeliveryNoteProcessor implements Processo
         }
 
         try {
-            $note = $this->workflow->validateAndDeliver($company, CompanyPath::identifier($uriVariables, 'deliveryNoteId'), $this->guard->account()->getId());
+            $note = $this->workflow->validateAndDeliver($company, CompanyPath::identifier($uriVariables, 'deliveryNoteId'), $this->guard->account()->getId(), $data instanceof DeliveryNoteResource ? $data->receiverChoice() : null);
         } catch (DeliveryNoteNotFound $absent) {
             throw new NotFoundHttpException('No such delivery note.', $absent);
         } catch (DeliveryNoteNotDraft|NoNumberingSeries|InvalidNumbering|DeliveryNoteNumberTaken|DeliveryNoteTransitionRefused $conflict) {

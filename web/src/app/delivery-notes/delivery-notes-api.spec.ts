@@ -34,6 +34,7 @@ const input: DeliveryNoteInput = {
       lotCode: 'L-2409',
     },
   ],
+  receivedBy: null,
 };
 
 /** A search that asks for nothing but the first page, so a case names only what it changes. */
@@ -238,6 +239,8 @@ describe('DeliveryNotesApi', () => {
       status: 'validated',
       customerId: 'k1',
       establishmentId: null,
+      receivedBy: null,
+      receiverRule: null,
       recordedCustomerName: 'Carthage Conseil',
       customerName: 'Carthage',
       issueDate: '2026-09-15',
@@ -296,6 +299,7 @@ describe('DeliveryNotesApi', () => {
       customerReference: 'PO-77',
       remarksPrinted: null,
       notesInternal: 'Fragile',
+      receivedBy: null,
       lines: [
         {
           productId: 'p1',
@@ -468,7 +472,7 @@ describe('DeliveryNotesApi', () => {
 
     const delivered = api.deliver('c1', 'n1', '2026-09-20T14:05');
     const deliver = http.expectOne('/api/companies/c1/delivery-notes/n1/deliver');
-    expect(deliver.request.body).toEqual({ delivered: '2026-09-20T14:05' });
+    expect(deliver.request.body).toEqual({ delivered: '2026-09-20T14:05', receivedBy: null });
     deliver.flush({
       id: 'n1',
       status: 'delivered',
@@ -493,7 +497,7 @@ describe('DeliveryNotesApi', () => {
     );
     expect([validateAndDeliver.request.method, validateAndDeliver.request.body]).toEqual([
       'POST',
-      null,
+      { receivedBy: null },
     ]);
     validateAndDeliver.flush({ id: 'n1', status: 'delivered', number: 'BL-2026-00002' });
     expect((await both).status).toBe('delivered');

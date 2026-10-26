@@ -25,6 +25,7 @@ delivery_note:
         name: 'Nom'
         signature: 'Signature et cachet'
         reserves: 'Réserves'
+    received_by: 'Reçu par :'
 purchase_order:
     title: 'Bon de commande'
     vendor: 'Fournisseur'
@@ -113,6 +114,7 @@ demo:
 copy:
     duplicate: 'DUPLICATA — réimprimé le %date%'
     current: 'COPIE — état au %date%'
+    delivered: 'COPIE — livrée le %date%'
 stamp:
     paid: 'ACQUITTÉE'
     partial: 'RÉGLÉE PARTIELLEMENT'

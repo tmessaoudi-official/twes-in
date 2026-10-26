@@ -106,6 +106,7 @@
         "revised": "changed the delivery note",
         "validated": "validated the delivery note",
         "delivered": "delivered the delivery note",
+        "receiver_corrected": "corrected who received the delivery note",
         "cancelled": "cancelled the delivery note",
         "invoiced": "invoiced the delivery note",
         "deleted": "deleted the delivery note draft",

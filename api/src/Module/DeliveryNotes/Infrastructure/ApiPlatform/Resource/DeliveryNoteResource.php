@@ -35,13 +35,17 @@ use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\CancelDe
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\CreateDeliveryNoteProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\DeliverDeliveryNoteProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\PreviewDeliveryNoteProcessor;
+use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\ReceiveDeliveryNoteProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\ReviseDeliveryNoteProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\ValidateAndDeliverDeliveryNoteProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor\ValidateDeliveryNoteProcessor;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Provider\DeliveryNoteCollectionProvider;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Provider\DeliveryNoteItemProvider;
 use App\Shared\Application\ListLimits;
+use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -151,8 +155,20 @@ use Symfony\Component\Validator\Constraints as Assert;
             processor: ValidateAndDeliverDeliveryNoteProcessor::class,
             security: 'is_granted("ROLE_USER")',
             read: false,
-            input: false,
             normalizationContext: self::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::RECEIVE]],
+            validationContext: ['groups' => [self::RECEIVE]],
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/delivery-notes/{deliveryNoteId}/receiver',
+            openapi: new OpenApiOperation(summary: 'Puts right who received a numbered note\'s goods, or names nobody.', description: 'Takes `receivedBy` as a save does and records it on a validated, delivered or invoiced note, whose stored print is kept as issued: a copy printed on request says who received. Asks delivery_note.write. Audited by the field it changed, never the name. 409 on a draft, which a save names, or a cancelled note; 422 naming `receivedBy` as a delivery refuses it.'),
+            status: 200,
+            processor: ReceiveDeliveryNoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            normalizationContext: self::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::RECEIVE]],
+            validationContext: ['groups' => [self::RECEIVE]],
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/delivery-notes/{deliveryNoteId}/cancel',
@@ -170,11 +186,14 @@ final class DeliveryNoteResource
     public const string READ = 'delivery_note:read';
     public const string WRITE = 'delivery_note:write';
     public const string DELIVER = 'delivery_note:deliver';
+    /** Who received, alone: sent to validate and deliver, and to put it right once numbered. */
+    public const string RECEIVE = 'delivery_note:receive';
     /** A day and a time to the minute on the company's clock, as a person writes when the goods arrived. */
     public const string LOCAL_MOMENT = 'Y-m-d\\TH:i';
     /** Nulls are answered: a draft's absent number and a line without a product read alike; no identifiers read `{}`. */
     public const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
+    private const array RECEIVER_GROUPS = [self::WRITE, self::DELIVER, self::RECEIVE];
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
     private const array DAY = ['type' => 'string', 'format' => 'date'];
     /** Which way one of the list's sorts reads. */
@@ -307,6 +326,41 @@ final class DeliveryNoteResource
     #[Groups([self::DELIVER])]
     public ?string $delivered = null;
 
+    /**
+     * Who received the goods, as the note copied them: `{name, contactId}`, contactId the customer's contact named or
+     * null for a name typed; null while nobody is named. Sent to a save, to deliver, to validate and deliver, and to
+     * POST .../receiver: `{contactId}` names one of the customer's contacts, whose name is copied as it reads now;
+     * `{name, addToContacts}` a name typed, added to the customer's contacts when asked; null, nobody. Sent back as
+     * read, the receiver is kept as it was copied. Refused naming `receivedBy`: `unknown_choice`, `invalid_text`,
+     * `receiver_off` where the customer's notes name nobody, `receiver_required` at a delivery naming nobody where they
+     * must name someone.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ApiProperty(schema: [
+        'type' => ['object', 'null'],
+        'properties' => [
+            'contactId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'name' => ['type' => ['string', 'null'], 'maxLength' => Receiver::NAME_MAX],
+            'addToContacts' => ['type' => 'boolean', 'writeOnly' => true, 'description' => 'Adds the name typed to the customer\'s contacts as it is recorded.'],
+        ],
+    ])]
+    #[Assert\Collection(fields: [
+        'contactId' => new Assert\Optional([new Assert\Type('string', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+        'name' => new Assert\Optional([new Assert\Type('string', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+        'addToContacts' => new Assert\Optional([new Assert\Type('bool', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+    ], groups: self::RECEIVER_GROUPS)]
+    #[Groups([self::READ, self::WRITE, self::DELIVER, self::RECEIVE])]
+    public ?array $receivedBy = null;
+
+    /**
+     * Whether the customer's notes name who received: `off`, `optional` or `required` (the setting
+     * delivery_note.receiver); null on a page of the list, which does not read it.
+     */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'enum' => ['off', 'optional', 'required', null]])]
+    #[Groups([self::READ])]
+    public ?string $receiverRule = null;
+
     /** The day validation numbered the note, in the company's time zone; null while it is a draft. */
     #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'date'])]
     #[Groups([self::READ])]
@@ -436,7 +490,7 @@ final class DeliveryNoteResource
      * @param array{quoteId: string, number: string|null}|null   $quote
      * @param array{invoiceId: string, number: string|null}|null $invoice
      */
-    public static function of(DeliveryNote $note, DocumentTotals $totals, array $invoices = [], ?array $quote = null, ?array $invoice = null): self
+    public static function of(DeliveryNote $note, DocumentTotals $totals, array $invoices = [], ?array $quote = null, ?array $invoice = null, ?ReceiverRule $receiverRule = null): self
     {
         $header = $note->getHeader();
         $resource = new self();
@@ -460,6 +514,8 @@ final class DeliveryNoteResource
         $resource->customerReference = $header->customerReference;
         $resource->remarksPrinted = $header->remarksPrinted;
         $resource->notesInternal = $header->notesInternal;
+        $resource->receivedBy = null === $header->receivedBy ? null : ['name' => $header->receivedBy->name, 'contactId' => $header->receivedBy->contactId?->toRfc4122()];
+        $resource->receiverRule = $receiverRule?->value;
         $resource->lines = array_map(static fn (DeliveryNoteLine $line, LineTotals $figures): array => [
             'productId' => $line->getProduct()?->getId()->toRfc4122(),
             'productReference' => $line->getProduct()?->getReference(),
@@ -518,7 +574,20 @@ final class DeliveryNoteResource
                 $this->notesInternal,
             ),
             $lines,
+            $this->receiverChoice(),
         );
+    }
+
+    /** Who the request named as receiver; null for nobody. */
+    public function receiverChoice(): ?ReceiverChoice
+    {
+        if (null === $this->receivedBy) {
+            return null;
+        }
+        $contactId = $this->receivedBy['contactId'] ?? null;
+        $name = $this->receivedBy['name'] ?? null;
+
+        return new ReceiverChoice(\is_string($contactId) ? $contactId : null, \is_string($name) ? $name : null, true === ($this->receivedBy['addToContacts'] ?? false));
     }
 
     /** @param array<string, mixed> $line */

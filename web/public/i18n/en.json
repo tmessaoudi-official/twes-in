@@ -994,7 +994,8 @@
     },
     "delivery_note": {
       "show_prices": "Show prices on delivery notes",
-      "reception_block": "Print the receipt block (date and time, name, signature and stamp, reservations)"
+      "reception_block": "Print the receipt block (date and time, name, signature and stamp, reservations)",
+      "receiver": "Name who received the goods"
     },
     "presentation": {
       "accent": "Accent colour",
@@ -1109,6 +1110,13 @@
           "50": "50",
           "100": "100",
           "200": "200"
+        }
+      },
+      "delivery_note": {
+        "receiver": {
+          "off": "Never",
+          "optional": "When wished",
+          "required": "Always, at delivery"
         }
       }
     },
@@ -1887,7 +1895,8 @@
       "deliveryCity": "City",
       "deliveryCountryCode": "Country",
       "remarksPrinted": "Remarks printed on the note",
-      "notesInternal": "Internal notes"
+      "notesInternal": "Internal notes",
+      "receivedBy": "Received by"
     },
     "form": {
       "reference_hint": "The customer's order number, printed on the note.",
@@ -1963,7 +1972,9 @@
       "validate_deliver": "Validate and deliver",
       "validate_deliver_title": "Validate and deliver this note?",
       "validate_deliver_message": "It receives its number and is delivered today.",
-      "on_map": "See on the plan"
+      "on_map": "See on the plan",
+      "correct_receiver": "Correct who received…",
+      "pdf_delivered": "Delivered copy (PDF)"
     },
     "errors": {
       "network": "The server could not be reached.",
@@ -1974,6 +1985,7 @@
     },
     "validated": "The note was validated.",
     "validated_delivered": "The note was validated and delivered.",
+    "receiver_corrected": "Who received the note is corrected.",
     "cancelled": "The note was cancelled.",
     "suggest": {
       "invoice": "Invoice this note"
@@ -2947,6 +2959,7 @@
     "saved_since": "Nothing was saved: another version of this record was saved in the meantime. Check it, then save again.",
     "undo_refused": "Nothing was undone: another version was saved in the meantime.",
     "lines_conflict": "The lines were changed in the saved version too.",
+    "receiver_conflict": "Who receives was also changed in the saved version.",
     "take_saved": "Take the saved version",
     "keep_typed": "Keep what I typed"
   },
@@ -3129,7 +3142,9 @@
       "default_at_top": "The establishment’s default location stays at the top of its tree: it sits under no other.",
       "default_not_quarantine": "The default location never becomes a quarantine: every delivery falls back on it, so what is there must be sellable.",
       "location_twice": "This location is already in the list: remove one of the two.",
-      "establishment_kept": "A location stays in its establishment: create one in the other establishment."
+      "establishment_kept": "A location stays in its establishment: create one in the other establishment.",
+      "receiver_required": "Name who received: this document asks for it.",
+      "receiver_off": "“Received by” is switched off for this document: clear this field."
     },
     "identifier_parts": {
       "number": "the number",
@@ -4120,5 +4135,16 @@
   },
   "demo_mails": {
     "title": "Demo mail"
+  },
+  "receivers": {
+    "received_by": "Received by",
+    "a_contact": "One of the customer’s contacts",
+    "a_member": "A member of the company",
+    "add_to_contacts": "Add to the customer’s contacts",
+    "required": "Name who received.",
+    "nobody": "Nobody",
+    "save": "Save",
+    "keep": "Change nothing",
+    "undo": "Undo"
   }
 }

@@ -33,6 +33,11 @@
               {{ note.deliveredAt | moment: company()?.timezone }}</span
             >
           }
+          @if (note.receivedBy; as receivedBy) {
+            <span data-testid="delivery-note-received-by"
+              >{{ 'receivers.received_by' | translate }} <bdi>{{ receivedBy.name }}</bdi></span
+            >
+          }
         </p>
         @if (note.invoices.length > 0) {
           <p class="flex flex-wrap gap-x-1 text-sm" data-testid="delivery-note-invoices">
@@ -205,6 +210,25 @@
                 </button>
               }
             </app-descriptor-form>
+            @if (receiverAsked() ? receiver() : null; as receiver) {
+              <div
+                class="max-w-md pt-4"
+                [class.twes-field-updated]="sync.updated().has('receivedBy')"
+              >
+                @if (sync.conflicts().some(isReceiverConflict)) {
+                  <app-part-conflict
+                    field="receivedBy"
+                    message="live.receiver_conflict"
+                    (resolved)="sync.resolve(form, $event)"
+                  />
+                }
+                <app-receiver-field
+                  [form]="receiver"
+                  [contacts]="receiverContacts()"
+                  testId="delivery-note-receiver"
+                />
+              </div>
+            }
           }
         </mat-card-content>
       </mat-card>

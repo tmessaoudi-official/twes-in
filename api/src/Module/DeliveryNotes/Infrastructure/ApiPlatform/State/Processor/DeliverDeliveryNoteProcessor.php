@@ -46,6 +46,7 @@ final readonly class DeliverDeliveryNoteProcessor implements ProcessorInterface
                 CompanyPath::identifier($uriVariables, 'deliveryNoteId'),
                 $delivered,
                 $this->guard->account()->getId(),
+                $data->receiverChoice(),
             );
         } catch (DeliveryNoteNotFound $absent) {
             throw new NotFoundHttpException('No such delivery note.', $absent);

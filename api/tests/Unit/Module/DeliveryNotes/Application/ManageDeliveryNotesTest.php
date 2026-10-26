@@ -21,6 +21,7 @@ use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\DeliveryNotes\Application\DeliveryNoteInput;
 use App\Module\DeliveryNotes\Application\DeliveryNoteLineInput;
 use App\Module\DeliveryNotes\Application\DeliveryNoteNotFound;
+use App\Module\DeliveryNotes\Application\DeliveryNoteSettings;
 use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteNotDraft;
@@ -30,6 +31,16 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteHeader;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Settings\Application\BusinessDefaultSettings;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\ResolveSettings;
+use App\Settings\Application\SettingCatalog;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\Receivers\ChooseReceiver;
+use App\Shared\Application\Receivers\ReceiverChoice;
+use App\Shared\Domain\ValueObject\Receiver;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
 use App\Tests\Support\FakeTransactions;
@@ -39,13 +50,17 @@ use App\Tests\Support\InMemoryDeliveryNotes;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemoryReceiverContacts;
 use App\Tests\Support\InMemoryRecordVersions;
+use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\NoInvoicesToDeliver;
 use App\Tests\Support\NoQuotesToDeliver;
+use App\Tests\Support\RecordingDomainEvents;
 use App\Tests\Support\ShelfLinePrices;
 use App\Tests\Support\ShippedFiscalPresets;
+use App\Tests\Support\ShippedLanguages;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -64,6 +79,8 @@ final class ManageDeliveryNotesTest extends TestCase
     private DeliveryNoteTotals $totals;
     private Company $company;
     private Company $globex;
+    private InMemoryReceiverContacts $contacts;
+    private ChangeSettings $change;
 
     protected function setUp(): void
     {
@@ -77,7 +94,11 @@ final class ManageDeliveryNotesTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->totals = new DeliveryNoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageDeliveryNotes($this->notes = new InMemoryDeliveryNotes(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemoryRecordVersions(), NoQuotesToDeliver::lines($this->notes), NoInvoicesToDeliver::lines($this->notes));
+        $settings = new InMemorySettings();
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(ShippedLanguages::catalogue()), new DeliveryNoteSettings()]);
+        $resolve = new ResolveSettings($catalog, $settings);
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents());
+        $this->manage = new ManageDeliveryNotes($this->notes = new InMemoryDeliveryNotes(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemoryRecordVersions(), NoQuotesToDeliver::lines($this->notes), NoInvoicesToDeliver::lines($this->notes), new ChooseReceiver($this->contacts = new InMemoryReceiverContacts()), new ReadSetting($resolve));
         $this->notes->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
@@ -232,10 +253,55 @@ final class ManageDeliveryNotesTest extends TestCase
         self::assertSame(['delivery_note.created'], array_map(static fn ($entry): string => $entry->action, $this->audit->entries));
     }
 
-    /** @param list<DeliveryNoteLineInput> $lines */
-    private function input(Customer $customer, array $lines, ?Uuid $customerId = null, ?Uuid $establishmentId = null, DeliveryNoteHeader $header = new DeliveryNoteHeader()): DeliveryNoteInput
+    public function testTheDraftNamesWhoWillReceiveKeepsThemAsCopiedAndNamesNobodyWhereTheCustomersNotesDoNot(): void
     {
-        return new DeliveryNoteInput($customerId ?? $customer->getId(), $establishmentId, $header, $lines);
+        $customer = $this->customer();
+        $ahmed = Uuid::v7();
+        $this->contacts->contacts[$customer->getId()->toRfc4122()][$ahmed->toRfc4122()] = 'Ahmed Ben Salah';
+        $lines = [new DeliveryNoteLineInput($this->product()->getId(), null, '1')];
+
+        $note = $this->manage->create($this->company, $this->input($customer, $lines, receivedBy: new ReceiverChoice($ahmed->toRfc4122())), null);
+        self::assertEquals(Receiver::named('Ahmed Ben Salah', $ahmed), $note->getHeader()->receivedBy);
+
+        $this->contacts->contacts[$customer->getId()->toRfc4122()][$ahmed->toRfc4122()] = 'Ahmed B. Salah';
+        $this->manage->revise($this->company, $note->getId(), $this->input($customer, $lines, receivedBy: new ReceiverChoice($ahmed->toRfc4122(), 'Ahmed Ben Salah')), null);
+        self::assertSame('Ahmed Ben Salah', $note->getHeader()->receivedBy?->name, 'sent back as read, the name the draft copied is kept');
+
+        $this->manage->preview($this->company, $this->input($customer, $lines, receivedBy: new ReceiverChoice(name: 'Sami', addToContacts: true)), $note->getId());
+        self::assertSame([], $this->contacts->added, 'a preview writes no contact');
+
+        $this->manage->revise($this->company, $note->getId(), $this->input($customer, $lines, receivedBy: new ReceiverChoice(name: ' Sami ', addToContacts: true)), null);
+        self::assertSame(['Sami', [[$customer->getId()->toRfc4122(), 'Sami']]], [$note->getHeader()->receivedBy->name, $this->contacts->added]);
+        $last = array_last($this->audit->entries);
+        self::assertNotNull($last);
+        self::assertSame(['fields' => ['receivedBy']], $last->changes);
+
+        $this->manage->revise($this->company, $note->getId(), $this->input($customer, $lines), null);
+        self::assertNull($note->getHeader()->receivedBy, 'left out, nobody');
+
+        $atCustomer = new SettingContext($this->company, customerId: $customer->getId());
+        $this->change->change($atCustomer, DeliveryNoteSettings::RECEIVER, SettingLevel::Customer, 'required', null);
+        $this->manage->create($this->company, $this->input($customer, $lines), null);
+
+        $this->change->change($atCustomer, DeliveryNoteSettings::RECEIVER, SettingLevel::Customer, 'off', null);
+        try {
+            $this->manage->create($this->company, $this->input($customer, $lines, receivedBy: new ReceiverChoice(name: 'Sami')), null);
+            self::fail('a receiver was named on a note of a customer whose notes name nobody');
+        } catch (InvalidDeliveryNote $refused) {
+            self::assertSame(['receivedBy', 'receiver_off'], [$refused->field, $refused->reason]);
+        }
+        try {
+            $this->manage->create($this->company, $this->input($customer, $lines, receivedBy: new ReceiverChoice(Uuid::v7()->toRfc4122())), null);
+            self::fail('a contact of no customer was taken');
+        } catch (InvalidDeliveryNote $refused) {
+            self::assertSame(['receivedBy', 'unknown_choice'], [$refused->field, $refused->reason]);
+        }
+    }
+
+    /** @param list<DeliveryNoteLineInput> $lines */
+    private function input(Customer $customer, array $lines, ?Uuid $customerId = null, ?Uuid $establishmentId = null, DeliveryNoteHeader $header = new DeliveryNoteHeader(), ?ReceiverChoice $receivedBy = null): DeliveryNoteInput
+    {
+        return new DeliveryNoteInput($customerId ?? $customer->getId(), $establishmentId, $header, $lines, $receivedBy);
     }
 
     /** @param list<TaxFamily> $excluded */

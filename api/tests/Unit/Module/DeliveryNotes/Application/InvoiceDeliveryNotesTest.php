@@ -41,6 +41,7 @@ use App\Module\Invoices\Infrastructure\DeliveryNotes\ManagedInvoiceDrafts;
 use App\Module\Invoices\Infrastructure\DeliveryNotes\RepositoryInvoicedLines;
 use App\Shared\Application\ListLimits;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Shared\Infrastructure\Validation\ParameterListLimits;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
@@ -110,7 +111,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
             new DeliveryNoteLineDetails(null, 'Portable 14"', '2', $this->unit('C62'), '1250', [$this->tax('FODEC'), $this->tax('TVA19')]),
             new DeliveryNoteLineDetails(null, 'Transport', '1', $this->unit('C62'), '30', [$this->tax('TVA19')]),
         ], new DeliveryNoteHeader(customerReference: 'PO-7'));
-        $first->deliver($this->clock->now(), $this->clock->now());
+        $first->deliver($this->clock->now(), $this->clock->now(), ReceiverRule::Optional);
         $second = $this->note('BL-2026-00002', header: new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-12'), customerReference: 'PO-7'));
         $actor = Uuid::v7();
 
@@ -196,7 +197,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
     {
         $mine = $this->note('BL-2026-00001');
         $delivered = $this->note('BL-2026-00002');
-        $delivered->deliver($this->clock->now(), $this->clock->now());
+        $delivered->deliver($this->clock->now(), $this->clock->now(), ReceiverRule::Optional);
         $otherCustomers = $this->note('BL-2026-00003', customer: $this->customer($this->company, 'CLI-0002'));
         $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions())
             ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);

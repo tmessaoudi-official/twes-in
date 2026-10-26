@@ -25,6 +25,7 @@ delivery_note:
         name: 'Name'
         signature: 'Signature and stamp'
         reserves: 'Reservations'
+    received_by: 'Received by:'
 purchase_order:
     title: 'Purchase order'
     vendor: 'Vendor'
@@ -113,6 +114,7 @@ demo:
 copy:
     duplicate: 'DUPLICATE — reprinted on %date%'
     current: 'COPY — status on %date%'
+    delivered: 'COPY — delivered on %date%'
 stamp:
     paid: 'PAID'
     partial: 'PARTLY PAID'

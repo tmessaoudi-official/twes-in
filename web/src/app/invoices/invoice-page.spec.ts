@@ -863,6 +863,13 @@ describe('InvoicePage', () => {
     expect(q('line-0-stock')?.classList).toContain('text-error');
     // Typing a quantity asks nothing more: what is on hand did not move.
     expect(inventory.onHand).toHaveBeenCalledTimes(1);
+
+    // Anyone recording stock moves it: the line reads it again rather than say what was taken since.
+    inventory.onHand.mockResolvedValue([{ productId: 'p1', unitId: 'u1', onHand: '9.000' }]);
+    await announceSaved('stock', 'm1');
+    await settle();
+    expect(inventory.onHand).toHaveBeenCalledTimes(2);
+    expect(q('line-0-stock')?.classList).not.toContain('text-error');
   });
 
   it('says nothing of stock on a credit note, which takes no goods out', async () => {

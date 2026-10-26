@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   ElementRef,
   inject,
@@ -58,6 +59,7 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { FieldError } from '../shared/form/form-builder';
 import { LineRefusals, refusedOn } from '../shared/documents/line-refusals';
 import { RefusalFigures } from '../shared/form/refusal-figures';
+import { LiveChanges } from '../shared/realtime/live-changes';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -235,6 +237,13 @@ export class InvoiceLines {
       const asked = this.stockAsked();
       untracked(() => void this.readStock(asked));
     });
+    // What is on hand moves as other notes, invoices and counts are recorded, here or by anyone else: the figures
+    // under the lines are read again, or a clerk validates on a stock another has taken since.
+    inject(LiveChanges).reloadOn(
+      ['stock', 'delivery_note', 'invoice'],
+      () => this.readStock(untracked(() => this.stockAsked())),
+      inject(DestroyRef),
+    );
     effect((onCleanup) => {
       const subscription = this.lines().events.subscribe(() =>
         this.revision.update((revision) => revision + 1),

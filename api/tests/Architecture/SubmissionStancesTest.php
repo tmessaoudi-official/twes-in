@@ -133,6 +133,7 @@ final class SubmissionStancesTest extends KernelTestCase
         '/platform/payment-declarations/{declarationId}/confirm' => self::TRANSITION,
         '/platform/payment-declarations/{declarationId}/reject' => self::TRANSITION,
         '/companies/{companyId}/customer-screen/lock' => self::SETS,
+        '/companies/{companyId}/delivery-notes/{deliveryNoteId}/receiver' => self::SETS,
         '/companies/{companyId}/expenses/{expenseId}/attachments/{attachmentId}/restore' => self::SETS,
         '/companies/{companyId}/expenses/{expenseId}/withholding-operation' => self::SETS,
         '/companies/{companyId}/logo' => self::SETS,

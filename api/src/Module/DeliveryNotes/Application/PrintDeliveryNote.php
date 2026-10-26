@@ -73,6 +73,24 @@ final readonly class PrintDeliveryNote
     }
 
     /**
+     * A delivered note printed again as its delivery left it: who received the goods and when, under « Copie — livrée
+     * le … ». Rendered on request and never stored: the original stays the one file validation wrote.
+     *
+     * @throws DeliveryNoteNotFound
+     * @throws NotDeliveredYet
+     * @throws PdfRenderingFailed
+     */
+    public function deliveredCopy(Company $company, Uuid $id): PrintedDeliveryNote
+    {
+        $note = $this->notes->ofIdInCompany($id, $company->getId()) ?? throw new DeliveryNoteNotFound();
+        if (null === $note->getDeliveredAt()) {
+            throw new NotDeliveredYet();
+        }
+
+        return new PrintedDeliveryNote(self::fileName($note, 'delivered'), $this->render($note, DeliveryNotePage::COPY));
+    }
+
+    /**
      * Stores a numbered note's PDF as it is issued, unless it already keeps one.
      *
      * @throws DeliveryNoteNotFound
@@ -110,9 +128,11 @@ final readonly class PrintDeliveryNote
         });
     }
 
-    /** @param DeliveryNotePage::DRAFT|DeliveryNotePage::CANCELLED|null $watermark */
+    /** @param DeliveryNotePage::DRAFT|DeliveryNotePage::CANCELLED|DeliveryNotePage::COPY|null $watermark */
     private function render(DeliveryNote $note, ?string $watermark): string
     {
+        // A draft and a delivered copy say who is named now; what was issued says who was named then.
+        $receiver = DeliveryNotePage::DRAFT === $watermark || DeliveryNotePage::COPY === $watermark ? $note->getHeader()->receivedBy?->name : $note->getPrintedReceiverName();
         $printing = $note->getPrintSettings() ?? DeliveryNotePrinting::today($this->settings, $note);
         // A note has no copy: what it prints once numbered is its original, which names things as it was validated with.
         $names = $note->getPrintedNames() ?? $this->names->now($note->getCompany(), $printing->language, array_map(static fn (DeliveryNoteLine $line): Unit => $line->getUnit(), $note->getLines()));
@@ -139,6 +159,8 @@ final readonly class PrintDeliveryNote
             $names,
             $quote?->number,
             $invoice?->number,
+            $receiver,
+            DeliveryNotePage::COPY === $watermark,
         )));
     }
 
@@ -185,11 +207,12 @@ final readonly class PrintDeliveryNote
         return null !== $discount && 0 !== Decimal::of($discount)->compare(Decimal::zero());
     }
 
-    private static function fileName(DeliveryNote $note): string
+    private static function fileName(DeliveryNote $note, ?string $copy = null): string
     {
         $number = $note->getNumber();
+        $suffix = null === $copy ? '' : '-'.$copy;
 
         // A numbering format may carry slashes, which a file name may not.
-        return null === $number ? \sprintf('delivery-note-%s.pdf', $note->getId()->toRfc4122()) : str_replace('/', '-', $number).'.pdf';
+        return null === $number ? \sprintf('delivery-note-%s%s.pdf', $note->getId()->toRfc4122(), $suffix) : str_replace('/', '-', $number).$suffix.'.pdf';
     }
 }

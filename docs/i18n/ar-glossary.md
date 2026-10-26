@@ -52,6 +52,7 @@ the IRPP/IS code, published in the Journal officiel, was not read). A term marke
 | bon de livraison | وصل تسليم | `[Unverified]` |
 | commande fournisseur | طلبية لدى مزوّد; the list « طلبيات المزوّدين » | `[Unverified]` |
 | réception (of goods) | استلام | |
+| Reçu par (who received a document's goods) | المستلم; « مستلم البضاعة » in a sentence | `[Unverified]` |
 | franchise en base | الإعفاء الأساسي | `[Unverified]` French regime, rarely seen in Arabic |
 | autoliquidation | التصفية الذاتية للأداء | `[Unverified]` |
 | échéance | أجل الاستحقاق | |

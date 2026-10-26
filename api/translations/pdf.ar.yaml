@@ -26,6 +26,7 @@ delivery_note:
         name: 'الاسم'
         signature: 'الإمضاء والختم'
         reserves: 'الاحترازات'
+    received_by: 'المستلم:'
 purchase_order:
     title: 'طلبية لدى مزوّد'
     vendor: 'المزوّد'
@@ -114,6 +115,7 @@ demo:
 copy:
     duplicate: 'نظير — أعيدت طباعته بتاريخ %date%'
     current: 'نسخة — الوضعية بتاريخ %date%'
+    delivered: 'نسخة — سُلّمت بتاريخ %date%'
 stamp:
     paid: 'خالصة'
     partial: 'خالصة جزئيًا'

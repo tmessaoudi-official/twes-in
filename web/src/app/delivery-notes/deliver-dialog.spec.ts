@@ -118,7 +118,7 @@ describe('DeliverDialog', () => {
     await deliver();
 
     expect(q('delivery-note-delivered-time-error')).toBeNull();
-    expect(delivered).toHaveBeenCalledWith('');
+    expect(delivered).toHaveBeenCalledWith('', null);
     expect(ref.close).toHaveBeenCalledWith(true);
   });
 
@@ -129,7 +129,7 @@ describe('DeliverDialog', () => {
     await type('delivery-note-delivered-time', '9h05');
     await deliver();
 
-    expect(delivered).toHaveBeenCalledWith('2026-10-01T09:05');
+    expect(delivered).toHaveBeenCalledWith('2026-10-01T09:05', null);
   });
 
   it('delivers now when left as it opened', async () => {
@@ -137,7 +137,7 @@ describe('DeliverDialog', () => {
 
     await deliver();
 
-    expect(delivered).toHaveBeenCalledWith('');
+    expect(delivered).toHaveBeenCalledWith('', null);
   });
 
   it('stays open on a refused day, saying why under it, and what no field takes below', async () => {

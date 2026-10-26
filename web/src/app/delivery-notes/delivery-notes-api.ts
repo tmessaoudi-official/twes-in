@@ -17,6 +17,8 @@ import type {
   DeliveryNoteOptionsDeliveryNoteOptionsRead,
   DeliveryNoteProductPickDeliveryNoteProductPickRead,
   DeliveryNoteCreditDeliveryNoteCreditRead,
+  DeliveryNoteDeliveryNoteReceiveValidationDeliveryNoteReceive as DeliveryNoteDeliveryNoteReceive,
+  DeliveryNoteReceiverPickDeliveryNoteReceiverPickRead,
   DeliveryNoteLeftDeliveryNoteLeftRead,
   DeliveryNoteStatusCountsDeliveryNoteStatusCountsRead,
   InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWriteValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
@@ -25,6 +27,7 @@ import type {
   InvoicingCheckInvoicingCheckWriteValidationInvoicingCheckWrite as InvoicingCheckWrite,
 } from '../api/types.gen';
 import type { PreviewBody } from '../shared/documents/document-figures';
+import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
@@ -263,18 +266,53 @@ export class DeliveryNotesApi {
     return this.step(companyId, id, 'validate', null);
   }
 
-  /** Numbers a draft and marks it delivered today, both or neither; refused as `validate` refuses. */
-  async validateAndDeliver(companyId: string, id: string): Promise<DeliveryNoteRow> {
-    return this.step(companyId, id, 'validate-and-deliver', null);
+  /**
+   * Numbers a draft and marks it delivered today, both or neither; refused as `validate` refuses. Who received is the
+   * draft's, or the one given, which its print then names.
+   */
+  async validateAndDeliver(
+    companyId: string,
+    id: string,
+    receivedBy: ReceiverChoice | null = null,
+  ): Promise<DeliveryNoteRow> {
+    const body: DeliveryNoteDeliveryNoteReceive = { receivedBy };
+    return this.step(companyId, id, 'validate-and-deliver', body);
   }
 
   /**
    * Marks a validated note delivered at a moment written on the company's clock (`YYYY-MM-DDTHH:MM`), or now when
-   * it is left out.
+   * it is left out; received by whoever is given, else whoever the draft named.
    */
-  async deliver(companyId: string, id: string, delivered: string | null): Promise<DeliveryNoteRow> {
-    const body: DeliveryNoteDeliveryNoteDeliver = { delivered };
+  async deliver(
+    companyId: string,
+    id: string,
+    delivered: string | null,
+    receivedBy: ReceiverChoice | null = null,
+  ): Promise<DeliveryNoteRow> {
+    const body: DeliveryNoteDeliveryNoteDeliver = { delivered, receivedBy };
     return this.step(companyId, id, 'deliver', body);
+  }
+
+  /** Who received a numbered note's goods, put right, or nobody; its issued print stays as it was. */
+  async correctReceiver(
+    companyId: string,
+    id: string,
+    receivedBy: ReceiverChoice | null,
+  ): Promise<DeliveryNoteRow> {
+    const body: DeliveryNoteDeliveryNoteReceive = { receivedBy };
+    return this.step(companyId, id, 'receiver', body);
+  }
+
+  /** The customer's contacts a note offers to name who received, under the note's own permission. */
+  async receivers(companyId: string, customerId: string): Promise<ReceiverContact[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<DeliveryNoteReceiverPickDeliveryNoteReceiverPickRead[]>(
+          `${companyPath(companyId)}/delivery-note-options/customers/${customerId}/receivers`,
+        ),
+      );
+      return rows.map((row) => ({ contactId: row.contactId ?? '', name: row.name }));
+    });
   }
 
   async cancel(companyId: string, id: string): Promise<DeliveryNoteRow> {
@@ -354,11 +392,16 @@ export class DeliveryNotesApi {
     return `${notePath(companyId, id)}/pdf`;
   }
 
+  /** The delivered note printed again, who received and when, under « Copie — livrée le … ». */
+  deliveredCopyUrl(companyId: string, id: string): string {
+    return `${notePath(companyId, id)}/pdf/delivered`;
+  }
+
   private async step(
     companyId: string,
     id: string,
-    action: 'validate' | 'validate-and-deliver' | 'deliver' | 'cancel',
-    body: DeliveryNoteDeliveryNoteDeliver | null,
+    action: 'validate' | 'validate-and-deliver' | 'deliver' | 'receiver' | 'cancel',
+    body: DeliveryNoteDeliveryNoteDeliver | DeliveryNoteDeliveryNoteReceive | null,
   ): Promise<DeliveryNoteRow> {
     return this.guard(async () =>
       toNote(
@@ -493,6 +536,10 @@ function toNote(
     invoice: raw.invoice
       ? { invoiceId: raw.invoice.invoiceId, number: raw.invoice.number ?? null }
       : null,
+    receivedBy: raw.receivedBy?.name
+      ? { name: raw.receivedBy.name, contactId: raw.receivedBy.contactId ?? null }
+      : null,
+    receiverRule: raw.receiverRule ?? null,
   };
 }
 

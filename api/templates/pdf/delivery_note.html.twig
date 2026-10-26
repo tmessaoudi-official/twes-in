@@ -17,12 +17,17 @@
     .reception table { margin: 0; }
     .reception td { width: 33.33%; height: 30mm; vertical-align: top; border: 1px solid #afb8c1; padding: 6px; font-size: 8pt; color: #57606a; }
     .reception .reserves { height: 18mm; border: 1px solid #afb8c1; border-top: 0; padding: 6px; font-size: 8pt; color: #57606a; }
+    .reception .filled { margin-top: 6px; font-size: 10pt; color: #1f2328; }
+    .copy-mark { margin: 0 0 8px; font-weight: 700; letter-spacing: .05em; color: #cf222e; }
   </style>
 </head>
 <body class="{{ 'layout-' ~ page.design.layout.value }}">
   {%- include 'pdf/_demo_band.html.twig' with {demo: demo, t: t, locale: locale} only %}
   {%- if page.watermark %}
     {% include 'pdf/_watermark.html.twig' with {text: ('watermark.' ~ page.watermark)|trans({}, t, locale), look: page.design.watermark} only %}
+  {%- endif %}
+  {%- if page.deliveredCopy and note.deliveredAt %}
+    <p class="copy-mark" data-testid="copy-mark">{{ 'copy.delivered'|trans({'%date%': note.deliveredAt|date(dateFormat, note.company.timezone)}, t, locale) }}</p>
   {%- endif %}
 
   <div class="parties">
@@ -138,15 +143,20 @@
     </div>
   {%- endif %}
 
-  {#- The reception block: three cells and a line for réserves,
-      a delivery setting, on by default. #}
+  {#- Who received, on a line of its own where no reception block prints a cell for it. #}
+  {%- if page.receiverName and not page.receptionBlock %}
+    <p data-testid="received-by">{{ 'delivery_note.received_by'|trans({}, t, locale) }} <bdi>{{ page.receiverName }}</bdi></p>
+  {%- endif %}
+
+  {#- The reception block: three cells and a line for réserves, a delivery setting, on by default. « Nom » carries who
+      received when one is named; a delivered copy fills the moment too. #}
   {%- if page.receptionBlock %}
     <section class="reception">
       <h2>{{ 'delivery_note.reception.title'|trans({}, t, locale) }}</h2>
       <table>
         <tr>
-          <td>{{ 'delivery_note.reception.when'|trans({}, t, locale) }}</td>
-          <td>{{ 'delivery_note.reception.name'|trans({}, t, locale) }}</td>
+          <td>{{ 'delivery_note.reception.when'|trans({}, t, locale) }}{% if page.deliveredCopy and note.deliveredAt %}<div class="filled">{{ note.deliveredAt|date(dateFormat ~ ' H:i', note.company.timezone) }}</div>{% endif %}</td>
+          <td>{{ 'delivery_note.reception.name'|trans({}, t, locale) }}{% if page.receiverName %}<div class="filled" data-testid="received-by"><bdi>{{ page.receiverName }}</bdi></div>{% endif %}</td>
           <td>{{ 'delivery_note.reception.signature'|trans({}, t, locale) }}</td>
         </tr>
       </table>

@@ -26,6 +26,8 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Shared\Domain\Event\DomainEvent;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
@@ -98,6 +100,17 @@ class DeliveryNote implements CompanyOwned
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notesInternal = null;
+
+    /** Who received the goods, as the note prints it; with the contact it was copied from, when there was one. */
+    #[ORM\Column(length: Receiver::NAME_MAX, nullable: true)]
+    private ?string $receivedByName = null;
+
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $receivedByContactId = null;
+
+    /** Who received, as the note's issued print names them: the receiver when it was validated, kept as it was then. */
+    #[ORM\Column(length: Receiver::NAME_MAX, nullable: true)]
+    private ?string $printedReceiverName = null;
 
     /** @var array<string, mixed>|null CustomerSnapshot::toArray(), written by validation */
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
@@ -214,13 +227,13 @@ class DeliveryNote implements CompanyOwned
      * Gives a draft with lines its number and issue day. From then on it prints what its customer was called that day,
      * the rates its taxes had that day, and, when it names no delivery address, where the customer takes goods
      * (its shipping address, else its billing one), it prints as its settings said that day (`$print`), and it keeps
-     * what its units and taxes were called that day (`$names`). Records
-     * `delivery_note.validated`.
+     * what its units and taxes were called that day (`$names`). It prints who receives the goods as named then: the
+     * draft's receiver, or `$receiver` when one is given as it is validated. Records `delivery_note.validated`.
      *
      * @throws DeliveryNoteNotDraft
      * @throws InvalidDeliveryNote
      */
-    public function validate(string $number, \DateTimeImmutable $issueDate, DeliveryNotePrint $print, PrintedNames $names, \DateTimeImmutable $now): void
+    public function validate(string $number, \DateTimeImmutable $issueDate, DeliveryNotePrint $print, PrintedNames $names, \DateTimeImmutable $now, ?Receiver $receiver = null): void
     {
         $this->assertDraft('is validated');
         if ($this->lines->isEmpty()) {
@@ -246,6 +259,10 @@ class DeliveryNote implements CompanyOwned
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->printSettings = $print->toArray();
         $this->printedNames = $names->toArray();
+        if (null !== $receiver) {
+            $this->receive($receiver);
+        }
+        $this->printedReceiverName = $this->receivedByName;
         $this->status = DeliveryNoteStatus::Validated;
         $this->number = $number;
         $this->issueDate = self::day($issueDate);
@@ -280,12 +297,13 @@ class DeliveryNote implements CompanyOwned
 
     /**
      * A validated note's goods reached the customer at a moment from its issue day, the company's, to now. Stamped now
-     * unless told otherwise, and correctable: the deliveries of a round are often recorded together at its end.
+     * unless told otherwise, and correctable: the deliveries of a round are often recorded together at its end. Who
+     * received them is the one given, else the one the draft chose, which the rule may require or refuse.
      *
      * @throws DeliveryNoteTransitionRefused
      * @throws InvalidDeliveryNote
      */
-    public function deliver(\DateTimeImmutable $deliveredAt, \DateTimeImmutable $now): void
+    public function deliver(\DateTimeImmutable $deliveredAt, \DateTimeImmutable $now, ReceiverRule $rule, ?Receiver $receiver = null): void
     {
         if (DeliveryNoteStatus::Validated !== $this->status) {
             throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a validated note is delivered.', $this->reference(), $this->status->value));
@@ -297,11 +315,39 @@ class DeliveryNote implements CompanyOwned
         if ($deliveredAt > $now) {
             throw new InvalidDeliveryNote('deliveredAt', 'A delivery is confirmed once it happened, now at the latest.', 'after_today');
         }
+        $receiver ??= $this->receiver();
+        $refused = $rule->refusal($receiver);
+        if (null !== $refused) {
+            throw new InvalidDeliveryNote('receivedBy', $refused->message, $refused->reason, $refused->params);
+        }
+        $this->receive($receiver);
 
         $this->deliveryDate = $deliveredAt->setTimezone(new \DateTimeZone('UTC'));
         $this->delivered = true;
         $this->status = DeliveryNoteStatus::Delivered;
         $this->updatedAt = $now;
+    }
+
+    /**
+     * Who received a numbered note's goods, put right: a name misspelt, the wrong contact, or someone recorded by mistake.
+     * The PDF the note was issued with stays as it was; the note's page and its delivered copy say the corrected name.
+     *
+     * @return bool whether it changed
+     *
+     * @throws DeliveryNoteTransitionRefused
+     */
+    public function correctReceiver(?Receiver $receiver, \DateTimeImmutable $now): bool
+    {
+        if (DeliveryNoteStatus::Draft === $this->status || DeliveryNoteStatus::Cancelled === $this->status) {
+            throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: a draft names its receiver as it is revised, and a cancelled note delivers nothing.', $this->reference(), $this->status->value));
+        }
+        if (null === $receiver ? null === $this->receivedByName : $receiver->equals($this->receiver())) {
+            return false;
+        }
+        $this->receive($receiver);
+        $this->updatedAt = $now;
+
+        return true;
     }
 
     /**
@@ -380,6 +426,12 @@ class DeliveryNote implements CompanyOwned
      * The names its units and the company's taxes had in its language the day it was validated; null while it is a draft,
      * or for one validated before they were kept, which prints them as they are.
      */
+    /** Who received, as the issued print names them; null for a draft, or when nobody was named at validation. */
+    public function getPrintedReceiverName(): ?string
+    {
+        return $this->printedReceiverName;
+    }
+
     public function getPrintedNames(): ?PrintedNames
     {
         return null === $this->printedNames ? null : PrintedNames::fromArray($this->printedNames);
@@ -406,7 +458,7 @@ class DeliveryNote implements CompanyOwned
     /** The header as a form holds it: the delivery as the company's day. */
     public function getHeader(): DeliveryNoteHeader
     {
-        return new DeliveryNoteHeader(null === $this->deliveryDate ? null : $this->localDay($this->deliveryDate), $this->deliveryAddress, $this->customerReference, $this->remarksPrinted, $this->notesInternal);
+        return new DeliveryNoteHeader(null === $this->deliveryDate ? null : $this->localDay($this->deliveryDate), $this->deliveryAddress, $this->customerReference, $this->remarksPrinted, $this->notesInternal, $this->receiver());
     }
 
     /** @return list<DeliveryNoteLine> in order */
@@ -423,6 +475,18 @@ class DeliveryNote implements CompanyOwned
         $this->customerReference = $header->customerReference;
         $this->remarksPrinted = $header->remarksPrinted;
         $this->notesInternal = $header->notesInternal;
+        $this->receive($header->receivedBy);
+    }
+
+    private function receiver(): ?Receiver
+    {
+        return null === $this->receivedByName ? null : Receiver::named($this->receivedByName, $this->receivedByContactId);
+    }
+
+    private function receive(?Receiver $receiver): void
+    {
+        $this->receivedByName = $receiver?->name;
+        $this->receivedByContactId = $receiver?->contactId;
     }
 
     /** @param list<DeliveryNoteLineDetails> $lines */

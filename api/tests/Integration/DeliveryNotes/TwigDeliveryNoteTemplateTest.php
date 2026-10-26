@@ -26,6 +26,7 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteLineDetails;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNotePrint;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 use App\Tests\Support\InMemoryEstablishments;
@@ -108,7 +109,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
      */
     public function testADeliveredNotePrintsItsDayAndTimeToTheMinuteOnTheCompanysClock(): void
     {
-        $this->note->deliver(new \DateTimeImmutable('2026-09-15 14:32:07', new \DateTimeZone('UTC')), new \DateTimeImmutable('2026-09-16 09:00:00'));
+        $this->note->deliver(new \DateTimeImmutable('2026-09-15 14:32:07', new \DateTimeZone('UTC')), new \DateTimeImmutable('2026-09-16 09:00:00'), ReceiverRule::Optional);
 
         $html = $this->html(null, true, 'fr', '');
 

@@ -133,6 +133,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'delivery_note.revised',
   'delivery_note.validated',
   'delivery_note.delivered',
+  'delivery_note.receiver_corrected',
   'delivery_note.cancelled',
   'delivery_note.invoiced',
   'delivery_note.deleted',

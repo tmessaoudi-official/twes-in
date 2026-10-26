@@ -32,7 +32,7 @@ use Symfony\Component\Uid\Uuid;
 final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepository
 {
     /** The condition the delivery note trigram index answers; `SearchIndexesTest` proves the pair. */
-    public const string MATCHES_WORDS = "SEARCH_TEXT(n.number, n.customerReference, JSON_VALUES(n.customerSnapshot)) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    public const string MATCHES_WORDS = "SEARCH_TEXT(n.number, n.customerReference, JSON_VALUES(n.customerSnapshot), n.receivedByName) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
 
     private const array SORTED_BY = [
         'number' => 'n.number',

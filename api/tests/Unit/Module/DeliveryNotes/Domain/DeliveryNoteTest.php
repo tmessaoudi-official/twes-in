@@ -36,6 +36,8 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\InMemoryEstablishments;
@@ -325,11 +327,11 @@ final class DeliveryNoteTest extends TestCase
         $note = $this->validated($this->customer, new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-30')));
         self::assertNull($note->getDeliveredAt(), 'the day a validated note expects is not a delivery');
         $later = $this->now->modify('+1 day');
-        $this->assertRefused('deliveredAt', static fn () => $note->deliver(new \DateTimeImmutable('2026-09-14 22:30:00 UTC'), $later), 'before the issue day, in the company\'s zone');
-        $this->assertRefused('deliveredAt', static fn () => $note->deliver($later->modify('+1 second'), $later), 'after now');
+        $this->assertRefused('deliveredAt', static fn () => $note->deliver(new \DateTimeImmutable('2026-09-14 22:30:00 UTC'), $later, ReceiverRule::Optional), 'before the issue day, in the company\'s zone');
+        $this->assertRefused('deliveredAt', static fn () => $note->deliver($later->modify('+1 second'), $later, ReceiverRule::Optional), 'after now');
         self::assertSame(DeliveryNoteStatus::Validated, $note->getStatus());
 
-        $note->deliver(new \DateTimeImmutable('2026-09-14 23:30:07 UTC'), $later);
+        $note->deliver(new \DateTimeImmutable('2026-09-14 23:30:07 UTC'), $later, ReceiverRule::Optional);
 
         self::assertSame(
             [DeliveryNoteStatus::Delivered, '2026-09-14 23:30:07 UTC', '2026-09-15'],
@@ -338,9 +340,9 @@ final class DeliveryNoteTest extends TestCase
         self::assertEquals($later, $note->getUpdatedAt());
         self::assertSame([], $note->releaseEvents(), 'the stock left with validation');
         foreach ([
-            'deliver again' => static fn () => $note->deliver($later, $later),
+            'deliver again' => static fn () => $note->deliver($later, $later, ReceiverRule::Optional),
             'cancel' => static fn () => $note->cancel($later),
-            'deliver a draft' => fn () => DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now)->deliver($later, $later),
+            'deliver a draft' => fn () => DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now)->deliver($later, $later, ReceiverRule::Optional),
         ] as $case => $attempt) {
             try {
                 $attempt();
@@ -399,6 +401,65 @@ final class DeliveryNoteTest extends TestCase
         $note->attachPdf($pdf($this->company));
     }
 
+    /**
+     * Who received the goods: chosen on the draft, which then prints it, or given at the delivery, which replaces it; the
+     * company's rule refuses a delivery without one when it requires one, and any receiver when it is off. Once
+     * delivered, a wrong name is corrected, and says what changed.
+     */
+    public function testTheReceiverIsChosenOnTheDraftGivenAtTheDeliveryAndCorrectedAfterwards(): void
+    {
+        $sami = Receiver::named('Sami', Uuid::v7());
+        $draft = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now);
+        self::assertSame(['receivedBy'], new DeliveryNoteHeader(receivedBy: $sami)->differencesFrom($draft->getHeader()));
+        self::assertSame([], new DeliveryNoteHeader(receivedBy: Receiver::named('Sami', $sami->contactId))->differencesFrom(new DeliveryNoteHeader(receivedBy: $sami)));
+
+        $chosen = $this->validated($this->customer, new DeliveryNoteHeader(receivedBy: $sami));
+        self::assertEquals($sami, $chosen->getHeader()->receivedBy, 'a validated note keeps the receiver its draft chose, which it prints');
+        $chosen->deliver($this->now, $this->now, ReceiverRule::Required);
+        self::assertEquals($sami, $chosen->getHeader()->receivedBy, 'a delivery naming nobody keeps the one chosen');
+
+        $required = $this->validated($this->customer, new DeliveryNoteHeader());
+        $this->assertRefusedFor('receivedBy', 'receiver_required', fn () => $required->deliver($this->now, $this->now, ReceiverRule::Required));
+        self::assertSame(DeliveryNoteStatus::Validated, $required->getStatus());
+        $ahmed = Receiver::named('Ahmed');
+        $required->deliver($this->now, $this->now, ReceiverRule::Required, $ahmed);
+        self::assertEquals($ahmed, $required->getHeader()->receivedBy);
+
+        $off = $this->validated($this->customer, new DeliveryNoteHeader());
+        $this->assertRefusedFor('receivedBy', 'receiver_off', fn () => $off->deliver($this->now, $this->now, ReceiverRule::Off, $ahmed));
+
+        $later = $this->now->modify('+1 hour');
+        $full = Receiver::named('Ahmed Ben Salah');
+        self::assertTrue($required->correctReceiver($full, $later));
+        self::assertEquals([$full, $later], [$required->getHeader()->receivedBy, $required->getUpdatedAt()]);
+        self::assertFalse($required->correctReceiver(Receiver::named('Ahmed Ben Salah'), $later), 'the same name changes nothing');
+        self::assertTrue($required->correctReceiver(null, $later), 'a receiver recorded by mistake is taken away');
+        self::assertNull($required->getHeader()->receivedBy);
+        $this->expectException(DeliveryNoteTransitionRefused::class);
+        $draft->correctReceiver($full, $later);
+    }
+
+    public function testTheIssuedPrintNamesWhoReceivedAsTheNoteWasValidatedWhateverIsCorrectedSince(): void
+    {
+        $ahmed = Receiver::named('Ahmed Ben Salah', Uuid::v7());
+        $draft = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(receivedBy: $ahmed), [], $this->now);
+        self::assertNull($draft->getPrintedReceiverName(), 'a draft has printed nothing');
+
+        $chosen = $this->validated($this->customer, new DeliveryNoteHeader(receivedBy: $ahmed));
+        self::assertSame('Ahmed Ben Salah', $chosen->getPrintedReceiverName());
+        $chosen->correctReceiver(Receiver::named('Sami'), $this->now);
+        $chosen->deliver($this->now, $this->now, ReceiverRule::Optional, Receiver::named('Mounir'));
+        self::assertSame(['Mounir', 'Ahmed Ben Salah'], [$chosen->getHeader()->receivedBy?->name, $chosen->getPrintedReceiverName()]);
+
+        $named = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(receivedBy: $ahmed), [
+            new DeliveryNoteLineDetails(null, 'Pièce', '1', $this->unit('C62'), '10', []),
+        ], $this->now);
+        $named->validate('BL-2026-00002', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), KeptNames::of($named), $this->now, Receiver::named('Sami'));
+        self::assertSame(['Sami', 'Sami'], [$named->getHeader()->receivedBy?->name, $named->getPrintedReceiverName()], 'named as it is validated, as « Valider et livrer » does, it prints');
+
+        self::assertNull($this->validated($this->customer, new DeliveryNoteHeader())->getPrintedReceiverName());
+    }
+
     public function testAValidatedOrDeliveredNoteIsInvoicedOnceAndIsThenNeitherDeliveredNorCancelled(): void
     {
         $invoiceId = Uuid::v7();
@@ -406,7 +467,7 @@ final class DeliveryNoteTest extends TestCase
         $later = $this->now->modify('+1 hour');
         $validated = $this->validated($this->customer, new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-20')));
         $delivered = $this->validated($this->customer, new DeliveryNoteHeader());
-        $delivered->deliver($this->now, $this->now);
+        $delivered->deliver($this->now, $this->now, ReceiverRule::Optional);
         $cancelled = $this->validated($this->customer, new DeliveryNoteHeader());
         $cancelled->cancel($this->now);
         $cancelled->releaseEvents();
@@ -426,7 +487,7 @@ final class DeliveryNoteTest extends TestCase
         self::assertNull($cancelled->getInvoicedByInvoiceId());
         foreach ([
             'invoiced again' => static fn () => $validated->markInvoiced(Uuid::v7(), $later),
-            'delivered once invoiced' => static fn () => $validated->deliver($later, $later),
+            'delivered once invoiced' => static fn () => $validated->deliver($later, $later, ReceiverRule::Optional),
             'cancelled once invoiced' => static fn () => $delivered->cancel($later),
             'a draft invoiced' => fn () => DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now)->markInvoiced($invoiceId, $later),
             'a cancelled note invoiced' => static fn () => $cancelled->markInvoiced($invoiceId, $later),
@@ -462,6 +523,17 @@ final class DeliveryNoteTest extends TestCase
         $note->releaseEvents();
 
         return $note;
+    }
+
+    /** @param \Closure(): mixed $attempt */
+    private function assertRefusedFor(string $field, string $reason, \Closure $attempt): void
+    {
+        try {
+            $attempt();
+            self::fail("$field accepted");
+        } catch (InvalidDeliveryNote $refused) {
+            self::assertSame([$field, $reason], [$refused->field, $refused->reason]);
+        }
     }
 
     /** @param \Closure(): mixed $attempt */

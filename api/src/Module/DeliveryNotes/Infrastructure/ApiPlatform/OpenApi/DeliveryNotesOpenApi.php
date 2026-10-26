@@ -46,6 +46,22 @@ final readonly class DeliveryNotesOpenApi implements OpenApiFactoryInterface
             summary: 'A delivery note as a PDF',
             parameters: [$uuid('companyId', 'The company'), $uuid('deliveryNoteId', 'The delivery note')],
         )));
+        $openApi->getPaths()->addPath('/api/companies/{companyId}/delivery-notes/{deliveryNoteId}/pdf/delivered', new PathItem(get: new Operation(
+            operationId: 'deliveryNoteDeliveredCopy',
+            tags: ['DeliveryNote'],
+            responses: [
+                '200' => new Response(
+                    'The PDF: the note as its delivery left it, who received and when, under « Copie — livrée le … »; never stored',
+                    new \ArrayObject(['application/pdf' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary']))]),
+                ),
+                '401' => new Response('Not signed in'),
+                '404' => new Response('No such delivery note in this company, no delivery_note.read, or the module is switched off'),
+                '409' => new Response('The note\'s goods have not been delivered'),
+                '503' => new Response('The renderer could not produce the PDF'),
+            ],
+            summary: 'A delivered note printed again, as its delivery left it',
+            parameters: [$uuid('companyId', 'The company'), $uuid('deliveryNoteId', 'The delivery note')],
+        )));
 
         return $openApi;
     }

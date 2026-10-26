@@ -40,6 +40,8 @@ const draft: DeliveryNoteRow = {
   invoices: [],
   quote: null,
   invoice: null,
+  receivedBy: null,
+  receiverRule: 'optional',
 };
 const input: DeliveryNoteInput = {
   customerId: 'k1',
@@ -50,6 +52,7 @@ const input: DeliveryNoteInput = {
   remarksPrinted: null,
   notesInternal: null,
   lines: [],
+  receivedBy: null,
 };
 
 describe('DeliveryNotesFacade', () => {
@@ -164,7 +167,7 @@ describe('DeliveryNotesFacade', () => {
       kept: { ...numbered, status: 'delivered' },
     });
     expect(facade.note()?.status).toBe('delivered');
-    expect(api.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20');
+    expect(api.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20', null);
 
     api.cancel.mockResolvedValue({ ...numbered, status: 'cancelled' });
     expect((await facade.cancel('c1', 'n1'))?.status).toBe('cancelled');

@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   type AbstractControl,
@@ -21,6 +28,14 @@ import { FormStep } from '../shared/form/form-step';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { revealInvalid } from '../shared/form/reveal-invalid';
 import { formatTime, todayIn } from '../shared/i18n/format';
+import {
+  type Receiver,
+  type ReceiverChoice,
+  type ReceiverContact,
+  receiverChoice,
+  receiverForm,
+} from '../shared/receivers/receiver';
+import { ReceiverField } from '../shared/receivers/receiver-field';
 
 /**
  * When a note was delivered, asked when delivering rather than sitting as a field in the action bar. It opens on now
@@ -34,8 +49,20 @@ const WALL_CLOCK = 'en-GB'; // language-literal: its 24-hour HH:MM is the API's 
 export interface DeliverDialogData {
   /** The company's clock, whose today and now the fields open on. */
   zone: string | null;
-  /** Marks the note delivered at the moment written, '' for now; the dialog stays open on a refusal. */
-  deliver: (moment: string) => Promise<FormAnswer<unknown>>;
+  /**
+   * « Reçu par », asked beside the moment unless the customer's notes name nobody: who the note names now, whether it
+   * must name someone, and the customer's contacts, offered once read.
+   */
+  receiver?: {
+    current: Receiver | null;
+    required: boolean;
+    contacts: Promise<readonly ReceiverContact[]>;
+  };
+  /**
+   * Marks the note delivered at the moment written, '' for now, received by whoever is named; null keeps whoever the
+   * note names. The dialog stays open on a refusal.
+   */
+  deliver: (moment: string, receivedBy: ReceiverChoice | null) => Promise<FormAnswer<unknown>>;
 }
 
 @Component({
@@ -48,6 +75,7 @@ export interface DeliverDialogData {
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    ReceiverField,
     TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -106,6 +134,11 @@ export interface DeliverDialogData {
           }
         </mat-form-field>
       </div>
+      @if (receiver !== null) {
+        <div class="pt-3">
+          <app-receiver-field [form]="receiver" [contacts]="contacts()" testId="deliver-receiver" />
+        </div>
+      }
       @if (step.unplaced(); as said) {
         <p role="alert" class="text-sm text-error" data-testid="deliver-refused">
           {{ said.key | translate: said.params }}
@@ -138,6 +171,12 @@ export class DeliverDialog {
     time: formatTime(new Date().toISOString(), WALL_CLOCK, this.zone ?? undefined),
   };
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  /** Who received, opened on whoever the note names; null where the customer's notes name nobody. */
+  protected readonly receiver =
+    this.data.receiver === undefined
+      ? null
+      : receiverForm(this.data.receiver.current, this.data.receiver.required);
+  protected readonly contacts = signal<readonly ReceiverContact[]>([]);
   /**
    * Both empty is « now »; otherwise each needs the other. The day's own shape is the day input's to say (`date`), the
    * time's is said here, and each is said under its field once left or once « Livrer » is pressed.
@@ -154,6 +193,7 @@ export class DeliverDialog {
   });
 
   constructor() {
+    void this.data.receiver?.contacts.then((contacts) => this.contacts.set(contacts));
     // Each field's need follows what the other holds, so a change to one asks the other again.
     for (const [changed, other] of [
       ['day', 'time'],
@@ -166,15 +206,24 @@ export class DeliverDialog {
   }
 
   protected async deliver(): Promise<void> {
-    if (revealInvalid(this.form, this.host) || this.step.busy()) return;
+    const receiver = this.receiver;
+    const fields = receiver === null ? [this.form] : [this.form, receiver];
+    if (revealInvalid(fields, this.host) || this.step.busy()) return;
     const answer = await this.step.run(
-      () => this.data.deliver(this.moment()),
-      // The day the API refuses (`delivered`, before the note or after now) is said under the day.
+      () => this.data.deliver(this.moment(), receiver === null ? null : receiverChoice(receiver)),
+      // The day the API refuses (`delivered`, before the note or after now) is said under the day, and who received
+      // under « Reçu par ».
       (refusals) =>
         refusals.filter((refusal) => {
-          if (refusal.field !== 'delivered') return true;
-          this.form.controls.day.setErrors({ refused: this.step.wordsOf(refusal) });
-          this.form.controls.day.markAsTouched();
+          const control =
+            refusal.field === 'delivered'
+              ? this.form.controls.day
+              : refusal.field === 'receivedBy'
+                ? receiver?.controls.name
+                : undefined;
+          if (control === undefined) return true;
+          control.setErrors({ refused: this.step.wordsOf(refusal) });
+          control.markAsTouched();
           return false;
         }),
     );

@@ -28,7 +28,11 @@ use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLineTax;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
 use App\Settings\Application\ReadSetting;
 use App\Shared\Application\DomainEvents;
+use App\Shared\Application\Receivers\ChooseReceiver;
+use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\Refusal;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\Exception\InvalidNumbering;
@@ -47,6 +51,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
     public const string VALIDATED = 'delivery_note.validated';
     public const string DELIVERED = 'delivery_note.delivered';
     public const string CANCELLED = 'delivery_note.cancelled';
+    public const string RECEIVER_CORRECTED = 'delivery_note.receiver_corrected';
 
     public function __construct(
         private DeliveryNoteRepository $notes,
@@ -62,6 +67,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         private ExcludedTaxFamilies $excluded,
         private QuoteLines $quoteLines,
         private InvoiceLines $invoiceLines,
+        private ChooseReceiver $receivers,
     ) {
     }
 
@@ -95,12 +101,15 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
      * @throws DeliveryNoteNumberTaken
      * @throws DeliveryNoteTransitionRefused
      */
-    public function validateAndDeliver(Company $company, Uuid $id, ?Uuid $actorUserId): DeliveryNote
+    public function validateAndDeliver(Company $company, Uuid $id, ?Uuid $actorUserId, ?ReceiverChoice $receivedBy = null): DeliveryNote
     {
-        $note = $this->transactions->run(function () use ($company, $id, $actorUserId): DeliveryNote {
-            $note = $this->numbered($company, $this->locked($company, $id), $actorUserId);
+        $note = $this->transactions->run(function () use ($company, $id, $actorUserId, $receivedBy): DeliveryNote {
+            $note = $this->locked($company, $id);
+            // Named as it is validated, so the note's issued print says who received.
+            $receiver = null === $receivedBy ? null : $this->receiver($company, $note, $receivedBy, $actorUserId);
+            $note = $this->numbered($company, $note, $actorUserId, $receiver);
 
-            return $this->delivered($company, $note, null, $actorUserId);
+            return $this->delivered($company, $note, null, null, $actorUserId);
         });
         $this->events->publish(...$note->releaseEvents());
 
@@ -109,17 +118,44 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
 
     /**
      * @param \DateTimeImmutable|null $deliveredAt the moment the goods arrived; left out, now
+     * @param ReceiverChoice|null     $receivedBy  who received them; left out, whoever the draft named
      *
      * @throws DeliveryNoteNotFound
      * @throws DeliveryNoteTransitionRefused
      * @throws InvalidDeliveryNote
      */
-    public function deliver(Company $company, Uuid $id, ?\DateTimeImmutable $deliveredAt, ?Uuid $actorUserId): DeliveryNote
+    public function deliver(Company $company, Uuid $id, ?\DateTimeImmutable $deliveredAt, ?Uuid $actorUserId, ?ReceiverChoice $receivedBy = null): DeliveryNote
     {
-        $note = $this->transactions->run(fn (): DeliveryNote => $this->delivered($company, $this->locked($company, $id), $deliveredAt, $actorUserId));
+        $note = $this->transactions->run(fn (): DeliveryNote => $this->delivered($company, $this->locked($company, $id), $deliveredAt, $receivedBy, $actorUserId));
         $this->events->publish(...$note->releaseEvents());
 
         return $note;
+    }
+
+    /**
+     * Who received a numbered note's goods, put right, or nobody when someone was named by mistake. Recorded by the field
+     * it changed, never the name: the journal keeps no one's name.
+     *
+     * @throws DeliveryNoteNotFound
+     * @throws DeliveryNoteTransitionRefused
+     * @throws InvalidDeliveryNote
+     */
+    public function correctReceiver(Company $company, Uuid $id, ?ReceiverChoice $receivedBy, ?Uuid $actorUserId): DeliveryNote
+    {
+        return $this->transactions->run(function () use ($company, $id, $receivedBy, $actorUserId): DeliveryNote {
+            $note = $this->locked($company, $id);
+            $receiver = $this->receiver($company, $note, $receivedBy, $actorUserId);
+            $refused = DeliveryNoteSettings::receiverRule($this->settings, $note)->refusal($receiver);
+            if (null !== $refused) {
+                throw new InvalidDeliveryNote('receivedBy', $refused->message, $refused->reason, $refused->params);
+            }
+            if ($note->correctReceiver($receiver, $this->clock->now())) {
+                $this->notes->save($note);
+                $this->record($company, $note, self::RECEIVER_CORRECTED, ['fields' => ['receivedBy']], $actorUserId);
+            }
+
+            return $note;
+        });
     }
 
     /**
@@ -147,7 +183,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         return $note;
     }
 
-    private function numbered(Company $company, DeliveryNote $note, ?Uuid $actorUserId): DeliveryNote
+    private function numbered(Company $company, DeliveryNote $note, ?Uuid $actorUserId, ?Receiver $receiver = null): DeliveryNote
     {
         $note->assertDraft('is validated');
         // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile.
@@ -162,7 +198,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         }
         $printing = DeliveryNotePrinting::today($this->settings, $note);
         $units = array_map(static fn (DeliveryNoteLine $line): Unit => $line->getUnit(), $note->getLines());
-        $note->validate($allocated->number, $allocated->issueDate, $printing, $this->names->now($company, $printing->language, $units), $this->clock->now());
+        $note->validate($allocated->number, $allocated->issueDate, $printing, $this->names->now($company, $printing->language, $units), $this->clock->now(), $receiver);
         $this->totals->checked($note);
         $this->notes->save($note);
         $this->record($company, $note, self::VALIDATED, ['number' => $allocated->number], $actorUserId);
@@ -170,10 +206,11 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         return $note;
     }
 
-    private function delivered(Company $company, DeliveryNote $note, ?\DateTimeImmutable $deliveredAt, ?Uuid $actorUserId): DeliveryNote
+    private function delivered(Company $company, DeliveryNote $note, ?\DateTimeImmutable $deliveredAt, ?ReceiverChoice $receivedBy, ?Uuid $actorUserId): DeliveryNote
     {
         $now = $this->clock->now();
-        $note->deliver($deliveredAt ?? $now, $now);
+        $receiver = null === $receivedBy ? null : $this->receiver($company, $note, $receivedBy, $actorUserId);
+        $note->deliver($deliveredAt ?? $now, $now, DeliveryNoteSettings::receiverRule($this->settings, $note), $receiver);
         $this->notes->save($note);
         $this->record($company, $note, self::DELIVERED, ['deliveryDate' => $note->getHeader()->deliveryDate?->format('Y-m-d')], $actorUserId);
 
@@ -202,6 +239,26 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         ), $note->getLines());
         $this->invoiceLines->resolved($company, $lines, $note->getCustomer(), $note->getEstablishment(), $note, true);
         $this->quoteLines->resolved($company, $lines, $note->getCustomer(), $note->getEstablishment(), $note, true);
+    }
+
+    /**
+     * Who the person named, among the note's customer's contacts or typed; null when they named nobody; the receiver the
+     * note already names when that is who they named.
+     *
+     * @throws InvalidDeliveryNote
+     */
+    private function receiver(Company $company, DeliveryNote $note, ?ReceiverChoice $receivedBy, ?Uuid $actorUserId): ?Receiver
+    {
+        $current = $note->getHeader()->receivedBy;
+        if (null !== $receivedBy && $receivedBy->names($current)) {
+            return $current;
+        }
+        $receiver = $this->receivers->receiver($company, $note->getCustomer()->getId(), $receivedBy, $actorUserId);
+        if ($receiver instanceof Refusal) {
+            throw new InvalidDeliveryNote('receivedBy', $receiver->message, $receiver->reason, $receiver->params);
+        }
+
+        return $receiver;
     }
 
     /** Held until the transaction ends and read as it stands: a status check on it cannot be overtaken by another request. */
@@ -242,6 +299,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
             self::CANCELLED => new Recorded(ManageDeliveryNotes::ENTITY_TYPE, AuditScope::Company),
             self::DELIVERED => new Recorded(ManageDeliveryNotes::ENTITY_TYPE, AuditScope::Company),
             self::VALIDATED => new Recorded(ManageDeliveryNotes::ENTITY_TYPE, AuditScope::Company),
+            self::RECEIVER_CORRECTED => new Recorded(ManageDeliveryNotes::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

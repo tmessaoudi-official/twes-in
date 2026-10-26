@@ -100,6 +100,13 @@ final class DemoFixturesTest extends ApiTestCase
                 "$name has a delivery note in every state",
             );
             self::assertSame(1, $this->numberOf("SELECT COUNT(*) FROM delivery_note n JOIN company c ON c.id = n.company_id WHERE n.company_id = ? AND n.status = 'delivered' AND n.issue_date = ((n.delivery_date AT TIME ZONE 'UTC') AT TIME ZONE c.timezone)::date", [$id]), "$name has a note validated and delivered in one step");
+            // Who received is named on a draft, printed with a note issued at « Valider et livrer », and given at a
+            // delivery after validation, which the original does not print.
+            self::assertSame(
+                ['delivered' => '1,1', 'draft' => '1,0', 'invoiced' => '1,0'],
+                array_column($this->em()->getConnection()->fetchAllAssociative('SELECT status, COUNT(received_by_name) || \',\' || COUNT(printed_receiver_name) AS counts FROM delivery_note WHERE company_id = ? AND received_by_name IS NOT NULL GROUP BY status ORDER BY status', [$id]), 'counts', 'status'),
+                "$name's notes name who received",
+            );
             self::assertSame(
                 ['draft', 'partly_received', 'received', 'sent'],
                 $this->column('SELECT DISTINCT status FROM purchase_order WHERE company_id = ? ORDER BY status', [$id]),

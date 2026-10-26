@@ -27,12 +27,14 @@ final readonly class DeliveryNotePage
     public const string DRAFT = 'draft';
     /** Printed across a note that no longer is one. */
     public const string CANCELLED = 'cancelled';
+    /** Printed across a delivered note printed again: the original stays the one validation stored. */
+    public const string COPY = 'copy';
 
     /**
-     * @param self::DRAFT|self::CANCELLED|null $watermark
-     * @param string                           $language   a language the catalogue prints documents in
-     * @param list<QuantityTotal>              $quantities what the lines come to in each unit, empty for a single line
-     * @param PrintedNames                     $names      what it calls its units and each of the company's taxes, by code; a tax code it lacks prints as itself
+     * @param self::DRAFT|self::CANCELLED|self::COPY|null $watermark
+     * @param string                                      $language   a language the catalogue prints documents in
+     * @param list<QuantityTotal>                         $quantities what the lines come to in each unit, empty for a single line
+     * @param PrintedNames                                $names      what it calls its units and each of the company's taxes, by code; a tax code it lacks prints as itself
      */
     public function __construct(
         public DeliveryNote $note,
@@ -58,6 +60,10 @@ final readonly class DeliveryNotePage
         public ?string $quoteNumber = null,
         /** The number of the issued invoice whose goods the note hands over, printed as its reference; null for none. */
         public ?string $invoiceNumber = null,
+        /** Who received the goods, in the reception block's « Nom » or on a line of its own; null for nobody named. */
+        public ?string $receiverName = null,
+        /** A delivered copy, which says when the goods arrived in the reception block and on its face. */
+        public bool $deliveredCopy = false,
     ) {
     }
 }

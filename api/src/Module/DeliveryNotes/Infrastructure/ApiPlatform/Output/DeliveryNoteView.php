@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output;
 
 use App\Module\DeliveryNotes\Application\CarryingInvoice;
+use App\Module\DeliveryNotes\Application\DeliveryNoteSettings;
 use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\InvoicedLines;
 use App\Module\DeliveryNotes\Application\Invoices\DeliverableInvoices;
@@ -19,6 +20,7 @@ use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Settings\Application\ReadSetting;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\Uid\Uuid;
 
@@ -34,21 +36,24 @@ final readonly class DeliveryNoteView
     private const string QUOTES = 'quotes';
     private const string QUOTE_READ = 'quote.read';
 
-    public function __construct(private DeliveryNoteTotals $totals, private InvoicedLines $invoiced, private CompanyGuard $guard, private ModuleStates $modules, private DeliverableQuotes $quotes, private DeliverableInvoices $deliverable)
+    public function __construct(private DeliveryNoteTotals $totals, private InvoicedLines $invoiced, private CompanyGuard $guard, private ModuleStates $modules, private DeliverableQuotes $quotes, private DeliverableInvoices $deliverable, private ReadSetting $settings)
     {
     }
 
     public function of(DeliveryNote $note): DeliveryNoteResource
     {
-        return $this->page([$note])[0];
+        return $this->page([$note], withReceiverRule: true)[0];
     }
 
     /**
+     * With `$withReceiverRule`, each note says whether its customer's notes name who received, which the note's own
+     * screen asks; a page of the list leaves it out, since settings are read one customer at a time.
+     *
      * @param list<DeliveryNote> $notes one company's
      *
      * @return list<DeliveryNoteResource>
      */
-    public function page(array $notes): array
+    public function page(array $notes, bool $withReceiverRule = false): array
     {
         if ([] === $notes) {
             return [];
@@ -61,7 +66,7 @@ final readonly class DeliveryNoteView
         $quoteOfLine = $this->quotesDelivered($notes);
         $invoiceOfLine = $mayOpen ? $this->invoicesDelivered($notes) : [];
 
-        return array_map(fn (DeliveryNote $note): DeliveryNoteResource => DeliveryNoteResource::of($note, $this->totals->of($note), self::carryingNote($note, $carrying), self::quoteOf($note, $quoteOfLine), self::invoiceOf($note, $invoiceOfLine)), $notes);
+        return array_map(fn (DeliveryNote $note): DeliveryNoteResource => DeliveryNoteResource::of($note, $this->totals->of($note), self::carryingNote($note, $carrying), self::quoteOf($note, $quoteOfLine), self::invoiceOf($note, $invoiceOfLine), $withReceiverRule ? DeliveryNoteSettings::receiverRule($this->settings, $note) : null), $notes);
     }
 
     /**

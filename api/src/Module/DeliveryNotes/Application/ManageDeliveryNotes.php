@@ -27,15 +27,21 @@ use App\Module\DeliveryNotes\Domain\Exception\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
+use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteLineDetails;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteSearch;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Settings\Application\ReadSetting;
+use App\Shared\Application\Receivers\ChooseReceiver;
+use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
+use App\Shared\Domain\ValueObject\ReceiverRule;
+use App\Shared\Domain\ValueObject\Refusal;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
@@ -70,6 +76,8 @@ final readonly class ManageDeliveryNotes implements DeclaresAuditActions
         private RecordVersions $versions,
         private QuoteLines $quoteLines,
         private InvoiceLines $invoiceLines,
+        private ChooseReceiver $receivers,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -114,7 +122,8 @@ final readonly class ManageDeliveryNotes implements DeclaresAuditActions
     {
         return $this->transactions->run(function () use ($company, $input, $actorUserId, $origin): DeliveryNote {
             [$establishment, $customer, $lines] = $this->checked($company, $input, null, true);
-            $note = DeliveryNote::create($company, $establishment, $customer, $input->header, $lines, $this->clock->now());
+            $header = $this->received($company, $customer, $input, null, $actorUserId);
+            $note = DeliveryNote::create($company, $establishment, $customer, $header, $lines, $this->clock->now());
             $this->totals->checked($note);
             $this->notes->save($note);
             $this->record($company, $note->getId(), self::CREATED, $origin, $actorUserId);
@@ -140,7 +149,8 @@ final readonly class ManageDeliveryNotes implements DeclaresAuditActions
                 $this->versions->expect($note, $version);
             }
             [$establishment, $customer, $lines] = $this->checked($company, $input, $note, true);
-            $changed = $note->revise($establishment, $customer, $input->header, $lines, $this->clock->now());
+            $header = $this->received($company, $customer, $input, $note, $actorUserId);
+            $changed = $note->revise($establishment, $customer, $header, $lines, $this->clock->now());
             if ([] !== $changed) {
                 $this->totals->checked($note);
                 $this->notes->save($note);
@@ -164,6 +174,9 @@ final readonly class ManageDeliveryNotes implements DeclaresAuditActions
         $current = null === $id ? null : $this->get($company, $id);
         $current?->assertDraft('changes');
         [$establishment, $customer, $lines] = $this->checked($company, $input, $current, false);
+        // Refused as a save would refuse it, without adding the name typed to the customer's contacts.
+        $choice = $input->receivedBy;
+        $this->received($company, $customer, new DeliveryNoteInput($input->customerId, $input->establishmentId, $input->header, $input->lines, null === $choice ? null : new ReceiverChoice($choice->contactId, $choice->name)), $current, null);
 
         // What a revision would make of the draft is a new note of the same parts, saved nowhere: a note's figures
         // depend on its lines alone.
@@ -211,6 +224,34 @@ final readonly class ManageDeliveryNotes implements DeclaresAuditActions
         }
 
         return [$establishment, $customer, $lines];
+    }
+
+    /**
+     * The header naming whoever the person chose to receive the goods: as the draft copied them when sent back as read,
+     * whatever the contact is called since; else a contact's name copied now, or the name typed, added to the customer's
+     * contacts when asked. Where the customer's notes name nobody, naming someone is refused; where they must name
+     * someone, it is the delivery that asks.
+     *
+     * @throws InvalidDeliveryNote
+     */
+    private function received(Company $company, Customer $customer, DeliveryNoteInput $input, ?DeliveryNote $current, ?Uuid $actorUserId): DeliveryNoteHeader
+    {
+        $choice = $input->receivedBy;
+        $kept = null !== $current && $current->getCustomer()->getId()->equals($customer->getId()) ? $current->getHeader()->receivedBy : null;
+        if (null !== $kept && null !== $choice && $choice->names($kept)) {
+            return $input->header->withReceiver($kept);
+        }
+        $receiver = $this->receivers->receiver($company, $customer->getId(), $choice, $actorUserId);
+        if ($receiver instanceof Refusal) {
+            throw new InvalidDeliveryNote('receivedBy', $receiver->message, $receiver->reason, $receiver->params);
+        }
+        $rule = DeliveryNoteSettings::receiverRuleFor($this->settings, $customer);
+        $refused = ReceiverRule::Off === $rule ? $rule->refusal($receiver) : null;
+        if (null !== $refused) {
+            throw new InvalidDeliveryNote('receivedBy', $refused->message, $refused->reason, $refused->params);
+        }
+
+        return $input->header->withReceiver($receiver);
     }
 
     /** @param array{products: list<string>, units: list<string>, taxes: list<string>} $kept */

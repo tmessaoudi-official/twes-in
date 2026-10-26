@@ -994,7 +994,8 @@
     },
     "delivery_note": {
       "show_prices": "Afficher les prix sur les bons de livraison",
-      "reception_block": "Imprimer le bloc de réception (date et heure, nom, signature et cachet, réserves)"
+      "reception_block": "Imprimer le bloc de réception (date et heure, nom, signature et cachet, réserves)",
+      "receiver": "Nommer qui a reçu les marchandises"
     },
     "presentation": {
       "accent": "Couleur d’accent",
@@ -1109,6 +1110,13 @@
           "50": "50",
           "100": "100",
           "200": "200"
+        }
+      },
+      "delivery_note": {
+        "receiver": {
+          "off": "Jamais",
+          "optional": "Si on le souhaite",
+          "required": "Toujours, à la livraison"
         }
       }
     },
@@ -1887,7 +1895,8 @@
       "deliveryCity": "Ville",
       "deliveryCountryCode": "Pays",
       "remarksPrinted": "Remarques imprimées sur le bon",
-      "notesInternal": "Notes internes"
+      "notesInternal": "Notes internes",
+      "receivedBy": "Reçu par"
     },
     "form": {
       "reference_hint": "Le numéro de commande du client, imprimé sur le bon.",
@@ -1963,7 +1972,9 @@
       "validate_deliver": "Valider et livrer",
       "validate_deliver_title": "Valider et livrer ce bon ?",
       "validate_deliver_message": "Il reçoit son numéro et il est livré aujourd’hui.",
-      "on_map": "Voir sur le plan"
+      "on_map": "Voir sur le plan",
+      "correct_receiver": "Corriger qui a reçu…",
+      "pdf_delivered": "Copie livrée (PDF)"
     },
     "errors": {
       "network": "Le serveur est injoignable.",
@@ -1974,6 +1985,7 @@
     },
     "validated": "Le bon a été validé.",
     "validated_delivered": "Le bon a été validé et livré.",
+    "receiver_corrected": "Qui a reçu le bon est corrigé.",
     "cancelled": "Le bon a été annulé.",
     "suggest": {
       "invoice": "Facturer ce bon"
@@ -2947,6 +2959,7 @@
     "saved_since": "Rien n’a été enregistré : une autre version de cette fiche l’a été entre-temps. Vérifiez-la, puis enregistrez de nouveau.",
     "undo_refused": "Rien n’a été annulé : une autre version a été enregistrée entre-temps.",
     "lines_conflict": "Les lignes ont aussi été modifiées dans la version enregistrée.",
+    "receiver_conflict": "Qui reçoit a aussi été modifié dans la version enregistrée.",
     "take_saved": "Prendre la version enregistrée",
     "keep_typed": "Garder ma saisie"
   },
@@ -3129,7 +3142,9 @@
       "default_at_top": "L’emplacement par défaut de l’établissement reste en haut de son arbre : il ne se range sous aucun autre.",
       "default_not_quarantine": "L’emplacement par défaut ne devient pas une quarantaine : toute livraison y retombe, ce qui s’y trouve doit pouvoir se vendre.",
       "location_twice": "Cet emplacement est déjà dans la liste : retirez l’un des deux.",
-      "establishment_kept": "Un emplacement reste dans son établissement : créez-en un dans l’autre établissement."
+      "establishment_kept": "Un emplacement reste dans son établissement : créez-en un dans l’autre établissement.",
+      "receiver_required": "Nommez qui a reçu : ce document le demande.",
+      "receiver_off": "« Reçu par » est désactivé pour ce document : videz ce champ."
     },
     "identifier_parts": {
       "number": "le numéro",
@@ -4120,5 +4135,16 @@
   },
   "demo_mails": {
     "title": "Courriers de la démo"
+  },
+  "receivers": {
+    "received_by": "Reçu par",
+    "a_contact": "Un contact du client",
+    "a_member": "Un membre de l’entreprise",
+    "add_to_contacts": "Ajouter à ses contacts",
+    "required": "Nommez qui a reçu.",
+    "nobody": "Personne",
+    "save": "Enregistrer",
+    "keep": "Ne rien changer",
+    "undo": "Annuler"
   }
 }

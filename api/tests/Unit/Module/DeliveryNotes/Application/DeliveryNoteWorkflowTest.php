@@ -46,7 +46,10 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\Receivers\ChooseReceiver;
+use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\Receiver;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
 use App\Tenancy\Application\Numbering\AllocateNumber;
@@ -59,6 +62,7 @@ use App\Tests\Support\InMemoryDeliveryNotes;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
+use App\Tests\Support\InMemoryReceiverContacts;
 use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryTaxComponents;
@@ -85,6 +89,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
     private RecordingDomainEvents $events;
     private DeliveryNoteWorkflow $workflow;
     private ChangeSettings $change;
+    private InMemoryReceiverContacts $contacts;
     private Company $company;
     private Company $globex;
     private Customer $customer;
@@ -122,6 +127,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
             new ExcludedTaxFamilies(ShippedFiscalPresets::presets()),
             NoQuotesToDeliver::lines($this->notes),
             NoInvoicesToDeliver::lines($this->notes),
+            new ChooseReceiver($this->contacts = new InMemoryReceiverContacts()),
         );
         $now = $this->clock->now();
         $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
@@ -323,6 +329,52 @@ final class DeliveryNoteWorkflowTest extends TestCase
         );
         self::assertInstanceOf(DeliveryNoteValidated::class, $this->events->published[0]);
         self::assertNotContains(true, $this->events->whileInTransaction, 'published once the transaction is over');
+    }
+
+    /**
+     * Who received: the customer's setting decides whether it is asked, a contact of the customer is copied by name, a
+     * typed name may be added to its contacts, and a correction after the delivery is recorded by the field it changed,
+     * never the name (the journal keeps no one's name).
+     */
+    public function testTheReceiverFollowsTheCustomersSettingAndIsCorrectedAfterTheDelivery(): void
+    {
+        $atCustomer = new SettingContext($this->company, customerId: $this->customer->getId());
+        $this->change->change($atCustomer, 'delivery_note.receiver', SettingLevel::Customer, 'required', null);
+        $actor = Uuid::v7();
+        $nobody = $this->draft();
+        try {
+            $this->workflow->validateAndDeliver($this->company, $nobody->getId(), $actor);
+            self::fail('a delivery naming nobody was taken for a customer that requires a receiver');
+        } catch (InvalidDeliveryNote $refused) {
+            self::assertSame(['receivedBy', 'receiver_required'], [$refused->field, $refused->reason]);
+        }
+
+        $ahmed = Uuid::v7();
+        $this->contacts->contacts[$this->customer->getId()->toRfc4122()][$ahmed->toRfc4122()] = 'Ahmed Ben Salah';
+        $note = $this->workflow->validateAndDeliver($this->company, $this->draft()->getId(), $actor, new ReceiverChoice($ahmed->toRfc4122()));
+        self::assertEquals(Receiver::named('Ahmed Ben Salah', $ahmed), $note->getHeader()->receivedBy);
+
+        $validated = $this->workflow->validate($this->company, $this->draft()->getId(), $actor);
+        $delivered = $this->workflow->deliver($this->company, $validated->getId(), null, $actor, new ReceiverChoice(name: 'Sami Trabelsi', addToContacts: true));
+        self::assertSame('Sami Trabelsi', $delivered->getHeader()->receivedBy?->name);
+        self::assertSame([[$this->customer->getId()->toRfc4122(), 'Sami Trabelsi']], $this->contacts->added);
+
+        $corrected = $this->workflow->correctReceiver($this->company, $delivered->getId(), new ReceiverChoice(name: 'Sami Trabelsy'), $actor);
+        self::assertSame('Sami Trabelsy', $corrected->getHeader()->receivedBy?->name);
+        $last = array_last($this->audit->entries);
+        self::assertNotNull($last);
+        self::assertSame([DeliveryNoteWorkflow::RECEIVER_CORRECTED, ['fields' => ['receivedBy']], $actor], [$last->action, $last->changes, $last->actorUserId]);
+        $count = \count($this->audit->entries);
+        $this->workflow->correctReceiver($this->company, $delivered->getId(), new ReceiverChoice(name: 'Sami Trabelsy'), $actor);
+        self::assertCount($count, $this->audit->entries, 'the same name records nothing');
+
+        $this->change->change($atCustomer, 'delivery_note.receiver', SettingLevel::Customer, 'off', null);
+        try {
+            $this->workflow->deliver($this->company, $this->workflow->validate($this->company, $this->draft()->getId(), $actor)->getId(), null, $actor, new ReceiverChoice(name: 'Sami'));
+            self::fail('a receiver was taken for a customer whose setting is off');
+        } catch (InvalidDeliveryNote $refused) {
+            self::assertSame(['receivedBy', 'receiver_off'], [$refused->field, $refused->reason]);
+        }
     }
 
     public function testWhatCannotBeValidatedIsNeitherNumberedNorDelivered(): void

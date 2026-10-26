@@ -5,7 +5,8 @@
 # that went without kept showing old prices, stock values and price lists until reloaded (audit 2026-10-06, C-7), and
 # the panels inside pages (a customer's statement, the invoices home, an invoice's reminders) did the same while only
 # `*-page.ts` was asked (hunt C1-C6). A site is any component under web/src/app, specs excluded, that reads through one of
-# its members (a load, reload, find, list or read call on `this.<member>`). A screen that has a reason not to is listed
+# its members (a load, reload, find, list or read call on `this.<member>`, or a stock read: onHand, stockTotals,
+# substitutes, the figures a line editor says beside what is typed). A screen that has a reason not to is listed
 # below with that reason. Usage: live-reload.sh [--root DIR]
 set -uo pipefail
 export LC_ALL=C
@@ -34,7 +35,7 @@ status=0
 checked=0
 for file in "${files[@]}"; do
   grep -q '@Component(' "$root/$file" 2>/dev/null || continue
-  grep -qE 'this\.[A-Za-z]+\.(load|reload|find|list|read)[A-Za-z]*\(' "$root/$file" || continue
+  grep -qE 'this\.[A-Za-z]+\.(load|reload|find|list|read|onHand|stockTotals|substitutes)[A-Za-z]*\(' "$root/$file" || continue
   [[ -n "${exempt[$file]:-}" ]] && continue
   checked=$((checked + 1))
   if ! grep -qE 'reloadOn|LiveRecord|liveRecord|RecordSync|leaveOnceOpen' "$root/$file"; then

@@ -25,6 +25,7 @@ import {
 } from './delivery-notes-types';
 import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
 import { type LineStock, type OnHand, stockOfLines } from '../shared/documents/line-stock';
+import type { ReceiverChoice } from '../shared/receivers/receiver';
 
 const FIELDS = 'delivery_notes.fields';
 /** The API's longest line description. */
@@ -138,6 +139,14 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
       shown: (row) => row.deliveryDate !== null,
       sortable: true,
       width: 150,
+    },
+    {
+      id: 'receivedBy',
+      priority: 'low',
+      label: `${FIELDS}.receivedBy`,
+      value: (row) => row.receivedBy?.name ?? '',
+      shown: (row) => row.receivedBy !== null,
+      wraps: true,
     },
     {
       id: 'total',
@@ -525,6 +534,7 @@ export function deliveryNoteInput(
   values: FormValues,
   lines: LinesArray,
   customerId: string,
+  receivedBy: ReceiverChoice | null = null,
 ): DeliveryNoteInput {
   const country = text(values['deliveryCountryCode']);
   return {
@@ -555,6 +565,7 @@ export function deliveryNoteInput(
       ...(line.sourceQuoteLineId === '' ? {} : { sourceQuoteLineId: line.sourceQuoteLineId }),
       ...(line.sourceInvoiceLineId === '' ? {} : { sourceInvoiceLineId: line.sourceInvoiceLineId }),
     })),
+    receivedBy,
   };
 }
 

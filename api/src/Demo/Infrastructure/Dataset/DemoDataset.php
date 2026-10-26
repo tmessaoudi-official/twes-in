@@ -75,6 +75,7 @@ use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Model\Schedule;
 use App\Shared\Domain\ValueObject\PaymentMethod;
@@ -200,7 +201,7 @@ final readonly class DemoDataset
 
             $this->planExpenses($demo, $timeline, $company, $vendors, $tax, $actor);
             $this->planRecurringExpense($demo, $timeline, $company, $vendors[0], $tax, $actor);
-            $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $tracked, $actor);
+            $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $tracked, array_map(static fn (array $contact): string => $contact[0].' '.$contact[1], $demo->contacts), $actor);
             $this->planPurchaseOrders($timeline, $company, $vendors, $goods, $homes, $actor);
             $this->planQuotes($timeline, $company, $customerIds, $sellable, $actor);
             // A tracked article leaves through a delivery note, which names its lot or serial number as a shop hands it
@@ -483,31 +484,35 @@ final readonly class DemoDataset
     }
 
     /**
-     * Six delivery notes, one in each state: invoiced, delivered twice, validated, cancelled and a draft.
+     * Six delivery notes, one in each state: invoiced, delivered twice, validated, cancelled and a draft. Who received the
+     * goods is named as a shop names them: on a draft, at « Valider et livrer », and at a delivery after validation,
+     * each time the customer's own contact, typed as a clerk types a name.
      *
      * @param \Closure(): Company $company
      * @param list<Uuid>          $customerIds
      * @param list<Uuid>          $goods
      * @param list<Uuid>          $tracked     goods tracked by lot or serial number: a few notes carry two of one, which
      *                                         leave from its lots, the first to expire first
+     * @param list<string>        $contacts    the name of each customer's contact, by the customer's place in the list
      */
-    private function planDeliveryNotes(Timeline $timeline, \Closure $company, array $customerIds, array $goods, array $tracked, Uuid $actor): void
+    private function planDeliveryNotes(Timeline $timeline, \Closure $company, array $customerIds, array $goods, array $tracked, array $contacts, Uuid $actor): void
     {
-        /** @var list<array{customer: int, day: int, validate: bool, deliver?: int, cancel?: int, invoice?: int, both?: true}> $plan */
+        /** @var list<array{customer: int, day: int, validate: bool, deliver?: int, cancel?: int, invoice?: int, both?: true, received?: true}> $plan */
         $plan = [
-            ['customer' => 0, 'day' => -120, 'validate' => true, 'deliver' => -118, 'invoice' => -110],
+            ['customer' => 0, 'day' => -120, 'validate' => true, 'deliver' => -118, 'invoice' => -110, 'received' => true],
             ['customer' => 7, 'day' => -80, 'validate' => true, 'deliver' => -78],
             ['customer' => 3, 'day' => -60, 'validate' => true, 'cancel' => -58],
             ['customer' => 9, 'day' => -40, 'validate' => true],
             ['customer' => 12, 'day' => -25, 'validate' => true, 'deliver' => -24],
-            ['customer' => 2, 'day' => -8, 'validate' => false],
+            ['customer' => 2, 'day' => -8, 'validate' => false, 'received' => true],
             // Numbered and delivered in the one step « Valider et livrer » takes, as the goods leave at once.
-            ['customer' => 5, 'day' => -15, 'validate' => false, 'both' => true],
+            ['customer' => 5, 'day' => -15, 'validate' => false, 'both' => true, 'received' => true],
         ];
         /** @var array<int, Uuid> $ids */
         $ids = [];
         foreach ($plan as $n => $note) {
             $customerId = $customerIds[$note['customer']];
+            $receiver = isset($note['received'], $contacts[$note['customer']]) ? new ReceiverChoice(null, $contacts[$note['customer']]) : null;
             $lines = [
                 new DeliveryNoteLineInput($goods[(3 * $n) % \count($goods)], null, (string) (2 + $n)),
                 new DeliveryNoteLineInput($goods[(3 * $n + 5) % \count($goods)], null, (string) (1 + $n % 3)),
@@ -515,8 +520,10 @@ final readonly class DemoDataset
             if ([] !== $tracked && \in_array($n, [0, 3, 4], true)) {
                 $lines[] = new DeliveryNoteLineInput($tracked[$n % \count($tracked)], null, '2');
             }
-            $timeline->at($note['day'], function () use (&$ids, $n, $company, $customerId, $lines, $note, $actor): void {
-                $ids[$n] = $this->deliveryNotes->create($company(), new DeliveryNoteInput($customerId, null, new DeliveryNoteHeader(), $lines), $actor)->getId();
+            $timeline->at($note['day'], function () use (&$ids, $n, $company, $customerId, $lines, $note, $receiver, $actor): void {
+                // A note delivered after its validation names who received at the delivery; the others on the draft.
+                $named = isset($note['deliver']) ? null : $receiver;
+                $ids[$n] = $this->deliveryNotes->create($company(), new DeliveryNoteInput($customerId, null, new DeliveryNoteHeader(), $lines, $named), $actor)->getId();
                 if ($note['validate']) {
                     $this->deliveryNoteWorkflow->validate($company(), $ids[$n], $actor);
                 }
@@ -525,8 +532,8 @@ final readonly class DemoDataset
                 }
             });
             if (isset($note['deliver'])) {
-                $timeline->at($note['deliver'], function () use (&$ids, $n, $company, $actor): void {
-                    $this->deliveryNoteWorkflow->deliver($company(), $ids[$n], null, $actor);
+                $timeline->at($note['deliver'], function () use (&$ids, $n, $company, $receiver, $actor): void {
+                    $this->deliveryNoteWorkflow->deliver($company(), $ids[$n], null, $actor, $receiver);
                 });
             }
             if (isset($note['cancel'])) {

@@ -102,6 +102,8 @@ const validated: DeliveryNoteRow = {
   invoices: [],
   quote: null,
   invoice: null,
+  receivedBy: null,
+  receiverRule: 'optional',
 };
 
 describe('delivery note forms', () => {
@@ -359,6 +361,7 @@ describe('delivery note forms', () => {
           lotCode: null,
         },
       ],
+      receivedBy: null,
     });
   });
 

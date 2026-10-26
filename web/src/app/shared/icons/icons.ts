@@ -112,6 +112,7 @@ export const ICONS = [
   'payments',
   'percent',
   'person_add',
+  'person_edit',
   'person_remove',
   'photo_camera',
   'picture_as_pdf',

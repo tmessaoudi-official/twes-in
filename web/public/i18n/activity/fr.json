@@ -106,6 +106,7 @@
         "revised": "a modifié le bon de livraison",
         "validated": "a validé le bon de livraison",
         "delivered": "a livré le bon de livraison",
+        "receiver_corrected": "a corrigé qui a reçu le bon de livraison",
         "cancelled": "a annulé le bon de livraison",
         "invoiced": "a facturé le bon de livraison",
         "deleted": "a supprimé le brouillon de bon de livraison",

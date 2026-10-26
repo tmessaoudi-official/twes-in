@@ -14,7 +14,9 @@ use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Module\Customers\Domain\Model\Contact;
 use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\ValueObject\ContactDetails;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
@@ -23,6 +25,9 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteHeader;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
@@ -350,7 +355,7 @@ final class DeliveryNotesTest extends ApiTestCase
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
         $id = $this->draftWithALine();
 
-        $this->postJson($this->path($id).'/validate-and-deliver', null);
+        $this->postJson($this->path($id).'/validate-and-deliver', []);
 
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         $note = $this->json();
@@ -359,26 +364,115 @@ final class DeliveryNotesTest extends ApiTestCase
         $actions = $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE action IN ('delivery_note.validated', 'delivery_note.delivered') ORDER BY action");
         self::assertSame(['delivery_note.delivered', 'delivery_note.validated'], $actions);
 
-        $this->postJson($this->path($id).'/validate-and-deliver', null);
+        $this->postJson($this->path($id).'/validate-and-deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a note is numbered once');
         $this->postJson($this->path(), $this->note());
-        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/validate-and-deliver', null);
+        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/validate-and-deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a note without a line is not validated');
-        $this->postJson($this->path(self::ABSENT).'/validate-and-deliver', null);
+        $this->postJson($this->path(self::ABSENT).'/validate-and-deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testWhoReceivedIsNamedOnTheDraftAtTheDeliveryAndPutRightAfterwards(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $customer = $this->em()->find(Customer::class, Uuid::fromString($this->customerId)) ?? throw new \LogicException('no customer');
+        $contact = Contact::create($customer, new ContactDetails('Ahmed', 'Ben Salah', null, null, null), false, new \DateTimeImmutable());
+        $this->em()->persist($contact);
+        $this->em()->flush();
+        $ahmed = $contact->getId()->toRfc4122();
+        $elsewhere = $this->customer('CLI-0002', 'standard');
+        $theirs = Contact::create($elsewhere, new ContactDetails('Someone', 'Else', null, null, null), false, new \DateTimeImmutable());
+        $this->em()->persist($theirs);
+        $this->em()->flush();
+
+        $receivers = function (string $customerId): array {
+            $this->getJson($this->companyPath().'/delivery-note-options/customers/'.$customerId.'/receivers');
+            self::assertResponseIsSuccessful();
+
+            return array_map(static fn (array $row): array => [$row['contactId'] ?? null, $row['name'] ?? null], $this->jsonList());
+        };
+        self::assertSame([[$ahmed, 'Ahmed Ben Salah']], $receivers($this->customerId), 'the contacts a note offers, by name');
+
+        $this->postJson($this->path(), $this->note(['lines' => [['productId' => $this->productId, 'quantity' => '1']], 'receivedBy' => ['contactId' => $ahmed]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $note = $this->json();
+        self::assertSame([['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], 'optional'], [$note['receivedBy'], $note['receiverRule']]);
+        // A page of the list names who received but leaves the rule out, read one customer at a time.
+        $this->getJson($this->path());
+        $row = array_values(array_filter($this->jsonList(), static fn (array $row): bool => ($row['id'] ?? null) === $note['id']))[0] ?? [];
+        self::assertSame([['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], null], [$row['receivedBy'] ?? 'missing', $row['receiverRule'] ?? null]);
+
+        // The contact renamed since, the draft sent back as read keeps the name it copied rather than taking the new one.
+        $renamed = $this->em()->find(Contact::class, $contact->getId()) ?? throw new \LogicException('no contact');
+        $renamed->revise(new ContactDetails('Ahmed', 'Ben Salem', null, null, null), new \DateTimeImmutable());
+        $this->em()->flush();
+        $this->sendJson('PUT', $this->path($this->stringAt($note, 'id')), $this->note(['version' => $note['version'], 'lines' => [['productId' => $this->productId, 'quantity' => '1']], 'receivedBy' => ['contactId' => $ahmed]]));
+        self::assertResponseIsSuccessful();
+        self::assertSame(['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], $this->json()['receivedBy'] ?? null);
+
+        $this->postJson($this->path($this->stringAt($note, 'id')).'/validate-and-deliver', ['receivedBy' => ['contactId' => $theirs->getId()->toRfc4122()]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'another customer\'s contact');
+        self::assertSame('unknown_choice', $this->refusalOf('receivedBy')[0]);
+        $this->postJson($this->path($this->stringAt($note, 'id')).'/validate-and-deliver', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK, 'naming nobody: whoever the draft names');
+        self::assertSame(['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], $this->json()['receivedBy'] ?? null);
+
+        $this->changeReceiverRule($customer, 'required');
+        $validated = $this->draftWithALine();
+        $this->postJson($this->path($validated).'/validate', null);
+        $this->postJson($this->path($validated).'/deliver', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('receiver_required', $this->refusalOf('receivedBy')[0]);
+        $this->postJson($this->path($validated).'/deliver', ['receivedBy' => ['name' => ' Sami Trabelsi ', 'addToContacts' => true]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $delivered = $this->json();
+        $received = $delivered['receivedBy'];
+        self::assertIsArray($received);
+        // The name added to the contacts is linked to the contact it became.
+        self::assertSame(['delivered', 'Sami Trabelsi', true, 'required'], [$delivered['status'], $received['name'] ?? null, \is_string($received['contactId'] ?? null), $delivered['receiverRule']]);
+        $added = $this->em()->getConnection()->fetchAllAssociative('SELECT first_name, last_name FROM contact WHERE customer_id = ? ORDER BY last_name', [$this->customerId]);
+        self::assertSame([['first_name' => 'Ahmed', 'last_name' => 'Ben Salem'], ['first_name' => 'Sami', 'last_name' => 'Trabelsi']], $added);
+        self::assertSame(['Ahmed Ben Salem', 'Sami Trabelsi'], array_column($receivers($this->customerId), 1));
+
+        $correct = ['receivedBy' => ['name' => 'Sami Trabelsy']];
+        $this->postJson($this->path($validated).'/receiver', $correct);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame(['name' => 'Sami Trabelsy', 'contactId' => null], $this->json()['receivedBy']);
+        $this->postJson($this->path($validated).'/receiver', $correct);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK, 'sent again, set to the same');
+        $corrections = $this->em()->getConnection()->fetchFirstColumn("SELECT changes FROM audit_log WHERE action = 'delivery_note.receiver_corrected'");
+        self::assertCount(1, $corrections, 'the same name records nothing');
+        self::assertSame(['fields' => ['receivedBy']], json_decode($this->stringOf($corrections[0]), true), 'the journal keeps the field, never the name');
+        $this->postJson($this->path($validated).'/receiver', ['receivedBy' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'nobody, where the customer\'s notes must name someone');
+        self::assertSame('receiver_required', $this->refusalOf('receivedBy')[0]);
+
+        $draft = $this->draftWithALine();
+        $this->postJson($this->path($draft).'/receiver', $correct);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is put right by a save');
+
+        $this->changeReceiverRule($customer, 'off');
+        $this->postJson($this->path(), $this->note(['receivedBy' => ['name' => 'Sami']]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('receiver_off', $this->refusalOf('receivedBy')[0]);
+        $this->getJson($this->path($draft));
+        self::assertSame([null, 'off'], [$this->json()['receivedBy'], $this->json()['receiverRule']]);
+        $this->postJson($this->path(), $this->note(['receivedBy' => ['name' => ['Sami']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a name is a text');
     }
 
     public function testValidatingAndDeliveringNeedsBothPermissions(): void
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write']);
         $id = $this->draftWithALine();
-        $this->postJson($this->path($id).'/validate-and-deliver', null);
+        $this->postJson($this->path($id).'/validate-and-deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'validating needs delivery_note.validate');
 
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
         $this->createUser('validator@twes.local', 'password-1234', $company, ['delivery_note.read', 'delivery_note.validate'], 'validator');
         $this->login('validator@twes.local', 'password-1234');
-        $this->postJson($this->path($id).'/validate-and-deliver', null);
+        $this->postJson($this->path($id).'/validate-and-deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'delivering needs delivery_note.write');
 
         $this->getJson($this->path($id));
@@ -620,6 +714,19 @@ final class DeliveryNotesTest extends ApiTestCase
         // three for whether the person may open those invoices: the invoices module's state, their role and the
         // company's standing, read once for the page.
         self::assertLessThanOrEqual(16, $statements[6]);
+    }
+
+    private function changeReceiverRule(Customer $customer, string $rule): void
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($company, customerId: $customer->getId()), 'delivery_note.receiver', SettingLevel::Customer, $rule, null);
+    }
+
+    private function stringOf(mixed $value): string
+    {
+        self::assertIsString($value);
+
+        return $value;
     }
 
     /** A draft delivering one unit of the product; its id. */

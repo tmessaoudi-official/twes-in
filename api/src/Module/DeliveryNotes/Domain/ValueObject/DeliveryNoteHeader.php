@@ -12,10 +12,12 @@ namespace App\Module\DeliveryNotes\Domain\ValueObject;
 use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\ValueObject\Receiver;
 
 /**
  * What a delivery note says besides its customer and its lines: the day the goods are expected, where they go, the
- * customer's own reference, remarks printed on the note and notes kept inside the company. Empty texts are absent.
+ * customer's own reference, remarks printed on the note, notes kept inside the company, and who received the goods,
+ * chosen on the draft when known before it is printed. Empty texts are absent.
  */
 final readonly class DeliveryNoteHeader
 {
@@ -34,11 +36,18 @@ final readonly class DeliveryNoteHeader
         ?string $customerReference = null,
         ?string $remarksPrinted = null,
         ?string $notesInternal = null,
+        public ?Receiver $receivedBy = null,
     ) {
         $this->deliveryDate = null === $deliveryDate ? null : new \DateTimeImmutable($deliveryDate->format('Y-m-d'), new \DateTimeZone('UTC'));
         $this->customerReference = self::text('customerReference', $customerReference, self::REFERENCE_MAX);
         $this->remarksPrinted = self::text('remarksPrinted', $remarksPrinted, self::TEXT_MAX);
         $this->notesInternal = self::text('notesInternal', $notesInternal, self::TEXT_MAX);
+    }
+
+    /** The same header naming another receiver, or nobody. */
+    public function withReceiver(?Receiver $receivedBy): self
+    {
+        return new self($this->deliveryDate, $this->deliveryAddress, $this->customerReference, $this->remarksPrinted, $this->notesInternal, $receivedBy);
     }
 
     /** @return list<string> the fields whose values differ from the other's, in the order a form shows them */
@@ -55,6 +64,9 @@ final readonly class DeliveryNoteHeader
             if ($this->{$field} !== $other->{$field}) {
                 $changed[] = $field;
             }
+        }
+        if (null === $this->receivedBy ? null !== $other->receivedBy : !$this->receivedBy->equals($other->receivedBy)) {
+            $changed[] = 'receivedBy';
         }
 
         return $changed;

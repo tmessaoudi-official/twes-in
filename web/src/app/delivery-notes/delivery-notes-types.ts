@@ -3,6 +3,7 @@
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
 import type { ProductTracking } from '../products/products-types';
+import type { Receiver, ReceiverChoice, ReceiverRule } from '../shared/receivers/receiver';
 
 /** Why the API refused, as the delivery notes screens translate it. */
 export type DeliveryNotesError =
@@ -221,6 +222,13 @@ export interface DeliveryNoteRow {
   quote: DeliveredQuote | null;
   /** The issued invoice whose goods it hands over; null when none, or the person may not open invoices. */
   invoice: DeliveredInvoice | null;
+  /** Who received the goods, as the note copied them; null while nobody is named. */
+  receivedBy: Receiver | null;
+  /**
+   * Whether the customer's notes name who received: never, when wished, or always at the delivery; null on a row of the
+   * list, which does not read it.
+   */
+  receiverRule: ReceiverRule | null;
 }
 
 export interface DeliveryNoteInput {
@@ -232,6 +240,8 @@ export interface DeliveryNoteInput {
   remarksPrinted: string | null;
   notesInternal: string | null;
   lines: DeliveryNoteLineInput[];
+  /** Who will receive the goods, as chosen; sent back as read, the note keeps them as it copied them. */
+  receivedBy: ReceiverChoice | null;
 }
 
 export interface EstablishmentOption {

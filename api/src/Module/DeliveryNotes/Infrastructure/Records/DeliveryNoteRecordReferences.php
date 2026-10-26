@@ -41,6 +41,8 @@ final readonly class DeliveryNoteRecordReferences implements DeclaresRecordRefer
             RecordReference::uses('delivery_note_line', 'product_id', 'product', RecordMerge::Moves, 'A delivery note line names the product it delivers; merged, a draft delivers the product kept, a validated note what it printed.')
                 ->through('delivery_note', 'delivery_note_id')
                 ->movingOnlyWhere('status', [DeliveryNoteStatus::Draft->value]),
+            RecordReference::ignored('delivery_note', 'received_by_contact_id', 'customer', 'A note copies who received by name; the contact it was picked from is kept beside it as history, so deleting or merging that contact leaves the note as printed.')
+                ->below('contact', 'customer_id'),
             RecordReference::uses('delivery_note', 'customer_id', 'customer', RecordMerge::Moves, 'A delivery note delivers its customer; merged, a draft delivers the customer kept, a validated note whom it printed.')
                 ->movingOnlyWhere('status', [DeliveryNoteStatus::Draft->value])
                 ->transactingAt('updated_at'),

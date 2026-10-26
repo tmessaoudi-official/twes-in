@@ -67,6 +67,8 @@ const numbered: DeliveryNoteRow = {
   invoices: [],
   quote: null,
   invoice: null,
+  receivedBy: null,
+  receiverRule: null,
 };
 
 describe('DeliveryNotesPage', () => {

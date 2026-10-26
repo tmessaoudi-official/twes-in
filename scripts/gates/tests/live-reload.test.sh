@@ -24,6 +24,11 @@ printf '@Component({}) export class APanel { init() { leaveOnceOpen(); void this
 out=$(bash "$GATE" --root "$d" 2>&1); check "a screen outside the shell asking again on focus passes" $? 0 "$out" "OK — 2 "
 printf 'export class AFacade { async refresh() { this.rows.set(await this.api.list(id)); } }\n' > "$d/web/src/app/x/a-facade.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a facade is not a screen" $? 0 "$out" "OK — 2 "
+for verb in onHand stockTotals substitutes; do
+  printf '@Component({}) export class ALines { readStock() { return this.inventory.%s(id, products); } }\n' "$verb" > "$d/web/src/app/x/a-lines.ts"; git -C "$d" add -A
+  out=$(bash "$GATE" --root "$d" 2>&1); check "a component reading stock through $verb and never reloading is named" $? 1 "$out" "x/a-lines.ts"
+done
+rm "$d/web/src/app/x/a-lines.ts"; git -C "$d" add -A
 d=$(repo); printf '@Component({}) export class LocationLabelsPage { init() { void this.facade.load(id); } }\n' > "$d/web/src/app/inventory/location-labels-page.ts"
 printf '@Component({}) export class APage { init() { this.live.reloadOn(["a"], r, d); void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page listed with its reason is not asked" $? 0 "$out" "OK — 1 "

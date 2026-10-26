@@ -78,6 +78,14 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import type { FormAnswer } from '../shared/feedback/request-state';
 import { DeliverDialog, type DeliverDialogData } from './deliver-dialog';
 import {
+  type Receiver,
+  type ReceiverContact,
+  receiverChoice,
+  receiverForm,
+} from '../shared/receivers/receiver';
+import { ReceiverDialog, type ReceiverDialogData } from '../shared/receivers/receiver-dialog';
+import { ReceiverField } from '../shared/receivers/receiver-field';
+import {
   InvoicePartDialog,
   type InvoicePartData,
   type InvoicePartLine,
@@ -126,6 +134,7 @@ export const DELIVERY_NOTE_PLANNED: readonly PlannedAction[] = [
     PartConflict,
     PickField,
     RecordChanged,
+    ReceiverField,
     StatusBadge,
   ],
   templateUrl: './delivery-note-page.html',
@@ -231,6 +240,8 @@ export class DeliveryNotePage {
   });
   protected readonly isLinesConflict = (conflict: { field: string }): boolean =>
     conflict.field === 'lines';
+  protected readonly isReceiverConflict = (conflict: { field: string }): boolean =>
+    conflict.field === 'receivedBy';
   /** Bumped to show the saved lines again in place of the ones shown. */
   private readonly linesVersion = signal(0);
   protected readonly lines = computed(() => {
@@ -243,6 +254,29 @@ export class DeliveryNotePage {
       return linesArray(current?.lines ?? [], options);
     });
   });
+
+  /** Who will receive the goods, as the draft names them; keyed like the form, so a reload does not undo typing. */
+  protected readonly receiver = computed(() => {
+    if (this.formKey() === null) return null;
+    return untracked(() => receiverForm(this.current()?.receivedBy ?? null));
+  });
+  /** The draft asks who will receive unless the customer's notes name nobody. */
+  protected readonly receiverAsked = computed(
+    () => this.editable() && (this.current()?.receiverRule ?? 'optional') !== 'off',
+  );
+  /** The customer's contacts « Reçu par » offers, read again when the note goes to another customer. */
+  protected readonly receiverContacts = signal<readonly ReceiverContact[]>([]);
+  private readonly savedReceiver = computed(() => {
+    const current = this.current();
+    if (current === undefined) return null;
+    const receivedBy = current?.receivedBy ?? null;
+    return {
+      name: receivedBy?.name ?? '',
+      contactId: receivedBy?.contactId ?? null,
+      addToContacts: false,
+    };
+  });
+  protected readonly receiverChanges = unsavedChanges(this.receiver, this.savedReceiver);
 
   /** The saved version the note stands on, and what another person's save changed in it. */
   protected readonly sync = liveRecord({
@@ -260,8 +294,20 @@ export class DeliveryNotePage {
       return current && options ? deliveryNoteValues(current, options) : null;
     },
     version: () => this.current()?.version ?? null,
-    // The lines are one field: a line is never merged with another person's.
+    // The lines are one field: a line is never merged with another person's; so is who receives.
     parts: [
+      {
+        field: 'receivedBy',
+        saved: () => {
+          const saved = this.savedReceiver();
+          return saved === null ? null : JSON.stringify([saved.name, saved.contactId]);
+        },
+        shown: () => {
+          const shown = this.receiver()?.getRawValue();
+          return JSON.stringify([shown?.name ?? '', shown?.contactId ?? null]);
+        },
+        take: () => this.showSavedReceiver(),
+      },
       {
         field: 'lines',
         saved: () => {
@@ -513,6 +559,23 @@ export class DeliveryNotePage {
         shown: this.pdfUrl() !== null,
       },
       {
+        id: 'pdf-delivered',
+        label: 'delivery_notes.actions.pdf_delivered',
+        icon: 'picture_as_pdf',
+        rare: true,
+        href: this.deliveredCopyUrl() ?? undefined,
+        shown: this.deliveredCopyUrl() !== null,
+      },
+      {
+        id: 'correct-receiver',
+        label: 'delivery_notes.actions.correct_receiver',
+        icon: 'person_edit',
+        rare: true,
+        disabled: busy,
+        run: () => void this.openCorrectReceiver(),
+        shown: this.canCorrectReceiver(),
+      },
+      {
         id: 'on-map',
         label: 'delivery_notes.actions.on_map',
         icon: 'warehouse',
@@ -562,6 +625,26 @@ export class DeliveryNotePage {
     const companyId = this.company()?.id;
     const current = this.current();
     return companyId && current ? this.facade.pdfUrl(companyId, current.id) : null;
+  });
+  /** The copy saying who received a note delivered since, the original kept as it was issued. */
+  protected readonly deliveredCopyUrl = computed(() => {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    return companyId && current?.deliveredAt
+      ? this.facade.deliveredCopyUrl(companyId, current.id)
+      : null;
+  });
+  /** Who received is put right on a recorded note, unless its customer's notes name nobody and it names nobody. */
+  protected readonly canCorrectReceiver = computed(() => {
+    const current = this.current();
+    return (
+      current !== null &&
+      current !== undefined &&
+      current.status !== 'draft' &&
+      current.status !== 'cancelled' &&
+      this.mayWrite() &&
+      (current.receiverRule !== 'off' || current.receivedBy !== null)
+    );
   });
   protected readonly canValidate = computed(
     () => this.current()?.status === 'draft' && this.mayWrite() && this.mayValidate(),
@@ -707,6 +790,16 @@ export class DeliveryNotePage {
 
   constructor() {
     this.unsaved.declare(this.customerChanges);
+    // « Reçu par » offers the contacts of the customer the draft names now; an answer for an earlier one is dropped.
+    effect(() => {
+      const companyId = this.company()?.id;
+      const customerId = this.customer()?.id;
+      untracked(() => this.receiverContacts.set([]));
+      if (!companyId || !customerId || !this.receiverAsked()) return;
+      void untracked(() => this.facade.receivers(companyId, customerId)).then((contacts) => {
+        if (this.customer()?.id === customerId) this.receiverContacts.set(contacts);
+      });
+    });
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
     // declaration, so an action cannot be offered in one of them and missing from another.
     inject(ScreenActions).declare(this.actions);
@@ -813,9 +906,17 @@ export class DeliveryNotePage {
   /** The taxes a line offers follow the customer named in the header. */
   protected chooseCustomer(option: PickOption | null): void {
     const customer = option === null ? null : (this.knownCustomers.get(option.id) ?? null);
+    // A contact is the customer's: named for another, it stays as a name typed.
+    if (customer?.id !== this.customer()?.id) this.receiver()?.controls.contactId.setValue(null);
     this.customer.set(customer);
     this.customerMissing.set(customer === null);
     this.customerRefused.set(null);
+  }
+
+  /** Shows who the saved note names, in place of what the field holds. */
+  private showSavedReceiver(): void {
+    const saved = this.savedReceiver();
+    if (saved !== null) this.receiver()?.reset(saved);
   }
 
   protected async save(): Promise<void> {
@@ -847,6 +948,7 @@ export class DeliveryNotePage {
   private readonly revisedHere = (): void => {
     const form = this.form();
     if (form !== null) this.sync.savedHere(form);
+    this.showSavedReceiver();
   };
 
   /** A save made over a version saved since is merged and said; any other refusal stays as the screen shows it. */
@@ -872,7 +974,24 @@ export class DeliveryNotePage {
         ? null
         : refusedError(this.translate, customer, customer.params, this.refusalFigures),
     );
-    const header = rest.filter((each) => each.field !== 'customerId');
+    const receiver = this.receiver();
+    const receiverRefused = rest.find((each) => each.field === 'receivedBy');
+    const receiverPlaced =
+      receiverRefused !== undefined && receiver !== null && this.receiverAsked();
+    if (receiverPlaced) {
+      receiver.controls.name.setErrors({
+        refused: refusedError(
+          this.translate,
+          receiverRefused,
+          receiverRefused.params,
+          this.refusalFigures,
+        ),
+      });
+      receiver.controls.name.markAsTouched();
+    }
+    const header = rest.filter(
+      (each) => each.field !== 'customerId' && !(receiverPlaced && each.field === 'receivedBy'),
+    );
     const unplaced = header.length > 0 ? (this.headerEditor()?.showRefused(header) ?? header) : [];
     this.refusalLine.placed(refusals, unplaced);
   }
@@ -935,19 +1054,81 @@ export class DeliveryNotePage {
   protected async openDeliver(): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
+    const current = this.current();
+    if (!companyId || id === null || !current || this.busy()) return;
     await firstValueFrom(
       this.dialog
         .open<DeliverDialog, DeliverDialogData, boolean>(DeliverDialog, {
           data: {
             zone: this.company()?.timezone ?? null,
             // At the moment written on the company's clock, or now for ''.
-            deliver: (at) => this.facade.deliver(companyId, id, at === '' ? null : at),
+            receiver: this.deliverReceiver(current),
+            deliver: (at, receivedBy) =>
+              this.facade.deliver(companyId, id, at === '' ? null : at, receivedBy),
           },
           autoFocus: 'first-tabbable',
         })
         .afterClosed(),
     );
+  }
+  /** What the deliver dialog asks of who received: nothing where the customer's notes name nobody. */
+  private deliverReceiver(note: DeliveryNoteRow): DeliverDialogData['receiver'] {
+    const companyId = this.company()?.id;
+    if (note.receiverRule === 'off' || !companyId) return undefined;
+    return {
+      current: note.receivedBy,
+      required: note.receiverRule === 'required',
+      contacts: this.facade.receivers(companyId, note.customerId),
+    };
+  }
+
+  /** « Reçu par » put right once the note is recorded; the original keeps whom it was issued naming. */
+  protected async openCorrectReceiver(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    const current = this.current();
+    if (!companyId || id === null || !current || this.busy()) return;
+    const before = current.receivedBy;
+    const saved = await firstValueFrom(
+      this.dialog
+        .open<ReceiverDialog, ReceiverDialogData, boolean>(ReceiverDialog, {
+          data: {
+            title: 'delivery_notes.actions.correct_receiver',
+            current: current.receivedBy,
+            required: current.receiverRule === 'required',
+            contacts: this.facade.receivers(companyId, current.customerId),
+            save: (receivedBy) => this.facade.correctReceiver(companyId, id, receivedBy),
+          },
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
+    );
+    if (saved === true) this.saidCorrected(companyId, id, before);
+  }
+
+  /**
+   * Said once put right; « Annuler » names again whoever was named before: the same contact, the same name typed, or
+   * nobody.
+   */
+  private saidCorrected(companyId: string, id: string, before: Receiver | null): void {
+    const shown = this.current()?.receivedBy ?? null;
+    this.feedback.effect('delivery_notes.receiver_corrected', {}, 'corrigeable', {
+      key: 'receivers.undo',
+      run: () =>
+        void this.facade
+          .correctReceiver(
+            companyId,
+            id,
+            before === null
+              ? null
+              : before.contactId !== null
+                ? { contactId: before.contactId, name: null, addToContacts: false }
+                : { contactId: null, name: before.name, addToContacts: false },
+          )
+          .then((answer) => {
+            if (answer !== null && 'kept' in answer) this.saidCorrected(companyId, id, shown);
+          }),
+    });
   }
 
   protected async invoice(): Promise<void> {
@@ -1038,11 +1219,18 @@ export class DeliveryNotePage {
     if (form === null || lines === null || this.busy()) return null;
     const customerId = this.customer()?.id ?? '';
     this.customerMissing.set(customerId === '');
-    if (form.invalid || lines.invalid || customerId === '') {
+    const receiver = this.receiverAsked() ? this.receiver() : null;
+    if (form.invalid || lines.invalid || customerId === '' || receiver?.invalid === true) {
       form.markAllAsTouched();
       lines.markAllAsTouched();
+      receiver?.markAllAsTouched();
       return null;
     }
-    return deliveryNoteInput(form.getRawValue(), lines, customerId);
+    return deliveryNoteInput(
+      form.getRawValue(),
+      lines,
+      customerId,
+      receiver === null ? null : receiverChoice(receiver),
+    );
   }
 }

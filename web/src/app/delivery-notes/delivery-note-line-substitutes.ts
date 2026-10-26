@@ -4,16 +4,19 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { ProductsApi } from '../products/products-api';
 import type { ProductSubstituteRow } from '../products/products-types';
+import { LiveChanges } from '../shared/realtime/live-changes';
 
 interface Known {
   own: number;
@@ -88,15 +91,22 @@ export class LineSubstitutes {
       const productId = this.productId();
       void this.load(companyId, productId);
     });
+    // What the product and its substitutes hold moves as anyone records stock: read again, keeping what is shown
+    // meanwhile.
+    inject(LiveChanges).reloadOn(
+      ['stock', 'delivery_note', 'invoice'],
+      () => this.load(untracked(this.companyId), untracked(this.productId), true),
+      inject(DestroyRef),
+    );
   }
 
   protected stockText(row: ProductSubstituteRow): string {
     return row.onHand === null ? '' : plain(row.onHand);
   }
 
-  private async load(companyId: string, productId: string): Promise<void> {
+  private async load(companyId: string, productId: string, again = false): Promise<void> {
     const request = ++this.request;
-    this.known.set(null);
+    if (!again) this.known.set(null);
     if (productId === '') return;
     try {
       const substitutes = await this.api.substitutes(companyId, productId);
