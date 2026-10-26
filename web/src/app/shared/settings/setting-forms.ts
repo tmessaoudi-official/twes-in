@@ -175,6 +175,8 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'late_fees.enabled': 'settings.late_fees.enabled_hint',
   'late_fees.tiers': 'settings.late_fees.tiers_hint',
   'document.watermark_spread': 'settings.document.watermark_spread_hint',
+  'invoice.receiver': 'settings.invoice.receiver_hint',
+  'purchase_receipt.receiver': 'settings.purchase_receipt.receiver_hint',
 };
 
 /**

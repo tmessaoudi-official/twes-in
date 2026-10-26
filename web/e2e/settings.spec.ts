@@ -141,8 +141,17 @@ test('the fields of one row line up, whatever the length of their labels', async
   expect(await top('field-document__late_payment_rate', self)).toBe(
     await top('field-document__exemption_reference', self),
   );
-  expect(await top('field-reminders__hour', self)).toBe(
-    await top('field-quote__validity_days', self),
+  // Each « Reçu par » choice beside a typed field: their labels hold one line, so their boxes line up. The pairs follow
+  // the declarations' order: a setting declared in this section moves every field after it by one.
+  const box = '.mat-mdc-text-field-wrapper, [role="combobox"]';
+  expect(await top('field-wrapper-watch__late_after_days', box)).toBe(
+    await top('field-wrapper-invoice__receiver', box),
+  );
+  expect(await top('field-wrapper-reminders__hour', box)).toBe(
+    await top('field-wrapper-purchase_receipt__receiver', box),
+  );
+  expect(await top('field-wrapper-quote__receiver', box)).toBe(
+    await top('field-wrapper-document__payment_terms_days', box),
   );
   expect(await top('field-document__how_to_pay', '.mdc-checkbox__background')).toBe(
     await top('field-document__amount_in_words', '.mdc-checkbox__background'),

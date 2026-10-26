@@ -998,7 +998,8 @@
       "receiver": "Nommer qui a reçu les marchandises"
     },
     "invoice": {
-      "receiver": "Nommer qui a reçu les marchandises remises avec la facture"
+      "receiver": "Nommer qui a reçu, sur les factures",
+      "receiver_hint": "Sur une facture qui remet elle-même les marchandises, sans bon de livraison."
     },
     "presentation": {
       "accent": "Couleur d’accent",
@@ -1223,7 +1224,8 @@
       "tiers_hint": "Un montant ou un pourcentage du reste dû par étape, séparés par des points-virgules, par exemple 5 ; 10 ; 2 %. Une étape laissée vide ne coûte rien. Aucun montant n’est proposé par défaut."
     },
     "purchase_receipt": {
-      "receiver": "Nommer qui a reçu les marchandises des fournisseurs"
+      "receiver": "Nommer qui a reçu les achats",
+      "receiver_hint": "À chaque réception d’une commande fournisseur, un membre de l’entreprise ou un nom saisi."
     }
   },
   "customers": {

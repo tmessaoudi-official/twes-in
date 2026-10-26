@@ -998,7 +998,8 @@
       "receiver": "Name who received the goods"
     },
     "invoice": {
-      "receiver": "Name who received the goods handed over with the invoice"
+      "receiver": "Name who received, on invoices",
+      "receiver_hint": "On an invoice handing the goods over itself, with no delivery note."
     },
     "presentation": {
       "accent": "Accent colour",
@@ -1223,7 +1224,8 @@
       "tiers_hint": "An amount or a percentage of what is still owed for each stage, separated by semicolons, for example 5; 10; 2%. A stage left empty costs nothing. No amount is proposed by default."
     },
     "purchase_receipt": {
-      "receiver": "Name who received the vendors’ goods"
+      "receiver": "Name who received purchases",
+      "receiver_hint": "At each receipt of an order to a vendor, a member of the company or a name typed."
     }
   },
   "customers": {

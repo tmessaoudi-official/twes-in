@@ -73,7 +73,10 @@ test('a receipt names who received the goods, shows it, puts it right and is fou
     await page.goto(`/purchases?q=${encodeURIComponent(corrected)}`);
     const listed = page.locator(`[data-testid="purchase-order-${orderId}"]`);
     await expect(listed).toHaveCount(1);
-    await expect(page.locator('[data-testid^="purchase-order-"]')).toHaveCount(1);
+    // Every order the search keeps, in either layout; the « Nouvelle commande » link shares the prefix.
+    await expect(
+      page.locator('[data-testid^="purchase-order-"]:not([data-testid="purchase-order-add"])'),
+    ).toHaveCount(1);
   } finally {
     if (products.length > 0) await stockKept(page, products[0], false);
     await forget(page, products);
