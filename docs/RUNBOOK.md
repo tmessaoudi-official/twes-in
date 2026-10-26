@@ -164,6 +164,37 @@ The commands are in `docs/START.md` § 13. On the machine that lost its database
 The ruling allows 4 hours back and 15 minutes lost. Neither has been measured on a real database: time the first real
 restore on staging and write the figure here.
 
+## A shop's backups say they stopped
+
+The mail « Les sauvegardes ne tournent plus » (`installation.backup_stopped`), once a day while it lasts. Untried on a
+shop's computer; each reading below is what `scripts/tests/twes.test.sh` and `backup-heartbeat.test.sh` prove of the
+scripts. On the shop's computer, in the checkout, `…` standing for `bash scripts/deploy/deploy.sh --compose <values>`:
+
+1. `bash scripts/onprem/twes status`: the backups' lines, each step's last outcome and the schedule's own,
+   `due-age <seconds> ran` or `due-age <seconds> running <step>`.
+2. `… logs --since 4h backup`: what each step said, a failure with its reason, « stopped after its time limit ».
+3. `tail -n 40 <the values' folder>/state/twes.log`: the ticks' own account.
+
+Then read which it was:
+
+- **The computer slept or was off.** `twes.log` shows a gap between two ticks (they come every quarter hour) and
+  « the computer slept or was off for N min ». From the release after v2026.10.25.1 a waking is never counted: the
+  alert needs an hour and a half awake with the schedule silent. Up to v2026.10.25.1, the first tick after a long sleep
+  alerted at once: a false alarm, nothing to do.
+- **A step ran long.** The schedule's line reads `running <step>` and a fresh age: a first full backup, a weekly
+  read-back, or the first off-site copy sending the whole folder. Nothing to do; every step ends within its time
+  (`BACKUP_STEP_LIMIT`, 4 h; `BACKUP_OFFSITE_LIMIT`, 12 h), or fails as itself, which its own mail says, and the
+  schedule tries it again at its next half hour. A step that keeps failing on its limit on a slow upload: raise
+  `BACKUP_OFFSITE_LIMIT` in the values, then `twes start`.
+- **The schedule itself died.** The age keeps growing with nothing running: `… ps backup` (restarting, or exited), then
+  `… up -d backup` through `bash scripts/onprem/twes start`, and the logs' last lines for why.
+- **The two clocks disagree.** `date -u` on the computer and `… exec -T backup date -u` minutes apart (Docker Desktop's
+  virtual machine after a sleep): the age is read on the service's own clock, so the alert stays right; restart Docker
+  Desktop to put its clock back.
+
+Whichever it was, a step that failed is mailed on its own (« Sauvegarde en échec : <step> »); `… exec backup twes-backup
+due` runs what is due at once.
+
 ## Restore a shop
 
 Tried on the check stack (`make onprem-check`: a release with one migration more rolled back, then these commands run as

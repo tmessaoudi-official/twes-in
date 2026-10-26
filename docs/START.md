@@ -1013,8 +1013,13 @@ progress (`deploy.sh --release` pulls without `-q`, on stderr).
 
 **Backups.** The computer is off at night, so its backups run when due: every half hour the schedule runs each step whose
 last success is older than its period (a full backup weekly, a differential daily, the dump and the files daily, a
-read-back weekly, the off-site copy hourly), the outcomes kept in a volume of their own. Both repositories are
-encrypted under the values' passphrases. An update always backs up first, locally, and keeps that backup's label.
+read-back weekly, the off-site copy hourly), the outcomes kept in a volume of their own. Every step ends within its
+time, the wait for another step included (`BACKUP_STEP_LIMIT`, 14,400 s by default; `BACKUP_OFFSITE_LIMIT`, 43,200 s,
+as the first off-site copy sends the whole folder): a step past it is stopped and fails, which `twes tick` mails, and
+the schedule tries it again at its next half hour. While a step runs, the schedule says every five minutes that it is
+alive. `twes tick` alerts when the schedule stays silent for an hour and a half of the time the computer is awake: the
+time it slept or was off is never counted, and every check timed from a start waits as long after a waking. Both
+repositories are encrypted under the values' passphrases. An update always backs up first, locally, and keeps that backup's label.
 
 **What a shop can lose.** The database archives its changes into the backups' folder within five minutes
 (`archive_timeout=300`); the files (logos, issued PDFs, attachments) reach it with the day's copy. What a loss costs

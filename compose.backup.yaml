@@ -74,6 +74,10 @@ services:
       # Where each step's heartbeat goes (twes-backup); a deployment requires it and hands the token as a secret
       # (compose.deploy.yaml), the drill and a shop may have no monitor.
       MONITOR_URL: "${MONITOR_URL:-}"
+      # How long a step may take before it is stopped and fails, in seconds, blank for twes-backup's own: four hours,
+      # twelve for the off-site copy, whose first one sends the whole folder over the shop's upload.
+      BACKUP_STEP_LIMIT: "${BACKUP_STEP_LIMIT:-}"
+      BACKUP_OFFSITE_LIMIT: "${BACKUP_OFFSITE_LIMIT:-}"
       TZ: UTC
     volumes:
       - postgres-data:/var/lib/postgresql:ro

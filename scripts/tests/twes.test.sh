@@ -61,7 +61,11 @@ case "$mode" in
       "exec -T api bin/console app:installation:tell"*) echo "$*" >> "$TMPDIR/told"; [[ -z "${TELL_SAYS:-}" ]] || echo "$TELL_SAYS"; exit "${TELL_EXIT:-0}" ;;
       "exec -T api bin/console app:seed"*) { echo "$*"; cat; } > "$TMPDIR/seeded"; exit "${SEED_EXIT:-0}" ;;
       "exec -T api bin/console app:demo:switch-off-at-install"*) echo "$*" >> "$TMPDIR/demo-off"; [[ "${DEMO_EXIT:-0}" != 0 ]] || echo "${DEMO_SAYS:-demo switched off}"; exit "${DEMO_EXIT:-0}" ;;
-      "exec -T backup sh -c"*) [[ -z "${OUTCOMES_DOWN:-}" ]] || exit 1; printf '%b' "${OUTCOMES:-}" ;;
+      "exec -T backup sh -c"*)
+        [[ -z "${OUTCOMES_DOWN:-}" ]] || exit 1
+        # OUTCOME_DIR: twes's own script run against that folder, on the clock of whatever runs it, as the container does.
+        if [[ -n "${OUTCOME_DIR:-}" ]]; then script=${*: -1}; sh -c "${script//\/var\/lib\/twes-backup\/outcome/$OUTCOME_DIR}"; exit; fi
+        printf '%b' "${OUTCOMES:-}" ;;
     esac ;;
 esac
 EOF
@@ -429,7 +433,7 @@ d=$(SIGN_NEW=other installed)
 out=$(BACKUP_LABEL=$LABEL twes "$d" update); check "a tag signed by another key: refused" $? 1 "$out" "not signed by the release key pinned here"
 d=$(SIGN_NEW=other installed); twes "$d" policy auto 13:00-14:00 >/dev/null
 out=$(BACKUP_LABEL=$LABEL twes "$d" tick); check "auto: a refused tag refused, the operators told" 0 0 "$(told)" "installation.update_refused"
-rm -f "$d/etc/state/update-tried"
+rm -f "$d/etc/state/update-tried"; echo $((NOON + 86400 - 900)) > "$d/etc/state/last-tick" # on all day, ticking
 out=$(AT=$((NOON + 86400)) BACKUP_LABEL=$LABEL twes "$d" tick); [[ -z "$(told)" && "$(deployed)" != *--release* ]]; check "  and the next day neither tried nor told again" $? 0 "$(told)$(deployed)" ""
 check "  saying it waits for a hand" 0 0 "$out" "applied only by hand"
 d=$(SIGN_NEW=none installed); twes "$d" policy notify >/dev/null
@@ -579,12 +583,40 @@ out=$(AT=$((NOON + 1800)) OUTCOMES="copy 2026-10-21T01:00:00Z failed copy exited
 check "  sent once" $? 0 "$(mailed)" ""
 
 d=$(installed)
-out=$(OUTCOMES="due $((NOON - 6000)) ran\n" twes "$d" tick); check "a schedule silent for over an hour and a half: told" $? 0 "$(told)" "installation.backup_stopped"
-out=$(OUTCOMES="due $((NOON - 6000)) ran\n" twes "$d" tick); [[ -z "$(told)" ]]; check "  once a day" $? 0 "$(told)" ""
+out=$(OUTCOMES="due-age 6000 ran\n" twes "$d" tick); check "a schedule silent for over an hour and a half: told" $? 0 "$(told)" "installation.backup_stopped"
+out=$(OUTCOMES="due-age 6000 ran\n" twes "$d" tick); [[ -z "$(told)" ]]; check "  once a day" $? 0 "$(told)" ""
 d=$(installed); echo $((NOON - 600)) > "$d/etc/state/started-at"
-out=$(OUTCOMES="due $((NOON - 6000)) ran\n" twes "$d" tick); [[ "$(told)" != *backup_stopped* ]]; check "  but not while the computer has just started" $? 0 "$(told)" ""
+out=$(OUTCOMES="due-age 6000 ran\n" twes "$d" tick); [[ "$(told)" != *backup_stopped* ]]; check "  but not while the computer has just started" $? 0 "$(told)" ""
+d=$(installed); echo $((NOON - 900)) > "$d/etc/state/last-tick"
+out=$(OUTCOMES="due-age 6000 ran\n" twes "$d" tick); check "  told too when the ticks before it came every quarter hour" $? 0 "$(told)" "installation.backup_stopped"
+d=$(installed)
+out=$(OUTCOMES="due-age 1200 running copy\n" twes "$d" tick); [[ "$(told)" != *backup_stopped* ]]; check "  never while a step runs within its time" $? 0 "$(told)" ""
+# The schedule's age is read on the backup service's own clock: the host's and the container's may differ (Docker
+# Desktop's virtual machine after a sleep), and a marker written on one clock is never compared with the other.
+d=$(installed); mkdir -p "$TMPDIR/outcome"; echo "$(($(date +%s) - 6000)) ran" > "$TMPDIR/outcome/due"
+out=$(OUTCOME_DIR=$TMPDIR/outcome twes "$d" tick); check "  its age read on the service's clock, whatever the host's says" $? 0 "$(told)" "installation.backup_stopped"
+d=$(installed); echo "$(($(date +%s) - 600)) ran" > "$TMPDIR/outcome/due"
+out=$(AT=$((NOON - 86400)) OUTCOME_DIR=$TMPDIR/outcome twes "$d" tick); [[ "$(told)" != *backup_stopped* ]]
+check "  and a host clock a day behind reads a fresh schedule as fresh" $? 0 "$(told)" ""
+rm -rf "$TMPDIR/outcome"
 d=$(installed)
 out=$(OUTCOMES_DOWN=1 twes "$d" tick); check "a backup service that does not answer: told" $? 0 "$(told)" "installation.backup_stopped"
+
+# A computer that slept (or was off) stops ticking: the first tick after it wakes finds the schedule silent since it
+# slept and Docker still coming back. Every check timed from a start is timed from the waking too.
+d=$(installed); echo $((NOON - 10800)) > "$d/etc/state/last-tick"
+out=$(OUTCOMES="due-age 11000 ran\n" twes "$d" tick); [[ "$(told)" != *backup_stopped* ]]
+check "a computer that slept three hours: no backup alert as it wakes" $? 0 "$(told)" ""
+check "  its log says it slept" 0 0 "$(cat "$d/etc/state/twes.log")" "slept or was off for 180 min"
+for k in 1 2 3 4 5 6; do out=$(AT=$((NOON + 900 * k)) OUTCOMES="due-age $((11000 + 900 * k)) ran\n" twes "$d" tick); done
+[[ "$(told)" != *backup_stopped* ]]; check "  nor once awake an hour and a half to the minute" $? 0 "$(told)" ""
+out=$(AT=$((NOON + 6300)) OUTCOMES="due-age 17300 ran\n" twes "$d" tick)
+check "  awake longer with the schedule still silent: told" $? 0 "$(told)" "installation.backup_stopped"
+d=$(installed); echo $((NOON - 10800)) > "$d/etc/state/last-tick"
+out=$(OUTCOMES_DOWN=1 twes "$d" tick); [[ "$(told)" != *backup_stopped* ]]; check "  a backup service not answering yet as it wakes: not told" $? 0 "$(told)" ""
+d=$(installed); echo $((NOON - 10800)) > "$d/etc/state/last-tick"
+out=$(ALL_BAD=1 twes "$d" tick); [[ "$(deployed)" != *--again* && "$(told)" != *installation.unhealthy* ]]
+check "  unhealthy as it wakes: left to settle, as after a start" $? 0 "$(deployed)" ""
 
 d=$(OFFSITE_UNTOLD=1 installed)
 out=$(twes "$d" tick); check "no copy off the computer: the developer mailed" $? 0 "$(subject)" "Aucune copie des sauvegardes hors de cet ordinateur"
@@ -611,9 +643,12 @@ d=$(installed); twes "$d" policy auto 15:00-16:00 >/dev/null
 out=$(BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "auto outside the window: waits" $? 0 "$(deployed)" ""
 d=$(installed); twes "$d" policy auto 13:00-14:00 >/dev/null; echo $((NOON - 300)) > "$d/etc/state/started-at"
 out=$(BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "auto never at start" $? 0 "$(deployed)" ""
+d=$(installed); twes "$d" policy auto 13:00-14:00 >/dev/null; echo $((NOON - 10800)) > "$d/etc/state/last-tick"
+out=$(BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "auto never as the computer wakes" $? 0 "$(deployed)" ""
 d=$(installed); twes "$d" policy auto 13:00-14:00 >/dev/null
 out=$(BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" tick)
 out=$(AT=$((NOON + 600)) BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "auto tries once a day" $? 0 "$(deployed)" ""
+echo $((NOON + 86400 - 900)) > "$d/etc/state/last-tick" # on all day, ticking
 out=$(AT=$((NOON + 86400)) BACKUP_LABEL=$LABEL twes "$d" tick); check "  and never again a release that failed here" $? 0 "$out" "applied only by hand"
 
 out=$(twes "$d" sometimes); check "an unknown command is refused" $? 2 "$out" "Usage"

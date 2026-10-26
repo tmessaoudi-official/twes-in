@@ -724,9 +724,21 @@ offsite() {
   start
 }
 
-# What the backup service wrote down, as `<step> <line>`, one step a line; fails when the service does not answer.
+# What the backup service wrote down, as `<step> <line>`, one step a line; fails when the service does not answer. The
+# schedule's own line is `due-age <seconds since it last ran> <what it does>`, the age counted on the service's clock,
+# where it was written: Docker Desktop's virtual machine may keep another time than this computer after a sleep.
 backup_outcomes() {
-  compose exec -T backup sh -c 'cd /var/lib/twes-backup/outcome || exit 0; for f in full diff copy verify offsite due; do [ -f "$f" ] && echo "$f $(cat "$f")"; done; true'
+  compose exec -T backup sh -c 'cd /var/lib/twes-backup/outcome || exit 0; for f in full diff copy verify offsite; do [ -f "$f" ] && echo "$f $(cat "$f")"; done; if [ -f due ]; then read -r t rest < due; case "$t" in *[!0-9]*|"") ;; *) echo "due-age $(($(date +%s) - t)) $rest" ;; esac; fi; true'
+}
+# Since when this computer has been awake: its last start, or its last waking, which a tick finds when the tick before
+# it is long past (the ticks come every quarter hour while it is on).
+awake_since() {
+  local started woke
+  started=$(recall started-at 0)
+  woke=$(recall woke-at 0)
+  [[ "$started" =~ ^[0-9]+$ ]] || started=0
+  [[ "$woke" =~ ^[0-9]+$ ]] || woke=0
+  echo $((woke > started ? woke : started))
 }
 backup_stopped() { # why
   local day
@@ -794,10 +806,19 @@ offsite_untold() {
 }
 
 tick() {
-  local address failing line step t policy window newest current day outcomes why
+  local address failing line step t policy window newest current day outcomes why last awake
   exec 8> "$state/update.lock"
   flock -n 8 || return 0
   [[ -f "$state/lan-host" ]] || { say "not started yet: twes start"; return 0; }
+  # A tick over twenty-five minutes after the one before it: the computer slept or was off, and every check timed from
+  # a start is timed from now, as Docker, the schedule and the health are still coming back.
+  last=$(recall last-tick 0)
+  if [[ "$last" =~ ^[0-9]+$ ]] && ((last > 0 && $(now) - last > 1500)); then
+    now > "$state/woke-at"
+    say "the computer slept or was off for $((($(now) - last) / 60)) min: every check waits as after a start"
+  fi
+  now > "$state/last-tick"
+  awake=$(awake_since)
   if on_hold; then say "$(hold_said): nothing done until twes hold off"; return 0; fi
   resume_cut_update held
   address=$(lan_address)
@@ -815,13 +836,13 @@ tick() {
 
   # Unhealthy, the installation is started again once, as a container Docker left stopped comes back with compose up;
   # still unhealthy, the developer and the operators are told. Once per episode: a start that does not mend it is not
-  # repeated every quarter hour, and a start just made is left its ten minutes to settle.
+  # repeated every quarter hour, and a start or a waking just made is left its ten minutes to settle.
   if failing=$(deep_health 1); then
     rm -f "$state/unhealthy"
   elif [[ -f "$state/unhealthy" ]]; then
     :
-  elif (($(now) - $(recall started-at 0) < 600)); then
-    say "unhealthy ($failing) within ten minutes of a start: read again at the next tick"
+  elif (($(now) - awake < 600)); then
+    say "unhealthy ($failing) within ten minutes of a start or a waking: read again at the next tick"
   else
     echo "$failing" > "$state/unhealthy"
     say "unhealthy ($failing): starting the installation again"
@@ -836,24 +857,25 @@ tick() {
     fi
   fi
 
-  # The schedule runs every half hour: silent for an hour and a half once the application has run for one, it stopped.
+  # The schedule runs every half hour, and says so every five minutes while a step runs (each step is bounded): silent
+  # for an hour and a half of the time this computer has been awake, it stopped. The time asleep is never counted.
   if outcomes=$(backup_outcomes); then
     while IFS= read -r line; do
       [[ -n "$line" ]] || continue
       step=${line%% *}
-      if [[ "$step" == due ]]; then
-        t=${line#due }
+      if [[ "$step" == due-age ]]; then
+        t=${line#due-age }
         t=${t%% *}
-        if [[ "$t" =~ ^[0-9]+$ ]] && (($(now) - t > 5400 && $(now) - $(recall started-at "$(now)") > 3600)); then
-          backup_stopped "Le calendrier des sauvegardes n'a pas tourné depuis plus d'une heure et demie alors que l'application tourne."
+        if [[ "$t" =~ ^[0-9]+$ ]] && (((t < $(now) - awake ? t : $(now) - awake) > 5400)); then
+          backup_stopped "Le calendrier des sauvegardes n'a pas tourné depuis plus d'une heure et demie alors que l'ordinateur et l'application tournent."
         fi
       elif [[ "$line" == *" failed "* ]] && ! listed "$line" backup-alerted; then
         echo "$line" >> "$state/backup-alerted"
         alert installation.backup_failed "Sauvegarde en échec : $step" "La sauvegarde « $step » a échoué : ${line#* }." "step=$step"
       fi
     done <<<"$outcomes"
-  elif (($(now) - $(recall started-at "$(now)") > 3600)); then
-    backup_stopped "Le service des sauvegardes ne répond pas alors que l'application tourne depuis plus d'une heure."
+  elif (($(now) - awake > 3600)); then
+    backup_stopped "Le service des sauvegardes ne répond pas alors que l'ordinateur et l'application tournent depuis plus d'une heure."
   fi
 
   why=$(backup_folder_ready) || backup_folder_missing "$why"
@@ -877,7 +899,7 @@ tick() {
       t=$(shop_time "$(now)")
       [[ ! "$t" < "${window%-*}" && "$t" < "${window#*-}" ]] || return 0
       # Never at start: a computer switched on inside the window waits for the next tick past its first half hour.
-      (($(now) - $(recall started-at "$(now)") >= 1800)) || return 0
+      (($(now) - awake >= 1800)) || return 0
       day=$(shop_day "$(now)")
       [[ "$(recall update-tried)" != "$day" ]] || return 0
       echo "$day" > "$state/update-tried"

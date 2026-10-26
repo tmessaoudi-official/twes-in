@@ -164,19 +164,70 @@ since() {
 due() {
   # The off-site copy's period: what a lost computer loses (docs/START.md § 16). Fifty minutes, since the schedule runs
   # every half hour and an hour's period read a second early would wait the next half hour.
-  local self=${BASH_SOURCE[0]} failed=0 day=$((20 * 3600)) week=$((7 * 86400)) every=${OFFSITE_EVERY:-3000}
-  # That the schedule is alive, whatever ran: a shop's twes tick alerts when this goes quiet while the application runs.
-  mkdir -p "$OUTCOME_DIRECTORY" && echo "$(date +%s) ran" > "$OUTCOME_DIRECTORY/due"
-  if (($(since full) >= week)); then
-    bash "$self" full || failed=1
-  elif (($(since full) >= day && $(since diff) >= day)); then
-    bash "$self" diff || failed=1
-  fi
-  (($(since copy) < day)) || bash "$self" copy || failed=1
+  local failed=0 day=$((20 * 3600)) week=$((7 * 86400)) every=${OFFSITE_EVERY:-3000} keeper
   [[ "$every" =~ ^[0-9]+$ ]] || { say "OFFSITE_EVERY=$every: a number of seconds"; return 1; }
-  if [[ -n "${OFFSITE_REPOSITORY:-}" ]] && (($(since offsite) >= every)); then bash "$self" offsite || failed=1; fi
-  (($(since verify) < week)) || bash "$self" verify || failed=1
+  # That the schedule is alive, whatever ran: a shop's twes tick alerts when this goes quiet while the application runs.
+  # While a step runs (the first off-site copy may take hours) it says so every five minutes, naming the step; each step
+  # ends within its time, so a step that hangs is a failed step, never a schedule gone quiet.
+  mkdir -p "$OUTCOME_DIRECTORY" && echo "$(date +%s) ran" > "$OUTCOME_DIRECTORY/due"
+  : > "$OUTCOME_DIRECTORY/due.step"
+  # The keeper's sleep goes with it: a sleep left behind would hold the schedule's output open, and supercronic would
+  # wait on it.
+  (
+    nap=''
+    trap '[[ -z "$nap" ]] || kill "$nap"; exit 0' TERM
+    while :; do
+      sleep "${DUE_BEAT:-300}" &
+      nap=$!
+      wait "$nap"
+      echo "$(date +%s) running $(cat "$OUTCOME_DIRECTORY/due.step")" > "$OUTCOME_DIRECTORY/due"
+    done
+  ) &
+  keeper=$!
+  if (($(since full) >= week)); then
+    due_step full || failed=1
+  elif (($(since full) >= day && $(since diff) >= day)); then
+    due_step diff || failed=1
+  fi
+  (($(since copy) < day)) || due_step copy || failed=1
+  if [[ -n "${OFFSITE_REPOSITORY:-}" ]] && (($(since offsite) >= every)); then due_step offsite || failed=1; fi
+  (($(since verify) < week)) || due_step verify || failed=1
+  kill "$keeper"
+  wait "$keeper" || true # the keeper ends on the signal just sent; its status says only that
+  echo "$(date +%s) ran" > "$OUTCOME_DIRECTORY/due"
   ((failed == 0)) || { say "due: a step failed, written down under $OUTCOME_DIRECTORY"; return 1; }
+}
+
+# One step of the schedule in its own process, named for the keeper.
+due_step() {
+  echo "$1" > "$OUTCOME_DIRECTORY/due.step"
+  bash "${BASH_SOURCE[0]}" "$1"
+}
+
+# How long a step may take, waiting for the lock included: what a shop's machine needs on a slow disk, with room. The
+# off-site copy's is longer: its first one sends the whole folder over the shop's upload, and restic picks up what an
+# interrupted one sent.
+limit_of() {
+  case "$1" in
+    offsite) echo "BACKUP_OFFSITE_LIMIT ${BACKUP_OFFSITE_LIMIT:-43200}" ;;
+    *) echo "BACKUP_STEP_LIMIT ${BACKUP_STEP_LIMIT:-14400}" ;;
+  esac
+}
+
+# The step run again under its time limit. A step past it is stopped (its tools are sent TERM, then KILL a minute
+# later) and written down as failed, saying so, whatever the step's own exit trap managed to write.
+bounded() {
+  local name limit status
+  read -r name limit <<<"$(limit_of "$1")"
+  [[ "$limit" =~ ^[0-9]+$ ]] || { say "$name=$limit: a number of seconds"; exit 1; }
+  status=0
+  TWES_BACKUP_BOUNDED=1 timeout --kill-after=60 "$limit" bash "${BASH_SOURCE[0]}" "$1" || status=$?
+  if ((status == 124 || status == 137)); then
+    say "$1 stopped after its time limit of $limit s ($name)"
+    mkdir -p "$OUTCOME_DIRECTORY" && echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) failed $1 stopped after its time limit of $limit s" > "$OUTCOME_DIRECTORY/$1"
+    status=124
+  fi
+  exit "$status"
 }
 
 hold() { exec 9> "$BACKUP_LOCK"; flock 9; }
@@ -195,6 +246,11 @@ main() {
       (hold; init)
       exec supercronic -passthrough-logs "$schedule" ;;
     init) hold; init ;;
+    # Every step bounded, the lock's wait included; once bounded, the step itself, which a stop sent at its limit ends as
+    # a failure: left to bash, the exit trap would read the status 0 and write the step down, and tell the monitor, as
+    # done, and the schedule would not run it again for a day.
+    full|diff|copy|verify|offsite|before-update)
+      if [[ -n "${TWES_BACKUP_BOUNDED:-}" ]]; then trap 'exit 143' TERM; else bounded "$1"; fi ;;&
     # Each name is the step's line on the public status page (infra/monitor/gatus.yaml), unaccented: Gatus takes no
     # heartbeat for a name with an accent.
     full|diff) hold; trap "heartbeat Base $1" EXIT; base_backup "$1" ;;
