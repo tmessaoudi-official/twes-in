@@ -48,6 +48,8 @@
       "new": "شركة جديدة",
       "close": "إغلاق",
       "no_owner": "لا مالك.",
+      "owner_invitation_open": "دعوة مالك أُرسلت إلى {{email}}، صالحة حتى {{day}}.",
+      "owner_invitation_expired": "انتهت صلاحية دعوة المالك المرسلة إلى {{email}} في {{day}}: أعد الدعوة.",
       "actions": {
         "label": "إجراءات على الشركة",
         "approve": "موافقة",

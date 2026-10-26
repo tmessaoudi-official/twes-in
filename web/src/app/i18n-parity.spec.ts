@@ -18,6 +18,12 @@ import frStockMoves from '../../public/i18n/stock-moves/fr.json';
 import arPurchases from '../../public/i18n/purchases/ar.json';
 import enPurchases from '../../public/i18n/purchases/en.json';
 import frPurchases from '../../public/i18n/purchases/fr.json';
+import arInvitation from '../../public/i18n/invitation/ar.json';
+import enInvitation from '../../public/i18n/invitation/en.json';
+import frInvitation from '../../public/i18n/invitation/fr.json';
+import arPhoneScanner from '../../public/i18n/phone-scanner/ar.json';
+import enPhoneScanner from '../../public/i18n/phone-scanner/en.json';
+import frPhoneScanner from '../../public/i18n/phone-scanner/fr.json';
 import arMembers from '../../public/i18n/members/ar.json';
 import enMembers from '../../public/i18n/members/en.json';
 import frMembers from '../../public/i18n/members/fr.json';
@@ -106,7 +112,9 @@ const parts: Record<string, Record<string, unknown>> = {
   expense: { fr: frExpense, en: enExpense, ar: arExpense },
   import: { fr: frImport, en: enImport, ar: arImport },
   install: { fr: frInstall, en: enInstall, ar: arInstall },
+  invitation: { fr: frInvitation, en: enInvitation, ar: arInvitation },
   'invoice-bulk': { fr: frInvoiceBulk, en: enInvoiceBulk, ar: arInvoiceBulk },
+  'phone-scanner': { fr: frPhoneScanner, en: enPhoneScanner, ar: arPhoneScanner },
   platform: { fr: frPlatform, en: enPlatform, ar: arPlatform },
   'purchase-history': { fr: frPurchaseHistory, en: enPurchaseHistory, ar: arPurchaseHistory },
   purchases: { fr: frPurchases, en: enPurchases, ar: arPurchases },

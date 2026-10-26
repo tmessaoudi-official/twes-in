@@ -365,6 +365,11 @@ function toRow(read: PlatformCompanyPlatformCompanyRead): PlatformCompanyRow {
     status: read.status ?? 'pending',
     createdAt: read.createdAt ?? '',
     owners: read.owners ?? [],
+    ownerInvitations: (read.ownerInvitations ?? []).map((invitation) => ({
+      email: invitation.email,
+      expiresAt: invitation.expiresAt,
+      expired: invitation.expired,
+    })),
     subscription:
       read.subscription === null || read.subscription === undefined
         ? null

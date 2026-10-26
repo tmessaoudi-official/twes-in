@@ -253,9 +253,14 @@ export class PhoneScannerPage implements OnInit {
     try {
       await entry.attempt();
     } catch (error) {
-      if (error instanceof PairingRefused && error.reason === 'network') {
+      // A send held back for going too fast is kept as a lost network keeps it: the pairing goes on.
+      if (
+        error instanceof PairingRefused &&
+        (error.reason === 'network' || error.reason === 'too_fast')
+      ) {
         if (entry.kind === 'photo') this.photo.set('idle');
         this.put({ ...entry, state: 'unsent' });
+        if (error.reason === 'too_fast') this.feedback.notice('scan.phone.page.too_fast');
         return false;
       }
       this.drop(entry.id);

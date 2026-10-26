@@ -12,7 +12,10 @@ namespace App\Tenancy\Application\Approval;
 /** A company as its operators review it: who it is, where it stands, and who owns it. */
 final readonly class PlatformCompanyView
 {
-    /** @param list<string> $owners the owners' addresses */
+    /**
+     * @param list<string>                      $owners           the owners' addresses
+     * @param list<PlatformOwnerInvitationView> $ownerInvitations the owner invitations nobody used, open or run out lately
+     */
     public function __construct(
         public string $id,
         public string $name,
@@ -20,6 +23,7 @@ final readonly class PlatformCompanyView
         public string $status,
         public string $createdAt,
         public array $owners,
+        public array $ownerInvitations = [],
     ) {
     }
 }

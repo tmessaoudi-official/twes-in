@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\Doctrine;
 
 use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Repository\InvitationRepository;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -66,6 +67,27 @@ final readonly class DoctrineInvitationRepository implements InvitationRepositor
             ->andWhere('i.expiresAt >= :since')
             ->orderBy('i.createdAt', 'ASC')
             ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('since', $expiredSince, Types::DATETIME_IMMUTABLE)
+            ->getQuery()
+            ->getResult();
+
+        return $unused;
+    }
+
+    public function unusedOfCompanies(array $companyIds, \DateTimeImmutable $expiredSince): array
+    {
+        if ([] === $companyIds) {
+            return [];
+        }
+        /** @var list<Invitation> $unused */
+        $unused = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invitation::class, 'i')
+            ->where('i.company IN (:companies)')
+            ->andWhere('i.acceptedAt IS NULL')
+            ->andWhere('i.expiresAt >= :since')
+            ->orderBy('i.createdAt', 'ASC')
+            ->setParameter('companies', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $companyIds), ArrayParameterType::STRING)
             ->setParameter('since', $expiredSince, Types::DATETIME_IMMUTABLE)
             ->getQuery()
             ->getResult();

@@ -13,21 +13,33 @@ use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Application\Company\DemoCompanies;
 use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\Repository\InvitationRepository;
 use App\Tenancy\Domain\Repository\MembershipRepository;
 use App\Tenancy\Domain\ValueObject\CompanySearch;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * The companies as the platform's operators see them, across every tenant: only an operator's endpoint reaches this.
  * The demo's sandboxes are made-up companies a visitor tries the product in, no operator's concern, so the list leaves
- * them out.
+ * them out. Beside its owners, a company says the owner invitations nobody used, open or run out within the window the
+ * members page keeps them, so an operator sees that the one they sent lapsed and sends it again.
  */
 final readonly class PlatformCompanies
 {
-    public function __construct(private CompanyRepository $companies, private MembershipRepository $memberships, private DemoCompanies $demos)
-    {
+    public function __construct(
+        private CompanyRepository $companies,
+        private MembershipRepository $memberships,
+        private DemoCompanies $demos,
+        private InvitationRepository $invitations,
+        private ClockInterface $clock,
+        #[Autowire(param: 'app.invitation.expired_shown_for')]
+        private string $expiredShownFor,
+    ) {
     }
 
     /**
@@ -43,7 +55,9 @@ final readonly class PlatformCompanies
             $owners[$membership->getCompany()->getId()->toRfc4122()][] = $membership->getUser()->getEmail()->value;
         }
 
-        return $found->map(fn (Company $company): PlatformCompanyView => $this->viewWith($company, $owners[$company->getId()->toRfc4122()] ?? []));
+        $invited = $this->ownerInvitations(array_map(static fn (Company $company): Uuid => $company->getId(), $found->items));
+
+        return $found->map(fn (Company $company): PlatformCompanyView => $this->viewWith($company, $owners[$company->getId()->toRfc4122()] ?? [], $invited[$company->getId()->toRfc4122()] ?? []));
     }
 
     public function viewOf(Company $company): PlatformCompanyView
@@ -55,11 +69,38 @@ final readonly class PlatformCompanies
             }
         }
 
-        return $this->viewWith($company, $owners);
+        return $this->viewWith($company, $owners, $this->ownerInvitations([$company->getId()])[$company->getId()->toRfc4122()] ?? []);
     }
 
-    /** @param list<string> $owners */
-    private function viewWith(Company $company, array $owners): PlatformCompanyView
+    /**
+     * @param list<Uuid> $companyIds
+     *
+     * @return array<string, list<PlatformOwnerInvitationView>> by company
+     */
+    private function ownerInvitations(array $companyIds): array
+    {
+        $now = $this->clock->now();
+        $invited = [];
+        foreach ($this->invitations->unusedOfCompanies($companyIds, $now->sub(new \DateInterval($this->expiredShownFor))) as $invitation) {
+            if (Role::OWNER !== $invitation->getRoleName()) {
+                continue;
+            }
+            $invited[$invitation->getCompany()->getId()->toRfc4122()][] = self::invitation($invitation, $now);
+        }
+
+        return $invited;
+    }
+
+    private static function invitation(Invitation $invitation, \DateTimeImmutable $now): PlatformOwnerInvitationView
+    {
+        return new PlatformOwnerInvitationView($invitation->getEmail()->value, $invitation->getExpiresAt()->format(\DateTimeInterface::ATOM), !$invitation->isUsableAt($now));
+    }
+
+    /**
+     * @param list<string>                      $owners
+     * @param list<PlatformOwnerInvitationView> $ownerInvitations
+     */
+    private function viewWith(Company $company, array $owners, array $ownerInvitations): PlatformCompanyView
     {
         return new PlatformCompanyView(
             $company->getId()->toRfc4122(),
@@ -68,6 +109,7 @@ final readonly class PlatformCompanies
             $company->getStatus(),
             $company->getCreatedAt()->format(\DateTimeInterface::ATOM),
             $owners,
+            $ownerInvitations,
         );
     }
 }

@@ -56,6 +56,7 @@ export const routes: Routes = [
     // Opened from a mail client, with no session: deliberately outside both guards and outside the shell.
     path: 'invitations/:token',
     title: 'titles.invitation',
+    ...textsPart('invitation'),
     loadComponent: () =>
       import('./invitation/accept-invitation-page').then((m) => m.AcceptInvitationPage),
   },
@@ -64,6 +65,7 @@ export const routes: Routes = [
     // the link it claims is its only right. Outside both guards and outside the shell, like an invitation.
     path: 'pair',
     title: 'titles.phone_scanner',
+    ...textsPart('phone-scanner'),
     loadComponent: () => import('./pairing/phone-scanner-page').then((m) => m.PhoneScannerPage),
   },
   {

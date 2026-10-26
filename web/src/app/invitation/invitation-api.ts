@@ -74,6 +74,9 @@ function codeOf(error: unknown): InvitationError {
       return 'not_usable';
     case 422:
       return 'password_refused';
+    // The link's budget: tried too often from here, which waiting puts right.
+    case 429:
+      return 'too_many';
     default:
       return 'invalid';
   }

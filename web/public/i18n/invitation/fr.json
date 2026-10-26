@@ -1,0 +1,23 @@
+{
+  "invitation": {
+    "title": "Rejoindre une entreprise",
+    "offer": "Vous êtes invité à rejoindre {{company}} en tant que {{role}}.",
+    "has_account": "Cette adresse a déjà un compte : accepter y ajoute l’entreprise, et vous vous connectez comme d’habitude pour y travailler.",
+    "join": "Rejoindre l’entreprise",
+    "display_name": "Votre nom",
+    "display_name_required": "Votre nom est obligatoire.",
+    "password": "Choisissez un mot de passe",
+    "password_hint": "Au moins 12 caractères.",
+    "password_too_short": "Le mot de passe doit faire au moins 12 caractères.",
+    "submit": "Créer mon compte",
+    "errors": {
+      "not_usable": "Ce lien n’est plus valable. Demandez une nouvelle invitation.",
+      "password_refused": "Ce mot de passe a été vu dans une fuite de données. Choisissez-en un autre.",
+      "invalid": "Demande invalide.",
+      "network": "Impossible de joindre le serveur.",
+      "too_many": "Trop de tentatives avec ce lien : réessayez dans quelques minutes."
+    },
+    "journal": "Ce que vous ferez chez {{company}} sera inscrit dans son journal d’activité, conservé douze mois par défaut et lu par ceux que leur rôle autorise. Voir",
+    "back_to_login": "Retour à la connexion"
+  }
+}

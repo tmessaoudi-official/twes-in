@@ -1,0 +1,34 @@
+{
+  "scan": {
+    "phone": {
+      "page": {
+        "title": "Scanner",
+        "claiming": "Connecting to the computer…",
+        "ended": "This phone is no longer connected. To scan again, scan a new code on the computer.",
+        "code": "Code",
+        "send": "Send",
+        "sent": "Sent:",
+        "sending": "Sending…",
+        "unsent": "Not sent:",
+        "unsent_photo": "the photo",
+        "unsent_choice": "the choice",
+        "resend": "Send again",
+        "photo": "Take a photo",
+        "photo_sending": "Sending the photo…",
+        "photo_sent": "Photo sent to the computer.",
+        "photo_unreadable": "This picture could not be read. Take the photo again.",
+        "photo_refused": "The computer did not take this photo. Take it again.",
+        "too_fast": "Sent too fast, so it was kept for later: wait a few seconds, then send it again."
+      },
+      "refused": {
+        "unknown": "This link does not exist. Scan the code shown on the computer again.",
+        "claimed": "Another phone already used this link. Ask the computer for a new one.",
+        "expired": "This link has expired. Ask the computer for a new one.",
+        "ended": "The computer no longer uses this link. Ask it for a new one.",
+        "invalid": "This link is not valid.",
+        "network": "The computer does not answer. Check the phone's connection.",
+        "too_fast": "Too many links tried from this phone: try again in a few minutes."
+      }
+    }
+  }
+}

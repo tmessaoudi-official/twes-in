@@ -48,6 +48,8 @@
       "new": "Nouvelle entreprise",
       "close": "Fermer",
       "no_owner": "Aucun propriétaire.",
+      "owner_invitation_open": "Invitation de propriétaire envoyée à {{email}}, valable jusqu’au {{day}}.",
+      "owner_invitation_expired": "L’invitation de propriétaire envoyée à {{email}} a expiré le {{day}} : invitez de nouveau.",
       "actions": {
         "label": "Actions sur l’entreprise",
         "approve": "Approuver",

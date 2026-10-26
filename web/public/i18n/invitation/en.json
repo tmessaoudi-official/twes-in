@@ -1,0 +1,23 @@
+{
+  "invitation": {
+    "title": "Join a company",
+    "offer": "You are invited to join {{company}} as {{role}}.",
+    "has_account": "This address already has an account: accepting adds the company to it, and you sign in as usual to work in it.",
+    "join": "Join the company",
+    "display_name": "Your name",
+    "display_name_required": "Your name is required.",
+    "password": "Choose a password",
+    "password_hint": "At least 12 characters.",
+    "password_too_short": "The password must be at least 12 characters.",
+    "submit": "Create my account",
+    "errors": {
+      "not_usable": "That link is no longer valid. Ask for a new invitation.",
+      "password_refused": "That password has appeared in a data breach. Choose another one.",
+      "invalid": "Invalid request.",
+      "network": "The server could not be reached.",
+      "too_many": "Too many attempts with this link: try again in a few minutes."
+    },
+    "journal": "What you do at {{company}} is written in its activity journal, kept twelve months by default and read by those whose role allows it. See",
+    "back_to_login": "Back to sign in"
+  }
+}

@@ -14,4 +14,5 @@ export interface InvitationOffer {
  * Why the link or the form was refused. "not_usable" covers unknown, malformed, expired and already used:
  * the API answers those identically on purpose, and the page must not pretend to tell them apart.
  */
-export type InvitationError = 'not_usable' | 'password_refused' | 'invalid' | 'network';
+export type InvitationError =
+  'not_usable' | 'password_refused' | 'too_many' | 'invalid' | 'network';

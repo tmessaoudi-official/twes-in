@@ -17,6 +17,7 @@ use ApiPlatform\Metadata\QueryParameter;
 use App\Licensing\Domain\ValueObject\Standing;
 use App\Licensing\Infrastructure\ApiPlatform\Output\SubscriptionSummary;
 use App\Tenancy\Application\Approval\PlatformCompanyView;
+use App\Tenancy\Application\Approval\PlatformOwnerInvitationView;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\DecideCompanyApprovalProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Provider\PlatformCompanyCollectionProvider;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -99,6 +100,11 @@ final class PlatformCompanyResource
     #[Groups([self::READ])]
     public array $owners = [];
 
+    /** @var list<array{email: string, expiresAt: string, expired: bool}> the owner invitations nobody used, open or run out lately */
+    #[ApiProperty(writable: false, schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['email', 'expiresAt', 'expired'], 'properties' => ['email' => ['type' => 'string'], 'expiresAt' => ['type' => 'string', 'format' => 'date-time'], 'expired' => ['type' => 'boolean']]]])]
+    #[Groups([self::READ])]
+    public array $ownerInvitations = [];
+
     /** Where the company stands in its subscription; null when licensing does not manage it. */
     #[ApiProperty(writable: false, required: true)]
     #[Groups([self::READ])]
@@ -113,6 +119,7 @@ final class PlatformCompanyResource
         $resource->status = $view->status;
         $resource->createdAt = $view->createdAt;
         $resource->owners = $view->owners;
+        $resource->ownerInvitations = array_map(static fn (PlatformOwnerInvitationView $invitation): array => ['email' => $invitation->email, 'expiresAt' => $invitation->expiresAt, 'expired' => $invitation->expired], $view->ownerInvitations);
         $resource->subscription = null === $standing ? null : SubscriptionSummary::of($standing);
 
         return $resource;

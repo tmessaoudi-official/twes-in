@@ -21,7 +21,7 @@ import {
   PairingAddress,
   PhoneScannerPage,
 } from './phone-scanner-page';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { noticeToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -269,6 +269,50 @@ describe('PhoneScannerPage', () => {
 
     expect(api.claim).not.toHaveBeenCalled();
     expect(opened).toHaveLength(1);
+  });
+
+  it('keeps a scan sent too fast, says to wait and send it again, and keeps scanning', async () => {
+    await open();
+    api.scan.mockRejectedValueOnce(new PairingRefused('too_fast'));
+
+    await type('111');
+
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(q('phone-unsent')?.textContent).toContain('111');
+    });
+    expect(q('phone-ended')).toBeNull();
+    expect(q('phone-code')).not.toBeNull();
+    expect(storage.getItem(PAIRING_STORAGE_KEY)).not.toBeNull();
+    expect(noticeToasts().map((toast) => toast.key)).toEqual(['scan.phone.page.too_fast']);
+    (q('phone-resend') as HTMLButtonElement).click();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(q('phone-sent')?.textContent).toContain('111');
+    });
+  });
+
+  it('keeps a photo sent too fast to send again, rather than saying the computer turned it away', async () => {
+    await open();
+    api.photo.mockRejectedValueOnce(new PairingRefused('too_fast'));
+
+    await takePhoto(new File(['big'], 'IMG_0001.jpg', { type: 'image/jpeg' }));
+
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(q('phone-unsent')?.textContent).toContain('scan.phone.page.unsent_photo');
+    });
+    expect(q('phone-photo-refused')).toBeNull();
+    expect(q('phone-ended')).toBeNull();
+    expect(noticeToasts().map((toast) => toast.key)).toEqual(['scan.phone.page.too_fast']);
+  });
+
+  it('says a link tried too often from here, and to wait', async () => {
+    api.claim.mockRejectedValue(new PairingRefused('too_fast'));
+
+    await open();
+
+    expect(q('phone-refused')?.textContent).toContain('scan.phone.refused.too_fast');
   });
 
   it('stops when the pairing refuses a scan', async () => {

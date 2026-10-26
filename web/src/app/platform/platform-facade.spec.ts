@@ -28,6 +28,7 @@ const row: PlatformCompanyRow = {
   status: 'pending',
   createdAt: '2026-09-15T10:00:00+00:00',
   owners: ['nadia@example.test'],
+  ownerInvitations: [],
   subscription: null,
 };
 

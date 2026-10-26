@@ -155,6 +155,10 @@ class StaticLoader implements TranslateLoader {
           new: 'Nouvelle entreprise',
           close: 'Fermer',
           no_owner: 'Aucun propriétaire.',
+          owner_invitation_open:
+            'Invitation de propriétaire envoyée à {{email}}, valable jusqu’au {{day}}.',
+          owner_invitation_expired:
+            'L’invitation de propriétaire envoyée à {{email}} a expiré le {{day}} : invitez de nouveau.',
           countries: { TN: 'Tunisie', FR: 'France' },
           statuses: { pending: 'En attente', active: 'Active', suspended: 'Suspendue' },
           actions: {
@@ -239,6 +243,7 @@ const row: PlatformCompanyRow = {
   status: 'pending',
   createdAt: '2026-09-15T10:00:00+00:00',
   owners: ['nadia@example.test'],
+  ownerInvitations: [],
   subscription: null,
 };
 
@@ -667,6 +672,29 @@ describe('PlatformPage', () => {
         expect.objectContaining({ key: 'platform.companies.done.suspended' }),
       ]),
     );
+  });
+
+  it('says on a company sheet each owner invitation nobody used, open or run out, so a lapsed one is sent again', async () => {
+    companies.set([
+      {
+        ...row,
+        status: 'active',
+        owners: [],
+        ownerInvitations: [
+          { email: 'open@example.test', expiresAt: '2026-10-30T10:00:00+00:00', expired: false },
+          { email: 'late@example.test', expiresAt: '2026-10-01T10:00:00+00:00', expired: true },
+        ],
+      },
+    ]);
+    const { query } = await render('/?tab=companies&company=c1');
+
+    const open = query('owner-invitation-open@example.test')!;
+    expect(open.textContent).toContain('envoyée à open@example.test, valable jusqu’au');
+    expect(open.classList).not.toContain('text-error');
+    const late = query('owner-invitation-late@example.test')!;
+    expect(late.textContent).toContain('envoyée à late@example.test a expiré le');
+    expect(late.textContent).toContain('invitez de nouveau.');
+    expect(late.classList).toContain('text-error');
   });
 
   it('offers a suspended company its access back, and no second suspension', async () => {

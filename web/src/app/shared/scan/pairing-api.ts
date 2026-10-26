@@ -17,7 +17,8 @@ import { refusedFor } from '../errors/said-already';
 export type PairingEcho = ScanPairingEcho;
 
 /** Why the API turned a pairing request away, or `network` when it could not be asked. */
-export type PairingRefusal = ScanPairingRefusal['error'] | 'network';
+/** `too_fast`: the API asks for fewer sends a minute, which ends nothing: what it held back is sent again. */
+export type PairingRefusal = ScanPairingRefusal['error'] | 'too_fast' | 'network';
 
 export class PairingRefused extends Error {
   constructor(readonly reason: PairingRefusal) {
@@ -146,6 +147,7 @@ const UNREACHABLE = new Set([0, 502, 503, 504]);
 
 function refusalOf(error: unknown): PairingRefusal {
   if (!(error instanceof HttpErrorResponse) || UNREACHABLE.has(error.status)) return 'network';
+  if (error.status === 429) return 'too_fast';
   const reason = (error.error as Partial<ScanPairingRefusal> | null)?.error;
   if (reason !== undefined) return reason;
   return error.status === 404 ? 'unknown' : 'invalid';

@@ -706,26 +706,6 @@
       "signup_awaiting_approval": "Entreprise en attente d’approbation"
     }
   },
-  "invitation": {
-    "title": "Rejoindre une entreprise",
-    "offer": "Vous êtes invité à rejoindre {{company}} en tant que {{role}}.",
-    "has_account": "Cette adresse a déjà un compte : accepter y ajoute l’entreprise, et vous vous connectez comme d’habitude pour y travailler.",
-    "join": "Rejoindre l’entreprise",
-    "display_name": "Votre nom",
-    "display_name_required": "Votre nom est obligatoire.",
-    "password": "Choisissez un mot de passe",
-    "password_hint": "Au moins 12 caractères.",
-    "password_too_short": "Le mot de passe doit faire au moins 12 caractères.",
-    "submit": "Créer mon compte",
-    "errors": {
-      "not_usable": "Ce lien n’est plus valable. Demandez une nouvelle invitation.",
-      "password_refused": "Ce mot de passe a été vu dans une fuite de données. Choisissez-en un autre.",
-      "invalid": "Demande invalide.",
-      "network": "Impossible de joindre le serveur."
-    },
-    "journal": "Ce que vous ferez chez {{company}} sera inscrit dans son journal d’activité, conservé douze mois par défaut et lu par ceux que leur rôle autorise. Voir",
-    "back_to_login": "Retour à la connexion"
-  },
   "document": {
     "actions": "Actions du document",
     "more_actions": "Autres actions"
@@ -3206,32 +3186,6 @@
       "found": "{{name}}",
       "retired": "{{name}} n’est plus vendu",
       "unknown": "Aucun produit ne porte le code {{code}}",
-      "page": {
-        "title": "Scanner",
-        "claiming": "Liaison avec l’ordinateur…",
-        "ended": "Ce téléphone n’est plus relié. Pour scanner à nouveau, scannez un nouveau code sur l’ordinateur.",
-        "code": "Code",
-        "send": "Envoyer",
-        "sent": "Envoyé :",
-        "sending": "Envoi…",
-        "unsent": "Non envoyé :",
-        "unsent_photo": "la photo",
-        "unsent_choice": "le choix",
-        "resend": "Renvoyer",
-        "photo": "Prendre une photo",
-        "photo_sending": "Envoi de la photo…",
-        "photo_sent": "Photo envoyée à l’ordinateur.",
-        "photo_unreadable": "Cette image n’a pas pu être lue. Reprenez la photo.",
-        "photo_refused": "L’ordinateur n’a pas pris cette photo. Reprenez-la."
-      },
-      "refused": {
-        "unknown": "Ce lien n’existe pas. Scannez à nouveau le code affiché sur l’ordinateur.",
-        "claimed": "Ce lien a déjà été utilisé par un autre téléphone. Demandez-en un nouveau sur l’ordinateur.",
-        "expired": "Ce lien a expiré. Demandez-en un nouveau sur l’ordinateur.",
-        "ended": "L’ordinateur n’utilise plus ce lien. Demandez-en un nouveau sur l’ordinateur.",
-        "invalid": "Ce lien n’est pas valide.",
-        "network": "L’ordinateur ne répond pas. Vérifiez la connexion du téléphone."
-      },
       "photo": {
         "nowhere": "Ouvrez l’onglet Photos d’un article sur l’ordinateur, puis reprenez la photo.",
         "lost": "La photo n’est pas arrivée sur l’ordinateur. Reprenez-la."

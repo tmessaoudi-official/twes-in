@@ -1,0 +1,34 @@
+{
+  "scan": {
+    "phone": {
+      "page": {
+        "title": "Scanner",
+        "claiming": "Liaison avec l’ordinateur…",
+        "ended": "Ce téléphone n’est plus relié. Pour scanner à nouveau, scannez un nouveau code sur l’ordinateur.",
+        "code": "Code",
+        "send": "Envoyer",
+        "sent": "Envoyé :",
+        "sending": "Envoi…",
+        "unsent": "Non envoyé :",
+        "unsent_photo": "la photo",
+        "unsent_choice": "le choix",
+        "resend": "Renvoyer",
+        "photo": "Prendre une photo",
+        "photo_sending": "Envoi de la photo…",
+        "photo_sent": "Photo envoyée à l’ordinateur.",
+        "photo_unreadable": "Cette image n’a pas pu être lue. Reprenez la photo.",
+        "photo_refused": "L’ordinateur n’a pas pris cette photo. Reprenez-la.",
+        "too_fast": "Envoyé trop vite, l’ordinateur l’a gardé pour plus tard : patientez quelques secondes, puis renvoyez."
+      },
+      "refused": {
+        "unknown": "Ce lien n’existe pas. Scannez à nouveau le code affiché sur l’ordinateur.",
+        "claimed": "Ce lien a déjà été utilisé par un autre téléphone. Demandez-en un nouveau sur l’ordinateur.",
+        "expired": "Ce lien a expiré. Demandez-en un nouveau sur l’ordinateur.",
+        "ended": "L’ordinateur n’utilise plus ce lien. Demandez-en un nouveau sur l’ordinateur.",
+        "invalid": "Ce lien n’est pas valide.",
+        "network": "L’ordinateur ne répond pas. Vérifiez la connexion du téléphone.",
+        "too_fast": "Trop de liens essayés depuis ce téléphone : réessayez dans quelques minutes."
+      }
+    }
+  }
+}

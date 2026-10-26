@@ -36,6 +36,9 @@ describe('PlatformApi', () => {
     status: 'pending',
     createdAt: '2026-09-15T10:00:00+00:00',
     owners: ['nadia@example.test'],
+    ownerInvitations: [
+      { email: 'late@example.test', expiresAt: '2026-10-01T10:00:00+00:00', expired: true },
+    ],
     subscription: null,
   };
 

@@ -91,4 +91,29 @@ describe('PairingApi photos', () => {
       .flush({}, { status: 404, statusText: 'Not Found' });
     await expect(refused).rejects.toEqual(new PairingRefused('unknown'));
   });
+
+  it('takes an answer to send more slowly as such, never as a refusal that ends the pairing', async () => {
+    const scanned = api.scan('p-1', 'k'.repeat(64), '111', SCAN_ID);
+    http
+      .expectOne('/api/scan-pairings/p-1/scans')
+      .flush(
+        { title: 'Too many scans at once; slow down.' },
+        { status: 429, statusText: 'Too Many Requests' },
+      );
+    await expect(scanned).rejects.toEqual(new PairingRefused('too_fast'));
+
+    const photo = api.photo(
+      'p-1',
+      'k'.repeat(64),
+      SCAN_ID,
+      new Blob(['jpeg'], { type: 'image/jpeg' }),
+    );
+    http
+      .expectOne('/api/scan-pairings/p-1/photos')
+      .flush(
+        { title: 'Too many photos at once; slow down.' },
+        { status: 429, statusText: 'Too Many Requests' },
+      );
+    await expect(photo).rejects.toEqual(new PairingRefused('too_fast'));
+  });
 });

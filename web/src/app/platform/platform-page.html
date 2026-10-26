@@ -543,6 +543,22 @@
                         {{ 'platform.companies.no_owner' | translate }}
                       }
                     </span>
+                    @for (invitation of company.ownerInvitations; track invitation.email) {
+                      <span
+                        class="text-sm"
+                        [class.text-error]="invitation.expired"
+                        [attr.data-testid]="'owner-invitation-' + invitation.email"
+                      >
+                        {{
+                          (invitation.expired
+                            ? 'platform.companies.owner_invitation_expired'
+                            : 'platform.companies.owner_invitation_open'
+                          )
+                            | translate
+                              : { email: invitation.email, day: invitation.expiresAt | day }
+                        }}
+                      </span>
+                    }
                     @if (company.subscription; as standing) {
                       <p class="text-sm" [attr.data-testid]="'standing-' + company.name">
                         {{ 'platform.subscription.stages.' + standing.stage | translate }} ·

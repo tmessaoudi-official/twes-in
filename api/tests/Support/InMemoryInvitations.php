@@ -69,6 +69,14 @@ final class InMemoryInvitations implements InvitationRepository
         ));
     }
 
+    public function unusedOfCompanies(array $companyIds, \DateTimeImmutable $expiredSince): array
+    {
+        return array_values(array_filter(
+            $this->invitations,
+            static fn (Invitation $i) => array_any($companyIds, static fn (Uuid $id): bool => $i->getCompany()->getId()->equals($id)) && null === $i->getAcceptedAt() && $i->getExpiresAt() >= $expiredSince,
+        ));
+    }
+
     public function save(Invitation $invitation): void
     {
         if (!\in_array($invitation, $this->invitations, true)) {

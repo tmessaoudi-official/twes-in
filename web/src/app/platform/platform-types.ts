@@ -36,6 +36,13 @@ export interface PlatformSubscriptionRow extends SubscriptionTerms {
   readonly version: number;
 }
 
+/** An owner invitation sent to a company, as its row says it. */
+export interface PlatformOwnerInvitation {
+  readonly email: string;
+  readonly expiresAt: string;
+  readonly expired: boolean;
+}
+
 /** A company as the platform's operators review it. */
 export interface PlatformCompanyRow {
   readonly id: string;
@@ -45,6 +52,8 @@ export interface PlatformCompanyRow {
   readonly createdAt: string;
   /** The owners' addresses. */
   readonly owners: readonly string[];
+  /** The owner invitations nobody used: open, or run out lately, so a lapsed one is sent again. */
+  readonly ownerInvitations: readonly PlatformOwnerInvitation[];
   /** Null when licensing does not manage the company. */
   readonly subscription: SubscriptionStanding | null;
 }

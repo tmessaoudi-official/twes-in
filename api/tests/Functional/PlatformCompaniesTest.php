@@ -9,7 +9,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Identity\Domain\ValueObject\Email;
 use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Domain\ValueObject\InvitationToken;
 use Symfony\Component\HttpFoundation\Response;
 
 /** The platform's companies list at scale (docs/SPEC.md § 7): a page at a time, searched, narrowed and sorted in the database. */
@@ -116,6 +120,40 @@ final class PlatformCompaniesTest extends ApiTestCase
             $this->getJson(self::PATH.$query);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $query);
         }
+    }
+
+    /** Workflow hunt, F3's second member: an owner invitation sent from here, open or run out lately, is said on its row. */
+    public function testARowSaysItsOwnerInvitationOpenOrRunOutLately(): void
+    {
+        $alphaCompany = $this->company('Alpha');
+        $alpha = $alphaCompany->getId()->toRfc4122();
+        $bravo = $this->company('Bravo')->getId()->toRfc4122();
+        $this->company('Charlie', owner: 'karim@nord.example');
+        $this->seedBuiltInRoles();
+        $this->signedInAsOperator();
+        $this->stepUp('password-1234');
+        foreach ([[$alpha, 'late@alpha.example'], [$bravo, 'open@bravo.example']] as [$company, $email]) {
+            $this->postJson(self::PATH.'/'.$company.'/owners', ['email' => $email]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+        $this->em()->getConnection()->executeStatement("UPDATE invitation SET expires_at = expires_at - INTERVAL '8 days' WHERE email = 'late@alpha.example'");
+        // An invitation to another role is the company's own business, not an owner the platform waits for.
+        $admin = $this->em()->getRepository(Role::class)->findOneBy(['name' => Role::ADMIN, 'company' => null]);
+        self::assertNotNull($admin);
+        $this->em()->persist(new Invitation($this->em()->find(Company::class, $alphaCompany->getId()) ?? self::fail('Alpha is gone'), Email::fromString('admin@alpha.example'), $admin, InvitationToken::generate(), new \DateTimeImmutable(), new \DateInterval('P7D'), null));
+        $this->em()->flush();
+
+        $this->getJson(self::PATH);
+        $rows = array_column($this->jsonList(), 'ownerInvitations', 'name');
+        $said = array_map(static fn (mixed $invitations): array => array_map(
+            static fn (mixed $invitation): array => \is_array($invitation) ? [$invitation['email'] ?? null, $invitation['expired'] ?? null, \is_string($invitation['expiresAt'] ?? null)] : [],
+            \is_array($invitations) ? $invitations : [],
+        ), $rows);
+        self::assertSame(['Alpha' => [['late@alpha.example', true, true]], 'Bravo' => [['open@bravo.example', false, true]], 'Charlie' => []], $said);
+
+        $this->em()->getConnection()->executeStatement("UPDATE invitation SET expires_at = expires_at - INTERVAL '60 days' WHERE email = 'late@alpha.example'");
+        $this->getJson(self::PATH.'?q=Alpha');
+        self::assertSame([], $this->jsonList()[0]['ownerInvitations'] ?? null, 'run out long ago, it is forgotten as on the members page');
     }
 
     public function testAPageCostsTheSameNumberOfStatementsWhateverItsSize(): void

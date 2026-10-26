@@ -31,6 +31,15 @@ interface InvitationRepository
      */
     public function unusedOfCompany(Uuid $companyId, \DateTimeImmutable $expiredSince): array;
 
+    /**
+     * The same for several companies in one read, as the platform's list of companies asks for a page of them.
+     *
+     * @param list<Uuid> $companyIds
+     *
+     * @return list<Invitation>
+     */
+    public function unusedOfCompanies(array $companyIds, \DateTimeImmutable $expiredSince): array;
+
     public function save(Invitation $invitation): void;
 
     /** Inviting the same address again replaces the open invitation, so exactly one token ever works. */

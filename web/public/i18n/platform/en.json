@@ -48,6 +48,8 @@
       "new": "New company",
       "close": "Close",
       "no_owner": "No owner yet.",
+      "owner_invitation_open": "Owner invitation sent to {{email}}, valid until {{day}}.",
+      "owner_invitation_expired": "The owner invitation sent to {{email}} ran out on {{day}}: invite again.",
       "actions": {
         "label": "Company actions",
         "approve": "Approve",
