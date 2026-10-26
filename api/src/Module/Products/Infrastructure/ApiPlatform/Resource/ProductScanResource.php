@@ -14,7 +14,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Products\Application\CustomerPrice;
-use App\Module\Products\Domain\Model\ProductBarcode;
+use App\Module\Products\Application\Scan\ScannedCode;
 use App\Module\Products\Domain\ValueObject\Gs1Scan;
 use App\Module\Products\Infrastructure\ApiPlatform\State\Provider\ProductScanProvider;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -113,20 +113,20 @@ final class ProductScanResource
     #[Groups([self::READ])]
     public ?string $mainPhotoId = null;
 
-    public static function of(ProductBarcode $held, Gs1Scan $scan, int $thisYear, CustomerPrice $prices, ?string $mainPhotoId): self
+    public static function of(ScannedCode $held, Gs1Scan $scan, int $thisYear, CustomerPrice $prices, ?string $mainPhotoId): self
     {
-        $product = $held->getProduct();
+        $product = $held->product;
         $resource = new self();
         $resource->productId = $product->getId()->toRfc4122();
         $resource->reference = $product->getReference();
         $resource->name = $product->getDetails()->name;
         $resource->isActive = $product->isActive();
         $resource->unitPriceNet = $product->getDetails()->unitPriceNet;
-        $resource->code = $held->getCode();
-        $resource->role = $held->getRole()->value;
-        $resource->quantity = $held->getQuantity();
+        $resource->code = $held->code;
+        $resource->role = $held->role->value;
+        $resource->quantity = $held->quantity;
         $resource->unitPriceGross = $prices->of($product, 1);
-        $resource->priceGross = $prices->of($product, $held->getQuantity());
+        $resource->priceGross = $prices->of($product, $held->quantity);
         $resource->lot = $scan->lot;
         $resource->useBy = $scan->expiry($thisYear);
         $resource->serial = $scan->serial;

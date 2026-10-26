@@ -2251,7 +2251,7 @@
       "codes": "Codes à imprimer",
       "pack_of": "Colis de {{quantity}}",
       "print": "Imprimer",
-      "no_code": "Cet article ne répond à aucun code qui soit le sien : ajoutez-lui un code unitaire ou interne pour imprimer ses étiquettes.",
+      "none_ticked": "Cochez au moins un code pour imprimer ses étiquettes.",
       "open": "Imprimer des étiquettes",
       "back": "Retour au produit",
       "sheet_intro": "Une étiquette par produit sélectionné, avec le code de sa propre feuille : l’unitaire, sinon un code interne, sinon celui d’un colis.",

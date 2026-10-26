@@ -13,7 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Products\Application\CustomerPrice;
 use App\Module\Products\Application\Photo\ProductPhotos;
-use App\Module\Products\Application\ScanProducts;
+use App\Module\Products\Application\Scan\ScanProducts;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductScanResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
@@ -43,7 +43,7 @@ final readonly class ProductScanProvider implements ProviderInterface
             throw new NotFoundHttpException('No product of this company answers to this code.');
         }
 
-        $product = $found[0]->getProduct()->getId();
+        $product = $found[0]->product->getId();
         $photo = $this->photos->mainPhotoIdsOf($company, [$product])[$product->toRfc4122()] ?? null;
 
         return ProductScanResource::of($found[0], $found[1], (int) $this->clock->now()->format('Y'), $this->prices, $photo);

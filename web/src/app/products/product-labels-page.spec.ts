@@ -14,7 +14,7 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { Session } from '../shared/session/session';
 import { ProductLabelsPage } from './product-labels-page';
 import { ProductsApi } from './products-api';
-import type { ProductRow, ProductScan } from './products-types';
+import type { LabelledProduct } from './products-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -22,36 +22,20 @@ class StaticLoader implements TranslateLoader {
   }
 }
 
-const product = {
-  id: 'p1',
-  reference: 'VIS-6X40',
-  name: 'Vis 6x40',
-  barcodes: [
-    { role: 'supplier', code: 'FOURN-1', quantity: 1, supplierId: 's1' },
-    { role: 'unit', code: '4006381333931', quantity: 1, supplierId: null },
-    { role: 'pack', code: '14006381333938', quantity: 12, supplierId: null },
-  ],
-} as unknown as ProductRow;
-
-const scanOf = (code: string, role: 'unit' | 'pack', quantity: number): ProductScan => ({
+// As the labels endpoint answers it: every code the product holds, each at what a customer pays for it.
+const product: LabelledProduct = {
   productId: 'p1',
   reference: 'VIS-6X40',
   name: 'Vis 6x40',
-  isActive: true,
-  code,
-  role,
-  quantity,
-  lot: null,
-  useBy: null,
-  serial: null,
-  unitPriceNet: '1.0000',
-  unitPriceGross: '1.190',
-  priceGross: role === 'pack' ? '14.280' : '1.190',
-  mainPhotoId: null,
-});
+  codes: [
+    { role: 'supplier', code: 'FOURN-1', quantity: 1, priceGross: '1.190' },
+    { role: 'unit', code: '4006381333931', quantity: 1, priceGross: '1.190' },
+    { role: 'pack', code: '14006381333938', quantity: 12, priceGross: '14.280' },
+  ],
+};
 
 describe('ProductLabelsPage', () => {
-  const api = { product: vi.fn(), scan: vi.fn() };
+  const api = { labels: vi.fn() };
   const print = vi.fn();
   let fixture: ComponentFixture<ProductLabelsPage>;
 
@@ -67,18 +51,11 @@ describe('ProductLabelsPage', () => {
     for (const [name, value] of Object.entries(inputs)) fixture.componentRef.setInput(name, value);
     fixture.detectChanges();
     await fixture.whenStable();
-    // The price is asked once the product is read: one more turn for that answer.
-    await new Promise((resolve) => setTimeout(resolve));
     fixture.detectChanges();
   }
 
   beforeEach(() => {
-    api.product.mockReset().mockResolvedValue(product);
-    api.scan
-      .mockReset()
-      .mockImplementation(async (_company: string, code: string) =>
-        code.startsWith('1') ? scanOf(code, 'pack', 12) : scanOf(code, 'unit', 1),
-      );
+    api.labels.mockReset().mockResolvedValue([product]);
     print.mockReset();
     TestBed.configureTestingModule({
       imports: [ProductLabelsPage],
@@ -99,8 +76,7 @@ describe('ProductLabelsPage', () => {
 
   it("prints the product's unit code by default: its name, reference, shelf price and the barcode", async () => {
     await open();
-    expect(api.product).toHaveBeenCalledWith('c1', 'p1');
-    expect(api.scan).toHaveBeenCalledWith('c1', '4006381333931');
+    expect(api.labels).toHaveBeenCalledWith('c1', ['p1']);
     const [label] = all('product-label');
     expect(label.textContent).toContain('Vis 6x40');
     expect(label.textContent).toContain('VIS-6X40');
@@ -158,6 +134,7 @@ describe('ProductLabelsPage', () => {
     input('14006381333938').click();
     fixture.detectChanges();
     expect(all('product-label')).toHaveLength(0);
+    expect(q('product-labels-none-ticked')).not.toBeNull();
     expect((q('product-labels-print') as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -174,14 +151,22 @@ describe('ProductLabelsPage', () => {
     expect(print).toHaveBeenCalled();
   });
 
-  it('says so, and prints nothing, for a product that answers to no code of its own', async () => {
-    api.product.mockResolvedValue({
-      ...product,
-      barcodes: [{ role: 'supplier', code: 'FOURN-1', quantity: 1, supplierId: 's1' }],
-    });
+  it('prints the reference of loose goods with no code of their own, which a scan finds', async () => {
+    api.labels.mockResolvedValue([
+      {
+        ...product,
+        codes: [
+          { role: 'supplier', code: 'FOURN-1', quantity: 1, priceGross: '1.190' },
+          { role: 'unit', code: 'VIS-6X40', quantity: 1, priceGross: '1.190' },
+        ],
+      },
+    ]);
     await open();
-    expect(q('product-labels-no-code')).not.toBeNull();
-    expect(all('product-label')).toHaveLength(0);
+    const labels = all('product-label');
+    expect(labels).toHaveLength(1);
+    expect(labels[0].querySelector('svg[role="img"]')?.getAttribute('aria-label')).toBe('VIS-6X40');
+    expect(labels[0].textContent).toContain('~1.190 TND');
+    expect(q('product-labels-none-ticked')).toBeNull();
   });
 
   it('leads back to the product, with the link left off the paper', async () => {

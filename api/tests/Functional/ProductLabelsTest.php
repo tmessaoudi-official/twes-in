@@ -43,7 +43,10 @@ final class ProductLabelsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSame([
-            ['productId' => $cable, 'reference' => 'ART-002', 'name' => 'Câble', 'codes' => []],
+            // Loose goods with no code of their own: the label carries the reference, which a scan finds (row 102).
+            ['productId' => $cable, 'reference' => 'ART-002', 'name' => 'Câble', 'codes' => [
+                ['code' => 'ART-002', 'role' => 'unit', 'quantity' => 1, 'priceGross' => '10.000'],
+            ]],
             ['productId' => $laptop, 'reference' => 'ART-001', 'name' => 'Portable', 'codes' => [
                 ['code' => '3017620422003', 'role' => 'unit', 'quantity' => 1, 'priceGross' => '120.190'],
                 ['code' => '13017620422000', 'role' => 'pack', 'quantity' => 12, 'priceGross' => '1442.280'],

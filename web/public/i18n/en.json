@@ -2251,7 +2251,7 @@
       "codes": "Codes to print",
       "pack_of": "Pack of {{quantity}}",
       "print": "Print",
-      "no_code": "This product answers to no code of its own: give it a unit or internal code to print its labels.",
+      "none_ticked": "Tick at least one code to print its labels.",
       "open": "Print labels",
       "back": "Back to the product",
       "sheet_intro": "One label per product selected, with the code of its own sheet: the unit code, else an internal one, else a pack's.",

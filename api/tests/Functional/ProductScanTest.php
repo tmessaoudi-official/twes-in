@@ -116,6 +116,61 @@ final class ProductScanTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /** Loose goods carry no barcode: their label prints the reference, and a scan matching no barcode tries the references. */
+    public function testAProductWithNoCodeIsFoundByItsReferenceAsOnePiece(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $id = $this->aProductWith([], reference: 'VIS-6X40');
+
+        $this->getJson($this->path('VIS-6X40'));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(
+            ['productId' => $id, 'reference' => 'VIS-6X40', 'code' => 'VIS-6X40', 'role' => 'unit', 'quantity' => 1, 'lot' => null],
+            array_intersect_key($this->json(), array_flip(['productId', 'reference', 'code', 'role', 'quantity', 'lot'])),
+        );
+    }
+
+    public function testABarcodeIsFoundBeforeAReferenceThatReadsTheSame(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->aProductWith([], reference: '3017620422003');
+        $holder = $this->aProductWith([['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]], reference: 'ART-002');
+
+        $this->getJson($this->path('3017620422003'));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame($holder, $this->json()['productId'], 'a code is what it was printed as first');
+    }
+
+    /** An old label of a product merged into another names the product kept, as nothing new names the one merged away. */
+    public function testTheReferenceOfAProductMergedAwayNamesTheProductKept(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $kept = $this->aProductWith([], reference: 'VIS-6X40');
+        $away = $this->aProductWith([], reference: 'VIS-6X40-OLD');
+        $this->em()->getConnection()->executeStatement('UPDATE product SET merged_into_id = ?, is_active = false WHERE id = ?', [$kept, $away]);
+
+        $this->getJson($this->path('VIS-6X40-OLD'));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([$kept, 'VIS-6X40'], [$this->json()['productId'], $this->json()['code']]);
+    }
+
+    public function testAReferenceIsFoundWholeAndAsWritten(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->aProductWith([], reference: 'VIS-6X40');
+
+        foreach (['vis-6x40', 'VIS-6X4', 'VIS-6X400'] as $other) {
+            $this->getJson($this->path($other));
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $other);
+        }
+        $other = $this->createCompany('Globex');
+        $this->getJson('/api/companies/'.$other->getId()->toRfc4122().'/product-scan?code=VIS-6X40');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testSomebodyWhoCannotReadProductsIsAnsweredAsAStranger(): void
     {
         $this->signedIn(['company.read']);
@@ -129,7 +184,7 @@ final class ProductScanTest extends ApiTestCase
      * @param list<array<string, mixed>> $codes
      * @param list<string>               $taxCodes the company's line taxes the product starts its lines with
      */
-    private function aProductWith(array $codes, string $price = '10', array $taxCodes = []): string
+    private function aProductWith(array $codes, string $price = '10', array $taxCodes = [], string $reference = 'ART-001'): string
     {
         $taxes = static::getContainer()->get(TaxComponentRepository::class);
         $taxIds = array_map(function (string $code) use ($taxes): string {
@@ -142,7 +197,7 @@ final class ProductScanTest extends ApiTestCase
         self::assertNotNull($unit);
         $base = '/api/companies/'.$this->company->getId()->toRfc4122().'/products';
         $this->postJson($base, [
-            'reference' => 'ART-001', 'name' => 'Portable', 'description' => null, 'kind' => 'goods',
+            'reference' => $reference, 'name' => 'Portable', 'description' => null, 'kind' => 'goods',
             'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => $price, 'costPrice' => null, 'categoryId' => null,
             'defaultTaxComponentIds' => $taxIds, 'customFields' => [], 'isActive' => true,
         ]);

@@ -9,22 +9,26 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Application;
 
+use App\Module\Products\Application\Scan\ScannedCode;
 use App\Module\Products\Domain\Model\Product;
-use App\Module\Products\Domain\Model\ProductBarcode;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Module\Products\Domain\ValueObject\BarcodeRole;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * What a sheet of labels prints for the products a person selected: each product once, in the order chosen, with every
  * code it holds and what a customer pays for what that code enters, taxes included, counted as a scan of the code
- * counts it. A product the company does not hold is left out; the sheet says so. Which code a label carries is the
+ * counts it, and the reference for a product holding no code of its own to print. A product the company does not hold is
+ * left out; the sheet says so. Which code a label carries is the
  * sheet's choice, as on one product's own sheet.
  */
 final readonly class ProductLabels
 {
     /** A list page at most, which is what a selection holds. */
     public const int MOST = 100;
+    /** The codes of its own a product's label may carry, as the sheet picks them: never a supplier's. */
+    private const array PRINTED = [BarcodeRole::Unit, BarcodeRole::Internal, BarcodeRole::Pack];
 
     public function __construct(private ProductRepository $products, private CustomerPrice $prices)
     {
@@ -63,16 +67,24 @@ final readonly class ProductLabels
     /** @return array{productId: string, reference: string, name: string, codes: list<array{code: string, role: string, quantity: int, priceGross: string}>} */
     private function label(Product $product): array
     {
+        $codes = array_map(ScannedCode::barcode(...), $product->getBarcodes());
+        // Loose goods hold no code of their own to print (a supplier's is theirs): the label carries the reference,
+        // which a scan matching no barcode finds.
+        $own = array_filter($codes, static fn (ScannedCode $code): bool => \in_array($code->role, self::PRINTED, true));
+        if ([] === $own) {
+            $codes[] = ScannedCode::reference($product);
+        }
+
         return [
             'productId' => $product->getId()->toRfc4122(),
             'reference' => $product->getReference(),
             'name' => $product->getDetails()->name,
-            'codes' => array_map(fn (ProductBarcode $barcode): array => [
-                'code' => $barcode->getCode(),
-                'role' => $barcode->getRole()->value,
-                'quantity' => $barcode->getQuantity(),
-                'priceGross' => $this->prices->of($product, $barcode->getQuantity()),
-            ], $product->getBarcodes()),
+            'codes' => array_map(fn (ScannedCode $code): array => [
+                'code' => $code->code,
+                'role' => $code->role->value,
+                'quantity' => $code->quantity,
+                'priceGross' => $this->prices->of($product, $code->quantity),
+            ], $codes),
         ];
     }
 }
