@@ -37,6 +37,7 @@ import type {
 } from './inventory-types';
 import type { PlanStep } from './stock-plan-draft';
 import { sessionSignal } from '../shared/session/session-data';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /** How many ids the stock product picker resolves in one question (its `ids` parameter's own bound). */
 const PICK_IDS_MOST = 20;
@@ -75,6 +76,7 @@ export class InventoryFacade {
   private readonly whereaboutsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);
   private readonly refusedEntrySignal = sessionSignal<string | null>(null);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
 
   readonly options = this.optionsSignal.asReadonly();
   readonly levels = this.levelsSignal.asReadonly();
@@ -101,6 +103,8 @@ export class InventoryFacade {
   readonly error = this.state.error;
   /** The entry of the last floor step the API refused by name (`moves[2].x`), so the screen can show that shape. */
   readonly refusedEntry = this.refusedEntrySignal.asReadonly();
+  /** Each field a location's save was refused on, for its form to say under that field. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   /** What the stock screen needs besides its page: what a movement may be recorded against. */
   async loadStockContext(companyId: string): Promise<void> {
@@ -697,10 +701,17 @@ export class InventoryFacade {
   }
 
   private async write(call: () => Promise<unknown>, reload: () => Promise<void>): Promise<boolean> {
-    return this.state.write(async () => {
-      await call();
-      await reload();
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await call();
+        await reload();
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof InventoryRefused ? error.refusals : []),
+      },
+    );
   }
 }
 

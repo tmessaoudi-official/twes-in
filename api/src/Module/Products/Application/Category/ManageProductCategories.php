@@ -118,7 +118,7 @@ final readonly class ManageProductCategories implements DeclaresAuditActions
         }
 
         return $this->categories->ofIdInCompany($parentId, $company->getId())
-            ?? throw new InvalidProductCategory('parentId', 'No product category of this company has this id.');
+            ?? throw new InvalidProductCategory('parentId', 'No product category of this company has this id.', 'unknown_choice');
     }
 
     private function find(Company $company, Uuid $id): ProductCategory

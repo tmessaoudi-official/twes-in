@@ -86,7 +86,7 @@ final readonly class KeepProductHomes implements DeclaresAuditActions
             $parents[$location->getId()->toRfc4122()] = $location->getParent()?->getId()->toRfc4122();
         }
         if (!\array_key_exists($locationId->toRfc4122(), $parents)) {
-            throw new InvalidStockLocation('locationId', 'No stock location of this company has this id.');
+            throw new InvalidStockLocation('locationId', 'No stock location of this company has this id.', 'invalid_location');
         }
 
         return $this->homes->atLocations(Tree::withDescendants([$locationId], $parents), $company->getId());
@@ -127,7 +127,7 @@ final readonly class KeepProductHomes implements DeclaresAuditActions
     public function set(Company $company, Uuid $productId, Uuid $locationId, ?Uuid $actorUserId): ProductHomeLocation
     {
         $location = $this->locations->ofIdInCompany($locationId, $company->getId())
-            ?? throw new InvalidStockLocation('locationId', 'No stock location of this company has this id.');
+            ?? throw new InvalidStockLocation('locationId', 'No stock location of this company has this id.', 'invalid_location');
         $establishmentId = $location->getEstablishment()->getId();
         $others = array_values(array_filter(
             array_map(static fn (ProductHomeLocation $home): Uuid => $home->getLocation()->getId(), $this->homes->ofProductInEstablishment($productId, $establishmentId)),
@@ -180,12 +180,12 @@ final readonly class KeepProductHomes implements DeclaresAuditActions
             foreach ($locationIds as $locationId) {
                 $key = $locationId->toRfc4122();
                 if (isset($places[$key])) {
-                    throw new InvalidStockLocation('locationIds', 'A place is named once.');
+                    throw new InvalidStockLocation('locationIds', 'A place is named once.', 'location_twice');
                 }
                 $location = $this->locations->ofIdInCompany($locationId, $company->getId())
-                    ?? throw new InvalidStockLocation('locationIds', 'No stock location of this company has this id.');
+                    ?? throw new InvalidStockLocation('locationIds', 'No stock location of this company has this id.', 'invalid_location');
                 if (!$location->getEstablishment()->getId()->equals($establishmentId)) {
-                    throw new InvalidStockLocation('locationIds', 'A home is a place of the establishment it is listed under.');
+                    throw new InvalidStockLocation('locationIds', 'A home is a place of the establishment it is listed under.', 'other_establishment');
                 }
                 $places[$key] = $location;
             }

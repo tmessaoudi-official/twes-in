@@ -29,6 +29,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { RecordDeletes } from '../shared/records/record-deletes';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -36,6 +37,12 @@ class StaticLoader implements TranslateLoader {
       products: {
         categories: {
           delete_named: 'Supprimer {{name}}',
+        },
+      },
+      import: {
+        rejections: {
+          invalid_text: 'Texte refusé : {{max}} caractères au plus.',
+          under_itself: 'Rien ne se range sous lui-même.',
         },
       },
     });
@@ -69,11 +76,13 @@ const archives: ProductCategoryRow = {
 
 describe('ProductCategoriesPage', () => {
   const error = signal<ProductsError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const categories = signal<readonly ProductCategoryRow[]>([hardware, laptops, archives]);
   const facade = {
     categories: categories.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadCategories: vi.fn(),
     createCategory: vi.fn(),
     reviseCategory: vi.fn(),
@@ -120,6 +129,7 @@ describe('ProductCategoriesPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    refusals.set([]);
     categories.set([hardware, laptops, archives]);
     error.set(null);
     facade.loadCategories.mockReset().mockResolvedValue(undefined);
@@ -273,6 +283,27 @@ describe('ProductCategoriesPage', () => {
     expect(deletes.remove).toHaveBeenCalledWith('c1', 'product_category', [
       { id: 'k3', label: 'Archives' },
     ]);
+  });
+
+  it('says on its field what a save was refused for, each in its words', async () => {
+    q('row-action-edit-k1')!.click();
+    await settle();
+    facade.reviseCategory.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'name', reason: 'invalid_text', params: { max: 120 } },
+        { field: 'parentId', reason: 'under_itself', params: {} },
+      ]);
+      return false;
+    });
+    type('field-name', 'Matériel informatique');
+    fixture.detectChanges();
+    q('product-category-save')!.click();
+    await settle();
+
+    expect(facade.reviseCategory).toHaveBeenCalled();
+    expect(q('field-error-name')?.textContent).toContain('Texte refusé : 120 caractères au plus.');
+    expect(q('field-error-parentId')?.textContent).toContain('Rien ne se range sous lui-même.');
   });
 
   it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {

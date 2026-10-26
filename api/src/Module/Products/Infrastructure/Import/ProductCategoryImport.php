@@ -104,7 +104,7 @@ final readonly class ProductCategoryImport implements DeclaresImport
 
             return $notes->changedBetween($before, self::inFile($revised, $context)) ? RowImported::Updated : RowImported::Unchanged;
         } catch (InvalidProductCategory $refused) {
-            throw new RowRejected('parentId' === $refused->field ? 'parent' : 'name', $refused->getMessage(), 'invalid_value');
+            throw new RowRejected('parentId' === $refused->field ? 'parent' : 'name', $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params);
         } catch (ProductCategoryNameTaken) {
             throw new RowRejected('name', 'A category already has this name.', 'already_exists');
         }

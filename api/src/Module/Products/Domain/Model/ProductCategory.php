@@ -86,7 +86,7 @@ class ProductCategory implements CompanyOwned
         $parent = $this->parentOfThisCompany($parent);
         for ($above = $parent; null !== $above; $above = $above->parent) {
             if ($above->id->equals($this->id)) {
-                throw new InvalidProductCategory('parentId', 'A category never sits under itself or under one of its own subcategories.');
+                throw new InvalidProductCategory('parentId', 'A category never sits under itself or under one of its own subcategories.', 'under_itself');
             }
         }
 
@@ -106,7 +106,7 @@ class ProductCategory implements CompanyOwned
     private function parentOfThisCompany(?self $parent): ?self
     {
         if (null !== $parent && !$parent->company->getId()->equals($this->company->getId())) {
-            throw new InvalidProductCategory('parentId', 'A category sits under a category of its own company.');
+            throw new InvalidProductCategory('parentId', 'A category sits under a category of its own company.', 'unknown_choice');
         }
 
         return $parent;
@@ -115,8 +115,11 @@ class ProductCategory implements CompanyOwned
     private static function name(string $name): string
     {
         $name = TypedText::trimmed($name);
-        if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidProductCategory('name', \sprintf('A product category is named in 1 to %d characters.', self::NAME_MAX));
+        if ('' === $name) {
+            throw new InvalidProductCategory('name', 'A product category is named.', 'value_required');
+        }
+        if (mb_strlen($name) > self::NAME_MAX) {
+            throw new InvalidProductCategory('name', \sprintf('A product category is named in 1 to %d characters.', self::NAME_MAX), 'invalid_text', ['max' => self::NAME_MAX]);
         }
 
         return $name;

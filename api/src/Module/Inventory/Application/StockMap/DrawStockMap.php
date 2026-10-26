@@ -198,7 +198,7 @@ final readonly class DrawStockMap
                     'kind' => 'newLocationKind',
                     default => $refused->field,
                 };
-                throw new InvalidStockLocation($field, $refused->getMessage());
+                throw new InvalidStockLocation($field, $refused->getMessage(), $refused->reason, $refused->params);
             }
 
             return $this->draw($company, $floor->getId(), $made->getId(), $rect, $actorUserId);
@@ -591,8 +591,10 @@ final readonly class DrawStockMap
     {
         try {
             $location = $this->drawable($company, $locationId);
-        } catch (StockLocationNotFound|InvalidStockLocation $refused) {
-            throw new InvalidStockLocation($field, $refused->getMessage());
+        } catch (StockLocationNotFound $absent) {
+            throw new InvalidStockLocation($field, $absent->getMessage(), 'invalid_location');
+        } catch (InvalidStockLocation $refused) {
+            throw new InvalidStockLocation($field, $refused->getMessage(), $refused->reason, $refused->params);
         }
         if (!$location->getEstablishment()->getId()->equals($floor->getEstablishment()->getId())) {
             throw new InvalidStockLocation($field, 'A location is drawn on a floor of its own establishment.');
@@ -626,7 +628,7 @@ final readonly class DrawStockMap
             try {
                 $kept = StockLocation::namingOf($code, $name);
             } catch (InvalidStockLocation $refused) {
-                throw new InvalidStockLocation("newPlaces[$at].{$refused->field}", $refused->getMessage());
+                throw new InvalidStockLocation("newPlaces[$at].{$refused->field}", $refused->getMessage(), $refused->reason, $refused->params);
             }
             if (isset($taken[$kept])) {
                 throw new InvalidStockLocation("newPlaces[$at].code", new StockLocationCodeTaken($kept)->getMessage());

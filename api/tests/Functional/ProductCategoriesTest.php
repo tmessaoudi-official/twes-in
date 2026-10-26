@@ -104,10 +104,12 @@ final class ProductCategoriesTest extends ApiTestCase
 
         $this->postJson($this->path(), ['name' => '  ']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'name', 'reason' => 'value_required', 'params' => []]], $this->refusals());
 
         $this->sendJson('PUT', $this->path($hardwareId), ['name' => 'Matériel', 'parentId' => $laptopsId, 'version' => 1]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('parentId', (string) $this->client->getResponse()->getContent());
+        self::assertSame([['propertyPath' => 'parentId', 'reason' => 'under_itself', 'params' => []]], $this->refusals(), 'said in words under the parent the editor shows');
 
         $this->postJson($this->path(), ['name' => 'Gaming', 'parentId' => 'not-a-uuid']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -159,6 +161,7 @@ final class ProductCategoriesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson($this->path(), ['name' => 'Portables', 'parentId' => $theirs->getId()->toRfc4122()]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'parentId', 'reason' => 'unknown_choice', 'params' => []]], $this->refusals());
         $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/product-categories');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }

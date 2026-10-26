@@ -126,7 +126,7 @@ class StockLocation implements CompanyOwned
         $parent = $this->placedUnder($parent);
         if ($this->isDefault && StockLocationKind::Quarantine === $kind) {
             // Every delivery falls back on the default location, so goods there are goods that can be sold.
-            throw new InvalidStockLocation('kind', 'The default location of an establishment is never a quarantine.');
+            throw new InvalidStockLocation('kind', 'The default location of an establishment is never a quarantine.', 'default_not_quarantine');
         }
 
         $changed = [];
@@ -157,17 +157,20 @@ class StockLocation implements CompanyOwned
     {
         if ($this->isDefault) {
             if (null !== $parent) {
-                throw new InvalidStockLocation('parentId', 'The default location of an establishment is the top of its tree.');
+                throw new InvalidStockLocation('parentId', 'The default location of an establishment is the top of its tree.', 'default_at_top');
             }
 
             return null;
         }
-        if (null === $parent || !$parent->establishment->getId()->equals($this->establishment->getId())) {
-            throw new InvalidStockLocation('parentId', 'A location sits under another location of its establishment.');
+        if (null === $parent) {
+            throw new InvalidStockLocation('parentId', 'A location sits under another location of its establishment.', 'value_required');
+        }
+        if (!$parent->establishment->getId()->equals($this->establishment->getId())) {
+            throw new InvalidStockLocation('parentId', 'A location sits under another location of its establishment.', 'other_establishment');
         }
         for ($above = $parent; null !== $above; $above = $above->parent) {
             if ($above->id->equals($this->id)) {
-                throw new InvalidStockLocation('parentId', 'A location never sits under itself or under one of its own locations.');
+                throw new InvalidStockLocation('parentId', 'A location never sits under itself or under one of its own locations.', 'under_itself');
             }
         }
 
@@ -193,7 +196,7 @@ class StockLocation implements CompanyOwned
     {
         $code = TypedText::trimmed($code);
         if (1 !== preg_match(self::CODE, $code)) {
-            throw new InvalidStockLocation('code', \sprintf('A location code is 1 to %d letters, digits, dots, dashes or underscores.', self::CODE_MAX));
+            throw new InvalidStockLocation('code', \sprintf('A location code is 1 to %d letters, digits, dots, dashes or underscores.', self::CODE_MAX), 'location_code', ['max' => self::CODE_MAX]);
         }
 
         return $code;
@@ -202,8 +205,11 @@ class StockLocation implements CompanyOwned
     private static function name(string $name): string
     {
         $name = TypedText::trimmed($name);
-        if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidStockLocation('name', \sprintf('A location is named in 1 to %d characters.', self::NAME_MAX));
+        if ('' === $name) {
+            throw new InvalidStockLocation('name', 'A location is named.', 'value_required');
+        }
+        if (mb_strlen($name) > self::NAME_MAX) {
+            throw new InvalidStockLocation('name', \sprintf('A location is named in 1 to %d characters.', self::NAME_MAX), 'invalid_text', ['max' => self::NAME_MAX]);
         }
 
         return $name;

@@ -100,7 +100,7 @@ final readonly class ManageStockLocations implements DeclaresAuditActions
     {
         return $this->transactions->run(function () use ($company, $establishmentId, $parentId, $kind, $code, $name, $actorUserId): StockLocation {
             $establishment = $this->establishments->ofIdInCompany($establishmentId, $company->getId())
-                ?? throw new InvalidStockLocation('establishmentId', 'No establishment of this company has this id.');
+                ?? throw new InvalidStockLocation('establishmentId', 'No establishment of this company has this id.', 'unknown_choice');
             $parent = null === $parentId ? $this->defaultOf($establishment) : $this->parent($company, $parentId);
             if (null !== $this->locations->ofCodeInEstablishment(TypedText::trimmed($code), $establishment->getId())) {
                 throw new StockLocationCodeTaken();
@@ -204,7 +204,7 @@ final readonly class ManageStockLocations implements DeclaresAuditActions
     private function parent(Company $company, Uuid $parentId): StockLocation
     {
         return $this->locations->ofIdInCompany($parentId, $company->getId())
-            ?? throw new InvalidStockLocation('parentId', 'No stock location of this company has this id.');
+            ?? throw new InvalidStockLocation('parentId', 'No stock location of this company has this id.', 'invalid_location');
     }
 
     /** @param array<string, mixed> $changes */

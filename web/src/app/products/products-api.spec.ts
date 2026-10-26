@@ -731,7 +731,7 @@ describe('ProductsApi', () => {
     await expect(offline).rejects.toEqual(new ProductsRefused('network'));
   });
 
-  it('names each field a save was refused on, and only a save does', async () => {
+  it("names each field a product's or a category's save was refused on", async () => {
     const created = api.createProduct('c1', laptop);
     http.expectOne('/api/companies/c1/products').flush(
       {
@@ -761,7 +761,11 @@ describe('ProductsApi', () => {
       },
       { status: 422, statusText: 'Unprocessable Content' },
     );
-    await expect(category).rejects.toMatchObject({ code: 'invalid', refusals: [] });
+    // A category's form names its fields too: what it was refused for is said under each.
+    await expect(category).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'name', reason: 'invalid_text', params: {} }],
+    });
   });
 
   it('manages categories, a taken name and a category in use each saying so', async () => {

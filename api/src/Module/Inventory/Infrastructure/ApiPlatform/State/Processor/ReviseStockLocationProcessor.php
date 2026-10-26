@@ -40,7 +40,7 @@ final readonly class ReviseStockLocationProcessor implements ProcessorInterface
         try {
             $location = $this->manage->get($company, $id);
             if (!$location->getEstablishment()->getId()->equals(Uuid::fromString($data->establishmentId))) {
-                throw new InvalidStockLocation('establishmentId', 'A location stays in its establishment.');
+                throw new InvalidStockLocation('establishmentId', 'A location stays in its establishment.', 'establishment_kept');
             }
             $this->manage->revise(
                 $company,

@@ -122,6 +122,13 @@ final class InventoryTest extends ApiTestCase
         $this->sendJson('PUT', $this->path('stock-locations', $zoneId), $this->location(['parentId' => $rackId, 'kind' => 'building', 'code' => 'B1', 'name' => 'Bâtiment B', 'version' => 2]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('parentId', (string) $this->client->getResponse()->getContent());
+        self::assertSame([['propertyPath' => 'parentId', 'reason' => 'under_itself', 'params' => []]], $this->refusals(), 'said in words under the parent the editor shows');
+        $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'zone', 'code' => 'Z 3', 'name' => 'Zone 3']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'code', 'reason' => 'location_code', 'params' => ['max' => 32]]], $this->refusals());
+        $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'zone', 'code' => 'Z3', 'name' => '  ']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'name', 'reason' => 'value_required', 'params' => []]], $this->refusals());
         $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'cellar', 'code' => 'C1', 'name' => 'Cave']));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
 

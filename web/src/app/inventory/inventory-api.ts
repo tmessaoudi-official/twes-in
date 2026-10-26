@@ -85,6 +85,7 @@ import {
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import type { PlanStep } from './stock-plan-draft';
 import { refusedFor } from '../shared/errors/said-already';
+import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 
 /** How many products one question about stock on hand may name (`StockOnHandResource::MOST`). */
 const ON_HAND_MOST = 100;
@@ -93,10 +94,14 @@ const COUNT_CONTEXT_MOST = 100;
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class InventoryRefused extends Error {
-  /** The entry of a step the API named in its refusal (`newPlaces[1].code`), when it named one. */
+  /**
+   * The entry of a step the API named in its refusal (`newPlaces[1].code`), when it named one; and each field a form's
+   * save was refused on, for the form to say it under that field.
+   */
   constructor(
     readonly code: InventoryError,
     readonly entry: string | null = null,
+    readonly refusals: readonly FieldRefusal[] = [],
   ) {
     super(code);
   }
@@ -444,7 +449,7 @@ export class InventoryApi {
   /** 409 when another location of the establishment has the code; 422 naming the field the API refused. */
   async createLocation(companyId: string, input: StockLocationInput): Promise<StockLocationRow> {
     const body: StockLocationStockLocationWrite = { ...input };
-    return this.guard(
+    return this.saving(
       async () =>
         toLocation(
           await firstValueFrom(
@@ -465,7 +470,7 @@ export class InventoryApi {
     version: number | null,
   ): Promise<StockLocationRow> {
     const body: StockLocationStockLocationRevise = { ...input, version };
-    return this.guard(
+    return this.saving(
       async () =>
         toLocation(
           await firstValueFrom(
@@ -776,6 +781,17 @@ export class InventoryApi {
   /** Where the browser opens a loss's file: a same-origin address the session cookie reaches. */
   lossFileUrl(companyId: string, movementId: string, fileId: string): string {
     return `${lossFilesPath(companyId, movementId)}/${encodeURIComponent(fileId)}/content`;
+  }
+
+  /** A save whose refusals name the fields of its form: a stock location's. */
+  private async saving<T>(call: () => Promise<T>, conflict: InventoryError): Promise<T> {
+    try {
+      return await call();
+    } catch (error) {
+      const refusals =
+        error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
+      throw refusedFor(error, new InventoryRefused(codeOf(error, conflict), null, refusals));
+    }
   }
 
   private async guard<T>(

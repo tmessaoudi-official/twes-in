@@ -31,6 +31,7 @@ import {
 } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { TextsParts } from '../shared/i18n/texts-part';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -39,6 +40,12 @@ class StaticLoader implements TranslateLoader {
         locations: { default: 'Par défaut' },
         errors: { in_use: 'Cet emplacement ne peut pas être supprimé.' },
         delete_message: '{{name}} sera supprimé.',
+      },
+      import: {
+        rejections: {
+          location_code: 'Le code compte 1 à {{max}} caractères.',
+          under_itself: 'Rien ne se range sous lui-même.',
+        },
       },
     });
   }
@@ -77,12 +84,14 @@ const options: StockOptions = {
 describe('StockLocationsPage', () => {
   const texts = { open: vi.fn<(name: string) => Promise<void>>(async () => undefined) };
   const error = signal<InventoryError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const locations = signal<readonly StockLocationRow[]>([site, zone]);
   const facade = {
     options: signal<StockOptions | null>(options).asReadonly(),
     locations: locations.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadLocations: vi.fn(),
     createLocation: vi.fn(),
     reviseLocation: vi.fn(),
@@ -122,6 +131,7 @@ describe('StockLocationsPage', () => {
   beforeEach(async () => {
     error.set(null);
     locations.set([site, zone]);
+    refusals.set([]);
     facade.loadLocations.mockReset().mockResolvedValue(undefined);
     facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.createLocation.mockReset().mockResolvedValue(true);
@@ -198,6 +208,27 @@ describe('StockLocationsPage', () => {
       'c1',
       expect.objectContaining({ code: 'R1', name: 'Rayonnage 1' }),
     );
+  });
+
+  it('says on its field what a save was refused for, each in its words', async () => {
+    q('row-action-edit-l2')!.click();
+    await settle();
+    facade.reviseLocation.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'code', reason: 'location_code', params: { max: 32 } },
+        { field: 'parentId', reason: 'under_itself', params: {} },
+      ]);
+      return false;
+    });
+    type('field-code', 'Z9');
+    fixture.detectChanges();
+    q('stock-location-save')!.click();
+    await settle();
+
+    expect(facade.reviseLocation).toHaveBeenCalled();
+    expect(q('field-error-code')?.textContent).toContain('Le code compte 1 à 32 caractères.');
+    expect(q('field-error-parentId')?.textContent).toContain('Rien ne se range sous lui-même.');
   });
 
   it('renames a location where it sits, and deletes one but never the default', async () => {

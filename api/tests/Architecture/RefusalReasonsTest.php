@@ -72,9 +72,8 @@ final class RefusalReasonsTest extends KernelTestCase
     }
 
     /**
-     * A domain refusal of a customer's, a vendor's, a product's, an expense's, a stock's or the company's own field, of a
-     * schedule, a recurring document or a custom field, reaches the form the same way: every reason one is written
-     * with has its screen text. A reason is the snake_case literal of the refusal's statement (fields, parameters and
+     * A domain refusal of any field (a customer's, a document's, a stock location's, the company's own, a schedule's)
+     * reaches the form the same way, through `DomainRule::refused`: every reason one is written with has its screen text. A reason is the snake_case literal of the refusal's statement (fields, parameters and
      * messages are not snake_case).
      */
     public function testEveryReasonADomainRefusesAFieldWithIsTranslated(): void
@@ -83,12 +82,12 @@ final class RefusalReasonsTest extends KernelTestCase
         $translated = self::translated();
         $statements = 0;
         $untranslated = [];
-        foreach (['src/Module/Customers', 'src/Module/Vendors', 'src/Fiscal/Application/Preset', 'src/CustomFields', 'src/Tenancy/Application/Company', 'src/Module/Products', 'src/Module/Expenses', 'src/Module/Inventory', 'src/Shared/Domain/Model', 'src/Module/Recurring', 'src/Module/RecurringExpenses'] as $directory) {
+        foreach (['src'] as $directory) {
             $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator("$root/$directory", \FilesystemIterator::SKIP_DOTS));
             foreach ($files as $file) {
                 \assert($file instanceof \SplFileInfo);
                 $source = (string) file_get_contents($file->getPathname());
-                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense|InvalidStockMovement|InvalidReorderPoint|InvalidSchedule|InvalidRecurringInvoice|InvalidRecurringExpense)\((.*?)\);/s', $source, $found);
+                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense|InvalidStockMovement|InvalidReorderPoint|InvalidSchedule|InvalidRecurringInvoice|InvalidRecurringExpense|InvalidStockLocation|InvalidProductCategory|InvalidInvoice|InvalidDeliveryNote|InvalidQuote|InvalidPurchaseOrder|InvalidVenue|InvalidFiscalValue|QuoteInvoicingRefused|InvalidPriceList|InvalidCustomerGroup|InvalidCustomFieldDefinition|InvalidContact|InvalidNumbering|InvalidEstablishment)\((.*?)\);/s', $source, $found);
                 // A custom field's refusals go through its helper, one per arm of a match.
                 preg_match_all('/self::refuse\((.*?)\),$/m', $source, $helped);
                 foreach ([...$found[1], ...$helped[1]] as $arguments) {

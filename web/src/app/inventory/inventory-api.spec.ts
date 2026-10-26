@@ -533,6 +533,25 @@ describe('InventoryApi', () => {
       );
     await expect(changed).rejects.toMatchObject({ code: 'record_changed' });
 
+    // Each field a save was refused on is named, for the form to say it under that field.
+    const refused = api.createLocation('c1', input);
+    http.expectOne('/api/companies/c1/stock-locations').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'code',
+            message: 'x',
+            payload: { reason: 'location_code', params: { max: 32 } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'code', reason: 'location_code', params: { max: 32 } }],
+    });
+
     const deleted = api.deleteLocation('c1', 'l2');
     const del = http.expectOne('/api/companies/c1/stock-locations/l2');
     expect(del.request.method).toBe('DELETE');

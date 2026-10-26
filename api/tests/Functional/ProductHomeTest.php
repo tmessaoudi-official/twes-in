@@ -69,8 +69,10 @@ final class ProductHomeTest extends ApiTestCase
 
         $this->sendJson('PUT', $establishment, ['version' => $this->storedVersion('product', $this->productId), 'locationIds' => [$this->bayId, $this->bayId]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a place twice');
+        self::assertSame([['propertyPath' => 'locationIds', 'reason' => 'location_twice', 'params' => []]], $this->refusals());
         $this->sendJson('PUT', $establishment, ['version' => $this->storedVersion('product', $this->productId), 'locationIds' => [Uuid::v7()->toRfc4122()]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a place of no company of ours');
+        self::assertSame([['propertyPath' => 'locationIds', 'reason' => 'invalid_location', 'params' => []]], $this->refusals());
         self::assertSame([[$this->bayId, 0, true]], $this->orderOfHomes(), 'a refused list changes nothing');
 
         $this->sendJson('PUT', $establishment, ['version' => $this->storedVersion('product', $this->productId), 'locationIds' => []]);

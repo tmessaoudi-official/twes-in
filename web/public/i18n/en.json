@@ -3123,7 +3123,13 @@
       "unit_code_one_piece": "A unit code counts one piece: for several, choose “Pack”.",
       "barcode_twice": "This code is already on this product, on another row: remove one of the two.",
       "cost_net_and_gross": "The cost price is given both without and with VAT: keep cost_price or cost_price_gross.",
-      "cost_gross_without_vat": "A cost price VAT included needs the product’s VAT rate: name its taxes in default_tax_codes, or tick “Give new products naming no tax the default taxes”."
+      "cost_gross_without_vat": "A cost price VAT included needs the product’s VAT rate: name its taxes in default_tax_codes, or tick “Give new products naming no tax the default taxes”.",
+      "location_code": "A code is 1 to {{max}} letters without accents, digits, dots, dashes or underscores, with no space (example: R2-A).",
+      "other_establishment": "This location is in another establishment: choose one of the same establishment.",
+      "default_at_top": "The establishment’s default location stays at the top of its tree: it sits under no other.",
+      "default_not_quarantine": "The default location never becomes a quarantine: every delivery falls back on it, so what is there must be sellable.",
+      "location_twice": "This location is already in the list: remove one of the two.",
+      "establishment_kept": "A location stays in its establishment: create one in the other establishment."
     },
     "identifier_parts": {
       "number": "the number",

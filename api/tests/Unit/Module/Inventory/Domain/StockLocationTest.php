@@ -108,12 +108,13 @@ final class StockLocationTest extends TestCase
         self::assertSame(['parentId'], $rack->revise($site, StockLocationKind::Rack, 'R1', 'Rayonnage 1', $this->now));
 
         $rack->revise($zone, StockLocationKind::Rack, 'R1', 'Rayonnage 1', $this->now);
-        foreach ([$zone, $rack, null] as $parent) {
+        // Each refusal carries the reason the editor says under the parent it shows.
+        foreach ([[$zone, 'under_itself'], [$rack, 'under_itself'], [null, 'value_required']] as [$parent, $reason]) {
             try {
                 $zone->revise($parent, StockLocationKind::Building, 'B1', 'Zone A', $this->now);
                 self::fail('The zone was placed under itself, under its own rack, or outside the tree.');
             } catch (InvalidStockLocation $refused) {
-                self::assertSame('parentId', $refused->field);
+                self::assertSame(['parentId', $reason], [$refused->field, $refused->reason]);
             }
         }
         self::assertSame($site, $zone->getParent());
@@ -129,7 +130,7 @@ final class StockLocationTest extends TestCase
             $site->revise($zone, StockLocationKind::Site, '000', 'Magasin de Tunis', $this->now);
             self::fail('The default location was placed under another.');
         } catch (InvalidStockLocation $refused) {
-            self::assertSame('parentId', $refused->field);
+            self::assertSame(['parentId', 'default_at_top'], [$refused->field, $refused->reason]);
         }
         self::assertNull($site->getParent());
     }
@@ -141,7 +142,7 @@ final class StockLocationTest extends TestCase
             $site->revise(null, StockLocationKind::Quarantine, '000', 'Siège de Tunis', $this->now);
             self::fail('The default location became a quarantine.');
         } catch (InvalidStockLocation $refused) {
-            self::assertSame('kind', $refused->field);
+            self::assertSame(['kind', 'default_not_quarantine'], [$refused->field, $refused->reason]);
         }
         self::assertSame(StockLocationKind::Site, $site->getKind());
 

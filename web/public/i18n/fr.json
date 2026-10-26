@@ -3123,7 +3123,13 @@
       "unit_code_one_piece": "Un code unitaire compte une seule pièce : pour plusieurs, choisissez « Colis ».",
       "barcode_twice": "Ce code est déjà sur ce produit, à une autre ligne : retirez l’une des deux.",
       "cost_net_and_gross": "Le prix de revient est donné hors taxes et TVA comprise : gardez cost_price ou cost_price_gross.",
-      "cost_gross_without_vat": "Un prix de revient TVA comprise demande le taux de TVA du produit : nommez ses taxes dans default_tax_codes, ou cochez « Donner les taxes par défaut »."
+      "cost_gross_without_vat": "Un prix de revient TVA comprise demande le taux de TVA du produit : nommez ses taxes dans default_tax_codes, ou cochez « Donner les taxes par défaut ».",
+      "location_code": "Le code compte 1 à {{max}} lettres sans accent, chiffres, points, tirets ou soulignés, sans espace (exemple : R2-A).",
+      "other_establishment": "Cet emplacement est dans un autre établissement : choisissez-en un du même établissement.",
+      "default_at_top": "L’emplacement par défaut de l’établissement reste en haut de son arbre : il ne se range sous aucun autre.",
+      "default_not_quarantine": "L’emplacement par défaut ne devient pas une quarantaine : toute livraison y retombe, ce qui s’y trouve doit pouvoir se vendre.",
+      "location_twice": "Cet emplacement est déjà dans la liste : retirez l’un des deux.",
+      "establishment_kept": "Un emplacement reste dans son établissement : créez-en un dans l’autre établissement."
     },
     "identifier_parts": {
       "number": "le numéro",

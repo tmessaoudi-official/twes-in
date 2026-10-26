@@ -351,7 +351,7 @@ export class ProductsApi {
     input: ProductCategoryInput,
   ): Promise<ProductCategoryRow> {
     const body: ProductCategoryProductCategoryWrite = { ...input };
-    return this.guard(
+    return this.saving(
       async () =>
         toCategory(
           await firstValueFrom(
@@ -376,7 +376,7 @@ export class ProductsApi {
     version: number | null,
   ): Promise<ProductCategoryRow> {
     const body: ProductCategoryRevise = { ...input, version };
-    return this.guard(
+    return this.saving(
       async () =>
         toCategory(
           await firstValueFrom(
@@ -561,7 +561,6 @@ export class ProductsApi {
     }
   }
 
-  /** A product's save, the only call whose refusals name the fields of the form. */
   /** A settlement refused: another save in between, or the margin already settled by someone else. */
   private async settling<T>(conflict: ProductsError, call: () => Promise<T>): Promise<T> {
     try {
@@ -571,13 +570,17 @@ export class ProductsApi {
     }
   }
 
-  private async saving<T>(call: () => Promise<T>): Promise<T> {
+  /** A save whose refusals name the fields of its form: a product's, a category's. */
+  private async saving<T>(
+    call: () => Promise<T>,
+    conflict: ProductsError = 'reference_taken',
+  ): Promise<T> {
     try {
       return await call();
     } catch (error) {
       const refusals =
         error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
-      throw refusedFor(error, new ProductsRefused(codeOf(error, 'reference_taken'), refusals));
+      throw refusedFor(error, new ProductsRefused(codeOf(error, conflict), refusals));
     }
   }
 }

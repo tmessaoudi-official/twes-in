@@ -68,7 +68,7 @@ final class ProductCategoryImportTest extends ApiTestCase
             [3, 'parent', 'unknown_category', ['name' => 'Quincaillerie']],
             [5, 'name', 'already_exists', []],
             [6, 'parent', 'unknown_category', ['name' => 'Boucle']],
-            [7, 'name', 'invalid_value', []],
+            [7, 'name', 'invalid_text', ['max' => ProductCategory::NAME_MAX]],
             [8, 'name', 'duplicate_in_file', ['line' => 4]],
         ], $rejected);
     }
@@ -88,7 +88,7 @@ final class ProductCategoryImportTest extends ApiTestCase
 
         // A blank parent keeps the one held; a category never sits under one of its own.
         $this->import("name,parent\nVisserie,\nQuincaillerie,Visserie\n", 'upsert', dryRun: true);
-        self::assertSame([[3, 'parent', 'invalid_value']], array_map(
+        self::assertSame([[3, 'parent', 'under_itself']], array_map(
             static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null] : [],
             $this->arrayAt($this->json(), 'rejected'),
         ));
