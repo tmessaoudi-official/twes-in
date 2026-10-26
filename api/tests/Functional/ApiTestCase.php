@@ -459,6 +459,21 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
+     * The reason and parameters a 422 refused one field with, as the screen reads them.
+     *
+     * @return array{mixed, mixed}
+     */
+    protected function refusalOf(string $field): array
+    {
+        foreach ($this->refusals() as $refusal) {
+            if ($refusal['propertyPath'] === $field) {
+                return [$refusal['reason'], $refusal['params']];
+            }
+        }
+        self::fail("no refusal of $field");
+    }
+
+    /**
      * Scalars out of a JSON body, asserted to be what they are. PHPStan runs at max here, so a test that
      * indexes straight into a decoded body is indexing into `mixed`.
      *

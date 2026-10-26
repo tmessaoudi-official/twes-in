@@ -132,17 +132,17 @@ final class PurchaseOrdersTest extends ApiTestCase
         $screws = ['productId' => $this->screws, 'quantity' => '1'];
 
         foreach ([
-            ['vendorId', ['vendorId' => self::ABSENT, 'lines' => [$screws]]],
-            ['establishmentId', ['vendorId' => $this->vendor, 'establishmentId' => self::ABSENT, 'lines' => [$screws]]],
-            ['lines[0].quantity', ['vendorId' => $this->vendor, 'lines' => [[...$screws, 'quantity' => '1.5']]]],
-            ['lines[0].quantity', ['vendorId' => $this->vendor, 'lines' => [[...$screws, 'quantity' => '0']]]],
-            ['lines[1].productId', ['vendorId' => $this->vendor, 'lines' => [$screws, ['productId' => self::ABSENT, 'quantity' => '1']]]],
-            ['lines[0].productId', ['vendorId' => $this->vendor, 'lines' => [['productId' => $this->fitting, 'quantity' => '1']]]],
-        ] as [$field, $body]) {
+            ['vendorId', ['vendorId' => self::ABSENT, 'lines' => [$screws]], 'unknown_choice', []],
+            ['establishmentId', ['vendorId' => $this->vendor, 'establishmentId' => self::ABSENT, 'lines' => [$screws]], 'unknown_choice', []],
+            ['lines[0].quantity', ['vendorId' => $this->vendor, 'lines' => [[...$screws, 'quantity' => '1.5']]], 'quantity_decimals', ['unit' => 'C62', 'decimals' => 0]],
+            ['lines[0].quantity', ['vendorId' => $this->vendor, 'lines' => [[...$screws, 'quantity' => '0']]], 'quantity_above_zero', []],
+            ['lines[1].productId', ['vendorId' => $this->vendor, 'lines' => [$screws, ['productId' => self::ABSENT, 'quantity' => '1']]], 'unknown_choice', []],
+            ['lines[0].productId', ['vendorId' => $this->vendor, 'lines' => [['productId' => $this->fitting, 'quantity' => '1']]], 'not_stocked', []],
+        ] as [$field, $body, $reason, $params]) {
             $this->postJson($this->path(), $body);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringStartsWith($field.': ', $this->stringAt($this->json(), 'detail'), $field);
-            self::assertContains($field, array_column($this->refusals(), 'propertyPath'), $field.': the refusal names its field as a violation, which the screen reads');
+            self::assertSame([$reason, $params], $this->refusalOf($field), $field.': the refusal names its field and why, which the screen says');
         }
         self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM purchase_order'));
     }

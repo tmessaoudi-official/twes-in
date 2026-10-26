@@ -135,7 +135,15 @@
                     {{ 'quotes.form.customer_required' | translate }}
                   </p>
                 }
-                @if (error() === 'customer_unavailable') {
+                @if (customerRefused(); as refused) {
+                  <p
+                    role="alert"
+                    class="px-2 text-xs text-error"
+                    data-testid="quote-customer-refused"
+                  >
+                    {{ refused.key | translate: refused.params }}
+                  </p>
+                } @else if (error() === 'customer_unavailable') {
                   <p
                     role="alert"
                     class="px-2 text-xs text-error"

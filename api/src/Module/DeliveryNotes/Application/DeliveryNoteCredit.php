@@ -54,7 +54,7 @@ final readonly class DeliveryNoteCredit
             // A note handing over an issued invoice's goods adds nothing: that invoice is already on the account.
             $total = $note->deliversInvoice() ? Decimal::zero() : Decimal::of($this->totals->of($note, $taken)->total);
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
-            throw new InvalidDeliveryNote($refused->field('quantity'), $refused->getMessage());
+            throw new InvalidDeliveryNote($refused->field('quantity'), $refused->getMessage(), $refused->reason);
         }
         $after = $owed->add($total);
         $pending = \in_array($note->getStatus(), [DeliveryNoteStatus::Draft, DeliveryNoteStatus::Validated], true);

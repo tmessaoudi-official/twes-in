@@ -180,6 +180,15 @@
                     {{ 'delivery_notes.form.customer_required' | translate }}
                   </p>
                 }
+                @if (customerRefused(); as refused) {
+                  <p
+                    role="alert"
+                    class="px-2 text-xs text-error"
+                    data-testid="delivery-note-customer-refused"
+                  >
+                    {{ refused.key | translate: refused.params }}
+                  </p>
+                }
               </div>
               @if (editable() && customerAddress()) {
                 <button

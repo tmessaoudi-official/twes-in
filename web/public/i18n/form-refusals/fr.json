@@ -14,7 +14,21 @@
       "customer_merged_choose": "Le client « {{number}} » a été fusionné dans « {{kept}} » : choisissez plutôt « {{kept}} ».",
       "quantity_priced_twice": "Ce produit a déjà un prix à partir de cette quantité : retirez l’une des deux lignes.",
       "customer_or_group": "Un tarif vaut pour un client ou pour un groupe, pas les deux : choisissez l’un des deux.",
-      "quantity_above_zero": "Attendu : une quantité au-dessus de zéro."
+      "quantity_above_zero": "Attendu : une quantité au-dessus de zéro.",
+      "tax_twice": "{{tax}} est choisie deux fois : retirez l’une des deux.",
+      "tax_on_line": "{{tax}} se compte sur chaque ligne, pas sur tout le document : ajoutez-la aux lignes.",
+      "discount_rate_or_amount": "Une remise est un pourcentage ou un montant, pas les deux : videz l’un des deux.",
+      "invalid_discount": "Remise refusée : un montant à partir de 0, {{decimals}} décimales au plus.",
+      "discount_above_total": "La remise du document dépasse ce que font ses lignes : réduisez-la.",
+      "line_discount_above_total": "La remise dépasse ce que fait la ligne : réduisez-la.",
+      "lot_not_tracked": "Ce produit n’est suivi ni par lot ni par numéro de série : laissez le lot vide.",
+      "lot_code": "Un lot compte 1 à {{max}} caractères, sans espace ni accent (exemple : L2026-03).",
+      "returned_needs_product": "Seule une ligne qui nomme un produit remet des articles en stock : choisissez le produit, ou décochez le retour en stock.",
+      "customer_deactivated": "Le client « {{number}} » est désactivé : choisissez-en un autre, ou réactivez-le dans Clients.",
+      "product_deactivated": "Le produit « {{reference}} » est désactivé : choisissez-en un autre, ou réactivez-le dans Produits.",
+      "product_merged_choose": "Le produit « {{reference}} » a été fusionné dans « {{kept}} » : choisissez plutôt « {{kept}} ».",
+      "vendor_deactivated": "Le fournisseur « {{number}} » est désactivé : choisissez-en un autre, ou réactivez-le dans Fournisseurs.",
+      "amount_too_large": "Le montant dépasse ce qu’un document peut tenir : baissez la quantité ou le prix."
     }
   }
 }

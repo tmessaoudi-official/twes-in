@@ -5,7 +5,9 @@ import type { PreviewBody } from '../shared/documents/document-figures';
 import { minus } from '../shared/documents/per-unit';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { SILENT } from '../shared/feedback/activity-interceptor';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdquotesGetCollectionResponse,
@@ -48,7 +50,11 @@ import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class QuotesRefused extends Error {
-  constructor(readonly code: QuotesError) {
+  /** `refusals`: each field a 422 named, with why, which the form says under it. */
+  constructor(
+    readonly code: QuotesError,
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -57,6 +63,7 @@ export class QuotesRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class QuotesApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
   private readonly invoices = inject(InvoicesApi);
 
   /** What the quote form offers, read with quote.read alone: the currency, establishments, units and taxes. */
@@ -374,7 +381,10 @@ export class QuotesApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new QuotesRefused(codeOf(error, invalid)));
+      throw refusedFor(
+        error,
+        new QuotesRefused(codeOf(error, invalid), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

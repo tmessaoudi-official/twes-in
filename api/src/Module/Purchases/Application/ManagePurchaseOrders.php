@@ -141,9 +141,9 @@ final readonly class ManagePurchaseOrders implements DeclaresAuditActions
     private function checked(Company $company, PurchaseOrderInput $input, bool $seesCost, ?PurchaseOrder $current): array
     {
         $vendor = $this->vendors->ofId($company, $input->vendorId)
-            ?? throw new InvalidPurchaseOrder('vendorId', 'No vendor of this company has this id.');
+            ?? throw new InvalidPurchaseOrder('vendorId', 'No vendor of this company has this id.', 'unknown_choice');
         if (!$vendor->active && !(null !== $current && $current->getVendorId()->equals($vendor->id))) {
-            throw new InvalidPurchaseOrder('vendorId', \sprintf('The vendor %s is retired.', $vendor->number));
+            throw new InvalidPurchaseOrder('vendorId', \sprintf('The vendor %s is retired.', $vendor->number), 'vendor_deactivated', ['number' => $vendor->number]);
         }
 
         if (null === $input->establishmentId) {
@@ -151,7 +151,7 @@ final readonly class ManagePurchaseOrders implements DeclaresAuditActions
                 ?? throw new \LogicException('A company always has a default establishment.');
         } else {
             $establishment = $this->establishments->ofIdInCompany($input->establishmentId, $company->getId())
-                ?? throw new InvalidPurchaseOrder('establishmentId', 'No establishment of this company has this id.');
+                ?? throw new InvalidPurchaseOrder('establishmentId', 'No establishment of this company has this id.', 'unknown_choice');
         }
 
         $products = [];
@@ -179,13 +179,13 @@ final readonly class ManagePurchaseOrders implements DeclaresAuditActions
     private function line(Company $company, PurchaseOrderLineInput $line, ?OrderProduct $product, ?PurchaseOrderLine $kept, bool $seesCost): PurchaseOrderLineDetails
     {
         if (null === $product) {
-            throw new InvalidPurchaseOrder('productId', 'No product of this company has this id.');
+            throw new InvalidPurchaseOrder('productId', 'No product of this company has this id.', 'unknown_choice');
         }
         if (!$product->goods) {
-            throw new InvalidPurchaseOrder('productId', \sprintf('The product %s is a service: only goods are ordered from a vendor here.', $product->reference));
+            throw new InvalidPurchaseOrder('productId', \sprintf('The product %s is a service: only goods are ordered from a vendor here.', $product->reference), 'not_stocked');
         }
         if (!$product->active && null === $kept) {
-            throw new InvalidPurchaseOrder('productId', null === $product->keptReference ? \sprintf('The product %s is deactivated.', $product->reference) : \sprintf('The product %s was merged into %s: a new document names the product kept.', $product->reference, $product->keptReference));
+            throw new InvalidPurchaseOrder('productId', null === $product->keptReference ? \sprintf('The product %s is deactivated.', $product->reference) : \sprintf('The product %s was merged into %s: a new document names the product kept.', $product->reference, $product->keptReference), ...(null === $product->keptReference ? ['product_deactivated', ['reference' => $product->reference]] : ['product_merged_choose', ['reference' => $product->reference, 'kept' => $product->keptReference]]));
         }
         $unit = $this->units->ofIdInCompany($product->unitId, $company->getId())
             ?? throw new \LogicException('A product is counted in a unit of its own company.');

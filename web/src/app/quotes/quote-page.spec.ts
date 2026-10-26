@@ -37,6 +37,7 @@ import {
 import { announceSaved } from '../shared/testing/live';
 import { Feedback } from '../shared/feedback/feedback';
 import { QuotePage } from './quote-page';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { QuotesFacade } from './quotes-facade';
 import { PREVIEW_DELAY } from '../shared/documents/document-figures';
 import type { QuoteAttachment, QuoteRow, QuotesError } from './quotes-types';
@@ -44,6 +45,12 @@ import type { QuoteAttachment, QuoteRow, QuotesError } from './quotes-types';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      import: {
+        rejections: {
+          discount_rate_or_amount: 'Un pourcentage ou un montant, pas les deux.',
+          customer_deactivated: 'Le client « {{number}} » est désactivé.',
+        },
+      },
       quotes: {
         statuses: { draft: 'Brouillon', sent: 'Envoyé', expired: 'Expiré', accepted: 'Accepté' },
         fixed: { sent: 'Il attend la réponse du client.' },
@@ -161,6 +168,7 @@ const accepted: QuoteRow = { ...sent, status: 'accepted', answeredOn: '2026-10-0
 
 describe('QuotePage', () => {
   const error = signal<QuotesError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const quote = signal<QuoteRow | null>(null);
   const attachments = signal<readonly QuoteAttachment[]>([]);
   const facade = {
@@ -169,6 +177,7 @@ describe('QuotePage', () => {
     attachments: attachments.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadQuote: vi.fn(),
     pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
@@ -248,6 +257,7 @@ describe('QuotePage', () => {
   beforeEach(() => {
     deletes.remove.mockReset().mockResolvedValue(true);
     error.set(null);
+    refusals.set([]);
     quote.set(null);
     attachments.set([]);
     granted.clear();
@@ -399,6 +409,34 @@ describe('QuotePage', () => {
       quote.set({ ...draft, version: 2, customerReference: 'BC-7' }),
     );
   }
+
+  it('says each refusal of a save under its field: a line’s on its line, the customer under its picker', async () => {
+    quote.set(draft);
+    await open('q1');
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'lines[0].discountAmount', reason: 'discount_rate_or_amount', params: {} },
+        { field: 'customerId', reason: 'customer_deactivated', params: { number: 'C-0042' } },
+      ]);
+      return null;
+    });
+    typeIn(q('line-0-quantity') as HTMLInputElement, '3');
+    await settle();
+    q('line-0-discount-kind')!.click();
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('line-0-discount-error')?.textContent).toContain(
+        'Un pourcentage ou un montant, pas les deux.',
+      ),
+    );
+    expect(q('quote-customer-refused')?.textContent).toContain(
+      'Le client « C-0042 » est désactivé.',
+    );
+  });
 
   it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
     quote.set(draft);

@@ -33,6 +33,15 @@
               (picked)="chooseProduct(line, $event)"
               (scanned)="scannedInto(line, $event)"
             />
+            @if (refusedAt(line, 'productId'); as error) {
+              <p
+                role="alert"
+                class="px-4 pt-1 pb-2 text-xs text-error"
+                [attr.data-testid]="'line-' + i + '-product-error'"
+              >
+                {{ error.key | translate: error.params }}
+              </p>
+            }
           </div>
 
           @if (!readOnly() && line.controls.productId.value !== '') {
@@ -57,12 +66,12 @@
                 [attr.data-testid]="'line-' + i + '-description'"
               />
             </mat-form-field>
-            @if (errorKey(line, 'description'); as key) {
+            @if (errorOf(line, 'description'); as error) {
               <span
                 role="alert"
                 class="px-4 pt-1 pb-2 text-xs text-error"
                 [attr.data-testid]="'line-' + i + '-description-error'"
-                >{{ key | translate }}</span
+                >{{ error.key | translate: error.params }}</span
               >
             }
           </div>
@@ -79,12 +88,12 @@
                 (blur)="reprice(line)"
               />
             </mat-form-field>
-            @if (errorKey(line, 'quantity'); as key) {
+            @if (errorOf(line, 'quantity'); as error) {
               <span
                 role="alert"
                 class="px-4 pt-1 pb-2 text-xs text-error"
                 [attr.data-testid]="'line-' + i + '-quantity-error'"
-                >{{ key | translate }}</span
+                >{{ error.key | translate: error.params }}</span
               >
             }
           </div>
@@ -102,12 +111,12 @@
                 />
                 <mat-hint>{{ 'delivery_notes.lines.lot_hint' | translate }}</mat-hint>
               </mat-form-field>
-              @if (errorKey(line, 'lotCode'); as key) {
+              @if (errorOf(line, 'lotCode'); as error) {
                 <span
                   role="alert"
                   class="px-4 pt-1 pb-2 text-xs text-error"
                   [attr.data-testid]="'line-' + i + '-lot-error'"
-                  >{{ key | translate }}</span
+                  >{{ error.key | translate: error.params }}</span
                 >
               }
             </div>
@@ -123,12 +132,12 @@
               [testId]="'line-' + i + '-unit'"
               [options]="unitOptions()"
             />
-            @if (errorKey(line, 'unitId'); as key) {
+            @if (errorOf(line, 'unitId'); as error) {
               <span
                 role="alert"
                 class="px-4 pb-2 text-xs text-error"
                 [attr.data-testid]="'line-' + i + '-unit-error'"
-                >{{ key | translate }}</span
+                >{{ error.key | translate: error.params }}</span
               >
             }
           </div>
@@ -159,12 +168,12 @@
                 }
               </mat-hint>
             </mat-form-field>
-            @if (errorKey(line, 'unitPriceNet'); as key) {
+            @if (errorOf(line, 'unitPriceNet'); as error) {
               <span
                 role="alert"
                 class="px-4 pb-2 text-xs text-error"
                 [attr.data-testid]="'line-' + i + '-price-error'"
-                >{{ key | translate }}</span
+                >{{ error.key | translate: error.params }}</span
               >
             }
           </div>
@@ -205,6 +214,15 @@
                   [labelInside]="true"
                   [testId]="'line-' + i + '-taxes'"
                 />
+                @if (refusedAt(line, 'taxComponentIds'); as error) {
+                  <p
+                    role="alert"
+                    class="px-4 pt-1 pb-2 text-xs text-error"
+                    [attr.data-testid]="'line-' + i + '-taxes-error'"
+                  >
+                    {{ error.key | translate: error.params }}
+                  </p>
+                }
               </div>
             }
           }

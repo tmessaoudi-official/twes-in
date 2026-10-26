@@ -254,8 +254,8 @@ final class DeliveryNoteResource
     public ?array $invoice = null;
 
     /** One of the company's active customers (GET .../delivery-note-options). */
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public string $customerId = '';
 
@@ -268,7 +268,7 @@ final class DeliveryNoteResource
     public string $customerName = '';
 
     /** One of the company's establishments; left out, the default one. */
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $establishmentId = null;
 
@@ -314,7 +314,7 @@ final class DeliveryNoteResource
 
     /** The day the goods are expected, YYYY-MM-DD; once delivered, the company's day they arrived. */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
-    #[Assert\Date(groups: [self::WRITE])]
+    #[Assert\Date(groups: [self::WRITE], payload: ['reason' => 'not_a_date'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $deliveryDate = null;
 
@@ -323,38 +323,38 @@ final class DeliveryNoteResource
     #[Groups([self::READ])]
     public ?string $deliveredAt = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE])]
+    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $deliveryAddressLine1 = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE])]
+    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $deliveryAddressLine2 = null;
 
-    #[Assert\Length(max: 20, groups: [self::WRITE])]
+    #[Assert\Length(max: 20, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 20]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $deliveryPostalCode = null;
 
-    #[Assert\Length(max: 120, groups: [self::WRITE])]
+    #[Assert\Length(max: 120, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 120]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $deliveryCity = null;
 
-    #[Assert\Country(groups: [self::WRITE])]
+    #[Assert\Country(groups: [self::WRITE], payload: ['reason' => 'invalid_country'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $deliveryCountryCode = null;
 
     /** The customer's own reference for the order, such as a purchase order number. */
-    #[Assert\Length(max: DeliveryNoteHeader::REFERENCE_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: DeliveryNoteHeader::REFERENCE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => DeliveryNoteHeader::REFERENCE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $customerReference = null;
 
     /** Printed on the note. */
-    #[Assert\Length(max: DeliveryNoteHeader::TEXT_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: DeliveryNoteHeader::TEXT_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => DeliveryNoteHeader::TEXT_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $remarksPrinted = null;
 
     /** Kept inside the company, never printed. */
-    #[Assert\Length(max: DeliveryNoteHeader::TEXT_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: DeliveryNoteHeader::TEXT_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => DeliveryNoteHeader::TEXT_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notesInternal = null;
 
@@ -389,18 +389,18 @@ final class DeliveryNoteResource
     ])]
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Collection(fields: [
-        'productId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
-        'description' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Length(max: DeliveryNoteLineDetails::DESCRIPTION_MAX, groups: [self::WRITE])], groups: [self::WRITE]),
-        'quantity' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
-        'unitId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        'productId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
+        'description' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Length(max: DeliveryNoteLineDetails::DESCRIPTION_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => DeliveryNoteLineDetails::DESCRIPTION_MAX]])], groups: [self::WRITE]),
+        'quantity' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required']), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'unitId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
         'unitPriceNet' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'taxComponentIds' => new Assert\Optional([
             new Assert\Type('list', groups: [self::WRITE]),
-            new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+            new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
         ], groups: [self::WRITE]),
         'lotCode' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
-        'sourceQuoteLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
-        'sourceInvoiceLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        'sourceQuoteLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
+        'sourceInvoiceLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]

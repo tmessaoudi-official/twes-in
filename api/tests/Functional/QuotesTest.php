@@ -82,17 +82,19 @@ final class QuotesTest extends ApiTestCase
         $piece = ['description' => 'Pièce', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '10'];
 
         foreach ([
-            ['customerId', ['customerId' => self::ABSENT]],
-            ['lines[0].quantity', ['lines' => [[...$piece, 'quantity' => '1.5']]]],
-            ['lines[0].discountRate', ['lines' => [[...$piece, 'discountRate' => '101']]]],
-            ['lines[0].taxComponentIds', ['lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TIMBRE')]]]]],
-            ['discountAmount', ['discountAmount' => '10.0001', 'lines' => [$piece]]],
-            ['discountAmount', ['discountAmount' => '11', 'lines' => [$piece]]],
-        ] as [$field, $change]) {
+            ['customerId', ['customerId' => self::ABSENT], 'unknown_choice', []],
+            ['lines[0].quantity', ['lines' => [[...$piece, 'quantity' => '1.5']]], 'quantity_decimals', ['unit' => 'C62', 'decimals' => 0]],
+            ['lines[0].discountRate', ['lines' => [[...$piece, 'discountRate' => '101']]], 'invalid_rate', []],
+            ['lines[0].discountAmount', ['lines' => [[...$piece, 'discountRate' => '5', 'discountAmount' => '1']]], 'discount_rate_or_amount', []],
+            ['lines[0].taxComponentIds', ['lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TIMBRE')]]]], 'tax_on_document', ['tax' => 'TIMBRE']],
+            ['lines[0].taxComponentIds', ['lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TVA19'), $this->taxId('TVA19')]]]], 'tax_twice', ['tax' => 'TVA19']],
+            ['discountAmount', ['discountAmount' => '10.0001', 'lines' => [$piece]], 'invalid_discount', ['decimals' => 3]],
+            ['discountAmount', ['discountAmount' => '11', 'lines' => [$piece]], 'discount_above_total', []],
+        ] as [$field, $change, $reason, $params]) {
             $this->postJson($this->path(), $this->quote($change));
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
-            self::assertContains($field, array_column($this->refusals(), 'propertyPath'), $field.': the refusal names its field as a violation, which the screen reads');
+            self::assertSame([$reason, $params], $this->refusalOf($field), $field.': the refusal names its field and why, which the screen says');
         }
         $this->getJson($this->path());
         self::assertSame([], $this->jsonList());

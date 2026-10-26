@@ -52,7 +52,7 @@ final readonly class PurchaseOrderHeader
     {
         $value = TypedText::trimmed($value ?? '');
         if (mb_strlen($value) > self::TEXT_MAX) {
-            throw new InvalidPurchaseOrder($field, \sprintf('At most %d characters.', self::TEXT_MAX));
+            throw new InvalidPurchaseOrder($field, \sprintf('At most %d characters.', self::TEXT_MAX), 'invalid_text', ['max' => self::TEXT_MAX]);
         }
 
         return '' === $value ? null : $value;

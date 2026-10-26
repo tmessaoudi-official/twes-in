@@ -24,6 +24,7 @@ import type {
 } from './quotes-types';
 import type { PreviewBody } from '../shared/documents/document-figures';
 import { sessionSignal } from '../shared/session/session-data';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /**
  * The quotes of the company being worked in, the quote open on screen, its files and what its form offers. It is
@@ -38,6 +39,7 @@ export class QuotesFacade implements LineCatalogue {
   private readonly attachmentsSignal = sessionSignal<readonly QuoteAttachment[]>([]);
   private readonly totalSignal = sessionSignal(0);
   private readonly statusCountsSignal = sessionSignal<QuoteStatusCounts | null>(null);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
   private readonly pageRequests = new LatestRequest();
   private readonly countsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);
@@ -54,6 +56,8 @@ export class QuotesFacade implements LineCatalogue {
   readonly attachments = this.attachmentsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Each field the last step was refused on, with why; empty after a step the API took. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   /** What the list needs besides its page: the currency's scale its totals are shown at. */
   async loadListContext(companyId: string): Promise<void> {
@@ -282,11 +286,18 @@ export class QuotesFacade implements LineCatalogue {
   }
 
   private async step(call: () => Promise<QuoteRow>): Promise<QuoteRow | null> {
-    return this.state.writeAnswer(async () => {
-      const quote = await call();
-      this.quoteSignal.set(quote);
-      return quote;
-    });
+    this.refusalsSignal.set([]);
+    return this.state.writeAnswer(
+      async () => {
+        const quote = await call();
+        this.quoteSignal.set(quote);
+        return quote;
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof QuotesRefused ? error.refusals : []),
+      },
+    );
   }
 
   private async fileStep(

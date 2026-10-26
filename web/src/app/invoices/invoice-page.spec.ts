@@ -24,6 +24,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { InvoicePage } from './invoice-page';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { FileSaver } from '../shared/files/save-file';
 import { InvoicesFacade } from './invoices-facade';
 import {
@@ -59,6 +60,16 @@ import { UnsavedChanges } from '../shared/form/unsaved-changes';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      import: {
+        rejections: {
+          invalid_value: 'Valeur refusée.',
+          quantity_decimals: '« {{unit}} » se compte en nombres entiers.',
+          customer_deactivated: 'Le client « {{number}} » est désactivé.',
+          tax_on_line: '{{tax}} se compte sur chaque ligne.',
+          invalid_payment_terms: 'Délai de paiement refusé : de 0 à {{max}} jours.',
+          tax_twice: '{{tax}} est choisie deux fois.',
+        },
+      },
       invoices: {
         errors: { invalid: 'Refusé.' },
         statuses: { draft: 'Brouillon', issued: 'Émise', overdue: 'En retard', paid: 'Soldée' },
@@ -256,6 +267,7 @@ const issued: InvoiceRow = {
 
 describe('InvoicePage', () => {
   const error = signal<InvoicesError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const invoice = signal<InvoiceRow | null>(null);
   const optionsShown = signal<InvoiceOptions | null>(options);
   const facade = {
@@ -263,6 +275,7 @@ describe('InvoicePage', () => {
     invoice: invoice.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadInvoice: vi.fn(),
     nextNumber: vi.fn(),
     pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
@@ -396,6 +409,7 @@ describe('InvoicePage', () => {
   beforeEach(() => {
     deletes.remove.mockReset().mockResolvedValue(true);
     error.set(null);
+    refusals.set([]);
     invoice.set(null);
     granted.clear();
     modulesOn.clear();
@@ -1953,6 +1967,87 @@ describe('InvoicePage', () => {
     invoice.set(draft);
     await open('i1');
     expect((q('invoice-customer') as HTMLInputElement).disabled).toBe(false);
+  });
+
+  /** The next save is refused on these fields, as the API names them. */
+  function refusedOn(call: 'create' | 'revise', ...fields: FieldRefusal[]): void {
+    facade[call].mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set(fields);
+      return null;
+    });
+  }
+
+  it('says each refusal of a save under its field: a line’s on its line, the customer, the document taxes and the header', async () => {
+    invoice.set(draft);
+    await open('i1');
+    refusedOn(
+      'revise',
+      {
+        field: 'lines[0].quantity',
+        reason: 'quantity_decimals',
+        params: { unit: 'C62', decimals: 0 },
+      },
+      { field: 'lines[0][taxComponentIds][0]', reason: 'tax_twice', params: { tax: 'TVA19' } },
+      { field: 'customerId', reason: 'customer_deactivated', params: { number: 'C-0042' } },
+      { field: 'documentTaxComponentIds', reason: 'tax_on_line', params: { tax: 'TVA19' } },
+      { field: 'paymentTermsDays', reason: 'invalid_payment_terms', params: { max: 365 } },
+    );
+    type('line-0-quantity', '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(text('line-0-quantity-error')).toContain('« C62 » se compte en nombres entiers.'),
+    );
+    expect(text('line-0-taxes-error')).toContain('TVA19 est choisie deux fois.');
+    expect(text('invoice-customer-refused')).toContain('Le client « C-0042 » est désactivé.');
+    expect(text('document-taxes-error')).toContain('TVA19 se compte sur chaque ligne.');
+    expect(text('field-error-paymentTermsDays')).toContain(
+      'Délai de paiement refusé : de 0 à 365 jours.',
+    );
+  });
+
+  it('says the API’s refusal of a line over what the form found itself, and drops it at the next change', async () => {
+    invoice.set(draft);
+    await open('i1');
+    refusedOn('revise', { field: 'lines.0.quantity', reason: 'unknown_reason', params: {} });
+    type('line-0-quantity', '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect(text('line-0-quantity-error')).toContain('Valeur refusée.'));
+
+    type('line-0-quantity', '4');
+    await settle();
+    expect(q('line-0-quantity-error')).toBeNull();
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.revise).toHaveBeenLastCalledWith(
+      'c1',
+      'i1',
+      expect.objectContaining({ lines: [expect.objectContaining({ quantity: '4' })] }),
+      1,
+    );
+  });
+
+  it('says the refusal of a new document’s first save under its field too', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    await pick('invoice-customer', 'CLI-2 · Méditerranée');
+    await pick('line-0-product', 'ART-1 · Conception');
+    refusedOn('create', {
+      field: 'customerId',
+      reason: 'customer_deactivated',
+      params: { number: 'CLI-2' },
+    });
+    q('document-action-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(text('invoice-customer-refused')).toContain('Le client « CLI-2 » est désactivé.'),
+    );
   });
 
   it('says under the customer that the API refused them, not as a refusal of the whole document', async () => {

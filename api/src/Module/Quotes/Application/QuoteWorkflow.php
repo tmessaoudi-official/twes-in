@@ -83,7 +83,7 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
             $quote->assertDraft('is sent');
             // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile.
             if ($quote->getCustomer()->isMergedAway()) {
-                throw new InvalidQuote('customerId', $quote->getCustomer()->whySwitchedOff());
+                throw new InvalidQuote('customerId', $quote->getCustomer()->whySwitchedOff(), ...$quote->getCustomer()->switchedOffReason());
             }
             $this->totals->checked($quote);
             $this->chargedByItsRegimes($company, $quote);
@@ -304,7 +304,7 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
             foreach ($line->getTaxes() as $tax) {
                 $leftOutBy = $this->excluded->regimeLeavingOut($company, $regime, $tax->getTaxComponent()->getFamily());
                 if (null !== $leftOutBy) {
-                    throw (new InvalidQuote('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode())))->within("lines[$index]");
+                    throw (new InvalidQuote('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()), 'regime_excludes_tax', ['tax' => $tax->getCode()]))->within("lines[$index]");
                 }
             }
         }

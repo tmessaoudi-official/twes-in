@@ -17,7 +17,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { Router, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { InvoiceLines } from '../invoices/invoice-lines';
@@ -44,6 +44,9 @@ import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import type { FieldError } from '../shared/form/form-builder';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { refusedError } from '../shared/form/refusal-words';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { FileDrop } from '../shared/form/file-drop';
 import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
@@ -137,6 +140,8 @@ export class QuotePage {
    */
   readonly add = input<string | readonly string[] | undefined>(undefined);
   private readonly linesEditor = viewChild(InvoiceLines);
+  private readonly headerEditor = viewChild(DescriptorForm);
+  private readonly translate = inject(TranslateService);
 
   protected readonly id = computed(() => this.quoteId() ?? null);
   protected readonly options = this.facade.options;
@@ -355,6 +360,8 @@ export class QuotePage {
   private readonly knownCustomers = new Map<string, CustomerOption>();
   /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
   protected readonly customerMissing = signal(false);
+  /** What the API refused the customer for (deactivated, merged into another), said under its picker. */
+  protected readonly customerRefused = signal<FieldError | null>(null);
   protected readonly searchCustomers = async (words: string): Promise<readonly PickOption[]> => {
     const companyId = this.company()?.id;
     if (!companyId) return [];
@@ -626,6 +633,7 @@ export class QuotePage {
     const customer = option === null ? null : (this.knownCustomers.get(option.id) ?? null);
     this.customer.set(customer);
     this.customerMissing.set(customer === null);
+    this.customerRefused.set(null);
     if (this.error() === 'customer_unavailable') this.facade.clearError();
     const rate = customer?.defaultDiscountRate ?? '';
     for (const line of this.lines()?.controls ?? []) {
@@ -649,6 +657,8 @@ export class QuotePage {
         // It exists now: going to it is not leaving unsaved work.
         this.unsaved.savedAndLeaving();
         await this.router.navigate(['/quotes', created.id], { replaceUrl: true });
+      } else {
+        await this.refused();
       }
     } else if ((await this.facade.revise(companyId, id, input, this.sync.version())) !== null) {
       this.revisedHere();
@@ -669,7 +679,24 @@ export class QuotePage {
     if (this.facade.error() === 'record_changed') {
       this.facade.clearError();
       await this.sync.savedElsewhere();
+      return;
     }
+    this.showRefused(this.facade.refusals());
+  }
+
+  /**
+   * Each field the API refused, said under it: a line's on its line, the customer under its picker, the rest of the
+   * header in its form. The line above the form stays for what is refused as a whole.
+   */
+  private showRefused(refusals: readonly FieldRefusal[]): void {
+    if (refusals.length === 0) return;
+    const rest = this.linesEditor()?.showRefused(refusals) ?? refusals;
+    const customer = rest.find((each) => each.field === 'customerId');
+    this.customerRefused.set(
+      customer === undefined ? null : refusedError(this.translate, customer),
+    );
+    const header = rest.filter((each) => each.field !== 'customerId');
+    if (header.length > 0) this.headerEditor()?.showRefused(header);
   }
 
   protected async send(): Promise<void> {

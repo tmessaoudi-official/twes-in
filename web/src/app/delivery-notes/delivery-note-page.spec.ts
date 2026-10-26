@@ -23,6 +23,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { DeliveryNotePage } from './delivery-note-page';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import { ProductScans } from '../products/product-scans';
 import { InventoryFacade } from '../inventory/inventory-facade';
@@ -52,6 +53,13 @@ import { PREVIEW_DELAY } from '../shared/documents/document-figures';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      import: {
+        rejections: {
+          product_deactivated: 'Le produit « {{reference}} » est désactivé.',
+          customer_deactivated: 'Le client « {{number}} » est désactivé.',
+          invalid_text: 'Texte refusé : {{max}} caractères au plus.',
+        },
+      },
       delivery_notes: {
         credit_over: 'Plafond de crédit dépassé',
         errors: { conflict: 'La note a changé d’état entre-temps.' },
@@ -165,12 +173,14 @@ const validated: DeliveryNoteRow = {
 describe('DeliveryNotePage', () => {
   const shownOptions = signal<DeliveryNoteOptions | null>(options);
   const error = signal<DeliveryNotesError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const note = signal<DeliveryNoteRow | null>(null);
   const facade = {
     options: shownOptions.asReadonly(),
     note: note.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadNote: vi.fn(),
     pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
@@ -294,6 +304,7 @@ describe('DeliveryNotePage', () => {
     scans.named.mockReset().mockResolvedValue(null);
     Object.values(display).forEach((each) => each.mockReset());
     error.set(null);
+    refusals.set([]);
     note.set(null);
     granted.clear();
     [
@@ -811,6 +822,40 @@ describe('DeliveryNotePage', () => {
       note.set({ ...draft, version: 2, customerReference: 'BC-7' }),
     );
   }
+
+  it('says each refusal of a save under its field: a line’s on its line, the customer, the header', async () => {
+    note.set(draft);
+    await open('n1');
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        {
+          field: 'lines[0].productId',
+          reason: 'product_deactivated',
+          params: { reference: 'VIS-M6' },
+        },
+        { field: 'customerId', reason: 'customer_deactivated', params: { number: 'C-0042' } },
+        { field: 'customerReference', reason: 'invalid_text', params: { max: 64 } },
+      ]);
+      return null;
+    });
+    type('line-0-quantity', '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('line-0-product-error')?.textContent).toContain(
+        'Le produit « VIS-M6 » est désactivé.',
+      ),
+    );
+    expect(q('delivery-note-customer-refused')?.textContent).toContain(
+      'Le client « C-0042 » est désactivé.',
+    );
+    expect(q('field-error-customerReference')?.textContent).toContain(
+      'Texte refusé : 64 caractères au plus.',
+    );
+  });
 
   it('after a save refused as made over a version saved since, merges what was saved, says nothing was, and saves on it next', async () => {
     note.set(draft);

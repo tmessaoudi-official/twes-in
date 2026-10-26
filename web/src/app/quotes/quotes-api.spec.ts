@@ -7,6 +7,7 @@ import { InvoicesApi } from '../invoices/invoices-api';
 import { QuotesApi, QuotesRefused } from './quotes-api';
 import type { QuoteInput } from './quotes-types';
 import { SILENT } from '../shared/feedback/activity-interceptor';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 const input: QuoteInput = {
   customerId: 'k1',
@@ -84,6 +85,8 @@ describe('QuotesApi', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: InvoicesApi, useValue: invoices },
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
       ],
     });
     invoices.productPrice.mockReset();
@@ -191,6 +194,27 @@ describe('QuotesApi', () => {
     expect(request.request.body).toEqual(input);
     request.flush(raw());
     expect((await pending).id).toBe('q1');
+  });
+
+  it('names each field a save was refused on, a line’s by its line', async () => {
+    const refused = api.create('c1', input);
+    http.expectOne('/api/companies/c1/quotes').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'lines[0].discountAmount',
+            message: 'x',
+            payload: { reason: 'discount_rate_or_amount' },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      refusals: [
+        { field: 'lines[0].discountAmount', reason: 'discount_rate_or_amount', params: {} },
+      ],
+    });
   });
 
   it('sends, cancels and invoices with no body', async () => {

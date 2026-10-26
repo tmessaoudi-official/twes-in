@@ -197,22 +197,27 @@ final class InvoicesTest extends ApiTestCase
         $gone = $deactivated->getId()->toRfc4122();
 
         foreach ([
-            ['customerId', ['customerId' => self::ABSENT]],
-            ['establishmentId', ['establishmentId' => self::ABSENT]],
-            ['supplyDate', ['supplyDate' => '10/09/2026']],
-            ['paymentTermsDays', ['paymentTermsDays' => 400]],
-            ['discountAmount', ['discountAmount' => '-1']],
-            ['discountAmount', ['lines' => [$piece], 'discountAmount' => '10.001']],
-            ['lines[0].discountRate', ['lines' => [[...$piece, 'discountRate' => '101']]]],
-            ['lines[0].taxComponentIds', ['lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TIMBRE')]]]]],
-            ['lines[0].taxComponentIds', ['customerId' => $exempt, 'lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TVA19')]]]]],
-            ['documentTaxComponentIds', ['documentTaxComponentIds' => [$this->taxId('TVA19')]]],
-            ['documentTaxComponentIds', ['documentTaxComponentIds' => [self::ABSENT]]],
-        ] as [$field, $change]) {
+            ['customerId', ['customerId' => self::ABSENT], 'unknown_choice', []],
+            ['establishmentId', ['establishmentId' => self::ABSENT], 'unknown_choice', []],
+            ['supplyDate', ['supplyDate' => '10/09/2026'], 'not_a_date', []],
+            ['paymentTermsDays', ['paymentTermsDays' => 400], 'invalid_payment_terms', ['max' => 365]],
+            ['discountAmount', ['discountAmount' => '-1'], 'invalid_discount', ['decimals' => 3]],
+            ['discountAmount', ['lines' => [$piece], 'discountAmount' => '10.001'], 'discount_above_total', []],
+            ['lines[0].discountRate', ['lines' => [[...$piece, 'discountRate' => '101']]], 'invalid_rate', []],
+            ['lines[0].discountAmount', ['lines' => [[...$piece, 'discountRate' => '5', 'discountAmount' => '1']]], 'discount_rate_or_amount', []],
+            ['lines[0][description]', ['lines' => [[...$piece, 'description' => str_repeat('x', 5001)]]], 'invalid_text', ['max' => 5000]],
+            ['lines[0].quantity', ['lines' => [[...$piece, 'quantity' => '1.5']]], 'quantity_decimals', ['unit' => 'C62', 'decimals' => 0]],
+            ['lines[0].quantity', ['lines' => [[...$piece, 'quantity' => '99999999999', 'unitPriceNet' => '9999']]], 'amount_too_large', []],
+            ['lines[0].taxComponentIds', ['lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TIMBRE')]]]], 'tax_on_document', ['tax' => 'TIMBRE']],
+            ['lines[0].taxComponentIds', ['lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TVA19'), $this->taxId('TVA19')]]]], 'tax_twice', ['tax' => 'TVA19']],
+            ['lines[0].taxComponentIds', ['customerId' => $exempt, 'lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TVA19')]]]], 'regime_excludes_tax', ['tax' => 'TVA19']],
+            ['documentTaxComponentIds', ['documentTaxComponentIds' => [$this->taxId('TVA19')]], 'tax_on_line', ['tax' => 'TVA19']],
+            ['documentTaxComponentIds', ['documentTaxComponentIds' => [self::ABSENT]], 'unknown_tax', []],
+        ] as [$field, $change, $reason, $params]) {
             $this->postJson($this->path(), $this->invoice($change));
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
-            self::assertContains($field, array_column($this->refusals(), 'propertyPath'), $field.': the refusal names its field as a violation, which the screen reads');
+            self::assertSame([$reason, $params], $this->refusalOf($field), $field.': the refusal names its field and why, which the screen says');
         }
         $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => ['first' => $this->taxId('TIMBRE')]]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a JSON object is not a list');
@@ -222,6 +227,7 @@ final class InvoicesTest extends ApiTestCase
         $this->postJson($this->path(), $this->invoice(['customerId' => $gone]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringStartsWith('customerId: ', $this->stringAt($this->json(), 'detail'));
+        self::assertSame(['customer_deactivated', ['number' => 'CLI-0003']], $this->refusalOf('customerId'), 'the screen says which customer and why');
     }
 
     public function testARevisionOfAVersionSavedSinceIsRefusedAsChangedAndWhatWasSavedStays(): void

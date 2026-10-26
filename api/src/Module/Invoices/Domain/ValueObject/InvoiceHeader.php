@@ -44,7 +44,7 @@ final readonly class InvoiceHeader
         public ?OperationCategory $operationCategory = null,
     ) {
         if (null !== $paymentTermsDays && ($paymentTermsDays < 0 || $paymentTermsDays > self::TERMS_MAX)) {
-            throw new InvalidInvoice('paymentTermsDays', \sprintf('Payment terms run from 0 to %d days.', self::TERMS_MAX));
+            throw new InvalidInvoice('paymentTermsDays', \sprintf('Payment terms run from 0 to %d days.', self::TERMS_MAX), 'invalid_payment_terms', ['max' => self::TERMS_MAX]);
         }
         $this->supplyDate = null === $supplyDate ? null : new \DateTimeImmutable($supplyDate->format('Y-m-d'), new \DateTimeZone('UTC'));
         $this->customerReference = self::text('customerReference', $customerReference, self::REFERENCE_MAX);
@@ -73,7 +73,7 @@ final readonly class InvoiceHeader
     {
         $value = TypedText::trimmed($value ?? '');
         if (mb_strlen($value) > $max) {
-            throw new InvalidInvoice($field, \sprintf('At most %d characters.', $max));
+            throw new InvalidInvoice($field, \sprintf('At most %d characters.', $max), 'invalid_text', ['max' => $max]);
         }
 
         return '' === $value ? null : $value;
@@ -86,7 +86,7 @@ final readonly class InvoiceHeader
             return null;
         }
         if (1 !== preg_match(self::AMOUNT, $amount)) {
-            throw new InvalidInvoice('discountAmount', 'A discount is an amount from 0 with at most three decimals.');
+            throw new InvalidInvoice('discountAmount', 'A discount is an amount from 0 with at most three decimals.', 'invalid_discount', ['decimals' => 3]);
         }
         [$units, $decimals] = [...explode('.', $amount), ''];
 

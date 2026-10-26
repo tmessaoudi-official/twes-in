@@ -130,20 +130,21 @@ final class DeliveryNotesTest extends ApiTestCase
         $exempt = $this->customer('CLI-0002', 'exempt')->getId()->toRfc4122();
 
         foreach ([
-            ['customerId', ['customerId' => self::ABSENT]],
-            ['establishmentId', ['establishmentId' => self::ABSENT]],
-            ['deliveryDate', ['deliveryDate' => '20/09/2026']],
-            ['customerReference', ['customerReference' => str_repeat('a', 65)]],
-            ['lines[0].quantity', ['lines' => [[...$piece, 'quantity' => '1.5']]]],
-            ['lines[0].unitPriceNet', ['lines' => [[...$piece, 'unitPriceNet' => '-1']]]],
-            ['lines[0].taxComponentIds', ['lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TIMBRE')]]]]],
-            ['lines[1].productId', ['lines' => [$piece, ['productId' => self::ABSENT, 'quantity' => '1']]]],
-            ['lines[0].taxComponentIds', ['customerId' => $exempt, 'lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TVA19')]]]]],
-        ] as [$field, $change]) {
+            ['customerId', ['customerId' => self::ABSENT], 'unknown_choice', []],
+            ['establishmentId', ['establishmentId' => self::ABSENT], 'unknown_choice', []],
+            ['deliveryDate', ['deliveryDate' => '20/09/2026'], 'not_a_date', []],
+            ['customerReference', ['customerReference' => str_repeat('a', 65)], 'invalid_text', ['max' => 64]],
+            ['lines[0].quantity', ['lines' => [[...$piece, 'quantity' => '1.5']]], 'quantity_decimals', ['unit' => 'C62', 'decimals' => 0]],
+            ['lines[0].unitPriceNet', ['lines' => [[...$piece, 'unitPriceNet' => '-1']]], 'invalid_price', []],
+            ['lines[0].taxComponentIds', ['lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TIMBRE')]]]], 'tax_on_document', ['tax' => 'TIMBRE']],
+            ['lines[0].taxComponentIds', ['lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TVA19'), $this->taxId('TVA19')]]]], 'tax_twice', ['tax' => 'TVA19']],
+            ['lines[1].productId', ['lines' => [$piece, ['productId' => self::ABSENT, 'quantity' => '1']]], 'unknown_choice', []],
+            ['lines[0].taxComponentIds', ['customerId' => $exempt, 'lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TVA19')]]]], 'regime_excludes_tax', ['tax' => 'TVA19']],
+        ] as [$field, $change, $reason, $params]) {
             $this->postJson($this->path(), $this->note($change));
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
-            self::assertContains($field, array_column($this->refusals(), 'propertyPath'), $field.': the refusal names its field as a violation, which the screen reads');
+            self::assertSame([$reason, $params], $this->refusalOf($field), $field.': the refusal names its field and why, which the screen says');
         }
 
         $this->postJson($this->path(), $this->note(['lines' => ['first' => $piece]]));

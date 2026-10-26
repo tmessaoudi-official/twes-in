@@ -12,8 +12,11 @@ namespace App\Fiscal\Domain\Calculation;
 /** A document the calculator refuses to total, with the reason, and the line it concerns when it is one line's. */
 class InvalidDocument extends \InvalidArgumentException
 {
-    /** @param int|null $lineIndex the index of the line refused, null when the document is refused as a whole */
-    public function __construct(string $message, public readonly ?int $lineIndex = null)
+    /**
+     * @param int|null    $lineIndex the index of the line refused, null when the document is refused as a whole
+     * @param string|null $reason    a stable code a screen translates, for a refusal a person can meet by typing
+     */
+    public function __construct(string $message, public readonly ?int $lineIndex = null, public readonly ?string $reason = null)
     {
         parent::__construct($message);
     }

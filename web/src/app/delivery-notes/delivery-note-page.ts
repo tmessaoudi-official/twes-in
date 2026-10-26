@@ -19,9 +19,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import type { FieldError } from '../shared/form/form-builder';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { refusedError } from '../shared/form/refusal-words';
 import { liveRecord } from '../shared/form/live-record';
 import { PartConflict } from '../shared/form/part-conflict';
 import { RecordChanged } from '../shared/form/record-changed';
@@ -132,6 +135,8 @@ export class DeliveryNotePage {
   private readonly productScans = inject(ProductScans);
   private readonly display = inject(CustomerDisplay);
   private readonly linesEditor = viewChild(DeliveryNoteLines);
+  private readonly headerEditor = viewChild(DescriptorForm);
+  private readonly translate = inject(TranslateService);
   /** Set once the note was created and is opened at its own address, which the customer display keeps showing. */
   private handedOver = false;
   /**
@@ -385,6 +390,8 @@ export class DeliveryNotePage {
   private readonly knownCustomers = new Map<string, CustomerOption>();
   /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
   protected readonly customerMissing = signal(false);
+  /** What the API refused the customer for (deactivated, merged into another), said under its picker. */
+  protected readonly customerRefused = signal<FieldError | null>(null);
   protected readonly searchCustomers = async (words: string): Promise<readonly PickOption[]> => {
     const companyId = this.company()?.id;
     if (!companyId) return [];
@@ -793,6 +800,7 @@ export class DeliveryNotePage {
     const customer = option === null ? null : (this.knownCustomers.get(option.id) ?? null);
     this.customer.set(customer);
     this.customerMissing.set(customer === null);
+    this.customerRefused.set(null);
   }
 
   protected async save(): Promise<void> {
@@ -809,6 +817,8 @@ export class DeliveryNotePage {
         this.unsaved.savedAndLeaving();
         this.handedOver = true;
         await this.router.navigate(['/delivery-notes', created.id], { replaceUrl: true });
+      } else {
+        await this.refused();
       }
     } else if ((await this.facade.revise(companyId, id, input, this.sync.version())) !== null) {
       this.revisedHere();
@@ -829,7 +839,24 @@ export class DeliveryNotePage {
     if (this.facade.error() === 'record_changed') {
       this.facade.clearError();
       await this.sync.savedElsewhere();
+      return;
     }
+    this.showRefused(this.facade.refusals());
+  }
+
+  /**
+   * Each field the API refused, said under it: a line's on its line, the customer under its picker, the rest of the
+   * header in its form. The line above the form stays for what is refused as a whole.
+   */
+  private showRefused(refusals: readonly FieldRefusal[]): void {
+    if (refusals.length === 0) return;
+    const rest = this.linesEditor()?.showRefused(refusals) ?? refusals;
+    const customer = rest.find((each) => each.field === 'customerId');
+    this.customerRefused.set(
+      customer === undefined ? null : refusedError(this.translate, customer),
+    );
+    const header = rest.filter((each) => each.field !== 'customerId');
+    if (header.length > 0) this.headerEditor()?.showRefused(header);
   }
 
   /** A note handing over an issued invoice's goods is never invoiced: that invoice billed them already. */

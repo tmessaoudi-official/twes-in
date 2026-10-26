@@ -821,6 +821,18 @@ class Product implements CompanyOwned
             : \sprintf('The product %s was merged into %s: a new document names the product kept.', $this->reference, $this->mergedInto->reference);
     }
 
+    /**
+     * The same, as the reason and parameters a screen says it in.
+     *
+     * @return array{string, array<string, string>}
+     */
+    public function switchedOffReason(): array
+    {
+        return null === $this->mergedInto
+            ? ['product_deactivated', ['reference' => $this->reference]]
+            : ['product_merged_choose', ['reference' => $this->reference, 'kept' => $this->mergedInto->reference]];
+    }
+
     /** The product this one stands for: the product kept when it was merged away, itself otherwise. */
     public function standingFor(): self
     {

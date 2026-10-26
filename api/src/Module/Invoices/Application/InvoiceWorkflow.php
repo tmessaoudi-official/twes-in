@@ -123,7 +123,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile: it would print
             // the duplicate the merge retired.
             if ($customer->isMergedAway()) {
-                throw new InvalidInvoice('customerId', $customer->whySwitchedOff());
+                throw new InvalidInvoice('customerId', $customer->whySwitchedOff(), ...$customer->switchedOffReason());
             }
             // Before the series, as a mention is: an invoice that cannot name its parties takes no number.
             $this->parties->assertNamed($company, $invoice->getEstablishment(), $customer);
@@ -220,7 +220,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
                 }
                 $leftOutBy = $this->excluded->regimeLeavingOut($company, $regime, $tax->getTaxComponent()->getFamily());
                 if (null !== $leftOutBy) {
-                    throw (new InvalidInvoice('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode())))->within("lines[$index]");
+                    throw (new InvalidInvoice('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()), 'regime_excludes_tax', ['tax' => $tax->getCode()]))->within("lines[$index]");
                 }
             }
         }
@@ -230,7 +230,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             }
             $leftOutBy = $this->excluded->regimeLeavingOut($company, $regime, $tax->getTaxComponent()->getFamily());
             if (null !== $leftOutBy) {
-                throw new InvalidInvoice('documentTaxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()));
+                throw new InvalidInvoice('documentTaxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()), 'regime_excludes_tax', ['tax' => $tax->getCode()]);
             }
         }
     }

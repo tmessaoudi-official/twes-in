@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { SILENT } from '../shared/feedback/activity-interceptor';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { InvoicesApi } from '../invoices/invoices-api';
 import { DeliveryNotesApi, DeliveryNotesRefused } from './delivery-notes-api';
 import type { DeliveryNoteInput } from './delivery-notes-types';
@@ -58,6 +59,8 @@ describe('DeliveryNotesApi', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: InvoicesApi, useValue: invoices },
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
       ],
     });
     invoices.invoices.mockReset();
@@ -66,6 +69,31 @@ describe('DeliveryNotesApi', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('names each field a save was refused on, a line’s by its line', async () => {
+    const refused = api.create('c1', input);
+    http.expectOne('/api/companies/c1/delivery-notes').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'lines[1].productId',
+            message: 'x',
+            payload: { reason: 'product_deactivated', params: { reference: 'VIS-M6' } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      refusals: [
+        {
+          field: 'lines[1].productId',
+          reason: 'product_deactivated',
+          params: { reference: 'VIS-M6' },
+        },
+      ],
+    });
+  });
 
   it('reads the form options', async () => {
     const pending = api.options('c 1');

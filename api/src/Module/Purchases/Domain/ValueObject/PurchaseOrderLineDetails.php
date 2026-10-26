@@ -40,7 +40,7 @@ final readonly class PurchaseOrderLineDetails
         $this->productReference = mb_substr(TypedText::trimmed($productReference), 0, self::REFERENCE_MAX);
         $description = TypedText::trimmed($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
-            throw new InvalidPurchaseOrder('description', \sprintf('A line says what it orders in 1 to %d characters.', self::DESCRIPTION_MAX));
+            throw new InvalidPurchaseOrder('description', \sprintf('A line says what it orders in 1 to %d characters.', self::DESCRIPTION_MAX), '' === $description ? 'value_required' : 'invalid_text', '' === $description ? [] : ['max' => self::DESCRIPTION_MAX]);
         }
         $this->description = $description;
         $this->quantity = self::quantity(TypedText::trimmed($quantity), $unit);
@@ -61,14 +61,14 @@ final readonly class PurchaseOrderLineDetails
     public static function quantity(string $quantity, Unit $unit): string
     {
         if (1 !== preg_match(self::QUANTITY, $quantity)) {
-            throw new InvalidPurchaseOrder('quantity', 'A quantity is a decimal number with at most three decimals.');
+            throw new InvalidPurchaseOrder('quantity', 'A quantity is a decimal number with at most three decimals.', 'invalid_quantity');
         }
         [$units, $decimals] = [...explode('.', $quantity), ''];
         if ('' === trim($units.$decimals, '0')) {
-            throw new InvalidPurchaseOrder('quantity', 'A line orders a positive quantity.');
+            throw new InvalidPurchaseOrder('quantity', 'A line orders a positive quantity.', 'quantity_above_zero');
         }
         if (\strlen(rtrim($decimals, '0')) > $unit->getDecimals()) {
-            throw new InvalidPurchaseOrder('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()));
+            throw new InvalidPurchaseOrder('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()), 'quantity_decimals', ['unit' => $unit->getCode(), 'decimals' => $unit->getDecimals()]);
         }
 
         return $units.'.'.str_pad($decimals, self::QUANTITY_DECIMALS, '0');
@@ -82,7 +82,7 @@ final readonly class PurchaseOrderLineDetails
     public static function price(string $price): string
     {
         if (1 !== preg_match(self::PRICE, $price)) {
-            throw new InvalidPurchaseOrder('unitPriceNet', 'A price is a decimal number with at most four decimals.');
+            throw new InvalidPurchaseOrder('unitPriceNet', 'A price is a decimal number with at most four decimals.', 'invalid_price');
         }
         [$units, $decimals] = [...explode('.', $price), ''];
 

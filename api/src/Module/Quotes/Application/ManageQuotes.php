@@ -262,9 +262,9 @@ final readonly class ManageQuotes implements DeclaresAuditActions
     private function checked(Company $company, QuoteInput $input, ?Quote $current): array
     {
         $customer = $this->customers->ofIdInCompany($input->customerId, $company->getId())
-            ?? throw new InvalidQuote('customerId', 'No customer of this company has this id.');
+            ?? throw new InvalidQuote('customerId', 'No customer of this company has this id.', 'unknown_choice');
         if (!$customer->isActive() && !(null !== $current && $current->getCustomer()->getId()->equals($customer->getId()))) {
-            throw new InvalidQuote('customerId', $customer->whySwitchedOff());
+            throw new InvalidQuote('customerId', $customer->whySwitchedOff(), ...$customer->switchedOffReason());
         }
 
         if (null === $input->establishmentId) {
@@ -272,7 +272,7 @@ final readonly class ManageQuotes implements DeclaresAuditActions
                 ?? throw new \LogicException('A company always has a default establishment.');
         } else {
             $establishment = $this->establishments->ofIdInCompany($input->establishmentId, $company->getId())
-                ?? throw new InvalidQuote('establishmentId', 'No establishment of this company has this id.');
+                ?? throw new InvalidQuote('establishmentId', 'No establishment of this company has this id.', 'unknown_choice');
         }
 
         $kept = self::named($current);
@@ -294,22 +294,22 @@ final readonly class ManageQuotes implements DeclaresAuditActions
         $product = null;
         if (null !== $line->productId) {
             $product = $this->products->ofIdInCompany($line->productId, $company->getId())
-                ?? throw new InvalidQuote('productId', 'No product of this company has this id.');
+                ?? throw new InvalidQuote('productId', 'No product of this company has this id.', 'unknown_choice');
             if (!$product->isActive() && !\in_array($product->getId()->toRfc4122(), $kept['products'], true)) {
-                throw new InvalidQuote('productId', $product->whySwitchedOff());
+                throw new InvalidQuote('productId', $product->whySwitchedOff(), ...$product->switchedOffReason());
             }
         }
 
-        $unitId = $line->unitId ?? $product?->getUnit()->getId() ?? throw new InvalidQuote('unitId', 'A line without a product names its unit.');
-        $unit = $this->units->ofIdInCompany($unitId, $company->getId()) ?? throw new InvalidQuote('unitId', 'No unit of this company has this id.');
+        $unitId = $line->unitId ?? $product?->getUnit()->getId() ?? throw new InvalidQuote('unitId', 'A line without a product names its unit.', 'value_required');
+        $unit = $this->units->ofIdInCompany($unitId, $company->getId()) ?? throw new InvalidQuote('unitId', 'No unit of this company has this id.', 'unknown_choice');
         if (!$unit->isActive() && !\in_array($unit->getId()->toRfc4122(), $kept['units'], true)) {
-            throw new InvalidQuote('unitId', \sprintf('The unit %s is retired.', $unit->getCode()));
+            throw new InvalidQuote('unitId', \sprintf('The unit %s is retired.', $unit->getCode()), 'unknown_choice');
         }
 
         // A product line sent without a price starts where the screen would have started it: the customer's list price.
         $price = $line->unitPriceNet
             ?? (null === $product ? null : $this->linePrices->startingPrice($product, $customer->getId(), $line->quantity))
-            ?? throw new InvalidQuote('unitPriceNet', 'A line without a product states its price.');
+            ?? throw new InvalidQuote('unitPriceNet', 'A line without a product states its price.', 'value_required');
         $description = null === $line->description || '' === TypedText::trimmed($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
         return new QuoteLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->discountAmount);
@@ -336,13 +336,13 @@ final readonly class ManageQuotes implements DeclaresAuditActions
         $taxes = [];
         foreach ($line->taxComponentIds as $taxId) {
             $tax = $this->taxes->ofIdInCompany($taxId, $company->getId())
-                ?? throw new InvalidQuote('taxComponentIds', \sprintf('No tax of this company has the id %s.', $taxId->toRfc4122()));
+                ?? throw new InvalidQuote('taxComponentIds', \sprintf('No tax of this company has the id %s.', $taxId->toRfc4122()), 'unknown_tax');
             if (!$tax->isActive() && !\in_array($taxId->toRfc4122(), $kept, true)) {
-                throw new InvalidQuote('taxComponentIds', \sprintf('The tax %s is retired.', $tax->getCode()));
+                throw new InvalidQuote('taxComponentIds', \sprintf('The tax %s is retired.', $tax->getCode()), 'unknown_tax');
             }
             $leftOutBy = $this->excluded->regimeLeavingOut($company, $customer->getTaxRegime(), $tax->getFamily());
             if (null !== $leftOutBy) {
-                throw new InvalidQuote('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()));
+                throw new InvalidQuote('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()), 'regime_excludes_tax', ['tax' => $tax->getCode()]);
             }
             $taxes[] = $tax;
         }

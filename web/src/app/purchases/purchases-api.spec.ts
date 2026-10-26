@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { PurchasesApi, PurchasesRefused } from './purchases-api';
 import type { PurchaseOrderInput, PurchaseOrderSearch } from './purchases-types';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 const draft: PurchaseOrderInput = {
   vendorId: 'v1',
@@ -67,7 +68,12 @@ describe('PurchasesApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(PurchasesApi);
     http = TestBed.inject(HttpTestingController);
@@ -220,6 +226,28 @@ describe('PurchasesApi', () => {
     );
     expect(refused).toBeInstanceOf(PurchasesRefused);
     expect(refused).toMatchObject({ code, field });
+  });
+
+  it('names each field a save was refused on, a line’s by its line', async () => {
+    const refused = api.revise('c1', 'o1', draft, 2);
+    http.expectOne('/api/companies/c1/purchase-orders/o1').flush(
+      {
+        detail: 'lines[0].quantity: A line orders a positive quantity.',
+        violations: [
+          {
+            propertyPath: 'lines[0].quantity',
+            message: 'x',
+            payload: { reason: 'quantity_above_zero' },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'invalid',
+      field: 'lines[0].quantity',
+      refusals: [{ field: 'lines[0].quantity', reason: 'quantity_above_zero', params: {} }],
+    });
   });
 
   it('reads an unreachable API as a network failure', async () => {

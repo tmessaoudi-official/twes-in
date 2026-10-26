@@ -1385,7 +1385,7 @@ class Invoice implements CompanyOwned
     private function establishmentOfThisCompany(Establishment $establishment): Establishment
     {
         if (!$establishment->getCompany()->getId()->equals($this->company->getId())) {
-            throw new InvalidInvoice('establishmentId', 'An invoice is issued by an establishment of its own company.');
+            throw new InvalidInvoice('establishmentId', 'An invoice is issued by an establishment of its own company.', 'unknown_choice');
         }
 
         return $establishment;
@@ -1394,7 +1394,7 @@ class Invoice implements CompanyOwned
     private function customerOfThisCompany(Customer $customer): Customer
     {
         if (!$customer->getCompany()->getId()->equals($this->company->getId())) {
-            throw new InvalidInvoice('customerId', 'An invoice goes to a customer of its own company.');
+            throw new InvalidInvoice('customerId', 'An invoice goes to a customer of its own company.', 'unknown_choice');
         }
 
         return $customer;
@@ -1422,14 +1422,14 @@ class Invoice implements CompanyOwned
             }
             $sources[$source ?? ''] = true;
             if (null !== $line->product && !$line->product->getCompany()->getId()->equals($companyId)) {
-                throw new InvalidInvoice("lines[$index].productId", 'A line sells a product of its own company.');
+                throw new InvalidInvoice("lines[$index].productId", 'A line sells a product of its own company.', 'unknown_choice');
             }
             if (!$line->unit->getCompany()->getId()->equals($companyId)) {
-                throw new InvalidInvoice("lines[$index].unitId", 'A line counts in a unit of its own company.');
+                throw new InvalidInvoice("lines[$index].unitId", 'A line counts in a unit of its own company.', 'unknown_choice');
             }
             foreach ($line->taxes as $tax) {
                 if (!$tax->getCompany()->getId()->equals($companyId)) {
-                    throw new InvalidInvoice("lines[$index].taxComponentIds", 'A line carries taxes of its own company.');
+                    throw new InvalidInvoice("lines[$index].taxComponentIds", 'A line carries taxes of its own company.', 'unknown_tax');
                 }
             }
         }
@@ -1581,14 +1581,14 @@ class Invoice implements CompanyOwned
         $ids = [];
         foreach ($taxes as $tax) {
             if (TaxKind::PercentageLine === $tax->getKind()) {
-                throw new InvalidInvoice('documentTaxComponentIds', \sprintf('%s is charged on lines, not on a whole document.', $tax->getCode()));
+                throw new InvalidInvoice('documentTaxComponentIds', \sprintf('%s is charged on lines, not on a whole document.', $tax->getCode()), 'tax_on_line', ['tax' => $tax->getCode()]);
             }
             if (!$tax->getCompany()->getId()->equals($this->company->getId())) {
-                throw new InvalidInvoice('documentTaxComponentIds', 'A document carries taxes of its own company.');
+                throw new InvalidInvoice('documentTaxComponentIds', 'A document carries taxes of its own company.', 'unknown_tax');
             }
             $id = $tax->getId()->toRfc4122();
             if (isset($ids[$id])) {
-                throw new InvalidInvoice('documentTaxComponentIds', \sprintf('A document carries %s once.', $tax->getCode()));
+                throw new InvalidInvoice('documentTaxComponentIds', \sprintf('A document carries %s once.', $tax->getCode()), 'tax_twice', ['tax' => $tax->getCode()]);
             }
             $ids[$id] = true;
         }

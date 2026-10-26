@@ -442,7 +442,7 @@ class PurchaseOrder implements CompanyOwned
     private function establishmentOfThisCompany(Establishment $establishment): Establishment
     {
         if (!$establishment->getCompany()->getId()->equals($this->company->getId())) {
-            throw new InvalidPurchaseOrder('establishmentId', 'An order is placed by an establishment of its own company.');
+            throw new InvalidPurchaseOrder('establishmentId', 'An order is placed by an establishment of its own company.', 'unknown_choice');
         }
 
         return $establishment;

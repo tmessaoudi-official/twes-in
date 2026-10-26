@@ -13,7 +13,10 @@ import { ReactiveFormsModule, type FormArray } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { FieldError } from '../shared/form/form-builder';
+import { LineRefusals, refusedOn } from '../shared/documents/line-refusals';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { type LineGroup, lineGroup, plainDecimal } from './purchase-order-forms';
@@ -44,6 +47,7 @@ type LineField = 'productId' | 'description' | 'quantity' | 'unitPriceNet';
 })
 export class PurchaseOrderLines {
   private readonly facade = inject(PurchasesFacade);
+  private readonly translate = inject(TranslateService);
 
   readonly lines = input.required<FormArray<LineGroup>>();
   /** Whose company's catalogue the picker asks; a line is never offered another company's products. */
@@ -117,16 +121,46 @@ export class PurchaseOrderLines {
     line.markAsDirty();
   }
 
-  protected errorKey(line: LineGroup, field: LineField): string | null {
+  /**
+   * What is said under a line's field: what the API refused it for, first, since it is the latest word on the line,
+   * else what the form itself finds wrong once the field was left.
+   */
+  protected errorOf(line: LineGroup, field: LineField): FieldError | null {
     this.revision();
     const control = line.controls[field];
-    return control.touched && control.invalid ? `purchases.lines.errors.${field}` : null;
+    const refused = refusedOn(control);
+    if (refused !== null) return refused;
+    return control.touched && control.invalid
+      ? { key: `purchases.lines.errors.${field}`, params: {} }
+      : null;
   }
 
-  /** The API's refusal on this line, named by its field's label. */
+  /**
+   * Says each refusal of a line under its field and hands back the rest, the order's own; held until the next change
+   * to the lines.
+   */
+  showRefused(refusals: readonly FieldRefusal[]): readonly FieldRefusal[] {
+    return this.refusals.show(refusals);
+  }
+
+  private readonly refusals = new LineRefusals(
+    () => this.lines(),
+    this.translate,
+    () => this.revision.update((revision) => revision + 1),
+  );
+
+  /** The API's refusal on this line, named by its field's label, when no field of the line says it already. */
   protected refusedHere(index: number): string | null {
+    this.revision();
     const refused = this.refused();
     if (refused === null || refused.line !== index) return null;
+    const line = this.lines().at(index) as LineGroup | undefined;
+    if (
+      line !== undefined &&
+      Object.values(line.controls).some((each) => refusedOn(each) !== null)
+    ) {
+      return null;
+    }
     return LINE_FIELDS.includes(refused.field as LineField)
       ? `purchases.lines.${refused.field}`
       : 'purchases.lines.line';

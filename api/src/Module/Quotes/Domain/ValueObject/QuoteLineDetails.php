@@ -54,7 +54,7 @@ final readonly class QuoteLineDetails
     {
         $description = TypedText::trimmed($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
-            throw new InvalidQuote('description', \sprintf('A line says what it offers in 1 to %d characters.', self::DESCRIPTION_MAX));
+            throw new InvalidQuote('description', \sprintf('A line says what it offers in 1 to %d characters.', self::DESCRIPTION_MAX), '' === $description ? 'value_required' : 'invalid_text', '' === $description ? [] : ['max' => self::DESCRIPTION_MAX]);
         }
         $this->description = $description;
         $this->quantity = self::quantity(TypedText::trimmed($quantity), $unit);
@@ -62,17 +62,17 @@ final readonly class QuoteLineDetails
         $this->discountRate = self::rate(TypedText::trimmed($discountRate ?? ''));
         $this->discountAmount = self::amount(TypedText::trimmed($discountAmount ?? ''));
         if (null !== $this->discountRate && null !== $this->discountAmount) {
-            throw new InvalidQuote('discountAmount', 'A line\'s discount is a rate or an amount, not both.');
+            throw new InvalidQuote('discountAmount', 'A line\'s discount is a rate or an amount, not both.', 'discount_rate_or_amount');
         }
 
         $ids = [];
         foreach ($taxes as $tax) {
             if (TaxKind::PercentageLine !== $tax->getKind()) {
-                throw new InvalidQuote('taxComponentIds', \sprintf('%s is charged on a document, not on a line.', $tax->getCode()));
+                throw new InvalidQuote('taxComponentIds', \sprintf('%s is charged on a document, not on a line.', $tax->getCode()), 'tax_on_document', ['tax' => $tax->getCode()]);
             }
             $id = $tax->getId()->toRfc4122();
             if (isset($ids[$id])) {
-                throw new InvalidQuote('taxComponentIds', \sprintf('A line carries %s once.', $tax->getCode()));
+                throw new InvalidQuote('taxComponentIds', \sprintf('A line carries %s once.', $tax->getCode()), 'tax_twice', ['tax' => $tax->getCode()]);
             }
             $ids[$id] = true;
         }
@@ -97,14 +97,14 @@ final readonly class QuoteLineDetails
     private static function quantity(string $quantity, Unit $unit): string
     {
         if (1 !== preg_match(self::QUANTITY, $quantity)) {
-            throw new InvalidQuote('quantity', 'A quantity is a decimal number with at most three decimals.');
+            throw new InvalidQuote('quantity', 'A quantity is a decimal number with at most three decimals.', 'invalid_quantity');
         }
         [$units, $decimals] = [...explode('.', $quantity), ''];
         if ('' === trim($units.$decimals, '0')) {
-            throw new InvalidQuote('quantity', 'A line offers a positive quantity.');
+            throw new InvalidQuote('quantity', 'A line offers a positive quantity.', 'quantity_above_zero');
         }
         if (\strlen(rtrim($decimals, '0')) > $unit->getDecimals()) {
-            throw new InvalidQuote('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()));
+            throw new InvalidQuote('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()), 'quantity_decimals', ['unit' => $unit->getCode(), 'decimals' => $unit->getDecimals()]);
         }
 
         return $units.'.'.str_pad($decimals, self::QUANTITY_DECIMALS, '0');
@@ -113,7 +113,7 @@ final readonly class QuoteLineDetails
     private static function price(string $price): string
     {
         if (1 !== preg_match(self::PRICE, $price)) {
-            throw new InvalidQuote('unitPriceNet', 'A price is a decimal number from 0 to 9999999999.9999, with at most four decimals.');
+            throw new InvalidQuote('unitPriceNet', 'A price is a decimal number from 0 to 9999999999.9999, with at most four decimals.', 'invalid_price');
         }
         [$units, $decimals] = [...explode('.', $price), ''];
 
@@ -127,7 +127,7 @@ final readonly class QuoteLineDetails
             return null;
         }
         if (1 !== preg_match(self::AMOUNT, $amount)) {
-            throw new InvalidQuote('discountAmount', 'A discount amount is a decimal number from 0 with at most three decimals.');
+            throw new InvalidQuote('discountAmount', 'A discount amount is a decimal number from 0 with at most three decimals.', 'invalid_discount', ['decimals' => 3]);
         }
 
         return Decimal::format(Decimal::of($amount), 3);
@@ -139,7 +139,7 @@ final readonly class QuoteLineDetails
             return null;
         }
         if (1 !== preg_match(self::RATE, $rate) || Decimal::of($rate)->compare(100) > 0) {
-            throw new InvalidQuote('discountRate', 'A discount is a percentage from 0 to 100 with at most three decimals.');
+            throw new InvalidQuote('discountRate', 'A discount is a percentage from 0 to 100 with at most three decimals.', 'invalid_rate');
         }
 
         return Decimal::format(Decimal::of($rate), 3);

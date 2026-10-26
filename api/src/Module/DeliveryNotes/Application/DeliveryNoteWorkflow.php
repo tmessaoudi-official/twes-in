@@ -152,7 +152,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         $note->assertDraft('is validated');
         // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile.
         if ($note->getCustomer()->isMergedAway()) {
-            throw new InvalidDeliveryNote('customerId', $note->getCustomer()->whySwitchedOff());
+            throw new InvalidDeliveryNote('customerId', $note->getCustomer()->whySwitchedOff(), ...$note->getCustomer()->switchedOffReason());
         }
         $this->chargedByItsRegimes($company, $note);
         $this->stillDeliverable($company, $note);
@@ -230,7 +230,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
             foreach ($line->getTaxes() as $tax) {
                 $leftOutBy = $this->excluded->regimeLeavingOut($company, $regime, $tax->getTaxComponent()->getFamily());
                 if (null !== $leftOutBy) {
-                    throw (new InvalidDeliveryNote('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode())))->within("lines[$index]");
+                    throw (new InvalidDeliveryNote('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()), 'regime_excludes_tax', ['tax' => $tax->getCode()]))->within("lines[$index]");
                 }
             }
         }

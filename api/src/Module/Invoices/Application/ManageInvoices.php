@@ -129,7 +129,7 @@ final readonly class ManageInvoices implements DeclaresAuditActions
     {
         $most = $this->limits->most(ListLimits::DOCUMENT_LINES);
         if (\count($invoice->getLines()) > $most) {
-            throw new InvalidInvoice('lines', \sprintf('A document holds at most %d lines.', $most));
+            throw new InvalidInvoice('lines', \sprintf('A document holds at most %d lines.', $most), 'too_many_entries');
         }
     }
 
@@ -345,9 +345,9 @@ final readonly class ManageInvoices implements DeclaresAuditActions
             throw new InvalidInvoice('operationCategory', 'This company\'s invoices state no category of operations: its country\'s law asks for none.');
         }
         $customer = $this->customers->ofIdInCompany($input->customerId, $company->getId())
-            ?? throw new InvalidInvoice('customerId', 'No customer of this company has this id.');
+            ?? throw new InvalidInvoice('customerId', 'No customer of this company has this id.', 'unknown_choice');
         if (!$customer->isActive() && !(null !== $current && $current->getCustomer()->getId()->equals($customer->getId()))) {
-            throw new InvalidInvoice('customerId', $customer->whySwitchedOff());
+            throw new InvalidInvoice('customerId', $customer->whySwitchedOff(), ...$customer->switchedOffReason());
         }
 
         if (null === $input->establishmentId) {
@@ -355,7 +355,7 @@ final readonly class ManageInvoices implements DeclaresAuditActions
                 ?? throw new \LogicException('A company always has a default establishment.');
         } else {
             $establishment = $this->establishments->ofIdInCompany($input->establishmentId, $company->getId())
-                ?? throw new InvalidInvoice('establishmentId', 'No establishment of this company has this id.');
+                ?? throw new InvalidInvoice('establishmentId', 'No establishment of this company has this id.', 'unknown_choice');
         }
 
         if (null !== $current && InvoiceType::Invoice === $current->getType()) {
@@ -496,22 +496,22 @@ final readonly class ManageInvoices implements DeclaresAuditActions
         $product = null;
         if (null !== $line->productId) {
             $product = $this->products->ofIdInCompany($line->productId, $company->getId())
-                ?? throw new InvalidInvoice('productId', 'No product of this company has this id.');
+                ?? throw new InvalidInvoice('productId', 'No product of this company has this id.', 'unknown_choice');
             if (!$product->isActive() && !\in_array($product->getId()->toRfc4122(), $kept['products'], true)) {
-                throw new InvalidInvoice('productId', $product->whySwitchedOff());
+                throw new InvalidInvoice('productId', $product->whySwitchedOff(), ...$product->switchedOffReason());
             }
         }
 
-        $unitId = $line->unitId ?? $product?->getUnit()->getId() ?? throw new InvalidInvoice('unitId', 'A line without a product names its unit.');
-        $unit = $this->units->ofIdInCompany($unitId, $company->getId()) ?? throw new InvalidInvoice('unitId', 'No unit of this company has this id.');
+        $unitId = $line->unitId ?? $product?->getUnit()->getId() ?? throw new InvalidInvoice('unitId', 'A line without a product names its unit.', 'value_required');
+        $unit = $this->units->ofIdInCompany($unitId, $company->getId()) ?? throw new InvalidInvoice('unitId', 'No unit of this company has this id.', 'unknown_choice');
         if (!$unit->isActive() && !\in_array($unit->getId()->toRfc4122(), $kept['units'], true)) {
-            throw new InvalidInvoice('unitId', \sprintf('The unit %s is retired.', $unit->getCode()));
+            throw new InvalidInvoice('unitId', \sprintf('The unit %s is retired.', $unit->getCode()), 'unknown_choice');
         }
 
         // A product line sent without a price starts where the screen would have started it: the customer's list price.
         $price = $line->unitPriceNet
             ?? (null === $product ? null : $this->linePrices->startingPrice($product, $customer->getId(), $line->quantity))
-            ?? throw new InvalidInvoice('unitPriceNet', 'A line without a product states its price.');
+            ?? throw new InvalidInvoice('unitPriceNet', 'A line without a product states its price.', 'value_required');
         $description = null === $line->description || '' === TypedText::trimmed($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
         return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes'], $kept['chargedBefore']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned, discountAmount: $line->discountAmount, section: $line->section, creditedLineId: $line->creditedLineId);
@@ -611,14 +611,14 @@ final readonly class ManageInvoices implements DeclaresAuditActions
         $taxes = [];
         foreach ($ids as $taxId) {
             $tax = $this->taxes->ofIdInCompany($taxId, $company->getId())
-                ?? throw new InvalidInvoice($field, \sprintf('No tax of this company has the id %s.', $taxId->toRfc4122()));
+                ?? throw new InvalidInvoice($field, \sprintf('No tax of this company has the id %s.', $taxId->toRfc4122()), 'unknown_tax');
             if (!$tax->isActive() && !\in_array($taxId->toRfc4122(), $kept, true)) {
-                throw new InvalidInvoice($field, \sprintf('The tax %s is retired.', $tax->getCode()));
+                throw new InvalidInvoice($field, \sprintf('The tax %s is retired.', $tax->getCode()), 'unknown_tax');
             }
             // A credit note gives back what its invoice charged, under the regimes it was issued in.
             $leftOutBy = \in_array($taxId->toRfc4122(), $chargedBefore, true) ? null : $this->excluded->regimeLeavingOut($company, $customer->getTaxRegime(), $tax->getFamily());
             if (null !== $leftOutBy) {
-                throw new InvalidInvoice($field, \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()));
+                throw new InvalidInvoice($field, \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()), 'regime_excludes_tax', ['tax' => $tax->getCode()]);
             }
             $taxes[] = $tax;
         }

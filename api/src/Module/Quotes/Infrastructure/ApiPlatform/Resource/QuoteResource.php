@@ -237,8 +237,8 @@ final class QuoteResource
     public bool $expired = false;
 
     /** One of the company's active customers. */
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public string $customerId = '';
 
@@ -248,7 +248,7 @@ final class QuoteResource
     public string $customerName = '';
 
     /** One of the company's establishments; left out, the default one. */
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $establishmentId = null;
 
@@ -293,13 +293,13 @@ final class QuoteResource
      * Sent to accept or refuse, answered once it is.
      */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
-    #[Assert\Date(groups: [self::ANSWER])]
+    #[Assert\Date(groups: [self::ANSWER], payload: ['reason' => 'not_a_date'])]
     #[Groups([self::READ, self::ANSWER])]
     public ?string $answeredOn = null;
 
     /** Why the customer declined, when the company was told. Sent to refuse. */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'maxLength' => Quote::REASON_MAX])]
-    #[Assert\Length(max: Quote::REASON_MAX, groups: [self::REFUSE])]
+    #[Assert\Length(max: Quote::REASON_MAX, groups: [self::REFUSE], payload: ['reason' => 'invalid_text', 'params' => ['max' => Quote::REASON_MAX]])]
     #[Groups([self::READ, self::REFUSE])]
     public ?string $refusalReason = null;
 
@@ -375,17 +375,17 @@ final class QuoteResource
     public int $attachmentCount = 0;
 
     /** The customer's own reference for the request. */
-    #[Assert\Length(max: QuoteHeader::REFERENCE_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: QuoteHeader::REFERENCE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => QuoteHeader::REFERENCE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $customerReference = null;
 
     /** Printed on the quote. */
-    #[Assert\Length(max: QuoteHeader::TEXT_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: QuoteHeader::TEXT_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => QuoteHeader::TEXT_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notesPrinted = null;
 
     /** Kept inside the company, never printed. */
-    #[Assert\Length(max: QuoteHeader::TEXT_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: QuoteHeader::TEXT_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => QuoteHeader::TEXT_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notesInternal = null;
 
@@ -425,16 +425,16 @@ final class QuoteResource
     ])]
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Collection(fields: [
-        'productId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
-        'description' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Length(max: QuoteLineDetails::DESCRIPTION_MAX, groups: [self::WRITE])], groups: [self::WRITE]),
-        'quantity' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
-        'unitId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        'productId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
+        'description' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Length(max: QuoteLineDetails::DESCRIPTION_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => QuoteLineDetails::DESCRIPTION_MAX]])], groups: [self::WRITE]),
+        'quantity' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required']), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'unitId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
         'unitPriceNet' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'discountRate' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'discountAmount' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'taxComponentIds' => new Assert\Optional([
             new Assert\Type('list', groups: [self::WRITE]),
-            new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+            new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
         ], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]

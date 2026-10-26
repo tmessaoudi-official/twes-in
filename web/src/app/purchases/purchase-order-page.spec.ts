@@ -30,6 +30,7 @@ import {
   successToasts,
 } from '../shared/testing/feedback';
 import { PurchaseOrderPage } from './purchase-order-page';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { PurchasesFacade } from './purchases-facade';
 import type {
   ProductOption,
@@ -44,6 +45,12 @@ import type { ReceiveDialogData } from './receive-dialog';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      import: {
+        rejections: {
+          quantity_above_zero: 'Attendu : une quantité au-dessus de zéro.',
+          vendor_deactivated: 'Le fournisseur « {{number}} » est désactivé.',
+        },
+      },
       purchases: {
         lines: { refused: 'Refusé par le serveur : {{ field }}', quantity: 'Quantité' },
       },
@@ -131,11 +138,13 @@ describe('PurchaseOrderPage', () => {
   const order = signal<PurchaseOrderRow | null>(null);
   const error = signal<PurchasesError | null>(null);
   const refused = signal<string | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const facade = {
     order: order.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     refused: refused.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadOrder: vi.fn(),
     pickVendors: vi.fn(),
     pickProducts: vi.fn(),
@@ -223,6 +232,7 @@ describe('PurchaseOrderPage', () => {
     order.set(null);
     error.set(null);
     refused.set(null);
+    refusals.set([]);
     granted.clear();
     for (const each of ['purchase.write', 'purchase.receive', 'product.cost.read']) {
       granted.add(each);
@@ -540,6 +550,34 @@ describe('PurchaseOrderPage', () => {
     expect(q('purchase-line-0-refused')?.textContent?.trim()).toBe(
       'Refusé par le serveur : Quantité',
     );
+  });
+
+  it('says each refusal of a save under its field, and no longer on the line as a whole', async () => {
+    order.set(orderIn('draft'));
+    await open('o1');
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refused.set('lines[0].quantity');
+      refusals.set([
+        { field: 'lines[0].quantity', reason: 'quantity_above_zero', params: {} },
+        { field: 'vendorId', reason: 'vendor_deactivated', params: { number: 'F-0007' } },
+      ]);
+      return null;
+    });
+    type('purchase-line-0-quantity', '0');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('purchase-line-0-quantity-error')?.textContent).toContain(
+        'Attendu : une quantité au-dessus de zéro.',
+      ),
+    );
+    expect(q('field-error-vendorId')?.textContent).toContain(
+      'Le fournisseur « F-0007 » est désactivé.',
+    );
+    expect(q('purchase-line-0-refused')).toBeNull();
   });
 
   describe('the products « Ajouter à… » sends', () => {

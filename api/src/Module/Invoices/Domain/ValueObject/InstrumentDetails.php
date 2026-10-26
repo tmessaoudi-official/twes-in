@@ -39,7 +39,7 @@ final readonly class InstrumentDetails
         $this->number = $payment->reference;
         $bank = TypedText::trimmed($bank ?? '');
         if (mb_strlen($bank) > self::BANK_MAX) {
-            throw new InvalidInvoice('bank', \sprintf('At most %d characters.', self::BANK_MAX));
+            throw new InvalidInvoice('bank', \sprintf('At most %d characters.', self::BANK_MAX), 'invalid_text', ['max' => self::BANK_MAX]);
         }
         $this->bank = '' === $bank ? null : $bank;
     }

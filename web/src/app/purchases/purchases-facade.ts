@@ -16,6 +16,7 @@ import type {
   VendorOption,
 } from './purchases-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /** The orders to vendors of the company being worked in, and the order open on screen. */
 @Injectable({ providedIn: 'root' })
@@ -29,6 +30,7 @@ export class PurchasesFacade {
   private readonly countsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);
   private readonly refusedSignal = sessionSignal<string | null>(null);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
 
   readonly orders = this.ordersSignal.asReadonly();
   /** The order open on screen, as the API last answered with it; null while a new one is filled in. */
@@ -41,6 +43,8 @@ export class PurchasesFacade {
   readonly error = this.state.error;
   /** The field the last step was refused on, when the API named it: `lines[1].quantity`, `vendorId`… */
   readonly refused = this.refusedSignal.asReadonly();
+  /** Each field the last step was refused on, with why; empty after a step the API took. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   /**
    * One page of the orders the search finds. Only the latest search's answer is shown: typing sends one search per
@@ -174,6 +178,7 @@ export class PurchasesFacade {
 
   private async step(call: () => Promise<PurchaseOrderRow>): Promise<PurchaseOrderRow | null> {
     this.refusedSignal.set(null);
+    this.refusalsSignal.set([]);
     return this.state.writeAnswer(
       async () => {
         const order = await call();
@@ -181,8 +186,10 @@ export class PurchasesFacade {
         return order;
       },
       {
-        failed: (error) =>
-          this.refusedSignal.set(error instanceof PurchasesRefused ? error.field : null),
+        failed: (error) => {
+          this.refusedSignal.set(error instanceof PurchasesRefused ? error.field : null);
+          this.refusalsSignal.set(error instanceof PurchasesRefused ? error.refusals : []);
+        },
       },
     );
   }

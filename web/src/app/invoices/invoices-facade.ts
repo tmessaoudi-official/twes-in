@@ -29,6 +29,7 @@ import type {
 } from './invoices-types';
 import type { PreviewBody } from '../shared/documents/document-figures';
 import { sessionSignal } from '../shared/session/session-data';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
@@ -40,6 +41,7 @@ export class InvoicesFacade {
   private readonly summarySignal = sessionSignal<InvoiceSummary | null>(null);
   private readonly totalSignal = sessionSignal(0);
   private readonly statusCountsSignal = sessionSignal<InvoiceStatusCounts | null>(null);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
   private readonly pages = new LatestRequest();
   private readonly counts = new LatestRequest();
   private readonly state = requestState(codeOf);
@@ -56,6 +58,8 @@ export class InvoicesFacade {
   readonly summary = this.summarySignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Each field the last step was refused on, with why; empty after a step the API took. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   /** What the list screen needs besides its page: the options that name its drafts' customers. */
   async loadListContext(companyId: string): Promise<void> {
@@ -312,11 +316,18 @@ export class InvoicesFacade {
   }
 
   private async step(call: () => Promise<InvoiceRow>): Promise<InvoiceRow | null> {
-    return this.state.writeAnswer(async () => {
-      const invoice = await call();
-      this.invoiceSignal.set(invoice);
-      return invoice;
-    });
+    this.refusalsSignal.set([]);
+    return this.state.writeAnswer(
+      async () => {
+        const invoice = await call();
+        this.invoiceSignal.set(invoice);
+        return invoice;
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof InvoicesRefused ? error.refusals : []),
+      },
+    );
   }
 
   private async paymentStep(

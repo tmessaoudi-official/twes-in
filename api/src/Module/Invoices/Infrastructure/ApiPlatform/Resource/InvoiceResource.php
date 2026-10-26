@@ -298,8 +298,8 @@ final class InvoiceResource
     public array $deliveries = [];
 
     /** Why a credit note corrects its invoice, stated when it is drafted and printed on it; null for an invoice. */
-    #[Assert\NotBlank(normalizer: 'trim', groups: [self::CREDIT])]
-    #[Assert\Length(max: Invoice::CREDIT_NOTE_REASON_MAX, groups: [self::CREDIT])]
+    #[Assert\NotBlank(normalizer: 'trim', groups: [self::CREDIT], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: Invoice::CREDIT_NOTE_REASON_MAX, groups: [self::CREDIT], payload: ['reason' => 'invalid_text', 'params' => ['max' => Invoice::CREDIT_NOTE_REASON_MAX]])]
     #[Groups([self::READ, self::CREDIT])]
     public ?string $creditNoteReason = null;
 
@@ -313,8 +313,8 @@ final class InvoiceResource
     public string $status = 'draft';
 
     /** One of the company's active customers (GET .../invoice-options/customers?q=). */
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public string $customerId = '';
 
@@ -329,7 +329,7 @@ final class InvoiceResource
     public string $customerName = '';
 
     /** One of the company's establishments; left out, the default one. */
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $establishmentId = null;
 
@@ -340,7 +340,7 @@ final class InvoiceResource
 
     /** The day the goods or services were supplied, YYYY-MM-DD. */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
-    #[Assert\Date(groups: [self::WRITE])]
+    #[Assert\Date(groups: [self::WRITE], payload: ['reason' => 'not_a_date'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $supplyDate = null;
 
@@ -350,17 +350,17 @@ final class InvoiceResource
     public ?int $paymentTermsDays = null;
 
     /** The customer's own reference for the order, such as a purchase order number. */
-    #[Assert\Length(max: InvoiceHeader::REFERENCE_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: InvoiceHeader::REFERENCE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => InvoiceHeader::REFERENCE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $customerReference = null;
 
     /** Printed on the document. */
-    #[Assert\Length(max: InvoiceHeader::TEXT_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: InvoiceHeader::TEXT_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => InvoiceHeader::TEXT_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notesPrinted = null;
 
     /** Kept inside the company, never printed. */
-    #[Assert\Length(max: InvoiceHeader::TEXT_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: InvoiceHeader::TEXT_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => InvoiceHeader::TEXT_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notesInternal = null;
 
@@ -378,7 +378,7 @@ final class InvoiceResource
      * one it states. A company whose law asks none refuses it.
      */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'enum' => ['goods', 'services', 'both', null]])]
-    #[Assert\Choice(choices: ['goods', 'services', 'both'], groups: [self::WRITE])]
+    #[Assert\Choice(choices: ['goods', 'services', 'both'], groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $operationCategory = null;
 
@@ -395,7 +395,7 @@ final class InvoiceResource
      */
     #[ApiProperty(schema: ['type' => ['array', 'null'], 'items' => self::ID])]
     #[Assert\Type('list', groups: [self::WRITE])]
-    #[Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE])]
+    #[Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public ?array $documentTaxComponentIds = null;
@@ -442,23 +442,23 @@ final class InvoiceResource
     ])]
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Collection(fields: [
-        'productId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
-        'description' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Length(max: InvoiceLineDetails::DESCRIPTION_MAX, groups: [self::WRITE])], groups: [self::WRITE]),
-        'quantity' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
-        'unitId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        'productId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
+        'description' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Length(max: InvoiceLineDetails::DESCRIPTION_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => InvoiceLineDetails::DESCRIPTION_MAX]])], groups: [self::WRITE]),
+        'quantity' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required']), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'unitId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
         'unitPriceNet' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'discountRate' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'discountAmount' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'taxComponentIds' => new Assert\Optional([
             new Assert\Type('list', groups: [self::WRITE]),
-            new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+            new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
         ], groups: [self::WRITE]),
-        'sourceDeliveryNoteLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        'sourceDeliveryNoteLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
         'lotCode' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'returned' => new Assert\Optional([new Assert\Type('bool', groups: [self::WRITE])], groups: [self::WRITE]),
-        'deductsInvoiceId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        'deductsInvoiceId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
         'section' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
-        'creditedLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        'creditedLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]

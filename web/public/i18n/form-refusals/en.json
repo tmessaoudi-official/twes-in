@@ -14,7 +14,21 @@
       "customer_merged_choose": "Customer “{{number}}” was merged into “{{kept}}”: choose “{{kept}}” instead.",
       "quantity_priced_twice": "This product already has a price from this quantity: remove one of the two rows.",
       "customer_or_group": "A price list is for one customer or for one group, not both: choose one of them.",
-      "quantity_above_zero": "Expected: a quantity above zero."
+      "quantity_above_zero": "Expected: a quantity above zero.",
+      "tax_twice": "{{tax}} is chosen twice: remove one of the two.",
+      "tax_on_line": "{{tax}} is charged on each line, not on the whole document: add it to the lines.",
+      "discount_rate_or_amount": "A discount is a percentage or an amount, not both: clear one of the two.",
+      "invalid_discount": "Discount refused: an amount from 0, with at most {{decimals}} decimals.",
+      "discount_above_total": "The document’s discount is more than its lines come to: lower it.",
+      "line_discount_above_total": "The discount is more than the line comes to: lower it.",
+      "lot_not_tracked": "This product is tracked by neither lot nor serial number: leave the lot empty.",
+      "lot_code": "A lot is 1 to {{max}} characters, without spaces or accents (example: L2026-03).",
+      "returned_needs_product": "Only a line naming a product puts goods back in stock: choose the product, or untick the return to stock.",
+      "customer_deactivated": "Customer “{{number}}” is deactivated: choose another, or reactivate it in Customers.",
+      "product_deactivated": "Product “{{reference}}” is deactivated: choose another, or reactivate it in Products.",
+      "product_merged_choose": "Product “{{reference}}” was merged into “{{kept}}”: choose “{{kept}}” instead.",
+      "vendor_deactivated": "Vendor “{{number}}” is deactivated: choose another, or reactivate it in Vendors.",
+      "amount_too_large": "The amount is more than a document can hold: lower the quantity or the price."
     }
   }
 }

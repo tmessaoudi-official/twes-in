@@ -214,7 +214,15 @@
                     {{ 'invoices.form.customer_required' | translate }}
                   </p>
                 }
-                @if (error() === 'customer_unavailable') {
+                @if (customerRefused(); as refused) {
+                  <p
+                    role="alert"
+                    class="px-2 text-xs text-error"
+                    data-testid="invoice-customer-refused"
+                  >
+                    {{ refused.key | translate: refused.params }}
+                  </p>
+                } @else if (error() === 'customer_unavailable') {
                   <p
                     role="alert"
                     class="px-2 text-xs text-error"
@@ -283,7 +291,7 @@
             <app-select
               [multiple]="true"
               [ngModel]="documentTaxes()"
-              (ngModelChange)="documentTaxes.set($event)"
+              (ngModelChange)="documentTaxes.set($event); documentTaxesRefused.set(null)"
               [ngModelOptions]="{ standalone: true }"
               [options]="documentTaxSelectOptions()"
               [label]="'invoices.document_taxes.title' | translate"
@@ -295,6 +303,15 @@
                   : 'invoice-document-taxes-hint'
               "
             />
+            @if (documentTaxesRefused(); as refused) {
+              <p
+                role="alert"
+                class="px-4 pt-1 text-xs text-error"
+                data-testid="document-taxes-error"
+              >
+                {{ refused.key | translate: refused.params }}
+              </p>
+            }
             <!-- On the page before its line, or a screen reader is not told when the line appears; inside the field's
                  block, so that empty it takes no room in the card's column. -->
             <div role="status" data-testid="document-taxes-stamp-status">

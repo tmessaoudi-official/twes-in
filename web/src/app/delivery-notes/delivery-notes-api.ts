@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIddeliveryNotesGetCollectionResponse,
@@ -51,7 +53,11 @@ import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class DeliveryNotesRefused extends Error {
-  constructor(readonly code: DeliveryNotesError) {
+  /** `refusals`: each field a 422 named, with why, which the form says under it. */
+  constructor(
+    readonly code: DeliveryNotesError,
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -62,6 +68,7 @@ const LINE_TAX_FAMILIES: readonly LineTaxOption['family'][] = ['vat', 'levy'];
 @Injectable({ providedIn: 'root' })
 export class DeliveryNotesApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
   private readonly invoices = inject(InvoicesApi);
 
   /** What the note form offers: the currency, and the active establishments, units and line taxes. */
@@ -369,7 +376,10 @@ export class DeliveryNotesApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new DeliveryNotesRefused(codeOf(error)));
+      throw refusedFor(
+        error,
+        new DeliveryNotesRefused(codeOf(error), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

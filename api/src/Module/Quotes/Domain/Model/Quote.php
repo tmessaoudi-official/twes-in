@@ -270,7 +270,7 @@ class Quote implements CompanyOwned
     {
         $reason = TypedText::trimmed($reason ?? '');
         if (mb_strlen($reason) > self::REASON_MAX) {
-            throw new InvalidQuote('reason', \sprintf('At most %d characters.', self::REASON_MAX));
+            throw new InvalidQuote('reason', \sprintf('At most %d characters.', self::REASON_MAX), 'invalid_text', ['max' => self::REASON_MAX]);
         }
         $this->answer(QuoteStatus::Refused, $refusedOn, $today, 'refused');
         $this->refusalReason = '' === $reason ? null : $reason;
@@ -407,7 +407,7 @@ class Quote implements CompanyOwned
     private function establishmentOfThisCompany(Establishment $establishment): Establishment
     {
         if (!$establishment->getCompany()->getId()->equals($this->company->getId())) {
-            throw new InvalidQuote('establishmentId', 'A quote is made by an establishment of its own company.');
+            throw new InvalidQuote('establishmentId', 'A quote is made by an establishment of its own company.', 'unknown_choice');
         }
 
         return $establishment;
@@ -416,7 +416,7 @@ class Quote implements CompanyOwned
     private function customerOfThisCompany(Customer $customer): Customer
     {
         if (!$customer->getCompany()->getId()->equals($this->company->getId())) {
-            throw new InvalidQuote('customerId', 'A quote goes to a customer of its own company.');
+            throw new InvalidQuote('customerId', 'A quote goes to a customer of its own company.', 'unknown_choice');
         }
 
         return $customer;
@@ -432,14 +432,14 @@ class Quote implements CompanyOwned
         $companyId = $this->company->getId();
         foreach ($lines as $index => $line) {
             if (null !== $line->product && !$line->product->getCompany()->getId()->equals($companyId)) {
-                throw new InvalidQuote("lines[$index].productId", 'A line offers a product of its own company.');
+                throw new InvalidQuote("lines[$index].productId", 'A line offers a product of its own company.', 'unknown_choice');
             }
             if (!$line->unit->getCompany()->getId()->equals($companyId)) {
-                throw new InvalidQuote("lines[$index].unitId", 'A line counts in a unit of its own company.');
+                throw new InvalidQuote("lines[$index].unitId", 'A line counts in a unit of its own company.', 'unknown_choice');
             }
             foreach ($line->taxes as $tax) {
                 if (!$tax->getCompany()->getId()->equals($companyId)) {
-                    throw new InvalidQuote("lines[$index].taxComponentIds", 'A line carries taxes of its own company.');
+                    throw new InvalidQuote("lines[$index].taxComponentIds", 'A line carries taxes of its own company.', 'unknown_tax');
                 }
             }
         }

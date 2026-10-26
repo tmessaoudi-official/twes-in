@@ -217,6 +217,18 @@ describe('InvoicesFacade', () => {
     expect(facade.error()).toBe('invalid');
   });
 
+  it('keeps the fields a save was refused on until the next step, which the form says under each', async () => {
+    const refused = [{ field: 'lines[0].quantity', reason: 'invalid_quantity', params: {} }];
+    api.revise.mockRejectedValueOnce(new InvoicesRefused('invalid', refused));
+
+    expect(await facade.revise('c1', 'i1', input, 3)).toBeNull();
+    expect(facade.refusals()).toEqual(refused);
+
+    api.revise.mockResolvedValueOnce(draft);
+    await facade.revise('c1', 'i1', input, 3);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it('reads the invoice again after a payment is recorded or deleted, so its amount due is the API’s', async () => {
     api.invoice.mockResolvedValue(issued);
     expect(await facade.recordPayment('c1', 'i1', payment)).toBe(true);

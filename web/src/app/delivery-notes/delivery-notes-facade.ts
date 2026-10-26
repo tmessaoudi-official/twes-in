@@ -23,6 +23,7 @@ import type {
   InvoicingCheck,
 } from './delivery-notes-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /** The delivery notes of the company being worked in, the note open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
@@ -34,6 +35,7 @@ export class DeliveryNotesFacade {
   private readonly noteSignal = sessionSignal<DeliveryNoteRow | null>(null);
   private readonly totalSignal = sessionSignal(0);
   private readonly statusCountsSignal = sessionSignal<DeliveryNoteStatusCounts | null>(null);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
   private readonly pageRequests = new LatestRequest();
   private readonly countsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);
@@ -48,6 +50,8 @@ export class DeliveryNotesFacade {
   readonly statusCounts = this.statusCountsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Each field the last step was refused on, with why; empty after a step the API took. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   /** What the list screen needs besides its page: the options that name its drafts' customers. */
   async loadListContext(companyId: string): Promise<void> {
@@ -300,11 +304,18 @@ export class DeliveryNotesFacade {
   }
 
   private async step(call: () => Promise<DeliveryNoteRow>): Promise<DeliveryNoteRow | null> {
-    return this.state.writeAnswer(async () => {
-      const note = await call();
-      this.noteSignal.set(note);
-      return note;
-    });
+    this.refusalsSignal.set([]);
+    return this.state.writeAnswer(
+      async () => {
+        const note = await call();
+        this.noteSignal.set(note);
+        return note;
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof DeliveryNotesRefused ? error.refusals : []),
+      },
+    );
   }
 }
 

@@ -406,6 +406,18 @@ class Customer implements CompanyOwned
             : \sprintf('The customer %s was merged into %s: a new document names the customer kept.', $this->number, $this->mergedInto->number);
     }
 
+    /**
+     * The same, as the reason and parameters a screen says it in.
+     *
+     * @return array{string, array<string, string>}
+     */
+    public function switchedOffReason(): array
+    {
+        return null === $this->mergedInto
+            ? ['customer_deactivated', ['number' => $this->number]]
+            : ['customer_merged_choose', ['number' => $this->number, 'kept' => $this->mergedInto->number]];
+    }
+
     /** The customer this one stands for: the customer kept when it was merged away, itself otherwise. */
     public function standingFor(): self
     {

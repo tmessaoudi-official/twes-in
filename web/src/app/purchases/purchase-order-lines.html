@@ -36,12 +36,12 @@
               >{{ 'purchases.lines.vendor_code' | translate }} <bdi>{{ code }}</bdi></span
             >
           }
-          @if (errorKey(line, 'productId'); as key) {
+          @if (errorOf(line, 'productId'); as error) {
             <span
               role="alert"
               class="px-4 pt-1 pb-2 text-xs text-error"
               [attr.data-testid]="'purchase-line-' + i + '-product-error'"
-              >{{ key | translate }}</span
+              >{{ error.key | translate: error.params }}</span
             >
           }
         </div>
@@ -57,9 +57,9 @@
             />
             <mat-hint>{{ 'purchases.lines.description_hint' | translate }}</mat-hint>
           </mat-form-field>
-          @if (errorKey(line, 'description'); as key) {
+          @if (errorOf(line, 'description'); as error) {
             <span role="alert" class="px-4 pt-1 pb-2 text-xs text-error">{{
-              key | translate
+              error.key | translate: error.params
             }}</span>
           }
         </div>
@@ -78,12 +78,12 @@
               ><bdi>{{ unitOf(line) }}</bdi></span
             >
           </mat-form-field>
-          @if (errorKey(line, 'quantity'); as key) {
+          @if (errorOf(line, 'quantity'); as error) {
             <span
               role="alert"
               class="px-4 pt-1 pb-2 text-xs text-error"
               [attr.data-testid]="'purchase-line-' + i + '-quantity-error'"
-              >{{ key | translate }}</span
+              >{{ error.key | translate: error.params }}</span
             >
           }
         </div>
@@ -99,9 +99,9 @@
                 [attr.data-testid]="'purchase-line-' + i + '-price'"
               />
             </mat-form-field>
-            @if (errorKey(line, 'unitPriceNet'); as key) {
+            @if (errorOf(line, 'unitPriceNet'); as error) {
               <span role="alert" class="px-4 pt-1 pb-2 text-xs text-error">{{
-                key | translate
+                error.key | translate: error.params
               }}</span>
             }
           </div>

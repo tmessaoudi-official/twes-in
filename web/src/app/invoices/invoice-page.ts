@@ -16,11 +16,14 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { RecordHistory } from '../activity/record-history';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import type { FieldError } from '../shared/form/form-builder';
+import { refusedError } from '../shared/form/refusal-words';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { Select, type SelectOption } from '../shared/form/select';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { todayIn } from '../shared/i18n/format';
@@ -148,6 +151,8 @@ export class InvoicePage {
   private readonly productScans = inject(ProductScans);
   private readonly display = inject(CustomerDisplay);
   private readonly linesEditor = viewChild(InvoiceLines);
+  private readonly headerEditor = viewChild(DescriptorForm);
+  private readonly translate = inject(TranslateService);
   /** Set once the sale was created and is opened at its own address, which the customer display keeps showing. */
   private handedOver = false;
   /**
@@ -465,6 +470,10 @@ export class InvoicePage {
   private readonly knownCustomers = new Map<string, CustomerOption>();
   /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
   protected readonly customerMissing = signal(false);
+  /** What the API refused the customer for (deactivated, merged into another), said under its picker. */
+  protected readonly customerRefused = signal<FieldError | null>(null);
+  /** What the API refused the document's taxes for, said under them. */
+  protected readonly documentTaxesRefused = signal<FieldError | null>(null);
   protected readonly searchCustomers = async (words: string): Promise<readonly PickOption[]> => {
     const companyId = this.company()?.id;
     if (!companyId) return [];
@@ -684,7 +693,28 @@ export class InvoicePage {
     if (this.facade.error() === 'record_changed') {
       this.facade.clearError();
       await this.sync.savedElsewhere();
+      return;
     }
+    this.showRefused(this.facade.refusals());
+  }
+
+  /**
+   * Each field the API refused, said under it: a line's on its line, the customer under its picker, the document's
+   * taxes under them, the rest of the header in its form. The line above the form stays for what is refused as a whole.
+   */
+  private showRefused(refusals: readonly FieldRefusal[]): void {
+    if (refusals.length === 0) return;
+    const rest = this.linesEditor()?.showRefused(refusals) ?? refusals;
+    const said = (field: string): FieldError | null => {
+      const refusal = rest.find((each) => each.field === field);
+      return refusal === undefined ? null : refusedError(this.translate, refusal);
+    };
+    this.customerRefused.set(said('customerId'));
+    this.documentTaxesRefused.set(said('documentTaxComponentIds'));
+    const header = rest.filter(
+      (each) => each.field !== 'customerId' && each.field !== 'documentTaxComponentIds',
+    );
+    if (header.length > 0) this.headerEditor()?.showRefused(header);
   }
 
   private readonly rights = computed(() => this.invoiceActions.rights());
@@ -988,6 +1018,7 @@ export class InvoicePage {
     const customer = option === null ? null : (this.knownCustomers.get(option.id) ?? null);
     this.customer.set(customer);
     this.customerMissing.set(customer === null);
+    this.customerRefused.set(null);
     if (this.error() === 'customer_unavailable') this.facade.clearError();
     const options = this.options();
     this.documentTaxes.set(options === null ? [] : defaultDocumentTaxes(options, customer));
@@ -1028,6 +1059,8 @@ export class InvoicePage {
         this.unsaved.savedAndLeaving();
         this.handedOver = true;
         await this.router.navigate(['/invoices', created.id], { replaceUrl: true });
+      } else {
+        await this.refused();
       }
     } else if ((await this.facade.revise(companyId, id, input, this.sync.version())) !== null) {
       this.revisedHere();

@@ -10,6 +10,7 @@ import {
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,6 +27,7 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import { productsIntoLines, takeInAdded, type TakenIn } from '../shared/documents/add-to';
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { liveRecord } from '../shared/form/live-record';
@@ -92,6 +94,8 @@ export const PURCHASE_ORDER_PLANNED: readonly PlannedAction[] = [
 })
 export class PurchaseOrderPage {
   private readonly facade = inject(PurchasesFacade);
+  private readonly linesEditor = viewChild(PurchaseOrderLines);
+  private readonly headerEditor = viewChild(DescriptorForm);
   private readonly unsaved = inject(UnsavedChanges);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
@@ -471,6 +475,8 @@ export class PurchaseOrderPage {
         // It exists now: going to it is not leaving unsaved work.
         this.unsaved.savedAndLeaving();
         await this.router.navigate(['/purchases', created.id], { replaceUrl: true });
+      } else {
+        await this.refused();
       }
     } else if ((await this.facade.revise(companyId, id, input, this.sync.version())) !== null) {
       this.revisedHere();
@@ -504,7 +510,19 @@ export class PurchaseOrderPage {
     if (this.facade.error() === 'record_changed') {
       this.facade.clearError();
       await this.sync.savedElsewhere();
+      return;
     }
+    this.showRefused(this.facade.refusals());
+  }
+
+  /**
+   * Each field the API refused, said under it: a line's on its line, the vendor and the rest of the header in its
+   * form. The line above the form stays for what is refused as a whole.
+   */
+  private showRefused(refusals: readonly FieldRefusal[]): void {
+    if (refusals.length === 0) return;
+    const header = this.linesEditor()?.showRefused(refusals) ?? refusals;
+    if (header.length > 0) this.headerEditor()?.showRefused(header);
   }
 
   protected async send(): Promise<void> {

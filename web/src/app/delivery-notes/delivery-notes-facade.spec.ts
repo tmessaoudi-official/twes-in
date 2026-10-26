@@ -167,6 +167,18 @@ describe('DeliveryNotesFacade', () => {
     expect((await facade.cancel('c1', 'n1'))?.status).toBe('cancelled');
   });
 
+  it('keeps the fields a save was refused on until the next step, which the form says under each', async () => {
+    const refused = [{ field: 'lines[0].quantity', reason: 'invalid_quantity', params: {} }];
+    api.revise.mockRejectedValueOnce(new DeliveryNotesRefused('invalid', refused));
+
+    expect(await facade.revise('c1', 'n1', input, 1)).toBeNull();
+    expect(facade.refusals()).toEqual(refused);
+
+    api.revise.mockResolvedValueOnce(draft);
+    await facade.revise('c1', 'n1', input, 1);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it('does not validate a draft whose changes were refused, and says why', async () => {
     api.revise.mockRejectedValue(new DeliveryNotesRefused('invalid'));
     const revised = vi.fn();

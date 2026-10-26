@@ -18,7 +18,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { atScale } from '../shared/i18n/format';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { type IssuedLine, IssuedLines } from '../shared/ui/issued-lines';
@@ -54,6 +54,9 @@ import { LineCatalogue } from './line-catalogue';
 import type { LineFigures } from '../shared/documents/document-figures';
 import { LineFiguresView } from '../shared/documents/line-figures';
 import { productPhotoUrl } from '../products/product-photo-url';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { FieldError } from '../shared/form/form-builder';
+import { LineRefusals, refusedOn } from '../shared/documents/line-refusals';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -103,6 +106,7 @@ export class InvoiceLines {
   private readonly injector = inject(Injector);
   private readonly scans = inject(ProductScans);
   private readonly inventory = inject(InventoryFacade);
+  private readonly translate = inject(TranslateService);
 
   readonly lines = input.required<LinesArray>();
   /** Whose company's catalogue the pickers ask; a line is never offered another company's products. */
@@ -223,6 +227,7 @@ export class InvoiceLines {
             void this.reprice(line);
           }),
         );
+        untracked(() => this.refusals.clear());
       }
     });
     effect(() => {
@@ -303,7 +308,7 @@ export class InvoiceLines {
    */
   protected leftOf(line: LineGroup): string | null {
     this.revision();
-    return this.readOnly() || this.errorKey(line, 'quantity') !== null ? null : sourceLeftOf(line);
+    return this.readOnly() || this.errorOf(line, 'quantity') !== null ? null : sourceLeftOf(line);
   }
 
   protected figuresOf(index: number): LineFigures | null {
@@ -332,19 +337,45 @@ export class InvoiceLines {
     return line.pristine ? (this.nets()[index] ?? null) : null;
   }
 
-  protected errorKey(line: LineGroup, field: CheckedField): string | null {
+  /**
+   * What is said under a line's field: what the API refused it for, first, since it is the latest word on the line,
+   * else what the form itself finds wrong once the field was left.
+   */
+  protected errorOf(line: LineGroup, field: CheckedField): FieldError | null {
     this.revision();
     const control = line.controls[field];
+    const refused = refusedOn(control);
+    if (refused !== null) return refused;
     if (!control.touched || control.disabled) return null;
     if (field === 'quantity' && control.valid && line.hasError('aboveSource')) {
-      return 'invoices.lines.errors.quantity_above_source';
+      return { key: 'invoices.lines.errors.quantity_above_source', params: {} };
     }
     if (field === 'discountAmount' && control.valid && line.hasError('discountAboveLine')) {
-      return 'invoices.lines.errors.discount_above_line';
+      return { key: 'invoices.lines.errors.discount_above_line', params: {} };
     }
     const invalid = control.invalid || (field === 'quantity' && line.hasError('quantityDecimals'));
-    return invalid ? `invoices.lines.errors.${field}` : null;
+    return invalid ? { key: `invoices.lines.errors.${field}`, params: {} } : null;
   }
+
+  /** What the API refused a line's product or taxes for, which the form never checks itself. */
+  protected refusedAt(line: LineGroup, field: 'productId' | 'taxComponentIds'): FieldError | null {
+    this.revision();
+    return refusedOn(line.controls[field]);
+  }
+
+  /**
+   * Says each refusal of a line under its field and hands back the rest, the document's own; held until the next
+   * change to the lines or the customer.
+   */
+  showRefused(refusals: readonly FieldRefusal[]): readonly FieldRefusal[] {
+    return this.refusals.show(refusals);
+  }
+
+  private readonly refusals = new LineRefusals(
+    () => this.lines(),
+    this.translate,
+    () => this.revision.update((revision) => revision + 1),
+  );
 
   /** How a quantity of stock counted in `unitId` is shown: at its unit's decimals, with its name. */
   protected stockUnit(unitId: string): { scale: number | null; name: string } {

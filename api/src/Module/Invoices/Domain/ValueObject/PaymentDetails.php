@@ -58,7 +58,7 @@ final readonly class PaymentDetails
     {
         $value = TypedText::trimmed($value ?? '');
         if (mb_strlen($value) > $max) {
-            throw new InvalidInvoice($field, \sprintf('At most %d characters.', $max));
+            throw new InvalidInvoice($field, \sprintf('At most %d characters.', $max), 'invalid_text', ['max' => $max]);
         }
 
         return '' === $value ? null : $value;

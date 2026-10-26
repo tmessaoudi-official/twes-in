@@ -88,10 +88,12 @@ final class RefusalReasonsTest extends KernelTestCase
             foreach ($files as $file) {
                 \assert($file instanceof \SplFileInfo);
                 $source = (string) file_get_contents($file->getPathname());
-                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense|InvalidStockMovement|InvalidReorderPoint|InvalidSchedule|InvalidRecurringInvoice|InvalidRecurringExpense|InvalidStockLocation|InvalidProductCategory|InvalidInvoice|InvalidDeliveryNote|InvalidQuote|InvalidPurchaseOrder|InvalidVenue|InvalidFiscalValue|QuoteInvoicingRefused|InvalidPriceList|InvalidCustomerGroup|InvalidCustomFieldDefinition|InvalidContact|InvalidNumbering|InvalidEstablishment)\((.*?)\);/s', $source, $found);
+                preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense|InvalidStockMovement|InvalidReorderPoint|InvalidSchedule|InvalidRecurringInvoice|InvalidRecurringExpense|InvalidStockLocation|InvalidProductCategory|InvalidInvoice|InvalidDeliveryNote|InvalidQuote|InvalidPurchaseOrder|InvalidVenue|InvalidFiscalValue|QuoteInvoicingRefused|InvalidPriceList|InvalidCustomerGroup|InvalidCustomFieldDefinition|InvalidContact|InvalidNumbering|InvalidEstablishment|InvalidDocument)\((.*?)\);/s', $source, $found);
                 // A custom field's refusals go through its helper, one per arm of a match.
                 preg_match_all('/self::refuse\((.*?)\),$/m', $source, $helped);
-                foreach ([...$found[1], ...$helped[1]] as $arguments) {
+                // A record no new document may name says why as a reason of its own, which the documents' refusals spread.
+                preg_match_all('/function switchedOffReason\(\): array\s*\{(.*?)\n    \}/s', $source, $switchedOff);
+                foreach ([...$found[1], ...$helped[1], ...$switchedOff[1]] as $arguments) {
                     ++$statements;
                     preg_match_all("/'([a-z]+(?:_[a-z]+)+)'/", $arguments, $reasons);
                     foreach ($reasons[1] ?: ['invalid_value'] as $reason) {

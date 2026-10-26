@@ -52,7 +52,7 @@ final readonly class QuoteTotals
         if (null !== $discount) {
             $scale = $this->scales->of($quote->getCompany()->getCurrency());
             if (0 !== Decimal::round(Decimal::of($discount), $scale)->compare(Decimal::of($discount))) {
-                throw new InvalidQuote('discountAmount', \sprintf('The currency %s has %d decimals.', $quote->getCompany()->getCurrency(), $scale));
+                throw new InvalidQuote('discountAmount', \sprintf('The currency %s has %d decimals.', $quote->getCompany()->getCurrency(), $scale), 'invalid_discount', ['decimals' => $scale]);
             }
         }
 
@@ -60,13 +60,13 @@ final readonly class QuoteTotals
             if (null !== $discount) {
                 $lines = Decimal::of($this->calculate($quote, null)->subtotalNet);
                 if (Decimal::of($discount)->compare($lines) > 0) {
-                    throw new InvalidQuote('discountAmount', \sprintf('A document discount is at most what the lines come to, %s.', Decimal::format($lines, 3)));
+                    throw new InvalidQuote('discountAmount', \sprintf('A document discount is at most what the lines come to, %s.', Decimal::format($lines, 3)), 'discount_above_total');
                 }
             }
 
             return $this->of($quote);
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
-            throw new InvalidQuote($refused->field('quantity'), $refused->getMessage());
+            throw new InvalidQuote($refused->field('quantity'), $refused->getMessage(), $refused->reason);
         }
     }
 
@@ -81,11 +81,11 @@ final readonly class QuoteTotals
             }
             $field = \sprintf('lines[%d].discountAmount', $i);
             if (0 !== Decimal::round(Decimal::of($discount), $scale)->compare(Decimal::of($discount))) {
-                throw new InvalidQuote($field, \sprintf('The currency %s has %d decimals.', $quote->getCompany()->getCurrency(), $scale));
+                throw new InvalidQuote($field, \sprintf('The currency %s has %d decimals.', $quote->getCompany()->getCurrency(), $scale), 'invalid_discount', ['decimals' => $scale]);
             }
             $amount = Decimal::round(Decimal::of($line->getQuantity())->mul(Decimal::of($line->getUnitPriceNet()), Decimal::WORKING_SCALE), $scale);
             if (Decimal::of($discount)->compare($amount) > 0) {
-                throw new InvalidQuote($field, \sprintf('A line\'s discount is at most what the line comes to, %s.', Decimal::format($amount, $scale)));
+                throw new InvalidQuote($field, \sprintf('A line\'s discount is at most what the line comes to, %s.', Decimal::format($amount, $scale)), 'line_discount_above_total');
             }
         }
     }

@@ -6,7 +6,9 @@ import type { PreviewBody } from '../shared/documents/document-figures';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import { isPeriodClosed } from '../shared/documents/period-closed';
 import { isRecordChanged } from '../shared/errors/record-changed';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { firstValueFrom } from 'rxjs';
 import { filenameOf } from '../shared/files/save-file';
 import type {
@@ -70,7 +72,11 @@ import { refusedFor } from '../shared/errors/said-already';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class InvoicesRefused extends Error {
-  constructor(readonly code: InvoicesError) {
+  /** `refusals`: each field a 422 named, with why, which the form says under it. */
+  constructor(
+    readonly code: InvoicesError,
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -79,6 +85,7 @@ export class InvoicesRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class InvoicesApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   /** What the invoice form offers: the currency, and the establishments, customers, products, units and taxes. */
   /**
@@ -522,7 +529,10 @@ export class InvoicesApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new InvoicesRefused(codeOf(error)));
+      throw refusedFor(
+        error,
+        new InvoicesRefused(codeOf(error), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

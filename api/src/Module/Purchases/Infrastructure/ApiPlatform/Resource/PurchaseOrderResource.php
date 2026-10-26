@@ -156,8 +156,8 @@ final class PurchaseOrderResource
     public string $status = 'draft';
 
     /** One of the company's active vendors (GET .../purchase-order-vendors). */
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public string $vendorId = '';
 
@@ -167,7 +167,7 @@ final class PurchaseOrderResource
     public string $vendorName = '';
 
     /** One of the company's establishments; left out, the default one. */
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $establishmentId = null;
 
@@ -203,17 +203,17 @@ final class PurchaseOrderResource
 
     /** The day the goods are expected, YYYY-MM-DD. */
     #[ApiProperty(schema: self::DAY_OR_NULL)]
-    #[Assert\Date(groups: [self::WRITE])]
+    #[Assert\Date(groups: [self::WRITE], payload: ['reason' => 'not_a_date'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $expectedOn = null;
 
     /** Printed on the order, for the vendor. */
-    #[Assert\Length(max: PurchaseOrderHeader::TEXT_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: PurchaseOrderHeader::TEXT_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PurchaseOrderHeader::TEXT_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $remarksPrinted = null;
 
     /** Kept inside the company, never printed. */
-    #[Assert\Length(max: PurchaseOrderHeader::TEXT_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: PurchaseOrderHeader::TEXT_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PurchaseOrderHeader::TEXT_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notesInternal = null;
 
@@ -249,9 +249,9 @@ final class PurchaseOrderResource
     ])]
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Collection(fields: [
-        'productId' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
-        'description' => new Assert\Optional([new Assert\Type(['string', 'null'], groups: [self::WRITE]), new Assert\Length(max: PurchaseOrderLineDetails::DESCRIPTION_MAX, groups: [self::WRITE])], groups: [self::WRITE]),
-        'quantity' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'productId' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required']), new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], groups: [self::WRITE]),
+        'description' => new Assert\Optional([new Assert\Type(['string', 'null'], groups: [self::WRITE]), new Assert\Length(max: PurchaseOrderLineDetails::DESCRIPTION_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PurchaseOrderLineDetails::DESCRIPTION_MAX]])], groups: [self::WRITE]),
+        'quantity' => new Assert\Required([new Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required']), new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'unitPriceNet' => new Assert\Optional([new Assert\Type(['string', 'null'], groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]

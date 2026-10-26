@@ -274,7 +274,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
         try {
             return $this->totals->of($whole);
         } catch (InvalidDocument $refused) {
-            throw new InvalidInvoice($refused->field('quantity'), $refused->getMessage());
+            throw new InvalidInvoice($refused->field('quantity'), $refused->getMessage(), $refused->reason);
         }
     }
 }

@@ -6,6 +6,7 @@ import { TestBed } from '@angular/core/testing';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
 import type { InvoiceInput, InvoiceRow } from './invoices-types';
 import { SILENT } from '../shared/feedback/activity-interceptor';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 const input: InvoiceInput = {
   customerId: 'k1',
@@ -106,7 +107,12 @@ describe('InvoicesApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(InvoicesApi);
     http = TestBed.inject(HttpTestingController);
@@ -601,6 +607,33 @@ describe('InvoicesApi', () => {
         .flush({}, { status, statusText: 'Refused' });
       await expect(pending).rejects.toEqual(new InvoicesRefused(code));
     }
+  });
+
+  it('names each field a save was refused on, a line’s by its line', async () => {
+    const refused = api.revise('c1', 'i1', input, 1);
+    http.expectOne('/api/companies/c1/invoices/i1').flush(
+      {
+        detail: 'lines[0].quantity: The unit C62 counts with 0 decimals.',
+        violations: [
+          {
+            propertyPath: 'lines[0].quantity',
+            message: 'x',
+            payload: { reason: 'quantity_decimals', params: { unit: 'C62', decimals: 0 } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [
+        {
+          field: 'lines[0].quantity',
+          reason: 'quantity_decimals',
+          params: { unit: 'C62', decimals: 0 },
+        },
+      ],
+    });
   });
 
   it('tells a save over a version saved since from a document no longer a draft', async () => {

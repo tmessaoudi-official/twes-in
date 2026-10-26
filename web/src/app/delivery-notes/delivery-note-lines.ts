@@ -14,7 +14,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   applyProduct,
   type LineControls,
@@ -47,6 +47,9 @@ import { InventoryFacade } from '../inventory/inventory-facade';
 import type { OnHand } from '../shared/documents/line-stock';
 import type { LineFigures } from '../shared/documents/document-figures';
 import { LineFiguresView } from '../shared/documents/line-figures';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { FieldError } from '../shared/form/form-builder';
+import { LineRefusals, refusedOn } from '../shared/documents/line-refusals';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -81,6 +84,7 @@ export class DeliveryNoteLines {
   private readonly facade = inject(DeliveryNotesFacade);
   private readonly scans = inject(ProductScans);
   private readonly inventory = inject(InventoryFacade);
+  private readonly translate = inject(TranslateService);
 
   readonly lines = input.required<LinesArray>();
   /** Whose company's catalogue the pickers ask; a line is never offered another company's products. */
@@ -177,8 +181,10 @@ export class DeliveryNoteLines {
       const id = this.customer()?.id ?? null;
       const changed = seen !== undefined && seen !== id;
       seen = id;
-      if (changed)
+      if (changed) {
         untracked(() => this.lines().controls.forEach((line) => void this.reprice(line)));
+        untracked(() => this.refusals.clear());
+      }
     });
     effect(() => {
       const asked = this.stockAsked();
@@ -229,13 +235,39 @@ export class DeliveryNoteLines {
     return options;
   }
 
-  protected errorKey(line: LineGroup, field: CheckedField): string | null {
+  /**
+   * What is said under a line's field: what the API refused it for, first, since it is the latest word on the line,
+   * else what the form itself finds wrong once the field was left.
+   */
+  protected errorOf(line: LineGroup, field: CheckedField): FieldError | null {
     this.revision();
     const control = line.controls[field];
+    const refused = refusedOn(control);
+    if (refused !== null) return refused;
     if (!control.touched || control.disabled) return null;
     const invalid = control.invalid || (field === 'quantity' && line.hasError('quantityDecimals'));
-    return invalid ? `delivery_notes.lines.errors.${field}` : null;
+    return invalid ? { key: `delivery_notes.lines.errors.${field}`, params: {} } : null;
   }
+
+  /** What the API refused a line's product or taxes for, which the form never checks itself. */
+  protected refusedAt(line: LineGroup, field: 'productId' | 'taxComponentIds'): FieldError | null {
+    this.revision();
+    return refusedOn(line.controls[field]);
+  }
+
+  /**
+   * Says each refusal of a line under its field and hands back the rest, the note's own; held until the next change
+   * to the lines or the customer.
+   */
+  showRefused(refusals: readonly FieldRefusal[]): readonly FieldRefusal[] {
+    return this.refusals.show(refusals);
+  }
+
+  private readonly refusals = new LineRefusals(
+    () => this.lines(),
+    this.translate,
+    () => this.revision.update((revision) => revision + 1),
+  );
 
   protected add(): void {
     this.lines().push(lineGroup(null, this.options()));

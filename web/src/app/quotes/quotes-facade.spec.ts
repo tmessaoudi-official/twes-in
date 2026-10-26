@@ -136,6 +136,18 @@ describe('QuotesFacade', () => {
     expect(facade.error()).toBeNull();
   });
 
+  it('keeps the fields a save was refused on until the next step, which the form says under each', async () => {
+    const refused = [{ field: 'lines[0].quantity', reason: 'invalid_quantity', params: {} }];
+    api.revise.mockRejectedValueOnce(new QuotesRefused('invalid', refused));
+
+    expect(await facade.revise('c1', 'q1', input, 3)).toBeNull();
+    expect(facade.refusals()).toEqual(refused);
+
+    api.revise.mockResolvedValueOnce({ ...sent, status: 'draft' });
+    await facade.revise('c1', 'q1', input, 3);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it('saves what is shown before marking it sent, so a quote is numbered with what was seen', async () => {
     const order: string[] = [];
     api.revise.mockImplementation(async () => (order.push('revise'), { ...sent, status: 'draft' }));

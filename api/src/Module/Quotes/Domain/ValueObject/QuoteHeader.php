@@ -59,7 +59,7 @@ final readonly class QuoteHeader
     {
         $value = TypedText::trimmed($value ?? '');
         if (mb_strlen($value) > $max) {
-            throw new InvalidQuote($field, \sprintf('At most %d characters.', $max));
+            throw new InvalidQuote($field, \sprintf('At most %d characters.', $max), 'invalid_text', ['max' => $max]);
         }
 
         return '' === $value ? null : $value;
@@ -72,7 +72,7 @@ final readonly class QuoteHeader
             return null;
         }
         if (1 !== preg_match(self::AMOUNT, $amount)) {
-            throw new InvalidQuote('discountAmount', 'A discount is an amount from 0 with at most three decimals.');
+            throw new InvalidQuote('discountAmount', 'A discount is an amount from 0 with at most three decimals.', 'invalid_discount', ['decimals' => 3]);
         }
         [$units, $decimals] = [...explode('.', $amount), ''];
 

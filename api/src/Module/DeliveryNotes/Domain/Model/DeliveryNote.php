@@ -465,7 +465,7 @@ class DeliveryNote implements CompanyOwned
     private function establishmentOfThisCompany(Establishment $establishment): Establishment
     {
         if (!$establishment->getCompany()->getId()->equals($this->company->getId())) {
-            throw new InvalidDeliveryNote('establishmentId', 'A delivery note leaves an establishment of its own company.');
+            throw new InvalidDeliveryNote('establishmentId', 'A delivery note leaves an establishment of its own company.', 'unknown_choice');
         }
 
         return $establishment;
@@ -474,7 +474,7 @@ class DeliveryNote implements CompanyOwned
     private function customerOfThisCompany(Customer $customer): Customer
     {
         if (!$customer->getCompany()->getId()->equals($this->company->getId())) {
-            throw new InvalidDeliveryNote('customerId', 'A delivery note goes to a customer of its own company.');
+            throw new InvalidDeliveryNote('customerId', 'A delivery note goes to a customer of its own company.', 'unknown_choice');
         }
 
         return $customer;
@@ -490,14 +490,14 @@ class DeliveryNote implements CompanyOwned
         $companyId = $this->company->getId();
         foreach ($lines as $index => $line) {
             if (null !== $line->product && !$line->product->getCompany()->getId()->equals($companyId)) {
-                throw new InvalidDeliveryNote("lines[$index].productId", 'A line delivers a product of its own company.');
+                throw new InvalidDeliveryNote("lines[$index].productId", 'A line delivers a product of its own company.', 'unknown_choice');
             }
             if (!$line->unit->getCompany()->getId()->equals($companyId)) {
-                throw new InvalidDeliveryNote("lines[$index].unitId", 'A line counts in a unit of its own company.');
+                throw new InvalidDeliveryNote("lines[$index].unitId", 'A line counts in a unit of its own company.', 'unknown_choice');
             }
             foreach ($line->taxes as $tax) {
                 if (!$tax->getCompany()->getId()->equals($companyId)) {
-                    throw new InvalidDeliveryNote("lines[$index].taxComponentIds", 'A line carries taxes of its own company.');
+                    throw new InvalidDeliveryNote("lines[$index].taxComponentIds", 'A line carries taxes of its own company.', 'unknown_tax');
                 }
             }
         }

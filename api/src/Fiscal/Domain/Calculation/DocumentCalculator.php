@@ -374,7 +374,7 @@ final class DocumentCalculator
         $largest = Decimal::of(self::LARGEST_AMOUNT);
         foreach ($figures as $figure) {
             if (Decimal::absolute($figure)->compare($largest) > 0) {
-                throw new InvalidDocument(null === $line ? \sprintf('The document comes to more than an amount holds, %s.', self::LARGEST_AMOUNT) : \sprintf('Line %d comes to more than an amount holds, %s: lower its quantity or its price.', $line + 1, self::LARGEST_AMOUNT), $line);
+                throw new InvalidDocument(null === $line ? \sprintf('The document comes to more than an amount holds, %s.', self::LARGEST_AMOUNT) : \sprintf('Line %d comes to more than an amount holds, %s: lower its quantity or its price.', $line + 1, self::LARGEST_AMOUNT), $line, 'amount_too_large');
             }
         }
     }

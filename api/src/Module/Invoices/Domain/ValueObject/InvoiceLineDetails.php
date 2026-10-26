@@ -72,11 +72,11 @@ final readonly class InvoiceLineDetails
     public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null, public bool $returned = false, public ?Deduction $deduction = null, ?string $discountAmount = null, ?string $section = null, public ?Uuid $creditedLineId = null)
     {
         if ($returned && null === $product) {
-            throw new InvalidInvoice('returned', 'A line returns goods to stock only when it names a product.');
+            throw new InvalidInvoice('returned', 'A line returns goods to stock only when it names a product.', 'returned_needs_product');
         }
         $description = TypedText::trimmed($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
-            throw new InvalidInvoice('description', \sprintf('A line says what it sells in 1 to %d characters.', self::DESCRIPTION_MAX));
+            throw new InvalidInvoice('description', \sprintf('A line says what it sells in 1 to %d characters.', self::DESCRIPTION_MAX), '' === $description ? 'value_required' : 'invalid_text', '' === $description ? [] : ['max' => self::DESCRIPTION_MAX]);
         }
         $this->description = $description;
         $this->quantity = self::quantity(TypedText::trimmed($quantity), $unit);
@@ -84,17 +84,17 @@ final readonly class InvoiceLineDetails
         $this->discountRate = self::rate(TypedText::trimmed($discountRate ?? ''));
         $this->discountAmount = self::amount(TypedText::trimmed($discountAmount ?? ''));
         if (null !== $this->discountRate && null !== $this->discountAmount) {
-            throw new InvalidInvoice('discountAmount', 'A line\'s discount is a rate or an amount, not both.');
+            throw new InvalidInvoice('discountAmount', 'A line\'s discount is a rate or an amount, not both.', 'discount_rate_or_amount');
         }
 
         $ids = [];
         foreach ($taxes as $tax) {
             if (TaxKind::PercentageLine !== $tax->getKind()) {
-                throw new InvalidInvoice('taxComponentIds', \sprintf('%s is charged on a document, not on a line.', $tax->getCode()));
+                throw new InvalidInvoice('taxComponentIds', \sprintf('%s is charged on a document, not on a line.', $tax->getCode()), 'tax_on_document', ['tax' => $tax->getCode()]);
             }
             $id = $tax->getId()->toRfc4122();
             if (isset($ids[$id])) {
-                throw new InvalidInvoice('taxComponentIds', \sprintf('A line carries %s once.', $tax->getCode()));
+                throw new InvalidInvoice('taxComponentIds', \sprintf('A line carries %s once.', $tax->getCode()), 'tax_twice', ['tax' => $tax->getCode()]);
             }
             $ids[$id] = true;
         }
@@ -171,7 +171,7 @@ final readonly class InvoiceLineDetails
             return null;
         }
         if (mb_strlen($title) > self::SECTION_MAX) {
-            throw new InvalidInvoice('section', \sprintf('A section\'s title is at most %d characters.', self::SECTION_MAX));
+            throw new InvalidInvoice('section', \sprintf('A section\'s title is at most %d characters.', self::SECTION_MAX), 'invalid_text', ['max' => self::SECTION_MAX]);
         }
 
         return $title;
@@ -180,14 +180,14 @@ final readonly class InvoiceLineDetails
     private static function quantity(string $quantity, Unit $unit): string
     {
         if (1 !== preg_match(self::QUANTITY, $quantity)) {
-            throw new InvalidInvoice('quantity', 'A quantity is a decimal number with at most three decimals.');
+            throw new InvalidInvoice('quantity', 'A quantity is a decimal number with at most three decimals.', 'invalid_quantity');
         }
         [$units, $decimals] = [...explode('.', $quantity), ''];
         if ('' === trim($units.$decimals, '0')) {
-            throw new InvalidInvoice('quantity', 'A line sells a positive quantity.');
+            throw new InvalidInvoice('quantity', 'A line sells a positive quantity.', 'quantity_above_zero');
         }
         if (\strlen(rtrim($decimals, '0')) > $unit->getDecimals()) {
-            throw new InvalidInvoice('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()));
+            throw new InvalidInvoice('quantity', \sprintf('The unit %s counts with %d decimals.', $unit->getCode(), $unit->getDecimals()), 'quantity_decimals', ['unit' => $unit->getCode(), 'decimals' => $unit->getDecimals()]);
         }
 
         return $units.'.'.str_pad($decimals, self::QUANTITY_DECIMALS, '0');
@@ -201,10 +201,10 @@ final readonly class InvoiceLineDetails
             return null;
         }
         if (!LotCode::namedFor($product)) {
-            throw new InvalidInvoice('lotCode', 'A lot or serial is named on a line of a product tracked by one.');
+            throw new InvalidInvoice('lotCode', 'A lot or serial is named on a line of a product tracked by one.', 'lot_not_tracked');
         }
         if (!LotCode::isWellFormed($code)) {
-            throw new InvalidInvoice('lotCode', \sprintf('A lot code is 1 to %d printable characters without space or accent.', LotCode::MAX));
+            throw new InvalidInvoice('lotCode', \sprintf('A lot code is 1 to %d printable characters without space or accent.', LotCode::MAX), 'lot_code', ['max' => LotCode::MAX]);
         }
 
         return $code;
@@ -213,7 +213,7 @@ final readonly class InvoiceLineDetails
     private static function price(string $price): string
     {
         if (1 !== preg_match(self::PRICE, $price)) {
-            throw new InvalidInvoice('unitPriceNet', 'A price is a decimal number from 0 to 9999999999.9999, with at most four decimals.');
+            throw new InvalidInvoice('unitPriceNet', 'A price is a decimal number from 0 to 9999999999.9999, with at most four decimals.', 'invalid_price');
         }
         [$units, $decimals] = [...explode('.', $price), ''];
 
@@ -227,7 +227,7 @@ final readonly class InvoiceLineDetails
             return null;
         }
         if (1 !== preg_match(self::AMOUNT, $amount)) {
-            throw new InvalidInvoice('discountAmount', 'A discount amount is a decimal number from 0 with at most three decimals.');
+            throw new InvalidInvoice('discountAmount', 'A discount amount is a decimal number from 0 with at most three decimals.', 'invalid_discount', ['decimals' => 3]);
         }
 
         return Decimal::format(Decimal::of($amount), 3);
@@ -239,7 +239,7 @@ final readonly class InvoiceLineDetails
             return null;
         }
         if (1 !== preg_match(self::RATE, $rate) || Decimal::of($rate)->compare(100) > 0) {
-            throw new InvalidInvoice('discountRate', 'A discount is a percentage from 0 to 100 with at most three decimals.');
+            throw new InvalidInvoice('discountRate', 'A discount is a percentage from 0 to 100 with at most three decimals.', 'invalid_rate');
         }
 
         return Decimal::format(Decimal::of($rate), 3);

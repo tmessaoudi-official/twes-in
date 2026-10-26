@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdpurchaseOrdersGetCollectionResponse,
@@ -42,6 +44,8 @@ export class PurchasesRefused extends Error {
     readonly code: PurchasesError,
     /** `vendorId`, `lines`, `lines[2].lotCode`…: what the API refused, when it named it. */
     readonly field: string | null = null,
+    /** Each field a 422 named, with why, which the form says under it. */
+    readonly refusals: readonly FieldRefusal[] = [],
   ) {
     super(code);
   }
@@ -51,6 +55,7 @@ export class PurchasesRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class PurchasesApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   /** One page of the company's orders, searched, narrowed and sorted by the API. */
   async orders(
@@ -260,6 +265,7 @@ export class PurchasesApi {
         new PurchasesRefused(
           codeOf(error),
           error instanceof HttpErrorResponse ? refusedField(error) : null,
+          await formRefusalsIn(this.injector, error),
         ),
       );
     }
