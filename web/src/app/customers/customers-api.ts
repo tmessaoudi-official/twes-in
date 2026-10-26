@@ -2,11 +2,12 @@
 
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { exportAddress, type ExportFormat } from '../shared/list/export-address';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { firstValueFrom } from 'rxjs';
 import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
-import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import type {
   ApiCompaniesCompanyIdcustomersGetCollectionResponse,
@@ -61,6 +62,7 @@ const TAX_FAMILIES: readonly TaxFamily[] = ['vat', 'levy', 'stamp', 'withholding
 @Injectable({ providedIn: 'root' })
 export class CustomersApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   /** What the customer form offers: the preset's registration numbers, its regimes and the company's active taxes. */
   async options(companyId: string): Promise<CustomerOptions> {
@@ -300,7 +302,10 @@ export class CustomersApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new CustomersRefused(codeOf(error, conflict), refusalsOf(error)));
+      throw refusedFor(
+        error,
+        new CustomersRefused(codeOf(error, conflict), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }
@@ -501,9 +506,4 @@ function toContact(raw: ContactContactRead): ContactRow {
     // Every read carries it; a 0 would be refused by the API rather than taken for a version.
     version: raw.version ?? 0,
   };
-}
-
-/** The fields a save was refused on, read from a 422's body only. */
-function refusalsOf(error: unknown): readonly FieldRefusal[] {
-  return error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
 }

@@ -33,7 +33,7 @@ final class RefusalReasonsTest extends KernelTestCase
         self::bootKernel();
         $container = static::getContainer();
         $validator = $container->get(ValidatorInterface::class);
-        $translated = self::translated();
+        $translated = self::translated('fr', self::FORM_REFUSALS);
 
         $wrong = [];
         $reasons = 0;
@@ -80,7 +80,7 @@ final class RefusalReasonsTest extends KernelTestCase
     public function testEveryReasonADomainRefusesAFieldWithIsTranslated(): void
     {
         $root = \dirname(__DIR__, 2);
-        $translated = self::translated();
+        $translated = self::translated('fr', self::FORM_REFUSALS);
         $statements = 0;
         $untranslated = [];
         foreach (['src'] as $directory) {
@@ -234,11 +234,14 @@ final class RefusalReasonsTest extends KernelTestCase
     /** The texts the settings screens open before saying a settings refusal, beside the screens' own file. */
     private const string SETTINGS_REFUSALS = 'settings-refusals';
 
-    /** @return array<mixed> the screens' texts for a refusal, by reason, with those of a texts part over them */
-    private static function translated(string $language = 'fr', ?string $part = null): array
+    /** The texts a form's adapter opens when a save comes back refused on its fields (`FORM_REFUSAL_TEXTS`). */
+    private const string FORM_REFUSALS = 'form-refusals';
+
+    /** @return array<mixed> the screens' texts for a refusal, by reason, with those of the texts parts named over them */
+    private static function translated(string $language = 'fr', string ...$parts): array
     {
         $translated = self::rejections(\dirname(__DIR__, 3).'/web/public/i18n/'.$language.'.json');
-        if (null !== $part) {
+        foreach ($parts as $part) {
             $translated = [...$translated, ...self::rejections(\dirname(__DIR__, 3).'/web/public/i18n/'.$part.'/'.$language.'.json')];
         }
 

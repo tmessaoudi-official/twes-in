@@ -78,28 +78,28 @@ final class PriceListResource
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Length(max: PriceList::NAME_MAX, groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: PriceList::NAME_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => PriceList::NAME_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public string $name = '';
 
     /** The customer group it is for (GET .../customer-groups); null for a customer's list or everyone's. */
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $customerGroupId = null;
 
     /** The one customer it is for; null for a group's list or everyone's. */
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $customerId = null;
 
     /** The first day it applies, as `YYYY-MM-DD`; null from the start. */
-    #[Assert\Date(groups: [self::WRITE])]
+    #[Assert\Date(groups: [self::WRITE], payload: ['reason' => 'not_a_date'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $validFrom = null;
 
     /** The last day it applies, inclusive; null without end. */
-    #[Assert\Date(groups: [self::WRITE])]
+    #[Assert\Date(groups: [self::WRITE], payload: ['reason' => 'not_a_date'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $validTo = null;
 
@@ -122,7 +122,7 @@ final class PriceListResource
      * @var list<PriceListItemRow>|null
      */
     #[Assert\Type('list', groups: [self::WRITE])]
-    #[Assert\Count(max: PriceList::ITEMS_MAX, groups: [self::WRITE])]
+    #[Assert\Count(max: PriceList::ITEMS_MAX, groups: [self::WRITE], payload: ['reason' => 'too_many_entries'])]
     #[Assert\Valid(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?array $items = null;

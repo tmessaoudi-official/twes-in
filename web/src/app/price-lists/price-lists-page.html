@@ -47,8 +47,9 @@
             >
               <mat-label>{{ 'price_lists.fields.name' | translate }}</mat-label>
               <input matInput formControlName="name" required data-testid="price-list-name" />
+              @let nameRefused = refusedOf(form.controls['name']);
               <mat-error data-testid="price-list-name-error">{{
-                'form.errors.required' | translate
+                nameRefused?.key ?? 'form.errors.required' | translate: nameRefused?.params
               }}</mat-error>
             </mat-form-field>
             <app-select
@@ -62,13 +63,20 @@
               testId="price-list-scope"
             />
             @if (scope() === 'group') {
-              <app-select
-                [label]="'price_lists.fields.group' | translate"
-                [labelInside]="true"
-                [options]="groupOptions()"
-                formControlName="customerGroupId"
-                testId="price-list-group"
-              />
+              <div class="flex flex-col gap-1">
+                <app-select
+                  [label]="'price_lists.fields.group' | translate"
+                  [labelInside]="true"
+                  [options]="groupOptions()"
+                  formControlName="customerGroupId"
+                  testId="price-list-group"
+                />
+                @if (refusedOf(form.controls['customerGroupId']); as error) {
+                  <p class="m-0 px-4 text-xs text-error" data-testid="price-list-group-error">
+                    {{ error.key | translate: error.params }}
+                  </p>
+                }
+              </div>
             }
             @if (scope() === 'customer') {
               <div class="min-w-64">
@@ -78,8 +86,16 @@
                   [search]="searchCustomers"
                   [value]="customer()"
                   [noneFoundLabel]="'price_lists.no_customer_found' | translate"
-                  (picked)="customer.set($event)"
+                  (picked)="chooseCustomer($event)"
                 />
+                @if (customerRefused(); as error) {
+                  <p
+                    class="m-0 px-4 pt-1 text-xs text-error"
+                    data-testid="price-list-customer-error"
+                  >
+                    {{ error.key | translate: error.params }}
+                  </p>
+                }
               </div>
             }
           </div>
@@ -105,7 +121,10 @@
                 data-testid="price-list-from"
               />
               <app-day-calendar-button matSuffix [field]="dayField" />
-              <mat-error>{{ 'form.errors.date' | translate }}</mat-error>
+              @let fromRefused = refusedOf(form.controls['validFrom']);
+              <mat-error data-testid="price-list-from-error">{{
+                fromRefused?.key ?? 'form.errors.date' | translate: fromRefused?.params
+              }}</mat-error>
             </mat-form-field>
             <mat-form-field subscriptSizing="dynamic">
               <mat-label>{{ 'price_lists.fields.valid_to' | translate }}</mat-label>
@@ -120,7 +139,10 @@
                 data-testid="price-list-to"
               />
               <app-day-calendar-button matSuffix [field]="dayField" />
-              <mat-error>{{ 'form.errors.date' | translate }}</mat-error>
+              @let toRefused = refusedOf(form.controls['validTo']);
+              <mat-error data-testid="price-list-to-error">{{
+                toRefused?.key ?? 'form.errors.date' | translate: toRefused?.params
+              }}</mat-error>
             </mat-form-field>
             <mat-slide-toggle formControlName="isActive" data-testid="price-list-active">{{
               'price_lists.fields.active' | translate
@@ -159,6 +181,14 @@
                       [noneFoundLabel]="'price_lists.no_product_found' | translate"
                       (picked)="chooseProduct(row, $event)"
                     />
+                    @if (refusedOf(row.controls.productId); as error) {
+                      <p
+                        class="m-0 px-4 pt-1 text-xs text-error"
+                        [attr.data-testid]="'price-row-' + i + '-product-error'"
+                      >
+                        {{ error.key | translate: error.params }}
+                      </p>
+                    }
                   </div>
                   <mat-form-field class="sm:col-span-3">
                     <mat-label>{{ 'price_lists.prices.min_quantity' | translate }}</mat-label>
@@ -168,6 +198,11 @@
                       appDecimal
                       [attr.data-testid]="'price-row-' + i + '-min'"
                     />
+                    @if (refusedOf(row.controls.minQuantity); as error) {
+                      <mat-error [attr.data-testid]="'price-row-' + i + '-min-error'">{{
+                        error.key | translate: error.params
+                      }}</mat-error>
+                    }
                   </mat-form-field>
                   <mat-form-field class="sm:col-span-3">
                     <mat-label>{{ 'price_lists.prices.unit_price' | translate }}</mat-label>
@@ -177,6 +212,11 @@
                       appDecimal
                       [attr.data-testid]="'price-row-' + i + '-price'"
                     />
+                    @if (refusedOf(row.controls.unitPriceNet); as error) {
+                      <mat-error [attr.data-testid]="'price-row-' + i + '-price-error'">{{
+                        error.key | translate: error.params
+                      }}</mat-error>
+                    }
                   </mat-form-field>
                   <div class="pt-2 sm:col-span-1">
                     <button

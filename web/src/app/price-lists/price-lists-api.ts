@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { firstValueFrom } from 'rxjs';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import type {
@@ -17,10 +18,15 @@ import type {
   ResolvedPrice,
 } from './price-lists-types';
 import { refusedFor } from '../shared/errors/said-already';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class PriceListsRefused extends Error {
-  constructor(readonly code: PriceListsError) {
+  constructor(
+    readonly code: PriceListsError,
+    /** Each field a save was refused on, when the API named them: a price by its row, `items.2.minQuantity`. */
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -34,6 +40,7 @@ const path = (companyId: string, id?: string): string =>
 @Injectable({ providedIn: 'root' })
 export class PriceListsApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   /**
    * The net unit price a sale of the product starts at for that customer and quantity, and the list that set it (null
@@ -101,7 +108,10 @@ export class PriceListsApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new PriceListsRefused(codeOf(error)));
+      throw refusedFor(
+        error,
+        new PriceListsRefused(codeOf(error), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

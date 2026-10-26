@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { CustomFieldsApi, CustomFieldsRefused } from './custom-fields-api';
 import type { CustomFieldInput } from './custom-fields-types';
+import { TextsParts } from '../i18n/texts-part';
 
 const sector: CustomFieldInput = {
   entity: 'customer',
@@ -23,7 +24,12 @@ describe('CustomFieldsApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(CustomFieldsApi);
     http = TestBed.inject(HttpTestingController);

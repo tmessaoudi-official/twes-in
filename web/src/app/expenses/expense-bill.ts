@@ -42,7 +42,7 @@ import {
   type SavedBill,
 } from './expense-forms';
 import type { ExpenseOptions } from './expenses-types';
-import { refusalParams } from '../shared/form/refusal-words';
+import { refusedError } from '../shared/form/refusal-words';
 
 /**
  * A supplier's bill as it is printed: a line for each VAT rate, its net and the rates on it (a levy such as FODEC beside
@@ -178,13 +178,9 @@ export class ExpenseBill {
         unplaced.push(refusal);
         continue;
       }
-      const key = `import.rejections.${refusal.reason ?? ''}`;
-      const known = refusal.reason !== null && this.translate.instant(key) !== key;
-      const error: FieldError = {
-        key: known ? key : 'import.rejections.invalid_value',
-        params: refusalParams(this.translate, this.written(refusal.params)),
-      };
-      placed.control.setErrors({ refused: error });
+      placed.control.setErrors({
+        refused: refusedError(this.translate, refusal, this.written(refusal.params)),
+      });
       placed.control.markAsTouched();
       first ??= placed.selector;
     }

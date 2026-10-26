@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
+  type AbstractControl,
   FormArray,
   FormControl,
   FormGroup,
@@ -24,9 +25,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { NgTemplateOutlet } from '@angular/common';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { merge, type Subscription, take } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
-import type { DescriptorFormGroup } from '../shared/form/form-builder';
+import type { DescriptorFormGroup, FieldError } from '../shared/form/form-builder';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { refusedError } from '../shared/form/refusal-words';
 import type { FieldValue } from '../shared/form/form-types';
 import type { FieldConflict } from '../shared/form/form-merge';
 import { dirtyCount } from '../shared/form/dirty-count';
@@ -150,6 +154,7 @@ export class PriceListsPage implements OnInit {
   private readonly live = inject(LiveChanges);
   private readonly deletes = inject(RecordDeletes);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   protected readonly scopes = SCOPES;
@@ -180,6 +185,12 @@ export class PriceListsPage implements OnInit {
   protected readonly editing = signal<PriceListRow | 'new' | null>(null);
   protected readonly scope = signal<PriceListScope>('everyone');
   protected readonly customer = signal<PickOption | null>(null);
+  /** What the API last refused about the customer, said under its picker, which holds no control. */
+  protected readonly customerRefused = signal<FieldError | null>(null);
+  /** Moves when a refusal is placed or dropped, so the editor reads its controls again. */
+  private readonly revision = signal(0);
+  /** Drops what the API last refused at the editor's next change. */
+  private refusalsCleared: Subscription | null = null;
   /** The list's own fields, typed as the page reads them. */
   private readonly fields = {
     name: new FormControl('', { nonNullable: true }),
@@ -360,6 +371,7 @@ export class PriceListsPage implements OnInit {
     if (row !== null) this.showPrices(row);
     this.scope.set('everyone');
     this.customer.set(null);
+    this.customerRefused.set(null);
     if (row !== null) this.showScope(row);
     if (row?.customerId) await this.nameCustomer(row);
     // Before the list counts as open: the form it is tracked from stands on this version.
@@ -441,6 +453,17 @@ export class PriceListsPage implements OnInit {
     this.editing.set(null);
     this.saved.set(null);
     this.facade.clearError();
+  }
+
+  protected chooseCustomer(option: PickOption | null): void {
+    this.customer.set(option);
+    this.customerRefused.set(null);
+  }
+
+  /** What the API refused about a control, once it is shown as touched. */
+  protected refusedOf(control: AbstractControl | undefined): FieldError | null {
+    this.revision();
+    return control?.touched ? ((control.getError('refused') as FieldError | null) ?? null) : null;
   }
 
   protected chooseScope(value: string): void {
@@ -530,6 +553,7 @@ export class PriceListsPage implements OnInit {
     };
     if (editing === 'new') {
       if (await this.facade.create(companyId, input)) this.closeSaved();
+      else this.showRefused(this.facade.refusals());
       return;
     }
     const outcome = await this.facade.revise(
@@ -540,6 +564,60 @@ export class PriceListsPage implements OnInit {
     );
     if (outcome === 'saved') this.closeSaved();
     else if (outcome === 'changed') await this.sync.savedElsewhere();
+    else this.showRefused(this.facade.refusals());
+  }
+
+  /**
+   * What the API refused, each under its own field: the list's own, the customer under its picker, and a price's
+   * product, quantity or price on its row, `items.2.minQuantity` from a rule or `items[2].minQuantity` from a
+   * constraint. What no field carries stays in the line above the editor. A refusal holds the save until the next
+   * change anywhere in the editor, which lets it ask the API again.
+   */
+  private showRefused(refusals: readonly FieldRefusal[]): void {
+    let placed = false;
+    for (const refusal of refusals) {
+      const error = refusedError(this.translate, refusal);
+      if (refusal.field === 'customerId' && this.scope() === 'customer') {
+        this.customerRefused.set(error);
+        placed = true;
+        continue;
+      }
+      const control = this.controlAt(refusal.field);
+      if (control === null) continue;
+      control.setErrors({ refused: error });
+      control.markAsTouched();
+      placed = true;
+    }
+    if (!placed) return;
+    this.refusalsCleared?.unsubscribe();
+    this.refusalsCleared = merge(this.form.valueChanges, this.prices.valueChanges)
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        for (const control of this.refusedControls()) control.updateValueAndValidity();
+        this.revision.update((revision) => revision + 1);
+      });
+    this.revision.update((revision) => revision + 1);
+  }
+
+  /** The control a refused field lands on, when the editor shows it. */
+  private controlAt(field: string): AbstractControl | null {
+    const item = /^items(?:\.(\d+)\.|\[(\d+)\]\.)(productId|minQuantity|unitPriceNet)$/.exec(field);
+    if (item !== null) {
+      const row = this.prices.controls.items.controls[Number(item[1] ?? item[2])];
+      const name = item[3] as 'productId' | 'minQuantity' | 'unitPriceNet';
+      return row === undefined ? null : row.controls[name];
+    }
+    const own = this.form.controls[field];
+    return own === undefined || (field === 'customerGroupId' && this.scope() !== 'group')
+      ? null
+      : own;
+  }
+
+  private refusedControls(): AbstractControl[] {
+    return [
+      ...Object.values(this.form.controls),
+      ...this.prices.controls.items.controls.flatMap((row) => Object.values(row.controls)),
+    ].filter((control) => control.hasError('refused'));
   }
 
   /** The list was saved: the editor closes and says so. */

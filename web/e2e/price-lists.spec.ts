@@ -64,3 +64,22 @@ test('the owner files a price list, finds it, and deletes it', async ({ page }) 
     await forget(page, name);
   }
 });
+
+// The editor is hand-written, not a descriptor form: a refusal the API alone makes is still said under its field, and
+// the form stays open with what was typed. Nothing is saved, so nothing is put back.
+test('a name longer than the API keeps is refused under the name, and the editor keeps what was typed', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const name = `Promo ${Date.now()} `.padEnd(121, 'x');
+  await page.goto('/price-lists');
+  await page.getByTestId('price-list-add').click();
+  await page.getByTestId('price-list-name').fill(name);
+  await page.getByTestId('price-list-save').click();
+
+  await expect(page.getByTestId('price-list-name-error')).toContainText(
+    'Texte refusé\u00a0: 120 caractères au plus.',
+  );
+  await expect(page.getByTestId('price-list-name')).toHaveValue(name);
+});

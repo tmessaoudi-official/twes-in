@@ -5,6 +5,7 @@ import { CustomersApi } from '../customers/customers-api';
 import type { CustomerGroupRow } from '../customers/customers-types';
 import { ProductsApi } from '../products/products-api';
 import { requestState } from '../shared/feedback/request-state';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { PickOption } from '../shared/form/pick-field';
 import { PriceListsApi, PriceListsRefused } from './price-lists-api';
 import type { ProductFigures } from './price-lists-figures';
@@ -26,6 +27,7 @@ export class PriceListsFacade {
   private readonly listsSignal = sessionSignal<readonly PriceListRow[]>([]);
   private readonly groupsSignal = sessionSignal<readonly CustomerGroupRow[]>([]);
   private readonly figuresSignal = sessionSignal<ReadonlyMap<string, ProductFigures>>(new Map());
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
   private readonly state = requestState<PriceListsError>((error) =>
     error instanceof PriceListsRefused ? error.code : 'network',
   );
@@ -36,6 +38,8 @@ export class PriceListsFacade {
   readonly figures = this.figuresSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** The fields the last save was refused on, for the editor to say under each. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
     await this.run(async () => {
@@ -159,11 +163,17 @@ export class PriceListsFacade {
 
   /** A write, then the lists read again, since a save moves a list's price count. */
   private async write(companyId: string, call: () => Promise<unknown>): Promise<boolean> {
-    return this.run(async () => {
-      await call();
-      this.listsSignal.set(await this.api.list(companyId));
-      return true;
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await call();
+        this.listsSignal.set(await this.api.list(companyId));
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof PriceListsRefused ? error.refusals : []),
+      },
+    );
   }
 
   /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */

@@ -125,13 +125,13 @@ class PriceList implements CompanyOwned
     public function replaceItems(array $items, \DateTimeImmutable $now): bool
     {
         if (\count($items) > self::ITEMS_MAX) {
-            throw new InvalidPriceList('items', \sprintf('A price list holds at most %d prices.', self::ITEMS_MAX));
+            throw new InvalidPriceList('items', \sprintf('A price list holds at most %d prices.', self::ITEMS_MAX), 'too_many_entries');
         }
         $seen = [];
         foreach ($items as $index => $item) {
             $key = $item->getProduct()->getId()->toRfc4122().'@'.$item->getMinQuantity();
             if (isset($seen[$key])) {
-                throw new InvalidPriceList(\sprintf('items.%d.minQuantity', $index), 'A product has one price from each quantity.');
+                throw new InvalidPriceList(\sprintf('items.%d.minQuantity', $index), 'A product has one price from each quantity.', 'quantity_priced_twice');
             }
             $seen[$key] = true;
         }
@@ -169,13 +169,13 @@ class PriceList implements CompanyOwned
     {
         $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidPriceList('name', \sprintf('A price list is named in 1 to %d characters.', self::NAME_MAX));
+            throw new InvalidPriceList('name', \sprintf('A price list is named in 1 to %d characters.', self::NAME_MAX), '' === $name ? 'value_required' : 'invalid_text', '' === $name ? [] : ['max' => self::NAME_MAX]);
         }
         if (null !== $customerGroupId && null !== $customerId) {
-            throw new InvalidPriceList('customerId', 'A price list is for one customer or for one group, not both.');
+            throw new InvalidPriceList('customerId', 'A price list is for one customer or for one group, not both.', 'customer_or_group');
         }
         if (null !== $validFrom && null !== $validTo && $validTo < $validFrom) {
-            throw new InvalidPriceList('validTo', 'A price list ends on or after the day it starts.');
+            throw new InvalidPriceList('validTo', 'A price list ends on or after the day it starts.', 'last_day_before_first');
         }
         $this->name = $name;
         $this->customerGroupId = $customerGroupId;

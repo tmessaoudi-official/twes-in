@@ -71,6 +71,9 @@ import frMfaLockout from '../../public/i18n/mfa-lockout/fr.json';
 import arSchedule from '../../public/i18n/schedule/ar.json';
 import enSchedule from '../../public/i18n/schedule/en.json';
 import frSchedule from '../../public/i18n/schedule/fr.json';
+import arFormRefusals from '../../public/i18n/form-refusals/ar.json';
+import enFormRefusals from '../../public/i18n/form-refusals/en.json';
+import frFormRefusals from '../../public/i18n/form-refusals/fr.json';
 import arSettingsRefusals from '../../public/i18n/settings-refusals/ar.json';
 import enSettingsRefusals from '../../public/i18n/settings-refusals/en.json';
 import frSettingsRefusals from '../../public/i18n/settings-refusals/fr.json';
@@ -128,6 +131,7 @@ const parts: Record<string, Record<string, unknown>> = {
   roles: { fr: frRoles, en: enRoles, ar: arRoles },
   'mfa-lockout': { fr: frMfaLockout, en: enMfaLockout, ar: arMfaLockout },
   schedule: { fr: frSchedule, en: enSchedule, ar: arSchedule },
+  'form-refusals': { fr: frFormRefusals, en: enFormRefusals, ar: arFormRefusals },
   'settings-refusals': { fr: frSettingsRefusals, en: enSettingsRefusals, ar: arSettingsRefusals },
   'stock-count': { fr: frStockCount, en: enStockCount, ar: arStockCount },
   'stock-moves': { fr: frStockMoves, en: enStockMoves, ar: arStockMoves },

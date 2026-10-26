@@ -212,18 +212,28 @@ final class PriceListsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
 
         foreach ([
-            'customerId' => ['name' => 'A', 'customerGroupId' => $this->group, 'customerId' => $this->customer],
-            'validTo' => ['name' => 'B', 'validFrom' => '2026-10-05', 'validTo' => '2026-10-04'],
-            'items.0.minQuantity' => ['name' => 'C', 'items' => [['productId' => $this->screw, 'minQuantity' => '0', 'unitPriceNet' => '1']]],
-            'items.0.unitPriceNet' => ['name' => 'D', 'items' => [['productId' => $this->screw, 'minQuantity' => '1', 'unitPriceNet' => '1.00001']]],
-            'items.1.minQuantity' => ['name' => 'E', 'items' => [['productId' => $this->screw, 'minQuantity' => '5', 'unitPriceNet' => '1'], ['productId' => $this->screw, 'minQuantity' => '5.000', 'unitPriceNet' => '2']]],
-            'items.0.productId' => ['name' => 'F', 'items' => [['productId' => $this->theirProduct, 'minQuantity' => '1', 'unitPriceNet' => '1']]],
-            'customerGroupId' => ['name' => 'G', 'customerGroupId' => '0192b7a0-0000-7000-8000-000000000001'],
-        ] as $field => $body) {
+            'customerId' => [['name' => 'A', 'customerGroupId' => $this->group, 'customerId' => $this->customer], 'customer_or_group', []],
+            'validTo' => [['name' => 'B', 'validFrom' => '2026-10-05', 'validTo' => '2026-10-04'], 'last_day_before_first', []],
+            'items.0.minQuantity' => [['name' => 'C', 'items' => [['productId' => $this->screw, 'minQuantity' => '0', 'unitPriceNet' => '1']]], 'quantity_above_zero', []],
+            'items.0.unitPriceNet' => [['name' => 'D', 'items' => [['productId' => $this->screw, 'minQuantity' => '1', 'unitPriceNet' => '1.00001']]], 'invalid_price', []],
+            'items.1.minQuantity' => [['name' => 'E', 'items' => [['productId' => $this->screw, 'minQuantity' => '5', 'unitPriceNet' => '1'], ['productId' => $this->screw, 'minQuantity' => '5.000', 'unitPriceNet' => '2']]], 'quantity_priced_twice', []],
+            'items.0.productId' => [['name' => 'F', 'items' => [['productId' => $this->theirProduct, 'minQuantity' => '1', 'unitPriceNet' => '1']]], 'unknown_choice', []],
+            'customerGroupId' => [['name' => 'G', 'customerGroupId' => '0192b7a0-0000-7000-8000-000000000001'], 'unknown_group_id', []],
+        ] as $field => [$body, $reason, $params]) {
             $this->postJson($this->lists(), $body);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, $this->stringAt($this->json(), 'detail'));
+            self::assertSame([['propertyPath' => $field, 'reason' => $reason, 'params' => $params]], $this->refusals(), $field);
         }
+        // A customer merged away names the one kept, to choose instead.
+        $this->em()->getConnection()->executeStatement('UPDATE customer SET merged_into_id = ?, is_active = false WHERE id = ?', [$this->otherCustomer, $this->customer]);
+        $this->postJson($this->lists(), ['name' => 'J', 'customerId' => $this->customer]);
+        self::assertSame([['propertyPath' => 'customerId', 'reason' => 'customer_merged_choose', 'params' => ['number' => 'CLI-0001', 'kept' => 'CLI-0002']]], $this->refusals());
+        $this->postJson($this->lists(), ['name' => 'K', 'customerId' => '0192b7a0-0000-7000-8000-000000000002']);
+        self::assertSame([['propertyPath' => 'customerId', 'reason' => 'unknown_choice', 'params' => []]], $this->refusals());
+        $this->postJson($this->lists(), ['name' => ' ']);
+        self::assertSame([['propertyPath' => 'name', 'reason' => 'value_required', 'params' => []]], $this->refusals());
+
         foreach ([['name' => ' '], ['name' => 'H', 'validFrom' => 'tomorrow'], ['name' => 'I', 'customerId' => 'not-a-uuid']] as $body) {
             $this->postJson($this->lists(), $body);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);

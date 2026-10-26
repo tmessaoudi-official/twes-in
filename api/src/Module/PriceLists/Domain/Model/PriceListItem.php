@@ -61,7 +61,7 @@ class PriceListItem implements CompanyOwned
     public function __construct(PriceList $priceList, Product $product, string $minQuantity, string $unitPriceNet)
     {
         if (!$priceList->getCompany()->getId()->equals($product->getCompany()->getId())) {
-            throw new InvalidPriceList('productId', 'A price list prices the products of its own company.');
+            throw new InvalidPriceList('productId', 'A price list prices the products of its own company.', 'unknown_choice');
         }
         $this->id = Uuid::v7();
         $this->company = $priceList->getCompany();
@@ -80,11 +80,11 @@ class PriceListItem implements CompanyOwned
     {
         $quantity = TypedText::trimmed($quantity);
         if (1 !== preg_match(self::QUANTITY, $quantity, $match)) {
-            throw new InvalidPriceList('minQuantity', 'A minimum quantity is a decimal number with at most three decimals.');
+            throw new InvalidPriceList('minQuantity', 'A minimum quantity is a decimal number with at most three decimals.', 'invalid_quantity');
         }
         $normalized = $match[1].'.'.str_pad($match[2] ?? '', 3, '0');
         if (!is_numeric($normalized) || 1 !== new Number($normalized)->compare(0)) {
-            throw new InvalidPriceList('minQuantity', 'A price applies from a quantity above zero.');
+            throw new InvalidPriceList('minQuantity', 'A price applies from a quantity above zero.', 'quantity_above_zero');
         }
 
         return $normalized;
@@ -99,7 +99,7 @@ class PriceListItem implements CompanyOwned
     {
         $price = TypedText::trimmed($price);
         if (1 !== preg_match(self::PRICE, $price, $match)) {
-            throw new InvalidPriceList('unitPriceNet', 'A price is a decimal number from 0 to 9999999999.9999, with at most four decimals.');
+            throw new InvalidPriceList('unitPriceNet', 'A price is a decimal number from 0 to 9999999999.9999, with at most four decimals.', 'invalid_price');
         }
         $normalized = $match[1].'.'.str_pad($match[2] ?? '', 4, '0');
         if (!is_numeric($normalized)) {

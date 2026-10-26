@@ -34,7 +34,7 @@ import type { FieldRefusal } from './field-refusals';
 import type { FieldConflict } from './form-merge';
 import type { FieldValue, FormDescriptor, FormField, FormSection, FormValues } from './form-types';
 import { applicableValues, applyVisibility, fieldApplies } from './form-visibility';
-import { refusalParams } from './refusal-words';
+import { refusedError } from './refusal-words';
 
 /** Where one `pick` field's rows come from, and the record it holds now as that record itself says it. */
 export interface PickSource {
@@ -334,13 +334,7 @@ export class DescriptorForm {
         unplaced.push(refusal);
         continue;
       }
-      const key = `import.rejections.${refusal.reason ?? ''}`;
-      const known = refusal.reason !== null && translate.instant(key) !== key;
-      const error: FieldError = {
-        key: known ? key : 'import.rejections.invalid_value',
-        params: refusalParams(translate, refusal.params),
-      };
-      control.setErrors({ refused: error });
+      control.setErrors({ refused: refusedError(translate, refusal) });
       control.markAsTouched();
     }
     // A refusal is often mended in another field (the regime, for taxes it does not charge): the first change

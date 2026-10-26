@@ -3129,17 +3129,7 @@
       "default_at_top": "L’emplacement par défaut de l’établissement reste en haut de son arbre : il ne se range sous aucun autre.",
       "default_not_quarantine": "L’emplacement par défaut ne devient pas une quarantaine : toute livraison y retombe, ce qui s’y trouve doit pouvoir se vendre.",
       "location_twice": "Cet emplacement est déjà dans la liste : retirez l’un des deux.",
-      "establishment_kept": "Un emplacement reste dans son établissement : créez-en un dans l’autre établissement.",
-      "establishment_code": "Ce code ne s’écrit pas ainsi : il prend la forme de {{example}}.",
-      "code_kept": "Des documents numérotés portent ce code : il ne change plus.",
-      "default_kept": "L’entreprise garde toujours un établissement par défaut : faites plutôt d’un autre le défaut.",
-      "sequence_from": "Cette série reprend à {{next}} au moins : aucun numéro n’est donné deux fois.",
-      "numbering_format": "Format refusé : du texte (lettres, chiffres, espaces, _ . / -) autour de {YYYY}, {YY}, {MM}, {EST} et d’une seule séquence, {SEQ} ou {SEQ:n} sur 1 à {{max}} chiffres (exemple : FA-{YYYY}-{SEQ:5}).",
-      "format_prints_year": "Une série qui repart chaque année imprime l’année, {YYYY} ou {YY} : sinon le premier numéro d’une année en redonne un déjà donné.",
-      "format_prints_month": "Une série qui repart chaque mois imprime le mois et l’année, {MM} avec {YYYY} ou {YY} : sinon le premier numéro d’un mois en redonne un déjà donné.",
-      "choices_count": "Un champ à choix propose de 1 à {{max}} choix.",
-      "choice_twice": "Ce choix est déjà proposé : retirez l’un des deux.",
-      "name_required": "Un contact a un prénom ou un nom : remplissez l’un des deux."
+      "establishment_kept": "Un emplacement reste dans son établissement : créez-en un dans l’autre établissement."
     },
     "identifier_parts": {
       "number": "le numéro",

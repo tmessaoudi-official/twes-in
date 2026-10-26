@@ -6,6 +6,7 @@ import { TestBed } from '@angular/core/testing';
 import { CompanyApi, CompanyRefused, companyLogoUrl } from './company-api';
 import type { CompanyProfileChanges } from './company-types';
 import { saidAlready } from '../shared/errors/said-already';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 const changes: CompanyProfileChanges = {
   legalName: 'Demo SARL',
@@ -32,7 +33,12 @@ describe('CompanyApi, the profile', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(CompanyApi);
     http = TestBed.inject(HttpTestingController);
@@ -128,7 +134,12 @@ describe('CompanyApi, the members', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(CompanyApi);
     http = TestBed.inject(HttpTestingController);
@@ -225,7 +236,12 @@ describe('CompanyApi, the company a sign-in opens', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(CompanyApi);
     http = TestBed.inject(HttpTestingController);
@@ -299,7 +315,12 @@ describe('CompanyApi, the logo', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(CompanyApi);
     http = TestBed.inject(HttpTestingController);

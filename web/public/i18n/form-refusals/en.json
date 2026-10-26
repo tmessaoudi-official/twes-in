@@ -1,0 +1,20 @@
+{
+  "import": {
+    "rejections": {
+      "establishment_code": "This code is not written that way: it takes the shape of {{example}}.",
+      "code_kept": "Numbered documents carry this code: it no longer changes.",
+      "default_kept": "The company always keeps one default establishment: make another one the default instead.",
+      "sequence_from": "This series resumes at {{next}} or above: no number is given twice.",
+      "numbering_format": "Format refused: text (letters, digits, spaces, _ . / -) around {YYYY}, {YY}, {MM}, {EST} and one sequence only, {SEQ} or {SEQ:n} on 1 to {{max}} digits (example: FA-{YYYY}-{SEQ:5}).",
+      "format_prints_year": "A series that starts again each year prints the year, {YYYY} or {YY}: otherwise the first number of a year is one already given.",
+      "format_prints_month": "A series that starts again each month prints the month and the year, {MM} with {YYYY} or {YY}: otherwise the first number of a month is one already given.",
+      "choices_count": "A choice field offers 1 to {{max}} choices.",
+      "choice_twice": "This choice is already offered: remove one of the two.",
+      "name_required": "A contact has a first or a last name: fill in one of them.",
+      "customer_merged_choose": "Customer “{{number}}” was merged into “{{kept}}”: choose “{{kept}}” instead.",
+      "quantity_priced_twice": "This product already has a price from this quantity: remove one of the two rows.",
+      "customer_or_group": "A price list is for one customer or for one group, not both: choose one of them.",
+      "quantity_above_zero": "Expected: a quantity above zero."
+    }
+  }
+}

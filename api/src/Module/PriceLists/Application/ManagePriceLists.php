@@ -123,13 +123,13 @@ final readonly class ManagePriceLists implements DeclaresAuditActions
     {
         $customer = null === $input->customerId ? null : $this->customers->ofIdInCompany($input->customerId, $company->getId());
         if (null !== $input->customerId && null === $customer) {
-            throw new InvalidPriceList('customerId', 'No customer of this company has this id.');
+            throw new InvalidPriceList('customerId', 'No customer of this company has this id.', 'unknown_choice');
         }
         if (null !== $customer && $customer->isMergedAway()) {
-            throw new InvalidPriceList('customerId', \sprintf('The customer %s was merged into %s: a price list is for the customer kept.', $customer->getNumber(), $customer->standingFor()->getNumber()));
+            throw new InvalidPriceList('customerId', \sprintf('The customer %s was merged into %s: a price list is for the customer kept.', $customer->getNumber(), $customer->standingFor()->getNumber()), 'customer_merged_choose', ['number' => $customer->getNumber(), 'kept' => $customer->standingFor()->getNumber()]);
         }
         if (null !== $input->customerGroupId && null === $this->groups->ofIdInCompany($input->customerGroupId, $company->getId())) {
-            throw new InvalidPriceList('customerGroupId', 'No customer group of this company has this id.');
+            throw new InvalidPriceList('customerGroupId', 'No customer group of this company has this id.', 'unknown_group_id');
         }
     }
 
@@ -149,11 +149,11 @@ final readonly class ManagePriceLists implements DeclaresAuditActions
         }
         $items = [];
         foreach ($rows as $index => $row) {
-            $product = $products[$row->productId->toRfc4122()] ?? throw new InvalidPriceList(\sprintf('items.%d.productId', $index), 'No product of this company has this id.');
+            $product = $products[$row->productId->toRfc4122()] ?? throw new InvalidPriceList(\sprintf('items.%d.productId', $index), 'No product of this company has this id.', 'unknown_choice');
             try {
                 $items[] = new PriceListItem($list, $product, $row->minQuantity, $row->unitPriceNet);
             } catch (InvalidPriceList $refused) {
-                throw new InvalidPriceList(\sprintf('items.%d.%s', $index, $refused->field), $refused->getMessage());
+                throw new InvalidPriceList(\sprintf('items.%d.%s', $index, $refused->field), $refused->getMessage(), $refused->reason, $refused->params);
             }
         }
 

@@ -23,8 +23,8 @@ use Symfony\Component\Validator\Constraints as Assert;
  */
 final class PriceListItemRow
 {
-    #[Assert\NotBlank(groups: [PriceListResource::WRITE])]
-    #[Assert\Uuid(groups: [PriceListResource::WRITE])]
+    #[Assert\NotBlank(groups: [PriceListResource::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Uuid(groups: [PriceListResource::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([PriceListResource::READ, PriceListResource::WRITE])]
     public string $productId = '';
 
@@ -36,13 +36,13 @@ final class PriceListItemRow
     public string $productName = '';
 
     /** From this quantity up, with at most three decimals. */
-    #[Assert\NotBlank(groups: [PriceListResource::WRITE])]
+    #[Assert\NotBlank(groups: [PriceListResource::WRITE], payload: ['reason' => 'value_required'])]
     #[Assert\Type('string', groups: [PriceListResource::WRITE])]
     #[Groups([PriceListResource::READ, PriceListResource::WRITE])]
     public string $minQuantity = '1';
 
     /** Net of tax, with at most four decimals. */
-    #[Assert\NotBlank(groups: [PriceListResource::WRITE])]
+    #[Assert\NotBlank(groups: [PriceListResource::WRITE], payload: ['reason' => 'value_required'])]
     #[Assert\Type('string', groups: [PriceListResource::WRITE])]
     #[Groups([PriceListResource::READ, PriceListResource::WRITE])]
     public string $unitPriceNet = '0';

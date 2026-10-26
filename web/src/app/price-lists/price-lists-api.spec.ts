@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { PriceListsApi, PriceListsRefused } from './price-lists-api';
 import type { PriceListInput } from './price-lists-types';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 const read = {
   id: 'l1',
@@ -51,7 +52,12 @@ describe('PriceListsApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(PriceListsApi);
     http = TestBed.inject(HttpTestingController);
@@ -115,6 +121,26 @@ describe('PriceListsApi', () => {
       .expectOne('/api/companies/c1/price-lists/l1')
       .flush({ title: 'Taken' }, { status: 409, statusText: 'Conflict' });
     await expect(taken).rejects.toEqual(new PriceListsRefused('name_taken'));
+  });
+
+  it('names each field a save was refused on, a price by its row', async () => {
+    const refused = api.create('c1', input);
+    http.expectOne('/api/companies/c1/price-lists').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'items.1.minQuantity',
+            message: 'x',
+            payload: { reason: 'quantity_priced_twice' },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'items.1.minQuantity', reason: 'quantity_priced_twice', params: {} }],
+    });
   });
 
   it('names a refusal: a taken name, a missing list, a refused row, a denied right, no network', async () => {

@@ -94,6 +94,17 @@ describe('PriceListsFacade', () => {
     expect(facade.error()).toBe('name_taken');
   });
 
+  it('keeps the fields a save was refused on until the next save', async () => {
+    const twice = { field: 'items.1.minQuantity', reason: 'quantity_priced_twice', params: {} };
+    api.revise.mockRejectedValueOnce(new PriceListsRefused('invalid', [twice]));
+    expect(await facade.revise('c1', 'l1', input, 1)).toBe('refused');
+    expect(facade.refusals()).toEqual([twice]);
+
+    api.create.mockResolvedValueOnce(row);
+    await facade.create('c1', input);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it('names a refusal and keeps the lists it had', async () => {
     await facade.load('c1');
     api.create.mockRejectedValue(new PriceListsRefused('name_taken'));

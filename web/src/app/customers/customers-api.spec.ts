@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { CustomersApi } from './customers-api';
 import type { CustomerInput, CustomerSearch } from './customers-types';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 const everyCustomer: CustomerSearch = {
   page: 1,
@@ -53,7 +54,12 @@ describe('CustomersApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(CustomersApi);
     http = TestBed.inject(HttpTestingController);

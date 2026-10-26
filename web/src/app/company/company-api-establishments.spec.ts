@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { CompanyApi } from './company-api';
 import type { EstablishmentInput } from './company-types';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 const sfax: EstablishmentInput = {
   code: '001',
@@ -24,7 +25,12 @@ describe('CompanyApi establishments and numbering', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // A refused save opens the texts its reasons are said in; their fetch is the texts part's own concern.
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(CompanyApi);
     http = TestBed.inject(HttpTestingController);

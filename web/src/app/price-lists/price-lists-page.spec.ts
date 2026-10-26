@@ -27,6 +27,7 @@ import { PriceListsFacade } from './price-lists-facade';
 import { PriceListsPage } from './price-lists-page';
 import type { ProductFigures } from './price-lists-figures';
 import type { PriceListRow } from './price-lists-types';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -45,6 +46,13 @@ class StaticLoader implements TranslateLoader {
           figures: 'Prix actuel {{shelf}} · {{change}}',
           figures_cost: 'Prix actuel {{shelf}} · coût {{cost}} · marge {{margin}} · {{change}}',
           below_cost: 'Sous le coût',
+        },
+      },
+      import: {
+        rejections: {
+          last_day_before_first: 'Le dernier jour vient le premier jour ou après.',
+          quantity_priced_twice: 'Ce produit a déjà un prix à partir de cette quantité.',
+          invalid_price: 'Prix refusé.',
         },
       },
     });
@@ -83,6 +91,7 @@ describe('PriceListsPage', () => {
   const lists = signal<readonly PriceListRow[]>([everyone, wholesale]);
   const busy = signal(false);
   const error = signal<string | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const permissions = signal(true);
   const figures = signal<ReadonlyMap<string, ProductFigures>>(new Map());
   const facade = {
@@ -92,6 +101,7 @@ describe('PriceListsPage', () => {
     ]).asReadonly(),
     busy: busy.asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     figures: figures.asReadonly(),
     loadFigures: vi.fn(),
     load: vi.fn(),
@@ -580,6 +590,50 @@ describe('PriceListsPage', () => {
     await settle();
 
     expect(query('price-rows-empty')).not.toBeNull();
+  });
+
+  it('says each refusal of a save under its field, a price on its row, until the next change', async () => {
+    const pen = { productId: 'p1', productReference: 'REF-1', productName: 'Stylo' };
+    facade.open.mockResolvedValue({
+      ...wholesale,
+      items: [
+        { ...pen, minQuantity: '1.000', unitPriceNet: '1.0000' },
+        { ...pen, minQuantity: '10.000', unitPriceNet: '0.9000' },
+      ],
+    });
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'validTo', reason: 'last_day_before_first', params: {} },
+        { field: 'items.1.minQuantity', reason: 'quantity_priced_twice', params: {} },
+        { field: 'items[0].unitPriceNet', reason: 'invalid_price', params: {} },
+      ]);
+      return 'refused';
+    });
+    const { fixture, query, settle } = await render();
+    query<HTMLButtonElement>('row-action-edit-l2')!.click();
+    await settle();
+    switchActive(query);
+    await settle();
+    query<HTMLButtonElement>('price-list-save')!.click();
+    await settle();
+
+    expect(query('price-list-to-error')?.textContent).toContain(
+      'Le dernier jour vient le premier jour ou après.',
+    );
+    expect(query('price-row-1-min-error')?.textContent).toContain(
+      'Ce produit a déjà un prix à partir de cette quantité.',
+    );
+    expect(query('price-row-0-price-error')?.textContent).toContain('Prix refusé.');
+
+    const min = query<HTMLInputElement>('price-row-1-min')!;
+    min.value = '20';
+    min.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await settle();
+    expect(query('price-row-1-min-error')).toBeNull();
+    error.set(null);
+    refusals.set([]);
   });
 
   it('keeps the form open and names the refusal when the name is taken', async () => {

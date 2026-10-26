@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { firstValueFrom } from 'rxjs';
 import type {
   CompanyProfileCompanyProfileRead,
@@ -48,6 +49,7 @@ export class CompanyRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class CompanyApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   /** Every company the session's user belongs to. */
   async companies(): Promise<CompanyOption[]> {
@@ -329,7 +331,10 @@ export class CompanyApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new CompanyRefused(refusal(error), refusalsOf(error)));
+      throw refusedFor(
+        error,
+        new CompanyRefused(refusal(error), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

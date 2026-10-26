@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
+import { formRefusalsIn } from '../form/form-refusals-api';
 import { firstValueFrom } from 'rxjs';
 import type {
   CustomFieldCustomFieldRead,
@@ -17,7 +18,7 @@ import {
   type CustomFieldInput,
 } from './custom-fields-types';
 import { refusedFor } from '../errors/said-already';
-import { type FieldRefusal, refusalsIn } from '../form/field-refusals';
+import type { FieldRefusal } from '../form/field-refusals';
 
 /** Why the API refused, as the screens translate it. */
 export type CustomFieldsError =
@@ -38,6 +39,7 @@ export class CustomFieldsRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class CustomFieldsApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   /** Every field of the company for one kind of record, retired ones included, by position then key. */
   async list(companyId: string, entity: CustomFieldEntity): Promise<CustomFieldDefinition[]> {
@@ -89,10 +91,7 @@ export class CustomFieldsApi {
     } catch (error) {
       throw refusedFor(
         error,
-        new CustomFieldsRefused(
-          codeOf(error),
-          error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [],
-        ),
+        new CustomFieldsRefused(codeOf(error), await formRefusalsIn(this.injector, error)),
       );
     }
   }

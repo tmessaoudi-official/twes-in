@@ -89,3 +89,21 @@ test('the owner reformats invoices and sees the next number before saving', asyn
     await putSeries(page, original);
   }
 });
+
+// A format the API refuses for a reason only its rules know is said under the field, in the words of the texts part a
+// refused save opens (`form-refusals`), not as « Valeur refusée. »; nothing is saved, so nothing is put back.
+test('a format that does not print its period is refused under the field, in its own words', async ({
+  page,
+}) => {
+  await signIn(page);
+  const { establishmentCode: code, resetPeriod } = await invoices(page);
+  expect(resetPeriod).toBe('yearly');
+  await page.goto('/company/numbering');
+  await rowAction(page, `series-${code}-invoice`, 'edit').click();
+  await page.getByTestId('field-format').fill('F-{SEQ:4}');
+  await page.getByTestId('series-save').click();
+
+  await expect(page.getByTestId('field-error-format')).toContainText(
+    'Une série qui repart chaque année imprime l’année',
+  );
+});
