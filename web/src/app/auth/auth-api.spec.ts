@@ -32,6 +32,7 @@ const owner: Me = {
       daysLeft: null,
     },
     logoVersion: 'f1',
+    closing: null,
   },
   permissions: ['*'],
   mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
@@ -72,6 +73,26 @@ describe('AuthApi', () => {
       { key: 'quotes', planned: 'v1' },
       { key: 'zakat', planned: 'later' },
     ]);
+  });
+
+  it('says a closed company’s terms, and none for one that works', async () => {
+    const working = api.me();
+    http.expectOne('/api/auth/me').flush(owner);
+    expect((await working).company?.closing).toBeNull();
+
+    const closed = api.me();
+    http.expectOne('/api/auth/me').flush({
+      ...owner,
+      company: {
+        ...owner.company,
+        status: 'closed',
+        closing: { retainUntil: '2036-12-31', reopenUntil: '2026-11-02T10:00:00+01:00' },
+      },
+    });
+    expect((await closed).company?.closing).toEqual({
+      retainUntil: '2036-12-31',
+      reopenUntil: '2026-11-02T10:00:00+01:00',
+    });
   });
 
   it('reads which countries the demo is open in', async () => {

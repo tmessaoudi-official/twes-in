@@ -110,6 +110,14 @@ export interface WorkingCompany {
   subscription: CompanySubscription | null;
   /** The id of the company's stored logo, which changes with it; null without one. */
   logoVersion?: string | null;
+  /** A closed company's terms, null while it works. */
+  closing?: CompanyClosing | null;
+}
+
+/** Until when a closed company is kept (a day) and until when its owner may still reopen it (a moment). */
+export interface CompanyClosing {
+  readonly retainUntil: string;
+  readonly reopenUntil: string;
 }
 
 /** Whether the account has a second factor in force, and whether a company it belongs to requires one. */

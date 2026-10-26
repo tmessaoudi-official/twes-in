@@ -14,8 +14,6 @@ use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
-use App\Settings\Application\ReadSetting;
-use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\CreateCompany;
@@ -49,7 +47,7 @@ final readonly class CloseDownCompany
         private SupportGrantRepository $supportGrants,
         private FiscalPresets $presets,
         private ConfirmStepUp $stepUp,
-        private ReadSetting $settings,
+        private ClosingTerms $terms,
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
@@ -79,7 +77,7 @@ final readonly class CloseDownCompany
             $this->audit->record(new AuditEntry(CreateCompany::ENTITY_TYPE, $company->getId(), self::CLOSED_DOWN, $owner->getUser()->getId(), ['retainUntil' => $retainUntil->format('Y-m-d')], $company->getId()));
         });
 
-        return new ClosedDown($retainUntil, $now->modify(\sprintf('+%d days', $this->reopenDays())));
+        return new ClosedDown($retainUntil, $this->terms->reopenUntil($now));
     }
 
     /** @throws OwnerOnly|StepUpRequired|ReopenPeriodOver|NotClosedDown */
@@ -87,13 +85,12 @@ final readonly class CloseDownCompany
     {
         $owner = $this->provedOwner($company, $userId);
         $now = $this->clock->now();
-        $days = $this->reopenDays();
 
-        $this->transactions->run(function () use ($company, $owner, $now, $days): void {
+        $this->transactions->run(function () use ($company, $owner, $now): void {
             // Whether it is closed, and since when, as the held row says: never as a read from before another save.
             $company = $this->held($company);
             $closedDownAt = $company->getClosedDownAt() ?? throw new NotClosedDown('Only a closed company is reopened.');
-            if ($now > $closedDownAt->modify(\sprintf('+%d days', $days))) {
+            if ($now > $this->terms->reopenUntil($closedDownAt)) {
                 throw new ReopenPeriodOver('The days to take the closing back are over.');
             }
             $company->reopen($now);
@@ -119,15 +116,5 @@ final readonly class CloseDownCompany
     private function held(Company $company): Company
     {
         return $this->companies->lockedOfId($company->getId()) ?? throw new CompanyNotFound('No such company.');
-    }
-
-    private function reopenDays(): int
-    {
-        $days = $this->settings->value(new SettingContext(), CompanyClosingSettings::REOPEN_DAYS);
-        if (!\is_int($days)) {
-            throw new \UnexpectedValueException('The days to reopen a closed company are not a number.');
-        }
-
-        return $days;
     }
 }

@@ -477,6 +477,13 @@ export class AppShell {
       },
       inject(DestroyRef),
     );
+    // A company suspended, closed or locked while one of its screens is open: the guard runs only on a navigation, so
+    // every request would answer a refusal until the next one. The shell goes to the page that says why at once; a
+    // form with unsaved changes still asks first.
+    effect(() => {
+      if (this.auth.companyClosed())
+        untracked(() => void this.router.navigateByUrl('/awaiting-approval'));
+    });
     effect(() => {
       if (!this.activity.sessionExpired()) return;
       untracked(() => {

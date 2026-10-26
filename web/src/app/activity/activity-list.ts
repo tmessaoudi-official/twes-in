@@ -65,6 +65,8 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'company.logo_changed',
   'company.logo_removed',
   'company.mfa_required_changed',
+  'company.closed_down',
+  'company.reopened',
   'customer.created',
   'customer.revised',
   'customer.credit_applied',

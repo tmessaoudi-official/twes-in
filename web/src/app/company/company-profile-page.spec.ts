@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { CompanyClosingActions } from './company-closing-actions';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
@@ -110,6 +111,8 @@ describe('CompanyProfilePage', () => {
       imports: [CompanyProfilePage],
       providers: [
         ...provideQuietFeedback(),
+        // The closing section at the foot has its own spec.
+        { provide: CompanyClosingActions, useValue: { close: vi.fn() } },
         // The record bar hides what is coming when « Montrer ce qui arrive » is off.
         { provide: ThemeFacade, useValue: { showComing: signal(true) } },
         provideTranslateService({

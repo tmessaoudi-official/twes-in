@@ -13,8 +13,15 @@ import { AuthFacade } from './auth-facade';
 import { Session } from '../shared/session/session';
 import type { SignedInState } from './auth-types';
 import { AwaitingApprovalPage } from './awaiting-approval-page';
+import { CompanyClosingActions } from '../company/company-closing-actions';
 import { CompanyFacade } from '../company/company-facade';
 import type { CompanyOption } from '../company/company-types';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import { provideStillAppearance } from '../shared/testing/appearance';
 import { provideQuietFeedback } from '../shared/testing/feedback';
 
@@ -28,6 +35,10 @@ class StaticLoader implements TranslateLoader {
           suspended: '{{company}} est suspendue.',
           locked: '{{company}} est fermée en attendant le règlement.',
           closed: '{{company}} est fermée.',
+          closed_kept: 'Conservée jusqu’au {{day}}.',
+          reopen_until: 'Rouvrable jusqu’au {{moment}}.',
+          reopen: 'Rouvrir l’entreprise',
+          reopen_ask_owner: 'Son propriétaire peut la rouvrir jusqu’au {{moment}}.',
           declare_payment: 'Déclarer un règlement',
           ask_owner: 'Seul le propriétaire peut déclarer le règlement.',
           elsewhere: 'Vos autres entreprises',
@@ -42,6 +53,8 @@ function state(
   status: string,
   access: 'full' | 'read_only' | 'locked' = 'full',
   permissions: string[] = ['*'],
+  closing: { retainUntil: string; reopenUntil: string } | null = null,
+  role = 'owner',
 ): SignedInState {
   return {
     user: {
@@ -60,8 +73,9 @@ function state(
       locale: 'fr',
       timezone: 'Africa/Tunis',
       status,
-      role: 'owner',
+      role,
       access,
+      closing,
       subscription:
         access === 'locked'
           ? {
@@ -104,6 +118,7 @@ describe('AwaitingApprovalPage', () => {
     supportAccessUntil: null,
   });
   const listed = signal<readonly CompanyOption[]>([]);
+  const closingActions = { reopen: vi.fn(async () => true) };
   const companies = {
     companies: listed,
     load: vi.fn(async () => listed()),
@@ -123,8 +138,12 @@ describe('AwaitingApprovalPage', () => {
         provideRouter([]),
         { provide: AuthFacade, useValue: auth },
         { provide: CompanyFacade, useValue: companies },
+        { provide: CompanyClosingActions, useValue: closingActions },
         { provide: Session, useExisting: AuthFacade },
         provideStillAppearance(),
+        // The closing's days are said through the reader's formats.
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
@@ -191,6 +210,50 @@ describe('AwaitingApprovalPage', () => {
 
     expect(query('awaiting-closed')?.textContent).toContain('Nouvelle Société');
     expect(query('awaiting-pending')).toBeNull();
+  });
+
+  describe('a company its owner closed', () => {
+    const inAWeek = new Date(Date.now() + 7 * 86_400_000).toISOString();
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString();
+
+    beforeEach(() => closingActions.reopen.mockClear());
+
+    it('says until when it is kept, and offers its owner to reopen it until the day the API set', async () => {
+      me.set(state('closed', 'full', ['*'], { retainUntil: '2036-12-31', reopenUntil: inAWeek }));
+      const { fixture, query } = await render();
+
+      expect(query('awaiting-closed-kept')?.textContent).toContain('2036');
+      expect(query('awaiting-reopen-until')).not.toBeNull();
+      query('awaiting-reopen')?.click();
+      await fixture.whenStable();
+
+      expect(closingActions.reopen).toHaveBeenCalledWith({ id: 'c1', name: 'Nouvelle Société' });
+    });
+
+    it('tells a member the owner may reopen it, offering them nothing they would be refused', async () => {
+      me.set(
+        state(
+          'closed',
+          'full',
+          ['company.read'],
+          { retainUntil: '2036-12-31', reopenUntil: inAWeek },
+          'accountant',
+        ),
+      );
+      const { query } = await render();
+
+      expect(query('awaiting-reopen')).toBeNull();
+      expect(query('awaiting-reopen-ask-owner')?.textContent).toContain('propriétaire');
+    });
+
+    it('offers nothing to reopen once the days are over: the closing is final', async () => {
+      me.set(state('closed', 'full', ['*'], { retainUntil: '2036-12-31', reopenUntil: yesterday }));
+      const { query } = await render();
+
+      expect(query('awaiting-closed-kept')).not.toBeNull();
+      expect(query('awaiting-reopen')).toBeNull();
+      expect(query('awaiting-reopen-ask-owner')).toBeNull();
+    });
   });
 
   it('offers the person’s other companies, and moves the session to the one chosen', async () => {

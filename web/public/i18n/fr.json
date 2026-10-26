@@ -77,9 +77,13 @@
       "sign_out": "Se déconnecter",
       "locked": "{{company}} est fermée en attendant le règlement de l’abonnement. Contactez-nous pour la rouvrir.",
       "declare_payment": "Déclarer un règlement",
-      "closed": "{{company}} est fermée. Contactez l’équipe de la plateforme pour en savoir plus.",
+      "closed": "{{company}} est fermée : plus rien ne s’y crée ni ne s’y modifie.",
       "ask_owner": "Seul le propriétaire de l’entreprise peut déclarer le règlement de l’abonnement. Prévenez-le pour la rouvrir.",
-      "elsewhere": "Vos autres entreprises"
+      "elsewhere": "Vos autres entreprises",
+      "closed_kept": "Ses documents sont conservés jusqu’au {{day}}.",
+      "reopen_until": "Vous pouvez la rouvrir jusqu’au {{moment}}.",
+      "reopen": "Rouvrir l’entreprise",
+      "reopen_ask_owner": "Son propriétaire peut la rouvrir jusqu’au {{moment}}."
     },
     "scene": {
       "invoice_number": "FA-2026-0142",
@@ -427,14 +431,14 @@
       }
     },
     "closing": {
-      "title": "Clôture des comptes",
+      "title": "Fermer l’entreprise",
       "no_company": "Choisissez une entreprise pour clôturer ses comptes.",
-      "intro": "Une fois les comptes clôturés jusqu’à un jour, aucune facture, aucun avoir, aucun bon, aucun paiement et aucune dépense n’est daté de ce jour ou d’avant. Une période close ne se rouvre jamais.",
+      "intro": "L’entreprise cesse de fonctionner tout de suite : plus rien ne s’y crée, ne s’y modifie ni ne s’y vend. Ses documents sont conservés le temps que la loi demande, et vous pouvez la rouvrir pendant quelques jours.",
       "none": "Aucune période n’est close.",
       "closed_through": "Les comptes sont clos jusqu’au {{day}} inclus.",
       "day": "Clôturer jusqu’au",
       "day_hint": "Au plus tard hier : la journée en cours reste ouverte.",
-      "close": "Clôturer",
+      "close": "Fermer l’entreprise",
       "closed": "Comptes clôturés.",
       "ask": {
         "title": "Clôturer les comptes ?",
@@ -446,7 +450,20 @@
         "network": "Impossible de joindre le serveur. Réessayez.",
         "not_found": "Cette entreprise est introuvable.",
         "invalid": "Ce jour est refusé : il doit être avant aujourd’hui et après le dernier jour déjà clos."
-      }
+      },
+      "confirm_title": "Fermer l’entreprise ?",
+      "confirm_message": "{{company}} cesse de fonctionner maintenant : les invitations en attente sont annulées et l’accès du support prend fin. Vous pourrez la rouvrir pendant quelques jours ; ensuite, la fermeture est définitive.",
+      "confirm": "Fermer l’entreprise",
+      "keep": "Garder l’entreprise ouverte",
+      "step_up": "Pour fermer l’entreprise, saisissez votre mot de passe ou utilisez une clé d’accès.",
+      "step_up_reopen": "Pour rouvrir l’entreprise, saisissez votre mot de passe ou utilisez une clé d’accès.",
+      "done": "{{company}} est fermée. Vous pouvez la rouvrir jusqu’au {{reopen}} ; ses documents sont conservés jusqu’au {{retain}}.",
+      "reopen": "Rouvrir",
+      "reopened": "{{company}} est rouverte.",
+      "failed": "L’entreprise n’a pas pu être fermée. Réessayez.",
+      "reopen_failed": "L’entreprise n’a pas pu être rouverte. Réessayez.",
+      "owner_only": "Seul le propriétaire de l’entreprise peut la fermer ou la rouvrir.",
+      "reopen_period_over": "Le délai pour rouvrir l’entreprise est passé : sa fermeture est définitive."
     }
   },
   "modules": {
@@ -3920,7 +3937,9 @@
         "profile_revised": "a modifié le profil de la société",
         "logo_changed": "a changé le logo",
         "logo_removed": "a retiré le logo",
-        "mfa_required_changed": "a changé l’exigence de double authentification"
+        "mfa_required_changed": "a changé l’exigence de double authentification",
+        "closed_down": "a fermé l’entreprise",
+        "reopened": "a rouvert l’entreprise"
       },
       "customer": {
         "created": "a créé le client",

@@ -77,9 +77,13 @@
       "sign_out": "Sign out",
       "locked": "{{company}} is closed until its subscription is settled. Contact us to reopen it.",
       "declare_payment": "Declare a payment",
-      "closed": "{{company}} is closed. Contact the platform's team to find out more.",
+      "closed": "{{company}} is closed: nothing more is created or changed in it.",
       "ask_owner": "Only the company's owner can declare the subscription's payment. Let them know to reopen it.",
-      "elsewhere": "Your other companies"
+      "elsewhere": "Your other companies",
+      "closed_kept": "Its documents are kept until {{day}}.",
+      "reopen_until": "You can reopen it until {{moment}}.",
+      "reopen": "Reopen the company",
+      "reopen_ask_owner": "Its owner can reopen it until {{moment}}."
     },
     "scene": {
       "invoice_number": "INV-2026-0142",
@@ -427,14 +431,14 @@
       }
     },
     "closing": {
-      "title": "Closing the books",
+      "title": "Close the company",
       "no_company": "Choose a company to close its books.",
-      "intro": "Once the books are closed through a day, no invoice, credit note, delivery note, payment or expense is dated on or before it. A closed period never opens again.",
+      "intro": "The company stops working at once: nothing more is created, changed or sold in it. Its documents are kept as long as the law requires, and you can reopen it for a few days.",
       "none": "No period is closed.",
       "closed_through": "The books are closed through {{day}}.",
       "day": "Close through",
       "day_hint": "Yesterday at the latest: the day under way stays open.",
-      "close": "Close",
+      "close": "Close the company",
       "closed": "Books closed.",
       "ask": {
         "title": "Close the books?",
@@ -446,7 +450,20 @@
         "network": "The server could not be reached. Try again.",
         "not_found": "This company cannot be found.",
         "invalid": "This day is refused: it must be before today and after the last day already closed."
-      }
+      },
+      "confirm_title": "Close the company?",
+      "confirm_message": "{{company}} stops working now: pending invitations are cancelled and support access ends. You can reopen it for a few days; after that, the closing is final.",
+      "confirm": "Close the company",
+      "keep": "Keep the company open",
+      "step_up": "To close the company, enter your password or use a passkey.",
+      "step_up_reopen": "To reopen the company, enter your password or use a passkey.",
+      "done": "{{company}} is closed. You can reopen it until {{reopen}}; its documents are kept until {{retain}}.",
+      "reopen": "Reopen",
+      "reopened": "{{company}} is open again.",
+      "failed": "The company could not be closed. Try again.",
+      "reopen_failed": "The company could not be reopened. Try again.",
+      "owner_only": "Only the company’s owner can close or reopen it.",
+      "reopen_period_over": "The time to reopen the company is over: its closing is final."
     }
   },
   "modules": {
@@ -3920,7 +3937,9 @@
         "profile_revised": "changed the company profile",
         "logo_changed": "changed the logo",
         "logo_removed": "removed the logo",
-        "mfa_required_changed": "changed the two-step requirement"
+        "mfa_required_changed": "changed the two-step requirement",
+        "closed_down": "closed the company",
+        "reopened": "reopened the company"
       },
       "customer": {
         "created": "created the customer",

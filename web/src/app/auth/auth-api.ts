@@ -276,6 +276,13 @@ function toState(me: Me): SignedInState {
             access: toAccess(me.company.access),
             subscription: toSubscription(me.company.subscription),
             logoVersion: me.company.logoVersion ?? null,
+            closing:
+              me.company.closing === null
+                ? null
+                : {
+                    retainUntil: me.company.closing.retainUntil,
+                    reopenUntil: me.company.closing.reopenUntil,
+                  },
           },
     permissions: [...me.permissions],
     modules: [...me.modules],

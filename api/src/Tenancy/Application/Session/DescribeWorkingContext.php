@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Session;
 
 use App\Shared\Application\CurrentCompany;
+use App\Tenancy\Application\Closing\ClosingTerms;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Application\Support\SupportAccess;
@@ -25,6 +26,7 @@ final readonly class DescribeWorkingContext
         private CompanyLogo $logo,
         private SupportAccess $support,
         private KnownPermissions $permissions,
+        private ClosingTerms $closing,
     ) {
     }
 
@@ -63,6 +65,7 @@ final readonly class DescribeWorkingContext
             $permissions,
             $this->logo->current($company)?->getFile()->getId()->toRfc4122(),
             $supportAccessUntil,
+            $this->closing->of($company),
         );
     }
 

@@ -24,6 +24,37 @@
       <p data-testid="awaiting-closed">
         {{ 'auth.awaiting.closed' | translate: { company: company.name } }}
       </p>
+      @if (company.closing; as closing) {
+        <p data-testid="awaiting-closed-kept">
+          {{ 'auth.awaiting.closed_kept' | translate: { day: closing.retainUntil | day } }}
+        </p>
+        <!-- The closing is taken back by its owner alone, until the day the API set; then it is final. -->
+        @if (reopenable()) {
+          @if (company.role === 'owner') {
+            <p data-testid="awaiting-reopen-until">
+              {{
+                'auth.awaiting.reopen_until' | translate: { moment: closing.reopenUntil | moment }
+              }}
+            </p>
+            <button
+              mat-flat-button
+              type="button"
+              (click)="reopen()"
+              [disabled]="reopening()"
+              data-testid="awaiting-reopen"
+            >
+              {{ 'auth.awaiting.reopen' | translate }}
+            </button>
+          } @else {
+            <p data-testid="awaiting-reopen-ask-owner">
+              {{
+                'auth.awaiting.reopen_ask_owner'
+                  | translate: { moment: closing.reopenUntil | moment }
+              }}
+            </p>
+          }
+        }
+      }
     } @else {
       <p data-testid="awaiting-pending">
         {{ 'auth.awaiting.pending' | translate: { company: company.name } }}

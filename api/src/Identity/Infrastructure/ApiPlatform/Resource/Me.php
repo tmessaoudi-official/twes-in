@@ -14,6 +14,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Domain\Model\User;
+use App\Identity\Infrastructure\ApiPlatform\Output\MeClosing;
 use App\Identity\Infrastructure\ApiPlatform\Output\MeCompany;
 use App\Identity\Infrastructure\ApiPlatform\Output\MeMfa;
 use App\Identity\Infrastructure\ApiPlatform\Output\MePlannedModule;
@@ -67,7 +68,7 @@ final readonly class Me
     {
         return new self(
             new MeUser($user->getId()->toRfc4122(), $demo ? DemoAccounts::SHOWN_AS : $user->getEmail()->value, $user->getDisplayName(), $user->getLocale(), $user->isPlatformOperator(), $demo),
-            null === $context ? null : new MeCompany($context->companyId, $context->name, $context->countryCode, $context->currency, $context->locale, $context->timezone, $context->status, $context->role, (null === $standing ? Access::Full : $standing->access)->value, null === $standing ? null : MeSubscription::of($standing), $context->logoVersion),
+            null === $context ? null : new MeCompany($context->companyId, $context->name, $context->countryCode, $context->currency, $context->locale, $context->timezone, $context->status, $context->role, (null === $standing ? Access::Full : $standing->access)->value, null === $standing ? null : MeSubscription::of($standing), $context->logoVersion, null === $context->closing ? null : MeClosing::of($context->closing)),
             null === $context ? [] : $context->permissions,
             new MeMfa($user->hasTotp() || $passkeys > 0, $mfaRequired, $user->hasTotp(), $passkeys, $recoveryCodes),
             $modules,

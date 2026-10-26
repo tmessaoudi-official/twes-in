@@ -29,6 +29,8 @@ final readonly class MeCompany
         #[ApiProperty(required: true)] public ?MeSubscription $subscription = null,
         /** the id of the company's stored logo, which changes with it; null without one */
         #[ApiProperty(required: true)] public ?string $logoVersion = null,
+        /** a closed company's terms, null while it works */
+        #[ApiProperty(required: true)] public ?MeClosing $closing = null,
     ) {
     }
 }

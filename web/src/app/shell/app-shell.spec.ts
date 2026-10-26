@@ -223,6 +223,10 @@ describe('AppShell', () => {
     me: me.asReadonly(),
     subscription: computed(() => me()?.company?.subscription ?? null),
     access: computed(() => me()?.company?.access ?? 'full'),
+    companyClosed: computed(() => {
+      const company = me()?.company;
+      return !!company && (company.status !== 'active' || company.access === 'locked');
+    }),
     logout: vi.fn(async () => true),
     sessionEnded: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -287,6 +291,7 @@ describe('AppShell', () => {
           { path: 'invoices', component: BlankPage },
           { path: 'customers', component: CountingPage },
           { path: 'watch', component: BlankPage },
+          { path: 'awaiting-approval', component: BlankPage },
         ]),
         { provide: BreakpointObserver, useValue: viewport(width) },
         { provide: AuthFacade, useValue: auth },
@@ -880,6 +885,34 @@ describe('AppShell', () => {
       expect(auth.refresh).toHaveBeenCalledTimes(1);
     },
   );
+
+  it.each(['suspended', 'closed'])(
+    'goes to the page that says why once the open company is %s, rather than leave its screen refused',
+    async (status) => {
+      // The guard runs only on a navigation: the operator's suspension left every request of the screen answering 404.
+      const router = TestBed.inject(Router);
+      await router.navigateByUrl('/customers');
+      const { fixture } = await render();
+
+      me.set({ ...owner, company: { ...owner.company!, status } });
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(router.url).toBe('/awaiting-approval');
+    },
+  );
+
+  it('stays where it is while the company works', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/customers');
+    const { fixture } = await render();
+
+    me.set({ ...owner, user: { ...owner.user, displayName: 'Amel B. Salah' } });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(router.url).toBe('/customers');
+  });
 
   it('keeps the screen it has when the session refreshes without changing company', async () => {
     // Rebuilding on every refresh would throw away a half-filled form each time the shell re-reads the session.

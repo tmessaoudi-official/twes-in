@@ -27,6 +27,7 @@ import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
+import { CompanyClosing } from './company-closing';
 import { FileDrop } from '../shared/form/file-drop';
 import { LOGO_MAX_BYTES } from '../shared/form/file-limits';
 
@@ -40,6 +41,7 @@ import { LOGO_MAX_BYTES } from '../shared/form/file-limits';
     TranslatePipe,
     DescriptorForm,
     RecordBar,
+    CompanyClosing,
     RecordChanged,
   ],
   templateUrl: './company-profile-page.html',

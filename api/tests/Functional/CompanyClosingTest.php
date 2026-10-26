@@ -92,6 +92,22 @@ final class CompanyClosingTest extends ApiTestCase
         self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM support_grant WHERE company_id = ? AND ended_at IS NOT NULL'), 'support ends with it');
     }
 
+    /** The session says until when the company is kept and its closing may be taken back, which the page it lands on shows. */
+    public function testTheSessionSaysUntilWhenItIsKeptAndMayBeReopened(): void
+    {
+        $this->login('owner@twes.local', self::PASSWORD);
+        $this->client->request('GET', '/api/auth/me');
+        self::assertArrayHasKey('closing', $this->sessionCompany());
+        self::assertNull($this->sessionCompany()['closing'], 'a working company has no closing');
+
+        $this->closeDown();
+        $closed = $this->json();
+        $this->client->request('GET', '/api/auth/me');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['retainUntil' => $this->stringAt($closed, 'retainUntil'), 'reopenUntil' => $this->stringAt($closed, 'reopenUntil')], $this->sessionCompany()['closing']);
+    }
+
     public function testAClosedCompanyIsReadAndItsBooksTakenButNothingChanges(): void
     {
         $this->closeDown();
@@ -231,6 +247,17 @@ final class CompanyClosingTest extends ApiTestCase
         $this->stepUp(self::PASSWORD);
         $this->postJson($this->path().'/close-down', []);
         self::assertResponseIsSuccessful();
+    }
+
+    /** @return array<mixed> */
+    private function sessionCompany(): array
+    {
+        $company = $this->json()['company'] ?? null;
+        if (!\is_array($company)) {
+            self::fail('the session names no company');
+        }
+
+        return $company;
     }
 
     private function closedDaysAgo(int $days): void
