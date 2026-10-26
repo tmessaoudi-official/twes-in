@@ -136,6 +136,25 @@ describe('ClosedCompanyNotice', () => {
     expect(query('closed-notice-ask-owner')?.textContent).toContain('propriétaire');
   });
 
+  it('stops offering to reopen when the days run out on a page left open', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const soon = new Date(Date.now() + 60_000).toISOString();
+      me.set(state('closed', { retainUntil: '2036-12-31', reopenUntil: soon }));
+      const { fixture, query } = await render();
+      expect(query('closed-notice-reopen')).not.toBeNull();
+
+      await vi.advanceTimersByTimeAsync(60_005);
+      fixture.detectChanges();
+
+      expect(query('closed-notice-reopen')).toBeNull();
+      expect(query('closed-notice-reopen-until')).toBeNull();
+      expect(query('closed-notice-kept')).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('offers nothing to reopen once the days are over: the closing is final', async () => {
     me.set(state('closed', { retainUntil: '2036-12-31', reopenUntil: yesterday }));
     const { query } = await render();

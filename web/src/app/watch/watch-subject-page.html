@@ -50,6 +50,7 @@
       @if (current.elsewhere; as elsewhere) {
         <a
           [routerLink]="elsewhere.link"
+          [queryParams]="elsewhere.query ?? null"
           class="flex w-fit items-center gap-1 font-medium text-primary"
           data-testid="watch-elsewhere"
         >

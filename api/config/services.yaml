@@ -57,6 +57,9 @@ parameters:
     # The reasons of a product's « À vérifier » the home's « À surveiller » leaves out (ProductCheckWatch): what clears only
     # product by product, which the products list's filter still finds. An import of 4,100 products lacking both read 4,013.
     app.watch.product_check_left_out: ['barcode_missing', 'category_missing']
+    # The hours a draft delivery note with lines waits, unsaved, before « À surveiller » tells whoever may validate it
+    # (DeliveryNoteWatch): long enough for a clerk to finish writing it, short enough for the customer still waiting.
+    app.watch.drafts_to_validate_after_hours: 2
     # Text overrides (docs/plans/text-overrides.plan.md). The screens' texts as shipped: the image's copy of the web's
     # public/i18n, mounted over it in live mode, read from the tree itself in tests.
     app.texts.screen_directory: '%kernel.project_dir%/resources/screen-texts'

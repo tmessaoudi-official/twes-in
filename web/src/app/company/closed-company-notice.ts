@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
+import { deadlineClock } from '../shared/time/deadline-clock';
 import { CompanyClosingActions } from './company-closing-actions';
 
 /**
@@ -68,10 +69,12 @@ export class ClosedCompanyNotice {
   protected readonly closed = computed(() =>
     this.auth.companyClosedDown() ? (this.auth.me()?.company ?? null) : null,
   );
-  /** Whether the closing may still be taken back, read again with the session. */
+  /** Moves on when the days to reopen run out, which nothing announces to a page left open. */
+  private readonly now = deadlineClock(() => [this.closed()?.closing?.reopenUntil ?? null]);
+  /** Whether the closing may still be taken back, read again with the session and when its last moment passes. */
   protected readonly reopenable = computed(() => {
     const until = this.closed()?.closing?.reopenUntil;
-    return until !== undefined && Date.parse(until) > Date.now();
+    return until !== undefined && Date.parse(until) > this.now();
   });
   protected readonly reopening = signal(false);
 

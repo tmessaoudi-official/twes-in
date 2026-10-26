@@ -282,6 +282,65 @@ describe('PhonePairing', () => {
     ]);
   });
 
+  it('says the code lapsed when the API answers its heartbeat expired, and stops saying it is there', async () => {
+    api.renew.mockRejectedValue(new PairingRefused('expired'));
+
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_MS);
+
+    expect(pairing.state()).toEqual({
+      id: 'p-1',
+      url: `${location.origin}/pair#${'a'.repeat(64)}`,
+      phone: 'expired',
+    });
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_MS * 2);
+    expect(api.renew).toHaveBeenCalledOnce();
+  });
+
+  it('hears a phone that came too late, for its own tab and pairing only', () => {
+    pairing.receive(publication('expired', {}, 'another-tab'));
+    pairing.receive({ ...publication('expired'), pairing: 'p-2' });
+    expect(pairing.state()?.phone).toBe('waiting');
+
+    pairing.receive(publication('expired'));
+
+    expect(pairing.state()?.phone).toBe('expired');
+  });
+
+  it('makes a new link on asking when the one held lapsed, and keeps one still alive', async () => {
+    api.open.mockClear();
+    await pairing.ensure();
+    expect(api.renew).toHaveBeenCalledOnce();
+    expect(api.open).not.toHaveBeenCalled();
+    expect(pairing.state()?.phone).toBe('waiting');
+
+    api.renew.mockRejectedValueOnce(new PairingRefused('expired'));
+    api.open.mockResolvedValueOnce({ id: 'p-2', link: 'b'.repeat(64), address: null });
+    await pairing.ensure();
+    expect(api.end).toHaveBeenCalledWith('c-1', 'p-1');
+    expect(pairing.state()).toEqual({
+      id: 'p-2',
+      url: `${location.origin}/pair#${'b'.repeat(64)}`,
+      phone: 'waiting',
+    });
+
+    pairing.receive({ ...publication('claimed'), pairing: 'p-2' });
+    api.renew.mockClear();
+    await pairing.ensure();
+    expect(api.renew).not.toHaveBeenCalled();
+    expect(api.open).toHaveBeenCalledOnce();
+  });
+
+  it('opens a link on asking when none is held', async () => {
+    pairing.end();
+    api.open.mockClear();
+
+    await pairing.ensure();
+
+    expect(api.open).toHaveBeenCalledOnce();
+    expect(pairing.state()?.phone).toBe('waiting');
+  });
+
   it('ends the pairing and stops saying it is there', async () => {
     pairing.end();
 

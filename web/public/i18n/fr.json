@@ -3232,6 +3232,8 @@
       "opening": "Préparation du lien…",
       "waiting": "En attente du téléphone",
       "connected": "Téléphone relié.",
+      "expired": "Le code a expiré avant qu’un téléphone l’ouvre.",
+      "renew": "Nouveau code",
       "disconnect": "Libérer le téléphone",
       "close": "Fermer",
       "ended": "Le téléphone n’est plus relié à cet onglet",

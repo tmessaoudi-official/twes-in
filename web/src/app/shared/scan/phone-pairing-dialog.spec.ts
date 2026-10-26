@@ -28,6 +28,9 @@ describe('PhonePairingDialog', () => {
       state.set({ id: 'p-1', url: 'https://twes.example/pair#abc', phone: 'waiting' });
     }),
     end: vi.fn(() => state.set(null)),
+    ensure: vi.fn(async () => {
+      if (state() === null) await pairing.open();
+    }),
   };
   const close = vi.fn();
   let fixture: ComponentFixture<PhonePairingDialog>;
@@ -46,6 +49,7 @@ describe('PhonePairingDialog', () => {
     state.set(null);
     pairing.open.mockClear();
     pairing.end.mockClear();
+    pairing.ensure.mockClear();
     close.mockReset();
     TestBed.configureTestingModule({
       imports: [PhonePairingDialog],
@@ -59,10 +63,10 @@ describe('PhonePairingDialog', () => {
     });
   });
 
-  it('opens a link when none is open, and shows it as a code and as an address', async () => {
+  it('asks for a live link on opening, and shows it as a code and as an address', async () => {
     await open();
 
-    expect(pairing.open).toHaveBeenCalledOnce();
+    expect(pairing.ensure).toHaveBeenCalledOnce();
     expect(q('phone-pair-qr')?.querySelectorAll('rect[data-module]').length).toBeGreaterThan(100);
     expect(q('phone-pair-url')?.textContent).toContain('https://twes.example/pair#abc');
     expect(q('phone-pair-status')?.textContent).toContain('scan.phone.waiting');
@@ -74,6 +78,26 @@ describe('PhonePairingDialog', () => {
 
     expect(pairing.open).not.toHaveBeenCalled();
     expect(q('phone-pair-status')?.textContent).toContain('scan.phone.connected');
+  });
+
+  it('says the code lapsed in place of the code, and makes a new one on request', async () => {
+    await open();
+    state.set({ id: 'p-1', url: 'https://twes.example/pair#abc', phone: 'expired' });
+    fixture.detectChanges();
+
+    expect(q('phone-pair-qr')).toBeNull();
+    expect(q('phone-pair-url')).toBeNull();
+    expect(q('phone-pair-status')?.textContent).toContain('scan.phone.expired');
+    expect(q('phone-pair-end')).toBeNull();
+    pairing.open.mockClear();
+
+    q('phone-pair-renew')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(pairing.open).toHaveBeenCalledOnce();
+    expect(q('phone-pair-status')?.textContent).toContain('scan.phone.waiting');
+    expect(q('phone-pair-renew')).toBeNull();
   });
 
   it('lets the phone go', async () => {

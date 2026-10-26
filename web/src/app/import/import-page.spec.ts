@@ -1047,7 +1047,8 @@ describe('ImportPage', () => {
       by: 'Sonia',
       created: 3,
       updated: 1,
-      undoableUntil: '2026-10-21T10:00',
+      // Still open when the spec runs: a run whose window has closed leaves the list.
+      undoableUntil: '2099-10-21T10:00',
       undoneAt: null,
     };
 
@@ -1104,7 +1105,7 @@ describe('ImportPage', () => {
       expect(first).toContain('stocks de départ');
       expect(first).toContain('Le 9 oct. 2026 (2026-10-20T10:00), par Sonia');
       expect(first).toContain('3 créées, 1 modifiées');
-      expect(first).toContain('Annulable jusqu’au 9 oct. 2026 (2026-10-21T10:00)');
+      expect(first).toContain('Annulable jusqu’au 9 oct. 2026 (2099-10-21T10:00)');
       const second = q('import-run-r2')!.textContent!.replace(/\s+/g, ' ');
       expect(second).toContain('Le 9 oct. 2026 (2026-10-20T10:00)');
       expect(second).not.toContain(', par');
@@ -1114,6 +1115,24 @@ describe('ImportPage', () => {
       await click('import-run-undo-r1');
 
       expect(facade.undo).toHaveBeenCalledWith('c1', 'r1');
+    });
+
+    it('drops a run whose window closes while the page stays open, with its undo, as a reload would', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        recent.set([{ ...RUN, undoableUntil: new Date(Date.now() + 60_000).toISOString() }]);
+        await settle();
+        expect(q('import-run-undo-r1')).not.toBeNull();
+
+        await vi.advanceTimersByTimeAsync(60_005);
+        await settle();
+
+        expect(q('import-run-r1')).toBeNull();
+        expect(q('import-run-undo-r1')).toBeNull();
+        expect(facade.undo).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('says what the undo kept and why, and the stock it took back in the screen’s decimals', async () => {

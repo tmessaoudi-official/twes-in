@@ -27,6 +27,7 @@ final class AllowedJoinsTest extends KernelTestCase
 
     /** Each a report or watch file and the other module's table it reads. */
     private const array REPORTS_AND_WATCHES_READING_ANOTHER_MODULE = [
+        'Module/DeliveryNotes/Infrastructure/Watch/DeliveryNoteWatch.php -> customer',
         'Module/Expenses/Infrastructure/Reports/ExpensesBySupplierReport.php -> vendor',
         'Module/Expenses/Infrastructure/Watch/ExpenseWatch.php -> vendor',
         'Module/Inventory/Infrastructure/Reports/DeadStockReport.php -> product',

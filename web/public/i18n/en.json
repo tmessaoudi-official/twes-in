@@ -3232,6 +3232,8 @@
       "opening": "Preparing the link…",
       "waiting": "Waiting for the phone",
       "connected": "Phone connected.",
+      "expired": "The code expired before a phone opened it.",
+      "renew": "New code",
       "disconnect": "Let the phone go",
       "close": "Close",
       "ended": "The phone is no longer connected to this tab",

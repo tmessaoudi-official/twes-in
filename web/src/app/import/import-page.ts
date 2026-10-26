@@ -43,6 +43,7 @@ import { IMPORT_MAX_BYTES } from '../shared/form/file-limits';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { MomentPipe } from '../shared/i18n/format-pipes';
+import { deadlineClock } from '../shared/time/deadline-clock';
 import type { ActionConfirm } from '../shared/actions/screen-action';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { firstValueFrom } from 'rxjs';
@@ -122,7 +123,15 @@ export class ImportPage {
   protected readonly refusal = this.facade.refusal;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
-  protected readonly recent = this.facade.recent;
+  /** Moves on as each run's window to be taken back closes, which nothing announces. */
+  private readonly now = deadlineClock(() => this.facade.recent().map((run) => run.undoableUntil));
+  /**
+   * « Imports récents » as the API would list them now: a run whose window closed while the page stayed open leaves the
+   * list, with its « Annuler cet import », as it would on a reload, rather than offer an undo the API refuses.
+   */
+  protected readonly recent = computed(() =>
+    this.facade.recent().filter((run) => Date.parse(run.undoableUntil) > this.now()),
+  );
   protected readonly undone = this.facade.undone;
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);

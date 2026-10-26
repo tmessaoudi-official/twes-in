@@ -35,7 +35,7 @@ export interface PairingState {
   readonly id: string;
   /** What the phone opens: this address, with the single-use link after `#`, which no server log or Referer carries. */
   readonly url: string;
-  readonly phone: 'waiting' | 'connected';
+  readonly phone: 'waiting' | 'connected' | 'expired';
 }
 
 /**
@@ -83,6 +83,17 @@ export class PhonePairing {
       phone: 'waiting',
     });
     this.heartbeat = setInterval(() => void this.renew(), HEARTBEAT_MS);
+  }
+
+  /**
+   * A link a phone can still claim: the one held while the phone is there or the API still awaits it, a new one when it
+   * lapsed or none is held. Asked of the API at once rather than at the next heartbeat, so a dialog opened again just
+   * after the lapse never shows a dead code as awaited.
+   */
+  async ensure(): Promise<void> {
+    if (this.current()?.phone === 'waiting') await this.renew();
+    const state = this.current();
+    if (state === null || state.phone === 'expired') await this.open();
   }
 
   /**
@@ -144,6 +155,9 @@ export class PhonePairing {
       typeof data['choice'] === 'string'
     ) {
       this.chosen(data['echo'], data['choice']);
+    } else if (event === 'expired') {
+      // A phone came too late: the API refused it and says so here, where the code is still shown.
+      this.expire();
     }
     return true;
   }
@@ -269,16 +283,38 @@ export class PhonePairing {
     }
   }
 
-  /** A refusal means the pairing is over (signed out elsewhere, the company closed); a lost network is retried. */
+  /**
+   * A refusal means the pairing is over (signed out elsewhere, the company closed), or that its link lapsed before a
+   * phone claimed it; a lost network is retried.
+   */
   private lapsed(error: unknown): void {
     if (!(error instanceof PairingRefused) || error.reason === 'network') return;
+    if (error.reason === 'expired') {
+      this.expire();
+      return;
+    }
     this.stop();
     this.feedback.failure('scan.phone.ended');
   }
 
-  private stop(): void {
+  /**
+   * The link lapsed unclaimed: there is nothing to keep alive, and the code is shown as lapsed until a new one is asked
+   * for. No toast: nothing was lost, and the dialog says it where the code was.
+   */
+  private expire(): void {
+    const state = this.current();
+    if (state === null || state.phone !== 'waiting') return;
+    this.quiet();
+    this.current.set({ ...state, phone: 'expired' });
+  }
+
+  private quiet(): void {
     if (this.heartbeat !== null) clearInterval(this.heartbeat);
     this.heartbeat = null;
+  }
+
+  private stop(): void {
+    this.quiet();
     this.current.set(null);
     this.companyId = null;
     this.offered = null;

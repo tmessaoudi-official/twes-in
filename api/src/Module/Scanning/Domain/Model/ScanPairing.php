@@ -100,7 +100,7 @@ class ScanPairing implements CompanyOwned
         if (null !== $this->claimedAt) {
             throw new ScanPairingRefused('claimed');
         }
-        if ($now > $this->createdAt->modify(\sprintf('+%d seconds', self::CLAIM_WITHIN_SECONDS))) {
+        if ($this->claimWindowPassed($now)) {
             throw new ScanPairingRefused('expired');
         }
         $this->keyHash = hash('sha256', $key);
@@ -119,11 +119,17 @@ class ScanPairing implements CompanyOwned
         }
     }
 
-    /** The computer tab saying it is still there. Too late is too late: a lapsed pairing is not revived. */
+    /**
+     * The computer tab saying it is still there. Too late is too late: a lapsed pairing is not revived, and a link no
+     * phone claimed in its window is dead, which the tab hears here rather than showing the code as awaited.
+     */
     public function renew(\DateTimeImmutable $now): void
     {
         if (!$this->isLive($now)) {
             throw new ScanPairingRefused('ended');
+        }
+        if ($this->claimWindowPassed($now)) {
+            throw new ScanPairingRefused('expired');
         }
         $this->aliveUntil = self::aliveFrom($now);
     }
@@ -177,6 +183,12 @@ class ScanPairing implements CompanyOwned
     public function getEndedAt(): ?\DateTimeImmutable
     {
         return $this->endedAt;
+    }
+
+    /** Unclaimed and past the window its link could be claimed in. */
+    private function claimWindowPassed(\DateTimeImmutable $now): bool
+    {
+        return null === $this->claimedAt && $now > $this->createdAt->modify(\sprintf('+%d seconds', self::CLAIM_WITHIN_SECONDS));
     }
 
     private static function aliveFrom(\DateTimeImmutable $now): \DateTimeImmutable

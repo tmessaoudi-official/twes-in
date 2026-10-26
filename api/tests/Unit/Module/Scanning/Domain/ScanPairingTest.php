@@ -76,6 +76,34 @@ final class ScanPairingTest extends TestCase
         $this->refused('expired', fn () => $pairing->claim(self::KEY, $this->at(ScanPairing::CLAIM_WITHIN_SECONDS + 1)));
     }
 
+    /**
+     * A link nobody claimed in its window is dead, and the tab hears so at its next word rather than showing the code
+     * as « waiting » for as long as it keeps renewing; a claimed pairing renews past the window as before.
+     */
+    public function testAnUnclaimedLinkPastItsWindowIsNotKeptAliveButAClaimedOneIs(): void
+    {
+        $unclaimed = $this->pairing();
+        foreach ([60, 120, 180, 240, ScanPairing::CLAIM_WITHIN_SECONDS] as $second) {
+            $unclaimed->renew($this->at($second));
+        }
+
+        $this->refused('expired', fn () => $unclaimed->renew($this->at(ScanPairing::CLAIM_WITHIN_SECONDS + 1)));
+
+        $claimed = $this->pairing();
+        $claimed->claim(self::KEY, $this->at(10));
+        foreach ([60, 120, 180, 240, ScanPairing::CLAIM_WITHIN_SECONDS, ScanPairing::CLAIM_WITHIN_SECONDS + 60] as $second) {
+            $claimed->renew($this->at($second));
+        }
+        self::assertTrue($claimed->isLive($this->at(ScanPairing::CLAIM_WITHIN_SECONDS + 60)));
+    }
+
+    public function testATabThatWentQuietHearsItEndedEvenPastTheClaimWindow(): void
+    {
+        $pairing = $this->pairing();
+
+        $this->refused('ended', fn () => $pairing->renew($this->at(ScanPairing::CLAIM_WITHIN_SECONDS + ScanPairing::ALIVE_SECONDS)));
+    }
+
     public function testThePairingLapsesWhenTheComputerStopsSayingItIsThere(): void
     {
         $pairing = $this->pairing();

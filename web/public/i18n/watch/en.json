@@ -74,6 +74,18 @@
           "title": "Customers to check",
           "hint": "A customer marked « To check », or a business without the number an invoice asks of it: complete its page."
         }
+      },
+      "delivery_note": {
+        "to_validate": {
+          "title": "Delivery notes to validate",
+          "hint": "Draft delivery notes, with their lines, that nobody has saved for several hours: read each through, then validate it."
+        }
+      },
+      "purchase_order": {
+        "to_receive": {
+          "title": "Orders to receive",
+          "hint": "Orders sent to vendors whose goods were expected today or earlier and have not all arrived. Receive what has come."
+        }
       }
     },
     "columns": {
@@ -113,7 +125,10 @@
       "reasons": "To check",
       "note": "Note",
       "vendor": "Vendor",
-      "move": "Move"
+      "move": "Move",
+      "lines": "Lines",
+      "hours": "Waiting for (hours)",
+      "expectedOn": "Expected on"
     },
     "actions": {
       "see_invoices": "See {{name}}'s overdue invoices",
@@ -124,7 +139,13 @@
       "review_price": "Review the price of {{name}}",
       "open_vendor": "Open {{name}}",
       "open_customer": "Open {{name}}",
-      "open_document": "Open {{name}}"
+      "open_document": "Open {{name}}",
+      "open_note": "Open {{name}}'s note",
+      "open_order": "Open {{name}}"
+    },
+    "elsewhere": {
+      "drafts": "All drafts",
+      "open_orders": "All open orders"
     },
     "moves": {
       "delivery_note": "Delivery note validated",

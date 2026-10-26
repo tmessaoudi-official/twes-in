@@ -74,6 +74,18 @@
           "title": "Clients à vérifier",
           "hint": "Un client marqué « À vérifier », ou une entreprise sans le numéro qu’une facture lui demande : complétez sa fiche."
         }
+      },
+      "delivery_note": {
+        "to_validate": {
+          "title": "Bons à valider",
+          "hint": "Des bons de livraison en brouillon, avec leurs lignes, que personne n’a enregistrés depuis plusieurs heures : relisez chacun, puis validez-le."
+        }
+      },
+      "purchase_order": {
+        "to_receive": {
+          "title": "Commandes à réceptionner",
+          "hint": "Des commandes envoyées aux fournisseurs dont la marchandise était attendue aujourd’hui ou avant, et qui ne sont pas encore toutes reçues. Réceptionnez ce qui est arrivé."
+        }
       }
     },
     "columns": {
@@ -113,7 +125,10 @@
       "reasons": "À vérifier",
       "note": "Note",
       "vendor": "Fournisseur",
-      "move": "Mouvement"
+      "move": "Mouvement",
+      "lines": "Lignes",
+      "hours": "En attente depuis (heures)",
+      "expectedOn": "Attendue le"
     },
     "actions": {
       "see_invoices": "Voir les factures en retard de {{name}}",
@@ -124,7 +139,13 @@
       "review_price": "Revoir le prix de {{name}}",
       "open_vendor": "Ouvrir {{name}}",
       "open_customer": "Ouvrir {{name}}",
-      "open_document": "Ouvrir {{name}}"
+      "open_document": "Ouvrir {{name}}",
+      "open_note": "Ouvrir le bon de {{name}}",
+      "open_order": "Ouvrir {{name}}"
+    },
+    "elsewhere": {
+      "drafts": "Tous les brouillons",
+      "open_orders": "Toutes les commandes en cours"
     },
     "moves": {
       "delivery_note": "Validation du bon de livraison",

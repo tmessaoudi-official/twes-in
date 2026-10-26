@@ -12,8 +12,15 @@ import type { WatchRowView } from './watch-view';
 export interface WatchSubjectView {
   readonly icon: IconName;
   readonly list: ListDescriptor<WatchRowView>;
-  /** The screen that holds the whole of what this subject picks from, linked beside its title. */
-  readonly elsewhere?: { readonly link: string; readonly label: string };
+  /**
+   * The screen that holds the whole of what this subject picks from, linked beside its title, narrowed by `query` to
+   * what the subject is about (a list's own filters, as its address names them).
+   */
+  readonly elsewhere?: {
+    readonly link: string;
+    readonly label: string;
+    readonly query?: Readonly<Record<string, string>>;
+  };
 }
 
 const COLUMNS = 'watch.columns';
@@ -124,6 +131,26 @@ function receiptCostQuery(view: WatchRowView): Record<string, string> {
     costOf: view.row.subjectId ?? '',
   };
 }
+
+/** The draft, where whoever may validate it reads it through and validates it. */
+const OPEN_DELIVERY_NOTE: RowAction<WatchRowView> = {
+  id: 'open-delivery-note',
+  label: 'watch.actions.open_note',
+  labelParams: (view) => ({ name: String(view.cells['customer'] ?? '') }),
+  icon: 'fact_check',
+  link: (view) => ['/delivery-notes', view.row.subjectId],
+  shown: (view) => view.row.subjectId !== null,
+};
+
+/** The order, where its goods are received. */
+const RECEIVE_ORDER: RowAction<WatchRowView> = {
+  id: 'receive-order',
+  label: 'watch.actions.open_order',
+  labelParams: (view) => ({ name: String(view.cells['number'] ?? '') }),
+  icon: 'move_to_inbox',
+  link: (view) => ['/purchases', view.row.subjectId],
+  shown: (view) => view.row.subjectId !== null,
+};
 
 function productList(
   id: string,
@@ -350,6 +377,51 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       cell('expiresOn', { width: 140 }),
       daysColumn('in_days', 'in_days', (days) => days),
     ]),
+  },
+  // A clerk's draft waiting for whoever may validate it: read through and validated on its page.
+  'delivery_note.to_validate': {
+    icon: 'local_shipping',
+    list: {
+      id: 'watch-to-validate',
+      rowId: (view) => view.id,
+      pageSizes: PAGE_SIZES,
+      link: (view) => ['/delivery-notes', view.row.subjectId],
+      linkColumn: 'customer',
+      columns: [
+        cell('customer', { hideable: false }),
+        cell('lines', { align: 'end', width: 110 }),
+        cell('hours', { align: 'end', width: 170, priority: 'high' }),
+      ],
+      actions: [OPEN_DELIVERY_NOTE],
+    },
+    elsewhere: {
+      link: '/delivery-notes',
+      label: 'watch.elsewhere.drafts',
+      query: { status: 'draft' },
+    },
+  },
+  // An order whose goods are due: received on its page, by whoever receives what the shop buys.
+  'purchase_order.to_receive': {
+    icon: 'shopping_cart',
+    list: {
+      id: 'watch-to-receive',
+      rowId: (view) => view.id,
+      pageSizes: PAGE_SIZES,
+      link: (view) => ['/purchases', view.row.subjectId],
+      linkColumn: 'number',
+      columns: [
+        cell('number', { hideable: false, width: 160 }),
+        cell('vendor'),
+        cell('expectedOn', { width: 140 }),
+        daysColumn('late_days', 'late_days', (days) => days),
+      ],
+      actions: [RECEIVE_ORDER],
+    },
+    elsewhere: {
+      link: '/purchases',
+      label: 'watch.elsewhere.open_orders',
+      query: { status: 'sent,partly_received' },
+    },
   },
   // A draft a recurring expense of variable amount made: its amount is checked on the draft, then it is recorded.
   'expenses.amount_to_check': {

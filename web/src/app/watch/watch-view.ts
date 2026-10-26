@@ -75,6 +75,10 @@ export function watchRowView(
   // Which of a document's stock moves failed, by code: its validation, its cancellation, its issue, its return.
   if ('move' in params) cells['move'] = say(`watch.moves.${text(params, 'move')}`);
   if ('invoices' in params) cells['invoices'] = Number(params['invoices']);
+  // A draft waiting to be validated: how many lines it holds, and the whole hours since it was last saved.
+  for (const name of ['lines', 'hours'] as const) {
+    if (name in params) cells[name] = Number(params[name]);
+  }
   if ('amount' in params) {
     const currency = text(params, 'currency');
     cells['amount'] = `${figures.amount(text(params, 'amount'), null)} ${currency}`.trim();
@@ -92,6 +96,7 @@ export function watchRowView(
   if ('expiresOn' in params) cells['expiresOn'] = figures.day(text(params, 'expiresOn'));
   if ('receivedOn' in params) cells['receivedOn'] = figures.day(text(params, 'receivedOn'));
   if ('invitedOn' in params) cells['invitedOn'] = figures.day(text(params, 'invitedOn'));
+  if ('expectedOn' in params) cells['expectedOn'] = figures.day(text(params, 'expectedOn'));
   if ('date' in params) cells['date'] = figures.day(text(params, 'date'));
   if ('days' in params) cells['days'] = Number(params['days']);
   return { id: String(index), row, cells };

@@ -47,9 +47,10 @@ const CLOSED: SupportAccessState = {
   hours: [1, 24, 72],
   reasonMax: 500,
 };
+// A window open around the moment the spec runs: one ended is shown closed.
 const OPEN: SupportAccessState = {
-  startsAt: '2026-10-12T09:00:00+00:00',
-  endsAt: '2026-10-13T09:00:00+00:00',
+  startsAt: new Date(Date.now() - 3_600_000).toISOString(),
+  endsAt: new Date(Date.now() + 23 * 3_600_000).toISOString(),
   reason: null,
   hours: [1, 24, 72],
   reasonMax: 500,
@@ -185,6 +186,27 @@ describe('SupportAccessPage', () => {
     expect(api.end).toHaveBeenCalledExactlyOnceWith('c1');
     expect(q('support-access-closed')).not.toBeNull();
     expect(effectToasts()).toEqual(['support_access.ended:corrigeable']);
+  });
+
+  it('says the window closed when it ends by itself, on a page left open, without asking the API', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const ends = new Date(Date.now() + 10 * 60_000).toISOString();
+      api.read.mockResolvedValue({ ...OPEN, endsAt: ends });
+      await open();
+      expect(q('support-access-open')).not.toBeNull();
+      expect(q('support-access-end')).not.toBeNull();
+
+      await vi.advanceTimersByTimeAsync(10 * 60_000 + 5);
+      fixture.detectChanges();
+
+      expect(q('support-access-open')).toBeNull();
+      expect(q('support-access-end')).toBeNull();
+      expect(q('support-access-closed')).not.toBeNull();
+      expect(api.read).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('says that only the owner opens it, to anyone else who reaches the page', async () => {

@@ -62,17 +62,31 @@ final readonly class PhonePairings
         return new OpenedPairing($pairing->getId(), $link);
     }
 
+    /**
+     * The phone's first use of the link. A phone that came too late is refused, and the tab still showing the code is
+     * told, so it offers a new one; any other refusal tells nobody, so a guessed link pings no one.
+     */
     public function claim(string $link): ClaimedPairing
     {
         $key = self::secret();
-        $pairing = $this->transactions->run(function () use ($link, $key): ScanPairing {
+        [$pairing, $refused] = $this->transactions->run(function () use ($link, $key): array {
             $pairing = $this->pairings->lockedByLinkHash(ScanPairing::linkHash($link)) ?? throw new ScanPairingRefused('unknown');
             $this->switchedOn($pairing);
-            $pairing->claim($key, $this->clock->now());
+            try {
+                $pairing->claim($key, $this->clock->now());
+            } catch (ScanPairingRefused $refused) {
+                return [$pairing, $refused];
+            }
             $this->pairings->save($pairing);
 
-            return $pairing;
+            return [$pairing, null];
         });
+        if (null !== $refused) {
+            if ('expired' === $refused->reason) {
+                $this->tellTheTab($pairing, ['event' => 'expired']);
+            }
+            throw $refused;
+        }
         $this->tellTheTab($pairing, ['event' => 'claimed']);
 
         return new ClaimedPairing($pairing->getId(), $key);

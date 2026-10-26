@@ -97,6 +97,38 @@ final class PhonePairingsTest extends TestCase
     public function testALinkNobodyOpenedIsUnknown(): void
     {
         $this->refused('unknown', fn () => $this->phones()->claim(str_repeat('a', 64)));
+        self::assertSame([], $this->realtime->pushed, 'a guessed link tells nobody anything');
+    }
+
+    /** The phone that came too late is told so, and so is the tab still showing the code, which offers a new one. */
+    public function testAPhoneClaimingALapsedLinkIsRefusedAndTheTabHearsItExpired(): void
+    {
+        $opened = $this->phones()->open($this->company, $this->user, 'tab-1');
+        for ($second = 60; $second <= ScanPairing::CLAIM_WITHIN_SECONDS; $second += 60) {
+            $this->clock->sleep(60);
+            $this->phones()->renew($this->user->getId(), $opened->id);
+        }
+        $this->clock->sleep(1);
+
+        $this->refused('expired', fn () => $this->phones()->claim($opened->link));
+
+        self::assertSame(
+            ['channel' => $this->userChannel(), 'data' => ['type' => 'pairing', 'event' => 'expired', 'pairing' => $opened->id->toRfc4122(), 'tab' => 'tab-1']],
+            $this->realtime->last(),
+        );
+        self::assertFalse($this->pairings->get($opened->id)?->isClaimed());
+        $this->refused('expired', fn () => $this->phones()->renew($this->user->getId(), $opened->id));
+    }
+
+    public function testAClaimRefusedForAnotherReasonTellsTheTabNothing(): void
+    {
+        $opened = $this->phones()->open($this->company, $this->user, 'tab-1');
+        $this->phones()->claim($opened->link);
+        $told = \count($this->realtime->pushed);
+
+        $this->refused('claimed', fn () => $this->phones()->claim($opened->link));
+
+        self::assertCount($told, $this->realtime->pushed, 'a second phone on a used link is no news for the tab');
     }
 
     public function testAScanReachesOnlyTheTabThatOpenedThePairing(): void

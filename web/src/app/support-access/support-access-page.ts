@@ -22,6 +22,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { StepUp } from '../shared/step-up/step-up';
+import { deadlineClock } from '../shared/time/deadline-clock';
 import {
   SupportAccessApi,
   SupportAccessRefused,
@@ -66,14 +67,17 @@ export class SupportAccessPage {
   protected readonly busy = signal(false);
   /** A reason typed and not yet sent is work a person would lose by leaving. */
   private readonly reasonTyped = computed(() => (this.reason().trim() === '' ? 0 : 1));
+  /** Moves on when the window ends, which nothing announces: the page then says it is closed. */
+  private readonly now = deadlineClock(() => [this.state()?.endsAt ?? null]);
   protected readonly until = computed(() => {
     const endsAt = this.state()?.endsAt ?? null;
-    return endsAt === null ? null : this.format.moment(endsAt, this.company()?.timezone);
+    if (endsAt === null || Date.parse(endsAt) <= this.now()) return null;
+    return this.format.moment(endsAt, this.company()?.timezone);
   });
 
   constructor() {
     inject(UnsavedChanges).declare(this.reasonTyped);
-    // Another owner may open or close it meanwhile, and a window ends by itself.
+    // Another owner may open or close it meanwhile; a window ending by itself is told by `now`, since nothing says it.
     inject(LiveChanges).reloadOn(['support_grant'], () => this.reload(), inject(DestroyRef));
     void this.reload();
   }

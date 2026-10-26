@@ -35,6 +35,52 @@ describe('watchRowView', () => {
     expect(view.cells['days']).toBe(40);
   });
 
+  it('writes a draft waiting to be validated with its customer, its lines and the hours it has waited', () => {
+    const view = watchRowView(
+      {
+        kind: 'delivery_note.to_validate',
+        subjectId: 'n1',
+        params: { customer: 'Carthage Conseil', lines: 2, hours: 5 },
+      },
+      0,
+      figures,
+    );
+
+    expect(view.cells).toEqual({ customer: 'Carthage Conseil', lines: 2, hours: 5 });
+    expect(subjectView('delivery_note.to_validate')?.list.link?.(view)).toEqual([
+      '/delivery-notes',
+      'n1',
+    ]);
+  });
+
+  it('writes an order whose goods are due with its number, its vendor, the day expected and the days since', () => {
+    const view = watchRowView(
+      {
+        kind: 'purchase_order.to_receive',
+        subjectId: 'o1',
+        params: {
+          number: 'BC-2026-00004',
+          vendor: 'Quincaillerie du Sud',
+          expectedOn: '2026-10-24',
+          days: 2,
+        },
+      },
+      0,
+      figures,
+    );
+
+    expect(view.cells).toEqual({
+      number: 'BC-2026-00004',
+      vendor: 'Quincaillerie du Sud',
+      expectedOn: '24/10/2026',
+      days: 2,
+    });
+    expect(subjectView('purchase_order.to_receive')?.list.link?.(view)).toEqual([
+      '/purchases',
+      'o1',
+    ]);
+  });
+
   it('writes a draft whose amount is to check with what it is, who is paid, its amount and its date', () => {
     const view = watchRowView(
       {

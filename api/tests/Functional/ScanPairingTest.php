@@ -183,6 +183,34 @@ final class ScanPairingTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
 
+    /**
+     * A link left unclaimed past its window answers the tab's next word as expired, so the dialog stops saying « En
+     * attente du téléphone » over a dead code; the phone that comes too late is refused and the tab hears it too; the
+     * tab may still let the dead pairing go.
+     */
+    public function testALinkLeftUnclaimedPastItsWindowIsExpiredForTheTabAndThePhone(): void
+    {
+        [$id, $link] = $this->open();
+        $this->em()->getConnection()->executeStatement(
+            'UPDATE scan_pairing SET created_at = created_at - make_interval(secs => ?) WHERE id = ?',
+            [ScanPairing::CLAIM_WITHIN_SECONDS + 1, $id],
+        );
+
+        $this->postJson($this->pairingPath($id).'/heartbeat', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_GONE);
+        self::assertSame(['error' => 'expired'], $this->json());
+
+        $this->phone();
+        $this->postJson('/api/scan-pairings/claim', ['link' => $link]);
+        self::assertResponseStatusCodeSame(Response::HTTP_GONE);
+        self::assertSame(['error' => 'expired'], $this->json());
+        self::assertSame(['type' => 'pairing', 'event' => 'expired', 'pairing' => $id, 'tab' => 'tab-1'], $this->publisher->last()['data']);
+
+        $this->login('till@twes.local', 'password-1234');
+        $this->sendJson('DELETE', $this->pairingPath($id));
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
     public function testOpeningNeedsTheRightToReadProductsAndATab(): void
     {
         $this->createUser('clerk@twes.local', 'password-1234', $this->company, ['customer.read'], 'clerk');

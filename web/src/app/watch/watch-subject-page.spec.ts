@@ -108,6 +108,20 @@ describe('WatchSubjectPage', () => {
     expect(link?.textContent).toContain('Portefeuille chèques et traites');
   });
 
+  it('leads from the drafts waiting to be validated to the delivery notes list showing its drafts', async () => {
+    await open('delivery_note.to_validate');
+
+    expect(q('watch-elsewhere')?.getAttribute('href')).toBe('/delivery-notes?status=draft');
+  });
+
+  it('leads from the orders whose goods are due to the orders list showing the open ones', async () => {
+    await open('purchase_order.to_receive');
+
+    expect(q('watch-elsewhere')?.getAttribute('href')).toBe(
+      '/purchases?status=sent,partly_received',
+    );
+  });
+
   it('offers no way elsewhere on a subject that has none', async () => {
     await open('invoices.late_customer');
 
