@@ -106,6 +106,14 @@ export const QUOTES_LIST: ListDescriptor<QuoteListRow> = {
       width: 130,
     },
     {
+      id: 'receivedBy',
+      priority: 'low',
+      label: `${FIELDS}.receivedBy`,
+      value: (row) => row.receivedBy?.name ?? '',
+      shown: (row) => row.receivedBy !== null,
+      wraps: true,
+    },
+    {
       id: 'total',
       priority: 'high',
       label: `${FIELDS}.total`,

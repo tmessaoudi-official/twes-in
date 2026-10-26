@@ -3,6 +3,7 @@
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
 import type { InvoiceLine, TaxTotal } from '../invoices/invoices-types';
+import type { Receiver, ReceiverChoice, ReceiverRule } from '../shared/receivers/receiver';
 
 /** Why the API refused, as the quotes screens translate it. */
 export type QuotesError =
@@ -62,7 +63,7 @@ export interface QuoteSearch {
   /** Numbered from 1. */
   page: number;
   itemsPerPage: number;
-  /** Words found in the number, the customer's reference, or the customer the quote recorded; empty finds all. */
+  /** Words found in the number, the customer's reference, the customer the quote recorded or who answered; empty finds all. */
   q: string;
   /** Statuses the quote may hold, OR'd; none lists every one. */
   status: readonly QuoteStatus[];
@@ -98,6 +99,13 @@ export interface QuoteRow {
   /** The day the customer accepted or refused it. */
   answeredOn: string | null;
   refusalReason: string | null;
+  /** Who answered for the customer, as the quote copied them; null while nobody is named. */
+  receivedBy: Receiver | null;
+  /**
+   * Whether the customer's quotes name who answered: never, when wished, or always at the answer. Said by a quote's own
+   * answer; null on a list's rows, which read no setting: a screen reads it `?? 'optional'`.
+   */
+  receiverRule: ReceiverRule | null;
   /** The draft invoice an accepted quote became. */
   invoiceId: string | null;
   /** The deposit invoices drawn from it, cancelled drafts included, the oldest first. */
@@ -188,10 +196,14 @@ export interface QuoteLineDelivery {
 /** A deposit asked for: a percentage of the quote, or an amount tax included; one of them. */
 export type DepositShare = { percentage: string } | { amount: string };
 
-/** The customer's answer: the day they gave it (empty: the company's today), and why they declined, when told. */
+/**
+ * The customer's answer: the day they gave it (empty: the company's today), why they declined, when told, and who
+ * answered for them, as chosen (none: nobody).
+ */
 export interface QuoteAnswer {
   answeredOn: string;
   refusalReason?: string;
+  receivedBy?: ReceiverChoice | null;
 }
 
 export interface QuoteAttachment {

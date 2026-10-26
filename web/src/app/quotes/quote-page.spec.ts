@@ -117,6 +117,8 @@ const draft: QuoteRow = {
   validUntil: null,
   answeredOn: null,
   refusalReason: null,
+  receivedBy: null,
+  receiverRule: 'optional',
   invoiceId: null,
   deposits: [],
   deliveryNotes: [],
@@ -194,6 +196,8 @@ describe('QuotePage', () => {
     reviseAndSend: vi.fn(),
     accept: vi.fn(),
     refuse: vi.fn(),
+    correctReceiver: vi.fn(),
+    receivers: vi.fn(),
     cancel: vi.fn(),
     invoice: vi.fn(),
     addToInvoice: vi.fn(),
@@ -277,6 +281,8 @@ describe('QuotePage', () => {
     facade.reviseAndSend.mockReset().mockResolvedValue(sent);
     facade.accept.mockReset().mockResolvedValue({ kept: accepted });
     facade.refuse.mockReset().mockResolvedValue({ kept: { ...sent, status: 'refused' } });
+    facade.correctReceiver.mockReset().mockResolvedValue({ kept: accepted });
+    facade.receivers.mockReset().mockResolvedValue([{ contactId: 'kc1', name: 'Ahmed Ben Salah' }]);
     facade.cancel.mockReset().mockResolvedValue({ ...draft, status: 'cancelled' });
     facade.invoice.mockReset().mockResolvedValue({ ...accepted, invoiceId: 'i7' });
     facade.addToInvoice.mockReset().mockResolvedValue({ ...accepted, invoiceId: 'd1' });
@@ -616,7 +622,12 @@ describe('QuotePage', () => {
     over('quote-answer-confirm')!.click();
 
     await vi.waitFor(() =>
-      expect(facade.accept).toHaveBeenCalledWith('c1', 'q1', { answeredOn: '2026-10-05' }, file),
+      expect(facade.accept).toHaveBeenCalledWith(
+        'c1',
+        'q1',
+        { answeredOn: '2026-10-05', receivedBy: null },
+        file,
+      ),
     );
     await vi.waitFor(() => expect(successToasts()).toContain('quotes.accepted'));
     expect(offeredNext()?.key).toBe('quotes.suggest.invoice');
@@ -636,8 +647,184 @@ describe('QuotePage', () => {
       expect(facade.refuse).toHaveBeenCalledWith('c1', 'q1', {
         answeredOn: '',
         refusalReason: 'Trop cher',
+        receivedBy: null,
       }),
     );
+  });
+
+  describe('« Reçu par »', () => {
+    async function openMenu(): Promise<void> {
+      q('document-more')!.click();
+      await settle();
+    }
+
+    it('asks who answered among the customer’s contacts, empty, and sends the one picked', async () => {
+      quote.set({ ...sent, receiverRule: 'required' });
+      await open('q1');
+
+      q('document-action-accept')!.click();
+      await settle();
+      expect(facade.receivers).toHaveBeenCalledWith('c1', 'k1');
+      const name = over('quote-receiver-name') as HTMLInputElement;
+      expect(name.value).toBe('');
+      over('quote-answer-confirm')!.click();
+      await settle();
+      expect(facade.accept, 'the customer’s quotes name who answered').not.toHaveBeenCalled();
+
+      typeIn(name, 'Sami');
+      await settle();
+      over('quote-answer-confirm')!.click();
+      await vi.waitFor(() =>
+        expect(facade.accept).toHaveBeenCalledWith(
+          'c1',
+          'q1',
+          {
+            answeredOn: '',
+            receivedBy: { contactId: null, name: 'Sami', addToContacts: false },
+          },
+          null,
+        ),
+      );
+    });
+
+    it('asks nobody where the customer’s quotes name nobody, and reads no contacts for it', async () => {
+      quote.set({ ...sent, receiverRule: 'off' });
+      await open('q1');
+
+      q('document-action-refuse')!.click();
+      await settle();
+      expect(over('quote-receiver-name')).toBeNull();
+      expect(facade.receivers).not.toHaveBeenCalled();
+    });
+
+    it('says who answered beside the answer, the name kept as it reads', async () => {
+      quote.set({ ...accepted, receivedBy: { name: 'سامي Trabelsi', contactId: null } });
+      await open('q1');
+
+      const shown = q('quote-received-by');
+      expect(shown?.textContent).toContain('receivers.received_by');
+      expect(shown?.querySelector('bdi')?.textContent).toBe('سامي Trabelsi');
+
+      fixture.destroy();
+      quote.set(accepted);
+      await open('q1');
+      expect(q('quote-received-by')).toBeNull();
+    });
+
+    it('puts who answered right on an answered quote, and says it is done', async () => {
+      quote.set({ ...accepted, receivedBy: { name: 'Sami', contactId: null } });
+      await open('q1');
+
+      await openMenu();
+      over('document-menu-correct-receiver')!.click();
+      await settle();
+      const name = over('receiver-dialog-name') as HTMLInputElement;
+      expect(name.value).toBe('Sami');
+      typeIn(name, 'Sami Trabelsi');
+      await settle();
+      over('receiver-dialog-save')!.click();
+
+      await vi.waitFor(() =>
+        expect(facade.correctReceiver).toHaveBeenCalledWith('c1', 'q1', {
+          contactId: null,
+          name: 'Sami Trabelsi',
+          addToContacts: false,
+        }),
+      );
+      await vi.waitFor(() =>
+        expect(effectToasts()).toEqual(['quotes.receiver_corrected:corrigeable']),
+      );
+
+      // « Annuler » names again the name typed before, and is offered once more over what it put back.
+      quote.set({ ...accepted, receivedBy: { name: 'Sami Trabelsi', contactId: null } });
+      const undo = offeredNext();
+      expect(undo?.key).toBe('receivers.undo');
+      undo!.run();
+      await vi.waitFor(() =>
+        expect(facade.correctReceiver).toHaveBeenLastCalledWith('c1', 'q1', {
+          contactId: null,
+          name: 'Sami',
+          addToContacts: false,
+        }),
+      );
+      await vi.waitFor(() =>
+        expect(effectToasts()).toEqual([
+          'quotes.receiver_corrected:corrigeable',
+          'quotes.receiver_corrected:corrigeable',
+        ]),
+      );
+    });
+
+    it('takes back a contact named over nobody by naming nobody again', async () => {
+      quote.set(accepted);
+      await open('q1');
+
+      await openMenu();
+      over('document-menu-correct-receiver')!.click();
+      await settle();
+      over('receiver-dialog-name')!.focus();
+      await settle();
+      const contact = over('receiver-dialog-contact');
+      expect(contact?.textContent).toContain('Ahmed Ben Salah');
+      contact!.click();
+      await settle();
+      over('receiver-dialog-save')!.click();
+      await vi.waitFor(() =>
+        expect(facade.correctReceiver).toHaveBeenCalledWith('c1', 'q1', {
+          contactId: 'kc1',
+          name: null,
+          addToContacts: false,
+        }),
+      );
+
+      await vi.waitFor(() => expect(offeredNext()?.key).toBe('receivers.undo'));
+      offeredNext()!.run();
+      await vi.waitFor(() =>
+        expect(facade.correctReceiver).toHaveBeenLastCalledWith('c1', 'q1', null),
+      );
+    });
+
+    it('offers to put it right only on an answered quote, to whoever writes quotes, unless nobody is ever named', async () => {
+      const offered = async (): Promise<boolean> => {
+        if (q('document-more') === null) return false;
+        await openMenu();
+        const found = over('document-menu-correct-receiver') !== null;
+        (document.activeElement as HTMLElement | null)?.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }),
+        );
+        await settle();
+        return found;
+      };
+
+      quote.set(sent);
+      await open('q1');
+      expect(await offered(), 'a quote not answered yet').toBe(false);
+
+      fixture.destroy();
+      quote.set({ ...accepted, status: 'refused' });
+      await open('q1');
+      expect(await offered(), 'a refused quote').toBe(true);
+
+      fixture.destroy();
+      quote.set({ ...accepted, receiverRule: 'off' });
+      await open('q1');
+      expect(await offered(), 'nobody named, nobody ever asked').toBe(false);
+
+      fixture.destroy();
+      quote.set({
+        ...accepted,
+        receiverRule: 'off',
+        receivedBy: { name: 'Sami', contactId: null },
+      });
+      await open('q1');
+      expect(await offered(), 'a name kept from before the switch is taken off').toBe(true);
+
+      fixture.destroy();
+      granted.delete('quote.write');
+      quote.set(accepted);
+      await open('q1');
+      expect(await offered(), 'a reader').toBe(false);
+    });
   });
 
   it('invoices an accepted quote only for whoever may draft an invoice, and opens the invoice', async () => {

@@ -69,6 +69,8 @@ import {
   type QuoteAnswered,
 } from './quote-answer-dialog';
 import { DeliverPartDialog, type DeliverPartData } from '../shared/documents/deliver-part-dialog';
+import type { Receiver } from '../shared/receivers/receiver';
+import { ReceiverDialog, type ReceiverDialogData } from '../shared/receivers/receiver-dialog';
 import { QuoteDepositDialog, type QuoteDepositDialogData } from './quote-deposit-dialog';
 import { quoteForm, quoteInput, quoteValues, shownStatus } from './quote-forms';
 import { QuotesFacade } from './quotes-facade';
@@ -493,6 +495,15 @@ export class QuotePage {
         shown: deliverable,
       },
       {
+        id: 'correct-receiver',
+        label: 'quotes.actions.correct_receiver',
+        icon: 'person_edit',
+        rare: true,
+        disabled: busy,
+        run: () => void this.openCorrectReceiver(),
+        shown: this.canCorrectReceiver(),
+      },
+      {
         id: 'open-invoice',
         label: 'quotes.actions.open_invoice',
         icon: 'receipt_long',
@@ -549,6 +560,19 @@ export class QuotePage {
     this.unsaved.savedAndLeaving();
     await this.router.navigate(['/quotes']);
   }
+
+  /**
+   * Who answered is put right on an answered quote by whoever writes quotes, unless its customer's quotes name nobody
+   * and it names nobody.
+   */
+  protected readonly canCorrectReceiver = computed(() => {
+    const current = this.current();
+    return (
+      (current?.status === 'accepted' || current?.status === 'refused') &&
+      this.mayWrite() &&
+      ((current.receiverRule ?? 'optional') !== 'off' || current.receivedBy !== null)
+    );
+  });
 
   protected readonly pdfUrl = computed(() => {
     const companyId = this.company()?.id;
@@ -740,18 +764,25 @@ export class QuotePage {
   protected async answer(kind: 'accept' | 'refuse'): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
+    const current = this.current();
+    if (!companyId || id === null || !current || this.busy()) return;
     const answer = (answered: QuoteAnswered) =>
       kind === 'accept'
-        ? this.facade.accept(companyId, id, { answeredOn: answered.answeredOn }, answered.signed)
+        ? this.facade.accept(
+            companyId,
+            id,
+            { answeredOn: answered.answeredOn, receivedBy: answered.receivedBy },
+            answered.signed,
+          )
         : this.facade.refuse(companyId, id, {
             answeredOn: answered.answeredOn,
             refusalReason: answered.refusalReason,
+            receivedBy: answered.receivedBy,
           });
     const answered = await firstValueFrom(
       this.dialog
         .open<QuoteAnswerDialog, QuoteAnswerDialogData, boolean>(QuoteAnswerDialog, {
-          data: { kind, answer },
+          data: { kind, receiver: this.answerReceiver(companyId, current), answer },
           autoFocus: 'first-tabbable',
         })
         .afterClosed(),
@@ -763,6 +794,65 @@ export class QuotePage {
         : undefined;
       this.feedback.success('quotes.accepted', {}, next);
     } else this.feedback.success('quotes.refused');
+  }
+
+  /** What the answer dialog asks of who answered: nothing where the customer's quotes name nobody. */
+  private answerReceiver(companyId: string, quote: QuoteRow): QuoteAnswerDialogData['receiver'] {
+    const rule = quote.receiverRule ?? 'optional';
+    if (rule === 'off') return undefined;
+    return {
+      required: rule === 'required',
+      contacts: this.facade.receivers(companyId, quote.customerId),
+    };
+  }
+
+  /** « Reçu par » put right once the quote is answered. */
+  protected async openCorrectReceiver(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    const current = this.current();
+    if (!companyId || id === null || !current || this.busy()) return;
+    const before = current.receivedBy;
+    const saved = await firstValueFrom(
+      this.dialog
+        .open<ReceiverDialog, ReceiverDialogData, boolean>(ReceiverDialog, {
+          data: {
+            title: 'quotes.actions.correct_receiver',
+            current: current.receivedBy,
+            required: current.receiverRule === 'required',
+            contacts: this.facade.receivers(companyId, current.customerId),
+            save: (receivedBy) => this.facade.correctReceiver(companyId, id, receivedBy),
+          },
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
+    );
+    if (saved === true) this.saidCorrected(companyId, id, before);
+  }
+
+  /**
+   * Said once put right; « Annuler » names again whoever was named before: the same contact, the same name typed, or
+   * nobody.
+   */
+  private saidCorrected(companyId: string, id: string, before: Receiver | null): void {
+    const shown = this.current()?.receivedBy ?? null;
+    this.feedback.effect('quotes.receiver_corrected', {}, 'corrigeable', {
+      key: 'receivers.undo',
+      run: () =>
+        void this.facade
+          .correctReceiver(
+            companyId,
+            id,
+            before === null
+              ? null
+              : before.contactId !== null
+                ? { contactId: before.contactId, name: null, addToContacts: false }
+                : { contactId: null, name: before.name, addToContacts: false },
+          )
+          .then((answer) => {
+            if (answer !== null && 'kept' in answer) this.saidCorrected(companyId, id, shown);
+          }),
+    });
   }
 
   protected async invoice(): Promise<void> {

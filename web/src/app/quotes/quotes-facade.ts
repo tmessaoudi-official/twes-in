@@ -25,6 +25,7 @@ import type {
 import type { PreviewBody } from '../shared/documents/document-figures';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 
 /**
  * The quotes of the company being worked in, the quote open on screen, its files and what its form offers. It is
@@ -183,6 +184,20 @@ export class QuotesFacade implements LineCatalogue {
   /** The customer's no, asked in a dialog as their yes is. */
   async refuse(companyId: string, id: string, answer: QuoteAnswer): Promise<FormAnswer<QuoteRow>> {
     return this.inDialog(() => this.api.refuse(companyId, id, answer));
+  }
+
+  /** Who answered, put right on an accepted or refused quote; asked in a dialog, which says a refusal under its field. */
+  async correctReceiver(
+    companyId: string,
+    id: string,
+    receivedBy: ReceiverChoice | null,
+  ): Promise<FormAnswer<QuoteRow>> {
+    return this.inDialog(() => this.api.correctReceiver(companyId, id, receivedBy));
+  }
+
+  /** The customer's contacts « Reçu par » offers; none when they cannot be read, which the screen says. */
+  async receivers(companyId: string, customerId: string): Promise<ReceiverContact[]> {
+    return this.pick(() => this.api.receivers(companyId, customerId));
   }
 
   async cancel(companyId: string, id: string): Promise<QuoteRow | null> {

@@ -3706,7 +3706,8 @@
       "total": "Total TTC",
       "discountAmount": "Remise sur le devis (HT)",
       "notesPrinted": "Remarques imprimées sur le devis",
-      "notesInternal": "Notes internes"
+      "notesInternal": "Notes internes",
+      "receivedBy": "Reçu par"
     },
     "form": {
       "reference_hint": "La référence de la demande du client, imprimée sur le devis.",
@@ -3744,7 +3745,8 @@
       "cancel_message": "Un devis classé sans suite ne peut plus être envoyé.",
       "confirm_cancel": "Classer sans suite",
       "keep": "Garder le devis",
-      "deposit": "Facture d’acompte"
+      "deposit": "Facture d’acompte",
+      "correct_receiver": "Corriger qui a reçu…"
     },
     "answer": {
       "accept_title": "Le client accepte ce devis",
@@ -3784,6 +3786,7 @@
       "deposit_pending": "Une facture d’acompte de ce devis est encore en brouillon : émettez-la ou abandonnez-la avant de facturer le devis."
     },
     "deposit_drafted": "Facture d’acompte créée en brouillon.",
+    "receiver_corrected": "Qui a reçu le devis est corrigé.",
     "deposit": {
       "title": "Facture d’acompte",
       "help": "Un acompte sur ce devis de {{total}} TTC. Ses taxes suivent celles des lignes du devis, et la facture du solde le déduira tel qu’il a été facturé.",

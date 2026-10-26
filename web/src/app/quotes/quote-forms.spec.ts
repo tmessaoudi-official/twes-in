@@ -33,6 +33,8 @@ function quote(changes: Partial<QuoteRow> = {}): QuoteRow {
     validUntil: '2026-10-31',
     answeredOn: null,
     refusalReason: null,
+    receivedBy: null,
+    receiverRule: null,
     invoiceId: null,
     deposits: [],
     deliveryNotes: [],

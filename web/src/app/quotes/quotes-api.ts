@@ -18,7 +18,10 @@ import type {
   QuoteOptionsQuoteOptionsRead,
   QuoteProductPickQuoteProductPickRead,
   QuoteQuoteAnswerQuoteRefuseValidationQuoteAnswerQuoteRefuse as QuoteRefuseBody,
+  QuoteQuoteAnswerValidationQuoteAnswer as QuoteAcceptBody,
   QuoteQuoteRead,
+  QuoteQuoteReceiveValidationQuoteReceive as QuoteReceiveBody,
+  QuoteReceiverPickQuoteReceiverPickRead,
   QuoteQuoteWriteRecordReviseValidationQuoteWriteRecordRevise as QuoteReviseBody,
   QuoteQuoteWriteValidationQuoteWrite as QuoteWriteBody,
   QuoteStatusCountsQuoteStatusCountsRead,
@@ -47,6 +50,7 @@ import {
   type QuoteStatusCounts,
 } from './quotes-types';
 import { refusedFor } from '../shared/errors/said-already';
+import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class QuotesRefused extends Error {
@@ -205,19 +209,49 @@ export class QuotesApi {
     return this.step(companyId, id, 'send', null);
   }
 
-  /** The customer's yes, on a day from the issue day to the company's today; empty is today. */
+  /**
+   * The customer's yes, on a day from the issue day to the company's today (empty is today), through whoever answered
+   * for them, or nobody.
+   */
   async accept(companyId: string, id: string, answer: QuoteAnswer): Promise<QuoteRow> {
-    return this.step(companyId, id, 'accept', { answeredOn: day(answer.answeredOn) });
+    const body: QuoteAcceptBody = {
+      answeredOn: day(answer.answeredOn),
+      receivedBy: answer.receivedBy ?? null,
+    };
+    return this.step(companyId, id, 'accept', body);
   }
 
-  /** The customer's no, and why when they said; the reason never enters the audit trail. */
+  /** The customer's no, why when they said, and who answered; the reason never enters the audit trail. */
   async refuse(companyId: string, id: string, answer: QuoteAnswer): Promise<QuoteRow> {
     const reason = answer.refusalReason?.trim() ?? '';
     const body: QuoteRefuseBody = {
       answeredOn: day(answer.answeredOn),
       refusalReason: reason === '' ? null : reason,
+      receivedBy: answer.receivedBy ?? null,
     };
     return this.step(companyId, id, 'refuse', body);
+  }
+
+  /** Who answered an accepted or refused quote, put right, or nobody; the journal keeps the field, never the name. */
+  async correctReceiver(
+    companyId: string,
+    id: string,
+    receivedBy: ReceiverChoice | null,
+  ): Promise<QuoteRow> {
+    const body: QuoteReceiveBody = { receivedBy };
+    return this.step(companyId, id, 'receiver', body);
+  }
+
+  /** The customer's contacts a quote offers to name who answered, under the quote's own permission. */
+  async receivers(companyId: string, customerId: string): Promise<ReceiverContact[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<QuoteReceiverPickQuoteReceiverPickRead[]>(
+          `${companyPath(companyId)}/quote-options/customers/${customerId}/receivers`,
+        ),
+      );
+      return rows.map((row) => ({ contactId: row.contactId ?? '', name: row.name }));
+    });
   }
 
   /** Only a draft is cancelled. */
@@ -367,7 +401,7 @@ export class QuotesApi {
   private async step(
     companyId: string,
     id: string,
-    action: 'send' | 'accept' | 'refuse' | 'cancel' | 'invoice',
+    action: 'send' | 'accept' | 'refuse' | 'receiver' | 'cancel' | 'invoice',
     body: object | null,
   ): Promise<QuoteRow> {
     return this.guard(async () =>
@@ -472,6 +506,10 @@ function toQuote(raw: QuoteQuoteRead | QuoteJsonldQuoteRead): QuoteRow {
     validUntil: raw.validUntil ?? null,
     answeredOn: raw.answeredOn ?? null,
     refusalReason: raw.refusalReason ?? null,
+    receivedBy: raw.receivedBy?.name
+      ? { name: raw.receivedBy.name, contactId: raw.receivedBy.contactId ?? null }
+      : null,
+    receiverRule: raw.receiverRule ?? null,
     invoiceId: raw.invoiceId ?? null,
     deposits: (raw.deposits ?? []).map(({ invoiceId, number, status, total }) => ({
       invoiceId,

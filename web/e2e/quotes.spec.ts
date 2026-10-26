@@ -3,6 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
 import { wcagViolations } from './axe';
 import { choose, expectFacetCount } from './select';
+import { toast } from './toast';
 
 // Quotes through the real stack: in the seeded Tunisian company, the owner drafts a quote for a customer made for the
 // run, previews its PDF, marks it sent and finds it numbered from its own series, records the customer's yes, then
@@ -423,6 +424,77 @@ test('an accepted quote is delivered by a note, which names it, and is no longer
     // Nothing is left to deliver: the note took the whole line.
     await expect(page.getByTestId('document-action-deliver')).toHaveCount(0);
     expect(await wcagViolations(page)).toEqual([]);
+  } finally {
+    await retire(page, customerNumber);
+  }
+});
+
+// « Reçu par » on a quote: who accepted for the customer is typed in the answer and added to the customer's contacts,
+// shown beside the answer, put right afterwards by picking that contact's name again under another spelling, taken
+// back from the toast, and the quote is found in the list by the name it keeps.
+test('who answered a quote is named at the answer, put right, taken back and searched for', async ({
+  page,
+}) => {
+  // A quote drafted, sent and answered through the screens, a correction scanned for accessibility, and its undo.
+  test.setTimeout(60_000);
+  const run = Date.now().toString(36).toUpperCase();
+  // Digits only: a name of letters changes its width from run to run, which moves the list's columns.
+  const named = `Sami ${Date.now().toString().slice(-8)}`;
+  const customerNumber = `E2E-QRCV-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    await page.goto('/quotes/new');
+    await page.getByTestId('quote-customer').fill(customerNumber);
+    await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+    await page.getByTestId('line-0-description').fill(`Usinage ${run}`);
+    await page.getByTestId('line-0-quantity').fill('1');
+    await page.getByTestId('line-0-price').fill('100');
+    await choose(page, 'line-0-taxes', /19/);
+    await page.getByTestId('document-action-save').click();
+    await expect(page).toHaveURL(/\/quotes\/[0-9a-f-]{36}$/);
+    await page.getByTestId('document-action-send').click();
+    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('quote-title')).toHaveText(/DEV-\d{4}-(\d{2}-)?\d{5}/);
+    const quoteNumber = ((await page.getByTestId('quote-title').textContent()) ?? '').trim();
+
+    // The answer asks who gave it, empty, with nothing ticked.
+    await page.getByTestId('document-action-accept').click();
+    await expect(page.getByTestId('quote-answered-on')).toBeFocused();
+    const name = page.getByTestId('quote-receiver-name');
+    await expect(name).toHaveValue('');
+    await name.fill(named);
+    const add = page.getByTestId('quote-receiver-add').getByRole('checkbox');
+    await expect(add).not.toBeChecked();
+    await add.check();
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('quote-answer-confirm').click();
+    await expect(page.getByTestId('quote-status')).toContainText(/Accepté|Accepted/);
+    await expect(page.getByTestId('quote-received-by')).toContainText(named);
+
+    // Put right: the customer's contacts now hold the name typed, which is picked rather than typed again.
+    await page.getByTestId('document-more').click();
+    await page.getByTestId('document-menu-correct-receiver').click();
+    const corrected = page.getByTestId('receiver-dialog-name');
+    await expect(corrected).toHaveValue(named);
+    await corrected.fill('');
+    await expect(page.getByTestId('receiver-dialog-contact')).toHaveText([named]);
+    await corrected.fill(`${named} B`);
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('receiver-dialog-save').click();
+    await expect(page.getByTestId('receiver-dialog-save')).toHaveCount(0);
+    await expect(page.getByTestId('quote-received-by')).toContainText(`${named} B`);
+
+    // « Annuler » names again whom the answer named.
+    await toast(page).getByTestId('toast-action').click();
+    await expect(page.getByTestId('quote-received-by')).not.toContainText(`${named} B`);
+    await expect(page.getByTestId('quote-received-by')).toContainText(named);
+
+    // The API pages this list and the shared company outgrows one page: the quote is found by who answered it.
+    await page.goto('/quotes');
+    await page.getByTestId('list-filter').fill(named);
+    await expect(page.getByTestId('quotes-table')).toContainText(quoteNumber);
   } finally {
     await retire(page, customerNumber);
   }

@@ -3706,7 +3706,8 @@
       "total": "Total incl. tax",
       "discountAmount": "Quote discount (before tax)",
       "notesPrinted": "Remarks printed on the quote",
-      "notesInternal": "Internal notes"
+      "notesInternal": "Internal notes",
+      "receivedBy": "Received by"
     },
     "form": {
       "reference_hint": "The reference of the customer's request, printed on the quote.",
@@ -3744,7 +3745,8 @@
       "cancel_message": "A quote not pursued can no longer be sent.",
       "confirm_cancel": "Close as not pursued",
       "keep": "Keep the quote",
-      "deposit": "Deposit invoice"
+      "deposit": "Deposit invoice",
+      "correct_receiver": "Correct who received…"
     },
     "answer": {
       "accept_title": "The customer accepts this quote",
@@ -3784,6 +3786,7 @@
       "deposit_pending": "A deposit invoice of this quote is still a draft: issue or abandon it before invoicing the quote."
     },
     "deposit_drafted": "Deposit invoice drafted.",
+    "receiver_corrected": "Who received the quote is corrected.",
     "deposit": {
       "title": "Deposit invoice",
       "help": "A deposit on this quote of {{total}} tax included. Its taxes follow the quote lines' taxes, and the final invoice will deduct it as it was charged.",

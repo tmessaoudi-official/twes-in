@@ -29,6 +29,8 @@ const sent: QuoteRow = {
   validUntil: '2026-10-31',
   answeredOn: null,
   refusalReason: null,
+  receivedBy: null,
+  receiverRule: 'optional',
   invoiceId: null,
   deposits: [],
   deliveryNotes: [],

@@ -17,10 +17,16 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       form: { errors: { date: 'Saisissez un jour valide.' } },
+      receivers: {
+        received_by: 'Reçu par',
+        required: 'Nommez qui a reçu.',
+        add_to_contacts: 'Ajouter à ses contacts',
+      },
       import: {
         rejections: {
           on_or_after: 'Date refusée : le {{day}} au plus tôt.',
           lines_required: 'Ajoutez au moins une ligne.',
+          receiver_off: '« Reçu par » est désactivé pour ce document : videz ce champ.',
         },
       },
     });
@@ -70,8 +76,84 @@ describe('QuoteAnswerDialog', () => {
       q<HTMLButtonElement>('quote-answer-confirm')!.click();
       await fixture.whenStable();
     };
-    return { q, typeDay, confirm };
+    const typeName = async (text: string) => {
+      const input = q<HTMLInputElement>('quote-receiver-name')!;
+      input.value = text;
+      input.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+    };
+    return { q, typeDay, confirm, typeName, fixture };
   }
+
+  const contacts = Promise.resolve([{ contactId: 'k1-c1', name: 'Ahmed Ben Salah' }]);
+
+  it('asks nobody where the customer’s quotes name nobody', async () => {
+    const { q, confirm } = await open({ kind: 'accept' });
+
+    expect(q('quote-receiver-name')).toBeNull();
+    await confirm();
+    expect(answer).toHaveBeenCalledWith(expect.objectContaining({ receivedBy: null }));
+  });
+
+  it('names who answered as typed, added to the customer’s contacts only when ticked, empty and unticked as it opens', async () => {
+    const { q, confirm, typeName, fixture } = await open({
+      kind: 'refuse',
+      receiver: { required: false, contacts },
+    });
+
+    expect(q<HTMLInputElement>('quote-receiver-name')!.value).toBe('');
+    expect(q('quote-receiver-add')).toBeNull();
+    await typeName(' Sami Trabelsi ');
+    const tick = q('quote-receiver-add')?.querySelector('input');
+    expect((tick as HTMLInputElement).checked).toBe(false);
+    tick!.click();
+    await fixture.whenStable();
+    await confirm();
+
+    expect(answer).toHaveBeenCalledWith({
+      answeredOn: '',
+      refusalReason: '',
+      signed: null,
+      receivedBy: { contactId: null, name: 'Sami Trabelsi', addToContacts: true },
+    });
+    expect(ref.close).toHaveBeenCalledWith(true);
+  });
+
+  it('says under « Reçu par » that it is required, and answers nothing until someone is named', async () => {
+    const { q, confirm, typeName } = await open({
+      kind: 'accept',
+      receiver: { required: true, contacts },
+    });
+
+    await confirm();
+    expect(answer).not.toHaveBeenCalled();
+    expect(q('quote-receiver-error')?.textContent).toContain('Nommez qui a reçu.');
+
+    await typeName('Sami');
+    await confirm();
+    expect(answer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        receivedBy: { contactId: null, name: 'Sami', addToContacts: false },
+      }),
+    );
+  });
+
+  it('says a refusal of who answered under « Reçu par » and stays open', async () => {
+    const { q, confirm, typeName } = await open({
+      kind: 'accept',
+      receiver: { required: false, contacts },
+    });
+    answer.mockResolvedValueOnce({
+      refused: [{ field: 'receivedBy', reason: 'receiver_off', params: {} }],
+    });
+
+    await typeName('Sami');
+    await confirm();
+
+    expect(ref.close).not.toHaveBeenCalled();
+    expect(q('quote-receiver-error')?.textContent).toContain('« Reçu par » est désactivé');
+    expect(q('quote-answer-refused')).toBeNull();
+  });
 
   it('says a day that is not one under its field, stays open and puts the cursor there', async () => {
     const { q, typeDay, confirm } = await open({ kind: 'refuse' });
@@ -96,6 +178,7 @@ describe('QuoteAnswerDialog', () => {
       answeredOn: '2026-10-01',
       refusalReason: '',
       signed: null,
+      receivedBy: null,
     });
     expect(ref.close).toHaveBeenCalledWith(true);
   });
@@ -106,7 +189,12 @@ describe('QuoteAnswerDialog', () => {
     await confirm();
 
     expect(q('quote-answered-on-error')).toBeNull();
-    expect(answer).toHaveBeenCalledWith({ answeredOn: '', refusalReason: '', signed: null });
+    expect(answer).toHaveBeenCalledWith({
+      answeredOn: '',
+      refusalReason: '',
+      signed: null,
+      receivedBy: null,
+    });
   });
 
   it('stays open on a refused day, saying why under it in its figures, and what no field takes below', async () => {

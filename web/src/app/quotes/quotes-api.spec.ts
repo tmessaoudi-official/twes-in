@@ -380,15 +380,70 @@ describe('QuotesApi', () => {
   it("sends an empty answer day as none, the company's today", async () => {
     const accepted = api.accept('c1', 'q1', { answeredOn: ' ' });
     const accept = http.expectOne('/api/companies/c1/quotes/q1/accept');
-    expect(accept.request.body).toEqual({ answeredOn: null });
+    expect(accept.request.body).toEqual({ answeredOn: null, receivedBy: null });
     accept.flush(raw({ status: 'accepted' }));
     await accepted;
 
     const refused = api.refuse('c1', 'q1', { answeredOn: '2026-10-05', refusalReason: '  ' });
     const refuse = http.expectOne('/api/companies/c1/quotes/q1/refuse');
-    expect(refuse.request.body).toEqual({ answeredOn: '2026-10-05', refusalReason: null });
+    expect(refuse.request.body).toEqual({
+      answeredOn: '2026-10-05',
+      refusalReason: null,
+      receivedBy: null,
+    });
     refuse.flush(raw({ status: 'refused' }));
     await refused;
+  });
+
+  it('sends who answered with the answer, and reads them back with the rule only a single quote carries', async () => {
+    const receivedBy = { contactId: null, name: 'Sami Trabelsi', addToContacts: true };
+    const accepted = api.accept('c1', 'q1', { answeredOn: '', receivedBy });
+    const accept = http.expectOne('/api/companies/c1/quotes/q1/accept');
+    expect(accept.request.body).toEqual({ answeredOn: null, receivedBy });
+    accept.flush(
+      raw({
+        status: 'accepted',
+        receivedBy: { name: 'Sami Trabelsi', contactId: 'kc9' },
+        receiverRule: 'required',
+      }),
+    );
+    expect(await accepted).toMatchObject({
+      receivedBy: { name: 'Sami Trabelsi', contactId: 'kc9' },
+      receiverRule: 'required',
+    });
+
+    const listed = api.quotes('c1', SEARCH);
+    http
+      .expectOne((request) => request.url === '/api/companies/c1/quotes')
+      .flush({ member: [raw({ receivedBy: null, receiverRule: null })], totalItems: 1 });
+    expect((await listed).rows[0]).toMatchObject({ receivedBy: null, receiverRule: null });
+  });
+
+  it('puts who answered right, or names nobody, and reads the contacts a quote offers', async () => {
+    const corrected = api.correctReceiver('c1', 'q1', {
+      contactId: 'kc1',
+      name: null,
+      addToContacts: false,
+    });
+    const correct = http.expectOne('/api/companies/c1/quotes/q1/receiver');
+    expect(correct.request.method).toBe('POST');
+    expect(correct.request.body).toEqual({
+      receivedBy: { contactId: 'kc1', name: null, addToContacts: false },
+    });
+    correct.flush(raw({ status: 'accepted', receivedBy: { name: 'Ahmed', contactId: 'kc1' } }));
+    expect((await corrected).receivedBy).toEqual({ name: 'Ahmed', contactId: 'kc1' });
+
+    const cleared = api.correctReceiver('c1', 'q1', null);
+    const clear = http.expectOne('/api/companies/c1/quotes/q1/receiver');
+    expect(clear.request.body).toEqual({ receivedBy: null });
+    clear.flush(raw({ status: 'refused', receivedBy: null }));
+    expect((await cleared).receivedBy).toBeNull();
+
+    const contacts = api.receivers('c1', 'k1');
+    http
+      .expectOne('/api/companies/c1/quote-options/customers/k1/receivers')
+      .flush([{ contactId: 'kc1', name: 'Ahmed' }]);
+    expect(await contacts).toEqual([{ contactId: 'kc1', name: 'Ahmed' }]);
   });
 
   it('attaches a file as one multipart part named file', async () => {

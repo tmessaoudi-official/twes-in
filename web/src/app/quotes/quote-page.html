@@ -37,6 +37,11 @@
               >{{ 'quotes.fields.answeredOn' | translate }} {{ quote.answeredOn | day }}</span
             >
           }
+          @if (quote.receivedBy; as receivedBy) {
+            <span data-testid="quote-received-by"
+              >{{ 'receivers.received_by' | translate }} <bdi>{{ receivedBy.name }}</bdi></span
+            >
+          }
         </p>
         @if (quote.refusalReason; as reason) {
           <p class="text-sm" data-testid="quote-refusal-shown">

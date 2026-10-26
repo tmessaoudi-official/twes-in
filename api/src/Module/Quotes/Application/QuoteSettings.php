@@ -42,7 +42,8 @@ final readonly class QuoteSettings implements DeclaresSettings
         yield new SettingDefinition(self::SIGNATURE_BLOCK, SettingType::Bool, true, SettingChain::Parties, $parties, 'settings.quote.signature_block', self::MODULE);
         // Who answered for the customer: named when the person recording the answer wishes, by default; a shop may
         // require it at every answer or switch it off.
-        yield new SettingDefinition(self::RECEIVER, SettingType::Enum, ReceiverRule::Optional->value, SettingChain::Parties, $parties, 'settings.quote.receiver', self::MODULE, choices: array_map(static fn (ReceiverRule $rule): string => $rule->value, ReceiverRule::cases()));
+        // The key and the choices are written out, as the labels gate reads them: ReceiverRule's cases.
+        yield new SettingDefinition('quote.receiver', SettingType::Enum, 'optional', SettingChain::Parties, $parties, 'settings.quote.receiver', self::MODULE, choices: ['off', 'optional', 'required']);
     }
 
     /** Whether an answer from this customer names who gave it, as the customer, its group and its company say. */
