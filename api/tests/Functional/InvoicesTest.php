@@ -2167,6 +2167,9 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $issued = $this->json();
         self::assertSame(['Sami Trabelsi', 'required'], [$this->receivedName($issued), $issued['receiverRule']]);
+        $linked = $issued['receivedBy'] ?? null;
+        self::assertIsArray($linked);
+        self::assertIsString($linked['contactId'] ?? null, 'the name added to the contacts is linked to it');
         self::assertNotNull($issued['number']);
         self::assertSame([['first_name' => 'Ahmed', 'last_name' => 'Ben Salem'], ['first_name' => 'Sami', 'last_name' => 'Trabelsi']], $this->em()->getConnection()->fetchAllAssociative('SELECT first_name, last_name FROM contact WHERE customer_id = ? ORDER BY last_name', [$this->customerId]));
 
