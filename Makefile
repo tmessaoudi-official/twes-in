@@ -35,7 +35,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-image gate-powershell in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -164,13 +164,17 @@ mutants:       ## SPEC=<file in the tree>: each mutant written in, its test run,
 mutants: tools-image web-tools-image
 	@MUTANTS_TOOLS='$(TOOLS)' MUTANTS_WEB_TOOLS='$(WEB_TOOLS)' MUTANTS_NPM_INSTALL='$(NPM_INSTALL)' bash scripts/mutants/mutants.sh host $(SPEC)
 
-gate:          ## everything CI checks except e2e: the api half, the web half, then the licences
+gate:          ## everything CI checks except e2e: both halves' static checks, the api suite, the web suite and build, the licences
 	@# One after the other: side by side, each suite taking every processor, 41 web specs timed out at a load of 15 on 8
 	@# processors; given half each, one still did, and the whole took as long as in turn (about 15 minutes either way).
-	@# The OpenAPI document first and once, which gate-web-checks reads without exporting it again.
+	@# The OpenAPI document first and once, which the web half reads without exporting it again.
+	@# The static checks of both halves first (cs-fixer, PHPStan, ESLint, the e2e types, Prettier): a style or type
+	@# error then stops the gate in minutes, where it waited for the API suite's ten. CI's checks, in another order.
 	$(MAKE) --no-print-directory api-openapi
-	$(MAKE) --no-print-directory gate-api
-	$(MAKE) --no-print-directory gate-web-checks
+	$(MAKE) --no-print-directory gate-api-static
+	$(MAKE) --no-print-directory gate-web-static
+	$(MAKE) --no-print-directory gate-api-tests
+	$(MAKE) --no-print-directory gate-web-tests
 	$(MAKE) --no-print-directory gate-licences
 
 gate-snapshot: ## the gate on what is STAGED, in a worktree of its own (.claude/worktrees/gate), while work goes on here; green trees recorded in var/claude/gates
@@ -335,6 +339,20 @@ gate-web: api-openapi web-tools-image   ## npm run gate starts with api:types, w
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate'
 gate-web-checks: web-tools-image   # gate-web on the OpenAPI document already exported, for `make gate`
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate'
+# `make gate`'s four steps: each half's static checks, then its suites, on the OpenAPI document already exported.
+gate-api-static: tools-image
+	$(TOOLS) make --no-print-directory in-gate-api-static
+in-gate-api-static:
+	mkdir -p api/vendor api/var var/tmp var/cache
+	cd api && composer install --no-interaction --no-progress --prefer-dist
+	cd api && composer gate:static
+gate-api-tests: tools-image
+	docker compose up -d --wait --no-recreate postgres
+	$(TOOLS) sh -c 'cd api && composer test'
+gate-web-static: web-tools-image
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate:static'
+gate-web-tests: web-tools-image
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate:tests'
 
 test-api: tools-image
 	docker compose up -d --wait --no-recreate postgres

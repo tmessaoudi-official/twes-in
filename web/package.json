@@ -21,7 +21,9 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "e2e": "playwright test",
-    "gate": "npm run api:types && npm run lint && npm run typecheck:e2e && npm run format:check && npm test && npm run build",
+    "gate": "npm run gate:static && npm run gate:tests",
+    "gate:static": "npm run api:types && npm run lint && npm run typecheck:e2e && npm run format:check",
+    "gate:tests": "npm test && npm run build",
     "api:types": "openapi-ts"
   },
   "dependencies": {

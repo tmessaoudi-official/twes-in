@@ -6,5 +6,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     server: { deps: { inline: ['@material/material-color-utilities'] } },
+    // Half the cores: with one worker a core, a machine also running a gate's API half or another project left specs no
+    // headroom, and cases near their five seconds timed out on load alone (7 workers: 130 s, five timeouts; 4: 90 s, none).
+    maxWorkers: 4,
   },
 });

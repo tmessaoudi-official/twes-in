@@ -33,6 +33,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - **Gate a snapshot, keep working** (developer ruling, docs/SPEC.md § 7): stage, `make gate-snapshot` in the background,
   go on with the next thing here (never in the gate's worktree), then `make commit-gated MSG=<file>`, which commits only
   the tree that went green. A red one is fixed on top and gated again. `make e2e` stays serial, the touched specs only.
+  Before gating, `make check FILES=<the staged files>` (seconds to minutes), and nothing heavy beside a gate: its web
+  suite's five-second cases time out under load (developer ruling, 2026-10-26 16:39; 6 of the day's 16 runs went red for
+  what that check or a quiet machine would have spared).
 - **One `advisor()` call at goal start and one at goal end**, not per commit. One reviewer panel
   once, when the POC works, against a frozen commit, of four lenses in two waves of two (`.claude/agents/`:
   domain correctness, tenancy and security, completeness, usability and misuse); reviewers write to
@@ -330,8 +333,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   FrankenPHP's watcher, the web tier on `ng serve`; `make up-images` runs the built images as CI does; `make live-refresh`
   after a resource property change; docs/START.md § 2), web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, `lan` :8443 a phone's HTTPS door on this machine's network address, `infra/lan/Caddyfile`; the one-shot `migrate` service
   (`infra/api/migrate.sh`) migrates as the owner and grants `twes_app`, the role api and worker connect as, then `seed`: operator `operator@twes.local` / `twes-operator-dev`, authenticator secret
-  `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`, `make operator-code` prints its current code; Playwright signs the operator in once, `web/e2e/session.ts`; `web/e2e/axe.ts` is the one WCAG scan, waiting for a fresh toast, and `web/e2e/toast.ts` the announced toast), `make gate` (licences + `composer gate`
-  + `npm run gate`, each in its toolchain container, below; `npm run gate` starts by regenerating the types, and type-checks `e2e*/` and the Playwright configs through `tsconfig.e2e.json`, which Playwright itself never does; `composer test` migrates the test database first),
+  `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`, `make operator-code` prints its current code; Playwright signs the operator in once, `web/e2e/session.ts`; `web/e2e/axe.ts` is the one WCAG scan, waiting for a fresh toast, and `web/e2e/toast.ts` the announced toast), `make gate` (both halves' static checks first, `composer gate:static` and `npm run gate:static`, so a style or type error
+  reds in about two minutes; then `composer test`, `npm run gate:tests` and the licences, each in its toolchain container, below; CI runs
+  the same checks as `composer gate` and `npm run gate`; `npm run gate` starts by regenerating the types, and type-checks `e2e*/` and the Playwright configs through `tsconfig.e2e.json`, which Playwright itself never does; `composer test` migrates the test database first),
   `make e2e` (Playwright against the running stack; a scenario tagged `@phone` runs on WebKit, Safari's engine, as well as Chromium), `make fixtures` (the demo companies, appended after `seed`).
   These are exactly CI's jobs; run the gate chain AFTER `git add -A`, because the SPDX gate and
   `git ls-files` see staged files and a cached-only enumeration misses a brand-new one.

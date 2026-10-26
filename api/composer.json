@@ -109,6 +109,10 @@
       "@lint",
       "@stan",
       "@test"
+    ],
+    "gate:static": [
+      "@lint",
+      "@stan"
     ]
   },
   "conflict": {
