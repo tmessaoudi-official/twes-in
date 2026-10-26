@@ -20,11 +20,11 @@ use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\CreditNoteRight;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * What a new invoice, or a draft as it is being edited, would come to, kept nowhere. It asks what saving would ask, so
@@ -53,7 +53,7 @@ final readonly class PreviewInvoiceProcessor implements ProcessorInterface
         } catch (InvoiceNotDraft $fixed) {
             throw new ConflictHttpException($fixed->getMessage(), $fixed);
         } catch (InvalidInvoice $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return DocumentPreview::of($previewed->totals, $this->scales->of($company->getCurrency()), $previewed->titles, $previewed->chargesLeftOut, $previewed->sentFrom);

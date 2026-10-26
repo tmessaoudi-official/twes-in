@@ -82,7 +82,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
                 $quote->getId(),
             );
         } catch (InvalidInvoice $refused) {
-            throw new QuoteInvoicingRefused($refused->field, $refused->getMessage(), $refused);
+            throw new QuoteInvoicingRefused($refused->field, $refused->getMessage(), $refused, $refused->reason, $refused->params);
         }
 
         return $invoice->getId();
@@ -109,7 +109,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
         try {
             $this->manage->appendLines($company, $invoiceId, $this->withDepositsGivenBack($quote, $this->linesOf($quote)), ['quoteId' => $quote->getId()->toRfc4122()], $actorUserId);
         } catch (InvalidInvoice $refused) {
-            throw new QuoteInvoicingRefused($refused->field, $refused->getMessage(), $refused);
+            throw new QuoteInvoicingRefused($refused->field, $refused->getMessage(), $refused, $refused->reason, $refused->params);
         }
     }
 
@@ -180,7 +180,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
                 true,
             );
         } catch (InvalidInvoice $refused) {
-            throw new QuoteInvoicingRefused($refused->field, $refused->getMessage(), $refused);
+            throw new QuoteInvoicingRefused($refused->field, $refused->getMessage(), $refused, $refused->reason, $refused->params);
         }
 
         return $invoice->getId();

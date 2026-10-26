@@ -16,9 +16,9 @@ use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Domain\ValueObject\NamedLot;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockCountResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /** @implements ProcessorInterface<StockCountResource, StockCountResource> */
@@ -45,7 +45,7 @@ final readonly class RecordStockCountProcessor implements ProcessorInterface
                 null === $data->lotCode ? null : new NamedLot($data->lotCode, null === $data->lotExpiresOn ? null : new \DateTimeImmutable($data->lotExpiresOn)),
             );
         } catch (InvalidStockMovement $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         $data->id = $movements[0]->getId()->toRfc4122();

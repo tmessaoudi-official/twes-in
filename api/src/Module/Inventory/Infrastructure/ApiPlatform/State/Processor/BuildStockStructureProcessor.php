@@ -14,6 +14,7 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\State\ProcessorInterface;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMap\StockStructureResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Venue\Application\ArrangeVenue;
@@ -23,7 +24,6 @@ use App\Venue\Domain\Exception\InvalidVenue;
 use App\Venue\Domain\ValueObject\PlanRect;
 use App\Venue\Domain\ValueObject\StructureKind;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * Drawing a piece of the building and correcting one, which are the same form — the kind included, because what a
@@ -54,7 +54,7 @@ final readonly class BuildStockStructureProcessor implements ProcessorInterface
         } catch (VenueAreaNotFound|VenueStructureNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (InvalidVenue $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return StockStructureResource::of($built);

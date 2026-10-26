@@ -19,11 +19,11 @@ use App\Module\Quotes\Domain\Exception\QuoteTransitionRefused;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Output\QuoteView;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * « Marquer accepté » and « Marquer refusé »: the customer's answer to a sent quote, on a day from its issue day to the
@@ -53,7 +53,7 @@ final readonly class AnswerQuoteProcessor implements ProcessorInterface
         } catch (QuoteTransitionRefused $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidQuote $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($quote);

@@ -22,12 +22,12 @@ use App\Module\Quotes\Infrastructure\ApiPlatform\Output\QuoteView;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * « Facture d'acompte »: a draft deposit invoice for a share of an accepted quote, which the answer lists among the
@@ -60,9 +60,9 @@ final readonly class DepositQuoteProcessor implements ProcessorInterface
         } catch (QuoteTransitionRefused $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidQuote $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         } catch (QuoteInvoicingRefused $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($quote);

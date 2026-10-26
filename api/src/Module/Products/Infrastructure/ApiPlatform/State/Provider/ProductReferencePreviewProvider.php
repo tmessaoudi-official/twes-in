@@ -15,10 +15,10 @@ use App\Module\Products\Application\ProductReferences;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductReferencePreviewResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProviderInterface<ProductReferencePreviewResource> */
 final readonly class ProductReferencePreviewProvider implements ProviderInterface
@@ -34,7 +34,7 @@ final readonly class ProductReferencePreviewProvider implements ProviderInterfac
         try {
             $reference = $this->references->preview($company, Paging::identifier($operation, 'categoryId'));
         } catch (InvalidProduct $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
         $preview = new ProductReferencePreviewResource();
         $preview->reference = $reference;

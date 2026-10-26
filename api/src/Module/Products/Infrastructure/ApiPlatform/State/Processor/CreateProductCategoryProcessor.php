@@ -16,10 +16,10 @@ use App\Module\Products\Application\Category\ProductCategoryNameTaken;
 use App\Module\Products\Domain\Exception\InvalidProductCategory;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\ProductCategoryResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /** @implements ProcessorInterface<ProductCategoryResource, ProductCategoryResource> */
@@ -38,7 +38,7 @@ final readonly class CreateProductCategoryProcessor implements ProcessorInterfac
         } catch (ProductCategoryNameTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidProductCategory $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return ProductCategoryResource::of($category, 0, 0);

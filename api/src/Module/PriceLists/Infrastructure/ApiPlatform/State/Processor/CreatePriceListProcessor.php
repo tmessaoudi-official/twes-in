@@ -16,10 +16,10 @@ use App\Module\PriceLists\Application\PriceListNameTaken;
 use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\Resource\PriceListResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<PriceListResource, PriceListResource> */
 final readonly class CreatePriceListProcessor implements ProcessorInterface
@@ -37,7 +37,7 @@ final readonly class CreatePriceListProcessor implements ProcessorInterface
         } catch (PriceListNameTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidPriceList $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return PriceListResource::of($list, true);

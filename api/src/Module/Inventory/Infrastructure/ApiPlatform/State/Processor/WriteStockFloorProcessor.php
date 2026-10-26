@@ -15,6 +15,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Module\Inventory\Application\StockMap\DrawStockMap;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMap\StockFloorResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Venue\Application\VenueAreaNotFound;
@@ -23,7 +24,6 @@ use App\Venue\Domain\Exception\InvalidVenue;
 use App\Venue\Domain\Model\VenueArea;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -53,7 +53,7 @@ final readonly class WriteStockFloorProcessor implements ProcessorInterface
         } catch (VenueLevelTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidVenue $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return StockFloorResource::of($floor, $this->drawingCount($floor));

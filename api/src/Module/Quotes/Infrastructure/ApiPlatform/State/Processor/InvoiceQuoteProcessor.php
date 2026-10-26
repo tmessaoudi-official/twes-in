@@ -23,12 +23,12 @@ use App\Module\Quotes\Infrastructure\ApiPlatform\Output\QuoteView;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * « Facturer »: an accepted quote drafted wholly into a new invoice, or added to an open draft of its customer named
@@ -67,7 +67,7 @@ final readonly class InvoiceQuoteProcessor implements ProcessorInterface
         } catch (QuoteTransitionRefused|QuoteTargetInvoiceNotDraft $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (QuoteInvoicingRefused $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($quote);

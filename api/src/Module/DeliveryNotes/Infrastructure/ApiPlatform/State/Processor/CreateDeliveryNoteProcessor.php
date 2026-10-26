@@ -16,9 +16,9 @@ use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output\DeliveryNoteView;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteResource;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<DeliveryNoteResource, DeliveryNoteResource> */
 final readonly class CreateDeliveryNoteProcessor implements ProcessorInterface
@@ -34,7 +34,7 @@ final readonly class CreateDeliveryNoteProcessor implements ProcessorInterface
         try {
             $note = $this->manage->create($company, $data->input(), $this->guard->account()->getId());
         } catch (InvalidDeliveryNote $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($note);

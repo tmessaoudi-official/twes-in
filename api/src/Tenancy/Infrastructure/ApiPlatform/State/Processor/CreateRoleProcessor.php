@@ -43,7 +43,7 @@ final readonly class CreateRoleProcessor implements ProcessorInterface
         } catch (PermissionNotHeld $refused) {
             throw new AccessDeniedHttpException(\sprintf('%s: %s', RoleResource::PERMISSION_NOT_HELD, $refused->getMessage()), $refused);
         } catch (UnknownPermission $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', RoleResource::UNKNOWN_PERMISSION, $refused->getMessage()), $refused);
+            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', RoleResource::UNKNOWN_PERMISSION, $refused->getMessage()), $refused); // plain-refusal: a token the roles page reads, not a field
         }
     }
 }

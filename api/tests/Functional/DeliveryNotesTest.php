@@ -143,6 +143,7 @@ final class DeliveryNotesTest extends ApiTestCase
             $this->postJson($this->path(), $this->note($change));
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
+            self::assertContains($field, array_column($this->refusals(), 'propertyPath'), $field.': the refusal names its field as a violation, which the screen reads');
         }
 
         $this->postJson($this->path(), $this->note(['lines' => ['first' => $piece]]));

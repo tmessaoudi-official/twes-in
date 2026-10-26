@@ -19,11 +19,11 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\Output\InvoiceView;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\ApplyCreditResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<ApplyCreditResource, InvoiceResource> */
 final readonly class ApplyCreditProcessor implements ProcessorInterface
@@ -43,7 +43,7 @@ final readonly class ApplyCreditProcessor implements ProcessorInterface
         } catch (InvoiceTransitionRefused $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidInvoice $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($company, $invoice);

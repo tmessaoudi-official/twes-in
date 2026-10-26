@@ -22,11 +22,11 @@ use App\Module\Purchases\Infrastructure\ApiPlatform\Output\PurchaseOrderView;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Resource\GoodsReceiptResource;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Resource\PurchaseOrderResource;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Security\PurchaseOrderPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -78,7 +78,7 @@ final readonly class ReceiveGoodsProcessor implements ProcessorInterface
         } catch (PurchaseOrderTransitionRefused $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidPurchaseOrder $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($receipt->getOrder());

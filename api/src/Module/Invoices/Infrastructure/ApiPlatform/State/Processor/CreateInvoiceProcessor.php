@@ -16,9 +16,9 @@ use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Output\InvoiceView;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<InvoiceResource, InvoiceResource> */
 final readonly class CreateInvoiceProcessor implements ProcessorInterface
@@ -34,7 +34,7 @@ final readonly class CreateInvoiceProcessor implements ProcessorInterface
         try {
             $invoice = $this->manage->create($company, $data->input(), $this->guard->account()->getId());
         } catch (InvalidInvoice $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($company, $invoice);

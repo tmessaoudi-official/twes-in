@@ -16,10 +16,10 @@ use App\Module\Inventory\Application\StockLotNotFound;
 use App\Module\Inventory\Domain\Exception\InvalidStockMovement;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockLotResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * Releases an expired lot. A lot still in date is a 422: there is nothing to release.
@@ -41,7 +41,7 @@ final readonly class ReleaseStockLotProcessor implements ProcessorInterface
         } catch (StockLotNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (InvalidStockMovement $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return StockLotResource::of($lot);

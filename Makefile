@@ -239,6 +239,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/domain-refusals.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/list-limits.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/typed-trims.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/refusal-answers.test.sh
@@ -310,6 +311,7 @@ in-gate-licences:
 	bash scripts/gates/stored-items.sh
 	bash scripts/gates/icons-declared.sh
 	bash scripts/gates/float-casts.sh
+	bash scripts/gates/domain-refusals.sh
 	bash scripts/gates/list-limits.sh
 	bash scripts/gates/typed-trims.sh
 	bash scripts/gates/refusal-answers.sh

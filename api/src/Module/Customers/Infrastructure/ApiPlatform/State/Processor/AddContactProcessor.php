@@ -16,10 +16,10 @@ use App\Module\Customers\Application\ManageContacts;
 use App\Module\Customers\Domain\Exception\InvalidContact;
 use App\Module\Customers\Infrastructure\ApiPlatform\Resource\ContactResource;
 use App\Module\Customers\Infrastructure\ApiPlatform\Security\CustomerPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<ContactResource, ContactResource> */
 final readonly class AddContactProcessor implements ProcessorInterface
@@ -37,7 +37,7 @@ final readonly class AddContactProcessor implements ProcessorInterface
         } catch (CustomerNotFound $absent) {
             throw new NotFoundHttpException('No such customer.', $absent);
         } catch (InvalidContact $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return ContactResource::of($contact);

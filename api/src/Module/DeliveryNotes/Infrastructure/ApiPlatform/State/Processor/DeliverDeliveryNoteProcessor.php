@@ -18,6 +18,7 @@ use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output\DeliveryNoteView;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteResource;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -53,7 +54,7 @@ final readonly class DeliverDeliveryNoteProcessor implements ProcessorInterface
         } catch (InvalidDeliveryNote $refused) {
             // The moment refused is the one this request sent, under its own name.
             $field = 'deliveredAt' === $refused->field ? 'delivered' : $refused->field;
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($note);

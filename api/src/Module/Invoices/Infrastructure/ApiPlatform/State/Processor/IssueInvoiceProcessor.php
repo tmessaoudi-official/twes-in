@@ -24,6 +24,7 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\CreditNoteRight;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\Exception\InvalidNumbering;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -66,10 +67,10 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
         } catch (InvoiceNotDraft|NoNumberingSeries|InvalidNumbering|InvoiceNumberTaken $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidInvoice $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         } catch (MentionDatumMissing $missing) {
             // The setting to give leads, as a refused field does: the screen names it from that word alone.
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $missing->datum, $missing->getMessage()), $missing);
+            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $missing->datum, $missing->getMessage()), $missing); // plain-refusal: a setting to complete, not a field of the form
         } catch (PartyIdentityMissing $unnamed) {
             // `seller_identity` or `customer_identity` leads: the screen says which form to complete from that word.
             throw new UnprocessableEntityHttpException(\sprintf('%s_identity: %s', $unnamed->party, $unnamed->getMessage()), $unnamed);

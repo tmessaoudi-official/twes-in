@@ -212,6 +212,7 @@ final class InvoicesTest extends ApiTestCase
             $this->postJson($this->path(), $this->invoice($change));
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
+            self::assertContains($field, array_column($this->refusals(), 'propertyPath'), $field.': the refusal names its field as a violation, which the screen reads');
         }
         $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => ['first' => $this->taxId('TIMBRE')]]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a JSON object is not a list');

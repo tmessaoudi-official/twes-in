@@ -19,13 +19,13 @@ use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Output\PurchaseOrderView;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Resource\PurchaseOrderResource;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Security\PurchaseOrderPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\Exception\InvalidNumbering;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * Numbers a draft and keeps who the vendor was that day. What the company's numbering cannot give is a 409, like an
@@ -50,7 +50,7 @@ final readonly class SendPurchaseOrderProcessor implements ProcessorInterface
         } catch (PurchaseOrderTransitionRefused|NoNumberingSeries|InvalidNumbering|PurchaseOrderNumberTaken $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidPurchaseOrder $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($order);

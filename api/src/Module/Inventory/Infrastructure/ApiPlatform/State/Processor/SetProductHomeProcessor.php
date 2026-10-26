@@ -16,10 +16,10 @@ use App\Module\Inventory\Application\ProductNotInCompany;
 use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\ProductHomeResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -48,7 +48,7 @@ final readonly class SetProductHomeProcessor implements ProcessorInterface
         } catch (ProductNotInCompany $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (InvalidStockLocation $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return ProductHomeResource::of($home);

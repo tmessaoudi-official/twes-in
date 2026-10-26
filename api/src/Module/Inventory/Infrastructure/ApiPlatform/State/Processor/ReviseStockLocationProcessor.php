@@ -18,11 +18,11 @@ use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockLocationResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /** @implements ProcessorInterface<StockLocationResource, StockLocationResource> */
@@ -57,7 +57,7 @@ final readonly class ReviseStockLocationProcessor implements ProcessorInterface
         } catch (StockLocationCodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidStockLocation $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return StockLocationResource::of($location, $this->manage->childCount($location), $this->manage->movementCount($location));

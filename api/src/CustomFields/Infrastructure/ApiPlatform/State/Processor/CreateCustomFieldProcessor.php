@@ -15,10 +15,10 @@ use App\CustomFields\Application\CustomFieldKeyTaken;
 use App\CustomFields\Application\ManageCustomFields;
 use App\CustomFields\Domain\Exception\InvalidCustomFieldDefinition;
 use App\CustomFields\Infrastructure\ApiPlatform\Resource\CustomFieldResource;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<CustomFieldResource, CustomFieldResource> */
 final readonly class CreateCustomFieldProcessor implements ProcessorInterface
@@ -36,7 +36,7 @@ final readonly class CreateCustomFieldProcessor implements ProcessorInterface
         } catch (CustomFieldKeyTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidCustomFieldDefinition $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return CustomFieldResource::of($field);

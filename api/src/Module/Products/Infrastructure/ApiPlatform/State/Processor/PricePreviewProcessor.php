@@ -16,6 +16,7 @@ use App\Module\Products\Application\CustomerPrice;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Infrastructure\ApiPlatform\Resource\PricePreviewResource;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -34,7 +35,7 @@ final readonly class PricePreviewProcessor implements ProcessorInterface
         try {
             return PricePreviewResource::of($this->prices->preview($company, $data->taxComponentIds, $data->unitPriceNet, $data->quantities));
         } catch (InvalidProduct $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         } catch (InvalidDocument $refused) {
             throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
         }

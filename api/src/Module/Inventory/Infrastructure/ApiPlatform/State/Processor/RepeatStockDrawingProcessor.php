@@ -19,6 +19,7 @@ use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMap\RepeatStockDrawingResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMap\StockDrawingResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Venue\Application\VenueSpotNotFound;
@@ -63,7 +64,7 @@ final readonly class RepeatStockDrawingProcessor implements ProcessorInterface
         } catch (StockLocationNotFound $unknown) {
             throw new UnprocessableEntityHttpException(\sprintf('drawingId: %s', $unknown->getMessage()), $unknown);
         } catch (InvalidVenue|InvalidStockLocation $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         $data->drawings = array_map(

@@ -54,11 +54,11 @@ final readonly class ReviseRoleProcessor implements ProcessorInterface
         } catch (RoleNameTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (RoleNotEditable $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', RoleResource::BUILT_IN, $refused->getMessage()), $refused);
+            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', RoleResource::BUILT_IN, $refused->getMessage()), $refused); // plain-refusal: a token the roles page reads, not a field
         } catch (PermissionNotHeld $refused) {
             throw new AccessDeniedHttpException(\sprintf('%s: %s', RoleResource::PERMISSION_NOT_HELD, $refused->getMessage()), $refused);
         } catch (UnknownPermission $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', RoleResource::UNKNOWN_PERMISSION, $refused->getMessage()), $refused);
+            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', RoleResource::UNKNOWN_PERMISSION, $refused->getMessage()), $refused); // plain-refusal: a token the roles page reads, not a field
         }
     }
 }

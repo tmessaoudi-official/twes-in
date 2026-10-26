@@ -12,8 +12,17 @@ namespace App\Module\Quotes\Application;
 /** What the invoice an accepted quote is drafted into refuses, named on its field as the invoice names it. */
 final class QuoteInvoicingRefused extends \DomainException
 {
-    public function __construct(public readonly string $field, string $message, ?\Throwable $previous = null)
-    {
+    /**
+     * @param string|null               $reason a stable code a screen translates, when the field does not say on its own what is wrong
+     * @param array<string, string|int> $params that text's parameters
+     */
+    public function __construct(
+        public readonly string $field,
+        string $message,
+        ?\Throwable $previous = null,
+        public readonly ?string $reason = null,
+        public readonly array $params = [],
+    ) {
         parent::__construct($message, 0, $previous);
     }
 }

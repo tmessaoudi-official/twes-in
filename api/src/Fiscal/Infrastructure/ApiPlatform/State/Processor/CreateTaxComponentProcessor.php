@@ -17,10 +17,10 @@ use App\Fiscal\Application\TaxComponent\TaxComponentDraft;
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Infrastructure\ApiPlatform\Resource\TaxComponentResource;
 use App\Fiscal\Infrastructure\ApiPlatform\Security\FiscalPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<TaxComponentResource, TaxComponentResource> */
 final readonly class CreateTaxComponentProcessor implements ProcessorInterface
@@ -42,7 +42,7 @@ final readonly class CreateTaxComponentProcessor implements ProcessorInterface
         } catch (TaxComponentCodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidFiscalValue $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return TaxComponentResource::of($component);

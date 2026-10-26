@@ -17,10 +17,10 @@ use App\Fiscal\Application\Unit\UnitNotFound;
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Infrastructure\ApiPlatform\Resource\UnitResource;
 use App\Fiscal\Infrastructure\ApiPlatform\Security\FiscalPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<UnitResource, UnitResource> */
 final readonly class ReviseUnitProcessor implements ProcessorInterface
@@ -44,7 +44,7 @@ final readonly class ReviseUnitProcessor implements ProcessorInterface
         } catch (UnitNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);
         } catch (InvalidFiscalValue $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return UnitResource::of($unit);

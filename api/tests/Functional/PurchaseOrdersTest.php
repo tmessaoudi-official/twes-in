@@ -142,6 +142,7 @@ final class PurchaseOrdersTest extends ApiTestCase
             $this->postJson($this->path(), $body);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringStartsWith($field.': ', $this->stringAt($this->json(), 'detail'), $field);
+            self::assertContains($field, array_column($this->refusals(), 'propertyPath'), $field.': the refusal names its field as a violation, which the screen reads');
         }
         self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM purchase_order'));
     }

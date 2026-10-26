@@ -18,6 +18,7 @@ use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceBulkPaymentResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Domain\ValueObject\PaymentMethod;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -44,7 +45,7 @@ final readonly class InvoiceBulkPaymentProcessor implements ProcessorInterface
         } catch (\InvalidArgumentException $refused) {
             throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
         } catch (InvalidInvoice $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         $answer = new InvoiceBulkPaymentResource();

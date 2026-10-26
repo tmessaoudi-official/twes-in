@@ -16,9 +16,9 @@ use App\Module\Quotes\Domain\Exception\InvalidQuote;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Output\QuoteView;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<QuoteResource, QuoteResource> */
 final readonly class CreateQuoteProcessor implements ProcessorInterface
@@ -34,7 +34,7 @@ final readonly class CreateQuoteProcessor implements ProcessorInterface
         try {
             $quote = $this->manage->create($company, $data->input(), $this->guard->account()->getId());
         } catch (InvalidQuote $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($quote);

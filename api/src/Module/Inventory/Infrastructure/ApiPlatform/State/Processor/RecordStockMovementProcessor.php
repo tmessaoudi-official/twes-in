@@ -20,10 +20,10 @@ use App\Module\Inventory\Domain\ValueObject\StockLossReason;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMovementResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /** @implements ProcessorInterface<StockMovementResource, StockMovementResource> */
@@ -49,7 +49,7 @@ final readonly class RecordStockMovementProcessor implements ProcessorInterface
                 default => $this->receive($company, $productId, $locationId, $data, $actor),
             };
         } catch (InvalidStockMovement $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return StockMovementResource::of($movement);

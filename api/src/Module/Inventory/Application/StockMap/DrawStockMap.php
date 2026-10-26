@@ -453,7 +453,7 @@ final readonly class DrawStockMap
             try {
                 VenueArea::size($step->floor[0], $step->floor[1]);
             } catch (InvalidVenue $refused) {
-                throw new InvalidVenue('floor.'.$refused->field, $refused->getMessage());
+                throw new InvalidVenue('floor.'.$refused->field, $refused->getMessage(), $refused->reason, $refused->params);
             }
         }
 

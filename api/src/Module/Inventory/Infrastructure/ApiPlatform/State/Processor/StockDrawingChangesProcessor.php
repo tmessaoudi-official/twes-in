@@ -20,6 +20,7 @@ use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMap\StockDrawi
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMap\StockDrawingResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockMap\StockStructureResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Venue\Application\VenueAreaNotFound;
@@ -101,7 +102,7 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
         } catch (VenueAreaNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (InvalidStockLocation|InvalidVenue $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         $data->drawings = array_map(
@@ -196,7 +197,7 @@ final readonly class StockDrawingChangesProcessor implements ProcessorInterface
         try {
             return new PlanRect($distance('x', true), $distance('y', true), $distance('width', true), $distance('depth', true), $rotation, $distance('height', false));
         } catch (InvalidVenue $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s.%s: %s', $at, $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($at.'.'.$refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
     }
 }

@@ -12,8 +12,16 @@ namespace App\Fiscal\Domain\Exception;
 /** A tax component or a unit given a value its rules refuse; names the field so the caller can point at it. */
 final class InvalidFiscalValue extends \DomainException
 {
-    public function __construct(public readonly string $field, string $message)
-    {
+    /**
+     * @param string|null               $reason a stable code a screen translates, when the field does not say on its own what is wrong
+     * @param array<string, string|int> $params that text's parameters
+     */
+    public function __construct(
+        public readonly string $field,
+        string $message,
+        public readonly ?string $reason = null,
+        public readonly array $params = [],
+    ) {
         parent::__construct($message);
     }
 }

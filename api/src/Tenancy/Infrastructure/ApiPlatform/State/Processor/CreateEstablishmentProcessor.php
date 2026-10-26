@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Establishment\EstablishmentCodeTaken;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
 use App\Tenancy\Domain\Exception\InvalidEstablishment;
@@ -20,7 +21,6 @@ use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyProfileResource;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\EstablishmentResource;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<EstablishmentResource, EstablishmentResource> */
 final readonly class CreateEstablishmentProcessor implements ProcessorInterface
@@ -38,7 +38,7 @@ final readonly class CreateEstablishmentProcessor implements ProcessorInterface
         } catch (EstablishmentCodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidEstablishment|InvalidNumbering $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return EstablishmentResource::of($establishment, $this->manage->codePattern($company), false);

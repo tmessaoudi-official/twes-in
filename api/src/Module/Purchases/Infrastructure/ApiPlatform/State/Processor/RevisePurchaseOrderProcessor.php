@@ -19,11 +19,11 @@ use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Output\PurchaseOrderView;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Resource\PurchaseOrderResource;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Security\PurchaseOrderPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<PurchaseOrderResource, PurchaseOrderResource> */
 final readonly class RevisePurchaseOrderProcessor implements ProcessorInterface
@@ -50,7 +50,7 @@ final readonly class RevisePurchaseOrderProcessor implements ProcessorInterface
         } catch (PurchaseOrderTransitionRefused $fixed) {
             throw new ConflictHttpException($fixed->getMessage(), $fixed);
         } catch (InvalidPurchaseOrder $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($order);

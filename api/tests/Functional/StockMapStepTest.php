@@ -303,6 +303,12 @@ final class StockMapStepTest extends ApiTestCase
             self::assertStringContainsString($field.':', (string) $this->client->getResponse()->getContent(), $field);
         }
 
+        // A place the domain refuses names its field as a violation, which the screen reads under it; the shapes above
+        // that only a crafted request sends stay a plain answer.
+        $this->postJson($this->changes(), [...$start, 'newPlaces' => [$this->newPlace('rack', 'R 8', 'Rayonnage 8', [])]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['newPlaces[0].code'], array_column($this->refusals(), 'propertyPath'));
+
         self::assertSame($before, $this->floorAsItStands());
         self::assertSame($codes, $this->codes(), 'no place was created');
         self::assertSame($since, $this->auditCount(), 'nothing was written, so nothing was told');

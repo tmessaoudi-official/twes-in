@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Establishment\EstablishmentCodeTaken;
 use App\Tenancy\Application\Establishment\EstablishmentNotFound;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
@@ -21,7 +22,6 @@ use App\Tenancy\Infrastructure\ApiPlatform\Resource\EstablishmentResource;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<EstablishmentResource, EstablishmentResource> */
 final readonly class ReviseEstablishmentProcessor implements ProcessorInterface
@@ -41,7 +41,7 @@ final readonly class ReviseEstablishmentProcessor implements ProcessorInterface
         } catch (EstablishmentCodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidEstablishment $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return EstablishmentResource::of($establishment, $this->manage->codePattern($company), $this->manage->isCodeLocked($company, $establishment));

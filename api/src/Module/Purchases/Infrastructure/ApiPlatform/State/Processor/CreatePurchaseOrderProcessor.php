@@ -17,9 +17,9 @@ use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Output\PurchaseOrderView;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Resource\PurchaseOrderResource;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Security\PurchaseOrderPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<PurchaseOrderResource, PurchaseOrderResource> */
 final readonly class CreatePurchaseOrderProcessor implements ProcessorInterface
@@ -35,7 +35,7 @@ final readonly class CreatePurchaseOrderProcessor implements ProcessorInterface
         try {
             $order = $this->manage->create($company, $data->input(), $this->guard->may($company, ProductPermission::COST_READ), $this->guard->account()->getId());
         } catch (InvalidPurchaseOrder $refused) {
-            throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
         return $this->view->of($order);

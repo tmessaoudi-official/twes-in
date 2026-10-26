@@ -654,6 +654,12 @@ final class StockMapTest extends ApiTestCase
             self::assertStringContainsString($field.':', (string) $this->client->getResponse()->getContent(), $field);
         }
 
+        // A drawing the domain refuses names its field as a violation, which the screen reads under it; the shapes above
+        // that only a crafted request sends stay a plain answer.
+        $this->postJson($changes, ['moves' => [$this->moved($rack), $this->moved($other, ['x' => '-1'])]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['moves[1].x'], array_column($this->refusals(), 'propertyPath'));
+
         // Nothing of any of them reached the floor.
         $this->getJson($drawings);
         $now = array_map(static fn (array $one): array => [$one['locationCode'], $one['x'], $one['y']], $this->jsonList());
