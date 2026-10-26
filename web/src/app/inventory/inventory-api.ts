@@ -2,7 +2,7 @@
 
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdstockLevelsGetCollectionResponse,
@@ -85,7 +85,8 @@ import {
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import type { PlanStep } from './stock-plan-draft';
 import { refusedFor } from '../shared/errors/said-already';
-import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 
 /** How many products one question about stock on hand may name (`StockOnHandResource::MOST`). */
 const ON_HAND_MOST = 100;
@@ -111,6 +112,7 @@ export class InventoryRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class InventoryApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   async options(companyId: string): Promise<StockOptions> {
     return this.guard(async () =>
@@ -540,7 +542,7 @@ export class InventoryApi {
 
   /** Lets an expired lot leave after all; a lot still in date is refused. */
   async releaseLot(companyId: string, lotId: string): Promise<void> {
-    await this.guard(async () =>
+    await this.saving(async () =>
       firstValueFrom(this.http.post(`${path(companyId, 'stock-lots', lotId)}/release`, null)),
     );
   }
@@ -654,7 +656,7 @@ export class InventoryApi {
   /** 422 naming the field refused: a product whose stock is not kept, a quantity finer than its unit. */
   async record(companyId: string, input: StockMovementInput): Promise<StockMovementRow> {
     const body: StockMovementStockMovementWrite = { ...input };
-    return this.guard(async () =>
+    return this.saving(async () =>
       toMovement(
         await firstValueFrom(
           this.http.post<StockMovementStockMovementRead>(path(companyId, 'stock-movements'), body),
@@ -672,7 +674,7 @@ export class InventoryApi {
       ...input,
       parts: input.parts.map((part) => ({ ...part })),
     };
-    return this.guard(async () => {
+    return this.saving(async () => {
       const receipt = await firstValueFrom(
         this.http.post<StockReceiptStockReceiptRead>(path(companyId, 'stock-receipts'), body),
       );
@@ -689,7 +691,7 @@ export class InventoryApi {
       ...input,
       parts: input.parts.map((part) => ({ ...part })),
     };
-    return this.guard(async () => {
+    return this.saving(async () => {
       const count = await firstValueFrom(
         this.http.post<StockCountStockCountRead>(path(companyId, 'stock-counts'), body),
       );
@@ -708,7 +710,7 @@ export class InventoryApi {
     applyCost: CostBasis | null,
   ): Promise<StockMovementRow> {
     const body: ReceiptCostEntryWrite = { unitCost, ...(applyCost === null ? {} : { applyCost }) };
-    return this.guard(
+    return this.saving(
       async () =>
         toMovement(
           await firstValueFrom(
@@ -783,13 +785,18 @@ export class InventoryApi {
     return `${lossFilesPath(companyId, movementId)}/${encodeURIComponent(fileId)}/content`;
   }
 
-  /** A save whose refusals name the fields of its form: a stock location's. */
-  private async saving<T>(call: () => Promise<T>, conflict: InventoryError): Promise<T> {
+  /**
+   * A save whose refusals name the fields of its form, with their words opened: a stock location's, a movement's, a
+   * receipt or a count over several places, a lot's release.
+   */
+  private async saving<T>(
+    call: () => Promise<T>,
+    conflict: InventoryError = 'invalid',
+  ): Promise<T> {
     try {
       return await call();
     } catch (error) {
-      const refusals =
-        error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
+      const refusals = await formRefusalsIn(this.injector, error);
       throw refusedFor(error, new InventoryRefused(codeOf(error, conflict), null, refusals));
     }
   }

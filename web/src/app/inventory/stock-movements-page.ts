@@ -21,7 +21,9 @@ import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { ProductScans } from '../products/product-scans';
 import { Feedback } from '../shared/feedback/feedback';
+import type { FormAnswer } from '../shared/feedback/request-state';
 import { buildFormGroup } from '../shared/form/form-builder';
+import type { FormValues } from '../shared/form/form-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { AmountPipe, MomentPipe } from '../shared/i18n/format-pipes';
@@ -186,20 +188,20 @@ export class StockMovementsPage {
       (await this.facade.receiptCost(companyId, receipt.productId, '1', '0'))?.mode ?? null;
     const descriptor = receiptCostForm(mode);
     const group = buildFormGroup(descriptor, receiptCostValues());
-    const values = await firstValueFrom(
+    const enter = (values: FormValues): Promise<FormAnswer<void>> => {
+      const { unitCost, applyCost } = receiptCostInput(values);
+      return this.facade.enterReceiptCost(companyId, receipt.id, unitCost, applyCost);
+    };
+    const entered = await firstValueFrom(
       this.dialog
-        .open<ReceiptCostDialog, ReceiptCostDialogData>(ReceiptCostDialog, {
-          data: { descriptor, group, receipt },
+        .open<ReceiptCostDialog, ReceiptCostDialogData, boolean>(ReceiptCostDialog, {
+          data: { descriptor, group, receipt, enter },
           autoFocus: 'first-tabbable',
         })
         .afterClosed(),
     );
     this.forgetCostOf();
-    if (!values) return;
-    const { unitCost, applyCost } = receiptCostInput(values);
-    if (await this.facade.enterReceiptCost(companyId, receipt.id, unitCost, applyCost)) {
-      this.feedback.effect('inventory.receipt_cost.entered', {}, 'definitif');
-    }
+    if (entered === true) this.feedback.effect('inventory.receipt_cost.entered', {}, 'definitif');
   }
 
   /** The address forgets the receipt « À surveiller » named, once it was asked about or no longer waits. */

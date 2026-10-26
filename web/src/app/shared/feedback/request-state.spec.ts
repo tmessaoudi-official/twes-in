@@ -2,6 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { refusedFor } from '../errors/said-already';
+import type { FieldRefusal } from '../form/field-refusals';
 import { SUBMISSION_IN_PROGRESS, SUBMISSION_UNANSWERED } from '../submissions/submission-keys';
 import { demoAnswer, submissionAnswer } from '../testing/said-answers';
 import { QuietReads } from './quiet-reads';
@@ -233,6 +234,41 @@ describe('requestState', () => {
     expect(await state.writeAnswer(() => Promise.resolve({ id: 'a1' }))).toEqual({ id: 'a1' });
     expect(await state.writeAnswer(() => Promise.reject(new Refused('not_found')))).toBeNull();
     expect(state.error()).toBe('not_found');
+  });
+
+  it('hands a dialog the fields a write refused and says nothing behind it; any other failure is the screen’s', async () => {
+    const amount: FieldRefusal = {
+      field: 'amount',
+      reason: 'above_due',
+      params: { amount: '12.000' },
+    };
+    const refusalsOf = (error: unknown): readonly FieldRefusal[] =>
+      error instanceof Refused && error.code === 'held' ? [amount] : [];
+    state.fail(new Refused('not_found'));
+
+    expect(await state.writeOrRefuse(() => Promise.resolve('p1'), refusalsOf)).toEqual({
+      kept: 'p1',
+    });
+    expect(
+      await state.writeOrRefuse(() => Promise.reject(new Refused('held')), refusalsOf),
+    ).toEqual({
+      refused: [amount],
+    });
+    expect(state.error()).toBeNull();
+    expect(state.busy()).toBe(false);
+
+    expect(
+      await state.writeOrRefuse(() => Promise.reject(new Refused('not_found')), refusalsOf),
+    ).toBeNull();
+    expect(state.error()).toBe('not_found');
+    // A failure an interceptor already said is neither said again nor a refusal to hold the dialog on.
+    expect(
+      await state.writeOrRefuse(
+        () => Promise.reject(refusedFor(demoAnswer(), new Refused('held'))),
+        refusalsOf,
+      ),
+    ).toBeNull();
+    expect(state.error()).toBeNull();
   });
 
   it('says a failure outside a request without marking busy, and forgets it on demand', () => {

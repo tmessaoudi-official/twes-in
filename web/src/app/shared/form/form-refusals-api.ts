@@ -3,12 +3,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import type { Injector } from '@angular/core';
 import { type FieldRefusal, refusalsIn } from './field-refusals';
-
-/**
- * The texts a form's refusal is said in beyond the screens' own file (`import.rejections.*` only a setup form answers:
- * an establishment's code, a numbering format, a price list's prices), kept apart so the first page does not carry them.
- */
-export const FORM_REFUSAL_TEXTS = 'form-refusals';
+import { FORM_REFUSAL_TEXTS } from './form-refusal-texts';
 
 /**
  * The fields a save was refused on, read from a 422's body only, with their texts opened into the root before the form

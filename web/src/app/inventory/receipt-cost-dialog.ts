@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import type { FormAnswer } from '../shared/feedback/request-state';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { FormStep } from '../shared/form/form-step';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import type { DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
@@ -15,11 +18,13 @@ export interface ReceiptCostDialogData {
   group: DescriptorFormGroup;
   /** The receipt, as the movements list names it: the cost is final once entered, so the question says which it is. */
   receipt: StockMovementListRow;
+  /** Enters the cost; the dialog stays open on a refusal and says it under its field. */
+  enter: (values: FormValues) => Promise<FormAnswer<unknown>>;
 }
 
 /**
  * The cost of a receipt left « à compléter » by someone who could not read costs, asked of a cost reader (docs/SPEC.md
- * § 7, audit 2026-10-06 C challenge 9). It answers with the values; entering them is the movements page's.
+ * § 7, audit 2026-10-06 C challenge 9). It enters them through the movements page and closes once they are kept.
  */
 @Component({
   selector: 'app-receipt-cost-dialog',
@@ -75,28 +80,47 @@ export interface ReceiptCostDialogData {
         testId="receipt-cost-form"
         (submitted)="enter()"
       />
+      @if (step.unplaced(); as said) {
+        <p role="alert" class="text-sm text-error" data-testid="receipt-cost-refused">
+          {{ said.key | translate: said.params }}
+        </p>
+      }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button type="button" (click)="ref.close(null)" data-testid="receipt-cost-keep">
+      <button mat-button type="button" (click)="ref.close(false)" data-testid="receipt-cost-keep">
         {{ 'inventory.receipt_cost.keep' | translate }}
       </button>
-      <button mat-flat-button type="button" (click)="enter()" data-testid="receipt-cost-enter">
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="step.busy()"
+        (click)="enter()"
+        data-testid="receipt-cost-enter"
+      >
         {{ 'inventory.receipt_cost.enter' | translate }}
       </button>
     </mat-dialog-actions>
   `,
 })
 export class ReceiptCostDialog {
-  protected readonly ref = inject<MatDialogRef<ReceiptCostDialog, FormValues | null>>(MatDialogRef);
+  protected readonly ref = inject<MatDialogRef<ReceiptCostDialog, boolean>>(MatDialogRef);
   protected readonly data = inject<ReceiptCostDialogData>(MAT_DIALOG_DATA);
   protected readonly receipt = this.data.receipt;
+  protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
+  private readonly form = viewChild(DescriptorForm);
 
-  protected enter(): void {
+  /** Enters through the page, which owns the company; closes once kept, or on a failure the page says. */
+  protected async enter(): Promise<void> {
     const group = this.data.group;
     if (group.invalid) {
       group.markAllAsTouched();
       return;
     }
-    this.ref.close(group.getRawValue());
+    if (this.step.busy()) return;
+    const answer = await this.step.run(
+      () => this.data.enter(group.getRawValue()),
+      (refusals) => this.form()?.showRefused(refusals) ?? refusals,
+    );
+    if (answer !== 'refused') this.ref.close(answer !== null);
   }
 }

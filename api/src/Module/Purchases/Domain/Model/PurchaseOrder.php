@@ -244,7 +244,7 @@ class PurchaseOrder implements CompanyOwned
             $key = $line->getId()->toRfc4122();
             $brought[$key] = ($brought[$key] ?? Decimal::of('0'))->add(Decimal::of($quantity));
             if ($brought[$key]->compare(Decimal::of($line->outstanding())) > 0) {
-                throw new InvalidPurchaseOrder(\sprintf('lines[%d].quantity', $index), \sprintf('%s of %s is still expected: a receipt brings no more than that.', $line->outstanding(), $line->getProductReference()), 'above_expected', ['quantity' => $line->outstanding(), 'reference' => $line->getProductReference()]);
+                throw new InvalidPurchaseOrder(\sprintf('lines[%d].quantity', $index), \sprintf('%s of %s is still expected: a receipt brings no more than that.', $line->outstanding(), $line->getProductReference()), 'above_expected', ['quantity' => Decimal::format(Decimal::of($line->outstanding()), $line->getUnit()->getDecimals()), 'reference' => $line->getProductReference()]);
             }
             $parts[] = [$line, new ReceivedGoods($part->orderLineId, $part->locationId, $quantity, $part->lotCode, $part->lotExpiresOn, $part->unitCost)];
         }

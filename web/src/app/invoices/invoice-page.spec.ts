@@ -69,6 +69,7 @@ class StaticLoader implements TranslateLoader {
           tax_on_line: '{{tax}} se compte sur chaque ligne.',
           invalid_payment_terms: 'Délai de paiement refusé : de 0 à {{max}} jours.',
           tax_twice: '{{tax}} est choisie deux fois.',
+          above_due: 'Un paiement couvre au plus ce qui reste à payer, {{amount}}.',
         },
       },
       invoices: {
@@ -438,10 +439,10 @@ describe('InvoicePage', () => {
     facade.cancel.mockReset().mockResolvedValue({ ...draft, status: 'cancelled' });
     facade.creditNote.mockReset();
     facade.duplicate.mockReset();
-    facade.recordPayment.mockReset().mockResolvedValue(true);
+    facade.recordPayment.mockReset().mockResolvedValue({ kept: true });
     facade.customerCredit.mockReset().mockResolvedValue('0.000');
     facade.applyCredit.mockReset().mockResolvedValue(true);
-    facade.overpay.mockReset().mockResolvedValue(true);
+    facade.overpay.mockReset().mockResolvedValue({ kept: true });
     facade.deletePayment.mockReset().mockResolvedValue(true);
     facade.preview.mockReset().mockResolvedValue(null);
     TestBed.configureTestingModule({
@@ -1836,6 +1837,40 @@ describe('InvoicePage', () => {
     await vi.waitFor(() => expect(successToasts()).toContain('invoices.payments.recorded'));
   });
 
+  it('keeps the payment asked when it is refused, saying why under its field, and what no field takes on its own line', async () => {
+    invoice.set(issued);
+    facade.recordPayment
+      .mockResolvedValueOnce({
+        refused: [{ field: 'amount', reason: 'above_due', params: { amount: '1121.570' } }],
+      })
+      .mockResolvedValueOnce({
+        refused: [{ field: 'invoice', reason: 'lines_required', params: {} }],
+      });
+    await open('i1');
+    q('document-action-record-payment')!.click();
+    await settle();
+    over('invoice-payment-record')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(over('field-error-amount')?.textContent).toContain(
+        'Un paiement couvre au plus ce qui reste à payer, ',
+      ),
+    );
+    expect(over('field-error-amount')?.textContent).not.toContain('1121.570');
+    expect(over('payment-dialog-title')).not.toBeNull();
+    expect(q('invoice-error')).toBeNull();
+
+    typeIn(over('field-amount') as HTMLInputElement, '100');
+    over('invoice-payment-record')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect(over('payment-refused')?.textContent?.trim()).toBe('Ajoutez au moins une ligne.'),
+    );
+    expect(over('payment-dialog-title')).not.toBeNull();
+    expect(successToasts()).not.toContain('invoices.payments.recorded');
+  });
+
   it('offers to apply the customer’s credit only when they have some and the invoice is due', async () => {
     invoice.set(issued);
     await open('i1');
@@ -1896,6 +1931,25 @@ describe('InvoicePage', () => {
       notes: null,
     });
     await vi.waitFor(() => expect(successToasts()).toContain('invoices.overpayment.recorded'));
+  });
+
+  it('keeps the trop-perçu asked when its day is refused, saying why under it', async () => {
+    facade.overpay.mockResolvedValueOnce({
+      refused: [{ field: 'date', reason: 'after_today', params: {} }],
+    });
+    invoice.set({ ...issued, status: 'paid', amountDue: '0.000' });
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-record-overpayment')!.click();
+    await settle();
+    typeIn(over('field-amount') as HTMLInputElement, '50');
+    over('overpayment-record')!.click();
+    await settle();
+
+    await vi.waitFor(() => expect(over('field-error-date')).not.toBeNull());
+    expect(over('overpayment-title')).not.toBeNull();
+    expect(successToasts()).not.toContain('invoices.overpayment.recorded');
   });
 
   it('does not offer a trop-perçu to someone who may not record a payment', async () => {
@@ -2084,10 +2138,7 @@ describe('InvoicePage', () => {
   it('drafts a credit note from an issued invoice and opens it', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     facade.creditNote.mockResolvedValue({
-      ...draft,
-      id: 'cn1',
-      type: 'credit_note',
-      correctsInvoiceId: 'i1',
+      kept: { ...draft, id: 'cn1', type: 'credit_note', correctsInvoiceId: 'i1' },
     });
     invoice.set(issued);
     await open('i1');
@@ -2104,6 +2155,28 @@ describe('InvoicePage', () => {
     await settle();
     expect(facade.creditNote).toHaveBeenCalledWith('c1', 'i1', 'Retour de marchandise');
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'cn1']));
+  });
+
+  it('keeps the credit note asked when it is refused, saying why under the reason, and opens nothing', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    facade.creditNote.mockResolvedValue({
+      refused: [{ field: 'reason', reason: 'unknown_reason', params: {} }],
+    });
+    invoice.set(issued);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-credit-note')!.click();
+    await settle();
+    typeIn(over('field-reason') as HTMLInputElement, 'Retour');
+    over('credit-note-create')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(over('field-error-reason')?.textContent).toContain('Valeur refusée.'),
+    );
+    expect(over('credit-note-dialog-title')).not.toBeNull();
+    expect(navigate).not.toHaveBeenCalledWith(['/invoices', expect.anything()]);
   });
 
   // Row 86: « Rendre récurrente » asks how often and from when, and the toast offers the recurring invoices.

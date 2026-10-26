@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { SILENT } from '../shared/feedback/activity-interceptor';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { InventoryApi } from './inventory-api';
 import type { StockLocationInput, StockLocationRow, StockMovementRow } from './inventory-types';
 import type { PlanStep } from './stock-plan-draft';
@@ -69,7 +70,11 @@ describe('InventoryApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(InventoryApi);
     http = TestBed.inject(HttpTestingController);
@@ -575,10 +580,20 @@ describe('InventoryApi', () => {
     expect(await recorded).toEqual(['m1', 'm2']);
 
     const refused = api.receiveSplit('c1', input);
-    http
-      .expectOne('/api/companies/c1/stock-receipts')
-      .flush({ detail: 'locationId' }, { status: 422, statusText: 'Unprocessable Entity' });
-    await expect(refused).rejects.toMatchObject({ code: 'invalid' });
+    http.expectOne('/api/companies/c1/stock-receipts').flush(
+      {
+        violations: [
+          { propertyPath: 'locationId', message: 'x', payload: { reason: 'location_twice' } },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    // The field and its reason kept, for the form to say it under that field, and their words opened.
+    await expect(refused).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'locationId', reason: 'location_twice', params: {} }],
+    });
+    expect(TestBed.inject(TextsParts).open).toHaveBeenCalledWith('form-refusals');
   });
 
   // Audit 2026-10-06, H-b3.
@@ -597,10 +612,18 @@ describe('InventoryApi', () => {
     expect(await counted).toEqual(['m1', 'm2']);
 
     const refused = api.countSplit('c1', input);
-    http
-      .expectOne('/api/companies/c1/stock-counts')
-      .flush({ detail: 'quantity' }, { status: 422, statusText: 'Unprocessable Entity' });
-    await expect(refused).rejects.toMatchObject({ code: 'invalid' });
+    http.expectOne('/api/companies/c1/stock-counts').flush(
+      {
+        violations: [
+          { propertyPath: 'parts', message: 'x', payload: { reason: 'places_required' } },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'parts', reason: 'places_required', params: {} }],
+    });
   });
 
   // Row 74 (b): a loss keeps its photos and the papers that prove it.
@@ -1079,10 +1102,24 @@ describe('InventoryApi', () => {
     await released;
 
     const refused = api.releaseLot('c1', 'k2');
-    http
-      .expectOne('/api/companies/c1/stock-lots/k2/release')
-      .flush({}, { status: 422, statusText: 'Unprocessable' });
-    await expect(refused).rejects.toMatchObject({ code: 'invalid' });
+    http.expectOne('/api/companies/c1/stock-lots/k2/release').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'lot',
+            message: 'x',
+            payload: { reason: 'lot_in_date', params: { lot: 'L-07', reference: 'ART-3' } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [
+        { field: 'lot', reason: 'lot_in_date', params: { lot: 'L-07', reference: 'ART-3' } },
+      ],
+    });
   });
 
   it('says a floor is in use when it still carries rectangles', async () => {

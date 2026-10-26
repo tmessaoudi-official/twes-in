@@ -130,7 +130,7 @@ final readonly class QuoteLines
             }
         }
         if (is_numeric($line->quantity) && Decimal::of($line->quantity)->compare($left) > 0) {
-            throw new InvalidDeliveryNote('quantity', \sprintf('Only %s of this quote line is left to deliver: its other notes take the rest.', Decimal::format($left, 3)), 'left_to_deliver', ['quantity' => Decimal::format($left, 3)]);
+            throw new InvalidDeliveryNote('quantity', \sprintf('Only %s of this quote line is left to deliver: its other notes take the rest.', Decimal::format($left, 3)), 'left_to_deliver', ['quantity' => Decimal::format($left, $source->unit->getDecimals())]);
         }
 
         return new DeliveryNoteLineInput(

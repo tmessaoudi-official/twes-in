@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import type { FormAnswer } from '../shared/feedback/request-state';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { FormStep } from '../shared/form/form-step';
 import type { DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor } from '../shared/form/form-types';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 
 export interface CreditNoteDialogData {
   descriptor: FormDescriptor;
   group: DescriptorFormGroup;
+  /** Drafts the credit note stating why; the dialog stays open on a refusal and says it under its field. */
+  draft: (reason: string) => Promise<FormAnswer<{ readonly id: string }>>;
 }
 
 /**
@@ -33,12 +38,23 @@ export interface CreditNoteDialogData {
         testId="invoice-credit-note-form"
         (submitted)="create()"
       />
+      @if (step.unplaced(); as said) {
+        <p role="alert" class="text-sm text-error" data-testid="credit-note-refused">
+          {{ said.key | translate: said.params }}
+        </p>
+      }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="ref.close(null)" data-testid="credit-note-keep">
         {{ 'invoices.credit_note.keep' | translate }}
       </button>
-      <button mat-flat-button type="button" (click)="create()" data-testid="credit-note-create">
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="step.busy()"
+        (click)="create()"
+        data-testid="credit-note-create"
+      >
         {{ 'invoices.actions.credit_note' | translate }}
       </button>
     </mat-dialog-actions>
@@ -47,9 +63,11 @@ export interface CreditNoteDialogData {
 export class CreditNoteDialog {
   protected readonly ref = inject<MatDialogRef<CreditNoteDialog, string | null>>(MatDialogRef);
   protected readonly data = inject<CreditNoteDialogData>(MAT_DIALOG_DATA);
+  protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
+  private readonly form = viewChild(DescriptorForm);
 
-  /** Drafting is the page's, which owns the company and the invoice; the dialog answers with the reason. */
-  protected create(): void {
+  /** Drafts through the page, which owns the company and the invoice; answers the credit note's id once drafted. */
+  protected async create(): Promise<void> {
     const group = this.data.group;
     const reason = String(group.getRawValue()['reason'] ?? '').trim();
     if (reason === '') group.controls['reason']?.setValue('');
@@ -57,6 +75,11 @@ export class CreditNoteDialog {
       group.markAllAsTouched();
       return;
     }
-    this.ref.close(reason);
+    if (this.step.busy()) return;
+    const answer = await this.step.run(
+      () => this.data.draft(reason),
+      (refusals) => this.form()?.showRefused(refusals) ?? refusals,
+    );
+    if (answer !== 'refused') this.ref.close(answer?.kept.id ?? null);
   }
 }

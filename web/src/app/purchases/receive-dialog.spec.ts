@@ -24,6 +24,12 @@ class StaticLoader implements TranslateLoader {
     return of({
       inventory: { stock: { fields: { serial: 'N° de série' } } },
       purchases: { receive: { refused: 'Refusé : {{ field }}' } },
+      import: {
+        rejections: {
+          above_expected: 'Il n’en reste que {{quantity}} à recevoir.',
+          lot_required: 'Indiquez le lot de « {{reference}} ».',
+        },
+      },
     });
   }
 }
@@ -156,8 +162,8 @@ describe('ReceiveDialog', () => {
     expect(confirm().disabled).toBe(true);
   });
 
-  it('stays open on a refusal and names the serial number on its row', async () => {
-    receive.mockResolvedValue({ code: 'invalid', field: 'lines[2].lotCode' });
+  it('stays open on a refusal with no words and names the serial number on its row', async () => {
+    receive.mockResolvedValue({ code: 'invalid', field: 'lines[2].lotCode', refusal: null });
     await open();
     type('receive-row-1-serials', 'SN1\nSN2');
     await settle();
@@ -171,6 +177,35 @@ describe('ReceiveDialog', () => {
     type('receive-row-1-serials', 'SN1\nSN3');
     await settle();
     expect(q('receive-row-1-refused')).toBeNull();
+  });
+
+  it('says a refusal in its reason’s words on its row, and the receipt’s own below them', async () => {
+    receive.mockResolvedValueOnce({
+      code: 'invalid',
+      field: 'lines[2].lotCode',
+      refusal: {
+        field: 'lines[2].lotCode',
+        reason: 'lot_required',
+        params: { reference: 'VIS-8' },
+      },
+    });
+    await open();
+    type('receive-row-1-serials', 'SN1\nSN2');
+    await settle();
+    confirm().click();
+    await settle();
+
+    expect(ref.close).not.toHaveBeenCalled();
+    expect(q('receive-row-1-refused')?.textContent?.trim()).toBe('Indiquez le lot de « VIS-8 ».');
+
+    receive.mockResolvedValueOnce({
+      code: 'invalid',
+      field: 'receivedOn',
+      refusal: { field: 'receivedOn', reason: 'unknown_reason', params: {} },
+    });
+    confirm().click();
+    await settle();
+    expect(q('receive-refused')?.textContent?.trim()).toContain('Refusé');
   });
 
   it('asks no cost, nor a cost basis, of whoever may not read costs', async () => {

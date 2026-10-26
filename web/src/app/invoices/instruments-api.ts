@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   PaymentInstrumentPaymentInstrumentRead,
@@ -16,11 +16,13 @@ import {
   type InstrumentStep,
 } from './instruments-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 
 /** The HTTP edge of an invoice's cheques and traites: the only code here that knows endpoints and generated types. */
 @Injectable({ providedIn: 'root' })
 export class InstrumentsApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   /** An invoice's instruments, by due day. 404 for an invoice the member may not read. */
   async list(companyId: string, invoiceId: string): Promise<InstrumentRow[]> {
@@ -71,7 +73,10 @@ export class InstrumentsApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new InvoicesRefused(codeOf(error)));
+      throw refusedFor(
+        error,
+        new InvoicesRefused(codeOf(error), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

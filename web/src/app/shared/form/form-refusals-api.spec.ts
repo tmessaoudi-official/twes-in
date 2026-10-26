@@ -4,7 +4,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Injector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { TextsParts } from '../i18n/texts-part';
-import { FORM_REFUSAL_TEXTS, formRefusalsIn } from './form-refusals-api';
+import { FORM_REFUSAL_TEXTS } from './form-refusal-texts';
+import { formRefusalsIn } from './form-refusals-api';
 
 describe('formRefusalsIn', () => {
   const open = vi.fn<(name: string) => Promise<void>>();

@@ -342,6 +342,26 @@ describe('QuotesApi', () => {
     );
     await expect(part).rejects.toEqual(new QuotesRefused('delivery_refused'));
 
+    const beyond = api.deliver('c1', 'q1', { ql1: '9' });
+    http.expectOne('/api/companies/c1/quotes/q1/delivery-notes').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'quantities[ql1]',
+            message: 'x',
+            payload: { reason: 'left_to_deliver', params: { quantity: '1.000' } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(beyond).rejects.toMatchObject({
+      code: 'delivery_refused',
+      refusals: [
+        { field: 'quantities[ql1]', reason: 'left_to_deliver', params: { quantity: '1.000' } },
+      ],
+    });
+
     for (const field of ['deposits', 'discountAmount']) {
       const kept = api.deliver('c1', 'q1', null);
       http

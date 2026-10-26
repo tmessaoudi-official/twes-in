@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { LatestRequest, requestState } from '../shared/feedback/request-state';
+import { type FormAnswer, LatestRequest, requestState } from '../shared/feedback/request-state';
 import { inject, Injectable } from '@angular/core';
 import { DeliveryNotesApi, DeliveryNotesRefused } from './delivery-notes-api';
 import type { PickAsked } from '../shared/form/pick-api';
@@ -196,12 +196,18 @@ export class DeliveryNotesFacade {
   }
 
   /** Delivered at the moment given on the company's clock, or now when none is. */
+  /** The note marked delivered, at the moment given or now; asked in a dialog, which says a refusal under its field. */
   async deliver(
     companyId: string,
     id: string,
     delivered: string | null,
-  ): Promise<DeliveryNoteRow | null> {
-    return this.step(() => this.api.deliver(companyId, id, delivered));
+  ): Promise<FormAnswer<DeliveryNoteRow>> {
+    const answer = await this.state.writeOrRefuse(
+      () => this.api.deliver(companyId, id, delivered),
+      (error) => (error instanceof DeliveryNotesRefused ? error.refusals : []),
+    );
+    if (answer !== null && 'kept' in answer) this.noteSignal.set(answer.kept);
+    return answer;
   }
 
   async cancel(companyId: string, id: string): Promise<DeliveryNoteRow | null> {
@@ -230,6 +236,19 @@ export class DeliveryNotesFacade {
     intoDraftId?: string,
   ): Promise<string | null> {
     return this.state.writeAnswer(() => this.api.invoice(companyId, [id], quantities, intoDraftId));
+  }
+
+  /** An invoice for part of the note, asked in a dialog, which says a line's refused quantity on its line. */
+  async invoicePart(
+    companyId: string,
+    id: string,
+    quantities: Readonly<Record<string, string>>,
+    intoDraftId?: string,
+  ): Promise<FormAnswer<string>> {
+    return this.state.writeOrRefuse(
+      () => this.api.invoice(companyId, [id], quantities, intoDraftId),
+      (error) => (error instanceof DeliveryNotesRefused ? error.refusals : []),
+    );
   }
 
   /*

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { LatestRequest, requestState } from '../shared/feedback/request-state';
+import { type FormAnswer, LatestRequest, requestState } from '../shared/feedback/request-state';
 import { inject, Injectable } from '@angular/core';
 import { InventoryApi, InventoryRefused } from './inventory-api';
 import type { PickAsked } from '../shared/form/pick-api';
@@ -313,20 +313,26 @@ export class InventoryFacade {
     );
   }
 
-  /** The cost a cost reader enters for a receipt left « à compléter »; true once entered and the movements read again. */
+  /**
+   * The cost a cost reader enters for a receipt left « à compléter », asked from a dialog that stays open on a refusal:
+   * kept once entered and the movements read again, the fields refused for the dialog to say, or null for any other
+   * failure, said in `error`.
+   */
   async enterReceiptCost(
     companyId: string,
     movementId: string,
     unitCost: string,
     applyCost: CostBasis | null,
-  ): Promise<boolean> {
+  ): Promise<FormAnswer<void>> {
     // What the late cost did to the product's price or margin is said from its own answer (`PriceEffects`).
-    return this.write(
+    const answer = await this.state.writeOrRefuse(
       async () => {
         await this.api.enterReceiptCost(companyId, movementId, unitCost, applyCost);
       },
-      () => this.reloadMovements(companyId),
+      (error) => (error instanceof InventoryRefused ? error.refusals : []),
     );
+    if (answer !== null && 'kept' in answer) await this.reloadMovements(companyId);
+    return answer;
   }
 
   /** The files a loss keeps, or null when they could not be read (the reason is in `error`). */

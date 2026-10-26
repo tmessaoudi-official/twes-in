@@ -590,6 +590,26 @@ describe('InvoicesApi', () => {
       await expect(refused).rejects.toEqual(new InvoicesRefused(code));
     }
 
+    const beyond = api.deliver('c1', 'i1', { il1: '99' });
+    http.expectOne('/api/companies/c1/invoices/i1/deliveries').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'quantities[il1]',
+            message: 'x',
+            payload: { reason: 'left_to_deliver', params: { quantity: '2.000' } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Refused' },
+    );
+    await expect(beyond).rejects.toMatchObject({
+      code: 'delivery_refused',
+      refusals: [
+        { field: 'quantities[il1]', reason: 'left_to_deliver', params: { quantity: '2.000' } },
+      ],
+    });
+
     const nameless = api.deliver('c1', 'i1', null);
     http.expectOne('/api/companies/c1/invoices/i1/deliveries').flush({});
     await expect(nameless).rejects.toBeInstanceOf(InvoicesRefused);

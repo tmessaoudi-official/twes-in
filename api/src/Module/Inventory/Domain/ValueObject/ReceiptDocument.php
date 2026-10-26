@@ -31,7 +31,7 @@ final readonly class ReceiptDocument
     {
         $reference = null === $supplierReference ? '' : TypedText::trimmed($supplierReference);
         if (mb_strlen($reference) > self::REFERENCE_MAX) {
-            throw new InvalidStockMovement('supplierReference', \sprintf('A supplier reference is at most %d characters.', self::REFERENCE_MAX));
+            throw new InvalidStockMovement('supplierReference', \sprintf('A supplier reference is at most %d characters.', self::REFERENCE_MAX), reason: 'invalid_text', params: ['max' => self::REFERENCE_MAX]);
         }
         $this->supplierReference = '' === $reference ? null : $reference;
     }

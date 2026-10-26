@@ -266,7 +266,10 @@ export class QuotesApi {
       if (note.id === undefined) throw new Error('A delivery note came without its id.');
       return note.id;
     } catch (error) {
-      throw refusedFor(error, new QuotesRefused(deliveryCodeOf(error)));
+      throw refusedFor(
+        error,
+        new QuotesRefused(deliveryCodeOf(error), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 

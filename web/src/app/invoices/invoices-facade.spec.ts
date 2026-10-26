@@ -2,6 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { QuietReads } from '../shared/feedback/quiet-reads';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
 import { InvoicesFacade } from './invoices-facade';
 import type { InvoiceInput, InvoiceOptions, InvoiceRow } from './invoices-types';
@@ -105,6 +106,7 @@ describe('InvoicesFacade', () => {
     cancel: vi.fn(),
     creditNote: vi.fn(),
     recordPayment: vi.fn(),
+    overpay: vi.fn(),
     deletePayment: vi.fn(),
     pdfUrl: vi.fn(),
     summary: vi.fn(),
@@ -231,7 +233,7 @@ describe('InvoicesFacade', () => {
 
   it('reads the invoice again after a payment is recorded or deleted, so its amount due is the API’s', async () => {
     api.invoice.mockResolvedValue(issued);
-    expect(await facade.recordPayment('c1', 'i1', payment)).toBe(true);
+    expect(await facade.recordPayment('c1', 'i1', payment)).toEqual({ kept: issued });
     expect(api.recordPayment).toHaveBeenCalledWith('c1', 'i1', payment);
     expect(facade.invoice()).toEqual(issued);
 
@@ -240,17 +242,39 @@ describe('InvoicesFacade', () => {
     expect(api.invoice).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps the invoice as it was when a payment is refused', async () => {
+  it('keeps the invoice as it was when a payment is refused, said on the screen when no field is named', async () => {
     api.recordPayment.mockRejectedValue(new InvoicesRefused('invalid'));
-    expect(await facade.recordPayment('c1', 'i1', payment)).toBe(false);
+    expect(await facade.recordPayment('c1', 'i1', payment)).toBeNull();
     expect(api.invoice).not.toHaveBeenCalled();
     expect(facade.error()).toBe('invalid');
+  });
+
+  it('hands the dialog a payment’s refused fields, and keeps them off the screen behind it', async () => {
+    const above: FieldRefusal = {
+      field: 'amount',
+      reason: 'above_due',
+      params: { amount: '5.000' },
+    };
+    api.recordPayment.mockRejectedValue(new InvoicesRefused('invalid', [above]));
+    expect(await facade.recordPayment('c1', 'i1', payment)).toEqual({ refused: [above] });
+    expect(facade.error()).toBeNull();
+    expect(facade.refusals()).toEqual([]);
+
+    api.overpay.mockRejectedValue(new InvoicesRefused('invalid', [above]));
+    expect(
+      await facade.overpay('c1', 'i1', {
+        date: '2026-10-26',
+        amount: '9',
+        reference: null,
+        notes: null,
+      }),
+    ).toEqual({ refused: [above] });
   });
 
   it('answers the credit note it drafted, which becomes the document on screen', async () => {
     const credit = { ...draft, id: 'cn1', type: 'credit_note' as const, correctsInvoiceId: 'i1' };
     api.creditNote.mockResolvedValue(credit);
-    expect(await facade.creditNote('c1', 'i1', 'Retour')).toEqual(credit);
+    expect(await facade.creditNote('c1', 'i1', 'Retour')).toEqual({ kept: credit });
     expect(api.creditNote).toHaveBeenCalledWith('c1', 'i1', 'Retour');
     expect(facade.invoice()).toEqual(credit);
   });

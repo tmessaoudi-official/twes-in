@@ -111,7 +111,7 @@ final class RefusalReasonsTest extends KernelTestCase
     }
 
     /**
-     * A document's refusal names its reason, so the screen says why in the reader's words rather than « Valeur refusée. »:
+     * A document's or a stock movement's refusal names its reason, so the screen says why in the reader's words rather than « Valeur refusée. »:
      * a reason written in the call, spread from a helper that gives one, or carried from the refusal it re-throws.
      */
     public function testEveryRefusalOfADocumentNamesItsReason(): void
@@ -123,7 +123,7 @@ final class RefusalReasonsTest extends KernelTestCase
         foreach ($files as $file) {
             \assert($file instanceof \SplFileInfo);
             $source = (string) file_get_contents($file->getPathname());
-            preg_match_all('/new (?:Invalid(?:Invoice|Quote|DeliveryNote|PurchaseOrder)|QuoteInvoicingRefused)(\(((?:[^()\'"]++|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|(?1))*)\))/s', $source, $found, \PREG_OFFSET_CAPTURE);
+            preg_match_all('/new (?:Invalid(?:Invoice|Quote|DeliveryNote|PurchaseOrder|StockMovement)|QuoteInvoicingRefused)(\(((?:[^()\'"]++|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|(?1))*)\))/s', $source, $found, \PREG_OFFSET_CAPTURE);
             foreach ($found[2] as [$arguments, $offset]) {
                 ++$statements;
                 if (1 === preg_match("/'[a-z]+(?:_[a-z]+)+'|\\.\\.\\.|->reason\\b/", $arguments)) {

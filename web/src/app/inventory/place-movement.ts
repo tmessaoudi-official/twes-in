@@ -12,13 +12,16 @@ import {
   output,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { RefusalLine } from '../shared/documents/refusal-line';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import type { FormValues } from '../shared/form/form-types';
@@ -78,6 +81,14 @@ export class PlaceMovement implements OnInit {
 
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  /** The line above the form: what no field took, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'inventory.errors.',
+    inject(TranslateService),
+    inject(RefusalFigures),
+  );
+  private readonly editor = viewChild(DescriptorForm);
 
   /** The line's product as the picker answers it, by id: a tracked one's form asks its lot. */
   private readonly product = signal<StockProductOption | null>(null);
@@ -259,7 +270,12 @@ export class PlaceMovement implements OnInit {
     const { operation, line } = this.asked();
     if (this.busy()) return;
     const movement = movementInput(operation, values);
-    if (!(await this.facade.record(companyId, movement))) return;
+    if (!(await this.facade.record(companyId, movement))) {
+      // Each field the API refused said on that field; the line above the form says what none of them took.
+      const refusals = this.facade.refusals();
+      this.refusalLine.placed(refusals, this.editor()?.showRefused(refusals) ?? refusals);
+      return;
+    }
     await this.readAgain(companyId);
     if (operation === 'move') {
       this.feedback.success(

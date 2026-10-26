@@ -239,6 +239,9 @@ final class PurchaseOrdersTest extends ApiTestCase
         }
         $this->postJson($this->path($id).'/receipts', ['receivedOn' => $this->today(), 'lines' => [['orderLineId' => $screws, 'locationId' => $this->site, 'quantity' => '11']]]);
         self::assertSame('above_expected', $this->refusalOf('lines[0].quantity')[0], 'what is still expected');
+        $params = $this->refusalOf('lines[0].quantity')[1];
+        self::assertIsArray($params);
+        self::assertSame('10', $params['quantity'] ?? null, 'in the decimals its unit counts in');
         $this->postJson($this->path($id).'/receipts', ['receivedOn' => '2099-01-01', 'lines' => [['orderLineId' => $screws, 'locationId' => $this->site, 'quantity' => '1']]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'goods do not arrive tomorrow');
         self::assertSame(['after_today', []], $this->refusalOf('receivedOn'));

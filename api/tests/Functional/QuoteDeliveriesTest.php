@@ -79,7 +79,7 @@ final class QuoteDeliveriesTest extends ApiTestCase
 
         $this->postJson($this->deliver($quoteId), ['quantities' => [$lathe => '4.001']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame(['left_to_deliver', ['quantity' => '4.000']], $this->refusalOf("quantities[$lathe]"), 'said beside its line');
+        self::assertSame(['left_to_deliver', ['quantity' => '4']], $this->refusalOf("quantities[$lathe]"), 'said beside its line');
         $this->postJson($this->deliver($quoteId), ['quantities' => [self::ABSENT => '1']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame(['unknown_choice', []], $this->refusalOf('quantities['.self::ABSENT.']'));
@@ -243,7 +243,7 @@ final class QuoteDeliveriesTest extends ApiTestCase
 
         $this->postJson($this->path('delivery-notes', $binned).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the six accepted are all on the other note');
-        self::assertSame(['left_to_deliver', ['quantity' => '0.000']], $this->refusalOf('lines[0].quantity'));
+        self::assertSame(['left_to_deliver', ['quantity' => '0']], $this->refusalOf('lines[0].quantity'));
         $this->getJson($this->path('delivery-notes', $binned));
         self::assertSame(['draft', null], [$this->json()['status'], $this->json()['number']], 'it stays a draft, and takes no number');
         self::assertSame($onHand, $this->onHand(), 'and nothing left stock');

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
-import { requestState } from '../shared/feedback/request-state';
+import { type FormAnswer, requestState } from '../shared/feedback/request-state';
 import { InstrumentsApi } from './instruments-api';
 import type { InstrumentInput, InstrumentRow, InstrumentStep } from './instruments-types';
 import { InvoicesRefused } from './invoices-api';
@@ -30,11 +30,19 @@ export class InstrumentsFacade {
     }, true);
   }
 
-  async receive(companyId: string, invoiceId: string, input: InstrumentInput): Promise<boolean> {
-    return this.run(async () => {
-      await this.api.receive(companyId, invoiceId, input);
-      this.itemsSignal.set(await this.api.list(companyId, invoiceId));
-    });
+  /** The cheque or traite received, the list read again; a refusal naming fields is the form's to say under them. */
+  async receive(
+    companyId: string,
+    invoiceId: string,
+    input: InstrumentInput,
+  ): Promise<FormAnswer<void>> {
+    return this.state.writeOrRefuse(
+      async () => {
+        await this.api.receive(companyId, invoiceId, input);
+        this.itemsSignal.set(await this.api.list(companyId, invoiceId));
+      },
+      (error) => (error instanceof InvoicesRefused ? error.refusals : []),
+    );
   }
 
   async advance(

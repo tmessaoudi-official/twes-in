@@ -2,6 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import type { InvoiceOptions } from '../invoices/invoices-types';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { QuotesApi, QuotesRefused } from './quotes-api';
 import { QuotesFacade } from './quotes-facade';
 import type { QuoteInput, QuoteRow } from './quotes-types';
@@ -169,7 +170,7 @@ describe('QuotesFacade', () => {
     api.attachments.mockResolvedValue([{ id: 'a1', name: 'signé.pdf' }]);
     api.quote.mockResolvedValue({ ...accepted, attachmentCount: 1 });
 
-    expect(await facade.accept('c1', 'q1', { answeredOn: '' }, signed)).toEqual(accepted);
+    expect(await facade.accept('c1', 'q1', { answeredOn: '' }, signed)).toEqual({ kept: accepted });
 
     expect(api.attach).toHaveBeenCalledWith('c1', 'q1', signed);
     expect(facade.attachments()).toHaveLength(1);
@@ -185,9 +186,20 @@ describe('QuotesFacade', () => {
     const accepted = { ...sent, status: 'accepted' as const };
     api.accept.mockResolvedValue(accepted);
     api.attach.mockRejectedValue(new QuotesRefused('file_refused'));
-    expect(await facade.accept('c1', 'q1', { answeredOn: '' }, signed)).toEqual(accepted);
+    expect(await facade.accept('c1', 'q1', { answeredOn: '' }, signed)).toEqual({ kept: accepted });
     expect(facade.quote()?.status).toBe('accepted');
     expect(facade.error()).toBe('file_refused');
+  });
+
+  it('hands the dialog an answer’s refused fields, keeping them off the screen behind it, and attaches nothing', async () => {
+    const day: FieldRefusal = { field: 'answeredOn', reason: 'after_today', params: {} };
+    api.accept.mockRejectedValueOnce(new QuotesRefused('invalid', [day]));
+    expect(await facade.accept('c1', 'q1', { answeredOn: '2099-01-01' }, signed)).toEqual({
+      refused: [day],
+    });
+    expect(api.attach).not.toHaveBeenCalled();
+    expect(facade.error()).toBeNull();
+    expect(facade.refusals()).toEqual([]);
   });
 
   it('answers a failed pick with nothing and says why', async () => {

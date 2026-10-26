@@ -13,9 +13,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import type { FormAnswer } from '../shared/feedback/request-state';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
+import { FormStep } from '../shared/form/form-step';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { revealInvalid } from '../shared/form/reveal-invalid';
 import { formatTime, todayIn } from '../shared/i18n/format';
 
@@ -27,6 +30,13 @@ import { formatTime, todayIn } from '../shared/i18n/format';
  */
 /** The locale the field's time is written in: the API's `HH:MM`, whatever the screen's language. */
 const WALL_CLOCK = 'en-GB'; // language-literal: its 24-hour HH:MM is the API's format, not a language
+
+export interface DeliverDialogData {
+  /** The company's clock, whose today and now the fields open on. */
+  zone: string | null;
+  /** Marks the note delivered at the moment written, '' for now; the dialog stays open on a refusal. */
+  deliver: (moment: string) => Promise<FormAnswer<unknown>>;
+}
 
 @Component({
   selector: 'app-deliver-dialog',
@@ -60,7 +70,11 @@ const WALL_CLOCK = 'en-GB'; // language-literal: its 24-hour HH:MM is the API's 
             data-testid="delivery-note-delivered-on"
           />
           <app-day-calendar-button matSuffix [field]="dayField" />
-          @if (form.controls.day.hasError('date')) {
+          @if (form.controls.day.getError('refused'); as refused) {
+            <mat-error data-testid="delivery-note-delivered-on-error">{{
+              refused.key | translate: refused.params
+            }}</mat-error>
+          } @else if (form.controls.day.hasError('date')) {
             <mat-error data-testid="delivery-note-delivered-on-error">{{
               'form.errors.date' | translate
             }}</mat-error>
@@ -92,20 +106,33 @@ const WALL_CLOCK = 'en-GB'; // language-literal: its 24-hour HH:MM is the API's 
           }
         </mat-form-field>
       </div>
+      @if (step.unplaced(); as said) {
+        <p role="alert" class="text-sm text-error" data-testid="deliver-refused">
+          {{ said.key | translate: said.params }}
+        </p>
+      }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button type="button" (click)="ref.close(null)" data-testid="deliver-cancel">
+      <button mat-button type="button" (click)="ref.close(false)" data-testid="deliver-cancel">
         {{ 'delivery_notes.actions.keep' | translate }}
       </button>
-      <button mat-flat-button type="button" (click)="deliver()" data-testid="delivery-note-deliver">
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="step.busy()"
+        (click)="deliver()"
+        data-testid="delivery-note-deliver"
+      >
         {{ 'delivery_notes.actions.deliver' | translate }}
       </button>
     </mat-dialog-actions>
   `,
 })
 export class DeliverDialog {
-  protected readonly ref = inject<MatDialogRef<DeliverDialog, string | null>>(MatDialogRef);
-  private readonly zone = inject<string | null>(MAT_DIALOG_DATA);
+  protected readonly ref = inject<MatDialogRef<DeliverDialog, boolean>>(MatDialogRef);
+  private readonly data = inject<DeliverDialogData>(MAT_DIALOG_DATA);
+  private readonly zone = this.data.zone;
+  protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
   private readonly opened = {
     day: todayIn(this.zone),
     time: formatTime(new Date().toISOString(), WALL_CLOCK, this.zone ?? undefined),
@@ -138,9 +165,20 @@ export class DeliverDialog {
     }
   }
 
-  protected deliver(): void {
-    if (revealInvalid(this.form, this.host)) return;
-    this.ref.close(this.moment());
+  protected async deliver(): Promise<void> {
+    if (revealInvalid(this.form, this.host) || this.step.busy()) return;
+    const answer = await this.step.run(
+      () => this.data.deliver(this.moment()),
+      // The day the API refuses (`delivered`, before the note or after now) is said under the day.
+      (refusals) =>
+        refusals.filter((refusal) => {
+          if (refusal.field !== 'delivered') return true;
+          this.form.controls.day.setErrors({ refused: this.step.wordsOf(refusal) });
+          this.form.controls.day.markAsTouched();
+          return false;
+        }),
+    );
+    if (answer !== 'refused') this.ref.close(answer !== null);
   }
 
   /** '' for now, or the moment written. */

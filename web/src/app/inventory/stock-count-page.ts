@@ -19,12 +19,16 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { ProductScans } from '../products/product-scans';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
+import { RefusalLine } from '../shared/documents/refusal-line';
 import { DecimalInput } from '../shared/form/decimal-input';
+import type { FieldError } from '../shared/form/form-builder';
+import { RefusalFigures } from '../shared/form/refusal-figures';
+import { refusedError } from '../shared/form/refusal-words';
 import { Select } from '../shared/form/select';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
@@ -89,6 +93,17 @@ export class StockCountPage implements OnInit {
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  private readonly translate = inject(TranslateService);
+  private readonly figures = inject(RefusalFigures);
+  /** The line above the sheet: what no line says itself, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'inventory.errors.',
+    this.translate,
+    this.figures,
+  );
+  /** Why the API refused a line kept on the sheet, in its reason's words, until the line is changed. */
+  private readonly refusedOf = signal<ReadonlyMap<CountLine, FieldError>>(new Map());
   protected readonly locations = computed(() => [...locationLabels(this.facade.locations())]);
   protected readonly locationOptions = computed(() =>
     this.locations().map(([value, label]) => ({ value, label })),
@@ -96,6 +111,9 @@ export class StockCountPage implements OnInit {
   /** The location being counted; empty until the locations are read, then the first default one. */
   protected readonly locationId = signal('');
   protected readonly lines = signal<readonly CountLine[]>([]);
+  protected readonly refusedLines = computed(() =>
+    this.lines().map((line) => this.refusedOf().get(line) ?? null),
+  );
   /** The sheet by location, each named as the location picker names it. */
   protected readonly groups = computed(() => {
     const names = new Map(this.locations());
@@ -215,10 +233,21 @@ export class StockCountPage implements OnInit {
     }
     const inputs = countInputs(lines);
     const kept: CountLine[] = [];
+    const refused = new Map<CountLine, FieldError>();
     for (const [index, input] of inputs.entries()) {
-      if (!(await this.facade.record(companyId, input))) kept.push(lines[index]);
+      if (await this.facade.record(companyId, input)) continue;
+      kept.push(lines[index]);
+      const [first] = this.facade.refusals();
+      if (first !== undefined) {
+        refused.set(lines[index], refusedError(this.translate, first, first.params, this.figures));
+      }
     }
     this.lines.set(kept);
+    this.refusedOf.set(refused);
+    // Each line kept says why on itself; the line above says nothing more once every one of them does.
+    if (kept.length > 0 && refused.size === kept.length) {
+      this.refusalLine.placed(this.facade.refusals(), []);
+    }
     const recorded = lines.length - kept.length;
     if (recorded > 0) this.feedback.success('inventory.count.recorded', { count: recorded });
   }

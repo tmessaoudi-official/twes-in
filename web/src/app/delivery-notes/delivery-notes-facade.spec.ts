@@ -160,7 +160,10 @@ describe('DeliveryNotesFacade', () => {
     expect(facade.note()).toEqual(numbered);
 
     api.deliver.mockResolvedValue({ ...numbered, status: 'delivered' });
-    expect((await facade.deliver('c1', 'n1', '2026-09-20'))?.status).toBe('delivered');
+    expect(await facade.deliver('c1', 'n1', '2026-09-20')).toEqual({
+      kept: { ...numbered, status: 'delivered' },
+    });
+    expect(facade.note()?.status).toBe('delivered');
     expect(api.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20');
 
     api.cancel.mockResolvedValue({ ...numbered, status: 'cancelled' });

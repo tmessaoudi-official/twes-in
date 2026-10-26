@@ -298,7 +298,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
 
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note], 'quantities' => [$goods => '7']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'only 4 are left: what a draft already holds is not offered again');
-        self::assertStringContainsString('quantities', (string) $this->client->getResponse()->getContent());
+        self::assertSame(['left_to_invoice', ['quantity' => '4']], $this->refusalOf("quantities[$goods]"), 'in the decimals its unit counts in');
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note], 'quantities' => [self::ABSENT => '1']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a quantity names a line of the notes asked for');
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note], 'quantities' => [$goods => '0']]);
@@ -497,6 +497,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'four of the ten are on the other draft');
         self::assertStringContainsString('lines[0].quantity', (string) $this->client->getResponse()->getContent());
         self::assertStringContainsString('6.000', (string) $this->client->getResponse()->getContent());
+        self::assertSame(['left_to_invoice', ['quantity' => '6']], $this->refusalOf('lines[0].quantity'), 'in the decimals its unit counts in');
         $other = Product::create($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('no company'), 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '20'), $this->unit('C62'), null, [], new \DateTimeImmutable());
         $this->em()->persist($other);
         $this->em()->flush();

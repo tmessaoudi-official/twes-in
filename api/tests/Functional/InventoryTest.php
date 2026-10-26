@@ -180,8 +180,10 @@ final class InventoryTest extends ApiTestCase
             ['locationId' => $siteId, 'quantity' => '2'],
         ]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'locationId', 'reason' => 'location_twice', 'params' => []]], $this->refusals());
         $this->postJson($this->path('stock-receipts'), ['productId' => $this->laptopId, 'parts' => []]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'parts', 'reason' => 'places_required', 'params' => []]], $this->refusals());
         self::assertEqualsCanonicalizing(
             [[$siteId, '6.000'], [$zoneId, '4.000']],
             array_map(static fn (array $row): array => [$row['locationId'], $row['quantity']], $this->levels()),
@@ -315,13 +317,14 @@ final class InventoryTest extends ApiTestCase
         );
 
         foreach ([
-            'a place the company does not have' => [['locationId' => $siteId, 'quantity' => '9'], ['locationId' => Uuid::v7()->toRfc4122(), 'quantity' => '1']],
-            'a place twice' => [['locationId' => $siteId, 'quantity' => '9'], ['locationId' => $siteId, 'quantity' => '1']],
-            'no place' => [],
-            'a count below nothing' => [['locationId' => $siteId, 'quantity' => '9'], ['locationId' => $zoneId, 'quantity' => '-1']],
-        ] as $case => $refused) {
+            'a place the company does not have' => [[['locationId' => $siteId, 'quantity' => '9'], ['locationId' => Uuid::v7()->toRfc4122(), 'quantity' => '1']], 'unknown_choice'],
+            'a place twice' => [[['locationId' => $siteId, 'quantity' => '9'], ['locationId' => $siteId, 'quantity' => '1']], 'location_twice'],
+            'no place' => [[], 'places_required'],
+            'a count below nothing' => [[['locationId' => $siteId, 'quantity' => '9'], ['locationId' => $zoneId, 'quantity' => '-1']], 'count_negative'],
+        ] as $case => [$refused, $reason]) {
             $this->postJson($this->path('stock-counts'), ['productId' => $this->laptopId, 'parts' => $refused]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
+            self::assertSame([$reason], array_column($this->refusals(), 'reason'), $case);
         }
         self::assertEqualsCanonicalizing(
             [[$siteId, '5.000'], [$zoneId, '2.000']],
@@ -1209,6 +1212,10 @@ final class InventoryTest extends ApiTestCase
         self::assertSame(['EXPIRED' => false, 'LATER' => false, 'SOON' => false], $this->releasedByLot(), 'nothing released yet');
         $this->postJson($this->path('stock-lots', $laterId).'/release', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a lot in date is not released');
+        [$reason, $params] = $this->refusalOf('lot');
+        self::assertSame('lot_in_date', $reason);
+        self::assertIsArray($params);
+        self::assertSame('LATER', $params['lot'] ?? null, 'the lot named in its words');
         $this->postJson($this->path('stock-lots', '0192f5c8-0000-7000-8000-000000000000').'/release', null);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a lot of no company of ours');
         $this->postJson($this->path('stock-lots', $expiredId).'/release', null);
@@ -1432,15 +1439,18 @@ final class InventoryTest extends ApiTestCase
         self::assertSame([[$rack, '4.000'], [$site, '6.000']], $levels, 'ten are still there, in two places');
 
         foreach ([
-            ['toLocationId', ['locationId' => $site, 'toLocationId' => $site, 'quantity' => '1']],
+            ['toLocationId', ['locationId' => $site, 'toLocationId' => $site, 'quantity' => '1'], ['same_location', []]],
             // A move with nowhere to go is REFUSED, not carried into the use case: without the validator firing here
             // the processor would read a null destination and answer 500 to somebody who left the select blank.
-            ['toLocationId', ['locationId' => $site, 'quantity' => '1']],
-            ['quantity', ['locationId' => $site, 'toLocationId' => $rack, 'quantity' => '7']],
-        ] as [$field, $changes]) {
+            ['toLocationId', ['locationId' => $site, 'quantity' => '1'], null],
+            ['quantity', ['locationId' => $site, 'toLocationId' => $rack, 'quantity' => '7'], ['above_on_hand', ['quantity' => '6']]],
+        ] as [$field, $changes, $why]) {
             $this->postJson($this->path('stock-movements'), ['operation' => 'move', 'productId' => $this->laptopId, ...$changes]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
+            if (null !== $why) {
+                self::assertSame([['propertyPath' => $field, 'reason' => $why[0], 'params' => $why[1]]], $this->refusals(), $field);
+            }
         }
         // Refused means refused: nothing of either attempt was written.
         $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId.'&sourceType=move');
@@ -1468,14 +1478,17 @@ final class InventoryTest extends ApiTestCase
         self::assertSame([['broken', 'Dropped at the counter']], array_map(static fn (array $row) => [$row['reason'], $row['note']], $this->jsonList()));
 
         foreach ([
-            'reason' => ['quantity' => '1'],
-            'reason ' => ['quantity' => '1', 'reason' => 'vanished'],
-            'quantity' => ['quantity' => '8', 'reason' => 'lost'],
-            'note' => ['quantity' => '1', 'reason' => 'lost', 'note' => str_repeat('n', 501)],
-        ] as $field => $body) {
+            'reason' => [['quantity' => '1'], null],
+            'reason ' => [['quantity' => '1', 'reason' => 'vanished'], null],
+            'quantity' => [['quantity' => '8', 'reason' => 'lost'], ['above_on_hand', ['quantity' => '7']]],
+            'note' => [['quantity' => '1', 'reason' => 'lost', 'note' => str_repeat('n', 501)], ['invalid_text', ['max' => 500]]],
+        ] as $field => [$body, $why]) {
             $this->postJson($this->path('stock-movements'), ['operation' => 'loss', 'productId' => $this->laptopId, 'locationId' => $site, ...$body]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString(trim($field), (string) $this->client->getResponse()->getContent());
+            if (null !== $why) {
+                self::assertSame([['propertyPath' => $field, 'reason' => $why[0], 'params' => $why[1]]], $this->refusals(), $field);
+            }
         }
         $this->getJson($this->path('stock-levels'));
         self::assertSame(['7.000'], array_column($this->jsonList(), 'quantity'), 'a refused loss wrote nothing');

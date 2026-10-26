@@ -15,16 +15,26 @@ import { QuoteAnswerDialog, type QuoteAnswerDialogData } from './quote-answer-di
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({ form: { errors: { date: 'Saisissez un jour valide.' } } });
+    return of({
+      form: { errors: { date: 'Saisissez un jour valide.' } },
+      import: {
+        rejections: {
+          on_or_after: 'Date refusée : le {{day}} au plus tôt.',
+          lines_required: 'Ajoutez au moins une ligne.',
+        },
+      },
+    });
   }
 }
 
 // A refusal said only by a disabled button: the answer's confirmation greyed out on a wrong day said nothing.
 describe('QuoteAnswerDialog', () => {
   const ref = { close: vi.fn() };
+  const answer = vi.fn<QuoteAnswerDialogData['answer']>();
 
-  async function open(data: QuoteAnswerDialogData) {
+  async function open(data: Omit<QuoteAnswerDialogData, 'answer'>) {
     ref.close.mockReset();
+    answer.mockReset().mockResolvedValue({ kept: true });
     TestBed.configureTestingModule({
       imports: [QuoteAnswerDialog],
       providers: [
@@ -34,7 +44,7 @@ describe('QuoteAnswerDialog', () => {
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
-        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MAT_DIALOG_DATA, useValue: { ...data, answer } },
         { provide: MatDialogRef, useValue: ref },
         {
           provide: FormatFacade,
@@ -71,21 +81,23 @@ describe('QuoteAnswerDialog', () => {
     await confirm();
 
     expect(ref.close).not.toHaveBeenCalled();
+    expect(answer).not.toHaveBeenCalled();
     expect(q('quote-answered-on-error')?.textContent).toContain('Saisissez un jour valide.');
     expect(document.activeElement).toBe(q('quote-answered-on'));
   });
 
-  it('answers on the day written', async () => {
+  it('answers on the day written, and closes once the answer is kept', async () => {
     const { typeDay, confirm } = await open({ kind: 'accept' });
 
     await typeDay('01/10/2026');
     await confirm();
 
-    expect(ref.close).toHaveBeenCalledWith({
+    expect(answer).toHaveBeenCalledWith({
       answeredOn: '2026-10-01',
       refusalReason: '',
       signed: null,
     });
+    expect(ref.close).toHaveBeenCalledWith(true);
   });
 
   it('answers on the company’s today when no day is written', async () => {
@@ -94,6 +106,28 @@ describe('QuoteAnswerDialog', () => {
     await confirm();
 
     expect(q('quote-answered-on-error')).toBeNull();
-    expect(ref.close).toHaveBeenCalledWith({ answeredOn: '', refusalReason: '', signed: null });
+    expect(answer).toHaveBeenCalledWith({ answeredOn: '', refusalReason: '', signed: null });
+  });
+
+  it('stays open on a refused day, saying why under it in its figures, and what no field takes below', async () => {
+    const { q, typeDay, confirm } = await open({ kind: 'refuse' });
+    answer.mockResolvedValueOnce({
+      refused: [
+        { field: 'answeredOn', reason: 'on_or_after', params: { day: '2026-10-05' } },
+        { field: 'quote', reason: 'lines_required', params: {} },
+      ],
+    });
+
+    await typeDay('01/10/2026');
+    await confirm();
+
+    expect(ref.close).not.toHaveBeenCalled();
+    expect(q('quote-answered-on-error')?.textContent).toContain(
+      `Date refusée : le ${formatDay('2026-10-05', 'fr-TN', 'auto')} au plus tôt.`,
+    );
+    expect(q('quote-answer-refused')?.textContent?.trim()).toBe('Ajoutez au moins une ligne.');
+
+    await typeDay('06/10/2026');
+    expect(q('quote-answered-on-error')).toBeNull();
   });
 });

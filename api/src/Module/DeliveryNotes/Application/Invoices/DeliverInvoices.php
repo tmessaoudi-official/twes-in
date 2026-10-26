@@ -58,8 +58,10 @@ final readonly class DeliverInvoices
             }
             $taken = $this->notes->invoiceLineQuantities($company->getId(), array_map(static fn (InvoiceLineToDeliver $line): Uuid => $line->id, $invoice->lines));
             $left = [];
+            $decimals = [];
             foreach ($invoice->lines as $line) {
                 $left[$line->id->toRfc4122()] = InvoiceDelivery::left($line, $taken);
+                $decimals[$line->id->toRfc4122()] = $line->unit->getDecimals();
             }
             if ([] === $left) {
                 throw new DeliveryNoteTransitionRefused(\sprintf('The invoice %s bills no goods of its own to deliver: its lines are services, deductions or goods its delivery notes already handed over.', InvoiceDelivery::reference($invoice)));
@@ -73,7 +75,7 @@ final readonly class DeliverInvoices
                         throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('The quantity of the line %s is more than nothing.', $lineId), 'quantity_above_zero');
                     }
                     if (Decimal::of($quantity)->compare($left[$lineId]) > 0) {
-                        throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('Only %s of the line %s is left to deliver.', Decimal::format($left[$lineId]->compare(0) < 0 ? Decimal::zero() : $left[$lineId], 3), $lineId), 'left_to_deliver', ['quantity' => Decimal::format($left[$lineId]->compare(0) < 0 ? Decimal::zero() : $left[$lineId], 3)]);
+                        throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('Only %s of the line %s is left to deliver.', Decimal::format($left[$lineId]->compare(0) < 0 ? Decimal::zero() : $left[$lineId], 3), $lineId), 'left_to_deliver', ['quantity' => Decimal::format($left[$lineId]->compare(0) < 0 ? Decimal::zero() : $left[$lineId], $decimals[$lineId])]);
                     }
                 }
             } elseif ([] === array_filter($left, static fn (\BcMath\Number $each): bool => $each->compare(0) > 0)) {

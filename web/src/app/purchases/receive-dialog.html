@@ -169,7 +169,15 @@
             }}
           </p>
         }
-        @if (refusedLabel(i); as label) {
+        @if (refusedWords(i); as said) {
+          <p
+            role="alert"
+            class="text-xs text-error"
+            [attr.data-testid]="'receive-row-' + i + '-refused'"
+          >
+            {{ said.key | translate: said.params }}
+          </p>
+        } @else if (refusedLabel(i); as label) {
           <p
             role="alert"
             class="text-xs text-error"
@@ -203,7 +211,9 @@
 
     @if (receiptRefused(); as refused) {
       <p role="alert" class="text-sm text-error" data-testid="receive-refused">
-        @if (refused.label; as label) {
+        @if (refused.words; as said) {
+          {{ said.key | translate: said.params }}
+        } @else if (refused.label; as label) {
           {{ 'purchases.receive.refused' | translate: { field: (label | translate) } }}
         } @else {
           {{ 'purchases.errors.' + refused.code | translate }}

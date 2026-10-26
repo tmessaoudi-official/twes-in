@@ -42,11 +42,11 @@ final readonly class ReceiptDocuments
         $vendor = null;
         if (null !== $vendorId && '' !== $vendorId) {
             if (!$this->modules->isEnabled($company->getId(), self::VENDORS_MODULE)) {
-                throw new InvalidStockMovement('vendorId', 'Vendors is switched off: a receipt names no vendor.');
+                throw new InvalidStockMovement('vendorId', 'Vendors is switched off: a receipt names no vendor.', reason: 'vendors_off');
             }
             $vendor = Uuid::isValid($vendorId) ? $this->vendors->ofIdInCompany(Uuid::fromString($vendorId), $company->getId()) : null;
             if (null === $vendor) {
-                throw new InvalidStockMovement('vendorId', 'No vendor of this company has this id.');
+                throw new InvalidStockMovement('vendorId', 'No vendor of this company has this id.', reason: 'unknown_choice');
             }
             if ($vendor->isMergedAway() && !$ofASentOrder) {
                 throw new InvalidStockMovement('vendorId', 'This vendor was merged into another: name that one.', null, 'unknown_choice');
@@ -66,7 +66,7 @@ final readonly class ReceiptDocuments
         $day = \DateTimeImmutable::createFromFormat('!Y-m-d', TypedText::trimmed($text));
         // `2026-13-45` is not refused by the parser: it rolls into the next year, so the day must read back as typed.
         if (false === $day || $day->format('Y-m-d') !== TypedText::trimmed($text)) {
-            throw new InvalidStockMovement('receivedOn', 'A day is written year-month-day, as 2026-09-12.');
+            throw new InvalidStockMovement('receivedOn', 'A day is written year-month-day, as 2026-09-12.', reason: 'not_a_date');
         }
 
         return $day;

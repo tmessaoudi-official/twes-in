@@ -97,7 +97,19 @@
       "deposit_unit_missing": "Une ligne d’acompte se compte dans l’unité « {{unit}} », que l’entreprise n’a pas : ajoutez-la dans Unités.",
       "deposit_too_small": "Un acompte aussi petit ne fait rien dans la devise : augmentez-le.",
       "deposit_still_draft": "La facture d’acompte rédigée le {{day}} est encore en brouillon : émettez-la ou annulez-la avant de facturer le devis.",
-      "lot_required": "« {{reference}} » est suivi par lot ou par numéro de série : dites lequel."
+      "lot_required": "« {{reference}} » est suivi par lot ou par numéro de série : dites lequel.",
+      "places_required": "Ajoutez au moins un emplacement.",
+      "above_on_hand": "Il n’y en a que {{quantity}} à cet emplacement : baissez la quantité.",
+      "unknown_lot": "« {{reference}} » n’a pas de lot « {{lot}} » : un lot entre en stock par une réception ou un comptage.",
+      "serial_in_stock": "Le numéro de série « {{serial}} » de « {{reference}} » est déjà en stock.",
+      "vendors_off": "Les fournisseurs ne sont pas activés : une réception ne nomme aucun fournisseur.",
+      "lot_dated": "Le lot « {{lot}} » de « {{reference}} » se périme le {{day}} : un lot n’a qu’une date.",
+      "lot_in_date": "Le lot « {{lot}} » de « {{reference}} » n’est pas périmé : seul un lot périmé se libère.",
+      "serial_counted": "Un numéro de série est une seule pièce : comptez 0 ou 1.",
+      "above_sold": "Un retour rend au plus ce que la vente a sorti, {{quantity}}.",
+      "lot_of_another": "Le lot « {{lot}} » n’est pas un lot de « {{reference}} ».",
+      "serial_one_piece": "Un numéro de série est une seule pièce : il se déplace un à la fois, quantité 1.",
+      "same_location": "Les articles y sont déjà : choisissez un autre emplacement."
     }
   }
 }

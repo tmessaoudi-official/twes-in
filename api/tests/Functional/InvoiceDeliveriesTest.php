@@ -81,7 +81,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a service line has no goods to deliver');
         $this->postJson($this->deliver($invoiceId), ['quantities' => [$lathe => '4.001']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertSame(['left_to_deliver', ['quantity' => '4.000']], $this->refusalOf("quantities[$lathe]"), 'said beside its line');
+        self::assertSame(['left_to_deliver', ['quantity' => '4']], $this->refusalOf("quantities[$lathe]"), 'said beside its line');
         $this->postJson($this->deliver($invoiceId), ['quantities' => [$lathe => '0']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame(['quantity_above_zero', []], $this->refusalOf("quantities[$lathe]"));
@@ -190,7 +190,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         $this->postJson($this->path('delivery-notes', $binned).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the six billed are all on the other note');
         self::assertStringContainsString('Only 0.000 of this invoice line is left', $this->detail());
-        self::assertSame(['left_to_deliver', ['quantity' => '0.000']], $this->refusalOf('lines[0].quantity'));
+        self::assertSame(['left_to_deliver', ['quantity' => '0']], $this->refusalOf('lines[0].quantity'));
         $this->getJson($this->path('delivery-notes', $binned));
         self::assertSame(['draft', null], [$this->json()['status'], $this->json()['number']], 'it stays a draft, and takes no number');
 
@@ -202,7 +202,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         $this->postJson($this->path('delivery-notes', $overtaken).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note issued after the draft took two back');
         self::assertStringContainsString('Only 4.000 of this invoice line is left', $this->detail());
-        self::assertSame(['left_to_deliver', ['quantity' => '4.000']], $this->refusalOf('lines[0].quantity'));
+        self::assertSame(['left_to_deliver', ['quantity' => '4']], $this->refusalOf('lines[0].quantity'));
     }
 
     public function testWhatIsNotAnIssuedInvoiceOfTheCompanyOrNotTheCallersToDeliverIsRefused(): void

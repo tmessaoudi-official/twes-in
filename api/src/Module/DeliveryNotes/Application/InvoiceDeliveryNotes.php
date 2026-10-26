@@ -245,10 +245,12 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
         }
         $taken = $this->invoiced->taken($company->getId(), self::lineIds($notes));
         $left = [];
+        $decimals = [];
         foreach ($notes as $note) {
             foreach ($note->getLines() as $line) {
                 $key = $line->getId()->toRfc4122();
                 $left[$key] = Decimal::of($line->getQuantity())->sub(Decimal::of($taken[$key] ?? '0'));
+                $decimals[$key] = $line->getUnit()->getDecimals();
             }
         }
         if (null !== $quantities) {
@@ -260,7 +262,7 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
                     throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('The quantity of the line %s is more than nothing.', $lineId), 'quantity_above_zero');
                 }
                 if (Decimal::of($quantity)->compare($left[$lineId]) > 0) {
-                    throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('Only %s of the line %s is left to invoice.', Decimal::format($left[$lineId], 3), $lineId), 'left_to_invoice', ['quantity' => Decimal::format($left[$lineId], 3)]);
+                    throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('Only %s of the line %s is left to invoice.', Decimal::format($left[$lineId], 3), $lineId), 'left_to_invoice', ['quantity' => Decimal::format($left[$lineId], $decimals[$lineId])]);
                 }
             }
         } elseif ([] === array_filter($left, static fn (\BcMath\Number $each): bool => $each->compare(0) > 0)) {

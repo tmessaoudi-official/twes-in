@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { LatestRequest, requestState } from '../shared/feedback/request-state';
+import { type FormAnswer, LatestRequest, requestState } from '../shared/feedback/request-state';
 import type { ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable } from '@angular/core';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
@@ -203,9 +203,12 @@ export class InvoicesFacade {
     return this.step(() => this.api.cancel(companyId, id));
   }
 
-  /** The credit note drafted for an issued invoice, stating why, which becomes the document on screen. */
-  async creditNote(companyId: string, id: string, reason: string): Promise<InvoiceRow | null> {
-    return this.step(() => this.api.creditNote(companyId, id, reason));
+  /**
+   * The credit note drafted for an issued invoice, stating why, which becomes the document on screen; asked in a
+   * dialog, which says a refusal under its field.
+   */
+  async creditNote(companyId: string, id: string, reason: string): Promise<FormAnswer<InvoiceRow>> {
+    return this.inDialog(() => this.api.creditNote(companyId, id, reason));
   }
 
   /**
@@ -221,14 +224,35 @@ export class InvoicesFacade {
     return this.state.writeAnswer(() => this.api.deliver(companyId, id, quantities));
   }
 
+  /** « Livrer une partie », asked in a dialog, which says a line's refused quantity on its line. */
+  async deliverPart(
+    companyId: string,
+    id: string,
+    quantities: Readonly<Record<string, string>>,
+  ): Promise<FormAnswer<string>> {
+    return this.state.writeOrRefuse(
+      () => this.api.deliver(companyId, id, quantities),
+      (error) => (error instanceof InvoicesRefused ? error.refusals : []),
+    );
+  }
+
   /** A copy of the document as a new draft, which becomes the document on screen. */
   async duplicate(companyId: string, id: string): Promise<InvoiceRow | null> {
     return this.step(() => this.api.duplicate(companyId, id));
   }
 
-  /** True once recorded, with the invoice read again so its amount due and status are the API's. */
-  async recordPayment(companyId: string, id: string, payment: PaymentInput): Promise<boolean> {
-    return this.paymentStep(companyId, id, () => this.api.recordPayment(companyId, id, payment));
+  /**
+   * The payment recorded, with the invoice read again so its amount due and status are the API's; asked in a dialog,
+   * which says a refusal under its field.
+   */
+  async recordPayment(
+    companyId: string,
+    id: string,
+    payment: PaymentInput,
+  ): Promise<FormAnswer<InvoiceRow>> {
+    return this.dialogPaymentStep(companyId, id, () =>
+      this.api.recordPayment(companyId, id, payment),
+    );
   }
 
   /** What the customer has to their credit; zero when it cannot be read, since it only decides whether to offer applying it. */
@@ -245,8 +269,15 @@ export class InvoicesFacade {
     return this.paymentStep(companyId, id, () => this.api.applyCredit(companyId, id));
   }
 
-  async overpay(companyId: string, id: string, overpayment: OverpaymentInput): Promise<boolean> {
-    return this.paymentStep(companyId, id, () => this.api.overpay(companyId, id, overpayment));
+  /** What the customer paid beyond the invoice, kept to their credit; asked in a dialog, as a payment is. */
+  async overpay(
+    companyId: string,
+    id: string,
+    overpayment: OverpaymentInput,
+  ): Promise<FormAnswer<InvoiceRow>> {
+    return this.dialogPaymentStep(companyId, id, () =>
+      this.api.overpay(companyId, id, overpayment),
+    );
   }
 
   async deletePayment(companyId: string, id: string, paymentId: string): Promise<boolean> {
@@ -328,6 +359,30 @@ export class InvoicesFacade {
           this.refusalsSignal.set(error instanceof InvoicesRefused ? error.refusals : []),
       },
     );
+  }
+
+  /** A payment step a dialog asked for, with the invoice read again once it is kept. */
+  private async dialogPaymentStep(
+    companyId: string,
+    id: string,
+    call: () => Promise<void>,
+  ): Promise<FormAnswer<InvoiceRow>> {
+    return this.inDialog(async () => {
+      await call();
+      return this.api.invoice(companyId, id);
+    });
+  }
+
+  /**
+   * A step a dialog asked for, whose answer becomes the document on screen: its refusal handed to the dialog, never
+   * kept for the page's form.
+   */
+  private async inDialog(call: () => Promise<InvoiceRow>): Promise<FormAnswer<InvoiceRow>> {
+    const answer = await this.state.writeOrRefuse(call, (error) =>
+      error instanceof InvoicesRefused ? error.refusals : [],
+    );
+    if (answer !== null && 'kept' in answer) this.invoiceSignal.set(answer.kept);
+    return answer;
   }
 
   private async paymentStep(

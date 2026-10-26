@@ -11,16 +11,19 @@ import {
   OnInit,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { debounceTime, map, startWith } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { RefusalLine } from '../shared/documents/refusal-line';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import type { PickOption } from '../shared/form/pick-field';
@@ -158,6 +161,14 @@ export class StockPage implements OnInit {
   protected readonly total = this.facade.total;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  /** The line above the form: what no field took, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'inventory.errors.',
+    inject(TranslateService),
+    inject(RefusalFigures),
+  );
+  private readonly editor = viewChild(DescriptorForm);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
   protected readonly rowTestId = (row: StockListRow): string =>
@@ -771,7 +782,16 @@ export class StockPage implements OnInit {
       const form = this.form();
       if (form !== null) this.startNext(form);
       this.feedback.success('inventory.stock.recorded');
+    } else {
+      this.sayRefused();
     }
+  }
+
+  /** Each field the API refused said on that field; the line above the form says what none of them took. */
+  private sayRefused(): void {
+    const refusals = this.facade.refusals();
+    const unplaced = this.editor()?.showRefused(refusals) ?? refusals;
+    this.refusalLine.placed(refusals, unplaced);
   }
 
   /** Nothing goes to the API until every unit has a place: the delivery is stored whole, so it is asked whole. */
@@ -792,6 +812,8 @@ export class StockPage implements OnInit {
       if (form !== null) this.startNext(form);
       this.parts.update((parts) => parts.map((part) => ({ ...part, quantity: '' })));
       this.feedback.success('inventory.stock.recorded');
+    } else {
+      this.sayRefused();
     }
   }
 
@@ -807,6 +829,8 @@ export class StockPage implements OnInit {
       if (form !== null) this.startNext(form);
       this.parts.update((rows) => rows.map((part) => ({ ...part, quantity: '' })));
       this.feedback.success('inventory.stock.recorded');
+    } else {
+      this.sayRefused();
     }
   }
 

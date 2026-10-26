@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { LatestRequest, requestState } from '../shared/feedback/request-state';
+import { type FormAnswer, LatestRequest, requestState } from '../shared/feedback/request-state';
 import { inject, Injectable } from '@angular/core';
 import type {
   CustomerOption,
@@ -165,21 +165,24 @@ export class QuotesFacade implements LineCatalogue {
 
   /**
    * The customer's yes, then the signed copy when one was given. A file refused after the answer is kept leaves the
-   * quote accepted, with the refusal in `error`: the answer is not undone for a scan.
+   * quote accepted, with the refusal in `error`: the answer is not undone for a scan. Asked in a dialog, which says a
+   * refusal of the answer under its field.
    */
   async accept(
     companyId: string,
     id: string,
     answer: QuoteAnswer,
     signed: File | null,
-  ): Promise<QuoteRow | null> {
-    const accepted = await this.step(() => this.api.accept(companyId, id, answer));
-    if (accepted !== null && signed !== null) await this.attach(companyId, id, signed);
+  ): Promise<FormAnswer<QuoteRow>> {
+    const accepted = await this.inDialog(() => this.api.accept(companyId, id, answer));
+    if (accepted !== null && 'kept' in accepted && signed !== null)
+      await this.attach(companyId, id, signed);
     return accepted;
   }
 
-  async refuse(companyId: string, id: string, answer: QuoteAnswer): Promise<QuoteRow | null> {
-    return this.step(() => this.api.refuse(companyId, id, answer));
+  /** The customer's no, asked in a dialog as their yes is. */
+  async refuse(companyId: string, id: string, answer: QuoteAnswer): Promise<FormAnswer<QuoteRow>> {
+    return this.inDialog(() => this.api.refuse(companyId, id, answer));
   }
 
   async cancel(companyId: string, id: string): Promise<QuoteRow | null> {
@@ -213,9 +216,9 @@ export class QuotesFacade implements LineCatalogue {
     }
   }
 
-  /** The quote with its new deposit listed last, or null with the reason in `error`. */
-  async deposit(companyId: string, id: string, share: DepositShare): Promise<QuoteRow | null> {
-    return this.step(() => this.api.deposit(companyId, id, share));
+  /** The quote with its new deposit listed last; asked in a dialog, which says a refusal under its field. */
+  async deposit(companyId: string, id: string, share: DepositShare): Promise<FormAnswer<QuoteRow>> {
+    return this.inDialog(() => this.api.deposit(companyId, id, share));
   }
 
   /**
@@ -229,6 +232,18 @@ export class QuotesFacade implements LineCatalogue {
     quantities: Readonly<Record<string, string>> | null,
   ): Promise<string | null> {
     return this.state.writeAnswer(() => this.api.deliver(companyId, id, quantities));
+  }
+
+  /** « Livrer une partie », asked in a dialog, which says a line's refused quantity on its line. */
+  async deliverPart(
+    companyId: string,
+    id: string,
+    quantities: Readonly<Record<string, string>>,
+  ): Promise<FormAnswer<string>> {
+    return this.state.writeOrRefuse(
+      () => this.api.deliver(companyId, id, quantities),
+      (error) => (error instanceof QuotesRefused ? error.refusals : []),
+    );
   }
 
   /** Attaches a file, then reads the quote's files and count again. */
@@ -283,6 +298,18 @@ export class QuotesFacade implements LineCatalogue {
 
   private async read(load: () => Promise<void>): Promise<void> {
     await this.state.read(load);
+  }
+
+  /**
+   * A step a dialog asked for, whose answer becomes the quote on screen: its refusal handed to the dialog, never kept
+   * for the page's form.
+   */
+  private async inDialog(call: () => Promise<QuoteRow>): Promise<FormAnswer<QuoteRow>> {
+    const answer = await this.state.writeOrRefuse(call, (error) =>
+      error instanceof QuotesRefused ? error.refusals : [],
+    );
+    if (answer !== null && 'kept' in answer) this.quoteSignal.set(answer.kept);
+    return answer;
   }
 
   private async step(call: () => Promise<QuoteRow>): Promise<QuoteRow | null> {

@@ -17,9 +17,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { RefusalLine } from '../shared/documents/refusal-line';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { editorActions } from '../shared/form/editor-actions';
 import { RecordBar } from '../shared/form/record-bar';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
@@ -131,6 +133,13 @@ export class StockLocationsPage implements OnInit {
   protected readonly rows = computed(() => locationListRows(this.facade.locations()));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  /** The line above the form: what no field took, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'inventory.errors.',
+    inject(TranslateService),
+    inject(RefusalFigures),
+  );
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
   protected readonly rowTestId = (row: StockLocationListRow): string =>
@@ -253,9 +262,9 @@ export class StockLocationsPage implements OnInit {
       this.facade.clearError();
       await this.sync.savedElsewhere();
     } else {
-      // Each field the API refused said on that field; the line above the form stays for what it says as a whole.
+      // Each field the API refused said on that field; the line above the form says what none of them took.
       const refused = this.facade.refusals();
-      if (refused.length > 0) this.editor()?.showRefused(refused);
+      this.refusalLine.placed(refused, this.editor()?.showRefused(refused) ?? refused);
     }
   }
 

@@ -55,7 +55,7 @@ final readonly class DeliveryNoteLinesAsSources implements SourceDeliveryNoteLin
         $sources = [];
         foreach (\is_array($lines) ? $lines : [] as $line) {
             if ($line instanceof DeliveryNoteLine) {
-                $sources[$line->getId()->toRfc4122()] = new SourceDeliveryNoteLine($line->getProduct()?->getId(), $line->getQuantity(), DeliveryNoteStatus::Cancelled === $line->getDeliveryNote()->getStatus());
+                $sources[$line->getId()->toRfc4122()] = new SourceDeliveryNoteLine($line->getProduct()?->getId(), $line->getQuantity(), $line->getUnit()->getDecimals(), DeliveryNoteStatus::Cancelled === $line->getDeliveryNote()->getStatus());
             }
         }
 

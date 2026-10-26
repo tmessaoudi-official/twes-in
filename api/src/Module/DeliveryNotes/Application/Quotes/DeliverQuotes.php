@@ -56,6 +56,10 @@ final readonly class DeliverQuotes
                 throw $refused[0] ? new DeliveryNoteTransitionRefused($refused[2]) : new InvalidDeliveryNote(...\array_slice($refused, 1));
             }
             $left = $this->leftOf($company, $quote);
+            $decimals = [];
+            foreach ($quote->lines as $line) {
+                $decimals[$line->id->toRfc4122()] = $line->unit->getDecimals();
+            }
             if (null !== $quantities) {
                 foreach ($quantities as $lineId => $quantity) {
                     if (!isset($left[$lineId])) {
@@ -65,7 +69,7 @@ final readonly class DeliverQuotes
                         throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('The quantity of the line %s is more than nothing.', $lineId), 'quantity_above_zero');
                     }
                     if (Decimal::of($quantity)->compare($left[$lineId]) > 0) {
-                        throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('Only %s of the line %s is left to deliver.', Decimal::format($left[$lineId], 3), $lineId), 'left_to_deliver', ['quantity' => Decimal::format($left[$lineId], 3)]);
+                        throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('Only %s of the line %s is left to deliver.', Decimal::format($left[$lineId], 3), $lineId), 'left_to_deliver', ['quantity' => Decimal::format($left[$lineId], $decimals[$lineId])]);
                     }
                 }
             } elseif ([] === array_filter($left, static fn (\BcMath\Number $each): bool => $each->compare(0) > 0)) {

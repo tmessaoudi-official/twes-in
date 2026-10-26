@@ -6,16 +6,22 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import type { FormAnswer } from '../shared/feedback/request-state';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
 import { FileDrop } from '../shared/form/file-drop';
+import type { FieldError } from '../shared/form/form-builder';
+import { FormStep } from '../shared/form/form-step';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { revealInvalid } from '../shared/form/reveal-invalid';
 import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 import { REFUSAL_REASON_MAX } from './quote-forms';
 
 export interface QuoteAnswerDialogData {
   kind: 'accept' | 'refuse';
+  /** Records the answer; the dialog stays open on a refusal and says it under its field. */
+  answer: (answered: QuoteAnswered) => Promise<FormAnswer<unknown>>;
 }
 
 /** What the customer answered: the day (empty: the company's today), why they declined, and the signed copy. */
@@ -66,9 +72,13 @@ export interface QuoteAnswered {
           />
           <app-day-calendar-button matSuffix [field]="dayField" />
           <mat-hint>{{ 'quotes.answer.answered_on_hint' | translate }}</mat-hint>
-          <mat-error data-testid="quote-answered-on-error">{{
-            'form.errors.date' | translate
-          }}</mat-error>
+          <mat-error data-testid="quote-answered-on-error">
+            @if (day.getError('refused'); as refused) {
+              {{ refused.key | translate: refused.params }}
+            } @else {
+              {{ 'form.errors.date' | translate }}
+            }
+          </mat-error>
         </mat-form-field>
         @if (data.kind === 'accept') {
           <app-file-drop
@@ -87,27 +97,46 @@ export interface QuoteAnswered {
               rows="3"
               [maxlength]="reasonMax"
               [ngModel]="reason()"
-              (ngModelChange)="reason.set($event)"
+              (ngModelChange)="reason.set($event); reasonRefused.set(null)"
               data-testid="quote-refusal-reason"
             ></textarea>
             <mat-hint>{{ 'quotes.answer.reason_hint' | translate }}</mat-hint>
           </mat-form-field>
+          @if (reasonRefused(); as said) {
+            <p
+              role="alert"
+              class="px-4 text-xs text-error"
+              data-testid="quote-refusal-reason-error"
+            >
+              {{ said.key | translate: said.params }}
+            </p>
+          }
+        }
+        @if (step.unplaced(); as said) {
+          <p role="alert" class="text-sm text-error" data-testid="quote-answer-refused">
+            {{ said.key | translate: said.params }}
+          </p>
         }
       </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button type="button" (click)="ref.close(null)" data-testid="quote-answer-keep">
+      <button mat-button type="button" (click)="ref.close(false)" data-testid="quote-answer-keep">
         {{ 'quotes.actions.keep' | translate }}
       </button>
-      <button mat-flat-button type="button" (click)="answer()" data-testid="quote-answer-confirm">
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="step.busy()"
+        (click)="answer()"
+        data-testid="quote-answer-confirm"
+      >
         {{ 'quotes.answer.' + data.kind + '_confirm' | translate }}
       </button>
     </mat-dialog-actions>
   `,
 })
 export class QuoteAnswerDialog {
-  protected readonly ref =
-    inject<MatDialogRef<QuoteAnswerDialog, QuoteAnswered | null>>(MatDialogRef);
+  protected readonly ref = inject<MatDialogRef<QuoteAnswerDialog, boolean>>(MatDialogRef);
   protected readonly data = inject<QuoteAnswerDialogData>(MAT_DIALOG_DATA);
   protected readonly maxBytes = ATTACHMENT_MAX_BYTES;
   protected readonly reasonMax = REFUSAL_REASON_MAX;
@@ -116,13 +145,33 @@ export class QuoteAnswerDialog {
   protected readonly day = new FormControl('', { nonNullable: true });
   protected readonly reason = signal('');
   protected readonly signed = signal<File | null>(null);
+  protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
+  /** What the API refused of the reason, until it changes. */
+  protected readonly reasonRefused = signal<FieldError | null>(null);
 
-  protected answer(): void {
-    if (revealInvalid(this.day, this.host)) return;
-    this.ref.close({
+  protected async answer(): Promise<void> {
+    if (revealInvalid(this.day, this.host) || this.step.busy()) return;
+    const answered: QuoteAnswered = {
       answeredOn: this.day.value,
       refusalReason: this.data.kind === 'refuse' ? this.reason().trim() : '',
       signed: this.data.kind === 'accept' ? this.signed() : null,
-    });
+    };
+    const answer = await this.step.run(
+      () => this.data.answer(answered),
+      (refusals) =>
+        refusals.filter((refusal) => {
+          if (refusal.field === 'answeredOn') {
+            this.day.setErrors({ refused: this.step.wordsOf(refusal) });
+            this.day.markAsTouched();
+            return false;
+          }
+          if (refusal.field === 'refusalReason' && this.data.kind === 'refuse') {
+            this.reasonRefused.set(this.step.wordsOf(refusal));
+            return false;
+          }
+          return true;
+        }),
+    );
+    if (answer !== 'refused') this.ref.close(answer !== null);
   }
 }

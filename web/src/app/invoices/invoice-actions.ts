@@ -24,7 +24,7 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SCHEDULE_TEXTS } from '../shared/schedule/schedule-texts';
 import { DELIVERIES_TEXTS } from '../shared/documents/deliveries-texts';
-import { DeliverPartDialog, type DeliverableLine } from '../shared/documents/deliver-part-dialog';
+import { DeliverPartDialog, type DeliverPartData } from '../shared/documents/deliver-part-dialog';
 import { DELIVERY_NOTES_MODULE } from '../delivery-notes/delivery-notes-nav';
 import { versus } from '../shared/ui/versus';
 import { CreditNoteDialog, type CreditNoteDialogData } from './credit-note-dialog';
@@ -369,19 +369,20 @@ export class InvoiceActions {
   ): Promise<void> {
     const companyId = this.companyId();
     if (!companyId || this.facade.busy()) return;
-    const data = {
+    const data: PaymentDialogData = {
       descriptor: paymentForm(),
       group: buildFormGroup(paymentForm(), paymentValues(this.today(), invoice.amountDue)),
+      record: (values) => this.facade.recordPayment(companyId, invoice.id, paymentInput(values)),
     };
-    const values = await firstValueFrom(
+    const recorded = await firstValueFrom(
       this.dialog
-        .open<PaymentDialog, PaymentDialogData>(PaymentDialog, {
+        .open<PaymentDialog, PaymentDialogData, boolean>(PaymentDialog, {
           data,
           autoFocus: 'first-tabbable',
         })
         .afterClosed(),
     );
-    if (values && (await this.facade.recordPayment(companyId, invoice.id, paymentInput(values)))) {
+    if (recorded) {
       this.feedback.success('invoices.payments.recorded');
       changed(invoice);
     }
@@ -408,15 +409,20 @@ export class InvoiceActions {
     const companyId = this.companyId();
     if (!companyId || this.facade.busy()) return;
     const descriptor = overpaymentForm();
-    const values = await firstValueFrom(
+    const recorded = await firstValueFrom(
       this.dialog
-        .open<OverpaymentDialog, OverpaymentDialogData>(OverpaymentDialog, {
-          data: { descriptor, group: buildFormGroup(descriptor, overpaymentValues(this.today())) },
+        .open<OverpaymentDialog, OverpaymentDialogData, boolean>(OverpaymentDialog, {
+          data: {
+            descriptor,
+            group: buildFormGroup(descriptor, overpaymentValues(this.today())),
+            record: (values) =>
+              this.facade.overpay(companyId, invoice.id, overpaymentInput(values)),
+          },
           autoFocus: 'first-tabbable',
         })
         .afterClosed(),
     );
-    if (values && (await this.facade.overpay(companyId, invoice.id, overpaymentInput(values)))) {
+    if (recorded) {
       this.feedback.success('invoices.overpayment.recorded');
       changed(invoice);
     }
@@ -459,21 +465,20 @@ export class InvoiceActions {
     if (!companyId || this.facade.busy()) return;
     // The words of the dialog and of the toast, read wherever the invoice is shown.
     await this.texts.open(DELIVERIES_TEXTS);
-    let quantities: Record<string, string> | null = null;
-    if (part) {
-      const chosen = await firstValueFrom(
-        this.dialog
-          .open<DeliverPartDialog, DeliverableLine[], Record<string, string> | null>(
-            DeliverPartDialog,
-            { data: invoice.deliveries, autoFocus: 'first-tabbable' },
-          )
-          .afterClosed(),
-      );
-      if (!chosen) return;
-      quantities = chosen;
-    }
-    const noteId = await this.facade.deliver(companyId, invoice.id, quantities);
-    if (noteId === null) return;
+    const noteId = part
+      ? await firstValueFrom(
+          this.dialog
+            .open<DeliverPartDialog, DeliverPartData, string | null>(DeliverPartDialog, {
+              data: {
+                lines: invoice.deliveries,
+                deliver: (quantities) => this.facade.deliverPart(companyId, invoice.id, quantities),
+              },
+              autoFocus: 'first-tabbable',
+            })
+            .afterClosed(),
+        )
+      : await this.facade.deliver(companyId, invoice.id, null);
+    if (!noteId) return;
     this.feedback.success('deliveries.drafted');
     await this.router.navigate(['/delivery-notes', noteId]);
   }
@@ -513,11 +518,12 @@ export class InvoiceActions {
   private async creditNote(invoice: InvoiceRow): Promise<void> {
     const companyId = this.companyId();
     if (!companyId || this.facade.busy()) return;
-    const data = {
+    const data: CreditNoteDialogData = {
       descriptor: creditNoteForm(),
       group: buildFormGroup(creditNoteForm(), { reason: '' }),
+      draft: (reason) => this.facade.creditNote(companyId, invoice.id, reason),
     };
-    const reason = await firstValueFrom(
+    const creditId = await firstValueFrom(
       this.dialog
         .open<CreditNoteDialog, CreditNoteDialogData, string | null>(CreditNoteDialog, {
           data,
@@ -525,9 +531,7 @@ export class InvoiceActions {
         })
         .afterClosed(),
     );
-    if (!reason) return;
-    const credit = await this.facade.creditNote(companyId, invoice.id, reason);
-    if (credit !== null) await this.router.navigate(['/invoices', credit.id]);
+    if (creditId) await this.router.navigate(['/invoices', creditId]);
   }
 
   /** Deletes a draft, which « Annuler » or « Récemment supprimés » puts back as it was. */

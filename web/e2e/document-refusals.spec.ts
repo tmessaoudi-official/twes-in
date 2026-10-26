@@ -91,3 +91,43 @@ test('an order line whose product was retired since it was chosen is refused und
     await retireVendor(page, vendor);
   }
 });
+
+// A step asked in a dialog keeps the dialog open when refused, and says why under the field it names.
+test('a quote answered on a day after today keeps the answer asked, saying why under the day', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-ANS-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await aCustomer(page, customerNumber);
+  await page.goto('/quotes/new');
+  await page.getByTestId('quote-customer').fill(customerNumber);
+  await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+  await page.getByTestId('line-0-description').fill(`Tournage ${run}`);
+  await page.getByTestId('line-0-quantity').fill('1');
+  await page.getByTestId('line-0-price').fill('100');
+  await page.getByTestId('document-action-save').click();
+  await expect(page).toHaveURL(/\/quotes\/[0-9a-f-]{36}$/);
+  await page.getByTestId('document-action-send').click();
+  await page.getByTestId('confirm-run').click();
+  await expect(page.getByTestId('quote-status')).toContainText(/Envoyé|Sent/);
+
+  await page.getByTestId('document-action-accept').click();
+  await expect(page.getByTestId('quote-answered-on')).toBeFocused();
+  // Two days ahead is after today on any company's clock.
+  const ahead = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+  const [year, month, day] = ahead.split('-');
+  await page.getByTestId('quote-answered-on').fill(`${day}/${month}/${year}`);
+  await page.getByTestId('quote-answer-confirm').click();
+
+  await expect(page.getByTestId('quote-answered-on-error')).toHaveText(
+    'Date refusée : aujourd’hui au plus tard.',
+  );
+  await expect(page.getByTestId('quote-answer-title')).toBeVisible();
+  await expect(page.getByTestId('quote-error')).toHaveCount(0);
+  // Put right, the same dialog records the answer.
+  await page.getByTestId('quote-answered-on').fill('');
+  await page.getByTestId('quote-answer-confirm').click();
+  await expect(page.getByTestId('quote-status')).toContainText(/Accepté|Accepted/);
+});

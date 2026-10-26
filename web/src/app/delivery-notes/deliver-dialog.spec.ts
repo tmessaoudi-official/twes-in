@@ -11,7 +11,7 @@ import {
 import { of } from 'rxjs';
 import { formatDay } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
-import { DeliverDialog } from './deliver-dialog';
+import { DeliverDialog, type DeliverDialogData } from './deliver-dialog';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -23,6 +23,12 @@ class StaticLoader implements TranslateLoader {
           time: 'Saisissez une heure valide.',
         },
       },
+      import: {
+        rejections: {
+          after_today: 'Date refusée : aujourd’hui au plus tard.',
+          lines_required: 'Ajoutez au moins une ligne.',
+        },
+      },
     });
   }
 }
@@ -30,9 +36,11 @@ class StaticLoader implements TranslateLoader {
 // A refusal said only by a disabled button: « Livrer » greyed out on a wrong day or time said nothing of what to change.
 describe('DeliverDialog', () => {
   const ref = { close: vi.fn() };
+  const delivered = vi.fn<DeliverDialogData['deliver']>();
 
   async function open() {
     ref.close.mockReset();
+    delivered.mockReset().mockResolvedValue({ kept: true });
     TestBed.configureTestingModule({
       imports: [DeliverDialog],
       providers: [
@@ -42,7 +50,7 @@ describe('DeliverDialog', () => {
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
-        { provide: MAT_DIALOG_DATA, useValue: 'Africa/Tunis' },
+        { provide: MAT_DIALOG_DATA, useValue: { zone: 'Africa/Tunis', deliver: delivered } },
         { provide: MatDialogRef, useValue: ref },
         {
           provide: FormatFacade,
@@ -110,24 +118,53 @@ describe('DeliverDialog', () => {
     await deliver();
 
     expect(q('delivery-note-delivered-time-error')).toBeNull();
-    expect(ref.close).toHaveBeenCalledWith('');
+    expect(delivered).toHaveBeenCalledWith('');
+    expect(ref.close).toHaveBeenCalledWith(true);
   });
 
-  it('closes on the moment written, the time as a person writes it', async () => {
+  it('delivers at the moment written, the time as a person writes it', async () => {
     const { type, deliver } = await open();
 
     await type('delivery-note-delivered-on', '01/10/2026');
     await type('delivery-note-delivered-time', '9h05');
     await deliver();
 
-    expect(ref.close).toHaveBeenCalledWith('2026-10-01T09:05');
+    expect(delivered).toHaveBeenCalledWith('2026-10-01T09:05');
   });
 
-  it('closes on now when left as it opened', async () => {
+  it('delivers now when left as it opened', async () => {
     const { deliver } = await open();
 
     await deliver();
 
-    expect(ref.close).toHaveBeenCalledWith('');
+    expect(delivered).toHaveBeenCalledWith('');
+  });
+
+  it('stays open on a refused day, saying why under it, and what no field takes below', async () => {
+    const { q, type, deliver } = await open();
+    delivered.mockResolvedValueOnce({
+      refused: [
+        { field: 'delivered', reason: 'after_today', params: {} },
+        { field: 'lines', reason: 'lines_required', params: {} },
+      ],
+    });
+
+    await type('delivery-note-delivered-on', '01/10/2027');
+    await deliver();
+
+    expect(ref.close).not.toHaveBeenCalled();
+    expect(q('delivery-note-delivered-on-error')?.textContent).toContain(
+      'Date refusée : aujourd’hui au plus tard.',
+    );
+    expect(q('deliver-refused')?.textContent?.trim()).toBe('Ajoutez au moins une ligne.');
+  });
+
+  it('closes on a failure no field names, for the page to say', async () => {
+    const { deliver } = await open();
+    delivered.mockResolvedValueOnce(null);
+
+    await deliver();
+
+    expect(ref.close).toHaveBeenCalledWith(false);
   });
 });

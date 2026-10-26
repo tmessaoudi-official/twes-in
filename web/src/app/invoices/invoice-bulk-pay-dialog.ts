@@ -7,17 +7,20 @@ import {
   DestroyRef,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { FormStep } from '../shared/form/form-step';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor } from '../shared/form/form-types';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { InvoicesRefused } from './invoices-api';
 import { InvoicesFacade } from './invoices-facade';
@@ -165,6 +168,11 @@ function fromThousandths(value: bigint): string {
             </div>
           }
         }
+        @if (step.unplaced(); as said) {
+          <p role="alert" class="text-sm text-error" data-testid="invoice-bulk-pay-refused">
+            {{ said.key | translate: said.params }}
+          </p>
+        }
       </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -194,6 +202,8 @@ export class InvoiceBulkPayDialog {
   protected readonly data = inject<BulkPayData>(MAT_DIALOG_DATA);
   private readonly facade = inject(InvoicesFacade);
   private readonly feedback = inject(Feedback);
+  protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
+  private readonly form = viewChild(DescriptorForm);
 
   protected readonly descriptor = bulkPayForm();
   protected readonly group = buildFormGroup(this.descriptor, {
@@ -240,6 +250,7 @@ export class InvoiceBulkPayDialog {
     const method = PAYMENT_METHODS.find((each) => each === values['method']) ?? 'other';
     const reference = String(values['reference'] ?? '').trim();
     this.paying.set(true);
+    this.step.unplaced.set(null);
     try {
       const paid = await this.facade.bulkPay(this.data.companyId, {
         method: method satisfies PaymentMethod,
@@ -250,7 +261,11 @@ export class InvoiceBulkPayDialog {
       this.ref.close(paid);
     } catch (error) {
       const code = error instanceof InvoicesRefused ? error.code : 'network';
-      if (code === 'conflict') {
+      const refusals = error instanceof InvoicesRefused ? error.refusals : [];
+      if (refusals.length > 0) {
+        // Said under the field it names, a row's amount on the dialog's own line, as a single payment's is.
+        this.step.say(refusals, (refused) => this.form()?.showRefused(refused) ?? refused);
+      } else if (code === 'conflict') {
         // Something was paid, credited or changed since the preview: show what is true now, and pay nothing yet.
         this.feedback.failure('invoices.bulk.pay_changed');
         await this.preview();

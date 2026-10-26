@@ -7,6 +7,7 @@ import {
   provideTranslateLoader,
   provideTranslateService,
   TranslateLoader,
+  TranslateService,
 } from '@ngx-translate/core';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { of } from 'rxjs';
@@ -24,6 +25,7 @@ import {
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { PickAsked } from '../shared/form/pick-api';
 import { InventoryFacade } from './inventory-facade';
 import type { InventoryError, StockLocationRow, StockProductOption } from './inventory-types';
@@ -97,11 +99,13 @@ const scanOf = (productId: string, extra: Record<string, unknown> = {}) => ({
 
 describe('StockCountPage', () => {
   const error = signal<InventoryError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const locations = signal<readonly StockLocationRow[]>([site, rack]);
   const facade = {
     locations: locations.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadStockContext: vi.fn(),
     pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
@@ -137,6 +141,7 @@ describe('StockCountPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    refusals.set([]);
     granted.clear();
     ['stock.read', 'stock.write', 'product.read'].forEach((each) => granted.add(each));
     facade.loadStockContext.mockReset().mockResolvedValue(undefined);
@@ -404,10 +409,26 @@ describe('StockCountPage', () => {
     await settle();
     expect(q('stock-count-1')).toBeNull();
 
-    facade.record.mockResolvedValue(false);
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('fr', {
+      import: {
+        rejections: { quantity_decimals: '{{unit}} se compte avec {{decimals}} décimales.' },
+      },
+    });
+    translate.use('fr');
+    facade.record.mockImplementation(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'quantity', reason: 'quantity_decimals', params: { unit: 'Pièce', decimals: 0 } },
+      ]);
+      return false;
+    });
     q('stock-count-record')!.click();
     await settle();
     expect(q('stock-count-0')).not.toBeNull();
+    // Why, on the line itself; the line above the sheet says nothing more.
+    expect(q('stock-count-0-refused')?.textContent).toContain('Pièce se compte avec 0 décimales.');
+    expect(q('stock-count-error')).toBeNull();
   });
 
   it('leaves a scan to the card for somebody who may not count, or a code no product answers to', async () => {

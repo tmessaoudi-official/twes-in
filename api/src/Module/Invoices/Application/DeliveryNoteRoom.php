@@ -79,7 +79,7 @@ final readonly class DeliveryNoteRoom
                 throw (new InvalidInvoice('productId', 'A line taken from a delivery note keeps the product the note delivered.', 'source_product'))->within("lines[$index]");
             }
             if (is_numeric($line['quantity']) && Decimal::of($line['quantity'])->compare(Decimal::of($room[$id])) > 0) {
-                throw (new InvalidInvoice('quantity', \sprintf('Only %s of this delivery note line is left to invoice.', $room[$id]), 'left_to_invoice', ['quantity' => $room[$id]]))->within("lines[$index]");
+                throw (new InvalidInvoice('quantity', \sprintf('Only %s of this delivery note line is left to invoice.', $room[$id]), 'left_to_invoice', ['quantity' => Decimal::format(Decimal::of($room[$id]), $source->unitDecimals)]))->within("lines[$index]");
             }
         }
     }

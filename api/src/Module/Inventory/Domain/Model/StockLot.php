@@ -95,7 +95,7 @@ class StockLot implements CompanyOwned
     {
         $code = TypedText::trimmed($code);
         if (!LotCode::isWellFormed($code)) {
-            throw new InvalidStockMovement('lotCode', \sprintf('A lot code is 1 to %d printable characters without space or accent.', self::CODE_MAX));
+            throw new InvalidStockMovement('lotCode', \sprintf('A lot code is 1 to %d printable characters without space or accent.', self::CODE_MAX), reason: 'lot_code', params: ['max' => self::CODE_MAX]);
         }
 
         return $code;
@@ -116,7 +116,7 @@ class StockLot implements CompanyOwned
             return false;
         }
         if (null !== $this->expiresOn) {
-            throw new InvalidStockMovement('lotExpiresOn', \sprintf('The lot %s of %s is used by %s: one lot has one date.', $this->code, $this->product->getReference(), $this->expiresOn->format('Y-m-d')));
+            throw new InvalidStockMovement('lotExpiresOn', \sprintf('The lot %s of %s is used by %s: one lot has one date.', $this->code, $this->product->getReference(), $this->expiresOn->format('Y-m-d')), reason: 'lot_dated', params: ['lot' => $this->code, 'reference' => $this->product->getReference(), 'day' => $this->expiresOn->format('Y-m-d')]);
         }
         $this->expiresOn = $day;
 
@@ -146,7 +146,7 @@ class StockLot implements CompanyOwned
             return false;
         }
         if (null === $this->expiresOn || $now->format('Y-m-d') <= $this->expiresOn->format('Y-m-d')) {
-            throw new InvalidStockMovement('lot', \sprintf('The lot %s of %s is still in date: only an expired lot is released.', $this->code, $this->product->getReference()));
+            throw new InvalidStockMovement('lot', \sprintf('The lot %s of %s is still in date: only an expired lot is released.', $this->code, $this->product->getReference()), reason: 'lot_in_date', params: ['lot' => $this->code, 'reference' => $this->product->getReference()]);
         }
         $this->releasedAt = $now;
         $this->releasedBy = $actor;

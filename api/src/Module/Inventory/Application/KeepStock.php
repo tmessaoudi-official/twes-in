@@ -173,13 +173,13 @@ final readonly class KeepStock
     private function placesOnce(Company $company, Uuid $productId, array $parts, string $none, string $twice): void
     {
         if ([] === $parts) {
-            throw new InvalidStockMovement('parts', $none);
+            throw new InvalidStockMovement('parts', $none, reason: 'places_required');
         }
         $seen = [];
         foreach ($parts as $part) {
             $key = $part['locationId']->toRfc4122();
             if (isset($seen[$key])) {
-                throw new InvalidStockMovement('locationId', $twice);
+                throw new InvalidStockMovement('locationId', $twice, reason: 'location_twice');
             }
             $seen[$key] = true;
             $this->trackedAt($company, $productId, $part['locationId']);
@@ -305,7 +305,7 @@ final readonly class KeepStock
             try {
                 $this->receiptCosts->received($company, $product, $cost, $receipt->getId(), $actorUserId);
             } catch (InvalidProduct $refused) {
-                throw new InvalidStockMovement('unitCost', $refused->getMessage(), $refused);
+                throw new InvalidStockMovement('unitCost', $refused->getMessage(), $refused, $refused->reason, $refused->params);
             }
         }
     }
@@ -406,7 +406,7 @@ final readonly class KeepStock
             // lock, so what is compared is what no other transaction can be taking at the same time.
             $onHand = $this->movements->onHand($product->getId(), $fromLocationId, $lot?->getId());
             if (1 === new Number($in->getQuantity())->compare(new Number($onHand))) {
-                throw new InvalidStockMovement('quantity', \sprintf('Only %s is at that location.', $onHand));
+                throw new InvalidStockMovement('quantity', \sprintf('Only %s is at that location.', $onHand), reason: 'above_on_hand', params: ['quantity' => new Number($onHand)->round($product->getUnit()->getDecimals())->value]);
             }
             $this->movements->save($out, $in);
             // Inside one establishment a move changes no total, but one into quarantine takes goods off what can be sold.
@@ -434,7 +434,7 @@ final readonly class KeepStock
             $movement = StockMovement::loss($product, $location, $quantity, $reason, $note, $actorUserId, $this->clock->now(), $lot);
             $onHand = $this->movements->onHand($product->getId(), $locationId, $lot?->getId());
             if (1 === new Number(new Number($movement->getQuantity())->mul(-1)->value)->compare(new Number($onHand))) {
-                throw new InvalidStockMovement('quantity', \sprintf('Only %s is at that location.', $onHand));
+                throw new InvalidStockMovement('quantity', \sprintf('Only %s is at that location.', $onHand), reason: 'above_on_hand', params: ['quantity' => new Number($onHand)->round($product->getUnit()->getDecimals())->value]);
             }
             $this->movements->save($movement);
             $this->alerts?->raise([$movement]);
@@ -593,7 +593,7 @@ final readonly class KeepStock
             return $lot;
         }
         if (!$mayOpen) {
-            throw new InvalidStockMovement('lotCode', \sprintf('%s has no lot %s: goods enter a lot by a receipt or a count.', $product->getReference(), $code));
+            throw new InvalidStockMovement('lotCode', \sprintf('%s has no lot %s: goods enter a lot by a receipt or a count.', $product->getReference(), $code), reason: 'unknown_lot', params: ['reference' => $product->getReference(), 'lot' => $code]);
         }
 
         return StockLot::open($product, $code, $named->expiresOn, $this->clock->now());
@@ -612,7 +612,7 @@ final readonly class KeepStock
             return;
         }
         if (1 === new Number($this->movements->onHandOfLot($lot->getId()))->add($movement->getQuantity())->compare(1)) {
-            throw new InvalidStockMovement('lot', \sprintf('The serial number %s of %s is already in stock.', $lot->getCode(), $movement->getProduct()->getReference()));
+            throw new InvalidStockMovement('lot', \sprintf('The serial number %s of %s is already in stock.', $lot->getCode(), $movement->getProduct()->getReference()), reason: 'serial_in_stock', params: ['serial' => $lot->getCode(), 'reference' => $movement->getProduct()->getReference()]);
         }
     }
 

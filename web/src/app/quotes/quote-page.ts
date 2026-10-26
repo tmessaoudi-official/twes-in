@@ -63,8 +63,12 @@ import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { DocumentActions } from '../shared/ui/document-actions';
 import { StatusBadge } from '../shared/ui/status-badge';
-import { QuoteAnswerDialog, type QuoteAnswered } from './quote-answer-dialog';
-import { DeliverPartDialog } from '../shared/documents/deliver-part-dialog';
+import {
+  QuoteAnswerDialog,
+  type QuoteAnswerDialogData,
+  type QuoteAnswered,
+} from './quote-answer-dialog';
+import { DeliverPartDialog, type DeliverPartData } from '../shared/documents/deliver-part-dialog';
 import { QuoteDepositDialog, type QuoteDepositDialogData } from './quote-deposit-dialog';
 import { quoteForm, quoteInput, quoteValues, shownStatus } from './quote-forms';
 import { QuotesFacade } from './quotes-facade';
@@ -72,12 +76,12 @@ import {
   QUOTE_DELIVERY_TONES,
   QUOTE_STATUS_STAGES,
   QUOTE_STATUS_TONES,
-  type DepositShare,
   type QuoteAttachment,
   type QuoteDeposit,
   type QuoteDeliveryNote,
   type QuoteLineDelivery,
   type QuoteInput,
+  type QuoteRow,
 } from './quotes-types';
 import { QuantityTotalsView } from '../shared/documents/quantity-totals';
 import {
@@ -737,34 +741,28 @@ export class QuotePage {
     const companyId = this.company()?.id;
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
+    const answer = (answered: QuoteAnswered) =>
+      kind === 'accept'
+        ? this.facade.accept(companyId, id, { answeredOn: answered.answeredOn }, answered.signed)
+        : this.facade.refuse(companyId, id, {
+            answeredOn: answered.answeredOn,
+            refusalReason: answered.refusalReason,
+          });
     const answered = await firstValueFrom(
       this.dialog
-        .open<QuoteAnswerDialog, { kind: 'accept' | 'refuse' }, QuoteAnswered | null>(
-          QuoteAnswerDialog,
-          { data: { kind }, autoFocus: 'first-tabbable' },
-        )
+        .open<QuoteAnswerDialog, QuoteAnswerDialogData, boolean>(QuoteAnswerDialog, {
+          data: { kind, answer },
+          autoFocus: 'first-tabbable',
+        })
         .afterClosed(),
     );
     if (!answered) return;
     if (kind === 'accept') {
-      const accepted = await this.facade.accept(
-        companyId,
-        id,
-        { answeredOn: answered.answeredOn },
-        answered.signed,
-      );
-      if (accepted === null) return;
       const next = this.mayInvoice()
         ? { key: 'quotes.suggest.invoice', run: () => void this.invoice() }
         : undefined;
       this.feedback.success('quotes.accepted', {}, next);
-    } else {
-      const refused = await this.facade.refuse(companyId, id, {
-        answeredOn: answered.answeredOn,
-        refusalReason: answered.refusalReason,
-      });
-      if (refused !== null) this.feedback.success('quotes.refused');
-    }
+    } else this.feedback.success('quotes.refused');
   }
 
   protected async invoice(): Promise<void> {
@@ -815,16 +813,18 @@ export class QuotePage {
     const quote = this.current();
     const scale = this.scale();
     if (!companyId || !quote || scale === null || this.busy()) return;
-    const share = await firstValueFrom(
+    const drawn = await firstValueFrom(
       this.dialog
-        .open<QuoteDepositDialog, QuoteDepositDialogData, DepositShare | null>(QuoteDepositDialog, {
-          data: { total: quote.total, scale },
+        .open<QuoteDepositDialog, QuoteDepositDialogData, QuoteRow | null>(QuoteDepositDialog, {
+          data: {
+            total: quote.total,
+            scale,
+            draw: (share) => this.facade.deposit(companyId, quote.id, share),
+          },
           autoFocus: 'first-tabbable',
         })
         .afterClosed(),
     );
-    if (!share) return;
-    const drawn = await this.facade.deposit(companyId, quote.id, share);
     const latest = drawn?.deposits.at(-1);
     if (latest) {
       this.feedback.success('quotes.deposit_drafted');
@@ -866,21 +866,20 @@ export class QuotePage {
     const companyId = this.company()?.id;
     const quote = this.current();
     if (!companyId || !quote || this.busy()) return;
-    let quantities: Record<string, string> | null = null;
-    if (part) {
-      const chosen = await firstValueFrom(
-        this.dialog
-          .open<DeliverPartDialog, QuoteLineDelivery[], Record<string, string> | null>(
-            DeliverPartDialog,
-            { data: quote.deliveries, autoFocus: 'first-tabbable' },
-          )
-          .afterClosed(),
-      );
-      if (!chosen) return;
-      quantities = chosen;
-    }
-    const noteId = await this.facade.deliver(companyId, quote.id, quantities);
-    if (noteId === null) return;
+    const noteId = part
+      ? await firstValueFrom(
+          this.dialog
+            .open<DeliverPartDialog, DeliverPartData, string | null>(DeliverPartDialog, {
+              data: {
+                lines: quote.deliveries,
+                deliver: (quantities) => this.facade.deliverPart(companyId, quote.id, quantities),
+              },
+              autoFocus: 'first-tabbable',
+            })
+            .afterClosed(),
+        )
+      : await this.facade.deliver(companyId, quote.id, null);
+    if (!noteId) return;
     this.feedback.success('deliveries.drafted');
     await this.router.navigate(['/delivery-notes', noteId]);
   }

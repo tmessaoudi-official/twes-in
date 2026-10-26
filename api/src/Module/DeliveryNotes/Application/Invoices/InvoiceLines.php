@@ -131,7 +131,7 @@ final readonly class InvoiceLines
             }
         }
         if (is_numeric($line->quantity) && Decimal::of($line->quantity)->compare($left) > 0) {
-            throw new InvalidDeliveryNote('quantity', \sprintf('Only %s of this invoice line is left to deliver: its credit notes and its other notes take the rest.', Decimal::format($left->compare(0) < 0 ? Decimal::zero() : $left, 3)), 'left_to_deliver', ['quantity' => Decimal::format($left->compare(0) < 0 ? Decimal::zero() : $left, 3)]);
+            throw new InvalidDeliveryNote('quantity', \sprintf('Only %s of this invoice line is left to deliver: its credit notes and its other notes take the rest.', Decimal::format($left->compare(0) < 0 ? Decimal::zero() : $left, 3)), 'left_to_deliver', ['quantity' => Decimal::format($left->compare(0) < 0 ? Decimal::zero() : $left, $source->unit->getDecimals())]);
         }
 
         return new DeliveryNoteLineInput(

@@ -200,6 +200,7 @@ describe('QuotePage', () => {
     draftsOf: vi.fn(),
     deposit: vi.fn(),
     deliver: vi.fn(),
+    deliverPart: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
     restoreAttachment: vi.fn(),
@@ -274,20 +275,23 @@ describe('QuotePage', () => {
     facade.revise.mockReset().mockResolvedValue(draft);
     facade.preview.mockReset().mockResolvedValue(null);
     facade.reviseAndSend.mockReset().mockResolvedValue(sent);
-    facade.accept.mockReset().mockResolvedValue(accepted);
-    facade.refuse.mockReset().mockResolvedValue({ ...sent, status: 'refused' });
+    facade.accept.mockReset().mockResolvedValue({ kept: accepted });
+    facade.refuse.mockReset().mockResolvedValue({ kept: { ...sent, status: 'refused' } });
     facade.cancel.mockReset().mockResolvedValue({ ...draft, status: 'cancelled' });
     facade.invoice.mockReset().mockResolvedValue({ ...accepted, invoiceId: 'i7' });
     facade.addToInvoice.mockReset().mockResolvedValue({ ...accepted, invoiceId: 'd1' });
     facade.draftsOf.mockReset().mockResolvedValue([]);
     facade.deposit.mockReset().mockResolvedValue({
-      ...accepted,
-      deposits: [
-        { invoiceId: 'd1', number: 'F-2026-0003', status: 'issued', total: '500.000' },
-        { invoiceId: 'd2', number: null, status: 'draft', total: '803.250' },
-      ],
+      kept: {
+        ...accepted,
+        deposits: [
+          { invoiceId: 'd1', number: 'F-2026-0003', status: 'issued', total: '500.000' },
+          { invoiceId: 'd2', number: null, status: 'draft', total: '803.250' },
+        ],
+      },
     });
     facade.deliver.mockReset().mockResolvedValue('n9');
+    facade.deliverPart.mockReset().mockResolvedValue({ kept: 'n9' });
     facade.detach.mockReset().mockResolvedValue(true);
     facade.restoreAttachment.mockReset().mockResolvedValue(null);
     facade.pickCustomers.mockClear();
@@ -786,6 +790,34 @@ describe('QuotePage', () => {
     );
   });
 
+  it('keeps the deposit asked when its share is refused, saying why under it, and opens nothing', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    facade.deposit.mockResolvedValueOnce({
+      refused: [
+        {
+          field: 'depositPercentage',
+          reason: 'deposits_beyond_quote',
+          params: { amount: '500.000' },
+        },
+      ],
+    });
+    quote.set(accepted);
+    await open('q1');
+
+    q('document-action-deposit')!.click();
+    await settle();
+    typeIn(over('quote-deposit-value') as HTMLInputElement, '81');
+    await settle();
+    (over('quote-deposit-confirm') as HTMLButtonElement).click();
+
+    await vi.waitFor(() => expect(over('quote-deposit-value-error')).not.toBeNull());
+    expect(over('quote-deposit-title')).not.toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
+    typeIn(over('quote-deposit-value') as HTMLInputElement, '30');
+    await settle();
+    expect(over('quote-deposit-value-error')).toBeNull();
+  });
+
   it('lists the deposits drawn but a cancelled draft, and draws none once invoiced or without invoices', async () => {
     quote.set({
       ...accepted,
@@ -880,9 +912,32 @@ describe('QuotePage', () => {
       over('deliver-part-confirm')!.click();
 
       await vi.waitFor(() =>
-        expect(facade.deliver).toHaveBeenCalledWith('c1', 'q1', { ql1: '1.5' }),
+        expect(facade.deliverPart).toHaveBeenCalledWith('c1', 'q1', { ql1: '1.5' }),
       );
       await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/delivery-notes', 'n9']));
+    });
+
+    it('keeps the part asked when a quantity is refused, saying it on its line until it changes', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.deliverPart.mockResolvedValueOnce({
+        refused: [
+          { field: 'quantities[ql1]', reason: 'left_to_deliver', params: { quantity: '4.000' } },
+        ],
+      });
+      quote.set(toDeliver);
+      await open('q1');
+
+      q('document-action-deliver-part')!.click();
+      await settle();
+      over('deliver-part-confirm')!.click();
+      await settle();
+
+      await vi.waitFor(() => expect(over('deliver-part-error-0')).not.toBeNull());
+      expect(over('deliver-part-title')).not.toBeNull();
+      expect(navigate).not.toHaveBeenCalled();
+      typeIn(over('deliver-part-quantity-0') as HTMLInputElement, '2');
+      await settle();
+      expect(over('deliver-part-error-0')).toBeNull();
     });
 
     it('drafts nothing when the dialog is dismissed or every quantity is zero', async () => {
@@ -897,6 +952,7 @@ describe('QuotePage', () => {
       over('deliver-part-cancel')!.click();
       await settle();
       expect(facade.deliver).not.toHaveBeenCalled();
+      expect(facade.deliverPart).not.toHaveBeenCalled();
     });
 
     it('is not offered for a quote kept whole by a discount on its total or a deposit, nor with nothing left', async () => {

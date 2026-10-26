@@ -3,6 +3,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { InstrumentsApi } from './instruments-api';
 
 const wire = {
@@ -23,7 +24,11 @@ describe('InstrumentsApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TextsParts, useValue: { open: vi.fn(async () => undefined) } },
+      ],
     });
     api = TestBed.inject(InstrumentsApi);
     http = TestBed.inject(HttpTestingController);
@@ -90,7 +95,25 @@ describe('InstrumentsApi', () => {
     http
       .expectOne('/api/companies/c1/invoices/f1/instruments')
       .flush({ detail: 'amount' }, { status: 422, statusText: 'Unprocessable Entity' });
-    await expect(refused).rejects.toMatchObject({ code: 'invalid' });
+    await expect(refused).rejects.toMatchObject({ code: 'invalid', refusals: [] });
+
+    const beyond = api.receive('c1', 'f1', input);
+    http.expectOne('/api/companies/c1/invoices/f1/instruments').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'amount',
+            message: 'x',
+            payload: { reason: 'above_uncovered', params: { amount: '120.000' } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await expect(beyond).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'amount', reason: 'above_uncovered', params: { amount: '120.000' } }],
+    });
   });
 
   it('takes each step on a route of its own, and a conflict reads as one', async () => {

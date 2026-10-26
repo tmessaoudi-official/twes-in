@@ -513,7 +513,21 @@ describe('PurchaseOrderPage', () => {
     facade.receive.mockResolvedValue(null);
     error.set('invalid');
     refused.set('lines[0].lotCode');
-    expect(await data!.receive(input)).toEqual({ code: 'invalid', field: 'lines[0].lotCode' });
+    expect(await data!.receive(input)).toEqual({
+      code: 'invalid',
+      field: 'lines[0].lotCode',
+      refusal: null,
+    });
+
+    // The refusal of the field named is handed over, for the dialog to say in its reason's words.
+    const lot: FieldRefusal = { field: 'lines[0].lotCode', reason: 'lot_required', params: {} };
+    refusals.set([{ field: 'receivedOn', reason: 'after_today', params: {} }, lot]);
+    expect(await data!.receive(input)).toEqual({
+      code: 'invalid',
+      field: 'lines[0].lotCode',
+      refusal: lot,
+    });
+    refusals.set([]);
     expect(facade.clearError).toHaveBeenCalled();
     expect(successToasts()).toEqual([]);
   });

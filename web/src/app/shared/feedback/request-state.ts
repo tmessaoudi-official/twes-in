@@ -2,7 +2,15 @@
 
 import { inject, type Signal, signal } from '@angular/core';
 import { saidAlready } from '../errors/said-already';
+import type { FieldRefusal } from '../form/field-refusals';
 import { QuietReads } from './quiet-reads';
+
+/**
+ * What a write asked from a form that stays open on a refusal (a dialog's, a form inline) answered: what the API kept,
+ * or the fields it refused, which the form says under them; null for any other failure, which the screen says.
+ */
+export type FormAnswer<T> =
+  { readonly kept: T } | { readonly refused: readonly FieldRefusal[] } | null;
 
 /** How a read is told apart: whether it is still the latest of its kind, and what the facade keeps beside the code. */
 export interface ReadOptions {
@@ -73,6 +81,25 @@ export class RequestState<E> {
   async writeAnswer<T>(call: () => Promise<T>, options: WriteOptions<E> = {}): Promise<T | null> {
     const outcome = await this.attempt(call, options);
     return outcome.kept ? outcome.answer : null;
+  }
+
+  /**
+   * A write a form that stays open asked for. A refusal naming fields is handed back for the form to say, and nothing
+   * is said on the screen around it, so it is never said twice; any other failure is said as `write` says one.
+   */
+  async writeOrRefuse<T>(
+    call: () => Promise<T>,
+    refusalsOf: (error: unknown) => readonly FieldRefusal[],
+  ): Promise<FormAnswer<T>> {
+    let refused: readonly FieldRefusal[] = [];
+    const outcome = await this.attempt(call, {
+      code: (error) => {
+        refused = refusalsOf(error);
+        return refused.length > 0 ? null : this.code(error);
+      },
+    });
+    if (outcome.kept) return { kept: outcome.answer };
+    return refused.length > 0 ? { refused } : null;
   }
 
   /** Marks work busy and lets its failure through untouched, for a facade that keeps its own refusal. */

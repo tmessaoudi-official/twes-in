@@ -6,9 +6,11 @@
     </header>
 
     @if (error(); as code) {
-      <p role="alert" data-testid="stock-count-error" class="text-error">
-        {{ 'inventory.errors.' + code | translate }}
-      </p>
+      @if (refusalLine.for(code); as said) {
+        <p role="alert" data-testid="stock-count-error" class="text-error">
+          {{ said.key | translate: said.params }}
+        </p>
+      }
     }
 
     <div class="flex flex-wrap items-start gap-3">
@@ -132,6 +134,15 @@
                   >
                     <mat-icon>delete</mat-icon>
                   </button>
+                  @if (refusedLines()[i]; as said) {
+                    <p
+                      role="alert"
+                      class="m-0 basis-full text-sm text-error"
+                      [attr.data-testid]="'stock-count-' + i + '-refused'"
+                    >
+                      {{ said.key | translate: said.params }}
+                    </p>
+                  }
                 </li>
               }
             </ol>

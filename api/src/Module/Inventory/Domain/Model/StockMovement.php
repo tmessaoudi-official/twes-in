@@ -213,7 +213,7 @@ class StockMovement implements CompanyOwned
             // The company's own day decides what is still to come, wherever the server is.
             $today = $now->setTimezone(new \DateTimeZone($product->getCompany()->getTimezone()))->format('Y-m-d');
             if (null !== $document->receivedOn && $document->receivedOn->format('Y-m-d') > $today) {
-                throw new InvalidStockMovement('receivedOn', 'Goods cannot have arrived on a day that has not come yet.');
+                throw new InvalidStockMovement('receivedOn', 'Goods cannot have arrived on a day that has not come yet.', reason: 'after_today');
             }
             $receipt->vendor = $document->vendor;
             $receipt->supplierReference = $document->supplierReference;
@@ -234,7 +234,7 @@ class StockMovement implements CompanyOwned
     {
         $found = self::quantity($counted, $product, true);
         if (ProductTracking::Serial === $product->getTracking() && 1 === new Number($found)->compare(1)) {
-            throw new InvalidStockMovement('quantity', 'A serial number is one piece: a count finds it or not.');
+            throw new InvalidStockMovement('quantity', 'A serial number is one piece: a count finds it or not.', reason: 'serial_counted');
         }
         $difference = new Number($found)->sub(new Number($expected))->value;
 
@@ -279,10 +279,10 @@ class StockMovement implements CompanyOwned
     public static function move(Product $product, StockLocation $from, StockLocation $to, string $quantity, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null): array
     {
         if ($from->getId()->equals($to->getId())) {
-            throw new InvalidStockMovement('toLocationId', 'Goods already at a location have not moved: choose another one.');
+            throw new InvalidStockMovement('toLocationId', 'Goods already at a location have not moved: choose another one.', reason: 'same_location');
         }
         if (!$from->getEstablishment()->getId()->equals($to->getEstablishment()->getId())) {
-            throw new InvalidStockMovement('toLocationId', 'A move stays inside one establishment.');
+            throw new InvalidStockMovement('toLocationId', 'A move stays inside one establishment.', reason: 'other_establishment');
         }
         $moved = self::onePieceOfASerial($product, self::quantity($quantity, $product, false));
         $moveId = Uuid::v7();
@@ -304,7 +304,7 @@ class StockMovement implements CompanyOwned
     {
         $note = null === $note ? null : TypedText::trimmed($note);
         if (null !== $note && mb_strlen($note) > self::NOTE_MAX) {
-            throw new InvalidStockMovement('note', \sprintf('A note is at most %d characters.', self::NOTE_MAX));
+            throw new InvalidStockMovement('note', \sprintf('A note is at most %d characters.', self::NOTE_MAX), reason: 'invalid_text', params: ['max' => self::NOTE_MAX]);
         }
         $lost = self::onePieceOfASerial($product, self::quantity($quantity, $product, false));
         $loss = new self($product, $location, $lot, StockMovementKind::Out, new Number($lost)->mul(-1)->value, self::SOURCE_LOSS, null, $recordedBy, $now);
@@ -428,7 +428,7 @@ class StockMovement implements CompanyOwned
         }
         $back = self::quantity($quantity, $first->product, false);
         if (1 === new Number($back)->compare($taken)) {
-            throw new InvalidStockMovement('quantity', 'A sale is returned for no more than it took out.');
+            throw new InvalidStockMovement('quantity', 'A sale is returned for no more than it took out.', reason: 'above_sold', params: ['quantity' => $taken->round($first->product->getUnit()->getDecimals())->value]);
         }
 
         [$product, $lot] = self::standing($first->product, $first->lot, $lotKept);
@@ -474,7 +474,7 @@ class StockMovement implements CompanyOwned
             throw new InvalidStockMovement('lot', \sprintf('The product %s is not tracked by lot or serial number: its stock names no lot.', $product->getReference()), reason: 'lot_not_tracked');
         }
         if (null !== $lot && $lot->getProduct() !== $product) {
-            throw new InvalidStockMovement('lot', \sprintf('The lot %s is not one of %s.', $lot->getCode(), $product->getReference()));
+            throw new InvalidStockMovement('lot', \sprintf('The lot %s is not one of %s.', $lot->getCode(), $product->getReference()), reason: 'lot_of_another', params: ['lot' => $lot->getCode(), 'reference' => $product->getReference()]);
         }
     }
 
@@ -488,7 +488,7 @@ class StockMovement implements CompanyOwned
     private static function onePieceOfASerial(Product $product, string $quantity): string
     {
         if (ProductTracking::Serial === $product->getTracking() && 0 !== new Number($quantity)->compare(1)) {
-            throw new InvalidStockMovement('quantity', 'A serial number is one piece: it moves one at a time.');
+            throw new InvalidStockMovement('quantity', 'A serial number is one piece: it moves one at a time.', reason: 'serial_one_piece');
         }
 
         return $quantity;

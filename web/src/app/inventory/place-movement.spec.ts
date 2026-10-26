@@ -14,6 +14,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -33,7 +34,13 @@ import { type MovementAsked, PlaceMovement, quantityOf } from './place-movement'
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({});
+    return of({
+      import: {
+        rejections: {
+          same_location: 'Les articles y sont déjà : choisissez un autre emplacement.',
+        },
+      },
+    });
   }
 }
 
@@ -100,6 +107,8 @@ class Host {
 }
 
 describe('PlaceMovement', () => {
+  const error = signal<string | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const facade = {
     locations: signal([
       place('r1', 'R1'),
@@ -108,7 +117,8 @@ describe('PlaceMovement', () => {
       place('r3', 'R3'),
     ]).asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal<string | null>(null).asReadonly(),
+    error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     clearError: vi.fn(),
     pickProducts: vi.fn(),
     record: vi.fn(),
@@ -151,6 +161,8 @@ describe('PlaceMovement', () => {
   }
 
   beforeEach(() => {
+    error.set(null);
+    refusals.set([]);
     facade.clearError.mockReset();
     facade.pickProducts.mockReset().mockResolvedValue([product]);
     facade.record.mockReset().mockResolvedValue(true);
@@ -393,5 +405,23 @@ describe('PlaceMovement', () => {
     expect(fixture.componentInstance.closed).toBe(0);
     expect(facade.reloadContents).not.toHaveBeenCalled();
     expect(q('place-movement-form')).not.toBeNull();
+  });
+
+  it('says under the destination why a move was refused, and nothing more above the form', async () => {
+    facade.record.mockImplementation(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'toLocationId', reason: 'same_location', params: {} }]);
+      return false;
+    });
+    await open();
+    fixture.componentInstance.destination.set('r3');
+    await settle();
+    await submit();
+
+    expect(q('field-error-toLocationId')?.textContent).toContain(
+      'Les articles y sont déjà : choisissez un autre emplacement.',
+    );
+    expect(q('place-movement-error')).toBeNull();
+    expect(fixture.componentInstance.closed).toBe(0);
   });
 });

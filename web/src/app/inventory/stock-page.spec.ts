@@ -33,6 +33,7 @@ import type {
 } from './inventory-types';
 import { StockPage } from './stock-page';
 import { ProductScans } from '../products/product-scans';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { exportEntry } from '../shared/testing/list-export';
@@ -50,6 +51,12 @@ class StaticLoader implements TranslateLoader {
           release_message: 'Le lot {{lot}} de {{product}} est périmé.',
         },
         errors: { invalid: 'La saisie a été refusée.' },
+      },
+      import: {
+        rejections: {
+          above_on_hand: 'Il n’y en a que {{quantity}} à cet emplacement.',
+          lot_in_date: 'Le lot « {{lot}} » de « {{reference}} » n’est pas périmé.',
+        },
       },
     });
   }
@@ -152,12 +159,14 @@ const locationsSignal = signal<readonly StockLocationRow[]>([site, rack]);
 
 describe('StockPage', () => {
   const error = signal<InventoryError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const facade = {
     options: signal<StockOptions | null>(options).asReadonly(),
     levels: levelsSignal.asReadonly(),
     locations: locationsSignal.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     total: signal(1).asReadonly(),
     loadStockContext: vi.fn(),
     loadStock: vi.fn(),
@@ -223,6 +232,7 @@ describe('StockPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    refusals.set([]);
     levelsSignal.set([shortage]);
     facade.loadStockContext.mockReset().mockResolvedValue(undefined);
     facade.loadStock.mockReset().mockResolvedValue(undefined);
@@ -989,6 +999,60 @@ describe('StockPage', () => {
     });
     expect(q('stock-error')?.textContent).toContain('refusée');
     expect(q('stock-movement-save')).not.toBeNull();
+  });
+
+  it('says under its field why a movement was refused, in its figures, and nothing more above the form', async () => {
+    facade.record.mockImplementation(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'quantity', reason: 'above_on_hand', params: { quantity: '6' } }]);
+      return false;
+    });
+    q('stock-count')!.click();
+    await settle();
+    await pick('field-productId', 'ART-1 · Portable');
+    type('field-quantity', '7');
+    q('stock-movement-save')!.click();
+    await settle();
+
+    expect(q('field-error-quantity')?.textContent).toContain(
+      'Il n’y en a que 6 à cet emplacement.',
+    );
+    expect(q('stock-error')).toBeNull();
+  });
+
+  it('says above the list why a lot was not released, in its words', async () => {
+    facade.releaseLot.mockImplementation(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'lot', reason: 'lot_in_date', params: { lot: 'L-07', reference: 'ART-3' } },
+      ]);
+      return false;
+    });
+    levelsSignal.set([
+      {
+        ...shortage,
+        id: 'p1:l1:k1',
+        productReference: 'ART-3',
+        lotId: 'k1',
+        lotCode: 'L-07',
+        lotExpiresOn: '2020-01-31',
+      },
+    ]);
+    await settle();
+    q('row-more-p1:l1:k1')!.click();
+    await settle();
+    (
+      document.body.querySelector(
+        '.cdk-overlay-container [data-testid="row-menu-release-p1:l1:k1"]',
+      ) as HTMLElement
+    ).click();
+    await settle();
+    (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
+    await settle();
+
+    expect(q('stock-error')?.textContent).toContain(
+      'Le lot « L-07 » de « ART-3 » n’est pas périmé.',
+    );
   });
 
   /**

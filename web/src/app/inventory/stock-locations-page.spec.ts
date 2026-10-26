@@ -229,6 +229,8 @@ describe('StockLocationsPage', () => {
     expect(facade.reviseLocation).toHaveBeenCalled();
     expect(q('field-error-code')?.textContent).toContain('Le code compte 1 à 32 caractères.');
     expect(q('field-error-parentId')?.textContent).toContain('Rien ne se range sous lui-même.');
+    // Said under the fields, so not said again above the form.
+    expect(q('stock-locations-error')).toBeNull();
   });
 
   it('renames a location where it sits, and deletes one but never the default', async () => {

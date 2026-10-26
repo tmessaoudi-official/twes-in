@@ -11,14 +11,17 @@ import {
   output,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDialog } from '@angular/material/dialog';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { runAction } from '../shared/actions/run-action';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import { FormStep } from '../shared/form/form-step';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { Feedback } from '../shared/feedback/feedback';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
@@ -82,6 +85,8 @@ export class InvoiceInstruments {
   protected readonly tones = INSTRUMENT_STATUS_TONES;
   protected readonly group = signal<DescriptorFormGroup | null>(null);
   protected readonly descriptor = instrumentForm();
+  protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
+  private readonly form = viewChild(DescriptorForm);
 
   /**
    * What a new instrument can still cover: what is due less what the open ones already promise, in the currency's
@@ -115,6 +120,7 @@ export class InvoiceInstruments {
 
   protected open(): void {
     this.facade.clearError();
+    this.step.unplaced.set(null);
     this.group.set(
       buildFormGroup(
         this.descriptor,
@@ -134,13 +140,16 @@ export class InvoiceInstruments {
       group.markAllAsTouched();
       return;
     }
-    if (
-      await this.facade.receive(
-        this.companyId(),
-        this.invoiceId(),
-        instrumentInput(group.getRawValue()),
-      )
-    ) {
+    const answer = await this.step.run(
+      () =>
+        this.facade.receive(
+          this.companyId(),
+          this.invoiceId(),
+          instrumentInput(group.getRawValue()),
+        ),
+      (refusals) => this.form()?.showRefused(refusals) ?? refusals,
+    );
+    if (answer !== null && answer !== 'refused') {
       this.group.set(null);
       this.feedback.success('invoices.instruments.done.received');
     }

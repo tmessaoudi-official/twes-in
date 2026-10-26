@@ -10,9 +10,11 @@
     {{ 'inventory.plan.here.title' | translate }}
   </button>
   @if (error(); as code) {
-    <p role="alert" class="text-error" data-testid="place-movement-error">
-      {{ 'inventory.errors.' + code | translate }}
-    </p>
+    @if (refusalLine.for(code); as said) {
+      <p role="alert" class="text-error" data-testid="place-movement-error">
+        {{ said.key | translate: said.params }}
+      </p>
+    }
   }
   @if (form(); as form) {
     @if (descriptor(); as descriptor) {

@@ -48,8 +48,8 @@ final class StockReceiptResource
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public string $productId = '';
 
@@ -66,10 +66,10 @@ final class StockReceiptResource
             'properties' => ['locationId' => ['type' => 'string', 'format' => 'uuid'], 'quantity' => ['type' => 'string']],
         ],
     ])]
-    #[Assert\Type('list', groups: [self::WRITE])]
-    #[Assert\Count(min: 1, groups: [self::WRITE])]
+    #[Assert\Type('list', groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
+    #[Assert\Count(min: 1, groups: [self::WRITE], payload: ['reason' => 'places_required'])]
     #[Assert\All([new Assert\Collection(
-        fields: ['locationId' => [new Assert\NotBlank(groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], 'quantity' => [new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])]],
+        fields: ['locationId' => [new Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required']), new Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])], 'quantity' => [new Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required']), new Assert\Type('string', groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]],
         groups: [self::WRITE],
     )], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
@@ -81,28 +81,28 @@ final class StockReceiptResource
     public ?string $lotCode = null;
 
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
-    #[Assert\Date(groups: [self::WRITE])]
+    #[Assert\Date(groups: [self::WRITE], payload: ['reason' => 'not_a_date'])]
     #[Groups([self::WRITE])]
     public ?string $lotExpiresOn = null;
 
     /** The same vendor, supplier reference and day for every part, as for one receipt; all optional. */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $vendorId = null;
 
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'maxLength' => ReceiptDocument::REFERENCE_MAX])]
-    #[Assert\Length(max: ReceiptDocument::REFERENCE_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: ReceiptDocument::REFERENCE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ReceiptDocument::REFERENCE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $supplierReference = null;
 
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
-    #[Assert\Date(groups: [self::WRITE])]
+    #[Assert\Date(groups: [self::WRITE], payload: ['reason' => 'not_a_date'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $receivedOn = null;
 
     #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'enum' => ['average', 'last', null]])]
-    #[Assert\Choice(choices: ['average', 'last'], groups: [self::WRITE])]
+    #[Assert\Choice(choices: ['average', 'last'], groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::WRITE])]
     public ?string $applyCost = null;
 

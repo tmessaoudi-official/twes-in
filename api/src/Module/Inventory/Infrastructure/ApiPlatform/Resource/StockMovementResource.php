@@ -91,17 +91,17 @@ final class StockMovementResource
 
     /** What a person records: goods received, a count of what is there, a move to another location, or a loss. */
     #[ApiProperty(schema: ['type' => 'string', 'enum' => [self::RECEIVE, self::COUNT, self::MOVE, self::LOSS]])]
-    #[Assert\Choice(choices: [self::RECEIVE, self::COUNT, self::MOVE, self::LOSS], groups: [self::WRITE])]
+    #[Assert\Choice(choices: [self::RECEIVE, self::COUNT, self::MOVE, self::LOSS], groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::WRITE])]
     public string $operation = '';
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public string $productId = '';
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public string $locationId = '';
 
@@ -110,8 +110,8 @@ final class StockMovementResource
      * the other half of the pair is the one that says where they arrived.
      */
     #[ApiProperty(schema: ['type' => 'string', 'format' => 'uuid', 'nullable' => true])]
-    #[Assert\Uuid(groups: [self::WRITE])]
-    #[Assert\When(expression: 'this.operation === "'.self::MOVE.'"', constraints: [new Assert\NotBlank()], groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
+    #[Assert\When(expression: 'this.operation === "'.self::MOVE.'"', constraints: [new Assert\NotBlank(payload: ['reason' => 'value_required'])], groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public ?string $toLocationId = null;
 
@@ -125,20 +125,20 @@ final class StockMovementResource
 
     /** The date the lot's goods are used by, as its label says; given once, and filled in if the lot had none. */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
-    #[Assert\Date(groups: [self::WRITE])]
+    #[Assert\Date(groups: [self::WRITE], payload: ['reason' => 'not_a_date'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $lotExpiresOn = null;
 
     /** Why the goods were written off, for a loss alone; read back on that movement and null on every other. */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'enum' => [...self::REASONS, null]])]
-    #[Assert\Choice(choices: self::REASONS, groups: [self::WRITE])]
-    #[Assert\When(expression: 'this.operation === "'.self::LOSS.'"', constraints: [new Assert\NotBlank()], groups: [self::WRITE])]
+    #[Assert\Choice(choices: self::REASONS, groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
+    #[Assert\When(expression: 'this.operation === "'.self::LOSS.'"', constraints: [new Assert\NotBlank(payload: ['reason' => 'value_required'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $reason = null;
 
     /** What the person said about the loss, at most 500 characters. */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'maxLength' => StockMovement::NOTE_MAX])]
-    #[Assert\Length(max: StockMovement::NOTE_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: StockMovement::NOTE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => StockMovement::NOTE_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $note = null;
 
@@ -148,8 +148,8 @@ final class StockMovementResource
      * is never one still to come.
      */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
-    #[Assert\Uuid(groups: [self::WRITE])]
-    #[Assert\When(expression: 'this.operation !== "'.self::RECEIVE.'"', constraints: [new Assert\IsNull(message: 'Only a receipt names a vendor.')], groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
+    #[Assert\When(expression: 'this.operation !== "'.self::RECEIVE.'"', constraints: [new Assert\IsNull(message: 'Only a receipt names a vendor.', payload: ['reason' => 'invalid_value'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $vendorId = null;
 
@@ -159,14 +159,14 @@ final class StockMovementResource
     public ?string $vendorName = null;
 
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'maxLength' => ReceiptDocument::REFERENCE_MAX])]
-    #[Assert\Length(max: ReceiptDocument::REFERENCE_MAX, groups: [self::WRITE])]
-    #[Assert\When(expression: 'this.operation !== "'.self::RECEIVE.'"', constraints: [new Assert\IsNull(message: 'Only a receipt carries a supplier reference.')], groups: [self::WRITE])]
+    #[Assert\Length(max: ReceiptDocument::REFERENCE_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ReceiptDocument::REFERENCE_MAX]])]
+    #[Assert\When(expression: 'this.operation !== "'.self::RECEIVE.'"', constraints: [new Assert\IsNull(message: 'Only a receipt carries a supplier reference.', payload: ['reason' => 'invalid_value'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $supplierReference = null;
 
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
-    #[Assert\Date(groups: [self::WRITE])]
-    #[Assert\When(expression: 'this.operation !== "'.self::RECEIVE.'"', constraints: [new Assert\IsNull(message: 'Only a receipt has a day of arrival.')], groups: [self::WRITE])]
+    #[Assert\Date(groups: [self::WRITE], payload: ['reason' => 'not_a_date'])]
+    #[Assert\When(expression: 'this.operation !== "'.self::RECEIVE.'"', constraints: [new Assert\IsNull(message: 'Only a receipt has a day of arrival.', payload: ['reason' => 'invalid_value'])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $receivedOn = null;
 
@@ -176,7 +176,7 @@ final class StockMovementResource
      * who cannot read costs. Written only.
      */
     #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'enum' => ['average', 'last', null]])]
-    #[Assert\Choice(choices: ['average', 'last'], groups: [self::WRITE])]
+    #[Assert\Choice(choices: ['average', 'last'], groups: [self::WRITE], payload: ['reason' => 'invalid_value'])]
     #[Groups([self::WRITE])]
     public ?string $applyCost = null;
 
@@ -226,7 +226,7 @@ final class StockMovementResource
     public string $kind = '';
 
     /** Written: the quantity received or found, in the product's unit. Read: signed, with three decimals. */
-    #[Assert\NotBlank(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
     #[Groups([self::READ, self::WRITE])]
     public string $quantity = '';
 

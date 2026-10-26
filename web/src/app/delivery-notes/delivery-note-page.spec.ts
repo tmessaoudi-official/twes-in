@@ -197,6 +197,7 @@ describe('DeliveryNotePage', () => {
     deliver: vi.fn(),
     cancel: vi.fn(),
     invoice: vi.fn(),
+    invoicePart: vi.fn(),
     draftsOf: vi.fn(),
     clearError: vi.fn(),
     credit: vi.fn(async () => null as unknown),
@@ -323,6 +324,7 @@ describe('DeliveryNotePage', () => {
     inventory.failedMoves.mockReset().mockResolvedValue([]);
     facade.preview.mockReset().mockResolvedValue(null);
     facade.invoice.mockReset().mockResolvedValue('i7');
+    facade.invoicePart.mockReset().mockResolvedValue({ kept: 'i7' });
     facade.draftsOf.mockReset().mockResolvedValue([]);
     facade.loadNote.mockReset().mockResolvedValue(undefined);
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'n9' });
@@ -331,7 +333,7 @@ describe('DeliveryNotePage', () => {
     facade.reviseValidateAndDeliver
       .mockReset()
       .mockResolvedValue({ ...validated, status: 'delivered' });
-    facade.deliver.mockReset().mockResolvedValue({ ...validated, status: 'delivered' });
+    facade.deliver.mockReset().mockResolvedValue({ kept: { ...validated, status: 'delivered' } });
     facade.cancel.mockReset().mockResolvedValue({ ...validated, status: 'cancelled' });
     TestBed.configureTestingModule({
       imports: [DeliveryNotePage],
@@ -1466,8 +1468,32 @@ describe('DeliveryNotePage', () => {
       over('add-to-draft-d2')!.click();
 
       await vi.waitFor(() =>
-        expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', { l1: '10' }, 'd2'),
+        expect(facade.invoicePart).toHaveBeenCalledWith('c1', 'n1', { l1: '10' }, 'd2'),
       );
+    });
+
+    it('keeps the part asked, as it was, when the person leaves the question of where it goes', async () => {
+      facade.draftsOf.mockResolvedValue(drafts);
+      facade.left.mockResolvedValue({
+        lines: [{ lineId: 'l1', quantity: '10.000', invoiced: '0.000', left: '10.000' }],
+      });
+      note.set(validated);
+      await open('n1');
+
+      q('document-action-invoice-part')!.click();
+      await settle();
+      typeIn(over('invoice-part-quantity-0') as HTMLInputElement, '3');
+      over('invoice-part-confirm')!.click();
+      await vi.waitFor(() => expect(over('add-to-title')).not.toBeNull());
+      (document.activeElement as HTMLElement | null)?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }),
+      );
+      await vi.waitFor(() => expect(over('add-to-title')).toBeNull());
+      await settle();
+
+      expect(facade.invoicePart).not.toHaveBeenCalled();
+      expect((over('invoice-part-quantity-0') as HTMLInputElement).value).toBe('3');
+      expect(over('invoice-part-refused')).toBeNull();
     });
   });
 
@@ -1494,9 +1520,29 @@ describe('DeliveryNotePage', () => {
     over('invoice-part-confirm')!.click();
 
     await vi.waitFor(() =>
-      expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', { l1: '1.5' }, undefined),
+      expect(facade.invoicePart).toHaveBeenCalledWith('c1', 'n1', { l1: '1.5' }, undefined),
     );
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
+  });
+
+  it('keeps the part asked when a quantity is refused, saying it on its line', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    facade.invoicePart.mockResolvedValueOnce({
+      refused: [{ field: 'quantities[l1]', reason: 'above_left', params: { quantity: '4.500' } }],
+    });
+    facade.left.mockResolvedValue({
+      lines: [{ lineId: 'l1', quantity: '10.000', invoiced: '5.500', left: '4.500' }],
+    });
+    note.set(validated);
+    await open('n1');
+
+    q('document-action-invoice-part')!.click();
+    await settle();
+    over('invoice-part-confirm')!.click();
+
+    await vi.waitFor(() => expect(over('invoice-part-error-0')).not.toBeNull());
+    expect(over('invoice-part-title')).not.toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it('drafts nothing when the dialog is dismissed or every quantity is zero', async () => {
@@ -1515,6 +1561,7 @@ describe('DeliveryNotePage', () => {
     over('invoice-part-cancel')!.click();
     await settle();
     expect(facade.invoice).not.toHaveBeenCalled();
+    expect(facade.invoicePart).not.toHaveBeenCalled();
   });
 
   /** The picked row carries the regime, and nothing else does: no list is held to look one up in. */

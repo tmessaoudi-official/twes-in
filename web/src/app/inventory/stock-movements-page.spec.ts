@@ -16,7 +16,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { ProductScans } from '../products/product-scans';
 import type { ProductScan } from '../products/products-types';
 import { ScanBus } from '../shared/scan/scan-bus';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { MatDialog, MatDialogState } from '@angular/material/dialog';
+import { effectToasts, provideQuietFeedback } from '../shared/testing/feedback';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -48,6 +49,7 @@ class StaticLoader implements TranslateLoader {
         },
         movements: { of_lot: 'Mouvements du lot {{code}}.' },
       },
+      import: { rejections: { invalid_price: 'Prix refusé : un montant à partir de 0.' } },
     });
   }
 }
@@ -199,7 +201,7 @@ describe('StockMovementsPage', () => {
       call.mockReset().mockResolvedValue(undefined);
     }
     facade.receiptCost.mockReset().mockResolvedValue({ mode: 'average' });
-    facade.enterReceiptCost.mockReset().mockResolvedValue(true);
+    facade.enterReceiptCost.mockReset().mockResolvedValue({ kept: undefined });
     facade.lossFiles.mockReset().mockResolvedValue([photo]);
     facade.attachToLoss.mockReset().mockResolvedValue(true);
     facade.detachFromLoss.mockReset().mockResolvedValue(true);
@@ -333,8 +335,37 @@ describe('StockMovementsPage', () => {
     cost.dispatchEvent(new Event('input'));
     document.body.querySelector<HTMLElement>('[data-testid="receipt-cost-enter"]')!.click();
     await settle();
+    // The dialog closes on what was kept, then the page says it.
+    await settle();
 
     expect(facade.enterReceiptCost).toHaveBeenCalledWith('c1', 'm2', '1200.5', null);
+    // Said once the dialog closed on what was kept.
+    expect(effectToasts()).toEqual(['inventory.receipt_cost.entered:definitif']);
+  });
+
+  it('keeps the cost asked when the API refuses it, saying why under the cost', async () => {
+    facade.enterReceiptCost.mockResolvedValue({
+      refused: [{ field: 'unitCost', reason: 'invalid_price', params: {} }],
+    });
+    shown.set([uncosted]);
+    await settle();
+    q('row-action-enter-cost-m2')!.click();
+    await settle();
+    const cost = document.body.querySelector<HTMLInputElement>('[data-testid="field-unitCost"]')!;
+    cost.value = '12';
+    cost.dispatchEvent(new Event('input'));
+    document.body.querySelector<HTMLElement>('[data-testid="receipt-cost-enter"]')!.click();
+    await settle();
+
+    expect(facade.enterReceiptCost).toHaveBeenCalled();
+    // Still open, not merely closing: what was typed stays to be put right.
+    expect(TestBed.inject(MatDialog).openDialogs.map((ref) => ref.getState())).toEqual([
+      MatDialogState.OPEN,
+    ]);
+    expect(
+      document.body.querySelector('[data-testid="field-error-unitCost"]')?.textContent,
+    ).toContain('Prix refusé : un montant à partir de 0.');
+    expect(effectToasts()).toEqual([]);
   });
 
   it('asks the cost of the receipt « À surveiller » sent a cost reader here for, with the choice a suggesting company leaves', async () => {

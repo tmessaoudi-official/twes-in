@@ -204,6 +204,28 @@ describe('InvoiceBulkPayDialog', () => {
     expect(said()).toEqual([expect.objectContaining({ key: 'invoices.errors.period_closed' })]);
   });
 
+  it('says a refusal naming its fields under them, a row’s on its own line, and stays open with no toast', async () => {
+    checks = [preview(due('a', 'FAC-1', '1.000'))];
+    paid = new InvoicesRefused('invalid', [
+      { field: 'date', reason: 'after_today', params: {} },
+      { field: 'rows[0].amount', reason: 'above_due', params: { amount: '1.000' } },
+    ]);
+    const fixture = await open();
+
+    go(fixture).click();
+    await settle(fixture);
+
+    expect(close).not.toHaveBeenCalled();
+    expect(said()).toEqual([]);
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.querySelector('[data-testid="field-error-date"]')?.textContent).toContain(
+      'import.rejections.invalid_value',
+    );
+    expect(
+      element.querySelector('[data-testid="invoice-bulk-pay-refused"]')?.textContent?.trim(),
+    ).toBe('import.rejections.invalid_value');
+  });
+
   it('shows the answer to the day asked last, even when an earlier answer arrives after it', async () => {
     let answerFirst!: (check: BulkCheck) => void;
     checks = [

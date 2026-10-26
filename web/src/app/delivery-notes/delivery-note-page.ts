@@ -75,8 +75,13 @@ import { DocumentActions } from '../shared/ui/document-actions';
 import type { PlannedAction } from '../shared/actions/planned-actions';
 import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
-import { DeliverDialog } from './deliver-dialog';
-import { InvoicePartDialog, type InvoicePartLine } from './invoice-part-dialog';
+import type { FormAnswer } from '../shared/feedback/request-state';
+import { DeliverDialog, type DeliverDialogData } from './deliver-dialog';
+import {
+  InvoicePartDialog,
+  type InvoicePartData,
+  type InvoicePartLine,
+} from './invoice-part-dialog';
 import {
   askInvoiceTarget,
   type InvoiceTarget,
@@ -928,24 +933,21 @@ export class DeliveryNotePage {
 
   /** Asked in a dialog, so the bar carries actions and not a date field (design review finding 3). */
   protected async openDeliver(): Promise<void> {
-    if (this.busy()) return;
-    const moment = await firstValueFrom(
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (!companyId || id === null || this.busy()) return;
+    await firstValueFrom(
       this.dialog
-        .open<DeliverDialog, string | null, string | null>(DeliverDialog, {
-          data: this.company()?.timezone ?? null,
+        .open<DeliverDialog, DeliverDialogData, boolean>(DeliverDialog, {
+          data: {
+            zone: this.company()?.timezone ?? null,
+            // At the moment written on the company's clock, or now for ''.
+            deliver: (at) => this.facade.deliver(companyId, id, at === '' ? null : at),
+          },
           autoFocus: 'first-tabbable',
         })
         .afterClosed(),
     );
-    if (moment !== null && moment !== undefined) await this.deliver(moment);
-  }
-
-  /** At the moment written on the company's clock, or now for ''. */
-  protected async deliver(at: string): Promise<void> {
-    const companyId = this.company()?.id;
-    const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
-    await this.facade.deliver(companyId, id, at === '' ? null : at);
   }
 
   protected async invoice(): Promise<void> {
@@ -1000,29 +1002,21 @@ export class DeliveryNotePage {
       ...line,
       description: current.lines[index]?.description ?? '',
     }));
-    const quantities = await firstValueFrom(
+    // Where it goes is asked over the dialog, which stays as it was when the person leaves that question.
+    const invoice = async (quantities: Record<string, string>): Promise<FormAnswer<string>> => {
+      const target = await this.chooseTarget(companyId);
+      if (target === null) return { refused: [] };
+      return this.facade.invoicePart(companyId, id, quantities, target.draftId ?? undefined);
+    };
+    const invoiceId = await firstValueFrom(
       this.dialog
-        .open<InvoicePartDialog, InvoicePartLine[], Record<string, string> | null>(
-          InvoicePartDialog,
-          {
-            data: lines,
-            autoFocus: 'first-tabbable',
-          },
-        )
+        .open<InvoicePartDialog, InvoicePartData, string | null>(InvoicePartDialog, {
+          data: { lines, invoice },
+          autoFocus: 'first-tabbable',
+        })
         .afterClosed(),
     );
-    if (!quantities) return;
-    const target = await this.chooseTarget(companyId);
-    if (target === null) return;
-    const invoiceId = await this.facade.invoice(
-      companyId,
-      id,
-      quantities,
-      target.draftId ?? undefined,
-    );
-    if (invoiceId !== null) {
-      await this.router.navigate(['/invoices', invoiceId]);
-    }
+    if (invoiceId) await this.router.navigate(['/invoices', invoiceId]);
   }
 
   protected async cancel(): Promise<void> {

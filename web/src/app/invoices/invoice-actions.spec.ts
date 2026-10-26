@@ -94,7 +94,7 @@ describe('InvoiceActions', () => {
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
     pdfCopyUrl: (companyId: string, id: string, kind: string) =>
       `/api/companies/${companyId}/invoices/${id}/pdf?copy=${kind}`,
-    recordPayment: vi.fn().mockResolvedValue(true),
+    recordPayment: vi.fn().mockResolvedValue({ kept: true }),
     cancel: vi.fn(),
   };
   const dialog = { open: vi.fn() };
@@ -268,20 +268,27 @@ describe('InvoiceActions', () => {
     expect(deliver.deliver).toHaveBeenCalledWith('c1', 'i1', null);
     expect(dialog.open, '« Livrer » asks nothing').not.toHaveBeenCalled();
 
-    dialog.open.mockReturnValue({ afterClosed: () => of({ l1: '2' }) });
+    // « Livrer une partie » drafts from the dialog, which closes on the note it drafted.
+    const part = Object.assign(facade, { deliverPart: vi.fn().mockResolvedValue({ kept: 'n2' }) });
+    deliver.deliver.mockClear();
+    dialog.open.mockReturnValue({ afterClosed: () => of('n2') });
     onRecord(actions().declare(), goods, false)
       .find((action) => action.id === 'deliver-part')!
       .run?.();
-    await vi.waitFor(() => expect(deliver.deliver).toHaveBeenCalledWith('c1', 'i1', { l1: '2' }));
-    expect(dialog.open.mock.calls[0]?.[1]).toMatchObject({ data: goods.deliveries });
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/delivery-notes', 'n2']));
+    const data = dialog.open.mock.calls[0]?.[1].data;
+    expect(data.lines).toEqual(goods.deliveries);
+    await data.deliver({ l1: '2' });
+    expect(part.deliverPart).toHaveBeenCalledWith('c1', 'i1', { l1: '2' });
+    expect(deliver.deliver, 'the part is drafted by the dialog').not.toHaveBeenCalled();
 
-    deliver.deliver.mockClear();
+    navigate.mockClear();
     dialog.open.mockReturnValue({ afterClosed: () => of(null) });
     onRecord(actions().declare(), goods, false)
       .find((action) => action.id === 'deliver-part')!
       .run?.();
     await vi.waitFor(() => expect(dialog.open).toHaveBeenCalledTimes(2));
-    expect(deliver.deliver, 'closing the dialog drafts nothing').not.toHaveBeenCalled();
+    expect(navigate, 'closing the dialog opens nothing').not.toHaveBeenCalled();
   });
 
   it('offers the Factur-X files only where the company’s preset writes them, of an issued document', () => {
@@ -339,10 +346,7 @@ describe('InvoiceActions', () => {
   });
 
   it('records a payment from a row, asked in the dialog with what the row still owes, and says the row changed', async () => {
-    dialog.open.mockReturnValue({
-      afterClosed: () =>
-        of({ amount: '119.000', date: '2026-10-11', method: 'cash', reference: '', notes: '' }),
-    });
+    dialog.open.mockReturnValue({ afterClosed: () => of(true) });
     const changed = vi.fn();
     const pay = onRows(actions().declare({ changed })).find(
       (action) => action.id === 'record-payment',
@@ -351,7 +355,10 @@ describe('InvoiceActions', () => {
     pay.run?.(due);
     await vi.waitFor(() => expect(changed).toHaveBeenCalledWith(due));
 
-    expect(dialog.open.mock.calls[0]![1].data.group.getRawValue().amount).toBe('119.000');
+    // The dialog records through the page, and closes on what was kept.
+    const data = dialog.open.mock.calls[0]![1].data;
+    expect(data.group.getRawValue().amount).toBe('119.000');
+    await data.record(data.group.getRawValue());
     expect(facade.recordPayment).toHaveBeenCalledWith(
       'c1',
       'i1',

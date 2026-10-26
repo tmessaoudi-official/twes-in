@@ -97,7 +97,19 @@
       "deposit_unit_missing": "A deposit line counts in the unit “{{unit}}”, which the company does not have: add it in Units.",
       "deposit_too_small": "A deposit this small comes to nothing in the currency: raise it.",
       "deposit_still_draft": "The deposit invoice drafted on {{day}} is still a draft: issue or cancel it before invoicing the quote.",
-      "lot_required": "“{{reference}}” is tracked by lot or serial number: say which one."
+      "lot_required": "“{{reference}}” is tracked by lot or serial number: say which one.",
+      "places_required": "Add at least one location.",
+      "above_on_hand": "Only {{quantity}} is at this location: lower the quantity.",
+      "unknown_lot": "“{{reference}}” has no lot “{{lot}}”: goods enter a lot by a receipt or a count.",
+      "serial_in_stock": "Serial number “{{serial}}” of “{{reference}}” is already in stock.",
+      "vendors_off": "Vendors is switched off: a receipt names no vendor.",
+      "lot_dated": "Lot “{{lot}}” of “{{reference}}” expires on {{day}}: a lot has only one date.",
+      "lot_in_date": "Lot “{{lot}}” of “{{reference}}” has not expired: only an expired lot is released.",
+      "serial_counted": "A serial number is a single piece: count 0 or 1.",
+      "above_sold": "A return gives back no more than the sale took out, {{quantity}}.",
+      "lot_of_another": "Lot “{{lot}}” is not a lot of “{{reference}}”.",
+      "serial_one_piece": "A serial number is a single piece: it moves one at a time, quantity 1.",
+      "same_location": "The goods are already there: choose another location."
     }
   }
 }

@@ -287,4 +287,24 @@ describe('InvoiceInstruments', () => {
     expect(q('instrument-save')).not.toBeNull();
     expect(q('instrument-error')).not.toBeNull();
   });
+
+  it('says a refusal naming its fields under them, what none takes on the form’s own line, and nothing else', async () => {
+    await show([], { amountDue: '100.000' });
+    q('instrument-receive')!.click();
+    await settle();
+    api.receive.mockRejectedValue(
+      new InvoicesRefused('invalid', [
+        { field: 'amount', reason: 'above_uncovered', params: { amount: '100.000' } },
+        { field: 'invoice', reason: 'lines_required', params: {} },
+      ]),
+    );
+    q('instrument-save')!.click();
+    await settle();
+
+    expect(q('instrument-save')).not.toBeNull();
+    expect(q('field-error-amount')).not.toBeNull();
+    expect(q('instrument-refused')).not.toBeNull();
+    expect(q('instrument-error')).toBeNull();
+    expect(successToasts()).not.toContain('invoices.instruments.done.received');
+  });
 });

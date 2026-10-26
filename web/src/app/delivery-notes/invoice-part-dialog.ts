@@ -6,8 +6,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { quantityRefusals } from '../shared/documents/deliver-part-dialog';
+import type { FormAnswer } from '../shared/feedback/request-state';
 import { DecimalInput } from '../shared/form/decimal-input';
+import type { FieldError } from '../shared/form/form-builder';
+import { FormStep } from '../shared/form/form-step';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 
 /** One line of the note as the dialog offers it: what it says, and what is still to invoice of it. */
@@ -16,6 +21,15 @@ export interface InvoicePartLine {
   description: string;
   quantity: string;
   left: string;
+}
+
+export interface InvoicePartData {
+  lines: readonly InvoicePartLine[];
+  /**
+   * Drafts the invoice of the quantities by line, asking where first, and answers its id; the dialog stays open on a
+   * refusal and says it on its line, and as it was when the person leaves that question (`refused: []`).
+   */
+  invoice: (quantities: Record<string, string>) => Promise<FormAnswer<string>>;
 }
 
 /**
@@ -64,6 +78,20 @@ export interface InvoicePartLine {
               }}
             </mat-hint>
           </mat-form-field>
+          @if (refused()[line.lineId]; as said) {
+            <p
+              role="alert"
+              class="px-4 text-xs text-error"
+              [attr.data-testid]="'invoice-part-error-' + index"
+            >
+              {{ said.key | translate: said.params }}
+            </p>
+          }
+        }
+        @if (step.unplaced(); as said) {
+          <p role="alert" class="text-sm text-error" data-testid="invoice-part-refused">
+            {{ said.key | translate: said.params }}
+          </p>
         }
       </div>
     </mat-dialog-content>
@@ -74,8 +102,8 @@ export interface InvoicePartLine {
       <button
         mat-flat-button
         type="button"
-        [disabled]="!any()"
-        (click)="ref.close(chosen())"
+        [disabled]="!any() || step.busy()"
+        (click)="invoice()"
         data-testid="invoice-part-confirm"
       >
         {{ 'delivery_notes.invoice_part.confirm' | translate }}
@@ -84,10 +112,13 @@ export interface InvoicePartLine {
   `,
 })
 export class InvoicePartDialog {
-  protected readonly ref =
-    inject<MatDialogRef<InvoicePartDialog, Record<string, string> | null>>(MatDialogRef);
+  protected readonly ref = inject<MatDialogRef<InvoicePartDialog, string | null>>(MatDialogRef);
+  private readonly data = inject<InvoicePartData>(MAT_DIALOG_DATA);
+  protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
+  /** What the API refused of each line, by its id, until that line's quantity changes. */
+  protected readonly refused = signal<Readonly<Record<string, FieldError>>>({});
   /** Only the lines with something left. */
-  protected readonly lines = inject<InvoicePartLine[]>(MAT_DIALOG_DATA)
+  protected readonly lines = this.data.lines
     .filter((line) => !/^-?0*(\.0*)?$/.test(line.left))
     .map((line) => ({ ...line, left: plainQuantity(line.left) }));
   protected readonly quantities = signal<Record<string, string>>(
@@ -111,6 +142,27 @@ export class InvoicePartDialog {
   /** What the field holds: the API's point, whatever separator was typed (`appDecimal`). */
   protected onQuantity(lineId: string, value: unknown): void {
     this.quantities.update((all) => ({ ...all, [lineId]: typeof value === 'string' ? value : '' }));
+    if (this.refused()[lineId] !== undefined) {
+      this.refused.update((all) => {
+        const others = { ...all };
+        delete others[lineId];
+        return others;
+      });
+    }
+  }
+
+  protected async invoice(): Promise<void> {
+    if (!this.any() || this.step.busy()) return;
+    this.refused.set({});
+    const answer = await this.step.run(
+      () => this.data.invoice(this.chosen()),
+      (refusals) => {
+        const { onLines, rest } = quantityRefusals(refusals, this.lines, this.step);
+        this.refused.set(onLines);
+        return rest;
+      },
+    );
+    if (answer !== 'refused') this.ref.close(answer?.kept ?? null);
   }
 }
 

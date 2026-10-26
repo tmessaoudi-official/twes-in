@@ -573,9 +573,14 @@ export class PurchaseOrderPage {
       issueDate: current.issueDate,
       receive: async (input) => {
         const order = await this.facade.receive(companyId, current.id, input);
-        return order !== null
-          ? null
-          : { code: this.facade.error() ?? 'network', field: this.facade.refused() };
+        if (order !== null) return null;
+        const field = this.facade.refused();
+        const refusals = this.facade.refusals();
+        return {
+          code: this.facade.error() ?? 'network',
+          field,
+          refusal: refusals.find((refusal) => refusal.field === field) ?? refusals[0] ?? null,
+        };
       },
     };
     const received = await firstValueFrom(

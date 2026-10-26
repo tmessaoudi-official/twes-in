@@ -7,11 +7,15 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { locationLabels } from '../inventory/inventory-forms';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
 import { DecimalInput } from '../shared/form/decimal-input';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { FieldError } from '../shared/form/form-builder';
+import { RefusalFigures } from '../shared/form/refusal-figures';
+import { refusedError, worded } from '../shared/form/refusal-words';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { todayIn } from '../shared/i18n/format';
 import { plainDecimal } from './purchase-order-forms';
@@ -42,10 +46,12 @@ export interface ReceiveDialogData {
   readonly timeZone: string | null;
   /** The day the order was sent, the earliest day its goods can have come. */
   readonly issueDate: string | null;
-  /** Records the receipt: nothing when it was kept, otherwise why not and the field the API named. */
-  readonly receive: (
-    input: ReceiptInput,
-  ) => Promise<{ code: PurchasesError; field: string | null } | null>;
+  /** Records the receipt: nothing when it was kept, otherwise why not, the field the API named and its refusal. */
+  readonly receive: (input: ReceiptInput) => Promise<{
+    code: PurchasesError;
+    field: string | null;
+    refusal: FieldRefusal | null;
+  } | null>;
 }
 
 /** The label each field the API may refuse is shown by. */
@@ -99,12 +105,15 @@ export class ReceiveDialog {
   );
   protected readonly asksCostBasis = this.data.seesCost && this.data.receiving.asksCostBasis;
   protected readonly busy = signal(false);
-  /** Why the last attempt was refused: the API's code, the row it named and the field there. */
+  /** Why the last attempt was refused: the API's code, the row it named, the field there and its reason's words. */
   protected readonly refused = signal<{
     code: PurchasesError;
     row: number | null;
     field: string | null;
+    words: FieldError | null;
   } | null>(null);
+  private readonly translate = inject(TranslateService);
+  private readonly figures = inject(RefusalFigures);
 
   protected readonly problems = computed(() =>
     this.rows().map((row) => rowProblem(row, this.data.seesCost)),
@@ -144,6 +153,12 @@ export class ReceiveDialog {
     return serialsOf(row).length;
   }
 
+  /** Why the API refused a row, in its reason's words, when it gave one. */
+  protected refusedWords(index: number): FieldError | null {
+    const refused = this.refused();
+    return refused !== null && refused.row === index ? refused.words : null;
+  }
+
   /** What the API refused on a row, by its field's label; for a serial, the serial number's. */
   protected refusedLabel(index: number): string | null {
     const refused = this.refused();
@@ -160,7 +175,7 @@ export class ReceiveDialog {
     const refused = this.refused();
     if (refused === null || refused.row !== null) return null;
     const label = refused.field === null ? null : (FIELD_LABELS[refused.field] ?? null);
-    return { code: refused.code, label };
+    return { code: refused.code, label, words: refused.words };
   });
 
   protected async submit(): Promise<void> {
@@ -178,7 +193,17 @@ export class ReceiveDialog {
         outcome.field === null
           ? { row: null, field: null }
           : receiptRefusal(outcome.field, sources);
-      this.refused.set({ code: outcome.code, row: place.row, field: place.field });
+      // A reason the screens word is said in its words; one they do not is named by its field, as it always was.
+      const refusal = outcome.refusal;
+      this.refused.set({
+        code: outcome.code,
+        row: place.row,
+        field: place.field,
+        words:
+          refusal !== null && worded(this.translate, refusal)
+            ? refusedError(this.translate, refusal, refusal.params, this.figures)
+            : null,
+      });
     } finally {
       this.busy.set(false);
     }

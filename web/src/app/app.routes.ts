@@ -25,6 +25,7 @@ import { VENDORS_MODULE } from './vendors/vendors-nav';
 import { guardUnsaved } from './shared/form/unsaved-changes';
 import { customerScreenLock } from './customer-screen/customer-screen-lock';
 import { moduleGuard } from './shell/module-guard';
+import { FORM_REFUSAL_TEXTS } from './shared/form/form-refusal-texts';
 import { textsOpened, textsPart } from './shared/i18n/texts-part';
 import { MFA_LOCKOUT_TEXTS } from './auth/mfa-lockout-texts';
 import { MEMBERS_TEXTS } from './company/members-texts';
@@ -408,8 +409,9 @@ export const routes: Routes = [
         // this company cannot import, or may not write, so no static module guard could say it here.
         path: 'imports/:subject',
         title: 'titles.import',
-        // The records' words name what an import's undo kept and why, and its toast offers their « Annuler ».
-        ...textsPart('import', textsOpened(RECORDS_TEXTS)),
+        // The records' words name what an import's undo kept and why, and its toast offers their « Annuler »; a row is
+        // refused for the reasons a form's save is, a lot's or a quantity's, whose words are the forms' refusal texts.
+        ...textsPart('import', textsOpened(RECORDS_TEXTS), textsOpened(FORM_REFUSAL_TEXTS)),
         loadComponent: () => import('./import/import-page').then((m) => m.ImportPage),
       },
       {

@@ -31,6 +31,12 @@ export function refusalParams<P extends Readonly<Record<string, unknown>>>(
   return worded as P;
 }
 
+/** Whether the screens have words for a refusal's reason, rather than the plain « Valeur refusée. ». */
+export function worded(translate: TranslateService, refusal: FieldRefusal): boolean {
+  const key = `import.rejections.${refusal.reason ?? ''}`;
+  return refusal.reason !== null && translate.instant(key) !== key;
+}
+
 /**
  * What a form says under a field the API refused: the words of its reason when the screens have them, else the plain
  * « Valeur refusée. ». Every form placing a refusal says it through here, the descriptor forms and the hand-written ones
@@ -43,10 +49,10 @@ export function refusedError(
   params: FieldRefusal['params'] = refusal.params,
   figures: RefusalFigures | null = null,
 ): FieldError {
-  const key = `import.rejections.${refusal.reason ?? ''}`;
-  const known = refusal.reason !== null && translate.instant(key) !== key;
   return {
-    key: known ? key : 'import.rejections.invalid_value',
+    key: worded(translate, refusal)
+      ? `import.rejections.${refusal.reason}`
+      : 'import.rejections.invalid_value',
     params: refusalParams(translate, figures === null ? params : figures.written(params)),
   };
 }
