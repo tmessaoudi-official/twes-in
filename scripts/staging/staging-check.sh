@@ -136,9 +136,9 @@ by_digest
 step "every container runs its digest, nothing built here"
 
 dc exec -T edge cat /data/caddy/pki/authorities/local/root.crt > "$WORK/edge-root.crt"
-ask() { dc exec -T gotenberg curl -sS --cacert /tmp/edge-root.crt --connect-to "$HOST:443:edge:443" --max-time 10 "$@"; }
+ask() { dc exec -T edge curl -sS --cacert /tmp/edge-root.crt --connect-to "$HOST:443:edge:443" --max-time 10 "$@"; }
 through_the_edge() {
-  dc exec -T gotenberg sh -c 'cat > /tmp/edge-root.crt' < "$WORK/edge-root.crt"
+  dc exec -T edge sh -c 'cat > /tmp/edge-root.crt' < "$WORK/edge-root.crt"
   for _ in $(seq 1 30); do ask -f -o /dev/null "https://$HOST/api/health" 2>/dev/null && break; sleep 1; done
   ask "https://$HOST/api/health" | grep -q '"status":"ok"' || fail "/api/health is not ok through the edge"
 }
@@ -234,7 +234,7 @@ step "APP_SECRET rotated: older mail links refused, newer ones taken"
 [[ "$(signed_in_with "$secret")" == 200 ]] || fail "signing in again after the APP_SECRET rotation failed"
 realtime_token() { get /api/me/realtime-token | jq -r '.token // empty'; }
 token_valid() { dc exec -T centrifugo sh /twes-secrets centrifugo checktoken "$1" > "$WORK/checktoken.log" 2>&1; }
-api_key_answer() { dc exec -T gotenberg curl -sS -o /dev/null -w '%{http_code}' -H "X-API-Key: $1" --data '{}' http://centrifugo:8000/api/info; }
+api_key_answer() { dc exec -T edge curl -sS -o /dev/null -w '%{http_code}' -H "X-API-Key: $1" --data '{}' http://centrifugo:8000/api/info; }
 old_token=$(realtime_token); old_api=$(release_value REALTIME_API_KEY "$values")
 token_valid "$old_token" || fail "Centrifugo refused a token the API issued: $(cat "$WORK/checktoken.log")"
 [[ "$(api_key_answer "$old_api")" == 200 ]] || fail "Centrifugo's API refused the current key"

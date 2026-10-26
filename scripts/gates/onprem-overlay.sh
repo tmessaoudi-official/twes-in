@@ -13,9 +13,13 @@
 #              on, requires every bucket value, its secret key mounted the same way
 #   monitor    optional: SENTRY_DSN and MONITOR_URL may be left empty, and the installation still starts
 #   mailpit    behind a profile, so it never starts
+#   pdf        Gotenberg runs no JavaScript, opens no URL but its own files, and sits on an internal network only the api
+#              and the workers join (scripts/gates/lib/pdf-renderer.sh)
 #   edge       infra/onprem/Caddyfile answers on https://localhost and the network address, from its own authority
 # Usage: onprem-overlay.sh [--root DIR]
 set -uo pipefail
+# shellcheck source=scripts/gates/lib/pdf-renderer.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/pdf-renderer.sh"
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 problems=()
@@ -128,6 +132,7 @@ while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(jq -r 
 got=$(jq -r '.services.centrifugo.environment.CENTRIFUGO_CLIENT_ALLOWED_ORIGINS // "(unset)"' <<<"$config")
 [[ "$got" == "https://localhost https://$LAN" ]] || problem "centrifugo accepts origins [$got], wanted https://localhost https://$LAN"
 jq -e '.services | has("mailpit") | not' <<<"$config" >/dev/null || problem "mailpit starts in a shop's installation: put it behind a profile"
+while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(pdf_renderer_shut_in "$config")
 jq -e '.services | has("lan") | not' <<<"$config" >/dev/null || problem "development's phone door starts in a shop's installation: the edge is the door"
 
 caddy="$root/infra/onprem/Caddyfile"

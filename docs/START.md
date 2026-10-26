@@ -11,7 +11,7 @@ Every command runs from the repository root unless it says `cd`. For version bum
 | `api`        | http://localhost:8091/api                   | the Symfony API directly (FrankenPHP)                          |
 | `mailpit`    | http://localhost:8092 (SMTP on 8093)        | **every mail the application sends lands here**, none leaves   |
 | `postgres`   | `localhost:5433`, user `twes`, password `twes`, databases `twes` and `twes_test` | PostgreSQL                        |
-| `gotenberg`  | `localhost:8094`                            | renders PDFs                                                   |
+| `gotenberg`  | `localhost:8094`                            | renders PDFs, with no JavaScript and no URL but its own files, on a network only `api` and the workers join (internal, unpublished, in production) |
 | `centrifugo` | not published (reached through `web`)       | realtime updates between tabs, and a phone lent as a scanner   |
 | `worker`     | not published                               | the work a request leaves for later (the forgotten-password, signup and invitation mails), read from the `messenger_messages` table |
 | `demo-worker` | not published                              | builds the demo sandboxes, on a queue of its own, so no mail waits behind a build |

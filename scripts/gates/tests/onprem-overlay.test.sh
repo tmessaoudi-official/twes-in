@@ -50,5 +50,17 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "an edge that no longer answers on l
 d=$(project); edit "$d/compose.onprem.yaml" 's/"80:80"/"8080:80"/'
 out=$(bash "$GATE" --root "$d" 2>&1); check "the edge's doors moved are named" $? 1 "$out" "the edge publishes"
 
+d=$(project); edit "$d/compose.prod.yaml" '/^  pdf:$/,/^[a-z]/{/internal: true/d}'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a pdf network with a way out is named" $? 1 "$out" "the pdf network is not internal"
+
+d=$(project); edit "$d/compose.yaml" '/^  gotenberg:$/,/^  [a-z]*:$/{s/networks: \[pdf\]/networks: [default, pdf]/}'
+out=$(bash "$GATE" --root "$d" 2>&1); check "Gotenberg on the default network too is named" $? 1 "$out" "gotenberg is on [default, pdf]"
+
+d=$(project); edit "$d/compose.backup.yaml" 's/^  backup:$/  backup:\n    networks: [default, pdf]/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "another service joining the pdf network is named" $? 1 "$out" "backup joins the pdf network"
+
+d=$(project); edit "$d/compose.yaml" '/^      - --chromium-disable-javascript$/d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "Gotenberg running JavaScript is named" $? 1 "$out" "gotenberg starts without --chromium-disable-javascript"
+
 echo "onprem-overlay gate: $pass passed, $fail failed"
 ((fail == 0))

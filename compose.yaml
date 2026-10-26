@@ -29,6 +29,8 @@ services:
 
   api:
     logging: *logging
+    # The default network, and Gotenberg's, which only the api and the workers join.
+    networks: [default, pdf]
     build: &api-build
       context: .
       dockerfile: infra/api/Dockerfile
@@ -100,6 +102,7 @@ services:
   # each task runs once.
   worker: &worker
     logging: *logging
+    networks: [default, pdf]
     build: *api-build
     command: ["php", "bin/console", "messenger:consume", "async", "scheduler_default", "--time-limit=3600", "--memory-limit=96M"]
     restart: unless-stopped
@@ -191,6 +194,23 @@ services:
   gotenberg:
     logging: *logging
     image: gotenberg/gotenberg:8.38.1@sha256:aa552cc115db488e0f0bcb07446aac13071ad51505b642c84bb894500907b42b
+    # Its Chromium renders HTML written from what people typed, so one escaping mistake would hand it markup: shut in,
+    # that markup can do nothing. No JavaScript; no URL but its own working files (the logo is a data URI, which is no
+    # request); no download or webhook of its own; LibreOffice, which nothing here uses, closed. A wider allow-list would
+    # also skip the two IP denials, which Gotenberg warns of at start. scripts/gates/lib/pdf-renderer.sh holds them.
+    command:
+      - gotenberg
+      - --chromium-disable-javascript
+      - --chromium-allow-list=^file:///tmp/
+      - --chromium-deny-private-ips
+      - --chromium-deny-public-ips
+      - --api-disable-download-from
+      - --webhook-disable
+      - --libreoffice-disable-routes
+    # Alone on its own network with the api and the workers. Here it is an ordinary bridge, so the port below reaches
+    # the toolchain, which runs on the host's network; compose.prod.yaml makes it internal, with no way out, and
+    # publishes nothing.
+    networks: [pdf]
     ports:
       - "127.0.0.1:${GOTENBERG_PORT:-8094}:3000"
     healthcheck:
@@ -297,6 +317,9 @@ services:
       - "${HOST_REPO:-${PWD}}:${HOST_REPO:-${PWD}}"
       - "${HOST_GIT:-${PWD}/.git}:${HOST_GIT:-${PWD}/.git}"
       - "${TOOLS_TMP:-/tmp/twes-in-tools}:${TOOLS_TMP:-/tmp/twes-in-tools}"
+
+networks:
+  pdf:
 
 volumes:
   postgres-data:

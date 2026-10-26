@@ -79,5 +79,8 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "a secret that is no compose secret 
 d=$(project); rm "$d/compose.deploy.yaml"
 out=$(bash "$GATE" --root "$d" 2>&1); check "a tree without the overlay fails" $? 1 "$out" "compose.deploy.yaml"
 
+d=$(project); edit "$d/compose.yaml" '/^  worker: &worker$/,/^  [a-z-]*:$/{s/networks: \[default, pdf\]/networks: [default]/}'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a worker that cannot reach Gotenberg is named" $? 1 "$out" "worker is not on the pdf network"
+
 echo "deploy-overlay gate: $pass passed, $fail failed"
 ((fail == 0))

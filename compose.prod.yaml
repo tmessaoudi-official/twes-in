@@ -115,8 +115,15 @@ services:
     restart: unless-stopped
   gotenberg:
     restart: unless-stopped
+    ports: !reset []
   mailpit:
     restart: unless-stopped
+
+# Gotenberg's network has no way out: a page that asked for an outside address, or for one of the stack's services, finds
+# nothing. Only the api and the workers join it (scripts/gates/lib/pdf-renderer.sh).
+networks:
+  pdf:
+    internal: true
 
 # Each from the variable of its name in the environment compose is run in.
 secrets:

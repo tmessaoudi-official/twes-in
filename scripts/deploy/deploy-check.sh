@@ -14,6 +14,8 @@
 #                   requests, each claiming another one, are still counted against one, and the sixth answers 429
 #   backups         the backup service started and pgBackRest reaches the bucket
 #   secrets         no running container holds a secret of the values in its environment, only under /run/secrets
+#   gotenberg       shut in: its network has no way out and only the api reaches it among these, a page's script does not
+#                   run, and an address of the stack a page asks for is filtered
 # Certificates come from Caddy's own authority (EDGE_TLS=internal), and requests are made from inside the stack's
 # network, trusting that authority, so no public name or port is needed. Runs under the compose project
 # `twes-deploy-check` only and removes its containers and volumes at the end.
@@ -81,8 +83,8 @@ step "no container holds a secret in its environment"
 
 # Requests from inside the network, as a browser outside would make them: every connection to the host goes to the edge.
 dc exec -T edge cat /data/caddy/pki/authorities/local/root.crt > "$DRILL_DIR/edge-root.crt"
-dc exec -T gotenberg sh -c 'cat > /tmp/edge-root.crt' < "$DRILL_DIR/edge-root.crt"
-ask() { dc exec -T gotenberg curl -sS --cacert /tmp/edge-root.crt --connect-to "$HOST:443:edge:443" --connect-to "$HOST:80:edge:80" --max-time 10 "$@"; }
+dc exec -T edge sh -c 'cat > /tmp/edge-root.crt' < "$DRILL_DIR/edge-root.crt"
+ask() { dc exec -T edge curl -sS --cacert /tmp/edge-root.crt --connect-to "$HOST:443:edge:443" --connect-to "$HOST:80:edge:80" --max-time 10 "$@"; }
 for _ in $(seq 1 30); do ask -f -o /dev/null "https://$HOST/api/health" 2>/dev/null && break; sleep 1; done
 
 headers=$(ask -D - -o /dev/null "https://$HOST/") || fail "the edge did not answer over HTTPS with a certificate its authority signed"
@@ -121,5 +123,18 @@ for i in 1 2 3 4 5 6; do
 done
 [[ "$code" == 429 ]] || fail "six requests, each claiming another address, were not counted as one client's: the sixth answered $code"
 step "a forged client address changes nothing"
+
+# Gotenberg shut in (scripts/gates/lib/pdf-renderer.sh): its network has no way out, and only the api and the workers join it.
+! dc exec -T gotenberg curl -sS -o /dev/null --max-time 5 https://example.com 2>/dev/null || fail "gotenberg reached an outside address"
+! dc exec -T edge curl -sS -o /dev/null --max-time 5 http://gotenberg:3000/health 2>/dev/null || fail "the edge reached gotenberg: only the api and the workers may"
+dc exec -T api php -r 'exit(false === @file_get_contents("http://gotenberg:3000/health") ? 1 : 0);' || fail "the api does not reach gotenberg"
+# Its Chromium runs no script: a page whose script throws is refused under failOnConsoleExceptions only when the script ran.
+# And it opens no URL but its working files: an address of the stack asked for by a page is filtered, which Gotenberg logs.
+render() { dc exec -T gotenberg sh -c 'cat > /tmp/probe.html && curl -sS -o /dev/null -w "%{http_code}" -F "files=@/tmp/probe.html;filename=index.html" -F failOnConsoleExceptions=true http://127.0.0.1:3000/forms/chromium/convert/html'; }
+[[ "$(render <<<'<p>probe</p><script>throw new Error("a script ran")</script>')" == 200 ]] || fail "gotenberg ran a page's script"
+[[ "$(render <<<'<p>probe</p><img src="http://api/api/health">')" == 200 ]] || fail "gotenberg did not render a page asking for an address of the stack"
+dc logs gotenberg 2>&1 | grep -qF "'http://api/api/health' does not match any expression from the allowed list" \
+  || fail "gotenberg's Chromium was not refused an address of the stack"
+step "gotenberg shut in: no way out, no script, no URL but its files"
 
 printf 'deploy-check: OK — deployed and checked through its edge in %ss in all\n' "$(($(date +%s) - started))"

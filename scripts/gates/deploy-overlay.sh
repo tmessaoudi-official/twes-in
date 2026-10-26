@@ -16,9 +16,13 @@
 #   monitor    api and both workers report their errors to SENTRY_DSN and answer MONITOR_TOKEN; the backup service sends its
 #              heartbeats to MONITOR_URL with MONITOR_HEARTBEAT_TOKEN
 #   mailpit    behind a profile, so it never starts
+#   pdf        Gotenberg runs no JavaScript, opens no URL but its own files, and sits on an internal network only the api
+#              and the workers join (scripts/gates/lib/pdf-renderer.sh)
 #   HSTS       infra/edge/Caddyfile sends max-age=31536000 to the app host only: no includeSubDomains, no preload
 # Usage: deploy-overlay.sh [--root DIR]
 set -uo pipefail
+# shellcheck source=scripts/gates/lib/pdf-renderer.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/pdf-renderer.sh"
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 problems=()
@@ -113,6 +117,7 @@ got=$(jq -r '.services.postgres.environment.POSTGRES_PASSWORD_FILE // "(unset)"'
 got=$(jq -r '.services.centrifugo.environment.CENTRIFUGO_CLIENT_ALLOWED_ORIGINS // "(unset)"' <<<"$config")
 [[ "$got" == "https://$HOST" ]] || problem "centrifugo accepts origins [$got], wanted https://$HOST alone"
 jq -e '.services | has("mailpit") | not' <<<"$config" >/dev/null || problem "mailpit starts in a deployment: put it behind a profile"
+while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(pdf_renderer_shut_in "$config")
 
 caddy="$root/infra/edge/Caddyfile"
 grep -qE '^[[:space:]]*header Strict-Transport-Security "max-age=31536000"$' "$caddy" \
