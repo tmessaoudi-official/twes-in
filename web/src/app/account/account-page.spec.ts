@@ -150,8 +150,10 @@ describe('AccountPage', () => {
     user: { demo: false },
   });
   const modules = signal<readonly string[]>(['scanning']);
+  const closed = signal(false);
   const auth = {
     me,
+    companyClosed: () => closed(),
     changePassword: vi.fn(),
     isPlatformOperator: () => false,
     hasModule: (module: string) => modules().includes(module),
@@ -249,6 +251,7 @@ describe('AccountPage', () => {
     }
     company.pinAtSignIn.mockResolvedValue(true);
     modules.set(['scanning']);
+    closed.set(false);
     notificationChoices.list.mockResolvedValue([
       { companyId: 'c1', companyName: 'Acme', type: 'stock.low', bell: true, email: true },
     ]);
@@ -261,6 +264,18 @@ describe('AccountPage', () => {
     );
     expect(labels).toEqual(['Sécurité', 'Préférences', 'Cet appareil', 'Notifications']);
     expect(root.querySelector('.twes-soon')).toBeNull();
+  });
+
+  it('shows only « Sécurité » while the company is shut, since every other tab reads the company', async () => {
+    // Out of the shell, the preferences and the bell's choices answer the shut company's refusal.
+    closed.set(true);
+    const root = await render('preferences');
+    const labels = [...root.querySelectorAll('[role="tab"]')].map((tab) =>
+      tab.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(labels).toEqual(['Sécurité']);
+    expect(root.querySelector('app-connected-devices')).not.toBeNull();
+    expect(root.querySelector('app-account-deletion')).not.toBeNull();
   });
 
   it('opens « Notifications » on what the bell counts, company by company', async () => {

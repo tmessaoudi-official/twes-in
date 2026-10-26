@@ -5,6 +5,7 @@ import {
   anonymousGuard,
   authGuard,
   awaitingApprovalGuard,
+  closedCompanyMatch,
   lockedSubscriptionGuard,
   operatorGuard,
   twoFactorGuard,
@@ -151,6 +152,15 @@ export const routes: Routes = [
     canActivate: [awaitingApprovalGuard],
     loadComponent: () =>
       import('./auth/awaiting-approval-page').then((m) => m.AwaitingApprovalPage),
+  },
+  {
+    // « Mon compte » for a member of a shut company, outside the shell: matched only then, so the shell's own
+    // `account` below serves everyone else at the same address.
+    path: 'account',
+    title: 'account.title',
+    canMatch: [closedCompanyMatch],
+    ...textsPart('account', textsOpened(MFA_LOCKOUT_TEXTS)),
+    loadComponent: () => import('./account/closed-account-page').then((m) => m.ClosedAccountPage),
   },
   {
     // The customer screen (docs/SPEC.md § 7, 2026-10-03 08:20): the one screen a customer may be left in front of.

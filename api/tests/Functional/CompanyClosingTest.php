@@ -21,6 +21,7 @@ use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Model\SupportGrant;
 use App\Tenancy\Domain\ValueObject\InvitationToken;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\RouterInterface;
 
@@ -70,6 +71,67 @@ final class CompanyClosingTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
         self::assertSame('owner_only', $this->stringAt($this->json(), 'error'));
         self::assertSame(Company::STATUS_ACTIVE, $this->companyStatus());
+    }
+
+    /**
+     * An unpaid subscription keeps its owner from working, never from stopping: a shop that has ceased trading would
+     * otherwise have to pay to close, or stay locked out with its company open.
+     */
+    #[DataProvider('unpaidModes')]
+    public function testAnOwnerLockedOutByAnUnpaidSubscriptionStillClosesItDown(string $mode, string $refusal): void
+    {
+        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, ?, now(), now())", [$this->company->getId()->toRfc4122(), $mode]);
+        $this->login('owner@twes.local', self::PASSWORD);
+        $this->postJson($this->path().'/customers', ['number' => 'CLI-0002', 'kind' => 'individual', 'name' => 'Sonia Ben Ali', 'taxRegime' => 'standard', 'defaultTaxComponentIds' => [], 'isActive' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertStringContainsString($refusal, $this->stringAt($this->json(), 'detail'), 'the subscription does refuse its work');
+
+        $this->stepUp(self::PASSWORD);
+        $this->postJson($this->path().'/close-down', []);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(Company::STATUS_CLOSED, $this->companyStatus());
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function unpaidModes(): iterable
+    {
+        yield 'locked' => ['locked', 'subscription_locked'];
+        yield 'read only' => ['read_only', 'subscription_read_only'];
+    }
+
+    public function testThroughTheLockStillOnlyTheOwnerClosesIt(): void
+    {
+        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, 'locked', now(), now())", [$this->company->getId()->toRfc4122()]);
+        $this->createUser('manager@twes.local', self::PASSWORD, $this->company, ['*'], 'manager');
+        $this->login('manager@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+
+        $this->postJson($this->path().'/close-down', []);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame(Company::STATUS_ACTIVE, $this->companyStatus());
+    }
+
+    /** A company the operator suspended or has not yet approved is the operator's to close: its owner meets the same 404 as anywhere in it. */
+    #[DataProvider('companiesNotWorking')]
+    public function testACompanyNotWorkingIsNotClosedByItsOwner(string $status): void
+    {
+        $this->login('owner@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+        $this->em()->getConnection()->executeStatement('UPDATE company SET status = ? WHERE id = ?', [$status, $this->company->getId()->toRfc4122()]);
+
+        $this->postJson($this->path().'/close-down', []);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame($status, $this->companyStatus());
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function companiesNotWorking(): iterable
+    {
+        yield 'suspended' => [Company::STATUS_SUSPENDED];
+        yield 'pending' => [Company::STATUS_PENDING];
     }
 
     public function testClosingKeepsItUntilTheEndOfTheYearItClosedPlusItsCountrysYears(): void

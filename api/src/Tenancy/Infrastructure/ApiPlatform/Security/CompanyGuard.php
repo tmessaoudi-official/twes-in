@@ -99,6 +99,28 @@ final readonly class CompanyGuard
     }
 
     /**
+     * The company a member asks to close down, whatever its subscription says: an unpaid one keeps its owner from working,
+     * never from stopping, or a shop that has ceased trading would have to pay to close. A company that is not working
+     * answers as anywhere in it; whether they are its owner is the use case's to say.
+     *
+     * @throws NotFoundHttpException     when the company is absent, none of the caller's business, pending or suspended
+     * @throws AccessDeniedHttpException when it is closed down already
+     */
+    public function companyToCloseDown(Uuid $companyId, string $permission): Company
+    {
+        $company = $this->companies->ofId($companyId);
+        if (null === $company || !$this->roleGrants($company, $permission)) {
+            throw new NotFoundHttpException('No such company.');
+        }
+        if ($company->isClosedDown()) {
+            throw new AccessDeniedHttpException(self::COMPANY_CLOSED);
+        }
+        $this->entityManager->getFilters()->enable(CompanyFilter::NAME)->setParameter(CompanyFilter::COMPANY, $company->getId()->toRfc4122());
+
+        return $company;
+    }
+
+    /**
      * The company a member asks to reopen, closed down as it is: the one way to act on a closed company that is not a
      * read. Whether they are its owner, and whether the days allow it, is the use case's to say.
      *

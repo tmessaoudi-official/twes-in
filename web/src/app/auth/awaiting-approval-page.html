@@ -16,6 +16,18 @@
           <p data-testid="awaiting-ask-owner">{{ 'auth.awaiting.ask_owner' | translate }}</p>
         }
       }
+      @if (mayClose()) {
+        <button
+          mat-stroked-button
+          type="button"
+          class="twes-danger"
+          [disabled]="closingDown()"
+          (click)="closeDown()"
+          data-testid="awaiting-close"
+        >
+          {{ 'company.closing.close' | translate }}
+        </button>
+      }
     } @else if (company.status === 'suspended') {
       <p data-testid="awaiting-suspended">
         {{ 'auth.awaiting.suspended' | translate: { company: company.name } }}
@@ -25,6 +37,25 @@
         {{ 'auth.awaiting.pending' | translate: { company: company.name } }}
       </p>
     }
+  }
+
+  <!-- What the platform's operators decide (an approval, a suspension, a payment to confirm): whom to ask. -->
+  @if (channels().length > 0) {
+    <section class="flex flex-col gap-1" data-testid="awaiting-contact">
+      <h2 class="text-base font-medium">{{ 'help.contact.title' | translate }}</h2>
+      @for (channel of channels(); track channel.key) {
+        <a
+          mat-button
+          [href]="channel.href"
+          [attr.target]="channel.key === 'whatsapp' ? '_blank' : null"
+          [attr.rel]="channel.key === 'whatsapp' ? 'noopener' : null"
+          [attr.data-testid]="'awaiting-contact-' + channel.key"
+        >
+          <mat-icon aria-hidden="true">{{ channel.icon }}</mat-icon>
+          {{ 'help.contact.' + channel.key | translate }} <bdi>{{ channel.shown }}</bdi>
+        </a>
+      }
+    </section>
   }
 
   @if (elsewhere().length > 0) {
@@ -43,6 +74,11 @@
       }
     </section>
   }
+
+  <!-- The person's own: their password, second factor, devices, and deleting the account. -->
+  <a mat-stroked-button routerLink="/account" data-testid="awaiting-account">
+    {{ 'account.title' | translate }}
+  </a>
 
   <!-- way-out: the person's other companies above, when they have any, and signing out -->
   <button mat-stroked-button type="button" (click)="signOut()" data-testid="awaiting-sign-out">

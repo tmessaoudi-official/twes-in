@@ -6,6 +6,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import type { SupportContact } from '../auth/auth-types';
+import { supportChannels } from '../auth/support-channels';
 import { BuildLine } from '../shared/build/build-line';
 import type { Tour } from '../shared/tour/tour';
 import type { GlossaryEntry } from './glossary';
@@ -16,14 +17,6 @@ export interface HelpPanelData {
   readonly glossary: readonly GlossaryEntry[];
   /** How to reach the platform's operators, as the signed-in state carries it. */
   readonly support?: SupportContact;
-}
-
-/** One way of reaching the operators, as a link that opens it: a call, a WhatsApp chat or a mail. */
-interface Channel {
-  readonly key: 'phone' | 'whatsapp' | 'email';
-  readonly icon: 'call' | 'chat' | 'mail';
-  readonly href: string;
-  readonly shown: string;
 }
 
 /** What the panel was closed for: a guide to start, the keyboard's list to open, or nothing. */
@@ -137,34 +130,5 @@ export class HelpPanel {
   protected readonly ref = inject<MatDialogRef<HelpPanel, HelpChoice>>(MatDialogRef);
   protected readonly data = inject<HelpPanelData>(MAT_DIALOG_DATA);
 
-  protected readonly channels = computed<readonly Channel[]>(() => {
-    const support = this.data.support;
-    const channels: Channel[] = [];
-    if (support?.phone) {
-      channels.push({
-        key: 'phone',
-        icon: 'call',
-        href: `tel:${support.phone.replace(/[^+\d]/g, '')}`,
-        shown: support.phone,
-      });
-    }
-    if (support?.whatsapp) {
-      // WhatsApp's link takes the international number in digits alone, without its « + ».
-      channels.push({
-        key: 'whatsapp',
-        icon: 'chat',
-        href: `https://wa.me/${support.whatsapp.replace(/\D/g, '')}`,
-        shown: support.whatsapp,
-      });
-    }
-    if (support?.email) {
-      channels.push({
-        key: 'email',
-        icon: 'mail',
-        href: `mailto:${support.email}`,
-        shown: support.email,
-      });
-    }
-    return channels;
-  });
+  protected readonly channels = computed(() => supportChannels(this.data.support));
 }

@@ -38,7 +38,7 @@ final readonly class CompanyClosingController
     #[Route('/api/companies/{companyId}/close-down', name: 'api_company_close_down', methods: ['POST'])]
     public function closeDown(string $companyId): Response
     {
-        $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), self::PERMISSION);
+        $company = $this->guard->companyToCloseDown(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), self::PERMISSION);
 
         return $this->answer(function () use ($company): Response {
             $closed = $this->closing->closeDown($company, $this->guard->account()->getId());

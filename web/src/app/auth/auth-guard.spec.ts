@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import {
   type ActivatedRouteSnapshot,
   type CanActivateFn,
+  type CanMatchFn,
   provideRouter,
   Router,
   type RouterStateSnapshot,
@@ -15,6 +16,7 @@ import {
   anonymousGuard,
   authGuard,
   awaitingApprovalGuard,
+  closedCompanyMatch,
   lockedSubscriptionGuard,
   operatorGuard,
   twoFactorGuard,
@@ -122,6 +124,24 @@ describe('auth guards', () => {
     expect(await run(operatorGuard, facade('authenticated', false, false, true))).toBe(true);
     expect(await run(operatorGuard, facade('authenticated', false, false, false))).toBe('/');
     expect(await run(operatorGuard, facade('anonymous'))).toBe('/login');
+  });
+
+  it('matches « Mon compte » outside the shell only while the company is shut', async () => {
+    // A member of a shut company was sent from /account to the waiting page: no password or account to change.
+    const match = async (fake: ReturnType<typeof facade>): Promise<boolean> => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), { provide: AuthFacade, useValue: fake }],
+      });
+      return (await TestBed.runInInjectionContext(() =>
+        (closedCompanyMatch as CanMatchFn)({}, [], {} as never),
+      )) as boolean;
+    };
+    expect(await match(facade('authenticated', false, true))).toBe(true);
+    expect(await match(facade('authenticated', false, false))).toBe(false);
+    expect(await match(facade('anonymous', false, true))).toBe(false);
+    // Nor before the second factor a company requires is set up.
+    expect(await match(facade('authenticated', true, true))).toBe(false);
   });
 
   it('keeps a signed-in account off the login page', async () => {

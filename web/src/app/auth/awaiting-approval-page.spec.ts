@@ -13,6 +13,7 @@ import { AuthFacade } from './auth-facade';
 import { Session } from '../shared/session/session';
 import type { SignedInState } from './auth-types';
 import { AwaitingApprovalPage } from './awaiting-approval-page';
+import { CompanyClosingActions } from '../company/company-closing-actions';
 import { CompanyFacade } from '../company/company-facade';
 import type { CompanyOption } from '../company/company-types';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
@@ -37,6 +38,16 @@ class StaticLoader implements TranslateLoader {
           ask_owner: 'Seul le propriétaire peut déclarer le règlement.',
           elsewhere: 'Vos autres entreprises',
           sign_out: 'Se déconnecter',
+        },
+      },
+      account: { title: 'Mon compte' },
+      company: { closing: { close: 'Fermer l’entreprise' } },
+      help: {
+        contact: {
+          title: 'Nous contacter',
+          phone: 'Téléphone :',
+          whatsapp: 'WhatsApp :',
+          email: 'E-mail :',
         },
       },
     });
@@ -112,6 +123,7 @@ describe('AwaitingApprovalPage', () => {
     supportAccessUntil: null,
     supportAccessReason: null,
   });
+  const closing = { close: vi.fn(async () => true) };
   const listed = signal<readonly CompanyOption[]>([]);
   const companies = {
     companies: listed,
@@ -126,12 +138,14 @@ describe('AwaitingApprovalPage', () => {
     auth.refresh.mockClear();
     companies.load.mockClear();
     companies.switchTo.mockReset().mockResolvedValue(true);
+    closing.close.mockReset().mockResolvedValue(true);
     await TestBed.configureTestingModule({
       imports: [AwaitingApprovalPage],
       providers: [
         provideRouter([]),
         { provide: AuthFacade, useValue: auth },
         { provide: CompanyFacade, useValue: companies },
+        { provide: CompanyClosingActions, useValue: closing },
         { provide: Session, useExisting: AuthFacade },
         provideStillAppearance(),
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -193,6 +207,74 @@ describe('AwaitingApprovalPage', () => {
     const owner = await render();
     expect(owner.query('awaiting-declare')).not.toBeNull();
     expect(owner.query('awaiting-ask-owner')).toBeNull();
+  });
+
+  it('lets the owner of a company its subscription locked close it down, and nobody else', async () => {
+    // A shop that had stopped trading could neither pay nor close: the owner stayed locked out with the company open.
+    me.set(state('active', 'locked', ['subscription.read', 'subscription.pay'], null, 'owner'));
+    const owner = await render();
+    owner.query<HTMLButtonElement>('awaiting-close')!.click();
+    await owner.fixture.whenStable();
+    expect(closing.close).toHaveBeenCalledWith({ id: 'c1', name: 'Nouvelle Société' });
+    owner.fixture.destroy();
+
+    me.set(state('active', 'locked', ['subscription.read'], null, 'member'));
+    const clerk = await render();
+    expect(clerk.query('awaiting-close')).toBeNull();
+    clerk.fixture.destroy();
+
+    // A suspended or pending company is the operator's to close.
+    for (const status of ['suspended', 'pending']) {
+      me.set(state(status, 'full', ['*'], null, 'owner'));
+      const other = await render();
+      expect(other.query('awaiting-close')).toBeNull();
+      other.fixture.destroy();
+    }
+  });
+
+  it.each(['pending', 'suspended', 'locked'])(
+    'leads to « Mon compte » whatever holds the company back (%s)',
+    async (held) => {
+      // Changing a password or deleting the account was out of reach while the company was shut.
+      me.set(held === 'locked' ? state('active', 'locked') : state(held));
+
+      const { query } = await render();
+
+      expect(query<HTMLAnchorElement>('awaiting-account')?.getAttribute('href')).toBe('/account');
+      expect(query('awaiting-account')?.textContent).toContain('Mon compte');
+    },
+  );
+
+  it.each(['suspended', 'pending', 'locked'])(
+    'says how to reach the platform while the company waits on it (%s)',
+    async (held) => {
+      // A suspended company's owner was told it was suspended, and nothing of whom to ask why.
+      me.set({
+        ...(held === 'locked' ? state('active', 'locked') : state(held)),
+        support: { phone: '+216 71 000 000', whatsapp: '+216 20 000 000', email: 'aide@twes.test' },
+      });
+
+      const { query } = await render();
+
+      expect(query('awaiting-contact')?.textContent).toContain('Nous contacter');
+      expect(query<HTMLAnchorElement>('awaiting-contact-phone')?.getAttribute('href')).toBe(
+        'tel:+21671000000',
+      );
+      expect(query<HTMLAnchorElement>('awaiting-contact-whatsapp')?.getAttribute('href')).toBe(
+        'https://wa.me/21620000000',
+      );
+      expect(query<HTMLAnchorElement>('awaiting-contact-email')?.getAttribute('href')).toBe(
+        'mailto:aide@twes.test',
+      );
+    },
+  );
+
+  it('names no way to reach the platform when none was given', async () => {
+    me.set({ ...state('suspended'), support: { phone: null, whatsapp: null, email: null } });
+
+    const { query } = await render();
+
+    expect(query('awaiting-contact')).toBeNull();
   });
 
   it('offers the person’s other companies, and moves the session to the one chosen', async () => {

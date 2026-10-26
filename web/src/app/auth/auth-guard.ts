@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, CanMatchFn, Router } from '@angular/router';
 import { signInAddress } from '../shared/session/return-to';
 import { AuthFacade } from './auth-facade';
 
@@ -37,6 +37,16 @@ export const awaitingApprovalGuard: CanActivateFn = async () => {
     return router.createUrlTree(['/login']);
   }
   return auth.companyClosed() ? true : router.createUrlTree(['/']);
+};
+
+/**
+ * « Mon compte » outside the shell, for a member of a company that is shut: the password, the second factor, the devices
+ * and deleting the account are the person's own, which no company's state may hold back. Matched before the shell's own
+ * `/account`, which then serves everyone else; an account a company requires to enrol goes to set it up first.
+ */
+export const closedCompanyMatch: CanMatchFn = async () => {
+  const auth = inject(AuthFacade);
+  return (await resolveStatus(auth)) && !auth.needsEnrolment() && auth.companyClosed();
 };
 
 /**

@@ -123,9 +123,15 @@ export class AccountPage implements OnInit {
   /** The tab from the address; an unknown one opens the first. */
   readonly tab = input<string | undefined>(undefined);
 
-  /** The tabs shown: « Cet appareil » goes with the scanner, which is all it holds. */
+  /**
+   * The tabs shown: « Cet appareil » goes with the scanner, which is all it holds. While the company is shut the page is
+   * read outside the shell, and only « Sécurité » stays: every other tab reads or writes the company's settings, which
+   * it refuses.
+   */
   protected readonly tabs = computed(() =>
-    ACCOUNT_TABS.filter((tab) => tab !== 'device' || this.scanning()),
+    this.auth.companyClosed()
+      ? ACCOUNT_TABS.filter((tab) => tab === 'security')
+      : ACCOUNT_TABS.filter((tab) => tab !== 'device' || this.scanning()),
   );
   protected readonly languages = SUPPORTED_LANGUAGES;
   protected readonly schemes: readonly SchemePreference[] = ['auto', 'light', 'dark'];
