@@ -257,6 +257,15 @@ final class NotificationsTest extends ApiTestCase
         self::assertSame(['user:'.$this->owner->getId()->toRfc4122()], $this->realtimeChannels());
     }
 
+    /** Read in the shell until its retention ends, a closed company's members hear its owner reopen it elsewhere. */
+    public function testAMemberOfACompanyItsOwnerClosedStillHearsIt(): void
+    {
+        $this->login('owner@twes.local', 'password-1234');
+        $this->em()->getConnection()->executeStatement("UPDATE company SET status = 'closed' WHERE id = ?", [$this->company->getId()->toRfc4122()]);
+
+        self::assertSame(['user:'.$this->owner->getId()->toRfc4122(), 'company:'.$this->company->getId()->toRfc4122()], $this->realtimeChannels());
+    }
+
     public function testNobodyGetsARealtimeTokenSignedOut(): void
     {
         $this->getJson('/api/me/realtime-token');

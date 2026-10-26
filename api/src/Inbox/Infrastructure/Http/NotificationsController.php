@@ -82,9 +82,11 @@ final readonly class NotificationsController
     {
         $userId = $this->currentUserId();
         // The session only names a company: it is heard while the user is still its member and it is open to them, so
-        // someone removed from it, or a member of a company since suspended, renews a token without its channel.
+        // someone removed from it, or a member of a company since suspended, renews a token without its channel. A
+        // company its owner closed is still read, in the shell, and its reopening is what its members must hear.
         $context = $this->workingContext->for($userId);
-        $companyId = null !== $context && Company::STATUS_ACTIVE === $context->status ? Uuid::fromString($context->companyId) : null;
+        $heard = null !== $context && \in_array($context->status, [Company::STATUS_ACTIVE, Company::STATUS_CLOSED], true);
+        $companyId = $heard ? Uuid::fromString($context->companyId) : null;
         // An operator works in no company of their own, and hears what /platform shows on the platform's channel.
         $token = $this->tokens->issue($userId, $companyId, $this->security->isGranted(SecurityUser::ROLE_PLATFORM_OPERATOR));
 
