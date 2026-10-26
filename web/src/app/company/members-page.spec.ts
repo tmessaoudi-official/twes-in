@@ -45,6 +45,7 @@ class StaticLoader implements TranslateLoader {
         add: 'Ajouter',
         invited_row: 'Invitation en attente',
         invited_until: 'Invitation en attente jusqu’au {{day}}',
+        expired_on: 'Invitation expirée le {{day}} sans avoir servi : renvoyez-la',
         replaces: 'Une invitation attend déjà {{email}}.',
         resend: 'Renvoyer l’invitation',
         change_role: 'Changer le rôle',
@@ -288,6 +289,21 @@ describe('MembersPage', () => {
 
     expect(text('member-invited@example.test')).toContain('Invitation en attente jusqu’au');
     for (const action of ['resend', 'change-role', 'withdraw']) {
+      expect(await menuEntry('invited:invited@example.test', action), action).not.toBeNull();
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+    expect(await menuEntry('invited:invited@example.test', 'remove')).toBeNull();
+  });
+
+  it('says an invitation that ran out unused, offering to send it again or withdraw it', async () => {
+    // It used to vanish from the list: the person waiting said they never got in, and the owner saw nothing.
+    rows.set([owner, { ...invited, status: 'expired', expiresAt: '2026-10-20T10:00:00+00:00' }]);
+    fixture.detectChanges();
+
+    expect(text('member-invited@example.test')).toContain('Invitation expirée le');
+    for (const action of ['resend', 'withdraw']) {
       expect(await menuEntry('invited:invited@example.test', action), action).not.toBeNull();
       document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
       fixture.detectChanges();

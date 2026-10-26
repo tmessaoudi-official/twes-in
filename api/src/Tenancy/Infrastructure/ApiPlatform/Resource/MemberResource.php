@@ -76,6 +76,7 @@ final class MemberResource
 {
     public const string JOINED = 'joined';
     public const string INVITED = 'invited';
+    public const string EXPIRED = 'expired';
 
     /**
      * Read and write shapes are named explicitly. Without them a write operation answers with only the
@@ -115,8 +116,11 @@ final class MemberResource
     #[Groups([self::READ])]
     public ?string $joinedAt = null;
 
-    /** Whether that person is a member, or an address that was invited and has not accepted; the latter names nobody. */
-    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [self::JOINED, self::INVITED]])]
+    /**
+     * Whether that person is a member, an address invited that has not accepted, or one whose invitation ran out unused;
+     * the last two name nobody.
+     */
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [self::JOINED, self::INVITED, self::EXPIRED]])]
     #[Groups([self::READ])]
     public string $status = self::JOINED;
 

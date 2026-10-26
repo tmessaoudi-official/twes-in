@@ -228,6 +228,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/flow-outcomes-forgotten.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/session-forgotten.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/signed-out-exits.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/signed-out-follows.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/refusals-said.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/unsaved-guarded.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/list-stances.test.sh
@@ -302,6 +303,7 @@ in-gate-licences:
 	bash scripts/gates/flow-outcomes-forgotten.sh
 	bash scripts/gates/session-forgotten.sh
 	bash scripts/gates/signed-out-exits.sh
+	bash scripts/gates/signed-out-follows.sh
 	bash scripts/gates/refusals-said.sh
 	bash scripts/gates/unsaved-guarded.sh
 	bash scripts/gates/list-stances.sh

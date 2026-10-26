@@ -38,6 +38,7 @@
     "withdrawn": "The invitation to {{email}} is withdrawn. Its link no longer works.",
     "undo": "Undo",
     "invited_until": "Invitation pending until {{day}}",
+    "expired_on": "Invitation expired unused on {{day}}: send it again",
     "replaces": "An invitation is already waiting for {{email}}. Sending it again replaces it, at the role chosen.",
     "change_role_title": "Change {{name}}’s role",
     "change_role_hint": "What {{name}} may do in the company changes as soon as you confirm.",

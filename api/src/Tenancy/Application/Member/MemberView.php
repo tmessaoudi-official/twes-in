@@ -14,6 +14,8 @@ final readonly class MemberView
 {
     public const string JOINED = 'joined';
     public const string INVITED = 'invited';
+    /** An invitation whose link has run out and that nobody used: kept a while in the list, to be sent again. */
+    public const string EXPIRED = 'expired';
 
     public function __construct(
         public ?string $userId,

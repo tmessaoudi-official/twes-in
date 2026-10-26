@@ -25,6 +25,12 @@ interface InvitationRepository
     /** @return list<Invitation> the company's invitations nobody has used and that have not expired, oldest first */
     public function openOfCompany(Uuid $companyId, \DateTimeImmutable $now): array;
 
+    /**
+     * @return list<Invitation> the company's invitations nobody has used, the open ones and those expired since
+     *                          $expiredSince, oldest first
+     */
+    public function unusedOfCompany(Uuid $companyId, \DateTimeImmutable $expiredSince): array;
+
     public function save(Invitation $invitation): void;
 
     /** Inviting the same address again replaces the open invitation, so exactly one token ever works. */

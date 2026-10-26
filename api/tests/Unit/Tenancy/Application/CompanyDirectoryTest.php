@@ -151,7 +151,7 @@ final class CompanyDirectoryTest extends TestCase
             }
         };
 
-        return new ListMembers($this->memberships, $this->invitations, $nobodyIsADemo, new MockClock('2026-09-09 10:00:00'));
+        return new ListMembers($this->memberships, $this->invitations, $nobodyIsADemo, new MockClock('2026-09-09 10:00:00'), 'P30D');
     }
 
     private function logos(): CompanyLogo

@@ -15,11 +15,14 @@ use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Repository\InvitationRepository;
 use App\Tenancy\Domain\Repository\MembershipRepository;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Everyone in one company, oldest membership first, then the addresses invited that have not accepted yet. A demo
- * visitor's account shows the address every demo account shows, as it does to the visitor themselves.
+ * Everyone in one company, oldest membership first, then the addresses invited that have not accepted yet, an invitation
+ * whose link ran out kept for `app.invitation.expired_shown_for` as expired, so the person who sent it sees it went
+ * unused and sends it again rather than wait (workflow hunt, F3). A demo visitor's account shows the address every demo
+ * account shows, as it does to the visitor themselves.
  */
 final readonly class ListMembers
 {
@@ -28,6 +31,8 @@ final readonly class ListMembers
         private InvitationRepository $invitations,
         private DemoAccounts $demoAccounts,
         private ClockInterface $clock,
+        #[Autowire(param: 'app.invitation.expired_shown_for')]
+        private string $expiredShownFor,
     ) {
     }
 
@@ -45,6 +50,7 @@ final readonly class ListMembers
             $this->memberships->ofCompany($companyId),
         );
         // An invitation names nobody: an existing account is not a member, and not shown as one, until it accepts.
+        $now = $this->clock->now();
         $invited = array_map(
             static fn (Invitation $i) => new MemberView(
                 null,
@@ -52,11 +58,11 @@ final readonly class ListMembers
                 null,
                 $i->getRoleName(),
                 null,
-                MemberView::INVITED,
+                $i->isUsableAt($now) ? MemberView::INVITED : MemberView::EXPIRED,
                 $i->getId()->toRfc4122(),
                 $i->getExpiresAt()->format(\DATE_ATOM),
             ),
-            $this->invitations->openOfCompany($companyId, $this->clock->now()),
+            $this->invitations->unusedOfCompany($companyId, $now->sub(new \DateInterval($this->expiredShownFor))),
         );
 
         return [...$members, ...$invited];

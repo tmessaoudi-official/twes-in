@@ -92,6 +92,27 @@ final class MembersTest extends ApiTestCase
         self::assertSame(['admin@twes.local'], array_map(static fn (array $row) => $row['email'], $this->jsonList()));
     }
 
+    /** One that ran out lately stays listed as expired, until when it ran, and sending it again opens it once more. */
+    public function testAnInvitationThatRanOutLatelyIsListedAsExpiredAndSentAgain(): void
+    {
+        $this->adminSignedIn();
+        $this->postJson($this->path(), ['email' => 'late@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->em()->getConnection()->executeStatement("UPDATE invitation SET expires_at = expires_at - INTERVAL '8 days' WHERE email = 'late@twes.local'");
+
+        $this->getJson($this->path());
+
+        $late = array_values(array_filter($this->jsonList(), static fn (array $row): bool => 'late@twes.local' === ($row['email'] ?? null)));
+        self::assertCount(1, $late);
+        self::assertSame('expired', $late[0]['status'] ?? null);
+        self::assertIsString($late[0]['expiresAt'] ?? null);
+
+        $this->postJson($this->path(), ['email' => 'late@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(Role::MEMBER, $this->invitedRow('late@twes.local')['role']);
+        self::assertSame(1, $this->rowCount("SELECT COUNT(*) FROM invitation WHERE email = 'late@twes.local'"), 'the expired one replaced');
+    }
+
     /** An owner who typed the address wrong takes the invitation back: its link stops working, and the list forgets it. */
     public function testAnInvitationIsWithdrawnAndItsLinkNoLongerWorks(): void
     {

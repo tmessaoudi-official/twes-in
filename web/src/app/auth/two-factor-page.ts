@@ -60,6 +60,8 @@ export class TwoFactorPage {
   /**
    * The account must carry a second factor: an operator's, or a member's of any company requiring one. Read live, so a
    * requirement switched on or off elsewhere withdraws or offers the authenticator's removal at once.
+   * session-followed: what it reads is the person's own factors, changed on this page; inside the shell a company's
+   * requirement changed is heard there, and standing alone before the first factor, the page has one thing to do.
    */
   protected readonly required = computed(() => this.auth.me()?.mfa.required === true);
   /** Any factor in force; read live, so a passkey added on this page counts at once. */

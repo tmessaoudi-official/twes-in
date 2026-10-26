@@ -37,7 +37,7 @@ import { MemberRoleDialog, type MemberRoleChoice } from './member-role-dialog';
 export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
   id: 'members',
   // An open invitation names nobody yet, so its address identifies the row.
-  rowId: (row) => (row.status === 'invited' ? `invited:${row.email}` : row.userId),
+  rowId: (row) => (row.status !== 'joined' ? `invited:${row.email}` : row.userId),
   pageSizes: [25, 50, 100],
   columns: [
     {
@@ -187,7 +187,7 @@ export class MembersPage implements OnInit {
         icon: 'forward_to_inbox',
         run: (row) => void this.resend(row),
         disabled: () => this.busy(),
-        shown: (row) => this.mayManage() && row.status === 'invited',
+        shown: (row) => this.mayManage() && row.status !== 'joined',
       },
       {
         // An invitation's in the form, which sends it again; a member's from a dialog, its toast putting it back.
@@ -207,7 +207,7 @@ export class MembersPage implements OnInit {
         icon: 'cancel',
         run: (row) => void this.withdraw(row),
         disabled: () => this.busy(),
-        shown: (row) => this.mayManage() && row.status === 'invited' && row.invitationId !== null,
+        shown: (row) => this.mayManage() && row.status !== 'joined' && row.invitationId !== null,
       },
     ],
   }));
@@ -233,7 +233,7 @@ export class MembersPage implements OnInit {
   protected readonly replaces = computed(() => {
     const typed = this.typedEmail().trim().toLowerCase();
     return (
-      this.rows().find((row) => row.status === 'invited' && row.email.toLowerCase() === typed) ??
+      this.rows().find((row) => row.status !== 'joined' && row.email.toLowerCase() === typed) ??
       null
     );
   });
@@ -280,7 +280,7 @@ export class MembersPage implements OnInit {
    * member's role chosen again in a dialog, without removing them and inviting them again (hunt F5).
    */
   protected changeRole(row: MemberRow): void {
-    if (row.status === 'invited') {
+    if (row.status !== 'joined') {
       this.form.setValue({ email: row.email, role: row.role });
       this.document.getElementById('member-role-input')?.focus();
       return;

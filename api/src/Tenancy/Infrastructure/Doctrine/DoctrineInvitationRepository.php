@@ -55,6 +55,24 @@ final readonly class DoctrineInvitationRepository implements InvitationRepositor
         return $open;
     }
 
+    public function unusedOfCompany(Uuid $companyId, \DateTimeImmutable $expiredSince): array
+    {
+        /** @var list<Invitation> $unused */
+        $unused = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invitation::class, 'i')
+            ->where('i.company = :company')
+            ->andWhere('i.acceptedAt IS NULL')
+            ->andWhere('i.expiresAt >= :since')
+            ->orderBy('i.createdAt', 'ASC')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('since', $expiredSince, Types::DATETIME_IMMUTABLE)
+            ->getQuery()
+            ->getResult();
+
+        return $unused;
+    }
+
     public function save(Invitation $invitation): void
     {
         $this->entityManager->persist($invitation);

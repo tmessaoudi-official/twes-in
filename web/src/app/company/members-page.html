@@ -25,7 +25,12 @@
     emptyTestId="members-empty"
   >
     <ng-template appDataListCell="name" let-row>
-      @if (row.status === 'invited') {
+      @if (row.status === 'expired') {
+        <!-- Ran out unused: said, so the person who sent it sends it again rather than wait. -->
+        <span class="opacity-70" data-testid="member-expired">{{
+          'members.expired_on' | translate: { day: (row.expiresAt | day) }
+        }}</span>
+      } @else if (row.status === 'invited') {
         <span class="opacity-70">{{
           row.expiresAt
             ? ('members.invited_until' | translate: { day: (row.expiresAt | day) })

@@ -57,6 +57,7 @@ import { ActivityBar } from '../shared/feedback/activity-bar';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from '../watch/watch-facade';
 import { WATCHED_KINDS } from '../watch/watch-types';
+import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { RequestActivity } from '../shared/feedback/request-activity';
 import { LANGUAGE_NAMES, LanguageFacade } from '../shared/i18n/language-facade';
 import { LanguageDialog } from '../shared/i18n/language-dialog';
@@ -463,15 +464,7 @@ export class AppShell {
     // the notice bar and the locked page read from the session. A support grant opened or ended reaches an operator on
     // the platform's channel, and the company's members on its own, whose banner says it.
     inject(LiveChanges).reloadOn(
-      [
-        'membership',
-        'role',
-        'module',
-        'company',
-        'subscription',
-        'payment_declaration',
-        'support_grant',
-      ],
+      SESSION_KINDS,
       async () => {
         await Promise.all([this.auth.refresh(), this.companies.load()]);
       },

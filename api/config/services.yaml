@@ -18,6 +18,8 @@ parameters:
     # Invitations: how long a mailed link works, and the page it points at. The URL is built from the same
     # origin the SPA is served from, because the link is opened from a mail client with no session.
     app.invitation.valid_for: 'P7D'
+    # How long the members list keeps an invitation whose link ran out unused, marked expired, to be sent again.
+    app.invitation.expired_shown_for: 'P30D'
     app.invitation.accept_url: '%env(DEFAULT_URI)%/invitations/{token}'
     app.signup.link_url: '%env(DEFAULT_URI)%/signup/{token}'
     app.signup.login_url: '%env(DEFAULT_URI)%/login'
