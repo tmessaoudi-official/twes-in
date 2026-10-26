@@ -20,6 +20,7 @@ import type { ListQuery } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
 import { subjectView } from './watch-subjects';
+import { withSessionKinds } from '../shared/session/session-kinds';
 import { WATCHED_KINDS } from './watch-types';
 import { watchRowView } from './watch-view';
 
@@ -81,7 +82,11 @@ export class WatchSubjectPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
     if (!companyId) return;
-    this.live.reloadOn(WATCHED_KINDS, () => this.reload(companyId), this.destroyRef);
+    this.live.reloadOn(
+      withSessionKinds(WATCHED_KINDS),
+      () => this.reload(companyId),
+      this.destroyRef,
+    );
     await this.facade.load(companyId);
   }
 

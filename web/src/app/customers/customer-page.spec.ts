@@ -840,6 +840,21 @@ describe('CustomerPage', () => {
     expect(facade.loadContacts).toHaveBeenCalledWith('c1', 'k1');
   });
 
+  it('reads its contacts again when anyone adds one, with no contact open', async () => {
+    // A contact a clerk added through a document's « Reçu par » stayed unseen on an open « Contacts » tab, and the
+    // owner, reading « Aucun contact », added the same person again.
+    customer.set(carthage);
+    await open('k1');
+    await openTab('Contacts');
+    facade.loadContacts.mockClear();
+
+    const call = live.reloadOn.mock.calls.find(([kinds]) => kinds.includes('contact'));
+    expect(call).toBeDefined();
+    await call![1]();
+
+    expect(facade.loadContacts).toHaveBeenCalledWith('c1', 'k1');
+  });
+
   it('keeps what was typed when the customer and its options are read again', async () => {
     customer.set(carthage);
     await open('k1');

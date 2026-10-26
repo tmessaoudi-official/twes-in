@@ -905,18 +905,35 @@ export class InvoicePage {
     );
   }
 
+  /** The contacts « Reçu par » offers for this customer; an answer for a customer the draft no longer names is dropped. */
+  private async readReceiverContacts(companyId: string, customerId: string): Promise<void> {
+    const contacts = await this.facade.receivers(companyId, customerId);
+    if (this.customer()?.id === customerId) this.receiverContacts.set(contacts);
+  }
+
   constructor() {
     this.unsaved.declare(this.customerChanges);
-    // « Reçu par » offers the contacts of the customer the draft names now; an answer for an earlier one is dropped.
+    // « Reçu par » offers the contacts of the customer the draft names now.
     effect(() => {
       const companyId = this.company()?.id;
       const customerId = this.customer()?.id;
       untracked(() => this.receiverContacts.set([]));
       if (!companyId || !customerId || !this.receiverAsked()) return;
-      void untracked(() => this.facade.receivers(companyId, customerId)).then((contacts) => {
-        if (this.customer()?.id === customerId) this.receiverContacts.set(contacts);
-      });
+      untracked(() => void this.readReceiverContacts(companyId, customerId));
     });
+    // A contact added meanwhile, by a colleague or on the customer's page, is offered without leaving the draft:
+    // unseen, it was typed again, ticked « Ajouter aux contacts », and the customer held the person twice.
+    inject(LiveChanges).reloadOn(
+      ['contact'],
+      async () => {
+        const companyId = this.company()?.id;
+        const customerId = this.customer()?.id;
+        if (companyId && customerId && this.receiverAsked()) {
+          await this.readReceiverContacts(companyId, customerId);
+        }
+      },
+      inject(DestroyRef),
+    );
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
     // declaration, so an action cannot be offered in one of them and missing from another.
     inject(ScreenActions).declare(this.actions);

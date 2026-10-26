@@ -47,5 +47,28 @@ if ((checked == 0)); then
   echo "live-reload: FAIL — no component reads through one of its members: the gate would pass over nothing"
   exit 1
 fi
+# `listRecord` follows the row open in a list, never the list: with no row open, a row a teammate added (a contact named
+# from a delivery note's « Reçu par ») stayed unseen, and « Aucun contact » invited the same person twice (hunt FS-5).
+# Every list it keeps also reads again on its own kind, named in a reloadOn.
+lists=0
+for file in "${files[@]}"; do
+  while read -r kind; do
+    [[ -z "$kind" ]] && continue
+    lists=$((lists + 1))
+    if ! KIND="$kind" perl -0ne 'exit(/reloadOn\(\s*\[[^\]]*\x27\Q$ENV{KIND}\E\x27/ ? 0 : 1)' "$root/$file"; then
+      printf 'live-reload: FAIL — %s keeps its %s list with listRecord, which follows the open row only, and no reloadOn names %s: a row added elsewhere stays unseen until a reload\n' "$file" "$kind" "$kind"
+      status=1
+    fi
+  done < <(perl -0ne 'while (/listRecord\(\{\s*kind:\s*\x27([a-z_]+)\x27/g) { print "$1\n" }' "$root/$file")
+done
+# « À surveiller », the reports and the first steps are filtered by the reader's role and modules: a member raised or
+# lowered kept the former role's subjects and count until a reload (hunt FS-1, FS-2). Their kinds go through
+# `withSessionKinds`, which adds every change of the session.
+for file in "${files[@]}"; do
+  if perl -0ne 'exit(/reloadOn\(\s*(WATCHED_KINDS|REPORT_KINDS|FIRST_STEPS_KINDS)\b/ ? 0 : 1)' "$root/$file"; then
+    printf 'live-reload: FAIL — %s reads again on %s alone: what it lists is filtered by the reader'"'"'s role and modules, so it must hear the session too (withSessionKinds)\n' "$file" "$(perl -0ne 'print $1 if /reloadOn\(\s*(WATCHED_KINDS|REPORT_KINDS|FIRST_STEPS_KINDS)\b/' "$root/$file")"
+    status=1
+  fi
+done
 ((status)) && exit 1
-printf 'live-reload: OK — %d screens read again on a live change (%d exempt with a reason)\n' "$checked" "${#exempt[@]}"
+printf 'live-reload: OK — %d screens read again on a live change (%d exempt with a reason); %d lists kept by listRecord read again on their kind\n' "$checked" "${#exempt[@]}" "$lists"

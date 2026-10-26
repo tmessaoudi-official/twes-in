@@ -14,6 +14,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { withSessionKinds } from '../shared/session/session-kinds';
 import { ReportsFacade } from './reports-facade';
 
 /**
@@ -40,7 +41,7 @@ export class ReportsPage implements OnInit {
     const companyId = this.auth.me()?.company?.id;
     if (!companyId) return;
     this.live.reloadOn(
-      ['module', 'role'],
+      withSessionKinds(['module', 'role']),
       () => this.facade.loadCatalogue(companyId),
       this.destroyRef,
     );

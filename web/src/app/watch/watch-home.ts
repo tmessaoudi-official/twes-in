@@ -8,6 +8,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
+import { withSessionKinds } from '../shared/session/session-kinds';
 import { WATCHED_KINDS } from './watch-types';
 
 /** The home's count of « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10), linked to the list itself. */
@@ -28,7 +29,11 @@ export class WatchHome implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
     if (!companyId) return;
-    this.live.reloadOn(WATCHED_KINDS, () => this.facade.load(companyId), this.destroyRef);
+    this.live.reloadOn(
+      withSessionKinds(WATCHED_KINDS),
+      () => this.facade.load(companyId),
+      this.destroyRef,
+    );
     await this.facade.load(companyId);
   }
 }

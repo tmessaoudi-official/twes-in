@@ -33,6 +33,7 @@ import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import { validRangeValue } from '../shared/list/list-filters';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { withSessionKinds } from '../shared/session/session-kinds';
 import { ReportDocumentsDialog, type ReportDocumentsData } from './report-documents-dialog';
 import {
   addressOf,
@@ -208,7 +209,11 @@ export class ReportPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId) return;
     this.facade.forgetReport();
-    this.live.reloadOn(REPORT_KINDS, () => this.reload(companyId), this.destroyRef);
+    this.live.reloadOn(
+      withSessionKinds(REPORT_KINDS),
+      () => this.reload(companyId),
+      this.destroyRef,
+    );
     await Promise.all([
       this.facade.loadCatalogue(companyId),
       this.establishmentsFacade.loadEstablishments(companyId),

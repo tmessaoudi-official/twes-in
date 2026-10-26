@@ -18,6 +18,7 @@ import { EstablishmentsFacade } from '../company/establishments-facade';
 import type { EstablishmentRow } from '../company/company-types';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { StepUp } from '../shared/step-up/step-up';
 import { provideQuietFeedback } from '../shared/testing/feedback';
 import { ReportDocumentsDialog } from './report-documents-dialog';
@@ -354,6 +355,8 @@ describe('ReportPage', () => {
     expect(kinds).toEqual(
       expect.arrayContaining(['invoice', 'payment', 'stock', 'expense', 'module']),
     );
+    // The catalogue beside it is filtered by the reader's role: their membership changed moves it too.
+    expect(kinds).toEqual(expect.arrayContaining([...SESSION_KINDS]));
     const before = facade.loadReport.mock.calls.length;
     await reload();
     expect(facade.loadReport.mock.calls.length).toBe(before + 1);

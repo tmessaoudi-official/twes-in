@@ -2081,6 +2081,18 @@ describe('InvoicePage', () => {
   });
 
   describe('« Reçu par »', () => {
+    it('offers a contact another person added to the customer while the draft is open', async () => {
+      // Unseen, the name was typed again and ticked « Ajouter aux contacts »: the customer gained the person twice.
+      invoice.set(draft);
+      await open('i1');
+      await vi.waitFor(() => expect(facade.receivers).toHaveBeenCalledWith('c1', 'k1'));
+      facade.receivers.mockClear();
+
+      await announceSaved('contact', 'p9', { id: 'u2', name: 'Nadia' }, 'contact.created');
+
+      expect(facade.receivers).toHaveBeenCalledWith('c1', 'k1');
+    });
+
     it('asks who received the goods a draft hands over itself, offers the customer’s contacts and sends the name typed', async () => {
       facade.receivers.mockResolvedValue([{ contactId: 'ct1', name: 'Sami Trabelsi' }]);
       invoice.set(draft);

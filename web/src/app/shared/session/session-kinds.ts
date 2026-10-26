@@ -15,3 +15,12 @@ export const SESSION_KINDS: readonly string[] = [
   'subscription',
   'support_grant',
 ];
+
+/**
+ * What a list the API filters by the reader's role and modules (« À surveiller », the reports, the first steps) reads
+ * again on: the kinds of its own subjects, and every change of the session, since a member raised or lowered, or a
+ * module switched, adds or takes away whole subjects.
+ */
+export function withSessionKinds(kinds: readonly string[]): readonly string[] {
+  return [...new Set([...kinds, ...SESSION_KINDS])];
+}

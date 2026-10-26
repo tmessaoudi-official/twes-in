@@ -11,6 +11,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { WatchFacade } from './watch-facade';
 import { WatchPage } from './watch-page';
 import type { WatchError, WatchSummary } from './watch-types';
@@ -87,6 +88,8 @@ describe('WatchPage', () => {
     expect(kinds).toEqual(
       expect.arrayContaining(['invoice', 'payment_instrument', 'stock', 'expense', 'invitation']),
     );
+    // Its subjects are filtered by the reader's role and modules: a role changed must move them at once.
+    expect(kinds).toEqual(expect.arrayContaining([...SESSION_KINDS]));
     reload();
     expect(facade.load).toHaveBeenCalledTimes(2);
   });

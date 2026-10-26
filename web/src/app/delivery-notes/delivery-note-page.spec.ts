@@ -719,6 +719,19 @@ describe('DeliveryNotePage', () => {
     );
   });
 
+  it('offers a contact another person added to the customer while the draft is open', async () => {
+    // The clerk typed a name the owner had just added, ticked « Ajouter aux contacts », and the customer gained it twice.
+    await open(undefined);
+    await pick('delivery-note-customer', 'CLI-1 · Carthage');
+    await pick('line-0-product', 'ART-1 · Portable 14"');
+    await vi.waitFor(() => expect(facade.receivers).toHaveBeenCalledWith('c1', 'k1'));
+    facade.receivers.mockClear();
+
+    await announceSaved('contact', 'p9', { id: 'u2', name: 'Nadia' }, 'contact.created');
+
+    expect(facade.receivers).toHaveBeenCalledWith('c1', 'k1');
+  });
+
   // docs/SPEC.md § 7, 2026-09-19 21:55: a line's figures show the French decimal comma and take a comma or a point.
   // docs/SPEC.md § 7, 2026-09-23: a carton scanned into a line delivers the pieces it holds.
   it('shows each product’s main photo beside its words in a line’s picker', async () => {

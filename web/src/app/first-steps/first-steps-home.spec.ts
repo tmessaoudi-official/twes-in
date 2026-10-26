@@ -10,6 +10,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { FirstStepsApi } from './first-steps-api';
 import { FirstStepsHome } from './first-steps-home';
 import type { FirstSteps } from './first-steps-types';
@@ -77,7 +78,8 @@ describe('FirstStepsHome', () => {
     });
 
     expect(api.read).toHaveBeenCalledWith('k1');
-    expect(live.reloadOn).toHaveBeenCalled();
+    // A step is shown to whoever may do it: a role or a module changed must move the list at once.
+    expect(live.reloadOn.mock.calls[0]![0]).toEqual(expect.arrayContaining([...SESSION_KINDS]));
     expect(q('home-first-steps')?.getAttribute('data-tour')).toBe('first-steps');
     expect(q('first-steps-progress')?.textContent).toContain('1 sur 3');
     const rows = [...fixture.nativeElement.querySelectorAll('[data-step]')] as HTMLElement[];

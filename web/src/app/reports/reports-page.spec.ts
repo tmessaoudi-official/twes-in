@@ -11,6 +11,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { ReportsFacade } from './reports-facade';
 import { ReportsPage } from './reports-page';
 import type { ReportEntry } from './reports-types';
@@ -94,11 +95,12 @@ describe('ReportsPage', () => {
     expect(q('report-takings')?.textContent).toContain('Chaque jour.');
   });
 
-  it('reads the catalogue again when a module or a role changes', async () => {
+  it('reads the catalogue again when the session changes: a module, a role or the reader’s membership', async () => {
+    // A member raised or lowered kept the former role's catalogue until a reload.
     await open();
 
     const [kinds, reload] = live.reloadOn.mock.calls[0]!;
-    expect(kinds).toEqual(['module', 'role']);
+    expect(kinds).toEqual(expect.arrayContaining([...SESSION_KINDS]));
     await reload();
     expect(facade.loadCatalogue).toHaveBeenCalledTimes(2);
   });

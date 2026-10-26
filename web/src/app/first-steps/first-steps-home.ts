@@ -16,6 +16,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { FirstStepsApi } from './first-steps-api';
+import { withSessionKinds } from '../shared/session/session-kinds';
 import { FIRST_STEP_LINKS, FIRST_STEPS_KINDS, type FirstSteps } from './first-steps-types';
 
 /**
@@ -49,7 +50,11 @@ export class FirstStepsHome implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
     if (!companyId) return;
-    this.live.reloadOn(FIRST_STEPS_KINDS, () => this.load(companyId), this.destroyRef);
+    this.live.reloadOn(
+      withSessionKinds(FIRST_STEPS_KINDS),
+      () => this.load(companyId),
+      this.destroyRef,
+    );
     await this.load(companyId);
   }
 

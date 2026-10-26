@@ -23,6 +23,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { RequestActivity } from '../shared/feedback/request-activity';
 import { RecordedFeedback } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AppShell } from './app-shell';
@@ -878,6 +879,20 @@ describe('AppShell', () => {
 
     expect(companies.load).toHaveBeenCalledTimes(2);
   });
+
+  it.each([...SESSION_KINDS])(
+    'counts « À surveiller » again when the session changes (%s): what it counts depends on the reader’s role',
+    async (kind) => {
+      // A member raised to validator was not told drafts waited for them; lowered, they kept a count they may not act on.
+      permissions.set(['customer.read', 'company.read']);
+      await render();
+      watch.load.mockClear();
+
+      await announceSaved(kind, 'x1');
+
+      expect(watch.load).toHaveBeenCalledWith('c1');
+    },
+  );
 
   it.each(['subscription', 'payment_declaration', 'support_grant'])(
     'reads the session again when the operator changes the company’s standing (%s)',

@@ -11,6 +11,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { WatchFacade } from './watch-facade';
 import { WatchHome } from './watch-home';
 import type { WatchSummary } from './watch-types';
@@ -68,7 +69,8 @@ describe('WatchHome', () => {
     await open();
 
     expect(facade.load).toHaveBeenCalledWith('k1');
-    expect(live.reloadOn).toHaveBeenCalled();
+    // What it counts is filtered by the reader's role and modules: a role changed must move the count at once.
+    expect(live.reloadOn.mock.calls[0]![0]).toEqual(expect.arrayContaining([...SESSION_KINDS]));
     expect(q('home-watch')?.textContent).toContain('À surveiller : 3');
     expect(q('home-watch')?.querySelector('a')?.getAttribute('href')).toBe('/watch');
   });

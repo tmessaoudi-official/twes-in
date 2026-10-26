@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
@@ -46,6 +47,7 @@ import { RecordDeletes } from '../shared/records/record-deletes';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -276,6 +278,17 @@ export class CustomerPage {
         }
       });
     });
+    // The open contact follows its own saves (`contactSync`); the list follows every contact added or removed, by a
+    // colleague here or by a clerk naming one in a document's « Reçu par », or « Aucun contact » would invite a double.
+    inject(LiveChanges).reloadOn(
+      ['contact'],
+      async () => {
+        const companyId = this.company()?.id;
+        const id = this.id();
+        if (companyId && id !== null) await this.facade.loadContacts(companyId, id);
+      },
+      inject(DestroyRef),
+    );
   }
 
   /**

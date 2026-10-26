@@ -14,6 +14,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -120,6 +121,13 @@ describe('WatchSubjectPage', () => {
     expect(q('watch-elsewhere')?.getAttribute('href')).toBe(
       '/purchases?status=sent,partly_received',
     );
+  });
+
+  it('reads its rows again when the session changes, which decides whether the reader may see the subject', async () => {
+    await open('delivery_note.to_validate');
+
+    const reloadOn = vi.mocked(TestBed.inject(LiveChanges).reloadOn);
+    expect(reloadOn.mock.calls[0]![0]).toEqual(expect.arrayContaining([...SESSION_KINDS]));
   });
 
   it('offers no way elsewhere on a subject that has none', async () => {

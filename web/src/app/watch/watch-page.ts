@@ -16,6 +16,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
 import { subjectView } from './watch-subjects';
+import { withSessionKinds } from '../shared/session/session-kinds';
 import { WATCHED_KINDS } from './watch-types';
 
 /**
@@ -50,7 +51,11 @@ export class WatchPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
     if (!companyId) return;
-    this.live.reloadOn(WATCHED_KINDS, () => this.facade.load(companyId), this.destroyRef);
+    this.live.reloadOn(
+      withSessionKinds(WATCHED_KINDS),
+      () => this.facade.load(companyId),
+      this.destroyRef,
+    );
     await this.facade.load(companyId);
   }
 }

@@ -32,6 +32,14 @@ rm "$d/web/src/app/x/a-lines.ts"; git -C "$d" add -A
 d=$(repo); printf '@Component({}) export class LocationLabelsPage { init() { void this.facade.load(id); } }\n' > "$d/web/src/app/inventory/location-labels-page.ts"
 printf '@Component({}) export class APage { init() { this.live.reloadOn(["a"], r, d); void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page listed with its reason is not asked" $? 0 "$out" "OK — 1 "
+d=$(repo); printf "@Component({}) export class APage { readonly r = liveRecord({ kind: 'customer' }); readonly s = listRecord({ kind: 'contact', reload: () => this.facade.loadContacts(id) }); }\n" > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a list kept by listRecord with no reloadOn of its kind is named" $? 1 "$out" "x/a-page.ts keeps its contact list"
+printf "@Component({}) export class APage { readonly r = liveRecord({ kind: 'customer' }); readonly s = listRecord({ kind: 'contact', reload: () => this.facade.loadContacts(id) }); init() { this.live.reloadOn(['contact'], r, d); } }\n" > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a list kept by listRecord that also reloads on its kind passes" $? 0 "$out" "1 lists kept by listRecord"
+d=$(repo); printf '@Component({}) export class APage { init() { this.live.reloadOn(WATCHED_KINDS, () => this.facade.load(id), this.destroyRef); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a list filtered by the reader's role that does not hear the session is named" $? 1 "$out" "x/a-page.ts reads again on WATCHED_KINDS"
+printf '@Component({}) export class APage { init() { this.live.reloadOn(\n      withSessionKinds(WATCHED_KINDS), () => this.facade.load(id), this.destroyRef); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a list filtered by the reader's role that hears the session passes" $? 0 "$out" "OK"
 d=$(repo); printf '@Component({}) export class APage { init() { void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.spec.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a spec is not a page" $? 1 "$out" "pass over nothing"
 d=$(repo); git -C "$d" add -A
