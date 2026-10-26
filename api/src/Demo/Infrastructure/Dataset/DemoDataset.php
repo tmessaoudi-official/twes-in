@@ -201,13 +201,14 @@ final readonly class DemoDataset
 
             $this->planExpenses($demo, $timeline, $company, $vendors, $tax, $actor);
             $this->planRecurringExpense($demo, $timeline, $company, $vendors[0], $tax, $actor);
-            $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $tracked, array_map(static fn (array $contact): string => $contact[0].' '.$contact[1], $demo->contacts), $actor);
+            $contacts = array_map(static fn (array $contact): string => $contact[0].' '.$contact[1], $demo->contacts);
+            $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $tracked, $contacts, $actor);
             $this->planPurchaseOrders($timeline, $company, $vendors, $goods, $homes, $actor);
-            $this->planQuotes($timeline, $company, $customerIds, $sellable, $actor);
+            $this->planQuotes($timeline, $company, $customerIds, $sellable, $contacts, $actor);
             // A tracked article leaves through a delivery note, which names its lot or serial number as a shop hands it
             // over; an invoice naming none would sell the pieces the notes already took, and move nothing.
             $untracked = array_values(array_filter($sellable, static fn (Uuid $id): bool => [] === array_filter($tracked, static fn (Uuid $each): bool => $each->equals($id))));
-            $this->planInvoices($demo, $timeline, $company, $customerIds, $untracked, $actor);
+            $this->planInvoices($demo, $timeline, $company, $customerIds, $untracked, $goods, $contacts, $actor);
             $this->planPriceLists($demo, $timeline, $company, $untracked, $actor);
             $timeline->run();
 
@@ -596,7 +597,9 @@ final readonly class DemoDataset
                         $quantity = isset($order['partly']) ? bcdiv($line->getQuantity(), '2', 3) : $line->getQuantity();
                         $received[] = new ReceivedGoods($line->getId(), $home, $quantity);
                     }
-                    $this->purchaseOrderWorkflow->receive($company(), $ids[$n], $receivedOn, \sprintf('BL-%04d', 310 + 7 * $n), $received, true, IntakeCost::Average, $actor);
+                    // A whole receipt names the member who took the goods in; a part received is left naming nobody.
+                    $receivedBy = isset($order['partly']) ? null : new ReceiverChoice($actor->toRfc4122());
+                    $this->purchaseOrderWorkflow->receive($company(), $ids[$n], $receivedOn, \sprintf('BL-%04d', 310 + 7 * $n), $received, true, IntakeCost::Average, $actor, $receivedBy);
                 });
             }
         }
@@ -609,8 +612,10 @@ final readonly class DemoDataset
      * @param \Closure(): Company $company
      * @param list<Uuid>          $customerIds
      * @param list<Uuid>          $sellable
+     * @param list<string>        $contacts    the name of each customer's contact, by the customer's place in the list: who
+     *                                         answers an accepted quote, as the shop names them
      */
-    private function planQuotes(Timeline $timeline, \Closure $company, array $customerIds, array $sellable, Uuid $actor): void
+    private function planQuotes(Timeline $timeline, \Closure $company, array $customerIds, array $sellable, array $contacts, Uuid $actor): void
     {
         /** @var list<array{customer: int, day: int, send?: int, accept?: int, refuse?: int, deposit?: int, invoice?: int, cancel?: int}> $plan */
         $plan = [
@@ -627,6 +632,8 @@ final readonly class DemoDataset
         $ids = [];
         foreach ($plan as $n => $quote) {
             $customerId = $customerIds[$quote['customer'] % \count($customerIds)];
+            $contact = $contacts[$quote['customer'] % \count($customerIds)] ?? null;
+            $answeredBy = null === $contact ? null : new ReceiverChoice(null, $contact);
             $lines = [
                 // A discount as an amount on one quote in two, small enough for the cheapest product the catalogue sells.
                 new QuoteLineInput($sellable[(2 * $n + 1) % \count($sellable)], null, (string) (3 + $n), discountAmount: 1 === $n % 2 ? '0.1' : null),
@@ -641,8 +648,8 @@ final readonly class DemoDataset
                 'send' => function () use (&$ids, $n, $company, $actor): void {
                     $this->quoteWorkflow->send($company(), $ids[$n], $actor);
                 },
-                'accept' => function () use (&$ids, $n, $company, $actor): void {
-                    $this->quoteWorkflow->accept($company(), $ids[$n], null, $actor);
+                'accept' => function () use (&$ids, $n, $company, $actor, $answeredBy): void {
+                    $this->quoteWorkflow->accept($company(), $ids[$n], null, $actor, $answeredBy);
                 },
                 'refuse' => function () use (&$ids, $n, $company, $actor): void {
                     $this->quoteWorkflow->refuse($company(), $ids[$n], null, 'Délai de livraison trop long.', $actor);
@@ -681,22 +688,31 @@ final readonly class DemoDataset
      * @param \Closure(): Company $company
      * @param list<Uuid>          $customerIds
      * @param list<Uuid>          $sellable    services and untracked goods
+     * @param list<Uuid>          $goods       the goods among them: an invoice of goods alone hands them over itself
+     * @param list<string>        $contacts    the name of each customer's contact, by the customer's place in the list
      */
-    private function planInvoices(DemoCompany $demo, Timeline $timeline, \Closure $company, array $customerIds, array $sellable, Uuid $actor): void
+    private function planInvoices(DemoCompany $demo, Timeline $timeline, \Closure $company, array $customerIds, array $sellable, array $goods, array $contacts, Uuid $actor): void
     {
         /** @var array<int, Uuid> $ids */
         $ids = [];
-        $input = static function (int $i) use ($customerIds, $sellable): InvoiceInput {
+        $input = static function (int $i) use ($customerIds, $sellable, $goods, $contacts): InvoiceInput {
             $lines = [];
+            $handsGoods = true;
             for ($k = 0; $k <= $i % 3; ++$k) {
-                $lines[] = new InvoiceLineInput($sellable[(7 * $i + 11 * $k) % \count($sellable)], null, (string) (1 + ($i + $k) % 4), discountRate: 0 === $i % 5 && 0 === $k ? '10' : null, discountAmount: 0 === $i % 5 && 1 === $k ? '0.1' : null, section: 2 === $i % 3 ? self::INVOICE_SECTIONS[$k] ?? null : null);
+                $product = $sellable[(7 * $i + 11 * $k) % \count($sellable)];
+                $handsGoods = $handsGoods && [] !== array_filter($goods, static fn (Uuid $each): bool => $each->equals($product));
+                $lines[] = new InvoiceLineInput($product, null, (string) (1 + ($i + $k) % 4), discountRate: 0 === $i % 5 && 0 === $k ? '10' : null, discountAmount: 0 === $i % 5 && 1 === $k ? '0.1' : null, section: 2 === $i % 3 ? self::INVOICE_SECTIONS[$k] ?? null : null);
             }
+            $customer = (5 * $i + 1) % \count($customerIds);
+            // One invoice in four of goods alone, sold at the counter, names who took them, as a clerk types the name.
+            $receivedBy = $handsGoods && 0 === $i % 4 && isset($contacts[$customer]) ? new ReceiverChoice(null, $contacts[$customer]) : null;
 
             return new InvoiceInput(
-                $customerIds[(5 * $i + 1) % \count($customerIds)],
+                $customerIds[$customer],
                 null,
                 new InvoiceHeader(customerReference: 0 === $i % 3 ? \sprintf('BC-%04d', 2600 + $i) : null),
                 $lines,
+                receivedBy: $receivedBy,
             );
         };
         $pay = function (int $i, int $day, bool $half) use (&$ids, $demo, $timeline, $company, $actor): void {

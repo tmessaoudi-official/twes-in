@@ -107,6 +107,13 @@ final class DemoFixturesTest extends ApiTestCase
                 array_column($this->em()->getConnection()->fetchAllAssociative('SELECT status, COUNT(received_by_name) || \',\' || COUNT(printed_receiver_name) AS counts FROM delivery_note WHERE company_id = ? AND received_by_name IS NOT NULL GROUP BY status ORDER BY status', [$id]), 'counts', 'status'),
                 "$name's notes name who received",
             );
+            // Who answered a quote is named at its acceptance, who took goods in on a whole receipt, and who took the
+            // goods an invoice sold at the counter on the invoice itself.
+            $answered = $this->column('SELECT DISTINCT status FROM quote WHERE company_id = ? AND received_by_name IS NOT NULL ORDER BY status', [$id]);
+            self::assertNotSame([], $answered, "$name has a quote naming who answered");
+            self::assertSame([], array_values(array_filter($answered, static fn (mixed $status): bool => !\in_array($status, ['accepted', 'invoiced'], true))), "$name names who answered only on an answered quote");
+            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM goods_receipt WHERE company_id = ? AND received_by_member_id IS NOT NULL AND received_by_name IS NOT NULL', [$id]), "$name's whole receipt names the member who took the goods in");
+            self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM invoice WHERE company_id = ? AND received_by_name IS NOT NULL', [$id]), "$name has an invoice naming who took its goods");
             self::assertSame(
                 ['draft', 'partly_received', 'received', 'sent'],
                 $this->column('SELECT DISTINCT status FROM purchase_order WHERE company_id = ? ORDER BY status', [$id]),
