@@ -11,6 +11,8 @@ namespace App\Demo\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Demo\Domain\Model\DemoSandbox;
 use App\Demo\Domain\Repository\DemoSandboxRepository;
 use App\Settings\Application\ReadSetting;
@@ -24,7 +26,7 @@ use Psr\Clock\ClockInterface;
  * its replacement. None ready (the worker is still building, or the demo is full) answers null. The claim is on the
  * company's journal, under its owner, as the visitor's own first line.
  */
-final readonly class ClaimSandbox
+final readonly class ClaimSandbox implements DeclaresAuditActions
 {
     public const string CLAIMED = 'demo.sandbox_claimed';
 
@@ -69,5 +71,12 @@ final readonly class ClaimSandbox
         $this->pool->handle();
 
         return $claimed;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CLAIMED => AuditScope::Company,
+        ];
     }
 }

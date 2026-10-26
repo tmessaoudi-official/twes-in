@@ -11,6 +11,8 @@ namespace App\Records\Application\Merge;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Records\Application\MergedAway;
@@ -40,7 +42,7 @@ use Symfony\Component\Uid\Uuid;
  * its subject says. It takes a proof given again in the last few minutes, as a change of many links at once, and is
  * kept a day on « Récemment supprimés » for « Annuler la fusion ».
  */
-final readonly class MergeRecords
+final readonly class MergeRecords implements DeclaresAuditActions
 {
     public const string MERGED = '%s.merged';
 
@@ -154,5 +156,18 @@ final readonly class MergeRecords
 
             return $merge;
         });
+    }
+
+    /** Each merge, for a subject that merges. */
+    public function auditActions(): array
+    {
+        $actions = [];
+        foreach ($this->catalogue->subjects() as $subject) {
+            if (null !== $subject->mergedAway) {
+                $actions[\sprintf(self::MERGED, $subject->table)] = AuditScope::Company;
+            }
+        }
+
+        return $actions;
     }
 }

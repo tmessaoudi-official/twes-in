@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Closing;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
@@ -35,7 +37,7 @@ use Symfony\Component\Uid\Uuid;
  * already promised. No one new comes in: its open invitations go and support's access ends. Within the days the platform
  * sets, its owner reopens it; after them the closing is final, and the nightly run removes it once its retention ends.
  */
-final readonly class CloseDownCompany
+final readonly class CloseDownCompany implements DeclaresAuditActions
 {
     public const string CLOSED_DOWN = 'company.closed_down';
     public const string REOPENED = 'company.reopened';
@@ -116,5 +118,13 @@ final readonly class CloseDownCompany
     private function held(Company $company): Company
     {
         return $this->companies->lockedOfId($company->getId()) ?? throw new CompanyNotFound('No such company.');
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CLOSED_DOWN => AuditScope::Company,
+            self::REOPENED => AuditScope::Company,
+        ];
     }
 }

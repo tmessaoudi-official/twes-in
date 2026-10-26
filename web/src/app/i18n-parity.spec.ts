@@ -12,6 +12,9 @@ import frDemoMails from '../../public/i18n/demo-mails/fr.json';
 import arPurchaseHistory from '../../public/i18n/purchase-history/ar.json';
 import enPurchaseHistory from '../../public/i18n/purchase-history/en.json';
 import frPurchaseHistory from '../../public/i18n/purchase-history/fr.json';
+import arActivity from '../../public/i18n/activity/ar.json';
+import enActivity from '../../public/i18n/activity/en.json';
+import frActivity from '../../public/i18n/activity/fr.json';
 import arStockMoves from '../../public/i18n/stock-moves/ar.json';
 import enStockMoves from '../../public/i18n/stock-moves/en.json';
 import frStockMoves from '../../public/i18n/stock-moves/fr.json';
@@ -103,6 +106,7 @@ function keysOf(value: unknown, prefix = ''): string[] {
 
 /** The texts a page loads with itself (`textsPart`), beside the language's own file: checked as one with it. */
 const parts: Record<string, Record<string, unknown>> = {
+  activity: { fr: frActivity, en: enActivity, ar: arActivity },
   account: { fr: frAccount, en: enAccount, ar: arAccount },
   check: { fr: frCheck, en: enCheck, ar: arCheck },
   deliveries: { fr: frDeliveries, en: enDeliveries, ar: arDeliveries },

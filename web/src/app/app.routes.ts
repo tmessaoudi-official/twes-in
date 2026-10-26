@@ -36,6 +36,7 @@ import { STOCK_COUNT_TEXTS } from './inventory/stock-count-texts';
 import { RECORDS_TEXTS } from './shared/records/records-texts';
 import { DELIVERIES_TEXTS } from './shared/documents/deliveries-texts';
 import { SCHEDULE_TEXTS } from './shared/schedule/schedule-texts';
+import { ACTIVITY_TEXTS } from './activity/activity-texts';
 
 export const routes: Routes = [
   {
@@ -580,6 +581,7 @@ export const routes: Routes = [
           {
             path: 'company/activity',
             title: 'nav.activity',
+            canActivate: [textsOpened(ACTIVITY_TEXTS)],
             loadComponent: () => import('./activity/activity-page').then((m) => m.ActivityPage),
           },
           {

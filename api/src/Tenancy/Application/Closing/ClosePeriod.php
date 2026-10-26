@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Closing;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\CreateCompany;
@@ -25,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
  * before it. The day moves forward only and never reaches the company's today. Only a change is saved and audited,
  * with the field's name and never the day, as every entry records.
  */
-final readonly class ClosePeriod
+final readonly class ClosePeriod implements DeclaresAuditActions
 {
     public const string CLOSED = 'company.period_closed';
 
@@ -52,5 +54,12 @@ final readonly class ClosePeriod
 
             return $company;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CLOSED => AuditScope::Company,
+        ];
     }
 }

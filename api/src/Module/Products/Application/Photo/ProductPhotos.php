@@ -11,6 +11,8 @@ namespace App\Module\Products\Application\Photo;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Files\Application\Files;
 use App\Files\Application\Pictures;
 use App\Files\Domain\Model\StoredFile;
@@ -35,7 +37,7 @@ use Symfony\Component\Uid\Uuid;
  * stored picture is a file of the company, so photos count in what the company keeps. Audited on the product, which
  * is also the live signal its screens reload on, with no value but the field's name.
  */
-final readonly class ProductPhotos
+final readonly class ProductPhotos implements DeclaresAuditActions
 {
     public const string ADDED = 'product.photo_added';
     public const string REMOVED = 'product.photo_removed';
@@ -342,5 +344,16 @@ final readonly class ProductPhotos
         }
 
         return null;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::MAIN_CHANGED => AuditScope::Company,
+            self::ADDED => AuditScope::Company,
+            self::REMOVED => AuditScope::Company,
+            self::RESTORED => AuditScope::Company,
+            self::REORDERED => AuditScope::Company,
+        ];
     }
 }

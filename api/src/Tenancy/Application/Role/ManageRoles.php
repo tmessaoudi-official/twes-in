@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Role;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
@@ -41,7 +43,7 @@ use Symfony\Component\Uid\Uuid;
  * row is also how an open screen hears the change — `DoctrineAuditTrail` stages each entry as a live change whose
  * kind is the entity type, which is the `role` the roles page listens for (docs/SPEC.md § 7, 2026-09-17).
  */
-final readonly class ManageRoles
+final readonly class ManageRoles implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'role';
     public const string CREATED = 'role.created';
@@ -258,5 +260,14 @@ final readonly class ManageRoles
                 throw new UnknownPermission(\sprintf('"%s" is not a permission a role may be given.', $permission));
             }
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::DELETED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

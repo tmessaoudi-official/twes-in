@@ -11,6 +11,8 @@ namespace App\Module\Quotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Files\Application\AttachmentRefused;
 use App\Files\Application\Attachments;
 use App\Files\Application\StoredFileCorrupted;
@@ -49,7 +51,7 @@ use Symfony\Component\Uid\Uuid;
  * customer's regime charges. A customer, product, unit or tax retired since stays with the quote that already names it.
  * The lines must total. Audited with the names of the fields a revision changed, never their values.
  */
-final readonly class ManageQuotes
+final readonly class ManageQuotes implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'quote';
     public const string CREATED = 'quote.created';
@@ -373,5 +375,16 @@ final readonly class ManageQuotes
     private function record(Company $company, Uuid $quoteId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $quoteId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ATTACHMENT_ADDED => AuditScope::Company,
+            self::ATTACHMENT_REMOVED => AuditScope::Company,
+            self::ATTACHMENT_RESTORED => AuditScope::Company,
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Demo\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Demo\Domain\Model\DemoMail;
 use App\Demo\Domain\Model\DemoSandbox;
 use App\Demo\Domain\Repository\DemoMailRepository;
@@ -26,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
  * them, since it speaks of a made-up company; nothing the application sends does that today. Each mail kept is a line of
  * the sandbox company's journal, which is also what tells its open page to read the mails again.
  */
-final readonly class CaptureDemoMail
+final readonly class CaptureDemoMail implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'demo_mail';
     public const string CAPTURED = 'demo.mail_captured';
@@ -71,5 +73,12 @@ final readonly class CaptureDemoMail
         $mail = new DemoMail(Uuid::v7(), $sandbox, $subject, $html, $this->clock->now());
         $this->mails->save($mail);
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $mail->getId(), self::CAPTURED, null, [], $sandbox->getCompanyId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CAPTURED => AuditScope::Company,
+        ];
     }
 }

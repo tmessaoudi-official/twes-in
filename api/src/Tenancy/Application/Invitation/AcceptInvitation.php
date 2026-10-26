@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Invitation;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\BreachedPasswordCheck;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Model\User;
@@ -38,7 +40,7 @@ use Psr\Clock\ClockInterface;
  * - a breached password is refused, and a breach service that cannot be reached accepts the password and
  *   records the skip, so the gap is visible afterwards (docs/SPEC.md § 7, 2026-09-09).
  */
-final readonly class AcceptInvitation
+final readonly class AcceptInvitation implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'invitation';
     public const string ACCEPTED = 'invitation.accepted';
@@ -165,5 +167,13 @@ final readonly class AcceptInvitation
                 $invitation->getCompany()->getId(),
             ));
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ACCEPTED => AuditScope::Company,
+            self::BREACH_CHECK_SKIPPED => AuditScope::Company,
+        ];
     }
 }

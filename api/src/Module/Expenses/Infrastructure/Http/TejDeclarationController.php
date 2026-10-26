@@ -11,6 +11,8 @@ namespace App\Module\Expenses\Infrastructure\Http;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Module\Expenses\Application\Tej\DeclareTejWithholdings;
@@ -35,7 +37,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * an export: it waits for a recent step-up and records each file it hands out.
  */
 #[AsController]
-final readonly class TejDeclarationController implements BulkFile
+final readonly class TejDeclarationController implements BulkFile, DeclaresAuditActions
 {
     public function __construct(
         private DeclareTejWithholdings $declare,
@@ -79,5 +81,12 @@ final readonly class TejDeclarationController implements BulkFile
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',
         ]);
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            'export.downloaded' => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Identity\Application\Login;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Account\DeleteOwnAccount;
 use App\Identity\Application\Account\ManageAccounts;
 use App\Identity\Domain\Repository\UserRepository;
@@ -19,7 +21,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /** Once the password has been accepted: the counters reset, the login is dated, and the row names the session company. */
-final readonly class RecordSuccessfulLogin
+final readonly class RecordSuccessfulLogin implements DeclaresAuditActions
 {
     public function __construct(
         private UserRepository $users,
@@ -44,5 +46,13 @@ final readonly class RecordSuccessfulLogin
         if ($cancelled) {
             $this->audit->record(new AuditEntry(ManageAccounts::ENTITY_TYPE, $userId, DeleteOwnAccount::CANCELLED, $userId));
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            DeleteOwnAccount::CANCELLED => AuditScope::Outside,
+            LoginAudit::LOGIN => AuditScope::Either,
+        ];
     }
 }

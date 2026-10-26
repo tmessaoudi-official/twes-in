@@ -11,6 +11,8 @@ namespace App\Identity\Application\StepUp;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
@@ -29,7 +31,7 @@ use Symfony\Component\Uid\Uuid;
  * A proof the API checks itself (an export: docs/SPEC.md § 7, audit H-b2) holds for a few minutes of this sign-in, so
  * several files in a row ask once, and a screen left open afterwards hands nothing to the next person.
  */
-final readonly class ConfirmStepUp
+final readonly class ConfirmStepUp implements DeclaresAuditActions
 {
     public const string CONFIRMED = 'auth.step_up';
     public const string REFUSED = 'auth.step_up_refused';
@@ -127,5 +129,14 @@ final readonly class ConfirmStepUp
         }
 
         throw new StepUpRefused();
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CONFIRMED => AuditScope::Outside,
+            self::EXHAUSTED => AuditScope::Outside,
+            self::REFUSED => AuditScope::Outside,
+        ];
     }
 }

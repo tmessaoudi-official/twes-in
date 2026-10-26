@@ -1,0 +1,296 @@
+{
+  "activity": {
+    "actions": {
+      "auth": {
+        "login": "s’est connecté",
+        "logout": "s’est déconnecté"
+      },
+      "company": {
+        "profile_revised": "a modifié le profil de la société",
+        "logo_changed": "a changé le logo",
+        "logo_removed": "a retiré le logo",
+        "mfa_required_changed": "a changé l’exigence de double authentification",
+        "closed_down": "a fermé l’entreprise",
+        "reopened": "a rouvert l’entreprise",
+        "approved": "a approuvé l’entreprise",
+        "created": "a créé l’entreprise",
+        "period_closed": "a clôturé une période",
+        "rejected": "a refusé l’entreprise",
+        "suspended": "a suspendu l’entreprise"
+      },
+      "customer": {
+        "created": "a créé le client",
+        "revised": "a modifié le client",
+        "credit_applied": "a imputé un avoir du client",
+        "deleted": "a supprimé le client",
+        "restored": "a remis le client",
+        "merged": "a fusionné le client",
+        "merge_undone": "a défait la fusion du client",
+        "credit_overpaid": "a gardé un trop-perçu au crédit du client"
+      },
+      "contact": {
+        "created": "a ajouté un contact",
+        "revised": "a modifié un contact",
+        "deleted": "a supprimé un contact"
+      },
+      "customer_group": {
+        "created": "a créé le groupe de clients",
+        "revised": "a modifié le groupe de clients",
+        "deleted": "a supprimé le groupe de clients"
+      },
+      "product": {
+        "created": "a créé l’article",
+        "revised": "a modifié l’article",
+        "photo_added": "a ajouté une photo à l’article",
+        "photo_removed": "a retiré une photo de l’article",
+        "photo_restored": "a remis une photo de l’article",
+        "photos_reordered": "a réordonné les photos de l’article",
+        "main_photo_changed": "a changé la photo principale de l’article",
+        "deleted": "a supprimé l’article",
+        "restored": "a remis l’article",
+        "merged": "a fusionné l’article",
+        "merge_undone": "a défait la fusion de l’article"
+      },
+      "product_category": {
+        "created": "a créé la catégorie d’articles",
+        "revised": "a modifié la catégorie d’articles",
+        "deleted": "a supprimé la catégorie d’articles",
+        "restored": "a remis la catégorie d’articles",
+        "merged": "a fusionné la catégorie d’articles",
+        "merge_undone": "a défait la fusion de la catégorie d’articles"
+      },
+      "price_list": {
+        "created": "a créé la liste de prix",
+        "revised": "a modifié la liste de prix",
+        "deleted": "a supprimé la liste de prix",
+        "restored": "a remis la liste de prix"
+      },
+      "vendor": {
+        "created": "a créé le fournisseur",
+        "revised": "a modifié le fournisseur",
+        "deleted": "a supprimé le fournisseur",
+        "restored": "a remis le fournisseur",
+        "merged": "a fusionné le fournisseur",
+        "merge_undone": "a défait la fusion du fournisseur"
+      },
+      "quote": {
+        "created": "a créé le devis",
+        "revised": "a modifié le devis",
+        "sent": "a envoyé le devis",
+        "accepted": "a marqué le devis accepté",
+        "refused": "a marqué le devis refusé",
+        "cancelled": "a classé le devis sans suite",
+        "invoiced": "a facturé le devis",
+        "deleted": "a supprimé le brouillon de devis",
+        "restored": "a remis le brouillon de devis",
+        "attachment_added": "a joint un fichier au devis",
+        "attachment_removed": "a retiré un fichier du devis",
+        "attachment_restored": "a remis un fichier au devis",
+        "deposit_drafted": "a préparé la facture d’acompte du devis"
+      },
+      "invoice": {
+        "created": "a créé la facture",
+        "revised": "a modifié la facture",
+        "issued": "a émis la facture",
+        "cancelled": "a abandonné le brouillon",
+        "credited": "a établi un avoir sur la facture",
+        "deleted": "a supprimé le brouillon de facture",
+        "restored": "a remis le brouillon de facture"
+      },
+      "payment": {
+        "recorded": "a enregistré un paiement",
+        "deleted": "a supprimé un paiement"
+      },
+      "delivery_note": {
+        "created": "a créé le bon de livraison",
+        "revised": "a modifié le bon de livraison",
+        "validated": "a validé le bon de livraison",
+        "delivered": "a livré le bon de livraison",
+        "cancelled": "a annulé le bon de livraison",
+        "invoiced": "a facturé le bon de livraison",
+        "deleted": "a supprimé le brouillon de bon de livraison",
+        "restored": "a remis le brouillon de bon de livraison"
+      },
+      "expense": {
+        "created": "a créé la dépense",
+        "revised": "a modifié la dépense",
+        "recorded": "a enregistré la dépense",
+        "paid": "a payé la dépense",
+        "deleted": "a supprimé la dépense",
+        "restored": "a remis la dépense",
+        "attachment_added": "a joint un fichier à la dépense",
+        "attachment_removed": "a retiré un fichier de la dépense",
+        "attachment_restored": "a remis un fichier à la dépense",
+        "withholding_classified": "a classé la retenue à la source de la dépense"
+      },
+      "expense_category": {
+        "created": "a créé la catégorie de dépenses",
+        "revised": "a modifié la catégorie de dépenses",
+        "deleted": "a supprimé la catégorie de dépenses",
+        "restored": "a remis la catégorie de dépenses",
+        "merged": "a fusionné la catégorie de dépenses",
+        "merge_undone": "a défait la fusion de la catégorie de dépenses"
+      },
+      "stock_location": {
+        "created": "a créé l’emplacement",
+        "revised": "a modifié l’emplacement",
+        "deleted": "a supprimé l’emplacement"
+      },
+      "role": {
+        "created": "a créé le rôle",
+        "revised": "a modifié le rôle",
+        "deleted": "a supprimé le rôle"
+      },
+      "membership": {
+        "removed": "a retiré un membre",
+        "role_changed": "a changé le rôle d’un membre"
+      },
+      "invitation": {
+        "sent": "a envoyé une invitation",
+        "accepted": "a accepté l’invitation",
+        "withdrawn": "a retiré une invitation"
+      },
+      "setting": {
+        "changed": "a changé un paramètre",
+        "reset": "a rétabli un paramètre"
+      },
+      "module": {
+        "enabled": "a activé un module",
+        "disabled": "a désactivé un module",
+        "interest_recorded": "a demandé à être prévenu de l’arrivée d’un module",
+        "interest_withdrawn": "ne veut plus être prévenu de l’arrivée d’un module"
+      },
+      "export": {
+        "downloaded": "a téléchargé un export"
+      },
+      "establishment": {
+        "created": "a créé l’établissement",
+        "revised": "a modifié l’établissement"
+      },
+      "numbering_series": {
+        "revised": "a modifié la numérotation"
+      },
+      "tax_component": {
+        "created": "a créé la taxe",
+        "revised": "a modifié la taxe"
+      },
+      "unit": {
+        "created": "a créé l’unité",
+        "revised": "a modifié l’unité"
+      },
+      "custom_field": {
+        "created": "a créé le champ personnalisé",
+        "revised": "a modifié le champ personnalisé"
+      },
+      "support_access": {
+        "granted": "a ouvert l’accès du support",
+        "ended": "a fermé l’accès du support"
+      },
+      "support": {
+        "entered": "est entré pour le support",
+        "read": "a lu une page pour le support"
+      },
+      "purchase_order": {
+        "created": "a créé la commande fournisseur",
+        "revised": "a modifié la commande fournisseur",
+        "sent": "a envoyé la commande fournisseur",
+        "received": "a réceptionné de la marchandise de la commande fournisseur",
+        "closed": "a clos la commande fournisseur",
+        "cancelled": "a annulé la commande fournisseur",
+        "deleted": "a supprimé le brouillon de commande fournisseur",
+        "restored": "a remis le brouillon de commande fournisseur"
+      },
+      "payment_instrument": {
+        "deleted": "a retiré un chèque ou une traite du portefeuille",
+        "restored": "a remis un chèque ou une traite au portefeuille"
+      },
+      "record_removal": {
+        "final": "a rendu une suppression définitive"
+      },
+      "recurring_invoice": {
+        "deleted": "a supprimé une facture récurrente",
+        "restored": "a remis une facture récurrente",
+        "created": "a créé la facture récurrente",
+        "drafted": "a préparé une facture d’après la facture récurrente",
+        "paused": "a mis en pause la facture récurrente",
+        "revised": "a modifié la facture récurrente"
+      },
+      "recurring_expense": {
+        "deleted": "a supprimé une dépense récurrente",
+        "restored": "a remis une dépense récurrente",
+        "created": "a créé la dépense récurrente",
+        "drafted": "a préparé une dépense d’après la dépense récurrente",
+        "paused": "a mis en pause la dépense récurrente",
+        "revised": "a modifié la dépense récurrente"
+      },
+      "data": {
+        "erased": "a effacé des données",
+        "erasure_final": "a rendu un effacement définitif",
+        "erasure_undone": "a annulé un effacement"
+      },
+      "demo": {
+        "mail_captured": "a gardé un courrier de la démo",
+        "sandbox_claimed": "a ouvert la démo"
+      },
+      "import": {
+        "restored": "a remis un import annulé",
+        "undone": "a annulé un import"
+      },
+      "instrument": {
+        "cashed": "a encaissé un chèque ou une traite",
+        "deposited": "a remis un chèque ou une traite en banque",
+        "received": "a reçu un chèque ou une traite",
+        "unpaid": "a déclaré impayé un chèque ou une traite"
+      },
+      "password": {
+        "breach_check_skipped": "a choisi un mot de passe que le contrôle des fuites n’a pas pu vérifier"
+      },
+      "product_home_location": {
+        "cleared": "a retiré l’emplacement habituel de l’article",
+        "set": "a fixé l’emplacement habituel de l’article"
+      },
+      "product_reorder_point": {
+        "cleared": "a retiré le seuil de réapprovisionnement de l’article",
+        "set": "a fixé le seuil de réapprovisionnement de l’article"
+      },
+      "signup": {
+        "completed": "a terminé son inscription"
+      },
+      "stock": {
+        "move_replayed": "a refait le mouvement de stock d’un document",
+        "move_settled": "a dit réglé un mouvement de stock manqué"
+      },
+      "stock_movement": {
+        "attachment_added": "a joint un fichier au mouvement de stock",
+        "attachment_removed": "a retiré un fichier du mouvement de stock",
+        "attachment_restored": "a remis un fichier au mouvement de stock"
+      },
+      "subscription": {
+        "payment_confirmed": "a confirmé un paiement de l’abonnement",
+        "payment_declared": "a déclaré un paiement de l’abonnement",
+        "payment_rejected": "a refusé un paiement déclaré de l’abonnement",
+        "set": "a fixé les conditions de l’abonnement",
+        "stopped": "a cessé de gérer l’abonnement"
+      },
+      "text": {
+        "overridden": "a reformulé un texte",
+        "reset": "a rétabli un texte"
+      },
+      "venue_area": {
+        "created": "a créé une zone du plan",
+        "deleted": "a supprimé une zone du plan",
+        "revised": "a modifié une zone du plan"
+      },
+      "venue_spot": {
+        "created": "a créé un emplacement du plan",
+        "deleted": "a supprimé un emplacement du plan",
+        "revised": "a modifié un emplacement du plan"
+      },
+      "venue_structure": {
+        "created": "a ajouté un élément au plan",
+        "deleted": "a retiré un élément du plan",
+        "revised": "a modifié un élément du plan"
+      }
+    }
+  }
+}

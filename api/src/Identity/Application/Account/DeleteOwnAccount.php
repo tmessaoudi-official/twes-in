@@ -11,6 +11,8 @@ namespace App\Identity\Application\Account;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Domain\Repository\UserRepository;
@@ -27,7 +29,7 @@ use Symfony\Component\Uid\Uuid;
  * (RecordSuccessfulLogin); FinalizeAccountDeletions deletes it after the days the platform sets. The only owner of a
  * company is refused with those companies named, and so is a platform operator.
  */
-final readonly class DeleteOwnAccount
+final readonly class DeleteOwnAccount implements DeclaresAuditActions
 {
     public const string REQUESTED = 'account.deletion_requested';
     public const string CANCELLED = 'account.deletion_cancelled';
@@ -85,5 +87,12 @@ final readonly class DeleteOwnAccount
         }
 
         return $days;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REQUESTED => AuditScope::Outside,
+        ];
     }
 }

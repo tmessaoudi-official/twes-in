@@ -11,6 +11,8 @@ namespace App\Identity\Application\Account;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\AccountSearch;
@@ -25,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
  * instead and never reaches the account. Asking for the state an account is already in changes and audits nothing.
  * The demo's throwaway owners are no operator's concern, so the list leaves them out.
  */
-final readonly class ManageAccounts
+final readonly class ManageAccounts implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'user';
     public const string SESSIONS_ENDED = 'account.sessions_ended';
@@ -101,5 +103,14 @@ final readonly class ManageAccounts
     private function record(User $user, string $action, Uuid $operatorId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $user->getId(), $action, $operatorId, ['email' => $user->getEmail()->value]));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::DEACTIVATED => AuditScope::Outside,
+            self::REACTIVATED => AuditScope::Outside,
+            self::SESSIONS_ENDED => AuditScope::Outside,
+        ];
     }
 }

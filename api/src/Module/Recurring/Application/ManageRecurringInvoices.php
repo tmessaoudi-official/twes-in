@@ -11,6 +11,8 @@ namespace App\Module\Recurring\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Recurring\Domain\Exception\InvalidRecurringInvoice;
 use App\Module\Recurring\Domain\Model\RecurringInvoice;
 use App\Module\Recurring\Domain\Repository\RecurringInvoiceRepository;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
  * last day, paused or not) and deleted, which leaves the drafts already made as they are. Audited with the names of
  * the fields a revision changed. A day is the company's own.
  */
-final readonly class ManageRecurringInvoices
+final readonly class ManageRecurringInvoices implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'recurring_invoice';
     public const string CREATED = 'recurring_invoice.created';
@@ -125,5 +127,13 @@ final readonly class ManageRecurringInvoices
     private function record(Company $company, Uuid $id, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $id, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Module\Customers\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Customers\Domain\Model\Contact;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Repository\ContactRepository;
@@ -27,7 +29,7 @@ use Symfony\Component\Uid\Uuid;
  * The people at a customer. A customer's first contact is its primary one; making another primary hands it over, and
  * removing the primary contact makes the next one primary. Audited without values: contacts are people.
  */
-final readonly class ManageContacts
+final readonly class ManageContacts implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'contact';
     public const string CREATED = 'contact.created';
@@ -145,5 +147,14 @@ final readonly class ManageContacts
     private function record(Company $company, Uuid $contactId, string $action, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $contactId, $action, $actorUserId, [], $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::DELETED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

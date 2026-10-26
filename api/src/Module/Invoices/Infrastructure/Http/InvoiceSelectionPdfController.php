@@ -11,6 +11,8 @@ namespace App\Module\Invoices\Infrastructure\Http;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Module\Invoices\Application\Bulk\PrintInvoicesInBulk;
@@ -41,7 +43,7 @@ use Symfony\Component\Uid\Uuid;
  * A plain controller rather than a resource: the answer is bytes, not JSON. Documented in InvoicesOpenApi.
  */
 #[AsController]
-final readonly class InvoiceSelectionPdfController implements BulkFile
+final readonly class InvoiceSelectionPdfController implements BulkFile, DeclaresAuditActions
 {
     public function __construct(
         private PrintInvoicesInBulk $print,
@@ -129,5 +131,12 @@ final readonly class InvoiceSelectionPdfController implements BulkFile
         $response->deleteFileAfterSend();
 
         return $response;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            'export.downloaded' => AuditScope::Company,
+        ];
     }
 }

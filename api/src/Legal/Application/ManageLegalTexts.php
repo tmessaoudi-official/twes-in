@@ -11,6 +11,8 @@ namespace App\Legal\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Legal\Domain\Model\LegalText;
 use App\Legal\Domain\Repository\LegalTextRepository;
 use App\Legal\Domain\ValueObject\LegalLanguage;
@@ -25,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
  * which is published at once and marked a draft; validating the latest version once someone checked it; and reading
  * what exists. A version is never changed or removed: a correction is a new version.
  */
-final readonly class ManageLegalTexts
+final readonly class ManageLegalTexts implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'legal_text';
     public const string WRITTEN = 'legal_text.written';
@@ -106,5 +108,13 @@ final readonly class ManageLegalTexts
     private static function about(LegalPage $page, LegalLanguage $language): array
     {
         return ['page' => $page->value, 'language' => $language->value];
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::VALIDATED => AuditScope::Outside,
+            self::WRITTEN => AuditScope::Outside,
+        ];
     }
 }

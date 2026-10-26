@@ -11,6 +11,8 @@ namespace App\Module\PriceLists\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Customers\Domain\Repository\CustomerGroupRepository;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\PriceLists\Domain\Exception\InvalidPriceList;
@@ -31,7 +33,7 @@ use Symfony\Component\Uid\Uuid;
  * customer's group or one customer, and written with the prices it holds as one document, so a save makes them exactly
  * these. Audited with the names of the fields a change touched and never the prices.
  */
-final readonly class ManagePriceLists
+final readonly class ManagePriceLists implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'price_list';
     public const string CREATED = 'price_list.created';
@@ -161,5 +163,13 @@ final readonly class ManagePriceLists
     private function record(Company $company, Uuid $listId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $listId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

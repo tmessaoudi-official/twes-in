@@ -11,6 +11,8 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
@@ -38,7 +40,7 @@ use Symfony\Component\Uid\Uuid;
  * unless an invoice that is not cancelled carries it. What a note records happening is published once it is stored,
  * and every move is audited.
  */
-final readonly class DeliveryNoteWorkflow
+final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
 {
     public const string DOCUMENT_TYPE = 'delivery_note';
     public const string VALIDATED = 'delivery_note.validated';
@@ -231,5 +233,14 @@ final readonly class DeliveryNoteWorkflow
                 }
             }
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CANCELLED => AuditScope::Company,
+            self::DELIVERED => AuditScope::Company,
+            self::VALIDATED => AuditScope::Company,
+        ];
     }
 }

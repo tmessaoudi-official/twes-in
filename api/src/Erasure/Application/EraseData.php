@@ -11,6 +11,8 @@ namespace App\Erasure\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Erasure\Domain\Model\DataErasure;
 use App\Erasure\Domain\Repository\DataErasureRepository;
 use App\Identity\Application\StepUp\StepUpRequired;
@@ -26,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
  * The owner takes parts of the company's data away for every member at once. What goes is copied as it goes, so that
  * it may all be put back until the erasure's end, and the activity journal says what went, counted, never the rows.
  */
-final readonly class EraseData
+final readonly class EraseData implements DeclaresAuditActions
 {
     public const string ERASED = 'data.erased';
     public const string ENTITY_TYPE = 'data_erasure';
@@ -79,5 +81,12 @@ final readonly class EraseData
 
             return $erasure;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ERASED => AuditScope::Company,
+        ];
     }
 }

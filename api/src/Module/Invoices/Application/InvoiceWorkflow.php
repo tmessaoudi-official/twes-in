@@ -11,6 +11,8 @@ namespace App\Module\Invoices\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Preset\FiscalPresets;
@@ -54,7 +56,7 @@ use Symfony\Component\Uid\Uuid;
  * published once it is stored, and the issue is audited with its number. A credit note is issued only when it fits
  * what its invoice still has due, and takes itself off that in the same transaction.
  */
-final readonly class InvoiceWorkflow
+final readonly class InvoiceWorkflow implements DeclaresAuditActions
 {
     public const string ISSUED = 'invoice.issued';
     public const string CREDITED = 'invoice.credited';
@@ -294,5 +296,13 @@ final readonly class InvoiceWorkflow
         if (CreditExcessTo::Refund === $to) {
             $this->credits->save(CustomerCreditEntry::refunded($customer, $invoice, $creditNoteNumber, $amount, $today, $actorUserId, $now));
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREDITED => AuditScope::Company,
+            self::ISSUED => AuditScope::Company,
+        ];
     }
 }

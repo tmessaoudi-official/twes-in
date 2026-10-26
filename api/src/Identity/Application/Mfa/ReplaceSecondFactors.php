@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\PasskeyRepository;
@@ -26,7 +28,7 @@ use App\Shared\Application\Transactions;
  * and the recovery codes (and the passkeys when asked: one may live on the phone that was lost); every session ends,
  * and the next sign-in holds the account at the enrolment until it sets a factor up again.
  */
-final readonly class ReplaceSecondFactors
+final readonly class ReplaceSecondFactors implements DeclaresAuditActions
 {
     public const string REPLACED = 'auth.second_factors_replaced';
 
@@ -67,5 +69,12 @@ final readonly class ReplaceSecondFactors
 
             return $replaced;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REPLACED => AuditScope::Outside,
+        ];
     }
 }

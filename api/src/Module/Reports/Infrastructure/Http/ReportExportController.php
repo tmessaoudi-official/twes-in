@@ -11,6 +11,8 @@ namespace App\Module\Reports\Infrastructure\Http;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Module\Reports\Application\InvalidReportRequest;
@@ -47,7 +49,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * for the person to have proved who they are in the last few minutes, and every file handed out is on record.
  */
 #[AsController]
-final readonly class ReportExportController implements BulkFile
+final readonly class ReportExportController implements BulkFile, DeclaresAuditActions
 {
     public function __construct(
         private ReportContexts $contexts,
@@ -159,5 +161,12 @@ final readonly class ReportExportController implements BulkFile
     private static function cell(string|int|null $value): string
     {
         return null === $value ? '' : (string) $value;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            'export.downloaded' => AuditScope::Company,
+        ];
     }
 }

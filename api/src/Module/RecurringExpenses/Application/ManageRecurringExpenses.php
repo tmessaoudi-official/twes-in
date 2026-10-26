@@ -11,6 +11,8 @@ namespace App\Module\RecurringExpenses\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\RecurringExpenses\Domain\Exception\InvalidRecurringExpense;
 use App\Module\RecurringExpenses\Domain\Model\RecurringExpense;
 use App\Module\RecurringExpenses\Domain\Repository\RecurringExpenseRepository;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
  * the last day, paused or not, whether the amount varies) and deleted, which leaves the drafts already made as they
  * are. Audited with the names of the fields a revision changed. A day is the company's own.
  */
-final readonly class ManageRecurringExpenses
+final readonly class ManageRecurringExpenses implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'recurring_expense';
     public const string CREATED = 'recurring_expense.created';
@@ -123,5 +125,13 @@ final readonly class ManageRecurringExpenses
     private function record(Company $company, Uuid $id, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $id, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa\Passkey;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
@@ -20,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
  * Completes a login that owed a second factor with a passkey instead of a code. What makes a passkey proof is
  * PasskeyAssertions; this records the outcome the way a code's is recorded.
  */
-final readonly class FinishPasskeyLogin
+final readonly class FinishPasskeyLogin implements DeclaresAuditActions
 {
     public function __construct(
         private UserRepository $users,
@@ -52,5 +54,13 @@ final readonly class FinishPasskeyLogin
         $this->audit->record(new AuditEntry('user', $user->getId(), VerifySecondFactor::VERIFIED, $user->getId(), ['method' => 'passkey']));
 
         return $user;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            VerifySecondFactor::FAILED => AuditScope::Outside,
+            VerifySecondFactor::VERIFIED => AuditScope::Outside,
+        ];
     }
 }

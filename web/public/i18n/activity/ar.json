@@ -1,0 +1,296 @@
+{
+  "activity": {
+    "actions": {
+      "auth": {
+        "login": "سجّل الدخول",
+        "logout": "سجّل الخروج"
+      },
+      "company": {
+        "profile_revised": "عدّل ملفّ الشركة",
+        "logo_changed": "غيّر الشعار",
+        "logo_removed": "سحب الشعار",
+        "mfa_required_changed": "غيّر اشتراط التحقق بخطوتين",
+        "closed_down": "أغلق الشركة",
+        "reopened": "أعاد فتح الشركة",
+        "approved": "وافق على الشركة",
+        "created": "أنشأ الشركة",
+        "period_closed": "أقفل فترة",
+        "rejected": "رفض الشركة",
+        "suspended": "علّق الشركة"
+      },
+      "customer": {
+        "created": "أنشأ الحريف",
+        "revised": "عدّل الحريف",
+        "credit_applied": "خصم فاتورة تعديلية للحريف",
+        "deleted": "حذف الحريف",
+        "restored": "أعاد الحريف",
+        "merged": "دمج الحريف",
+        "merge_undone": "ألغى دمج الحريف",
+        "credit_overpaid": "احتفظ بمبلغ زائد رصيدًا للحريف"
+      },
+      "contact": {
+        "created": "أضاف جهة اتّصال",
+        "revised": "عدّل جهة اتّصال",
+        "deleted": "حذف جهة اتّصال"
+      },
+      "customer_group": {
+        "created": "أنشأ مجموعة الحرفاء",
+        "revised": "عدّل مجموعة الحرفاء",
+        "deleted": "حذف مجموعة الحرفاء"
+      },
+      "product": {
+        "created": "أنشأ المنتج",
+        "revised": "عدّل المنتج",
+        "photo_added": "أضاف صورة إلى المنتج",
+        "photo_removed": "سحب صورة من المنتج",
+        "photo_restored": "أعاد صورة إلى المنتج",
+        "photos_reordered": "أعاد ترتيب صور المنتج",
+        "main_photo_changed": "غيّر الصورة الرئيسية للمنتج",
+        "deleted": "حذف المنتج",
+        "restored": "أعاد المنتج",
+        "merged": "دمج المنتج",
+        "merge_undone": "ألغى دمج المنتج"
+      },
+      "product_category": {
+        "created": "أنشأ صنف المنتجات",
+        "revised": "عدّل صنف المنتجات",
+        "deleted": "حذف صنف المنتجات",
+        "restored": "أعاد صنف المنتجات",
+        "merged": "دمج صنف المنتجات",
+        "merge_undone": "ألغى دمج صنف المنتجات"
+      },
+      "price_list": {
+        "created": "أنشأ قائمة الأسعار",
+        "revised": "عدّل قائمة الأسعار",
+        "deleted": "حذف قائمة الأسعار",
+        "restored": "أعاد قائمة الأسعار"
+      },
+      "vendor": {
+        "created": "أنشأ المزوّد",
+        "revised": "عدّل المزوّد",
+        "deleted": "حذف المزوّد",
+        "restored": "أعاد المزوّد",
+        "merged": "دمج المزوّد",
+        "merge_undone": "ألغى دمج المزوّد"
+      },
+      "quote": {
+        "created": "أنشأ عرض السعر",
+        "revised": "عدّل عرض السعر",
+        "sent": "أرسل عرض السعر",
+        "accepted": "علّم عرض السعر كمقبول",
+        "refused": "علّم عرض السعر كمرفوض",
+        "cancelled": "صنّف عرض السعر دون متابعة",
+        "invoiced": "فوتر عرض السعر",
+        "deleted": "حذف مسودة عرض السعر",
+        "restored": "أعاد مسودة عرض السعر",
+        "attachment_added": "أرفق ملفًا بعرض السعر",
+        "attachment_removed": "أزال ملفًا من عرض السعر",
+        "attachment_restored": "أعاد ملفًا إلى عرض السعر",
+        "deposit_drafted": "أعدّ فاتورة التسبقة لعرض السعر"
+      },
+      "invoice": {
+        "created": "أنشأ الفاتورة",
+        "revised": "عدّل الفاتورة",
+        "issued": "أصدر الفاتورة",
+        "cancelled": "تخلّى عن المسودة",
+        "credited": "أعدّ فاتورة تعديلية على الفاتورة",
+        "deleted": "حذف مسودة الفاتورة",
+        "restored": "أعاد مسودة الفاتورة"
+      },
+      "payment": {
+        "recorded": "سجّل دفعًا",
+        "deleted": "حذف دفعًا"
+      },
+      "delivery_note": {
+        "created": "أنشأ وصل التسليم",
+        "revised": "عدّل وصل التسليم",
+        "validated": "صادق على وصل التسليم",
+        "delivered": "سلّم وصل التسليم",
+        "cancelled": "ألغى وصل التسليم",
+        "invoiced": "فوتر وصل التسليم",
+        "deleted": "حذف مسودة وصل التسليم",
+        "restored": "أعاد مسودة وصل التسليم"
+      },
+      "expense": {
+        "created": "أنشأ المصروف",
+        "revised": "عدّل المصروف",
+        "recorded": "سجّل المصروف",
+        "paid": "دفع المصروف",
+        "deleted": "حذف المصروف",
+        "restored": "أعاد المصروف",
+        "attachment_added": "أرفق ملفًا بالمصروف",
+        "attachment_removed": "أزال ملفًا من المصروف",
+        "attachment_restored": "أعاد ملفًا إلى المصروف",
+        "withholding_classified": "صنّف الخصم من المورد للمصروف"
+      },
+      "expense_category": {
+        "created": "أنشأ صنف المصاريف",
+        "revised": "عدّل صنف المصاريف",
+        "deleted": "حذف صنف المصاريف",
+        "restored": "أعاد صنف المصاريف",
+        "merged": "دمج صنف المصاريف",
+        "merge_undone": "ألغى دمج صنف المصاريف"
+      },
+      "stock_location": {
+        "created": "أنشأ الموقع",
+        "revised": "عدّل الموقع",
+        "deleted": "حذف الموقع"
+      },
+      "role": {
+        "created": "أنشأ الدور",
+        "revised": "عدّل الدور",
+        "deleted": "حذف الدور"
+      },
+      "membership": {
+        "removed": "سحب عضوًا",
+        "role_changed": "غيّر دور عضو"
+      },
+      "invitation": {
+        "sent": "أرسل دعوة",
+        "accepted": "قبل الدعوة",
+        "withdrawn": "سحب دعوة"
+      },
+      "setting": {
+        "changed": "غيّر إعدادًا",
+        "reset": "أعاد ضبط إعداد"
+      },
+      "module": {
+        "enabled": "فعّل وحدة",
+        "disabled": "عطّل وحدة",
+        "interest_recorded": "طلب أن يُعلَم بوصول وحدة",
+        "interest_withdrawn": "لم يعد يريد أن يُعلَم بوصول وحدة"
+      },
+      "export": {
+        "downloaded": "حمّل ملفّ تصدير"
+      },
+      "establishment": {
+        "created": "أنشأ الفرع",
+        "revised": "عدّل الفرع"
+      },
+      "numbering_series": {
+        "revised": "عدّل الترقيم"
+      },
+      "tax_component": {
+        "created": "أنشأ الأداء",
+        "revised": "عدّل الأداء"
+      },
+      "unit": {
+        "created": "أنشأ وحدة القيس",
+        "revised": "عدّل وحدة القيس"
+      },
+      "custom_field": {
+        "created": "أنشأ الحقل المخصّص",
+        "revised": "عدّل الحقل المخصّص"
+      },
+      "support_access": {
+        "granted": "فتح وصول الدعم",
+        "ended": "أغلق وصول الدعم"
+      },
+      "support": {
+        "entered": "دخل لغرض الدعم",
+        "read": "قرأ صفحة لغرض الدعم"
+      },
+      "purchase_order": {
+        "created": "أنشأ الطلبية لدى المزوّد",
+        "revised": "عدّل الطلبية لدى المزوّد",
+        "sent": "أرسل الطلبية لدى المزوّد",
+        "received": "استلم سلعًا من الطلبية لدى المزوّد",
+        "closed": "أغلق الطلبية لدى المزوّد",
+        "cancelled": "ألغى الطلبية لدى المزوّد",
+        "deleted": "حذف مسودة الطلبية لدى المزوّد",
+        "restored": "أعاد مسودة الطلبية لدى المزوّد"
+      },
+      "payment_instrument": {
+        "deleted": "أخرج صكًّا أو كمبيالة من المحفظة",
+        "restored": "أعاد صكًّا أو كمبيالة إلى المحفظة"
+      },
+      "record_removal": {
+        "final": "جعل حذفًا نهائيًا"
+      },
+      "recurring_invoice": {
+        "deleted": "حذف فاتورة دورية",
+        "restored": "أعاد فاتورة دورية",
+        "created": "أنشأ الفاتورة الدورية",
+        "drafted": "أعدّ فاتورة من الفاتورة الدورية",
+        "paused": "أوقف الفاتورة الدورية مؤقتًا",
+        "revised": "عدّل الفاتورة الدورية"
+      },
+      "recurring_expense": {
+        "deleted": "حذف مصروفًا دوريًا",
+        "restored": "أعاد مصروفًا دوريًا",
+        "created": "أنشأ المصروف الدوري",
+        "drafted": "أعدّ مصروفًا من المصروف الدوري",
+        "paused": "أوقف المصروف الدوري مؤقتًا",
+        "revised": "عدّل المصروف الدوري"
+      },
+      "data": {
+        "erased": "محا بيانات",
+        "erasure_final": "جعل محوًا نهائيًا",
+        "erasure_undone": "ألغى محوًا"
+      },
+      "demo": {
+        "mail_captured": "احتفظ ببريد من العرض التجريبي",
+        "sandbox_claimed": "فتح العرض التجريبي"
+      },
+      "import": {
+        "restored": "أعاد استيرادًا ملغى",
+        "undone": "ألغى استيرادًا"
+      },
+      "instrument": {
+        "cashed": "استخلص صكًّا أو كمبيالة",
+        "deposited": "أودع صكًّا أو كمبيالة في البنك",
+        "received": "تسلّم صكًّا أو كمبيالة",
+        "unpaid": "سجّل صكًّا أو كمبيالة غير مدفوعة"
+      },
+      "password": {
+        "breach_check_skipped": "اختار كلمة مرور لم يتمكّن فحص التسريبات من التحقق منها"
+      },
+      "product_home_location": {
+        "cleared": "أزال الموقع المعتاد للمنتج",
+        "set": "حدّد الموقع المعتاد للمنتج"
+      },
+      "product_reorder_point": {
+        "cleared": "أزال حدّ إعادة التزويد للمنتج",
+        "set": "حدّد حدّ إعادة التزويد للمنتج"
+      },
+      "signup": {
+        "completed": "أنهى تسجيله"
+      },
+      "stock": {
+        "move_replayed": "أعاد تحريك مخزون وثيقة",
+        "move_settled": "اعتبر حركة مخزون فائتة مسوّاة"
+      },
+      "stock_movement": {
+        "attachment_added": "أرفق ملفًا بحركة المخزون",
+        "attachment_removed": "أزال ملفًا من حركة المخزون",
+        "attachment_restored": "أعاد ملفًا إلى حركة المخزون"
+      },
+      "subscription": {
+        "payment_confirmed": "أكّد دفعة للاشتراك",
+        "payment_declared": "صرّح بدفعة للاشتراك",
+        "payment_rejected": "رفض دفعة مصرّحًا بها للاشتراك",
+        "set": "حدّد شروط الاشتراك",
+        "stopped": "توقّف عن إدارة الاشتراك"
+      },
+      "text": {
+        "overridden": "أعاد صياغة نص",
+        "reset": "أعاد نصًّا إلى أصله"
+      },
+      "venue_area": {
+        "created": "أنشأ منطقة في المخطط",
+        "deleted": "حذف منطقة من المخطط",
+        "revised": "عدّل منطقة في المخطط"
+      },
+      "venue_spot": {
+        "created": "أنشأ موضعًا في المخطط",
+        "deleted": "حذف موضعًا من المخطط",
+        "revised": "عدّل موضعًا في المخطط"
+      },
+      "venue_structure": {
+        "created": "أضاف عنصرًا إلى المخطط",
+        "deleted": "أزال عنصرًا من المخطط",
+        "revised": "عدّل عنصرًا في المخطط"
+      }
+    }
+  }
+}

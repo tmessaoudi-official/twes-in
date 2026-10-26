@@ -11,6 +11,8 @@ namespace App\Module\Inventory\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Files\Application\AttachmentRefused;
 use App\Files\Application\Attachments;
 use App\Files\Application\StoredFileCorrupted;
@@ -29,7 +31,7 @@ use Symfony\Component\Uid\Uuid;
  * They are what shows a loss happened as it is written, so only a loss takes them, and every file attached or taken
  * off is an audit row of that loss, naming the attachment and never its name or bytes.
  */
-final readonly class KeepLossAttachments
+final readonly class KeepLossAttachments implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'stock_movement';
     public const string ATTACHMENT_ADDED = 'stock_movement.attachment_added';
@@ -161,5 +163,14 @@ final readonly class KeepLossAttachments
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $loss->getId(), $action, $actorUserId, ['attachmentId' => $attachmentId->toRfc4122()], $company->getId()));
         $this->liveChanges->stage(new LiveChange('stock', $loss->getProduct()->getId(), $action, $actorUserId, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ATTACHMENT_ADDED => AuditScope::Company,
+            self::ATTACHMENT_REMOVED => AuditScope::Company,
+            self::ATTACHMENT_RESTORED => AuditScope::Company,
+        ];
     }
 }

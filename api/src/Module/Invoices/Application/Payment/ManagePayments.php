@@ -11,6 +11,8 @@ namespace App\Module\Invoices\Application\Payment;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\CurrencyScales;
 use App\Module\Invoices\Application\Credit\ManageCustomerCredit;
 use App\Module\Invoices\Application\InvoiceNotFound;
@@ -33,7 +35,7 @@ use Symfony\Component\Uid\Uuid;
  * holds the invoice's row: two payments recorded at once never both fit what was due before either. Both are audited
  * on the invoice. Deleting a payment that applied the customer's credit (ManageCustomerCredit) gives the credit back.
  */
-final readonly class ManagePayments
+final readonly class ManagePayments implements DeclaresAuditActions
 {
     public const string RECORDED = 'payment.recorded';
     public const string DELETED = 'payment.deleted';
@@ -107,5 +109,13 @@ final readonly class ManagePayments
             'amount' => $payment->getAmount(),
             'method' => $payment->getMethod()->value,
         ], $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::DELETED => AuditScope::Company,
+            self::RECORDED => AuditScope::Company,
+        ];
     }
 }

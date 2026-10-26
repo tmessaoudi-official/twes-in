@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Company;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Shared\Application\RecordChanged;
@@ -29,7 +31,7 @@ use Symfony\Component\Uid\Uuid;
  * opt for it. A revision is audited with the names of the fields it
  * changed, not their values, so banking details never reach the audit trail.
  */
-final readonly class ReviseCompanyProfile
+final readonly class ReviseCompanyProfile implements DeclaresAuditActions
 {
     public const string REVISED = 'company.profile_revised';
 
@@ -75,5 +77,12 @@ final readonly class ReviseCompanyProfile
 
             return $company;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

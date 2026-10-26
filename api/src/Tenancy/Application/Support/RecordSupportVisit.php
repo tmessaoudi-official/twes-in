@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Support;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\SupportGrant;
 use Psr\Clock\ClockInterface;
@@ -21,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
  * so the log says where support went without a row for every request a screen makes. Whether a page was already
  * recorded is read from the log itself, never kept in memory, which the worker would carry from one request to the next.
  */
-final readonly class RecordSupportVisit
+final readonly class RecordSupportVisit implements DeclaresAuditActions
 {
     public const string ENTERED = 'support.entered';
     public const string READ = 'support.read';
@@ -48,5 +50,13 @@ final readonly class RecordSupportVisit
             return;
         }
         $this->transactions->run(fn () => $this->audit->record(new AuditEntry(ManageSupportAccess::ENTITY_TYPE, $grantId, self::READ, $userId, ['page' => $page], $companyId)));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ENTERED => AuditScope::Company,
+            self::READ => AuditScope::Company,
+        ];
     }
 }

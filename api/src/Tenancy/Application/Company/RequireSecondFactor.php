@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Company;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\CompanyRepository;
@@ -22,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
  * read across every membership an account holds, so switching it on holds back each member without a factor until
  * they enrol, whichever company their session works in. Only a change is saved and audited.
  */
-final readonly class RequireSecondFactor
+final readonly class RequireSecondFactor implements DeclaresAuditActions
 {
     public const string CHANGED = 'company.mfa_required_changed';
 
@@ -45,5 +47,12 @@ final readonly class RequireSecondFactor
 
             return $company;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CHANGED => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Licensing\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Licensing\Domain\Model\Subscription;
 use App\Licensing\Domain\Repository\SubscriptionRepository;
 use App\Licensing\Domain\ValueObject\SubscriptionTerms;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
  * company, stopping forgets them and gives the company full access again. Every change is audited against the company,
  * naming the terms it changed, so the company's own log shows when what was decided about it changed.
  */
-final readonly class ManageSubscriptions
+final readonly class ManageSubscriptions implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'subscription';
     public const string SET = 'subscription.set';
@@ -146,5 +148,13 @@ final readonly class ManageSubscriptions
     private function companyOf(Uuid $companyId): Company
     {
         return $this->companies->ofId($companyId) ?? throw new CompanyNotFound();
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::SET => AuditScope::Company,
+            self::STOPPED => AuditScope::Company,
+        ];
     }
 }

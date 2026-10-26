@@ -11,6 +11,8 @@ namespace App\Module\Invoices\Application\Credit;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Application\CustomerNotFound;
@@ -37,7 +39,7 @@ use Symfony\Component\Uid\Uuid;
  * invoice later as an ordinary payment. Both run in a transaction that holds the customer's row, so two applications
  * at once never both fit the balance before either, and both are audited on the customer.
  */
-final readonly class ManageCustomerCredit
+final readonly class ManageCustomerCredit implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'customer';
     public const string OVERPAID = 'customer.credit_overpaid';
@@ -159,5 +161,14 @@ final readonly class ManageCustomerCredit
     private function customer(Company $company, Uuid $customerId): Customer
     {
         return $this->customers->ofIdInCompany($customerId, $company->getId()) ?? throw new CustomerNotFound();
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::APPLIED => AuditScope::Company,
+            self::OVERPAID => AuditScope::Company,
+            ManagePayments::RECORDED => AuditScope::Company,
+        ];
     }
 }

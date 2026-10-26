@@ -11,6 +11,8 @@ namespace App\Fiscal\Application\TaxComponent;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Application\DocumentLanguageNames;
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
@@ -25,7 +27,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /** A company's own tax components: listed, added and revised, each change audited. */
-final readonly class ManageTaxComponents
+final readonly class ManageTaxComponents implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'tax_component';
     public const string CREATED = 'tax_component.created';
@@ -136,6 +138,14 @@ final readonly class ManageTaxComponents
             'enters_vat_base' => $component->entersVatBase(),
             'is_default' => $component->isDefault(),
             'is_active' => $component->isActive(),
+        ];
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
         ];
     }
 }

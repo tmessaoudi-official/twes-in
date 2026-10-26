@@ -11,6 +11,8 @@ namespace App\Module\Inventory\Application\Location;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
 use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\Repository\StockLocationRepository;
@@ -34,7 +36,7 @@ use Symfony\Component\Uid\Uuid;
  * establishment; it is deleted only once it holds no location and has seen no movement, and the default never is.
  * Audited with the names of the fields a revision changed, never their values; a default location is nobody's action.
  */
-final readonly class ManageStockLocations
+final readonly class ManageStockLocations implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'stock_location';
     public const string CREATED = 'stock_location.created';
@@ -208,5 +210,14 @@ final readonly class ManageStockLocations
     private function record(Company $company, Uuid $locationId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $locationId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::DELETED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Identity\Application\Login;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\UserRepository;
@@ -28,7 +30,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * The sign-in never says an account is locked, which would say the address is real: its owner is told by mail, once,
  * by the guess that sets the lock, never by the ones refused while it holds, so a lock is no way to flood a mailbox.
  */
-final readonly class RecordFailedLogin
+final readonly class RecordFailedLogin implements DeclaresAuditActions
 {
     public function __construct(
         private UserRepository $users,
@@ -59,5 +61,12 @@ final readonly class RecordFailedLogin
         }
 
         $this->audit->record(new AuditEntry(LoginAudit::ENTITY_TYPE, $user?->getId(), LoginAudit::LOGIN_FAILED, null, $changes));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            LoginAudit::LOGIN_FAILED => AuditScope::Outside,
+        ];
     }
 }

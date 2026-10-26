@@ -11,6 +11,8 @@ namespace App\ModuleRegistry\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\ModuleRegistry\Domain\Model\ModuleInterest;
 use App\ModuleRegistry\Domain\Repository\ModuleInterestRepository;
 use App\Shared\Application\Notification;
@@ -27,7 +29,7 @@ use Symfony\Component\Uid\Uuid;
  * leaves PlannedModules for its own declaration), the members who may switch it on are told, once. Asking and
  * withdrawing are audited as the module's, so the modules page of every other tab reloads.
  */
-final readonly class ModuleInterests
+final readonly class ModuleInterests implements DeclaresAuditActions
 {
     public const string RECORDED = 'module.interest_recorded';
     public const string WITHDRAWN = 'module.interest_withdrawn';
@@ -142,5 +144,13 @@ final readonly class ModuleInterests
 
             return $told;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::RECORDED => AuditScope::Company,
+            self::WITHDRAWN => AuditScope::Company,
+        ];
     }
 }

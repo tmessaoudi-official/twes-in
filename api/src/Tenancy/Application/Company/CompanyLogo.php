@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Company;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Files\Application\AttachmentRefused;
 use App\Files\Application\Attachments;
 use App\Files\Application\StoredFileCorrupted;
@@ -26,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
  * a vector file can carry a script, and a logo is shown on pages and rendered by a browser engine. Replacing it
  * detaches the old one, whose stored file stays under the retention rules of every file.
  */
-final readonly class CompanyLogo
+final readonly class CompanyLogo implements DeclaresAuditActions
 {
     public const string SUBJECT = 'company_logo';
     public const string CHANGED = 'company.logo_changed';
@@ -125,5 +127,13 @@ final readonly class CompanyLogo
         if ($size[0] > self::MAX_SIDE || $size[1] > self::MAX_SIDE) {
             throw new AttachmentRefused(\sprintf('A logo is at most %d pixels on a side.', self::MAX_SIDE));
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CHANGED => AuditScope::Company,
+            self::REMOVED => AuditScope::Company,
+        ];
     }
 }

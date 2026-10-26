@@ -11,6 +11,8 @@ namespace App\Module\Purchases\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
 use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
@@ -38,7 +40,7 @@ use Symfony\Component\Uid\Uuid;
  * whoever may read costs (`$seesCost`): for anyone else a line keeps the price the draft already had for its product,
  * and a new line has none. Audited with the names of the fields a revision changed, never their values.
  */
-final readonly class ManagePurchaseOrders
+final readonly class ManagePurchaseOrders implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'purchase_order';
     public const string CREATED = 'purchase_order.created';
@@ -203,5 +205,13 @@ final readonly class ManagePurchaseOrders
     private function record(Company $company, Uuid $orderId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $orderId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

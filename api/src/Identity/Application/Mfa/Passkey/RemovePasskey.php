@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa\Passkey;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Mfa\LastSecondFactor;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
@@ -26,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
  * Forgets a passkey, typically a lost or replaced device. The last factor of an account that a company requires to have
  * one stays: removing it would put the account straight back behind the enrolment interstitial.
  */
-final readonly class RemovePasskey
+final readonly class RemovePasskey implements DeclaresAuditActions
 {
     public const string REMOVED = 'auth.passkey_removed';
 
@@ -67,5 +69,12 @@ final readonly class RemovePasskey
             $this->audit->record(new AuditEntry('user', $user->getId(), self::REMOVED, $user->getId(), ['passkey' => $passkeyId->toRfc4122()]));
             $this->notices->tell($user->getId(), SecurityChange::PasskeyRemoved, $passkey->getName());
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REMOVED => AuditScope::Outside,
+        ];
     }
 }

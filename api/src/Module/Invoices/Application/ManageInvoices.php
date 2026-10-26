@@ -11,6 +11,8 @@ namespace App\Module\Invoices\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Calculation\Decimal;
@@ -55,7 +57,7 @@ use Symfony\Component\Uid\Uuid;
  * that already names it. A line invoices a delivery note line only when its draft already did: such a draft starts from
  * delivery notes. The document must total. Audited with the names of the fields a revision changed, never their values.
  */
-final readonly class ManageInvoices
+final readonly class ManageInvoices implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'invoice';
     public const string CREATED = 'invoice.created';
@@ -657,5 +659,14 @@ final readonly class ManageInvoices
     private function record(Company $company, Uuid $invoiceId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $invoiceId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CANCELLED => AuditScope::Company,
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

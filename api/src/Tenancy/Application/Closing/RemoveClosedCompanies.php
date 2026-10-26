@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Closing;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Files\Application\Files;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CreateCompany;
@@ -22,7 +24,7 @@ use Psr\Clock\ClockInterface;
  * its own goes with it, then the bytes of its files once that is committed, for bytes without a record are only unused.
  * The journal keeps its entries, which name the company by its id only, and the removal itself.
  */
-final readonly class RemoveClosedCompanies
+final readonly class RemoveClosedCompanies implements DeclaresAuditActions
 {
     public const string REMOVED = 'company.removed';
 
@@ -54,5 +56,12 @@ final readonly class RemoveClosedCompanies
         }
 
         return $removed;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REMOVED => AuditScope::Outside,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Module\Customers\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\CustomFields\Domain\Exception\InvalidCustomFieldValue;
 use App\CustomFields\Domain\Model\CustomFieldDefinition;
 use App\CustomFields\Domain\Repository\CustomFieldDefinitionRepository;
@@ -44,7 +46,7 @@ use Symfony\Component\Uid\Uuid;
  * fields for customers. Audited with the names of the fields a revision
  * changed, never their values: a customer may be a private person.
  */
-final readonly class ManageCustomers
+final readonly class ManageCustomers implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'customer';
     public const string CREATED = 'customer.created';
@@ -224,5 +226,13 @@ final readonly class ManageCustomers
     private function record(Company $company, Uuid $customerId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $customerId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\Security\SecurityChange;
@@ -24,7 +26,7 @@ use Symfony\Component\Uid\Uuid;
  * give, where RegenerateRecoveryCodes asks for an authenticator code (ruling of 2026-09-10: regenerable with a current
  * factor). A recovery code is still never proof enough, for the reason given there.
  */
-final readonly class RegenerateRecoveryCodesWithPasskey
+final readonly class RegenerateRecoveryCodesWithPasskey implements DeclaresAuditActions
 {
     public function __construct(
         private UserRepository $users,
@@ -59,5 +61,12 @@ final readonly class RegenerateRecoveryCodesWithPasskey
 
             return $codes;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            RegenerateRecoveryCodes::REGENERATED => AuditScope::Outside,
+        ];
     }
 }

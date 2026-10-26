@@ -11,6 +11,8 @@ namespace App\Records\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Records\Application\Merge\MergeAlias;
@@ -35,7 +37,7 @@ use Symfony\Component\Uid\Uuid;
  * same way, and every row it pointed at the record kept that still names it is pointed back; undoing one takes the
  * proof merging took, and is refused once the record kept traded since (goods received, an expense in the books).
  */
-final readonly class RestoreRecords
+final readonly class RestoreRecords implements DeclaresAuditActions
 {
     public function __construct(
         private RecordStore $store,
@@ -122,5 +124,19 @@ final readonly class RestoreRecords
 
             return $removal;
         });
+    }
+
+    /** Each record put back, and each merge undone for a subject that merges. */
+    public function auditActions(): array
+    {
+        $actions = [];
+        foreach ($this->catalogue->subjects() as $subject) {
+            $actions[$subject->table.'.restored'] = AuditScope::Company;
+            if (null !== $subject->mergedAway) {
+                $actions[$subject->table.'.merge_undone'] = AuditScope::Company;
+            }
+        }
+
+        return $actions;
     }
 }

@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa\Totp;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Mfa\IssueRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\SecondFactorUnreadable;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
  * place, with a new set of recovery codes (the old ones may have been kept with the phone that went). Every other
  * session of the account then ends, as one may be open on that phone; the one confirming stays.
  */
-final readonly class ConfirmTotpReplacement
+final readonly class ConfirmTotpReplacement implements DeclaresAuditActions
 {
     public const string REPLACED = 'auth.totp_replaced';
 
@@ -84,5 +86,12 @@ final readonly class ConfirmTotpReplacement
         $this->sessions->endOthers($user, $currentSessionId);
 
         return $codes;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REPLACED => AuditScope::Outside,
+        ];
     }
 }

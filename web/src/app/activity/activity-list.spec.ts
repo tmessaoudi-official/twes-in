@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import enActions from '../../../public/i18n/activity/en.json';
+import frActions from '../../../public/i18n/activity/fr.json';
 import en from '../../../public/i18n/en.json';
 import fr from '../../../public/i18n/fr.json';
 import {
@@ -25,8 +27,8 @@ describe('the activity journal list', () => {
   it('says every action it names, in French and in English', () => {
     for (const action of ACTIVITY_ACTIONS) {
       for (const [language, tree] of [
-        ['fr', fr],
-        ['en', en],
+        ['fr', frActions],
+        ['en', enActions],
       ] as const) {
         expect(typeof at(tree, `activity.actions.${action}`), `${language} ${action}`).toBe(
           'string',

@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Member;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
@@ -22,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
  * Takes someone out of a company: never oneself, which is leaving, another act than removing someone, and never the last
  * owner, as a company nobody owns can never be administered again.
  */
-final readonly class RemoveMember
+final readonly class RemoveMember implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'membership';
     public const string REMOVED = 'membership.removed';
@@ -70,5 +72,12 @@ final readonly class RemoveMember
             $this->memberships->ofCompany($companyId),
             static fn (Membership $m) => Role::OWNER === $m->getRole()->getName(),
         ));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REMOVED => AuditScope::Company,
+        ];
     }
 }

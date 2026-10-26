@@ -11,6 +11,8 @@ namespace App\ImportExport\Infrastructure\Http;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\ImportExport\Application\Export\ExportCatalogue;
@@ -45,7 +47,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * `export`, which no screen reloads on.
  */
 #[AsController]
-final readonly class ExportController implements BulkFile
+final readonly class ExportController implements BulkFile, DeclaresAuditActions
 {
     public function __construct(
         private ExportCatalogue $catalogue,
@@ -117,5 +119,12 @@ final readonly class ExportController implements BulkFile
         $response->deleteFileAfterSend();
 
         return $response;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            'export.downloaded' => AuditScope::Company,
+        ];
     }
 }

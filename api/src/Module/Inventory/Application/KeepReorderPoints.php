@@ -11,6 +11,8 @@ namespace App\Module\Inventory\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Inventory\Domain\Exception\InvalidReorderPoint;
 use App\Module\Inventory\Domain\Model\ProductReorderPoint;
 use App\Module\Inventory\Domain\Repository\ProductReorderPointRepository;
@@ -30,7 +32,7 @@ use Symfony\Component\Uid\Uuid;
  * points are shown on the product's page beside its form, so a change of them moves the product's version, which a
  * screen's write names: a point read before another person's change is refused rather than written over it.
  */
-final readonly class KeepReorderPoints
+final readonly class KeepReorderPoints implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'product_reorder_point';
     public const string SET = 'product_reorder_point.set';
@@ -149,5 +151,13 @@ final readonly class KeepReorderPoints
             ['establishmentId' => $point->getEstablishment()->getId()->toRfc4122(), 'quantity' => self::CLEARED === $action ? null : $point->getQuantity()],
             companyId: $company->getId(),
         ));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CLEARED => AuditScope::Company,
+            self::SET => AuditScope::Company,
+        ];
     }
 }

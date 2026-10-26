@@ -11,6 +11,8 @@ namespace App\Erasure\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Erasure\Domain\Repository\DataErasureRepository;
 use App\Files\Application\Files;
 use App\Shared\Application\Transactions;
@@ -22,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
  * still named. Running it again ends nothing twice. The files' bytes go once their records are gone for good, after the
  * commit: bytes left behind by a crash in between are only unused, never served.
  */
-final readonly class EndDueErasures
+final readonly class EndDueErasures implements DeclaresAuditActions
 {
     public const string ENDED = 'data.erasure_final';
 
@@ -63,5 +65,12 @@ final readonly class EndDueErasures
         }
 
         return $ended;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ENDED => AuditScope::Company,
+        ];
     }
 }

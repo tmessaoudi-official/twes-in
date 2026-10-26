@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Numbering;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
@@ -24,7 +26,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /** A company's numbering series: listed with the number each would issue next, and revised, each change audited. */
-final readonly class ManageNumberingSeries
+final readonly class ManageNumberingSeries implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'numbering_series';
     public const string REVISED = 'numbering_series.revised';
@@ -85,5 +87,12 @@ final readonly class ManageNumberingSeries
 
             return $series;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

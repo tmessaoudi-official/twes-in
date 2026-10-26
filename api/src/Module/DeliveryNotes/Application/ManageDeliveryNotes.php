@@ -11,6 +11,8 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Model\TaxComponent;
@@ -45,7 +47,7 @@ use Symfony\Component\Uid\Uuid;
  * line taxes the customer's regime charges. A customer, product, unit or tax retired since stays with the note that
  * already names it. The lines must total. Audited with the names of the fields a revision changed, never their values.
  */
-final readonly class ManageDeliveryNotes
+final readonly class ManageDeliveryNotes implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'delivery_note';
     public const string CREATED = 'delivery_note.created';
@@ -298,5 +300,13 @@ final readonly class ManageDeliveryNotes
     private function record(Company $company, Uuid $noteId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $noteId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\ImportExport\Application\Undo;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Application\RunImport;
@@ -32,7 +34,7 @@ use Symfony\Component\Uid\Uuid;
  *
  * The caller has checked the person may write the import's subject, in a company whose module is on.
  */
-final readonly class UndoImport
+final readonly class UndoImport implements DeclaresAuditActions
 {
     /** @param iterable<UndoesImportedRows> $rows */
     public function __construct(
@@ -107,5 +109,12 @@ final readonly class UndoImport
 
             return new ImportUndone($removal?->getId(), $removed, $kept, $rowsKept, $stock['takenBack'], $stock['kept'], $run->getUpdated());
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            'import.undone' => AuditScope::Company,
+        ];
     }
 }

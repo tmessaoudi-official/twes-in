@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Company;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Settings\Application\ChangeSettings;
@@ -29,7 +31,7 @@ use Symfony\Component\Uid\Uuid;
  * preset's taxes and units, so a country with no preset is refused before anything is written. Its documents print in
  * the language it is opened with, stored as its own setting, which it changes like any other.
  */
-final readonly class CreateCompany
+final readonly class CreateCompany implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'company';
     public const string CREATED = 'company.created';
@@ -88,5 +90,12 @@ final readonly class CreateCompany
 
             return $company;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+        ];
     }
 }

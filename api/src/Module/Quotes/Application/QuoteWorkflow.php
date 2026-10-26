@@ -11,6 +11,8 @@ namespace App\Module\Quotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
@@ -36,7 +38,7 @@ use Symfony\Component\Uid\Uuid;
  * an accepted one invoiced wholly into a new draft invoice or added to an open one.
  * Every move is audited.
  */
-final readonly class QuoteWorkflow
+final readonly class QuoteWorkflow implements DeclaresAuditActions
 {
     public const string DOCUMENT_TYPE = 'quote';
     public const string SENT = 'quote.sent';
@@ -305,5 +307,17 @@ final readonly class QuoteWorkflow
                 }
             }
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ACCEPTED => AuditScope::Company,
+            self::CANCELLED => AuditScope::Company,
+            self::DEPOSIT_DRAFTED => AuditScope::Company,
+            self::INVOICED => AuditScope::Company,
+            self::REFUSED => AuditScope::Company,
+            self::SENT => AuditScope::Company,
+        ];
     }
 }

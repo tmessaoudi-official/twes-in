@@ -11,6 +11,8 @@ namespace App\Records\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Records\Application\Merge\MergeAlias;
 use App\Records\Domain\Model\RecordRemoval;
 use App\Records\Domain\Repository\RecordRemovalRepository;
@@ -26,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
  * lets it through. The records are locked first, so nothing comes to name one between the count and the delete, except
  * a row naming it with no foreign key, written meanwhile by another request that never reads the record itself.
  */
-final readonly class RemoveRecords
+final readonly class RemoveRecords implements DeclaresAuditActions
 {
     public function __construct(
         private RecordCatalogue $catalogue,
@@ -221,5 +223,16 @@ final readonly class RemoveRecords
         }
 
         return array_values($chosen);
+    }
+
+    /** Each record's delete, by the table its subject names. */
+    public function auditActions(): array
+    {
+        $actions = [];
+        foreach ($this->catalogue->subjects() as $subject) {
+            $actions[$subject->table.'.deleted'] = AuditScope::Company;
+        }
+
+        return $actions;
     }
 }

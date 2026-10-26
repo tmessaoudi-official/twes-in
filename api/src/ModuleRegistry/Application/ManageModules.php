@@ -11,6 +11,8 @@ namespace App\ModuleRegistry\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\ModuleRegistry\Domain\Repository\ModuleStateRepository;
 use App\Shared\Application\Transactions;
@@ -23,7 +25,7 @@ use Symfony\Component\Uid\Uuid;
  * needs is on, and stays on while an enabled module needs it, so what is on always has what it needs. Switching a
  * module off keeps its data. Audited with the module's key; switching to the current state records nothing.
  */
-final readonly class ManageModules
+final readonly class ManageModules implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'module';
     public const string ENABLED = 'module.enabled';
@@ -90,5 +92,13 @@ final readonly class ManageModules
 
             return new ModuleView($manifest, $enabled);
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::DISABLED => AuditScope::Company,
+            self::ENABLED => AuditScope::Company,
+        ];
     }
 }

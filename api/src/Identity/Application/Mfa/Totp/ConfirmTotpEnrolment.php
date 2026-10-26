@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa\Totp;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Mfa\IssueRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\SecondFactorUnreadable;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
  * The raw codes are returned here and nowhere else, ever — what is stored is their SHA-256. Losing them means
  * generating a new set, which is why the ruling of 2026-09-10 says they are shown once and regenerable.
  */
-final readonly class ConfirmTotpEnrolment
+final readonly class ConfirmTotpEnrolment implements DeclaresAuditActions
 {
     public const string ENROLLED = 'auth.mfa_enrolled';
 
@@ -84,5 +86,12 @@ final readonly class ConfirmTotpEnrolment
 
             return $codes;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ENROLLED => AuditScope::Outside,
+        ];
     }
 }

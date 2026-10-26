@@ -11,6 +11,8 @@ namespace App\Module\Invoices\Application\Payment;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Invoices\Application\Credit\ManageCustomerCredit;
@@ -43,7 +45,7 @@ use Symfony\Component\Uid\Uuid;
  * the open instruments never promise more than is still due. Each step holds the invoice's row, so a cashing and a
  * payment recorded at once never both fit what was due, and each is audited on the invoice.
  */
-final readonly class ManageInstruments
+final readonly class ManageInstruments implements DeclaresAuditActions
 {
     public const string RECEIVED = 'instrument.received';
     public const string DEPOSITED = 'instrument.deposited';
@@ -247,5 +249,15 @@ final readonly class ManageInstruments
             'dueOn' => $instrument->getDueOn()->format('Y-m-d'),
             'amount' => $instrument->getAmount(),
         ] + $more, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CASHED => AuditScope::Company,
+            self::DEPOSITED => AuditScope::Company,
+            self::RECEIVED => AuditScope::Company,
+            self::UNPAID => AuditScope::Company,
+        ];
     }
 }

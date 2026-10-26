@@ -11,6 +11,8 @@ namespace App\Identity\Application\Password;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
@@ -26,7 +28,7 @@ use Psr\Clock\ClockInterface;
  * rules as a change, a refusal leaves the link usable, and success spends the link, voids any other, and ends every
  * session of the account. A second factor is not skipped: it is asked at the next sign-in as ever.
  */
-final readonly class ResetPassword
+final readonly class ResetPassword implements DeclaresAuditActions
 {
     public const string RESET = 'auth.password_reset';
 
@@ -84,5 +86,13 @@ final readonly class ResetPassword
             $this->audit->record(new AuditEntry('user', $user->getId(), self::RESET, $user->getId()));
             $this->notices->tell($user->getId(), SecurityChange::PasswordReset);
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            ChangePassword::BREACH_CHECK_SKIPPED => AuditScope::Outside,
+            self::RESET => AuditScope::Outside,
+        ];
     }
 }

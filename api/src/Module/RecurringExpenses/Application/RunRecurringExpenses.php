@@ -11,6 +11,8 @@ namespace App\Module\RecurringExpenses\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\RecurringExpenses\Domain\Repository\RecurringExpenseRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
  * copied is paused and said so once. Occurrences missed while the worker was down are drafted on the next pass, a
  * bounded number at a time.
  */
-final readonly class RunRecurringExpenses
+final readonly class RunRecurringExpenses implements DeclaresAuditActions
 {
     public const string DRAFTED = 'expense.recurring_drafted';
     public const string STOPPED = 'expense.recurring_stopped';
@@ -111,5 +113,13 @@ final readonly class RunRecurringExpenses
                 $this->notifications->publish(new Notification('user:'.$membership->getUser()->getId()->toRfc4122(), $type, $payload, $company->getId()->toRfc4122()));
             }
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::AUDIT_DRAFTED => AuditScope::Company,
+            self::AUDIT_PAUSED => AuditScope::Company,
+        ];
     }
 }

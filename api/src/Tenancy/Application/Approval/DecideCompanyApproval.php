@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Approval;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\CreateCompany;
@@ -27,7 +29,7 @@ use Symfony\Component\Uid\Uuid;
  * its members and tells its owners; rejecting suspends one that waits, and suspends an open one, recorded as a
  * suspension. A decision the company already carries changes nothing: no second mail, no second audit entry.
  */
-final readonly class DecideCompanyApproval
+final readonly class DecideCompanyApproval implements DeclaresAuditActions
 {
     public const string APPROVED = 'company.approved';
     public const string REJECTED = 'company.rejected';
@@ -109,5 +111,14 @@ final readonly class DecideCompanyApproval
             ['name' => $company->getName(), 'from' => $from, 'status' => $company->getStatus()],
             $company->getId(),
         ));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::APPROVED => AuditScope::Company,
+            self::REJECTED => AuditScope::Company,
+            self::SUSPENDED => AuditScope::Company,
+        ];
     }
 }

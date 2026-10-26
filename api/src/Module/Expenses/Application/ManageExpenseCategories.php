@@ -11,6 +11,8 @@ namespace App\Module\Expenses\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Expenses\Domain\Exception\InvalidExpense;
 use App\Module\Expenses\Domain\Model\ExpenseCategory;
 use App\Module\Expenses\Domain\Repository\ExpenseCategoryRepository;
@@ -27,7 +29,7 @@ use Symfony\Component\Uid\Uuid;
  * categories or at the top, deactivated rather than deleted because expenses keep them. Audited with the names of the
  * fields a revision changed.
  */
-final readonly class ManageExpenseCategories
+final readonly class ManageExpenseCategories implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'expense_category';
     public const string CREATED = 'expense_category.created';
@@ -111,5 +113,13 @@ final readonly class ManageExpenseCategories
     private function record(Company $company, Uuid $categoryId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $categoryId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

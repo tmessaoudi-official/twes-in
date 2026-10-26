@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Support;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Domain\Model\User;
@@ -33,7 +35,7 @@ use Symfony\Component\Uid\Uuid;
  * the owner's to decide, and the owner proves who is at the screen again to open it (docs/SPEC.md § 7, the step-up
  * list); closing it asks nothing. Every grant and every end is in the activity log, and the other owners are told of it.
  */
-final readonly class ManageSupportAccess
+final readonly class ManageSupportAccess implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'support_grant';
     public const string GRANTED = 'support_access.granted';
@@ -149,5 +151,13 @@ final readonly class ManageSupportAccess
                 $company->getId()->toRfc4122(),
             ));
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ENDED => AuditScope::Company,
+            self::GRANTED => AuditScope::Company,
+        ];
     }
 }

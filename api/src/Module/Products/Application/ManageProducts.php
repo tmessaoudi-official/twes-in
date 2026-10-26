@@ -11,6 +11,8 @@ namespace App\Module\Products\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\CustomFields\Domain\Exception\InvalidCustomFieldValue;
 use App\CustomFields\Domain\Model\CustomFieldDefinition;
 use App\CustomFields\Domain\Repository\CustomFieldDefinitionRepository;
@@ -59,7 +61,7 @@ use Symfony\Component\Uid\Uuid;
  * field values are checked against the company's fields for products. Audited with the names of the fields a
  * revision changed, never their values.
  */
-final readonly class ManageProducts
+final readonly class ManageProducts implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'product';
     public const string CREATED = 'product.created';
@@ -644,5 +646,13 @@ final readonly class ManageProducts
     private function record(Company $company, Uuid $productId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $productId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

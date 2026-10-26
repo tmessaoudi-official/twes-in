@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Invitation;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Member\RoleBounds;
 use App\Tenancy\Application\Member\RoleNotManageable;
@@ -21,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
  * Takes back an invitation nobody has accepted, sent to a mistyped address or no longer wanted: its link stops working
  * at once. Whoever may not give its role may not take it back either.
  */
-final readonly class WithdrawInvitation
+final readonly class WithdrawInvitation implements DeclaresAuditActions
 {
     public const string WITHDRAWN = 'invitation.withdrawn';
 
@@ -58,5 +60,12 @@ final readonly class WithdrawInvitation
                 $companyId,
             ));
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::WITHDRAWN => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\SecretCipher;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
@@ -27,7 +29,7 @@ use Symfony\Component\Uid\Uuid;
  * a login code, so it cannot be replayed for a second set inside its window. An account with a passkey can use that
  * instead (RegenerateRecoveryCodesWithPasskey).
  */
-final readonly class RegenerateRecoveryCodes
+final readonly class RegenerateRecoveryCodes implements DeclaresAuditActions
 {
     public const string REGENERATED = 'auth.recovery_codes_regenerated';
 
@@ -90,5 +92,12 @@ final readonly class RegenerateRecoveryCodes
 
             return $codes;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REGENERATED => AuditScope::Outside,
+        ];
     }
 }

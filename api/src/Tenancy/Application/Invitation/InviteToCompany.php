@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Invitation;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\Email;
 use App\Shared\Application\Notification;
@@ -36,7 +38,7 @@ use Symfony\Component\Uid\Uuid;
  * has an account. Nobody is a member of the company, nor held by its MFA requirement, until they accept the link;
  * an address that has an account is also told in the application (docs/SPEC.md § 7, 2026-09-15).
  */
-final readonly class InviteToCompany
+final readonly class InviteToCompany implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'invitation';
     public const string SENT = 'invitation.sent';
@@ -125,5 +127,12 @@ final readonly class InviteToCompany
         }
 
         return new InviteOutcome($email->value, $request->roleName);
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::SENT => AuditScope::Company,
+        ];
     }
 }

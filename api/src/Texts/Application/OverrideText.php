@@ -11,6 +11,8 @@ namespace App\Texts\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\Languages;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
@@ -27,7 +29,7 @@ use Symfony\Component\Uid\Uuid;
  * Words a shipped text otherwise for the installation (no company) or for one company, or takes that back. Who may
  * write at which level is the caller's decision; this use case knows what a text must keep to replace the original.
  */
-final readonly class OverrideText
+final readonly class OverrideText implements DeclaresAuditActions
 {
     /** Also the kind of the live change the audit entry stages, which every screen reloads its texts on. */
     public const string ENTITY_TYPE = 'text';
@@ -118,5 +120,13 @@ final readonly class OverrideText
             'key' => $address->key,
         ];
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $override->getId(), $action, $actorUserId, $changes, $override->getCompany()?->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::OVERRIDDEN => AuditScope::Either,
+            self::RESET => AuditScope::Either,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Establishment;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
@@ -33,7 +35,7 @@ use Symfony\Component\Uid\Uuid;
  * exactly one default: another establishment takes the role, the default never just steps down. A new establishment
  * numbers each document type the way the default establishment does, from one.
  */
-final readonly class ManageEstablishments
+final readonly class ManageEstablishments implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'establishment';
     public const string CREATED = 'establishment.created';
@@ -211,6 +213,14 @@ final readonly class ManageEstablishments
             'phone' => $e->getPhone(),
             'email' => $e->getEmail(),
             'isDefault' => $e->isDefault(),
+        ];
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
         ];
     }
 }

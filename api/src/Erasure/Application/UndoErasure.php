@@ -11,6 +11,8 @@ namespace App\Erasure\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Erasure\Domain\Exception\ErasureNoLongerPending;
 use App\Erasure\Domain\Model\DataErasure;
 use App\Erasure\Domain\Repository\DataErasureRepository;
@@ -26,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
  * not one second after, whether or not the worker has ended it yet. When something made since stands in the way, nothing
  * comes back and the erasure still waits, so the owner may clear the way and try again.
  */
-final readonly class UndoErasure
+final readonly class UndoErasure implements DeclaresAuditActions
 {
     public const string UNDONE = 'data.erasure_undone';
 
@@ -69,5 +71,12 @@ final readonly class UndoErasure
 
             return $erasure;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::UNDONE => AuditScope::Company,
+        ];
     }
 }

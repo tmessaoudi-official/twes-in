@@ -11,6 +11,8 @@ namespace App\Fiscal\Application\Unit;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\DocumentLanguageNames;
 use App\Fiscal\Domain\Exception\InvalidFiscalValue;
 use App\Fiscal\Domain\Model\Unit;
@@ -23,7 +25,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /** A company's units: listed, added and revised, each change audited. */
-final readonly class ManageUnits
+final readonly class ManageUnits implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'unit';
     public const string CREATED = 'unit.created';
@@ -90,5 +92,13 @@ final readonly class ManageUnits
     private static function snapshot(Unit $unit): array
     {
         return ['code' => $unit->getCode(), 'name' => $unit->getName(), 'names' => $unit->getNames(), 'decimals' => $unit->getDecimals(), 'is_active' => $unit->isActive()];
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

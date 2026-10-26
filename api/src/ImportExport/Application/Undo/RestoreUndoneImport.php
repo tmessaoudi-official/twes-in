@@ -11,6 +11,8 @@ namespace App\ImportExport\Application\Undo;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\ImportExport\Application\RunImport;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\Records\Application\RemovalConflict;
@@ -26,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
  * again, to be taken back again within its day. Goods counted or gone out since stand in the stock's way, and refuse
  * the whole restore.
  */
-final readonly class RestoreUndoneImport implements RemovalRestored
+final readonly class RestoreUndoneImport implements RemovalRestored, DeclaresAuditActions
 {
     public function __construct(
         private ImportRunRepository $runs,
@@ -57,5 +59,12 @@ final readonly class RestoreUndoneImport implements RemovalRestored
             $this->runs->save($run);
             $this->audit->record(new AuditEntry(RunImport::RUN_KIND, $run->getId(), 'import.restored', $actorUserId, [], $company->getId()));
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            'import.restored' => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa\Passkey;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Mfa\IssueRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactors;
 use App\Identity\Application\PasskeyCeremonies;
@@ -29,7 +31,7 @@ use Symfony\Component\Uid\Uuid;
  * app, because from this moment a lost device would otherwise lock the account. A later passkey issues none: the codes
  * already out there stay valid.
  */
-final readonly class RegisterPasskey
+final readonly class RegisterPasskey implements DeclaresAuditActions
 {
     public const string REGISTERED = 'auth.passkey_registered';
 
@@ -71,5 +73,12 @@ final readonly class RegisterPasskey
 
             return new RegisteredPasskey($passkey, $codes);
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REGISTERED => AuditScope::Outside,
+        ];
     }
 }

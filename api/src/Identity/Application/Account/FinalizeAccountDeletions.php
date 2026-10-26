@@ -11,7 +11,9 @@ namespace App\Identity\Application\Account;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Application\JournalAddresses;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Application\ReadSetting;
@@ -28,7 +30,7 @@ use Psr\Clock\ClockInterface;
  * has become a company's only owner since it asked is kept, for that company would be left with no one to run it, and
  * is tried again the next night.
  */
-final readonly class FinalizeAccountDeletions
+final readonly class FinalizeAccountDeletions implements DeclaresAuditActions
 {
     public const string DELETED = 'account.deleted';
 
@@ -76,5 +78,12 @@ final readonly class FinalizeAccountDeletions
         }
 
         return ['deleted' => $deleted, 'kept' => $kept];
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::DELETED => AuditScope::Outside,
+        ];
     }
 }

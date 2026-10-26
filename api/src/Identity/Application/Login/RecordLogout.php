@@ -11,10 +11,12 @@ namespace App\Identity\Application\Login;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\CurrentCompany;
 use Symfony\Component\Uid\Uuid;
 
-final readonly class RecordLogout
+final readonly class RecordLogout implements DeclaresAuditActions
 {
     public function __construct(private AuditTrail $audit, private CurrentCompany $currentCompany)
     {
@@ -23,5 +25,12 @@ final readonly class RecordLogout
     public function handle(Uuid $userId): void
     {
         $this->audit->record(new AuditEntry(LoginAudit::ENTITY_TYPE, $userId, LoginAudit::LOGOUT, $userId, [], $this->currentCompany->id()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            LoginAudit::LOGOUT => AuditScope::Either,
+        ];
     }
 }

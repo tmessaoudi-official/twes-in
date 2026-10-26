@@ -11,6 +11,8 @@ namespace App\Identity\Application\Password;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Domain\Model\PasswordReset;
 use App\Identity\Domain\Repository\PasswordResetRepository;
 use App\Identity\Domain\Repository\UserRepository;
@@ -26,7 +28,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * one, is sent nothing and the caller answers the same either way, so the response never says which it was: only whoever
  * reads that inbox learns anything. Asking again replaces the open link.
  */
-final readonly class RequestPasswordReset
+final readonly class RequestPasswordReset implements DeclaresAuditActions
 {
     public const string REQUESTED = 'auth.password_reset_requested';
 
@@ -69,5 +71,12 @@ final readonly class RequestPasswordReset
             \in_array($locale, $this->languages->interface(), true) ? $locale : $user->getLocale(),
             intdiv($reset->getExpiresAt()->getTimestamp() - $now->getTimestamp(), 60),
         ));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REQUESTED => AuditScope::Outside,
+        ];
     }
 }

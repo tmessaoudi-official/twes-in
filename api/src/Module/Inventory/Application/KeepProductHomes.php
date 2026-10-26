@@ -11,6 +11,8 @@ namespace App\Module\Inventory\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
 use App\Module\Inventory\Domain\Model\ProductHomeLocation;
 use App\Module\Inventory\Domain\Repository\ProductHomeLocationRepository;
@@ -37,7 +39,7 @@ use Symfony\Component\Uid\Uuid;
  * The establishment is the location's own, never asked for separately, because a location already knows where it is
  * and two sources for one fact drift.
  */
-final readonly class KeepProductHomes
+final readonly class KeepProductHomes implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'product_home_location';
     public const string SET = 'product_home_location.set';
@@ -260,5 +262,13 @@ final readonly class KeepProductHomes
             ['establishmentId' => $establishmentId->toRfc4122()],
             companyId: $company->getId(),
         ));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CLEARED => AuditScope::Company,
+            self::SET => AuditScope::Company,
+        ];
     }
 }

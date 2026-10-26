@@ -11,6 +11,8 @@ namespace App\Module\Products\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\CurrencyScales;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
@@ -27,7 +29,7 @@ use Symfony\Component\Uid\Uuid;
  * is the one the follow set. Each is a revision of the product, audited by the field it changed, so every screen showing
  * the product hears it; one settled since it was read is refused by its version.
  */
-final readonly class ReviewProductPrice
+final readonly class ReviewProductPrice implements DeclaresAuditActions
 {
     public const string NOTHING_TO_REVIEW = 'The margin of this product has not moved since its price was set.';
 
@@ -71,5 +73,12 @@ final readonly class ReviewProductPrice
 
             return $product;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            ManageProducts::REVISED => AuditScope::Company,
+        ];
     }
 }

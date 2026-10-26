@@ -11,6 +11,8 @@ namespace App\Demo\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Demo\Domain\Repository\DemoSandboxRepository;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Identity\Domain\Model\User;
@@ -34,7 +36,7 @@ use Symfony\Component\Uid\Uuid;
  * in. The company's name is the catalogue's followed by « démo » and a mark of the sandbox, for names are unique and
  * the demo company of a development stack keeps the catalogue's own.
  */
-final readonly class OpenSandboxCompany
+final readonly class OpenSandboxCompany implements DeclaresAuditActions
 {
     public function __construct(
         private DemoSandboxRepository $sandboxes,
@@ -83,5 +85,12 @@ final readonly class OpenSandboxCompany
 
             return [$company->getId(), $owner->getId()];
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            CreateCompany::CREATED => AuditScope::Company,
+        ];
     }
 }

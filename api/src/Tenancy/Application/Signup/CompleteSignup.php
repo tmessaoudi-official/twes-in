@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Signup;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Identity\Application\BreachedPasswordCheck;
 use App\Identity\Application\PasswordHasher;
@@ -41,7 +43,7 @@ use Psr\Clock\ClockInterface;
  * approval unless the platform turned that off (docs/SPEC.md § 7, 2026-09-15). No session is started: the owner signs
  * in, as after an invitation.
  */
-final readonly class CompleteSignup
+final readonly class CompleteSignup implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'signup';
     public const string COMPLETED = 'signup.completed';
@@ -141,5 +143,13 @@ final readonly class CompleteSignup
         foreach ($this->users->platformOperators() as $operator) {
             $this->notifications->publish(new Notification('user:'.$operator->getId()->toRfc4122(), self::AWAITING_APPROVAL, ['company' => $companyName, 'email' => $email]));
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            AcceptInvitation::BREACH_CHECK_SKIPPED => AuditScope::Company,
+            self::COMPLETED => AuditScope::Company,
+        ];
     }
 }

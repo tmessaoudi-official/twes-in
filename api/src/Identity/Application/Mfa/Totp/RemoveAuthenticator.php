@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa\Totp;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Application\StepUp\ConfirmStepUp;
@@ -26,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
  * was. An account that must carry a second factor, an operator's or a member's of a company requiring one, keeps it
  * whatever passkeys stand beside it: a phone changed is a replacement there, which never leaves the account without one.
  */
-final readonly class RemoveAuthenticator
+final readonly class RemoveAuthenticator implements DeclaresAuditActions
 {
     public const string REMOVED = 'auth.totp_removed';
 
@@ -76,5 +78,12 @@ final readonly class RemoveAuthenticator
         }
 
         return $user;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REMOVED => AuditScope::Outside,
+        ];
     }
 }

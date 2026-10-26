@@ -11,6 +11,8 @@ namespace App\Records\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Files\Application\Files;
 use App\Records\Domain\Repository\RecordRemovalRepository;
 use App\Shared\Application\Transactions;
@@ -21,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
  * Ends every delete whose day is over: it becomes final, its copy goes, and the files only the copy named go with it. Running it again ends nothing twice. A
  * restore never waits on it: the removal refuses one past its day by itself.
  */
-final readonly class EndDueRemovals
+final readonly class EndDueRemovals implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'record_removal';
     public const string ENDED = 'record_removal.final';
@@ -63,5 +65,12 @@ final readonly class EndDueRemovals
         }
 
         return $ended;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ENDED => AuditScope::Company,
+        ];
     }
 }

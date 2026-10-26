@@ -11,6 +11,8 @@ namespace App\Module\Products\Application\Category;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Products\Domain\Exception\InvalidProductCategory;
 use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Domain\Repository\ProductCategoryRepository;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
  * categories or at the top. Deleting one is the records engine's, which keeps it a day to put back. Audited with the
  * names of the fields a revision changed, never their values.
  */
-final readonly class ManageProductCategories
+final readonly class ManageProductCategories implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'product_category';
     public const string CREATED = 'product_category.created';
@@ -127,5 +129,13 @@ final readonly class ManageProductCategories
     private function record(Company $company, Uuid $categoryId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $categoryId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

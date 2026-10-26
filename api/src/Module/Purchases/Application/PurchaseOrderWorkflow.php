@@ -11,6 +11,8 @@ namespace App\Module\Purchases\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
 use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
 use App\Module\Purchases\Domain\Model\GoodsReceipt;
@@ -32,7 +34,7 @@ use Symfony\Component\Uid\Uuid;
  * cancelled when nothing came. The order is held for every move, so two receipts typed at once cannot both bring the
  * last of a line. Every move is audited.
  */
-final readonly class PurchaseOrderWorkflow
+final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
 {
     public const string DOCUMENT_TYPE = 'purchase_order';
     public const string SENT = 'purchase_order.sent';
@@ -174,5 +176,15 @@ final readonly class PurchaseOrderWorkflow
     private function record(Company $company, PurchaseOrder $order, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(ManagePurchaseOrders::ENTITY_TYPE, $order->getId(), $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CANCELLED => AuditScope::Company,
+            self::CLOSED => AuditScope::Company,
+            self::RECEIVED => AuditScope::Company,
+            self::SENT => AuditScope::Company,
+        ];
     }
 }

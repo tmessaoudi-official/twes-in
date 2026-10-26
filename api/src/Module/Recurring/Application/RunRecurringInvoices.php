@@ -11,6 +11,8 @@ namespace App\Module\Recurring\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Recurring\Domain\Repository\RecurringInvoiceRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
  * said so. Occurrences missed while the worker was down are drafted on the next pass, a bounded number at a time.
  * Drafts are free of a closed period: issuing one dated in it is what `AllocateNumber` refuses.
  */
-final readonly class RunRecurringInvoices
+final readonly class RunRecurringInvoices implements DeclaresAuditActions
 {
     public const string DRAFTED = 'invoice.recurring_drafted';
     public const string STOPPED = 'invoice.recurring_stopped';
@@ -111,5 +113,13 @@ final readonly class RunRecurringInvoices
                 $this->notifications->publish(new Notification('user:'.$membership->getUser()->getId()->toRfc4122(), $type, $payload, $company->getId()->toRfc4122()));
             }
         }
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::AUDIT_DRAFTED => AuditScope::Company,
+            self::AUDIT_PAUSED => AuditScope::Company,
+        ];
     }
 }

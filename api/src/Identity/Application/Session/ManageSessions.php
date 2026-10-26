@@ -11,6 +11,8 @@ namespace App\Identity\Application\Session;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Model\UserSession;
 use App\Identity\Domain\Repository\UserRepository;
@@ -26,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
  * only now and then. Ending a session never touches the PHP session itself: the request that brings it back is refused
  * (`seen` answers Revoked), which needs no raw session id in this table.
  */
-final readonly class ManageSessions
+final readonly class ManageSessions implements DeclaresAuditActions
 {
     public const string ENDED = 'auth.session_ended';
     public const string OTHERS_ENDED = 'auth.sessions_ended';
@@ -138,5 +140,13 @@ final readonly class ManageSessions
     private function limit(): \DateInterval
     {
         return new \DateInterval('PT'.$this->absoluteTtl.'S');
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ENDED => AuditScope::Outside,
+            self::OTHERS_ENDED => AuditScope::Outside,
+        ];
     }
 }

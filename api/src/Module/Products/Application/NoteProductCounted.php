@@ -11,6 +11,8 @@ namespace App\Module\Products\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Application\Transactions;
@@ -22,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
  * A product whose stock was counted no longer awaits its count: « à compter » leaves it, audited by the field's name as
  * any revision is, so the screens that show it hear of it. Nothing is written for a product that awaited no count.
  */
-final readonly class NoteProductCounted
+final readonly class NoteProductCounted implements DeclaresAuditActions
 {
     public function __construct(
         private ProductRepository $products,
@@ -50,5 +52,12 @@ final readonly class NoteProductCounted
 
             return true;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            ManageProducts::REVISED => AuditScope::Company,
+        ];
     }
 }

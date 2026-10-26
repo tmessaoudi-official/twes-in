@@ -11,6 +11,8 @@ namespace App\Settings\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Settings\Domain\Event\PersonalSettingChanged;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\Repository\SettingRepository;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
  * Stores or forgets a value at one level of one context, and answers the setting as that context now sees it.
  * Who may write at which level is the caller's decision; this use case only knows what the setting allows.
  */
-final readonly class ChangeSettings
+final readonly class ChangeSettings implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'setting';
     public const string CHANGED = 'setting.changed';
@@ -189,5 +191,13 @@ final readonly class ChangeSettings
         }
         $changes = ['key' => $setting->getKey(), 'level' => $address->level->value];
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $setting->getId(), $action, $actorUserId, $changes, $address->company?->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CHANGED => AuditScope::Either,
+            self::RESET => AuditScope::Either,
+        ];
     }
 }

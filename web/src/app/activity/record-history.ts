@@ -16,10 +16,12 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { MomentPipe } from '../shared/i18n/format-pipes';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { ActivityApi } from './activity-api';
 import { ActivityFieldsPipe } from './activity-fields-pipe';
 import { actionKey } from './activity-list';
+import { ACTIVITY_TEXTS } from './activity-texts';
 import { unnamedActorKey, type ActivityRow, type ActivitySearch } from './activity-types';
 
 /** How many of a record's latest entries its « Historique » shows; the journal holds the rest. */
@@ -80,6 +82,7 @@ export class RecordHistory implements OnInit {
   private readonly api = inject(ActivityApi);
   private readonly auth = inject(AuthFacade);
   private readonly live = inject(LiveChanges);
+  private readonly texts = inject(TextsParts);
   private readonly destroyRef = inject(DestroyRef);
 
   /** The kind of record, as the journal names it: `customer`, `invoice`. */
@@ -104,6 +107,8 @@ export class RecordHistory implements OnInit {
 
   /** A change to the record, by someone else, is a new line of its history. */
   ngOnInit(): void {
+    // Drawn on every record's page: opened here rather than by each route, and said once they arrive.
+    void this.texts.open(ACTIVITY_TEXTS);
     this.live.reloadOn(
       [this.kind()],
       () => this.load(this.companyId(), this.kind(), this.recordId()),

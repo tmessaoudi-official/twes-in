@@ -11,6 +11,8 @@ namespace App\Venue\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
@@ -36,7 +38,7 @@ use Symfony\Component\Uid\Uuid;
  * Every change is audited, which is also the signal open plans reload on: a use case that recorded nothing would
  * leave every other screen showing yesterday's drawing with no error anywhere.
  */
-final readonly class ArrangeVenue
+final readonly class ArrangeVenue implements DeclaresAuditActions
 {
     public const string AREA_TYPE = 'venue_area';
     public const string SPOT_TYPE = 'venue_spot';
@@ -365,5 +367,20 @@ final readonly class ArrangeVenue
     private function record(string $type, Uuid $id, string $action, ?Uuid $actorUserId, Company $company): void
     {
         $this->audit->record(new AuditEntry($type, $id, $action, $actorUserId, companyId: $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::AREA_CREATED => AuditScope::Company,
+            self::AREA_DELETED => AuditScope::Company,
+            self::AREA_REVISED => AuditScope::Company,
+            self::SPOT_CREATED => AuditScope::Company,
+            self::SPOT_DELETED => AuditScope::Company,
+            self::SPOT_REVISED => AuditScope::Company,
+            self::STRUCTURE_CREATED => AuditScope::Company,
+            self::STRUCTURE_DELETED => AuditScope::Company,
+            self::STRUCTURE_REVISED => AuditScope::Company,
+        ];
     }
 }

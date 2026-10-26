@@ -11,6 +11,8 @@ namespace App\Identity\Application\Password;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\Login\PasswordAttempts;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Application\Security\SecurityChange;
@@ -27,7 +29,7 @@ use Symfony\Component\Uid\Uuid;
  * and says so in the audit, as at signup). Every session opened with the old password ends, this one included: the
  * person signs in again with the new one. A refusal is audited too, in its own transaction, so it outlives the throw.
  */
-final readonly class ChangePassword
+final readonly class ChangePassword implements DeclaresAuditActions
 {
     public const string CHANGED = 'auth.password_changed';
     public const string REFUSED = 'auth.password_change_refused';
@@ -83,5 +85,14 @@ final readonly class ChangePassword
         $this->transactions->run(fn () => $this->audit->record(new AuditEntry('user', $userId, self::REFUSED, $userId, ['reason' => $reason])));
 
         return new NewPasswordRefused($reason);
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::BREACH_CHECK_SKIPPED => AuditScope::Outside,
+            self::REFUSED => AuditScope::Outside,
+            self::CHANGED => AuditScope::Outside,
+        ];
     }
 }

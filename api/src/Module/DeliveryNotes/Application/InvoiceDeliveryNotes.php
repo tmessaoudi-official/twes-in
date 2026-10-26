@@ -11,6 +11,8 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Module\DeliveryNotes\Application\Quotes\QuoteDiscounts;
@@ -36,7 +38,7 @@ use Symfony\Component\Uid\Uuid;
  * customer's invoice. The notes turn invoiced once that invoice is issued, so a draft cancelled on the way
  * strands none. Invoices know delivery notes only by the ids of their lines; this is the one place the two meet.
  */
-final readonly class InvoiceDeliveryNotes
+final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
 {
     public const string INVOICED = 'delivery_note.invoiced';
     /** A selection is one list page at most, and the largest page holds this many rows. */
@@ -419,5 +421,12 @@ final readonly class InvoiceDeliveryNotes
     private static function reference(DeliveryNote $note): string
     {
         return $note->getNumber() ?? $note->getId()->toRfc4122();
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::INVOICED => AuditScope::Company,
+        ];
     }
 }

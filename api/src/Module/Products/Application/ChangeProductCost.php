@@ -11,6 +11,8 @@ namespace App\Module\Products\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Products\Domain\Exception\InvalidProduct;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Model\ProductCostChange;
@@ -29,7 +31,7 @@ use Symfony\Component\Uid\Uuid;
  * A receipt moving the cost under a price that stays moves the margin: what follows is the company's setting, through
  * PriceOnCostMove, said to whoever received in that receipt's answer.
  */
-final readonly class ChangeProductCost
+final readonly class ChangeProductCost implements DeclaresAuditActions
 {
     public function __construct(
         private ProductRepository $products,
@@ -71,5 +73,12 @@ final readonly class ChangeProductCost
 
             return true;
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            ManageProducts::REVISED => AuditScope::Company,
+        ];
     }
 }

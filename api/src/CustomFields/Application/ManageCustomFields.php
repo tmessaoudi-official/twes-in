@@ -11,6 +11,8 @@ namespace App\CustomFields\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\CustomFields\Domain\Exception\InvalidCustomFieldDefinition;
 use App\CustomFields\Domain\Model\CustomFieldDefinition;
 use App\CustomFields\Domain\Repository\CustomFieldDefinitionRepository;
@@ -28,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
  * type never change and it is retired rather than deleted. The rules a record is checked against include retired
  * fields, so the values they hold are carried over. Audited with the key on creation and the names of what changed.
  */
-final readonly class ManageCustomFields
+final readonly class ManageCustomFields implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'custom_field';
     public const string CREATED = 'custom_field.created';
@@ -112,5 +114,13 @@ final readonly class ManageCustomFields
     private function record(Company $company, Uuid $fieldId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $fieldId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

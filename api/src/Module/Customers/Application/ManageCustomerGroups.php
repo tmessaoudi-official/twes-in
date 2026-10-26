@@ -11,6 +11,8 @@ namespace App\Module\Customers\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Customers\Domain\Exception\InvalidCustomerGroup;
 use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Module\Customers\Domain\Repository\CustomerGroupRepository;
@@ -30,7 +32,7 @@ use Symfony\Component\Uid\Uuid;
  * taking the defaults set for it along.
  * Audited with the names of the fields a revision changed, never their values.
  */
-final readonly class ManageCustomerGroups
+final readonly class ManageCustomerGroups implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'customer_group';
     public const string CREATED = 'customer_group.created';
@@ -133,5 +135,14 @@ final readonly class ManageCustomerGroups
     private function record(Company $company, Uuid $groupId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $groupId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::DELETED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

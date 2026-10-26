@@ -11,6 +11,8 @@ namespace App\Module\Inventory\Application\Replay;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Module\Inventory\Domain\Model\StockMoveFailure;
 use App\Module\Inventory\Domain\Repository\StockMoveFailureRepository;
 use App\Shared\Application\Transactions;
@@ -22,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
  * console's replay did, or said settled when the stock was set right otherwise. Each is audited as a change of the
  * stock, which the screens showing it hear.
  */
-final readonly class SettleStockMoveFailures
+final readonly class SettleStockMoveFailures implements DeclaresAuditActions
 {
     public function __construct(
         private StockMoveFailureRepository $failures,
@@ -88,5 +90,13 @@ final readonly class SettleStockMoveFailures
             $this->failures->remove($failure);
             $this->audit->record(new AuditEntry(StockMoveFailures::KIND, $failure->getDocumentId(), $action, $actorUserId, ['move' => $failure->getMove()->value, 'number' => $failure->getNumber()], $failure->getCompany()->getId()));
         });
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            StockMoveFailures::REPLAYED => AuditScope::Company,
+            StockMoveFailures::SETTLED => AuditScope::Company,
+        ];
     }
 }

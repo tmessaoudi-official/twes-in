@@ -44,7 +44,7 @@ final class RecordWordsTest extends KernelTestCase
         }
 
         self::assertNotEmpty($catalogue->subjects());
-        self::assertContains('record_removal.ended', $actions);
+        self::assertContains('record_removal.final', $actions);
         self::assertContains('record_removal', $kinds);
         foreach ($catalogue->subjects() as $table => $subject) {
             self::assertContains($table, $deletable, "$table is missing from DELETABLE_SUBJECTS");

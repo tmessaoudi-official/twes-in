@@ -11,6 +11,8 @@ namespace App\Licensing\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\CurrencyScales;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Licensing\Domain\Exception\InvalidPayment;
@@ -42,7 +44,7 @@ use Symfony\Component\Uid\Uuid;
  * The operator is told once the declaration is stored, and the company's owners once the decision is, never of one that
  * rolled back.
  */
-final readonly class ManagePayments
+final readonly class ManagePayments implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'payment_declaration';
     public const string DECLARED = 'subscription.payment_declared';
@@ -221,5 +223,14 @@ final readonly class ManagePayments
             ],
             $declaration->getCompany()->getId(),
         ));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CONFIRMED => AuditScope::Company,
+            self::DECLARED => AuditScope::Company,
+            self::REJECTED => AuditScope::Company,
+        ];
     }
 }

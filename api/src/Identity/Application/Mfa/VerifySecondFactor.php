@@ -11,6 +11,8 @@ namespace App\Identity\Application\Mfa;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Identity\Application\SecretCipher;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Model\User;
@@ -29,7 +31,7 @@ use Symfony\Component\Uid\Uuid;
  * code is checked and spent, so two requests racing one code take turns and the second finds it spent; a refusal is
  * raised once that transaction has committed, so its audit row stays.
  */
-final readonly class VerifySecondFactor
+final readonly class VerifySecondFactor implements DeclaresAuditActions
 {
     public const string VERIFIED = 'auth.mfa_verified';
     public const string FAILED = 'auth.mfa_failed';
@@ -146,5 +148,14 @@ final readonly class VerifySecondFactor
         ]));
 
         return true;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::FAILED => AuditScope::Outside,
+            self::VERIFIED => AuditScope::Outside,
+            self::RECOVERY_USED => AuditScope::Outside,
+        ];
     }
 }

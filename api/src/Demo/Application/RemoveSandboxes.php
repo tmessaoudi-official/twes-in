@@ -11,6 +11,8 @@ namespace App\Demo\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Demo\Domain\Repository\DemoSandboxRepository;
 use App\Files\Application\Files;
 use App\Identity\Application\Session\ManageSessions;
@@ -31,7 +33,7 @@ use Symfony\Component\Uid\Uuid;
  * out or away longer than a demo session stays signed in; a build stopped halfway once it has been building longer than
  * a build ever takes, so the pool queues its country again.
  */
-final readonly class RemoveSandboxes
+final readonly class RemoveSandboxes implements DeclaresAuditActions
 {
     public const string REMOVED = 'demo.sandbox_removed';
 
@@ -110,5 +112,12 @@ final readonly class RemoveSandboxes
         $this->files->deleteContents($keys);
 
         return true;
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::REMOVED => AuditScope::Outside,
+        ];
     }
 }

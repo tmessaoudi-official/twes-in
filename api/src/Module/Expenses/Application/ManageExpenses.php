@@ -11,6 +11,8 @@ namespace App\Module\Expenses\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Files\Application\AttachmentRefused;
 use App\Files\Application\Attachments;
 use App\Files\Application\StoredFileCorrupted;
@@ -53,7 +55,7 @@ use Symfony\Component\Uid\Uuid;
  * expense is recorded, but only a draft loses one. Audited with field names, never values. A file attached or detached
  * runs in the same transaction as its audit row, so a refused row takes the attachment row back with it.
  */
-final readonly class ManageExpenses
+final readonly class ManageExpenses implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'expense';
     public const string CREATED = 'expense.created';
@@ -470,5 +472,20 @@ final readonly class ManageExpenses
     private function record(Company $company, Uuid $expenseId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $expenseId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ATTACHMENT_ADDED => AuditScope::Company,
+            self::ATTACHMENT_REMOVED => AuditScope::Company,
+            self::ATTACHMENT_RESTORED => AuditScope::Company,
+            self::CREATED => AuditScope::Company,
+            self::DELETED => AuditScope::Company,
+            self::PAID => AuditScope::Company,
+            self::RECORDED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+            self::WITHHOLDING_CLASSIFIED => AuditScope::Company,
+        ];
     }
 }

@@ -11,6 +11,8 @@ namespace App\Module\Vendors\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Module\Vendors\Domain\Exception\InvalidVendor;
@@ -33,7 +35,7 @@ use Symfony\Component\Uid\Uuid;
  * Audited with the names of the fields a revision changed, never their values: a vendor may be a private person. A
  * default expense category, when named, is an active one of the company; one that was deactivated since stays.
  */
-final readonly class ManageVendors
+final readonly class ManageVendors implements DeclaresAuditActions
 {
     public const string ENTITY_TYPE = 'vendor';
     public const string CREATED = 'vendor.created';
@@ -176,5 +178,13 @@ final readonly class ManageVendors
     private function record(Company $company, Uuid $vendorId, string $action, array $changes, ?Uuid $actorUserId): void
     {
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $vendorId, $action, $actorUserId, $changes, $company->getId()));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::CREATED => AuditScope::Company,
+            self::REVISED => AuditScope::Company,
+        ];
     }
 }

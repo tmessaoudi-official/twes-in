@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Member;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Audit\Application\DeclaresAuditActions;
+use App\Audit\Domain\ValueObject\AuditScope;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
@@ -24,7 +26,7 @@ use Symfony\Component\Uid\Uuid;
  * so the last one is never lowered, while an owner steps down beside another. The person's next request reads the new
  * rights; the journal says from what to what.
  */
-final readonly class ChangeMemberRole
+final readonly class ChangeMemberRole implements DeclaresAuditActions
 {
     public const string ROLE_CHANGED = 'membership.role_changed';
 
@@ -75,5 +77,12 @@ final readonly class ChangeMemberRole
             $this->memberships->ofCompany($companyId),
             static fn (Membership $m) => Role::OWNER === $m->getRole()->getName(),
         ));
+    }
+
+    public function auditActions(): array
+    {
+        return [
+            self::ROLE_CHANGED => AuditScope::Company,
+        ];
     }
 }
