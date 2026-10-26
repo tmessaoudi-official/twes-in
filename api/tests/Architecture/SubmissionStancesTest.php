@@ -135,6 +135,7 @@ final class SubmissionStancesTest extends KernelTestCase
         '/companies/{companyId}/customer-screen/lock' => self::SETS,
         '/companies/{companyId}/delivery-notes/{deliveryNoteId}/receiver' => self::SETS,
         '/companies/{companyId}/quotes/{quoteId}/receiver' => self::SETS,
+        '/companies/{companyId}/purchase-orders/{purchaseOrderId}/receipts/{receiptId}/receiver' => self::SETS,
         '/companies/{companyId}/expenses/{expenseId}/attachments/{attachmentId}/restore' => self::SETS,
         '/companies/{companyId}/expenses/{expenseId}/withholding-operation' => self::SETS,
         '/companies/{companyId}/logo' => self::SETS,

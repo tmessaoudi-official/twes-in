@@ -3,6 +3,7 @@
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
 import type { ProductTracking } from '../products/products-types';
+import type { Receiver, ReceiverChoice, ReceiverRule } from '../shared/receivers/receiver';
 
 /** Why the API refused, as the orders screens translate it. */
 export type PurchasesError =
@@ -99,6 +100,8 @@ export interface Receipt {
   id: string;
   receivedOn: string;
   supplierReference: string | null;
+  /** Who of the shop received the goods, as the receipt copied them; null while nobody is named. */
+  receivedBy: Receiver | null;
   lines: ReceiptLine[];
 }
 
@@ -126,6 +129,10 @@ export interface PurchaseOrderRow {
   currencyScale: number;
   /** Oldest first. */
   receipts: Receipt[];
+  /** Who received the order's goods, each receipt's receiver once in the order they came; null for nobody. */
+  receivers: string | null;
+  /** Whether the company's receipts name who received; null on a list, which records no receipt. */
+  receiverRule: ReceiverRule | null;
 }
 
 export interface PurchaseOrderInput {
@@ -207,4 +214,6 @@ export interface ReceiptInput {
   supplierReference: string | null;
   apply: CostBasis | null;
   lines: ReceiptLine[];
+  /** A member (in the choice's contact slot) or a name typed; null for nobody. */
+  receivedBy: ReceiverChoice | null;
 }

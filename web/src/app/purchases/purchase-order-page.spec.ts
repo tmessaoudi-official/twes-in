@@ -28,6 +28,8 @@ import {
   provideQuietFeedback,
   type RecordedFeedback,
   successToasts,
+  effectToasts,
+  offeredNext,
 } from '../shared/testing/feedback';
 import { PurchaseOrderPage } from './purchase-order-page';
 import type { FieldRefusal } from '../shared/form/field-refusals';
@@ -41,6 +43,7 @@ import type {
   VendorOption,
 } from './purchases-types';
 import type { ReceiveDialogData } from './receive-dialog';
+import type { ReceiverDialogData } from '../shared/receivers/receiver-dialog';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -113,6 +116,7 @@ function orderIn(status: PurchaseOrderStatus): PurchaseOrderRow {
               id: 'r1',
               receivedOn: '2026-10-12',
               supplierReference: 'BL 77',
+              receivedBy: { name: 'Sami Ben Ali', contactId: 'u7' },
               lines: [
                 {
                   orderLineId: 'l1',
@@ -126,6 +130,8 @@ function orderIn(status: PurchaseOrderStatus): PurchaseOrderRow {
             },
           ]
         : [],
+    receivers: status === 'partly_received' ? 'Sami Ben Ali' : null,
+    receiverRule: 'optional',
   };
 }
 
@@ -154,6 +160,8 @@ describe('PurchaseOrderPage', () => {
     reviseAndSend: vi.fn(),
     receiving: vi.fn(),
     receive: vi.fn(),
+    correctReceiver: vi.fn(),
+    receivers: vi.fn(),
     close: vi.fn(),
     cancel: vi.fn(),
     clearError: vi.fn(),
@@ -246,6 +254,8 @@ describe('PurchaseOrderPage', () => {
     facade.reviseAndSend.mockReset().mockResolvedValue(orderIn('sent'));
     facade.receiving.mockReset().mockResolvedValue(receiving);
     facade.receive.mockReset().mockResolvedValue(orderIn('received'));
+    facade.correctReceiver.mockReset().mockResolvedValue({ kept: orderIn('partly_received') });
+    facade.receivers.mockReset().mockResolvedValue([{ contactId: 'u7', name: 'Sami Ben Ali' }]);
     facade.close.mockReset().mockResolvedValue(orderIn('closed'));
     facade.cancel.mockReset().mockResolvedValue(orderIn('cancelled'));
     facade.clearError.mockReset();
@@ -506,7 +516,13 @@ describe('PurchaseOrderPage', () => {
     await settle();
     await vi.waitFor(() => expect(data).toBeDefined());
 
-    const input = { receivedOn: '2026-10-18', supplierReference: null, apply: null, lines: [] };
+    const input = {
+      receivedOn: '2026-10-18',
+      supplierReference: null,
+      apply: null,
+      lines: [],
+      receivedBy: null,
+    };
     expect(await data!.receive(input)).toBeNull();
     expect(facade.receive).toHaveBeenCalledWith('c1', 'o1', input);
 
@@ -530,6 +546,103 @@ describe('PurchaseOrderPage', () => {
     refusals.set([]);
     expect(facade.clearError).toHaveBeenCalled();
     expect(successToasts()).toEqual([]);
+  });
+
+  describe('« Reçu par »', () => {
+    it('asks who received in the receipt, unless the company’s receipts name nobody', async () => {
+      const opened: ReceiveDialogData[] = [];
+      vi.spyOn(TestBed.inject(MatDialog), 'open').mockImplementation((_, config) => {
+        opened.push(config?.data as ReceiveDialogData);
+        return { afterClosed: () => of(undefined) } as never;
+      });
+      order.set({ ...orderIn('sent'), receiverRule: 'required' });
+      await open('o1');
+      q('document-action-receive')!.click();
+      await settle();
+      await vi.waitFor(() => expect(opened).toHaveLength(1));
+
+      expect(opened[0]?.receiver?.required).toBe(true);
+      expect(await opened[0]?.receiver?.members).toEqual([
+        { contactId: 'u7', name: 'Sami Ben Ali' },
+      ]);
+      expect(facade.receivers).toHaveBeenCalledWith('c1');
+
+      order.set({ ...orderIn('sent'), receiverRule: 'off' });
+      await settle();
+      q('document-action-receive')!.click();
+      await settle();
+      await vi.waitFor(() => expect(opened).toHaveLength(2));
+      expect(opened[1]?.receiver).toBeUndefined();
+    });
+
+    it('says who received each receipt, and offers whoever receives goods to put it right', async () => {
+      order.set(orderIn('partly_received'));
+      await open('o1');
+
+      expect(q('purchase-order-receipt-r1-received-by')?.textContent).toContain('Sami Ben Ali');
+      expect(q('purchase-order-receipt-r1-received-by')?.querySelector('bdi')).not.toBeNull();
+      expect(q('purchase-order-receipt-r1-correct-receiver')).not.toBeNull();
+    });
+
+    it('offers nothing to put right to whoever does not receive goods', async () => {
+      granted.delete('purchase.receive');
+      order.set(orderIn('partly_received'));
+      await open('o1');
+
+      expect(q('purchase-order-receipt-r1-received-by')?.textContent).toContain('Sami Ben Ali');
+      expect(q('purchase-order-receipt-r1-correct-receiver')).toBeNull();
+    });
+
+    it('offers, where it is switched off, only to take away a name recorded before', async () => {
+      const named = { ...orderIn('partly_received'), receiverRule: 'off' as const };
+      order.set(named);
+      await open('o1');
+      expect(q('purchase-order-receipt-r1-correct-receiver')).not.toBeNull();
+
+      order.set({
+        ...named,
+        receipts: named.receipts.map((receipt) => ({ ...receipt, receivedBy: null })),
+      });
+      await settle();
+      expect(q('purchase-order-receipt-r1-received-by')).toBeNull();
+      expect(q('purchase-order-receipt-r1-correct-receiver')).toBeNull();
+    });
+
+    it('puts it right in the dialog every document shares, then says so', async () => {
+      order.set({ ...orderIn('partly_received'), receiverRule: 'required' });
+      await open('o1');
+      let data: ReceiverDialogData | undefined;
+      vi.spyOn(TestBed.inject(MatDialog), 'open').mockImplementation((_, config) => {
+        data = config?.data as ReceiverDialogData;
+        return { afterClosed: () => of(true) } as never;
+      });
+
+      q('purchase-order-receipt-r1-correct-receiver')!.click();
+      await settle();
+
+      await vi.waitFor(() => expect(data).toBeDefined());
+      expect(data).toMatchObject({
+        title: 'purchases.receipts.correct_receiver',
+        current: { name: 'Sami Ben Ali', contactId: 'u7' },
+        required: true,
+        offersAdding: false,
+        pickedHint: 'receivers.a_member',
+      });
+      const choice = { contactId: null, name: 'Sami Trabelsi', addToContacts: false };
+      await data!.save(choice);
+      expect(facade.correctReceiver).toHaveBeenCalledWith('c1', 'o1', 'r1', choice);
+      await vi.waitFor(() =>
+        expect(effectToasts()).toEqual(['purchases.receipts.receiver_corrected:corrigeable']),
+      );
+
+      offeredNext()!.run();
+      await settle();
+      expect(facade.correctReceiver).toHaveBeenLastCalledWith('c1', 'o1', 'r1', {
+        contactId: 'u7',
+        name: null,
+        addToContacts: false,
+      });
+    });
   });
 
   it('keeps a saved line where it is, showing what the API kept, so nothing typed into is redrawn', async () => {

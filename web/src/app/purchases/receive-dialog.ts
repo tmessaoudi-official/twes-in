@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -16,6 +23,9 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { FieldError } from '../shared/form/form-builder';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { refusedError, worded } from '../shared/form/refusal-words';
+import { revealInvalid } from '../shared/form/reveal-invalid';
+import { type ReceiverContact, receiverChoice, receiverForm } from '../shared/receivers/receiver';
+import { ReceiverField } from '../shared/receivers/receiver-field';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { todayIn } from '../shared/i18n/format';
 import { plainDecimal } from './purchase-order-forms';
@@ -46,6 +56,14 @@ export interface ReceiveDialogData {
   readonly timeZone: string | null;
   /** The day the order was sent, the earliest day its goods can have come. */
   readonly issueDate: string | null;
+  /**
+   * « Reçu par », asked unless the company's receipts name nobody: whether a receipt must name someone, and the
+   * company's members, offered once read, the person recording first and never chosen for them.
+   */
+  readonly receiver?: {
+    readonly required: boolean;
+    readonly members: Promise<readonly ReceiverContact[]>;
+  };
   /** Records the receipt: nothing when it was kept, otherwise why not, the field the API named and its refusal. */
   readonly receive: (input: ReceiptInput) => Promise<{
     code: PurchasesError;
@@ -82,6 +100,7 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    ReceiverField,
     TranslatePipe,
     AmountPipe,
   ],
@@ -114,6 +133,15 @@ export class ReceiveDialog {
   } | null>(null);
   private readonly translate = inject(TranslateService);
   private readonly figures = inject(RefusalFigures);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  /** Who received, empty: nothing is prefilled; null where the company's receipts name nobody. */
+  protected readonly receiver =
+    this.data.receiver === undefined ? null : receiverForm(null, this.data.receiver.required);
+  protected readonly members = signal<readonly ReceiverContact[]>([]);
+
+  constructor() {
+    void this.data.receiver?.members.then((members) => this.members.set(members));
+  }
 
   protected readonly problems = computed(() =>
     this.rows().map((row) => rowProblem(row, this.data.seesCost)),
@@ -180,13 +208,31 @@ export class ReceiveDialog {
 
   protected async submit(): Promise<void> {
     if (!this.valid() || this.busy()) return;
+    const receiver = this.receiver;
+    if (receiver !== null && revealInvalid(receiver, this.host)) return;
     const { input, sources } = this.built();
     this.busy.set(true);
     this.refused.set(null);
     try {
-      const outcome = await this.data.receive(input);
+      const outcome = await this.data.receive({
+        ...input,
+        receivedBy: receiver === null ? null : receiverChoice(receiver),
+      });
       if (outcome === null) {
         this.ref.close(true);
+        return;
+      }
+      // Who received is refused under « Reçu par », in its reason's words.
+      if (outcome.field === 'receivedBy' && receiver !== null && outcome.refusal !== null) {
+        receiver.controls.name.setErrors({
+          refused: refusedError(
+            this.translate,
+            outcome.refusal,
+            outcome.refusal.params,
+            this.figures,
+          ),
+        });
+        receiver.controls.name.markAsTouched();
         return;
       }
       const place =

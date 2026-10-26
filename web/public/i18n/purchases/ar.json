@@ -47,7 +47,8 @@
       "expectedOn": "التاريخ المنتظر",
       "totalNet": "المجموع دون اعتبار الأداءات",
       "remarksPrinted": "ملاحظات للمزوّد",
-      "notesInternal": "ملاحظات داخلية"
+      "notesInternal": "ملاحظات داخلية",
+      "receivers": "المستلم"
     },
     "sections": {
       "order": "الطلبية",
@@ -103,7 +104,9 @@
     },
     "receipts": {
       "title": "الاستلامات",
-      "on": "استُلمت يوم {{day}}"
+      "on": "استُلمت يوم {{day}}",
+      "correct_receiver": "تصحيح المستلم…",
+      "receiver_corrected": "تمّ تصحيح مستلم السلع."
     },
     "receive": {
       "title": "استلام السلع",

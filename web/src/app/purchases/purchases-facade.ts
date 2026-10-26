@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { LatestRequest, requestState } from '../shared/feedback/request-state';
+import { type FormAnswer, LatestRequest, requestState } from '../shared/feedback/request-state';
+import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 import { inject, Injectable } from '@angular/core';
 import type { PickAsked } from '../shared/form/pick-api';
 import { PurchasesApi, PurchasesRefused } from './purchases-api';
@@ -155,6 +156,26 @@ export class PurchasesFacade {
   ): Promise<PurchaseOrderRow | null> {
     // What the receipt did to the products' prices or margins is said from its own answer (`PriceEffects`).
     return this.step(() => this.api.receive(companyId, id, input));
+  }
+
+  /** Who received a receipt's goods, put right; a refusal is answered for the dialog to say under its field. */
+  async correctReceiver(
+    companyId: string,
+    id: string,
+    receiptId: string,
+    receivedBy: ReceiverChoice | null,
+  ): Promise<FormAnswer<PurchaseOrderRow>> {
+    const answer = await this.state.writeOrRefuse(
+      () => this.api.correctReceiver(companyId, id, receiptId, receivedBy),
+      (error) => (error instanceof PurchasesRefused ? error.refusals : []),
+    );
+    if (answer !== null && 'kept' in answer) this.orderSignal.set(answer.kept);
+    return answer;
+  }
+
+  /** The company's members « Reçu par » offers; none when they cannot be read, which the screen says. */
+  async receivers(companyId: string): Promise<ReceiverContact[]> {
+    return this.pick(() => this.api.receivers(companyId));
   }
 
   clearError(): void {

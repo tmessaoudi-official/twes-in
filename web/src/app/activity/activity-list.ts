@@ -149,6 +149,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'purchase_order.revised',
   'purchase_order.sent',
   'purchase_order.received',
+  'purchase_order.receiver_corrected',
   'purchase_order.closed',
   'purchase_order.cancelled',
   'purchase_order.deleted',

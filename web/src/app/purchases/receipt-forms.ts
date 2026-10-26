@@ -147,6 +147,8 @@ export function receiptInput(
       supplierReference: reference === '' ? null : reference,
       apply: costed ? apply : null,
       lines,
+      // Who received is the dialog's own field, set as it sends.
+      receivedBy: null,
     },
     sources,
   };

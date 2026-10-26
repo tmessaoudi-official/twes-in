@@ -19,6 +19,8 @@ use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Module\Purchases\Domain\ValueObject\VendorSnapshot;
 use App\Shared\Domain\Service\CompanyOwned;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
@@ -98,6 +100,14 @@ class PurchaseOrder implements CompanyOwned
     #[ORM\OneToMany(targetEntity: GoodsReceipt::class, mappedBy: 'order', cascade: ['persist'])]
     #[ORM\OrderBy(['receivedOn' => 'ASC', 'createdAt' => 'ASC'])]
     private Collection $receipts;
+
+    /**
+     * Who received the order's goods, each receipt's receiver once, in the order the goods came, joined « , »: what the
+     * orders list shows and searches, kept here because one order holds several receipts and a list is searched through
+     * one index over one table. Written whenever a receipt names or renames who received.
+     */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $receivers = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
@@ -204,18 +214,20 @@ class PurchaseOrder implements CompanyOwned
     /**
      * Records goods that arrived against the order on a day of the company's, from its issue day to today: each part
      * names a line of this order, and all parts of one line together never bring more than is still outstanding of it.
-     * The order is received once nothing is outstanding, partly received until then.
+     * The order is received once nothing is outstanding, partly received until then. Who received is named as the
+     * company's rule asks: never where it is off, always where it is required.
      *
      * @param list<ReceivedGoods> $goods in the order the person gave them
      *
      * @throws PurchaseOrderTransitionRefused
      * @throws InvalidPurchaseOrder
      */
-    public function receive(\DateTimeImmutable $receivedOn, \DateTimeImmutable $today, ?string $supplierReference, array $goods, ?Uuid $recordedBy, \DateTimeImmutable $now): GoodsReceipt
+    public function receive(\DateTimeImmutable $receivedOn, \DateTimeImmutable $today, ?string $supplierReference, array $goods, ?Uuid $recordedBy, \DateTimeImmutable $now, ReceiverRule $rule = ReceiverRule::Optional, ?Receiver $receiver = null): GoodsReceipt
     {
         if (!$this->status->open()) {
             throw new PurchaseOrderTransitionRefused(\sprintf('The order %s is %s: goods are received against a sent order that is still open.', $this->reference(), $this->status->value));
         }
+        self::receiverAllowed($rule, $receiver);
         if ([] === $goods) {
             throw new InvalidPurchaseOrder('lines', 'A receipt brings at least one line.', 'lines_required');
         }
@@ -249,15 +261,79 @@ class PurchaseOrder implements CompanyOwned
             $parts[] = [$line, new ReceivedGoods($part->orderLineId, $part->locationId, $quantity, $part->lotCode, $part->lotExpiresOn, $part->unitCost)];
         }
 
-        $receipt = new GoodsReceipt($this, $receivedOn, '' === $reference ? null : $reference, $parts, $recordedBy, $now);
+        $receipt = new GoodsReceipt($this, $receivedOn, '' === $reference ? null : $reference, $parts, $recordedBy, $now, $receiver);
         foreach ($parts as [$line, $part]) {
             $line->receive($part->quantity);
         }
         $this->receipts->add($receipt);
+        $this->receivers = $this->receiversNamed();
         $this->status = $this->nothingOutstanding() ? PurchaseOrderStatus::Received : PurchaseOrderStatus::PartlyReceived;
         $this->updatedAt = $now;
 
         return $receipt;
+    }
+
+    /** Whether one of this order's receipts has this id. */
+    public function hasReceipt(Uuid $receiptId): bool
+    {
+        return null !== $this->receiptOfThisOrder($receiptId);
+    }
+
+    /** The receipt of this order with this id; null for any other, another order's included. */
+    public function receipt(Uuid $receiptId): ?GoodsReceipt
+    {
+        return $this->receiptOfThisOrder($receiptId);
+    }
+
+    /**
+     * Who received a receipt's goods, put right: a name misspelt, the wrong member, or someone named by mistake, as the
+     * company's rule asks today. Whatever the order's status: a receipt prints nowhere and moves nothing by its name.
+     *
+     * @return bool whether it changed
+     *
+     * @throws InvalidPurchaseOrder
+     */
+    public function correctReceiver(Uuid $receiptId, ReceiverRule $rule, ?Receiver $receiver, \DateTimeImmutable $now): bool
+    {
+        $receipt = $this->receiptOfThisOrder($receiptId) ?? throw new \LogicException('A receipt is put right through the order it came against.');
+        self::receiverAllowed($rule, $receiver);
+        if (!$receipt->name($receiver)) {
+            return false;
+        }
+        $this->receivers = $this->receiversNamed();
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    /** @throws InvalidPurchaseOrder */
+    private static function receiverAllowed(ReceiverRule $rule, ?Receiver $receiver): void
+    {
+        $refused = $rule->refusal($receiver);
+        if (null !== $refused) {
+            throw new InvalidPurchaseOrder('receivedBy', $refused->message, $refused->reason, $refused->params);
+        }
+    }
+
+    private function receiptOfThisOrder(Uuid $receiptId): ?GoodsReceipt
+    {
+        foreach ($this->receipts as $receipt) {
+            if ($receipt->getId()->equals($receiptId)) {
+                return $receipt;
+            }
+        }
+
+        return null;
+    }
+
+    /** Each receipt's receiver once, in the order the goods came (as the receipts are read back), or null for nobody. */
+    private function receiversNamed(): ?string
+    {
+        $receipts = $this->receipts->toArray();
+        usort($receipts, static fn (GoodsReceipt $a, GoodsReceipt $b): int => [$a->getReceivedOn(), $a->getCreatedAt(), $a->getId()->toRfc4122()] <=> [$b->getReceivedOn(), $b->getCreatedAt(), $b->getId()->toRfc4122()]);
+        $names = array_values(array_unique(array_filter(array_map(static fn (GoodsReceipt $receipt): ?string => $receipt->receiver()?->name, $receipts), static fn (?string $name): bool => null !== $name)));
+
+        return [] === $names ? null : implode(', ', $names);
     }
 
     /**
@@ -379,6 +455,12 @@ class PurchaseOrder implements CompanyOwned
     public function getReceipts(): array
     {
         return array_values($this->receipts->toArray());
+    }
+
+    /** Who received the order's goods, each receiver once in the order the goods came, joined « , »; null for nobody. */
+    public function getReceivers(): ?string
+    {
+        return $this->receivers;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

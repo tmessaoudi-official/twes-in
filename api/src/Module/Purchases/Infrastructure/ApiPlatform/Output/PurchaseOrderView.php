@@ -13,8 +13,10 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Module\Purchases\Application\OrderProducts;
 use App\Module\Purchases\Application\OrderVendors;
+use App\Module\Purchases\Application\Receivers\PurchaseReceiptSettings;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Infrastructure\ApiPlatform\Resource\PurchaseOrderResource;
+use App\Settings\Application\ReadSetting;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 
 /**
@@ -24,13 +26,17 @@ use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
  */
 final readonly class PurchaseOrderView
 {
-    public function __construct(private OrderProducts $products, private OrderVendors $vendors, private CompanyGuard $guard, private CurrencyScales $scales)
+    public function __construct(private OrderProducts $products, private OrderVendors $vendors, private CompanyGuard $guard, private CurrencyScales $scales, private ReadSetting $settings)
     {
     }
 
+    /** One order, with the company's « Reçu par » rule its receipts are recorded and put right under, read once. */
     public function of(PurchaseOrder $order): PurchaseOrderResource
     {
-        return $this->page([$order])[0];
+        $resource = $this->page([$order])[0];
+        $resource->receiverRule = PurchaseReceiptSettings::receiverRule($this->settings, $order->getCompany())->value;
+
+        return $resource;
     }
 
     /**

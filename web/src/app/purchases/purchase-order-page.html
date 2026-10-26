@@ -236,7 +236,29 @@
                       ><bdi>{{ receipt.supplierReference }}</bdi></span
                     >
                   }
+                  @if (receipt.receivedBy; as receivedBy) {
+                    <span
+                      [attr.data-testid]="'purchase-order-receipt-' + receipt.id + '-received-by'"
+                      >{{ 'receivers.received_by' | translate }}
+                      <bdi>{{ receivedBy.name }}</bdi></span
+                    >
+                  }
                 </p>
+                @if (receiverCorrectable(receipt)) {
+                  <div>
+                    <button
+                      mat-button
+                      type="button"
+                      [disabled]="busy()"
+                      (click)="correctReceiver(receipt)"
+                      [attr.data-testid]="
+                        'purchase-order-receipt-' + receipt.id + '-correct-receiver'
+                      "
+                    >
+                      {{ 'purchases.receipts.correct_receiver' | translate }}
+                    </button>
+                  </div>
+                }
                 <ul class="flex flex-col gap-0.5 text-sm text-on-surface-variant">
                   @for (line of receipt.lines; track $index) {
                     <li class="twes-dot-list">

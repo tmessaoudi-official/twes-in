@@ -200,7 +200,8 @@
         "closed": "closed the purchase order",
         "cancelled": "cancelled the purchase order",
         "deleted": "deleted the purchase order draft",
-        "restored": "restored the purchase order draft"
+        "restored": "restored the purchase order draft",
+        "receiver_corrected": "corrected who received goods on the purchase order"
       },
       "payment_instrument": {
         "deleted": "took a cheque or traite out of the portfolio",

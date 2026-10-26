@@ -29,8 +29,11 @@ use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrinePurchaseOrderRepository implements PurchaseOrderRepository
 {
-    /** The condition the purchase order trigram index answers; `SearchIndexesTest` proves the pair. */
-    public const string MATCHES_WORDS = "SEARCH_TEXT(o.number, o.vendorName) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    /**
+     * The condition the purchase order trigram index answers, an order found by its number, its vendor or who received
+     * its goods; `SearchIndexesTest` proves the pair.
+     */
+    public const string MATCHES_WORDS = "SEARCH_TEXT(o.number, o.vendorName, o.receivers) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
 
     private const array SORTED_BY = [
         'number' => 'o.number',

@@ -139,12 +139,97 @@ describe('PurchasesApi', () => {
           unitCost: null,
         },
       ],
+      receivedBy: null,
     });
     const request = http.expectOne('/api/companies/c1/purchase-orders/o%201/receipts');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toMatchObject({ receivedOn: '2026-10-18', apply: null });
+    expect(request.request.body).toMatchObject({
+      receivedOn: '2026-10-18',
+      apply: null,
+      receivedBy: null,
+    });
     request.flush({ ...answered, status: 'received' });
     expect((await pending).status).toBe('received');
+  });
+
+  it('sends a member picked by their account and a name typed as typed, never adding anyone to a list', async () => {
+    const lines = [
+      {
+        orderLineId: 'l1',
+        locationId: 's1',
+        quantity: '1',
+        lotCode: 'L-27',
+        lotExpiresOn: null,
+        unitCost: null,
+      },
+    ];
+    const base = { receivedOn: '2026-10-18', supplierReference: null, apply: null, lines };
+    const asMember = api.receive('c1', 'o1', {
+      ...base,
+      receivedBy: { contactId: 'u7', name: null, addToContacts: false },
+    });
+    const member = http.expectOne('/api/companies/c1/purchase-orders/o1/receipts');
+    expect(member.request.body.receivedBy).toEqual({ memberId: 'u7' });
+    member.flush(answered);
+    await asMember;
+
+    const asTyped = api.receive('c1', 'o1', {
+      ...base,
+      receivedBy: { contactId: null, name: 'Le chauffeur', addToContacts: true },
+    });
+    const typed = http.expectOne('/api/companies/c1/purchase-orders/o1/receipts');
+    expect(typed.request.body.receivedBy).toEqual({ name: 'Le chauffeur' });
+    typed.flush(answered);
+    await asTyped;
+  });
+
+  it('reads who received each receipt, the member as the shared field holds a pick, and the company’s rule', async () => {
+    const pending = api.order('c1', 'o 1');
+    http.expectOne('/api/companies/c1/purchase-orders/o%201').flush({
+      ...answered,
+      receivers: 'Sami Ben Ali',
+      receiverRule: 'required',
+      receipts: [
+        { ...answered.receipts[0], receivedBy: { name: 'Sami Ben Ali', memberId: 'u7' } },
+        { ...answered.receipts[0], id: 'r2', receivedBy: null },
+      ],
+    });
+    const order = await pending;
+
+    expect(order.receipts.map((receipt) => receipt.receivedBy)).toEqual([
+      { name: 'Sami Ben Ali', contactId: 'u7' },
+      null,
+    ]);
+    expect([order.receivers, order.receiverRule]).toEqual(['Sami Ben Ali', 'required']);
+  });
+
+  it('puts right who received a receipt, and offers the members in the shared contact shape', async () => {
+    const corrected = api.correctReceiver('c1', 'o 1', 'r 1', {
+      contactId: null,
+      name: 'Sami',
+      addToContacts: false,
+    });
+    const request = http.expectOne(
+      '/api/companies/c1/purchase-orders/o%201/receipts/r%201/receiver',
+    );
+    expect([request.request.method, request.request.body]).toEqual([
+      'POST',
+      { receivedBy: { name: 'Sami' } },
+    ]);
+    request.flush(answered);
+    await corrected;
+
+    const nobody = api.correctReceiver('c1', 'o1', 'r1', null);
+    const cleared = http.expectOne('/api/companies/c1/purchase-orders/o1/receipts/r1/receiver');
+    expect(cleared.request.body).toEqual({ receivedBy: null });
+    cleared.flush(answered);
+    await nobody;
+
+    const members = api.receivers('c1');
+    http
+      .expectOne('/api/companies/c1/purchase-order-options/receivers')
+      .flush([{ memberId: 'u7', name: 'Sami Ben Ali' }]);
+    expect(await members).toEqual([{ contactId: 'u7', name: 'Sami Ben Ali' }]);
   });
 
   it('reads where the goods go, each line’s home keyed by its id', async () => {

@@ -1135,6 +1135,13 @@
           "optional": "Si on le souhaite",
           "required": "Toujours, à la réponse"
         }
+      },
+      "purchase_receipt": {
+        "receiver": {
+          "off": "Jamais",
+          "optional": "Si on le souhaite",
+          "required": "Toujours, à la réception"
+        }
       }
     },
     "overrides": {
@@ -1214,6 +1221,9 @@
       "enabled_hint": "Quand une facture atteint une étape de relance, des frais de retard sont préparés en brouillon de facture pour le client. Rien n’est émis sans vous.",
       "tiers": "Frais par étape de relance",
       "tiers_hint": "Un montant ou un pourcentage du reste dû par étape, séparés par des points-virgules, par exemple 5 ; 10 ; 2 %. Une étape laissée vide ne coûte rien. Aucun montant n’est proposé par défaut."
+    },
+    "purchase_receipt": {
+      "receiver": "Nommer qui a reçu les marchandises des fournisseurs"
     }
   },
   "customers": {

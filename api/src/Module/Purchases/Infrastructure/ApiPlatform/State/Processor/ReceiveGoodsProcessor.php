@@ -72,6 +72,7 @@ final readonly class ReceiveGoodsProcessor implements ProcessorInterface
                 $this->guard->may($company, ProductPermission::COST_READ),
                 null === $data->apply ? null : IntakeCost::from($data->apply),
                 $this->guard->account()->getId(),
+                $data->receiverChoice(),
             );
         } catch (PurchaseOrderNotFound $absent) {
             throw new NotFoundHttpException('No such purchase order.', $absent);

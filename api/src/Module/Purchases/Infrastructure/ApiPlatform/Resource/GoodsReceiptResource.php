@@ -12,10 +12,14 @@ namespace App\Module\Purchases\Infrastructure\ApiPlatform\Resource;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\Module\Purchases\Domain\Model\GoodsReceipt;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
+use App\Module\Purchases\Infrastructure\ApiPlatform\State\Processor\CorrectReceiptReceiverProcessor;
 use App\Module\Purchases\Infrastructure\ApiPlatform\State\Processor\ReceiveGoodsProcessor;
 use App\Shared\Application\ListLimits;
+use App\Shared\Application\Receivers\ReceiverChoice;
+use App\Shared\Domain\ValueObject\Receiver;
 use App\Shared\Infrastructure\Submissions\Submissions;
 use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -42,11 +46,33 @@ use Symfony\Component\Validator\Constraints as Assert;
             denormalizationContext: ['groups' => [self::WRITE]],
             validationContext: ['groups' => [self::WRITE]],
         ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/purchase-orders/{purchaseOrderId}/receipts/{receiptId}/receiver',
+            openapi: new OpenApiOperation(summary: 'Puts right who received a receipt\'s goods, or names nobody.', description: 'Takes `receivedBy` as a receipt does, with purchase.receive, whatever the order\'s status: nothing a receipt moved or printed depends on it. Answers the order. Audited on the order by the field it changed, never the name; the same receiver sent again records nothing. 404 for a receipt of another order; 422 naming `receivedBy` as a receipt refuses it.'),
+            status: 200,
+            processor: CorrectReceiptReceiverProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            output: PurchaseOrderResource::class,
+            normalizationContext: PurchaseOrderResource::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::RECEIVE]],
+            validationContext: ['groups' => [self::RECEIVE]],
+        ),
     ],
 )]
 final class GoodsReceiptResource
 {
     public const string WRITE = 'goods_receipt:write';
+    /** Who received, alone: sent to put it right once the receipt is recorded. */
+    public const string RECEIVE = 'goods_receipt:receive';
+    public const array RECEIVED_BY = [
+        'type' => ['object', 'null'],
+        'properties' => [
+            'memberId' => ['type' => ['string', 'null'], 'format' => 'uuid', 'description' => 'One of the company\'s members, as GET .../purchase-order-options/receivers offers them.'],
+            'name' => ['type' => ['string', 'null'], 'maxLength' => Receiver::NAME_MAX, 'description' => 'A name typed, for whoever is no member.'],
+        ],
+    ];
+    private const array RECEIVER_GROUPS = [self::WRITE, self::RECEIVE];
 
     /** The company's day the goods came, YYYY-MM-DD: not before the order was sent, not after today. */
     #[ApiProperty(schema: ['type' => 'string', 'format' => 'date'])]
@@ -103,4 +129,33 @@ final class GoodsReceiptResource
     #[ListLimit(ListLimits::DOCUMENT_LINES, groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public array $lines = [];
+
+    /**
+     * Who of the shop received the goods: `{memberId}` one of the company's members, whose name is copied as it reads
+     * now; `{name}` any name typed; null or left out, nobody. Refused naming `receivedBy`: `unknown_choice` for no
+     * member of the company, `invalid_text`, `receiver_off` where the company's receipts name nobody,
+     * `receiver_required` where they must name someone.
+     *
+     * @var array<string, mixed>|null
+     */
+    // count: an object of two named fields, not a list; Assert\Collection refuses any other field
+    #[ApiProperty(schema: self::RECEIVED_BY)]
+    #[Assert\Collection(fields: [
+        'memberId' => new Assert\Optional([new Assert\Type(['string', 'null'], groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+        'name' => new Assert\Optional([new Assert\Type(['string', 'null'], groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+    ], groups: self::RECEIVER_GROUPS)]
+    #[Groups([self::WRITE, self::RECEIVE])]
+    public ?array $receivedBy = null;
+
+    /** Who the request named as receiver, the member riding in the choice's contact slot; null for nobody. */
+    public function receiverChoice(): ?ReceiverChoice
+    {
+        if (null === $this->receivedBy) {
+            return null;
+        }
+        $memberId = $this->receivedBy['memberId'] ?? null;
+        $name = $this->receivedBy['name'] ?? null;
+
+        return new ReceiverChoice(\is_string($memberId) ? $memberId : null, \is_string($name) ? $name : null);
+    }
 }

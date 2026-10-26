@@ -19,6 +19,8 @@ use App\Module\Purchases\Domain\ValueObject\PurchaseOrderLineDetails;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderStatus;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Module\Purchases\Domain\ValueObject\VendorSnapshot;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\InMemoryEstablishments;
@@ -248,6 +250,65 @@ final class PurchaseOrderTest extends TestCase
 
         $this->assertTransitionRefused(fn () => $order->close($this->now));
         $this->assertTransitionRefused(fn () => $order->cancel($this->now));
+    }
+
+    public function testAReceiptKeepsWhoReceivedItAsNamedThenAndTheOrderListsEachReceiverOnce(): void
+    {
+        $order = $this->sent();
+        [$screws, $wire] = $order->getLines();
+        $sami = Uuid::v7();
+
+        $first = $order->receive(new \DateTimeImmutable('2026-10-12'), new \DateTimeImmutable('2026-10-12'), null, [new ReceivedGoods($screws->getId(), $this->shelf, '4')], null, $this->now, ReceiverRule::Optional, Receiver::named('Sami Ben Ali', $sami));
+        $order->receive(new \DateTimeImmutable('2026-10-12'), new \DateTimeImmutable('2026-10-12'), null, [new ReceivedGoods($screws->getId(), $this->shelf, '1')], null, $this->now, ReceiverRule::Optional, Receiver::named('Le chauffeur'));
+        $order->receive(new \DateTimeImmutable('2026-10-13'), new \DateTimeImmutable('2026-10-13'), null, [new ReceivedGoods($wire->getId(), $this->shelf, '1')], null, $this->now, ReceiverRule::Optional, Receiver::named('Sami Ben Ali', $sami));
+        $order->receive(new \DateTimeImmutable('2026-10-13'), new \DateTimeImmutable('2026-10-13'), null, [new ReceivedGoods($wire->getId(), $this->shelf, '1')], null, $this->now);
+
+        self::assertTrue(Receiver::named('Sami Ben Ali', $sami)->equals($first->receiver()));
+        self::assertNull($order->getReceipts()[3]->receiver(), 'nobody named, nobody kept');
+        self::assertSame('Sami Ben Ali, Le chauffeur', $order->getReceivers(), 'each receiver once, in the order the goods came');
+    }
+
+    public function testTheRuleRefusesANameWhereItIsOffAndNobodyWhereItIsRequiredAndNothingArrives(): void
+    {
+        $order = $this->sent();
+        [$screws] = $order->getLines();
+        $goods = [new ReceivedGoods($screws->getId(), $this->shelf, '4')];
+
+        foreach ([[ReceiverRule::Off, Receiver::named('Sami'), 'receiver_off'], [ReceiverRule::Required, null, 'receiver_required']] as [$rule, $receiver, $reason]) {
+            try {
+                $order->receive(new \DateTimeImmutable('2026-10-12'), new \DateTimeImmutable('2026-10-12'), null, $goods, null, $this->now, $rule, $receiver);
+                self::fail(\sprintf('%s was taken', $reason));
+            } catch (InvalidPurchaseOrder $refused) {
+                self::assertSame(['receivedBy', $reason], [$refused->field, $refused->reason]);
+            }
+        }
+        self::assertSame([PurchaseOrderStatus::Sent, [], '0.000'], [$order->getStatus(), $order->getReceipts(), $screws->getReceived()]);
+
+        $order->receive(new \DateTimeImmutable('2026-10-12'), new \DateTimeImmutable('2026-10-12'), null, $goods, null, $this->now, ReceiverRule::Required, Receiver::named('Sami'));
+        $order->receive(new \DateTimeImmutable('2026-10-12'), new \DateTimeImmutable('2026-10-12'), null, [new ReceivedGoods($screws->getId(), $this->shelf, '1')], null, $this->now, ReceiverRule::Off);
+        self::assertCount(2, $order->getReceipts());
+    }
+
+    public function testWhoReceivedIsPutRightOnTheReceiptAndInTheOrdersListWhateverTheOrdersStatus(): void
+    {
+        $order = $this->sent();
+        [$screws, $wire] = $order->getLines();
+        $first = $order->receive(new \DateTimeImmutable('2026-10-12'), new \DateTimeImmutable('2026-10-12'), null, [new ReceivedGoods($screws->getId(), $this->shelf, '10')], null, $this->now, ReceiverRule::Optional, Receiver::named('Sammi'));
+        $order->receive(new \DateTimeImmutable('2026-10-13'), new \DateTimeImmutable('2026-10-13'), null, [new ReceivedGoods($wire->getId(), $this->shelf, '2.5')], null, $this->now, ReceiverRule::Optional, Receiver::named('Le chauffeur'));
+        self::assertSame(PurchaseOrderStatus::Received, $order->getStatus());
+        $later = $this->now->modify('+1 hour');
+
+        self::assertTrue($order->correctReceiver($first->getId(), ReceiverRule::Optional, Receiver::named('Sami Ben Ali'), $later));
+        self::assertSame(['Sami Ben Ali', 'Sami Ben Ali, Le chauffeur'], [$first->receiver()?->name, $order->getReceivers()]);
+        self::assertEquals($later, $order->getUpdatedAt());
+        self::assertFalse($order->correctReceiver($first->getId(), ReceiverRule::Optional, Receiver::named('Sami Ben Ali'), $later), 'the same receiver again changes nothing');
+
+        $this->assertRefused('receivedBy', static fn () => $order->correctReceiver($first->getId(), ReceiverRule::Required, null, $later));
+        $this->assertRefused('receivedBy', static fn () => $order->correctReceiver($first->getId(), ReceiverRule::Off, Receiver::named('Sami'), $later));
+        self::assertTrue($order->correctReceiver($first->getId(), ReceiverRule::Off, null, $later), 'switched off, a name recorded by mistake is taken away');
+        self::assertSame([null, 'Le chauffeur'], [$first->receiver(), $order->getReceivers()]);
+        self::assertTrue($order->hasReceipt($first->getId()));
+        self::assertFalse($order->hasReceipt(Uuid::v7()));
     }
 
     private function draft(): PurchaseOrder

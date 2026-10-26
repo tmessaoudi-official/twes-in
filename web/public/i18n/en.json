@@ -1135,6 +1135,13 @@
           "optional": "When wished",
           "required": "Always, at the answer"
         }
+      },
+      "purchase_receipt": {
+        "receiver": {
+          "off": "Never",
+          "optional": "When wished",
+          "required": "Always, at receipt"
+        }
       }
     },
     "overrides": {
@@ -1214,6 +1221,9 @@
       "enabled_hint": "When an invoice reaches a reminder stage, a late fee is prepared as a draft invoice for the customer. Nothing is issued without you.",
       "tiers": "Fee per reminder stage",
       "tiers_hint": "An amount or a percentage of what is still owed for each stage, separated by semicolons, for example 5; 10; 2%. A stage left empty costs nothing. No amount is proposed by default."
+    },
+    "purchase_receipt": {
+      "receiver": "Name who received the vendors’ goods"
     }
   },
   "customers": {

@@ -28,8 +28,10 @@ class StaticLoader implements TranslateLoader {
         rejections: {
           above_expected: 'Il n’en reste que {{quantity}} à recevoir.',
           lot_required: 'Indiquez le lot de « {{reference}} ».',
+          unknown_choice: 'Choisissez dans la liste proposée.',
         },
       },
+      receivers: { received_by: 'Reçu par', required: 'Nommez qui a reçu.' },
     });
   }
 }
@@ -227,5 +229,71 @@ describe('ReceiveDialog', () => {
     await open({ receiving: { ...receiving, asksCostBasis: false } });
     expect(q('receive-apply')).toBeNull();
     expect(q('receive-row-0-cost')).not.toBeNull();
+  });
+
+  describe('« Reçu par »', () => {
+    const members = [
+      { contactId: 'me', name: 'Sami Ben Ali' },
+      { contactId: 'm2', name: 'Amel Gharbi' },
+    ];
+
+    it('is not asked where the company’s receipts name nobody, and sends nobody', async () => {
+      await open();
+
+      expect(q('receive-receiver-name')).toBeNull();
+      confirm().click();
+      await settle();
+      expect(receive).toHaveBeenCalledWith(expect.objectContaining({ receivedBy: null }));
+    });
+
+    it('opens empty, never on the person recording, and sends a name typed as typed', async () => {
+      await open({ receiver: { required: false, members: Promise.resolve(members) } });
+
+      const name = q('receive-receiver-name') as HTMLInputElement;
+      expect(name.value).toBe('');
+      confirm().click();
+      await settle();
+      expect(receive).toHaveBeenLastCalledWith(expect.objectContaining({ receivedBy: null }));
+
+      type('receive-receiver-name', '  Le chauffeur ');
+      await settle();
+      confirm().click();
+      await settle();
+      expect(receive).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          receivedBy: { contactId: null, name: 'Le chauffeur', addToContacts: false },
+        }),
+      );
+    });
+
+    it('says under the field that someone must be named where it is required, and sends nothing', async () => {
+      await open({ receiver: { required: true, members: Promise.resolve(members) } });
+
+      confirm().click();
+      await settle();
+
+      expect(receive).not.toHaveBeenCalled();
+      expect(q('receive-receiver-error')?.textContent?.trim()).toBe('Nommez qui a reçu.');
+    });
+
+    it('says the API’s refusal of who received under the field, in its reason’s words, and stays open', async () => {
+      receive.mockResolvedValueOnce({
+        code: 'invalid',
+        field: 'receivedBy',
+        refusal: { field: 'receivedBy', reason: 'unknown_choice', params: {} },
+      });
+      await open({ receiver: { required: false, members: Promise.resolve(members) } });
+      type('receive-receiver-name', 'Ines');
+      await settle();
+
+      confirm().click();
+      await settle();
+
+      expect(ref.close).not.toHaveBeenCalled();
+      expect(q('receive-receiver-error')?.textContent?.trim()).toBe(
+        'Choisissez dans la liste proposée.',
+      );
+      expect(q('receive-refused')).toBeNull();
+    });
   });
 });

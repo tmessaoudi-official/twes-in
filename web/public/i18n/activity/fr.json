@@ -200,7 +200,8 @@
         "closed": "a clos la commande fournisseur",
         "cancelled": "a annulé la commande fournisseur",
         "deleted": "a supprimé le brouillon de commande fournisseur",
-        "restored": "a remis le brouillon de commande fournisseur"
+        "restored": "a remis le brouillon de commande fournisseur",
+        "receiver_corrected": "a corrigé qui a reçu de la marchandise de la commande fournisseur"
       },
       "payment_instrument": {
         "deleted": "a retiré un chèque ou une traite du portefeuille",

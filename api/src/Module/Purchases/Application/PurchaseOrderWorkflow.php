@@ -14,6 +14,9 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Module\Purchases\Application\Receivers\ChooseReceiptReceiver;
+use App\Module\Purchases\Application\Receivers\GoodsReceiptNotFound;
+use App\Module\Purchases\Application\Receivers\PurchaseReceiptSettings;
 use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
 use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
 use App\Module\Purchases\Domain\Model\GoodsReceipt;
@@ -21,7 +24,11 @@ use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Domain\Model\PurchaseOrderLine;
 use App\Module\Purchases\Domain\Repository\PurchaseOrderRepository;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
+use App\Settings\Application\ReadSetting;
+use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\Refusal;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\Exception\InvalidNumbering;
@@ -42,6 +49,7 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
     public const string RECEIVED = 'purchase_order.received';
     public const string CLOSED = 'purchase_order.closed';
     public const string CANCELLED = 'purchase_order.cancelled';
+    public const string RECEIVER_CORRECTED = 'purchase_order.receiver_corrected';
 
     public function __construct(
         private PurchaseOrderRepository $orders,
@@ -52,6 +60,8 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
         private Transactions $transactions,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private ChooseReceiptReceiver $receivers,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -96,7 +106,8 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
     /**
      * Records goods that arrived on `$receivedOn`, a day of the company's, and puts them on the shelves. What one unit
      * cost is the person's to say when they may read costs, and the order's price when they leave it out; for anyone
-     * else it is the order's price, and a line the order gave no price is left for a cost reader to complete.
+     * else it is the order's price, and a line the order gave no price is left for a cost reader to complete. Who
+     * received is a member of the company or a name typed, as the company's « Reçu par » rule asks.
      *
      * @param list<ReceivedGoods> $goods
      *
@@ -104,17 +115,18 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
      * @throws PurchaseOrderTransitionRefused
      * @throws InvalidPurchaseOrder
      */
-    public function receive(Company $company, Uuid $id, \DateTimeImmutable $receivedOn, ?string $supplierReference, array $goods, bool $seesCost, ?IntakeCost $apply, ?Uuid $actorUserId): GoodsReceipt
+    public function receive(Company $company, Uuid $id, \DateTimeImmutable $receivedOn, ?string $supplierReference, array $goods, bool $seesCost, ?IntakeCost $apply, ?Uuid $actorUserId, ?ReceiverChoice $receivedBy = null): GoodsReceipt
     {
-        return $this->transactions->run(function () use ($company, $id, $receivedOn, $supplierReference, $goods, $seesCost, $apply, $actorUserId): GoodsReceipt {
+        return $this->transactions->run(function () use ($company, $id, $receivedOn, $supplierReference, $goods, $seesCost, $apply, $actorUserId, $receivedBy): GoodsReceipt {
             $order = $this->locked($company, $id);
+            $receiver = $this->receiver($company, $receivedBy, null);
             $now = $this->clock->now();
             $today = new \DateTimeImmutable($now->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'));
             if (!$seesCost) {
                 // Whoever may not read costs gives none: a cost sent anyway is not theirs to set.
                 $goods = array_map(static fn (ReceivedGoods $part): ReceivedGoods => new ReceivedGoods($part->orderLineId, $part->locationId, $part->quantity, $part->lotCode, $part->lotExpiresOn), $goods);
             }
-            $receipt = $order->receive($receivedOn, $today, $supplierReference, $goods, $actorUserId, $now);
+            $receipt = $order->receive($receivedOn, $today, $supplierReference, $goods, $actorUserId, $now, PurchaseReceiptSettings::receiverRule($this->settings, $company), $receiver);
 
             $lines = [];
             foreach ($receipt->getLines() as $line) {
@@ -133,6 +145,30 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
             $this->record($company, $order, self::RECEIVED, ['receiptId' => $receipt->getId()->toRfc4122(), 'status' => $order->getStatus()->value], $actorUserId);
 
             return $receipt;
+        });
+    }
+
+    /**
+     * Who received a receipt's goods, put right, or nobody when someone was named by mistake. Recorded on the order by
+     * the field it changed, never the name: the journal keeps no one's name. The same receiver sent again changes and
+     * records nothing.
+     *
+     * @throws PurchaseOrderNotFound
+     * @throws GoodsReceiptNotFound  when the order has no receipt of that id
+     * @throws InvalidPurchaseOrder
+     */
+    public function correctReceiver(Company $company, Uuid $id, Uuid $receiptId, ?ReceiverChoice $receivedBy, ?Uuid $actorUserId): PurchaseOrder
+    {
+        return $this->transactions->run(function () use ($company, $id, $receiptId, $receivedBy, $actorUserId): PurchaseOrder {
+            $order = $this->locked($company, $id);
+            $receipt = $order->receipt($receiptId) ?? throw new GoodsReceiptNotFound('No such receipt of this order.');
+            $receiver = $this->receiver($company, $receivedBy, $receipt->receiver());
+            if ($order->correctReceiver($receiptId, PurchaseReceiptSettings::receiverRule($this->settings, $company), $receiver, $this->clock->now())) {
+                $this->orders->save($order);
+                $this->record($company, $order, self::RECEIVER_CORRECTED, ['fields' => ['receivedBy']], $actorUserId);
+            }
+
+            return $order;
         });
     }
 
@@ -168,6 +204,21 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
         });
     }
 
+    /**
+     * Who the person named, a member or a name typed; null for nobody; `$current` when that is who they named again.
+     *
+     * @throws InvalidPurchaseOrder
+     */
+    private function receiver(Company $company, ?ReceiverChoice $receivedBy, ?Receiver $current): ?Receiver
+    {
+        $receiver = $this->receivers->receiver($company, $receivedBy, $current);
+        if ($receiver instanceof Refusal) {
+            throw new InvalidPurchaseOrder('receivedBy', $receiver->message, $receiver->reason, $receiver->params);
+        }
+
+        return $receiver;
+    }
+
     private function locked(Company $company, Uuid $id): PurchaseOrder
     {
         return $this->orders->lockedOfIdInCompany($id, $company->getId()) ?? throw new PurchaseOrderNotFound();
@@ -185,6 +236,7 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
             self::CANCELLED => new Recorded(ManagePurchaseOrders::ENTITY_TYPE, AuditScope::Company),
             self::CLOSED => new Recorded(ManagePurchaseOrders::ENTITY_TYPE, AuditScope::Company),
             self::RECEIVED => new Recorded(ManagePurchaseOrders::ENTITY_TYPE, AuditScope::Company),
+            self::RECEIVER_CORRECTED => new Recorded(ManagePurchaseOrders::ENTITY_TYPE, AuditScope::Company),
             self::SENT => new Recorded(ManagePurchaseOrders::ENTITY_TYPE, AuditScope::Company),
         ];
     }

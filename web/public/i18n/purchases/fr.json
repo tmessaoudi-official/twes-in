@@ -47,7 +47,8 @@
       "expectedOn": "Attendue le",
       "totalNet": "Total HT",
       "remarksPrinted": "Remarques pour le fournisseur",
-      "notesInternal": "Notes internes"
+      "notesInternal": "Notes internes",
+      "receivers": "Reçu par"
     },
     "sections": {
       "order": "Commande",
@@ -103,7 +104,9 @@
     },
     "receipts": {
       "title": "Réceptions",
-      "on": "Reçue le {{day}}"
+      "on": "Reçue le {{day}}",
+      "correct_receiver": "Corriger qui a reçu…",
+      "receiver_corrected": "Qui a reçu la marchandise est corrigé."
     },
     "receive": {
       "title": "Réceptionner les marchandises",

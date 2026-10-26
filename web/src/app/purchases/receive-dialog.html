@@ -209,6 +209,16 @@
       </mat-form-field>
     }
 
+    @if (receiver !== null) {
+      <app-receiver-field
+        [form]="receiver"
+        [contacts]="members()"
+        [offersAdding]="false"
+        [pickedHint]="'receivers.a_member'"
+        testId="receive-receiver"
+      />
+    }
+
     @if (receiptRefused(); as refused) {
       <p role="alert" class="text-sm text-error" data-testid="receive-refused">
         @if (refused.words; as said) {

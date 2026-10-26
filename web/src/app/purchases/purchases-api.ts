@@ -17,7 +17,11 @@ import type {
   PurchaseOrderReceivingPurchaseOrderReceivingRead,
   PurchaseOrderStatusCountsPurchaseOrderStatusCountsRead,
   PurchaseOrderVendorPickPurchaseOrderVendorPickRead,
+  GoodsReceiptGoodsReceiptReceiveValidationGoodsReceiptReceive as GoodsReceiptReceive,
+  GoodsReceiptPurchaseOrderResourcePurchaseOrderReadValidationGoodsReceiptReceive as GoodsReceiptCorrected,
+  PurchaseReceiverPickPurchaseReceiverPickRead,
 } from '../api/types.gen';
+import type { ReceiverChoice, ReceiverContact, ReceiverRule } from '../shared/receivers/receiver';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import { apiRangeKey } from '../shared/list/list-filters';
@@ -229,6 +233,7 @@ export class PurchasesApi {
       supplierReference: input.supplierReference,
       apply: input.apply,
       lines: input.lines.map((line) => ({ ...line })),
+      receivedBy: toReceivedBy(input.receivedBy),
     };
     return this.guard(async () =>
       toOrder(
@@ -237,6 +242,38 @@ export class PurchasesApi {
         ),
       ),
     );
+  }
+
+  /** Who received a receipt's goods, put right, or nobody; 404 for a receipt of another order, 422 under the field. */
+  async correctReceiver(
+    companyId: string,
+    id: string,
+    receiptId: string,
+    receivedBy: ReceiverChoice | null,
+  ): Promise<PurchaseOrderRow> {
+    const body: GoodsReceiptReceive = { receivedBy: toReceivedBy(receivedBy) };
+    return this.guard(async () =>
+      toOrder(
+        await firstValueFrom(
+          this.http.post<GoodsReceiptCorrected>(
+            `${orderPath(companyId, id)}/receipts/${encodeURIComponent(receiptId)}/receiver`,
+            body,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /** The company's members a receipt offers as receivers, the person asking first, each in the shared contact shape. */
+  async receivers(companyId: string): Promise<ReceiverContact[]> {
+    return this.guard(async () => {
+      const members = await firstValueFrom(
+        this.http.get<PurchaseReceiverPickPurchaseReceiverPickRead[]>(
+          `${companyPath(companyId)}/purchase-order-options/receivers`,
+        ),
+      );
+      return members.map((member) => ({ contactId: member.memberId ?? '', name: member.name }));
+    });
   }
 
   private async step(
@@ -322,7 +359,11 @@ function toCountParams(search: PurchaseOrderSearch): HttpParams {
 }
 
 function toOrder(
-  raw: PurchaseOrderPurchaseOrderRead | PurchaseOrderJsonldPurchaseOrderRead | GoodsReceiptAnswer,
+  raw:
+    | PurchaseOrderPurchaseOrderRead
+    | PurchaseOrderJsonldPurchaseOrderRead
+    | GoodsReceiptAnswer
+    | GoodsReceiptCorrected,
 ): PurchaseOrderRow {
   return {
     id: raw.id ?? '',
@@ -359,9 +400,29 @@ function toOrder(
       id: receipt.id,
       receivedOn: receipt.receivedOn,
       supplierReference: receipt.supplierReference,
+      receivedBy:
+        receipt.receivedBy == null
+          ? null
+          : { name: receipt.receivedBy.name, contactId: receipt.receivedBy.memberId ?? null },
       lines: receipt.lines.map((line) => ({ ...line })),
     })),
+    receivers: raw.receivers ?? null,
+    receiverRule: RECEIVER_RULES.find((rule) => rule === raw.receiverRule) ?? null,
   };
+}
+
+const RECEIVER_RULES: readonly ReceiverRule[] = ['off', 'optional', 'required'];
+
+/**
+ * A receipt's receiver as the API takes it: the member picked (which the shared field holds as a contact), or the name
+ * typed. A receipt adds nobody to any list, so the shared field's « add to contacts » is never sent.
+ */
+function toReceivedBy(
+  choice: ReceiverChoice | null,
+): { memberId: string } | { name: string } | null {
+  if (choice === null) return null;
+  if (choice.contactId !== null) return { memberId: choice.contactId };
+  return choice.name === null ? null : { name: choice.name };
 }
 
 function toBody(input: PurchaseOrderInput): PurchaseOrderWrite {

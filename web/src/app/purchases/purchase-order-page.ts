@@ -59,10 +59,13 @@ import {
   PURCHASE_ORDER_STATUS_STAGES,
   PURCHASE_ORDER_STATUS_TONES,
   type PurchaseOrderInput,
+  type Receipt,
   receivable,
   type VendorOption,
 } from './purchases-types';
 import { ReceiveDialog, type ReceiveDialogData } from './receive-dialog';
+import { ReceiverDialog, type ReceiverDialogData } from '../shared/receivers/receiver-dialog';
+import type { Receiver } from '../shared/receivers/receiver';
 
 /** What an order will offer once its planned modules ship, shown « Bientôt » beside what it offers today. */
 export const PURCHASE_ORDER_PLANNED: readonly PlannedAction[] = [
@@ -565,7 +568,16 @@ export class PurchaseOrderPage {
     if (!companyId || !current || this.busy()) return;
     const receiving = await this.facade.receiving(companyId, current.id);
     if (receiving === null) return;
+    const rule = current.receiverRule ?? 'optional';
     const data: ReceiveDialogData = {
+      ...(rule === 'off'
+        ? {}
+        : {
+            receiver: {
+              required: rule === 'required',
+              members: this.facade.receivers(companyId),
+            },
+          }),
       lines: current.lines,
       receiving,
       seesCost: this.seesCost(),
@@ -602,6 +614,75 @@ export class PurchaseOrderPage {
       // The dialog said why; the page behind it keeps nothing of a receipt left unrecorded.
       this.facade.clearError();
     }
+  }
+
+  /**
+   * Whether a receipt's « Reçu par » can be put right here: by whoever receives goods, while the company's receipts
+   * name someone, or to take away a name recorded before they were switched off.
+   */
+  protected receiverCorrectable(receipt: Receipt): boolean {
+    return (
+      this.mayReceive() &&
+      ((this.current()?.receiverRule ?? 'optional') !== 'off' || receipt.receivedBy !== null)
+    );
+  }
+
+  /** « Reçu par » put right on a receipt, in the dialog every document shares; said once saved. */
+  protected async correctReceiver(receipt: Receipt): Promise<void> {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    if (!companyId || !current || this.busy()) return;
+    const saved = await firstValueFrom(
+      this.dialog
+        .open<ReceiverDialog, ReceiverDialogData, boolean>(ReceiverDialog, {
+          data: {
+            title: 'purchases.receipts.correct_receiver',
+            current: receipt.receivedBy,
+            required: current.receiverRule === 'required',
+            contacts: this.facade.receivers(companyId),
+            offersAdding: false,
+            pickedHint: 'receivers.a_member',
+            save: (receivedBy) =>
+              this.facade.correctReceiver(companyId, current.id, receipt.id, receivedBy),
+          },
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
+    );
+    if (saved === true) this.saidCorrected(companyId, current.id, receipt.id, receipt.receivedBy);
+  }
+
+  /**
+   * Said once put right; « Annuler » names again whoever was named before: the same member, the same name typed, or
+   * nobody.
+   */
+  private saidCorrected(
+    companyId: string,
+    id: string,
+    receiptId: string,
+    before: Receiver | null,
+  ): void {
+    const shown =
+      this.current()?.receipts.find((receipt) => receipt.id === receiptId)?.receivedBy ?? null;
+    this.feedback.effect('purchases.receipts.receiver_corrected', {}, 'corrigeable', {
+      key: 'receivers.undo',
+      run: () =>
+        void this.facade
+          .correctReceiver(
+            companyId,
+            id,
+            receiptId,
+            before === null
+              ? null
+              : before.contactId !== null
+                ? { contactId: before.contactId, name: null, addToContacts: false }
+                : { contactId: null, name: before.name, addToContacts: false },
+          )
+          .then((answer) => {
+            if (answer !== null && 'kept' in answer)
+              this.saidCorrected(companyId, id, receiptId, shown);
+          }),
+    });
   }
 
   protected async close(): Promise<void> {

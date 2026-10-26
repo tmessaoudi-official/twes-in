@@ -277,11 +277,20 @@ final class PurchaseOrderResource
         'type' => 'array',
         'items' => [
             'type' => 'object',
-            'required' => ['id', 'receivedOn', 'supplierReference', 'lines'],
+            'required' => ['id', 'receivedOn', 'supplierReference', 'receivedBy', 'lines'],
             'properties' => [
                 'id' => self::ID,
                 'receivedOn' => self::DAY,
                 'supplierReference' => self::TEXT_OR_NULL,
+                'receivedBy' => [
+                    'type' => ['object', 'null'],
+                    'description' => 'Who received the goods, as the receipt copied them: memberId the member named, null for a name typed; null while nobody is named.',
+                    'required' => ['name', 'memberId'],
+                    'properties' => [
+                        'name' => ['type' => 'string'],
+                        'memberId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+                    ],
+                ],
                 'lines' => [
                     'type' => 'array',
                     'items' => [
@@ -302,6 +311,19 @@ final class PurchaseOrderResource
     ])]
     #[Groups([self::READ])]
     public array $receipts = [];
+
+    /** Who received the order's goods, each receipt's receiver once in the order the goods came, joined « , »; null for nobody. */
+    #[ApiProperty(writable: false, schema: self::TEXT_OR_NULL)]
+    #[Groups([self::READ])]
+    public ?string $receivers = null;
+
+    /**
+     * Whether the company's receipts name who received: `off`, `optional` or `required` (the setting
+     * purchase_receipt.receiver). Answered with one order; null on a list, which records no receipt.
+     */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'enum' => ['off', 'optional', 'required', null]])]
+    #[Groups([self::READ])]
+    public ?string $receiverRule = null;
 
     /**
      * @param array<string, string> $tracking each named product's tracking today, by product id
@@ -349,6 +371,7 @@ final class PurchaseOrderResource
             'id' => $receipt->getId()->toRfc4122(),
             'receivedOn' => $receipt->getReceivedOn()->format('Y-m-d'),
             'supplierReference' => $receipt->getSupplierReference(),
+            'receivedBy' => self::receivedBy($receipt),
             'lines' => array_map(static fn (GoodsReceiptLine $line): array => [
                 'orderLineId' => $line->getOrderLine()->getId()->toRfc4122(),
                 'locationId' => $line->getLocationId()->toRfc4122(),
@@ -358,8 +381,17 @@ final class PurchaseOrderResource
                 'unitCost' => $seesCost ? $line->getUnitCost() : null,
             ], $receipt->getLines()),
         ], $order->getReceipts());
+        $resource->receivers = $order->getReceivers();
 
         return $resource;
+    }
+
+    /** @return array{name: string, memberId: string|null}|null */
+    private static function receivedBy(GoodsReceipt $receipt): ?array
+    {
+        $receiver = $receipt->receiver();
+
+        return null === $receiver ? null : ['name' => $receiver->name, 'memberId' => $receiver->contactId?->toRfc4122()];
     }
 
     public function input(): PurchaseOrderInput

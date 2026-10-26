@@ -47,7 +47,8 @@
       "expectedOn": "Expected on",
       "totalNet": "Total excl. tax",
       "remarksPrinted": "Remarks for the vendor",
-      "notesInternal": "Internal notes"
+      "notesInternal": "Internal notes",
+      "receivers": "Received by"
     },
     "sections": {
       "order": "Order",
@@ -103,7 +104,9 @@
     },
     "receipts": {
       "title": "Receipts",
-      "on": "Received on {{day}}"
+      "on": "Received on {{day}}",
+      "correct_receiver": "Correct who received…",
+      "receiver_corrected": "Who received the goods is corrected."
     },
     "receive": {
       "title": "Receive the goods",

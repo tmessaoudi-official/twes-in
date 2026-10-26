@@ -467,7 +467,7 @@ final class QuotesTest extends ApiTestCase
         $this->getJson($this->path().'?q=ben salah');
         self::assertSame([$accepted], array_column($this->jsonList(), 'id'), 'the list finds a quote by who answered');
         $row = $this->jsonList()[0];
-        self::assertSame([['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], null], [$row['receivedBy'] ?? 'absent', \array_key_exists('receiverRule', $row) ? $row['receiverRule'] : 'absent'],'a list row names who answered and leaves the rule to the quote\'s own answer');
+        self::assertSame([['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], null], [$row['receivedBy'] ?? 'absent', \array_key_exists('receiverRule', $row) ? $row['receiverRule'] : 'absent'], 'a list row names who answered and leaves the rule to the quote\'s own answer');
 
         $this->give(SettingLevel::Customer, 'quote.receiver', 'required');
         $refused = $this->sent();

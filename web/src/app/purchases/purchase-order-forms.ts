@@ -120,6 +120,16 @@ export const PURCHASES_LIST: ListDescriptor<PurchaseOrderRow> = {
       align: 'end',
       width: AMOUNT_WIDTH,
     },
+    {
+      // Who received the goods, each receipt's receiver once: what a person looking for « the order Sami took in »
+      // searches by, given way first when the list is narrow.
+      id: 'receivers',
+      priority: 'low',
+      label: `${FIELDS}.receivers`,
+      value: (row) => row.receivers ?? '',
+      shown: (row) => row.receivers !== null,
+      wraps: true,
+    },
   ],
   ranges: INTERVALS.map(({ id, label }) => ({ id, label, kind: 'day' as const })),
   picks: [{ id: 'vendor', label: `${FIELDS}.vendorId` }],

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
+  PURCHASES_LIST,
   lineGroup,
   linesArray,
   plainDecimal,
@@ -47,6 +48,8 @@ const order: PurchaseOrderRow = {
   totalNet: '31.250',
   currencyScale: 3,
   receipts: [],
+  receivers: null,
+  receiverRule: null,
 };
 
 describe('purchase order forms', () => {
@@ -55,6 +58,16 @@ describe('purchase order forms', () => {
     expect(plainDecimal('2.5000')).toBe('2.5');
     expect(plainDecimal('100')).toBe('100');
     expect(plainDecimal('0.050')).toBe('0.05');
+  });
+
+  it('lists who received each order last, wrapping, and leaves the cell empty where nobody was named', () => {
+    const column = PURCHASES_LIST.columns.find((each) => each.id === 'receivers');
+    expect(column).toMatchObject({ priority: 'low', wraps: true });
+    const named = { ...order, receivers: 'Sami Ben Ali, Le chauffeur' };
+    expect(column?.value(named)).toBe('Sami Ben Ali, Le chauffeur');
+    expect(column?.shown?.(named)).toBe(true);
+    expect(column?.value(order)).toBe('');
+    expect(column?.shown?.(order)).toBe(false);
   });
 
   it('asks the API for the statuses, vendors, days and order the list shows', () => {

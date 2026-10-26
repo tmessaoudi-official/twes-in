@@ -168,6 +168,7 @@ describe('receiptInput', () => {
           unitCost: null,
         },
       ],
+      receivedBy: null,
     });
     expect(sources).toEqual([0, 2, 2, 3]);
   });

@@ -11,6 +11,7 @@ namespace App\Module\Purchases\Domain\Model;
 
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Shared\Domain\Service\CompanyOwned;
+use App\Shared\Domain\ValueObject\Receiver;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -20,7 +21,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Goods that arrived against an order on one day: the vendor's own number for the delivery when the paper gives one,
- * and what came, line by line. Recorded once and never changed: what reached the shelves is corrected by the stock.
+ * who of the shop received them, and what came, line by line. What came is never changed: what reached the shelves is
+ * corrected by the stock. Who received is put right in place, through the order, and audited: it moves nothing.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'goods_receipt')]
@@ -52,6 +54,17 @@ class GoodsReceipt implements CompanyOwned
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $recordedBy;
 
+    /**
+     * Who received the goods, as the receipt names them: a name copied as it read then, so renaming or removing the
+     * member it came from never changes what the receipt says; the member's account kept beside it, or none for a name
+     * typed. No foreign key: the name, not the account, is who received.
+     */
+    #[ORM\Column(length: Receiver::NAME_MAX, nullable: true)]
+    private ?string $receivedByName = null;
+
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $receivedByMemberId = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -65,7 +78,7 @@ class GoodsReceipt implements CompanyOwned
      *
      * @param list<array{PurchaseOrderLine, ReceivedGoods}> $lines
      */
-    public function __construct(PurchaseOrder $order, \DateTimeImmutable $receivedOn, ?string $supplierReference, array $lines, ?Uuid $recordedBy, \DateTimeImmutable $now)
+    public function __construct(PurchaseOrder $order, \DateTimeImmutable $receivedOn, ?string $supplierReference, array $lines, ?Uuid $recordedBy, \DateTimeImmutable $now, ?Receiver $receiver = null)
     {
         $this->id = Uuid::v7();
         $this->company = $order->getCompany();
@@ -74,6 +87,7 @@ class GoodsReceipt implements CompanyOwned
         $this->supplierReference = $supplierReference;
         $this->recordedBy = $recordedBy;
         $this->createdAt = $now;
+        $this->name($receiver);
         $this->lines = new ArrayCollection();
         foreach ($lines as $position => [$orderLine, $goods]) {
             $this->lines->add(new GoodsReceiptLine($this, $position, $orderLine, $goods));
@@ -108,6 +122,28 @@ class GoodsReceipt implements CompanyOwned
     public function getRecordedBy(): ?Uuid
     {
         return $this->recordedBy;
+    }
+
+    /** Who received the goods, as the receipt names them; null when nobody was named. */
+    public function receiver(): ?Receiver
+    {
+        return null === $this->receivedByName ? null : Receiver::named($this->receivedByName, $this->receivedByMemberId);
+    }
+
+    /**
+     * @internal who received is named by PurchaseOrder, which checks it against the company's rule
+     *
+     * @return bool whether it changed
+     */
+    public function name(?Receiver $receiver): bool
+    {
+        if (null === $receiver ? null === $this->receivedByName : $receiver->equals($this->receiver())) {
+            return false;
+        }
+        $this->receivedByName = $receiver?->name;
+        $this->receivedByMemberId = $receiver?->contactId;
+
+        return true;
     }
 
     public function getCreatedAt(): \DateTimeImmutable
