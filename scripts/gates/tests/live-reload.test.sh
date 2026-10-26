@@ -6,7 +6,7 @@ GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/live-reload.sh
 pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 repo() {
-  local d; d=$(mktemp -d); git -C "$d" init -q; mkdir -p "$d/web/src/app/x" "$d/web/src/app/import"
+  local d; d=$(mktemp -d); git -C "$d" init -q; mkdir -p "$d/web/src/app/x" "$d/web/src/app/inventory"
   echo "$d"
 }
 echo "live-reload gate"
@@ -24,7 +24,7 @@ printf '@Component({}) export class APanel { init() { leaveOnceOpen(); void this
 out=$(bash "$GATE" --root "$d" 2>&1); check "a screen outside the shell asking again on focus passes" $? 0 "$out" "OK — 2 "
 printf 'export class AFacade { async refresh() { this.rows.set(await this.api.list(id)); } }\n' > "$d/web/src/app/x/a-facade.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a facade is not a screen" $? 0 "$out" "OK — 2 "
-d=$(repo); printf '@Component({}) export class ImportPage { init() { void this.facade.load(id, subject); } }\n' > "$d/web/src/app/import/import-page.ts"
+d=$(repo); printf '@Component({}) export class LocationLabelsPage { init() { void this.facade.load(id); } }\n' > "$d/web/src/app/inventory/location-labels-page.ts"
 printf '@Component({}) export class APage { init() { this.live.reloadOn(["a"], r, d); void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page listed with its reason is not asked" $? 0 "$out" "OK — 1 "
 d=$(repo); printf '@Component({}) export class APage { init() { void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.spec.ts"; git -C "$d" add -A

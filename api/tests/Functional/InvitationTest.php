@@ -11,11 +11,13 @@ namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
+use App\Shared\Application\RealtimePublisher;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\Invitation\InvitationToMail;
+use App\Tests\Support\RecordingRealtimePublisher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Envelope;
@@ -315,6 +317,35 @@ final class InvitationTest extends ApiTestCase
         $this->signOut();
         $this->getJson('/api/invitations/'.$token);
         self::assertResponseIsSuccessful();
+    }
+
+    /** The mark is written by the worker, which no screen hears unless it is said: « À surveiller » kept its old count. */
+    public function testAMailFailedForGoodIsSaidToTheCompanyAsAChangeOfItsInvitation(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
+        $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
+        $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/members', ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        [$message] = $this->queued();
+        self::assertInstanceOf(InvitationToMail::class, $message);
+        // A kernel of its own, as the worker's, whose live changes the recorder hears.
+        static::ensureKernelShutdown();
+        $publisher = new RecordingRealtimePublisher();
+        static::getContainer()->set(RealtimePublisher::class, $publisher);
+
+        static::getContainer()->get(EventDispatcherInterface::class)->dispatch(new WorkerMessageFailedEvent(
+            new Envelope($message, [new ReceivedStamp('async'), new RedeliveryStamp(3)]),
+            'async',
+            new \RuntimeException('The mail server is unreachable.'),
+        ));
+
+        $said = array_values(array_filter($publisher->pushed, static fn (array $push): bool => 'invitation.mail_failed' === ($push['data']['action'] ?? null)));
+        // The company's members, and the operators, whose /platform lists the owners it invited.
+        $channels = array_column($said, 'channel');
+        sort($channels);
+        self::assertSame(['company:'.$this->company->getId()->toRfc4122(), 'platform'], $channels);
+        self::assertSame(['invitation', $message->invitationId], [$said[0]['data']['kind'] ?? null, $said[0]['data']['id'] ?? null]);
     }
 
     public function testAnInvitationWhoseMailFailedForGoodIsWatchedUntilItIsMailed(): void

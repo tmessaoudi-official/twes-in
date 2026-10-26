@@ -85,7 +85,7 @@ describe('WatchPage', () => {
     expect(facade.load).toHaveBeenCalledWith('k1');
     const [kinds, reload] = live.reloadOn.mock.calls[0]!;
     expect(kinds).toEqual(
-      expect.arrayContaining(['invoice', 'payment', 'payment_instrument', 'stock', 'setting']),
+      expect.arrayContaining(['invoice', 'payment_instrument', 'stock', 'expense', 'invitation']),
     );
     reload();
     expect(facade.load).toHaveBeenCalledTimes(2);

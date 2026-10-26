@@ -77,6 +77,13 @@ export class CompanyApi {
     );
   }
 
+  /** The session works in no company any more, as an operator done reading one for support. */
+  async leave(): Promise<void> {
+    await this.guard(async () => {
+      await firstValueFrom(this.http.delete('/api/me/company'));
+    });
+  }
+
   async members(companyId: string): Promise<MemberRow[]> {
     return this.guard(async () => {
       const rows = await firstValueFrom(

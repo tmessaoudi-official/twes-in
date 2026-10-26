@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
@@ -18,9 +19,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatRadioModule } from '@angular/material/radio';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { ImportApi } from './import-api';
 import { ImportFacade } from './import-facade';
+import { IMPORT_RUN_KIND } from './import-types';
 import {
   TEXT_ENCODINGS,
   type ImportColumn,
@@ -111,6 +114,8 @@ export class ImportPage {
   private readonly windowClass = inject(WINDOW_CLASS);
   private readonly format = inject(FormatFacade);
   private readonly dialog = inject(MatDialog);
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly guide = this.facade.guide;
   protected readonly report = this.facade.report;
@@ -254,6 +259,15 @@ export class ImportPage {
       void this.facade.load(companyId, subject);
       void this.facade.loadRecent(companyId);
     });
+    // A teammate's import kept, taken back or put back moves « Imports récents »; the guide itself no one changes.
+    this.live.reloadOn(
+      [IMPORT_RUN_KIND],
+      async () => {
+        const companyId = this.company()?.id;
+        if (companyId !== undefined) await this.facade.loadRecent(companyId);
+      },
+      this.destroyRef,
+    );
     // Each subject's guide brings the pairing its last import kept.
     effect(() => {
       const kept = this.guide()?.lastPairing ?? [];

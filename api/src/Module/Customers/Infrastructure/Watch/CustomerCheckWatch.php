@@ -56,6 +56,11 @@ final readonly class CustomerCheckWatch implements DeclaresWatch
         return [self::TO_CHECK];
     }
 
+    public function changedBy(): array
+    {
+        return ['customer'];
+    }
+
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
     {
         return $this->read($kind, $company, $this->checkScopes->of($company), new PageRequest(1, 1))->total;

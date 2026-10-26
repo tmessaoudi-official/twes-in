@@ -11,6 +11,7 @@ namespace App\ImportExport\Application\Undo;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\ImportExport\Application\RunImport;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\Records\Application\RemovalConflict;
 use App\Records\Application\RemovalRestored;
@@ -54,7 +55,7 @@ final readonly class RestoreUndoneImport implements RemovalRestored
             }
             $run->restored();
             $this->runs->save($run);
-            $this->audit->record(new AuditEntry('import_run', $run->getId(), 'import.restored', $actorUserId, [], $company->getId()));
+            $this->audit->record(new AuditEntry(RunImport::RUN_KIND, $run->getId(), 'import.restored', $actorUserId, [], $company->getId()));
         });
     }
 }

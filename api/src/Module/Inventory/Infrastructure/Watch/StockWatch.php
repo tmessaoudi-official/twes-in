@@ -65,6 +65,11 @@ final readonly class StockWatch implements DeclaresWatch
         return [self::REORDER_POINT, self::RUNNING_OUT, self::LOT_EXPIRED, self::LOT_EXPIRING];
     }
 
+    public function changedBy(): array
+    {
+        return ['stock', 'product', 'product_reorder_point', 'setting', 'delivery_note', 'invoice', 'purchase_order'];
+    }
+
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
     {
         [$select, $params] = $this->source($kind, $company, $today);

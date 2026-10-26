@@ -276,6 +276,14 @@ describe('CompanyApi, the company a sign-in opens', () => {
     unpin.flush({ companyId: null });
     await unpinning;
   });
+
+  it('leaves the company the session works in, by deleting it from the session', async () => {
+    const leaving = api.leave();
+    http
+      .expectOne({ method: 'DELETE', url: '/api/me/company' })
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await leaving;
+  });
 });
 
 describe('CompanyApi, the logo', () => {

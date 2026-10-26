@@ -2,7 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { CompanyFacade } from '../company/company-facade';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -26,6 +27,7 @@ class StaticLoader implements TranslateLoader {
         banner_support: 'Vous lisez {{company}} pour le support jusqu’au {{until}}.',
         banner_members: 'Le support peut lire la société jusqu’au {{until}}.',
         manage: 'Gérer',
+        leave: 'Quitter',
       },
     });
   }
@@ -33,6 +35,7 @@ class StaticLoader implements TranslateLoader {
 
 describe('SupportBanner', () => {
   const me = signal<unknown>(null);
+  const companies = { switching: signal(false), leave: vi.fn(async () => true) };
 
   function shown(role: string, until: string | null): HTMLElement {
     me.set({
@@ -56,6 +59,7 @@ describe('SupportBanner', () => {
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
         { provide: AuthFacade, useValue: { me } },
+        { provide: CompanyFacade, useValue: companies },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -71,6 +75,25 @@ describe('SupportBanner', () => {
     expect(banner?.getAttribute('role')).toBe('status');
     expect(banner?.textContent).toContain('Vous lisez Carthage pour le support');
     expect(banner?.querySelector('[data-testid="support-banner-manage"]')).toBeNull();
+  });
+
+  it('lets the operator leave the company, back to the platform: nothing read after is journalled', async () => {
+    // Done reading, the operator had no way out but the home's « Gérer la plateforme », the session left in the shop.
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    shown('support', '2026-10-13T09:00:00+00:00')
+      .querySelector<HTMLButtonElement>('[data-testid="support-banner-leave"]')
+      ?.click();
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/platform'));
+    expect(companies.leave).toHaveBeenCalled();
+  });
+
+  it('offers no way out to the company’s own members, who work there', () => {
+    expect(
+      shown('owner', '2026-10-13T09:00:00+00:00').querySelector(
+        '[data-testid="support-banner-leave"]',
+      ),
+    ).toBeNull();
   });
 
   it('tells the members, and offers the owner the way to close it', () => {

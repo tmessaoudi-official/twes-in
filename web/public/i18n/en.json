@@ -665,7 +665,8 @@
       "installation_unhealthy": "The installation’s health check fails: {{check}}.",
       "installation_backup_failed": "The backup “{{step}}” failed.",
       "installation_backup_stopped": "The backups no longer run.",
-      "installation_address_moved": "This computer’s network address changed: phones now open https://{{to}} (it was {{from}}). A phone that saved the old one must open the new one."
+      "installation_address_moved": "This computer’s network address changed: phones now open https://{{to}} (it was {{from}}). A phone that saved the old one must open the new one.",
+      "signup_awaiting_approval": "{{company}} ({{email}}) signed up and waits for your approval."
     },
     "kinds": {
       "membership_added": "Added to a company",
@@ -701,7 +702,8 @@
       "installation_unhealthy": "Installation unhealthy",
       "installation_backup_failed": "Backup failed",
       "installation_backup_stopped": "Backups stopped",
-      "installation_address_moved": "New address for phones"
+      "installation_address_moved": "New address for phones",
+      "signup_awaiting_approval": "Company waiting for approval"
     }
   },
   "invitation": {
@@ -4393,7 +4395,8 @@
     "banner_support": "You are reading {{company}} for support, read-only, until {{until}}.",
     "banner_members": "The platform’s support may read the company until {{until}}.",
     "manage": "Manage",
-    "switcher": "Support"
+    "switcher": "Support",
+    "leave": "Leave"
   },
   "demo_mails": {
     "title": "Demo mail"

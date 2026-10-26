@@ -2,15 +2,17 @@
 
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { CompanyFacade } from '../company/company-facade';
 import { FormatFacade } from '../shared/i18n/format-facade';
 
 /**
  * While the owner lets the platform's support read the company, every page says so and until when: to the operator
  * reading it, that nothing they do here is kept, and to its members, that someone outside the company may be looking,
- * with the way to close it for the owner. A state of the company, so a status line, not a toast that leaves.
+ * with the way to close it for the owner. A state of the company, so a status line, not a toast that leaves. The
+ * operator leaves from it, back to the platform: done reading, nothing they open after is journalled for the owner.
  */
 @Component({
   selector: 'app-support-banner',
@@ -28,6 +30,15 @@ import { FormatFacade } from '../shared/i18n/format-facade';
           <span>{{
             'support_access.banner_support' | translate: { company: company(), until: end }
           }}</span>
+          <button
+            type="button"
+            class="font-medium text-primary"
+            (click)="leave()"
+            [disabled]="companies.switching()"
+            data-testid="support-banner-leave"
+          >
+            {{ 'support_access.leave' | translate }}
+          </button>
         } @else {
           <span>{{ 'support_access.banner_members' | translate: { until: end } }}</span>
           @if (owner()) {
@@ -46,6 +57,8 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 export class SupportBanner {
   private readonly auth = inject(AuthFacade);
   private readonly format = inject(FormatFacade);
+  private readonly router = inject(Router);
+  protected readonly companies = inject(CompanyFacade);
 
   protected readonly reading = computed(() => this.auth.me()?.company?.role === 'support');
   protected readonly owner = computed(() => this.auth.me()?.company?.role === 'owner');
@@ -54,4 +67,8 @@ export class SupportBanner {
     const until = this.auth.me()?.supportAccessUntil ?? null;
     return until === null ? null : this.format.moment(until, this.auth.me()?.company?.timezone);
   });
+
+  protected async leave(): Promise<void> {
+    if (await this.companies.leave()) await this.router.navigateByUrl('/platform');
+  }
 }

@@ -58,6 +58,11 @@ final readonly class InvitationWatch implements DeclaresWatch
         return [self::UNSENT];
     }
 
+    public function changedBy(): array
+    {
+        return ['invitation'];
+    }
+
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
     {
         self::known($kind);

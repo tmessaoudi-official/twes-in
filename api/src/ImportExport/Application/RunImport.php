@@ -14,6 +14,8 @@ use App\ImportExport\Domain\Model\ImportRun;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Application\LiveChange;
+use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
@@ -35,11 +37,16 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class RunImport
 {
+    /** The kind « Imports récents » is read again on: an import kept, taken back or put back. */
+    public const string RUN_KIND = 'import_run';
+    public const string COMMITTED = 'import.committed';
+
     public function __construct(
         private Transactions $transactions,
         private ReadSetting $settings,
         private ImportRunRepository $runs,
         private ClockInterface $clock,
+        private LiveChanges $changes,
     ) {
     }
 
@@ -71,6 +78,8 @@ final readonly class RunImport
                 $declaration->finished($company, $context, $actorUserId);
                 $this->runs->save(new ImportRun($context->runId, $company, $declaration->key(), $contentHash, $mode->value, $actorUserId, \count($report->created), \count($report->updated), $this->clock->now(), $paired));
                 $this->runs->saveCreated($company->getId(), $context->runId, $context->createdRecords());
+                // Each record is said by its own subject; the run itself is audited by nobody, so it is said here.
+                $this->changes->stage(new LiveChange(self::RUN_KIND, $context->runId, self::COMMITTED, $actorUserId, $company->getId()));
 
                 return new ImportReport(true, $report->created, $report->updated, [], $report->notes, $already, $report->changes, $report->unchanged, $context->runId);
             });

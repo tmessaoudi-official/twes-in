@@ -57,6 +57,11 @@ final readonly class ExpenseWatch implements DeclaresWatch
         return [self::AMOUNT_TO_CHECK];
     }
 
+    public function changedBy(): array
+    {
+        return ['expense'];
+    }
+
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
     {
         self::known($kind);

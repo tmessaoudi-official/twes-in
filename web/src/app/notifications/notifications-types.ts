@@ -52,6 +52,7 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'support_access.granted',
   'support_access.ended',
   'data.check_failed',
+  'signup.awaiting_approval',
   'installation.update_available',
   'installation.rolled_back',
   'installation.update_failed',
@@ -235,6 +236,11 @@ const RECORDS = new Map<string, NotificationRecord>([
   ],
   // An operator's, about a company not theirs: the mail says it all, and there is nothing here to open.
   ['data.check_failed', { icon: 'notifications', route: null, permission: null }],
+  // An operator's: the company waits on the platform's page, where it is approved.
+  [
+    'signup.awaiting_approval',
+    { icon: 'business', route: '/platform', permission: 'platform.company.approve' },
+  ],
   // The installation's own (scripts/onprem/twes): an owner asks whoever runs it to apply a release, and an operator
   // reads the mail the script sent with the commands; there is nothing in a company to open for either.
   ['installation.update_available', { icon: 'fiber_new', route: null, permission: null }],

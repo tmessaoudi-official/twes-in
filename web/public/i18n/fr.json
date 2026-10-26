@@ -665,7 +665,8 @@
       "installation_unhealthy": "Le contrôle de santé de l’installation échoue : {{check}}.",
       "installation_backup_failed": "La sauvegarde « {{step}} » a échoué.",
       "installation_backup_stopped": "Les sauvegardes ne tournent plus.",
-      "installation_address_moved": "L’adresse de cet ordinateur sur le réseau a changé : les téléphones ouvrent maintenant https://{{to}} (avant : {{from}}). Un téléphone qui avait gardé l’ancienne doit ouvrir la nouvelle."
+      "installation_address_moved": "L’adresse de cet ordinateur sur le réseau a changé : les téléphones ouvrent maintenant https://{{to}} (avant : {{from}}). Un téléphone qui avait gardé l’ancienne doit ouvrir la nouvelle.",
+      "signup_awaiting_approval": "{{company}} ({{email}}) s’est inscrite et attend votre approbation."
     },
     "kinds": {
       "membership_added": "Ajout à une société",
@@ -701,7 +702,8 @@
       "installation_unhealthy": "Installation en mauvaise santé",
       "installation_backup_failed": "Sauvegarde en échec",
       "installation_backup_stopped": "Sauvegardes arrêtées",
-      "installation_address_moved": "Nouvelle adresse pour les téléphones"
+      "installation_address_moved": "Nouvelle adresse pour les téléphones",
+      "signup_awaiting_approval": "Entreprise en attente d’approbation"
     }
   },
   "invitation": {
@@ -4393,7 +4395,8 @@
     "banner_support": "Vous lisez {{company}} pour le support, en lecture seule, jusqu’au {{until}}.",
     "banner_members": "Le support de la plateforme peut lire la société jusqu’au {{until}}.",
     "manage": "Gérer",
-    "switcher": "Support"
+    "switcher": "Support",
+    "leave": "Quitter"
   },
   "demo_mails": {
     "title": "Courriers de la démo"

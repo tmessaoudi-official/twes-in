@@ -78,6 +78,7 @@ notification:
         data_check_failed: 'فشل التثبّت من البيانات'
         support_access_granted: 'فُتح وصول الدعم'
         support_access_ended: 'أُغلق وصول الدعم'
+        signup_awaiting_approval: 'شركة في انتظار الموافقة'
     types:
         invitation_accepted: 'انضمّ %display_name% إلى الشركة.'
         stock_delivery_note_lines_left_out: 'صودق على وصل التسليم %number%، لكن بعض أسطره لم تُخرج من المخزون (وحدة مختلفة أو كمية غائبة).'
@@ -100,6 +101,7 @@ notification:
         data_check_failed: 'وجد التثبّت « %label% » خللًا في بيانات %company% (عدد حالات الخلل: %count%). التفاصيل في سجلات الخادم.'
         support_access_granted: 'فتح %by% شركة %company% لدعم المنصّة، للقراءة فقط، إلى غاية %until%.'
         support_access_ended: 'أغلق %by% وصول دعم المنصّة إلى %company%.'
+        signup_awaiting_approval: 'سجّلت %company% (%email%) وهي في انتظار موافقتك في صفحة المنصّة.'
     open: 'فتح %product%'
     why: 'تصلك هذه الرسالة لأن « %kind% » يُرسل إليك أيضًا بالبريد الإلكتروني.'
     stop: 'إيقاف تلقّي « %kind% » بالبريد الإلكتروني'

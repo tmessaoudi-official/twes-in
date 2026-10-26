@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
+use App\ImportExport\Application\RunImport;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\Records\Application\RecordCatalogue;
 use App\Records\Application\RemoveRecords;
@@ -102,7 +103,7 @@ final readonly class UndoImport
 
             $run->undo($undoId, $actorUserId, $now, $removal?->getId());
             $this->runs->save($run);
-            $this->audit->record(new AuditEntry('import_run', $runId, 'import.undone', $actorUserId, [], $company->getId()));
+            $this->audit->record(new AuditEntry(RunImport::RUN_KIND, $runId, 'import.undone', $actorUserId, [], $company->getId()));
 
             return new ImportUndone($removal?->getId(), $removed, $kept, $rowsKept, $stock['takenBack'], $stock['kept'], $run->getUpdated());
         });

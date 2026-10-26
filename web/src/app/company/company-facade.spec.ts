@@ -33,6 +33,7 @@ describe('CompanyFacade', () => {
   const api = {
     companies: vi.fn(),
     switchTo: vi.fn(),
+    leave: vi.fn(),
     pinAtSignIn: vi.fn(),
     members: vi.fn(),
     addMember: vi.fn(),
@@ -79,6 +80,28 @@ describe('CompanyFacade', () => {
     expect(await facade.switchTo('c2')).toBe(false);
     expect(api.switchTo).not.toHaveBeenCalled();
     expect(auth.load).not.toHaveBeenCalled();
+  });
+
+  it('leaves the company and reads the session again, asking first about unsaved work', async () => {
+    api.leave.mockResolvedValue(undefined);
+    auth.load.mockResolvedValue(undefined);
+
+    expect(await facade.leave()).toBe(true);
+    expect(api.leave).toHaveBeenCalled();
+    expect(auth.load).toHaveBeenCalled();
+
+    unsaved.confirmLeave.mockReturnValue(of(false));
+    api.leave.mockClear();
+    expect(await facade.leave()).toBe(false);
+    expect(api.leave).not.toHaveBeenCalled();
+  });
+
+  it('says a leave that failed, and stays', async () => {
+    api.leave.mockRejectedValue(new Error('down'));
+
+    expect(await facade.leave()).toBe(false);
+    expect(failureToasts()).toEqual(['company.switch_failed']);
+    expect(facade.switching()).toBe(false);
   });
 
   it('offers no switcher when there is only one company', async () => {

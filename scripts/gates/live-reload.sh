@@ -12,7 +12,6 @@ export LC_ALL=C
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 declare -A exempt=(
-  [web/src/app/import/import-page.ts]="reads the import's guide, the columns of a file, which no teammate changes"
   [web/src/app/inventory/location-labels-page.ts]="a sheet of labels read once for the printer"
   [web/src/app/inventory/stock-count-page.ts]="a count being typed: the places and products it counts against stay put under the person counting"
   [web/src/app/inventory/place-movement.ts]="inside the stock map, which reads its stock again on every change; it reads again after its own move"

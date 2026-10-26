@@ -79,6 +79,11 @@ final readonly class InvoiceWatch implements DeclaresWatch
         return [self::INSTRUMENTS_DUE, self::LATE_CUSTOMER, self::UNSOLD_PRODUCTS];
     }
 
+    public function changedBy(): array
+    {
+        return ['invoice', 'payment_instrument', 'customer', 'product', 'setting'];
+    }
+
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
     {
         [$sql, $params, $types] = match ($kind) {

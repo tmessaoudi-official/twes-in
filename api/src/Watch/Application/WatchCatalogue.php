@@ -35,6 +35,19 @@ final readonly class WatchCatalogue
     }
 
     /**
+     * Every kind of change that may move a count, whatever is switched on: what the web reads « À surveiller » again on.
+     *
+     * @return list<string>
+     */
+    public function changedBy(): array
+    {
+        $kinds = array_merge(...array_map(static fn (DeclaresWatch $declaration): array => $declaration->changedBy(), $this->declarations));
+        sort($kinds);
+
+        return array_values(array_unique($kinds));
+    }
+
+    /**
      * What this member should watch in the company now: each subject of every module switched on whose permission the
      * member's role grants, with its count, in a stable order. A subject with nothing in it is left out.
      *

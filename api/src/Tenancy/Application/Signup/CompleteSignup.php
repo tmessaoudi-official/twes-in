@@ -16,6 +16,8 @@ use App\Identity\Application\BreachedPasswordCheck;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
+use App\Shared\Application\Notification;
+use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNameTaken;
 use App\Tenancy\Application\Company\CreateCompany;
@@ -23,6 +25,7 @@ use App\Tenancy\Application\Company\NewCompany;
 use App\Tenancy\Application\Invitation\AcceptInvitation;
 use App\Tenancy\Application\Invitation\PasswordBreached;
 use App\Tenancy\Application\Member\UnknownRole;
+use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Repository\CompanyRepository;
@@ -42,6 +45,8 @@ final readonly class CompleteSignup
 {
     public const string ENTITY_TYPE = 'signup';
     public const string COMPLETED = 'signup.completed';
+    /** The operators' notification of a company waiting for their approval. */
+    public const string AWAITING_APPROVAL = 'signup.awaiting_approval';
 
     public function __construct(
         private SignupLinks $links,
@@ -58,6 +63,7 @@ final readonly class CompleteSignup
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private Notifications $notifications,
     ) {
     }
 
@@ -86,7 +92,7 @@ final readonly class CompleteSignup
         $companyLocale = \in_array($signup->getLocale(), $preset->documentLanguages, true) ? $signup->getLocale() : ($preset->documentLanguages[0] ?? $signup->getLocale());
         $now = $this->clock->now();
 
-        return $this->transactions->run(function () use ($request, $signup, $preset, $companyLocale, $owner, $breached, $now): CompleteSignupOutcome {
+        $outcome = $this->transactions->run(function () use ($request, $signup, $preset, $companyLocale, $owner, $breached, $now): CompleteSignupOutcome {
             $user = new User($signup->getEmail(), $request->displayName, $signup->getLocale(), $now);
             $user->setPasswordHash($this->hasher->hash($request->plainPassword), $now);
             $this->users->save($user);
@@ -122,5 +128,18 @@ final readonly class CompleteSignup
 
             return new CompleteSignupOutcome($user->getId()->toRfc4122(), $company->getName(), $company->getStatus());
         });
+        if (Company::STATUS_PENDING === $outcome->companyStatus) {
+            $this->tellOperators($outcome->companyName, $signup->getEmail()->value);
+        }
+
+        return $outcome;
+    }
+
+    /** A company waits for their approval: nobody saw it until they opened the platform's page again. */
+    private function tellOperators(string $companyName, string $email): void
+    {
+        foreach ($this->users->platformOperators() as $operator) {
+            $this->notifications->publish(new Notification('user:'.$operator->getId()->toRfc4122(), self::AWAITING_APPROVAL, ['company' => $companyName, 'email' => $email]));
+        }
     }
 }

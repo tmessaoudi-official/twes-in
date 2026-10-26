@@ -51,4 +51,13 @@ final readonly class SwitchWorkingCompany
         $membership->use($this->clock->now());
         $this->memberships->save($membership);
     }
+
+    /**
+     * The session works in no company any more: an operator done reading one through support's access goes back to the
+     * platform, and nothing they open after is counted as a visit. The next sign-in opens a company as it always does.
+     */
+    public function leave(): void
+    {
+        $this->currentCompany->set(null);
+    }
 }

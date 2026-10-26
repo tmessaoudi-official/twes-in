@@ -31,9 +31,11 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Application\LiveChange;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemorySettings;
+use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -43,6 +45,7 @@ use Symfony\Component\Uid\Uuid;
 final class RunImportTest extends TestCase
 {
     private FakeTransactions $transactions;
+    private RecordingLiveChanges $changes;
     private RecordingSubject $declaration;
     private Company $company;
     private InMemoryImportRuns $runs;
@@ -52,6 +55,7 @@ final class RunImportTest extends TestCase
     protected function setUp(): void
     {
         $this->transactions = new FakeTransactions();
+        $this->changes = new RecordingLiveChanges($this->transactions);
         $this->declaration = new RecordingSubject();
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->runs = new InMemoryImportRuns();
@@ -71,6 +75,24 @@ final class RunImportTest extends TestCase
         self::assertSame(1, $this->transactions->committed);
         self::assertSame([2 => ['number' => 'A-1', 'name' => 'Alpha', 'email' => ''], 3 => ['number' => 'A-2', 'name' => 'Beta', 'email' => 'b@x.tn']], $this->declaration->seen);
         self::assertNull($this->declaration->records[2]->value('email'), 'a blank cell reads as absent');
+    }
+
+    /** « Imports récents » on a teammate's screen hears the run kept: no audit row says the run itself. */
+    public function testAKeptImportSaysItsRun(): void
+    {
+        $report = $this->importRows([1 => ['number', 'name'], 2 => ['A-1', 'Alpha']]);
+
+        self::assertSame([[RunImport::RUN_KIND, $report->run?->toRfc4122(), RunImport::COMMITTED, $this->company->getId()->toRfc4122()]], array_map(
+            static fn (LiveChange $change): array => [$change->kind, $change->id?->toRfc4122(), $change->action, $change->companyId?->toRfc4122()],
+            $this->changes->staged,
+        ));
+    }
+
+    public function testAPreviewKeepsNothingSoSaysNothing(): void
+    {
+        $this->importRows([1 => ['number', 'name'], 2 => ['A-1', 'Alpha']], dryRun: true);
+
+        self::assertSame([], $this->changes->staged);
     }
 
     public function testAHeaderIsMatchedWhateverItsCaseAndSurroundingSpaces(): void
@@ -286,7 +308,7 @@ final class RunImportTest extends TestCase
     {
         $subject = $this->declaration->subjectFor($this->company);
 
-        return (new RunImport($this->transactions, $this->settings, $this->runs, $this->clock))->run($this->declaration, $subject, $this->company, $rows, $mode, $dryRun, Uuid::v7(), $hash ?? self::hashOf('file'), $ticked, $pairing);
+        return (new RunImport($this->transactions, $this->settings, $this->runs, $this->clock, $this->changes))->run($this->declaration, $subject, $this->company, $rows, $mode, $dryRun, Uuid::v7(), $hash ?? self::hashOf('file'), $ticked, $pairing);
     }
 
     private static function hashOf(string $contents): string

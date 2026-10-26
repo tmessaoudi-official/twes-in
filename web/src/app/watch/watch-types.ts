@@ -38,15 +38,22 @@ export class WatchSubjectGone extends Error {
   }
 }
 
-/** What a condition on this list reads: a change to any of them may add or remove one. */
+/**
+ * What a condition on this list reads: a change to any of them may add or remove one. Held by the API's
+ * `WatchKindsTest` to what each declaration names (`DeclaresWatch::changedBy`): a payment is said as its invoice's
+ * change, a cheque or a traite deleted as its own.
+ */
 export const WATCHED_KINDS = [
   'invoice',
-  'payment',
   'payment_instrument',
   'customer',
   'stock',
   'delivery_note',
+  'purchase_order',
   'product',
   'product_reorder_point',
   'setting',
+  'expense',
+  'vendor',
+  'invitation',
 ] as const;

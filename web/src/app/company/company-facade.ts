@@ -135,4 +135,25 @@ export class CompanyFacade {
       this.switchingSignal.set(false);
     }
   }
+
+  /**
+   * « Quitter »: the session leaves the company it works in, for an operator done reading one through support's access,
+   * whose pages are journalled for its owner while they stay. True once left; a failure is said here, as a switch's.
+   */
+  async leave(): Promise<boolean> {
+    if (!(await firstValueFrom(this.unsaved.confirmLeave()))) {
+      return false;
+    }
+    this.switchingSignal.set(true);
+    try {
+      await this.api.leave();
+      await this.auth.load();
+      return true;
+    } catch {
+      this.feedback.failure('company.switch_failed');
+      return false;
+    } finally {
+      this.switchingSignal.set(false);
+    }
+  }
 }

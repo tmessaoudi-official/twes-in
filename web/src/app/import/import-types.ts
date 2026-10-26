@@ -150,6 +150,9 @@ export interface ImportReport {
   encoding: TextEncoding | null;
 }
 
+/** The kind the API says an import kept, taken back or put back as (`RunImport::RUN_KIND`). */
+export const IMPORT_RUN_KIND = 'import_run';
+
 /** One import of the last day into a subject the person may write, as « Imports récents » lists it. */
 export interface ImportRunSummary {
   id: string;

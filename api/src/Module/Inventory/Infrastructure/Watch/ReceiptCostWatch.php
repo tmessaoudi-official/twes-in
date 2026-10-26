@@ -57,6 +57,11 @@ final readonly class ReceiptCostWatch implements DeclaresWatch
         return [self::COST_TO_COMPLETE];
     }
 
+    public function changedBy(): array
+    {
+        return ['stock', 'purchase_order'];
+    }
+
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
     {
         self::known($kind);

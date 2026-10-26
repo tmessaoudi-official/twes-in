@@ -42,6 +42,15 @@ interface DeclaresWatch
      */
     public function kinds(): array;
 
+    /**
+     * The kinds of change (the subject a write records, or the live change it stages) that may add one of its rows or
+     * take one away: the shell and the home read « À surveiller » again on each, and `WatchKindsTest` holds the web's
+     * `WATCHED_KINDS` to them, so a count never waits for a reload.
+     *
+     * @return list<string>
+     */
+    public function changedBy(): array;
+
     /** How many rows a kind has on the company's day, without reading them. */
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int;
 

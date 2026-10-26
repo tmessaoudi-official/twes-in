@@ -149,6 +149,38 @@ final class SignupTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /** A company waiting for approval rings each operator's bell, naming it: nobody saw it until a reload of /platform. */
+    public function testACompanyWaitingForApprovalTellsTheOperators(): void
+    {
+        $operator = $this->createUser('op@twes.local', 'password-1234', operator: true);
+        $this->openSignup();
+        $token = $this->requestALink();
+
+        $this->postJson('/api/signup/'.$token.'/complete', $this->finish());
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $told = $this->em()->getConnection()->fetchAllAssociative('SELECT recipient_id, payload FROM inbox_item WHERE type = ?', ['signup.awaiting_approval']);
+        self::assertCount(1, $told);
+        self::assertSame($operator->getId()->toRfc4122(), $told[0]['recipient_id']);
+        self::assertIsString($told[0]['payload']);
+        $payload = json_decode($told[0]['payload'], true);
+        self::assertIsArray($payload);
+        self::assertSame(['company' => 'Nouvelle Société', 'email' => self::ADDRESS], array_intersect_key($payload, ['company' => true, 'email' => true]));
+    }
+
+    public function testACompanyOpenAtOnceTellsNoOperator(): void
+    {
+        $this->createUser('op@twes.local', 'password-1234', operator: true);
+        $this->openSignup();
+        $this->setPlatform(PlatformSettings::SIGNUP_APPROVAL_REQUIRED, false);
+        $token = $this->requestALink();
+
+        $this->postJson('/api/signup/'.$token.'/complete', $this->finish());
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame([], $this->em()->getConnection()->fetchFirstColumn('SELECT id FROM inbox_item WHERE type = ?', ['signup.awaiting_approval']));
+    }
+
     public function testWithoutApprovalTheCompanyIsActiveAtOnce(): void
     {
         $this->openSignup();

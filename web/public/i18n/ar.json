@@ -665,7 +665,8 @@
       "installation_unhealthy": "يفشل فحص سلامة التثبيت: {{check}}.",
       "installation_backup_failed": "فشل النسخ الاحتياطي « {{step}} ».",
       "installation_backup_stopped": "توقّف النسخ الاحتياطي.",
-      "installation_address_moved": "تغيّر عنوان هذا الحاسوب على الشبكة: تفتح الهواتف الآن https://{{to}} (كان {{from}}). على الهاتف الذي حفظ العنوان القديم أن يفتح الجديد."
+      "installation_address_moved": "تغيّر عنوان هذا الحاسوب على الشبكة: تفتح الهواتف الآن https://{{to}} (كان {{from}}). على الهاتف الذي حفظ العنوان القديم أن يفتح الجديد.",
+      "signup_awaiting_approval": "سجّلت {{company}} ({{email}}) وهي في انتظار موافقتك."
     },
     "kinds": {
       "membership_added": "إضافة إلى شركة",
@@ -701,7 +702,8 @@
       "installation_unhealthy": "تثبيت في حالة سيئة",
       "installation_backup_failed": "فشل النسخ الاحتياطي",
       "installation_backup_stopped": "توقّف النسخ الاحتياطي",
-      "installation_address_moved": "عنوان جديد للهواتف"
+      "installation_address_moved": "عنوان جديد للهواتف",
+      "signup_awaiting_approval": "شركة في انتظار الموافقة"
     }
   },
   "invitation": {
@@ -4393,7 +4395,8 @@
     "banner_support": "أنت تقرأ {{company}} لغرض الدعم، في وضع القراءة فقط، إلى غاية {{until}}.",
     "banner_members": "يمكن لدعم المنصّة قراءة الشركة إلى غاية {{until}}.",
     "manage": "إدارة",
-    "switcher": "الدعم"
+    "switcher": "الدعم",
+    "leave": "مغادرة"
   },
   "demo_mails": {
     "title": "رسائل العرض التجريبي"

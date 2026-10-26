@@ -18,6 +18,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { Session } from '../shared/session/session';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { ImportFacade } from './import-facade';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { CHANGES_SHOWN, ImportPage } from './import-page';
 import type {
   ImportGuide,
@@ -198,6 +199,7 @@ const REJECTED: ImportReport = {
 };
 
 describe('ImportPage', () => {
+  const live = { reloadOn: vi.fn() };
   const guide = signal<ImportGuide | null>(GUIDE);
   const report = signal<ImportReport | null>(null);
   const refusal = signal<ImportRefusal | null>(null);
@@ -272,6 +274,7 @@ describe('ImportPage', () => {
     auth.hasPermission.mockReset().mockReturnValue(true);
     width.set('expanded');
     dialog.open.mockReset().mockReturnValue({ afterClosed: () => of(true) });
+    live.reloadOn.mockReset();
     TestBed.configureTestingModule({
       imports: [ImportPage],
       providers: [
@@ -290,6 +293,7 @@ describe('ImportPage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: WINDOW_CLASS, useValue: width },
         { provide: MatDialog, useValue: dialog },
+        { provide: LiveChanges, useValue: live },
         // The screen's decimal separator and a moment as words, as the working locale would write them.
         {
           provide: FormatFacade,
@@ -1048,6 +1052,16 @@ describe('ImportPage', () => {
     };
 
     it('reads « Imports récents » with the guide', () => {
+      expect(facade.loadRecent).toHaveBeenCalledWith('c1');
+    });
+
+    it('reads it again when a teammate keeps, takes back or puts back an import', async () => {
+      const [kinds, reload] = live.reloadOn.mock.calls[0] as [string[], () => Promise<void>];
+      expect(kinds).toEqual(['import_run']);
+      facade.loadRecent.mockClear();
+
+      await reload();
+
       expect(facade.loadRecent).toHaveBeenCalledWith('c1');
     });
 

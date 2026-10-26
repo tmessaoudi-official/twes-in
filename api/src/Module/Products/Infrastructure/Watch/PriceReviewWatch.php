@@ -52,6 +52,11 @@ final readonly class PriceReviewWatch implements DeclaresWatch
         return [self::MARGIN_MOVED];
     }
 
+    public function changedBy(): array
+    {
+        return ['product', 'stock', 'purchase_order'];
+    }
+
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
     {
         self::known($kind);

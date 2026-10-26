@@ -68,6 +68,11 @@ final readonly class ProductCheckWatch implements DeclaresWatch
         return [self::TO_CHECK];
     }
 
+    public function changedBy(): array
+    {
+        return ['product'];
+    }
+
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
     {
         return $this->read($kind, $company, new PageRequest(1, 1))->total;

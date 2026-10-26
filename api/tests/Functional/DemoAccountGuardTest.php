@@ -66,6 +66,7 @@ final class DemoAccountGuardTest extends ApiTestCase
         'api_auth_step_up',
         'api_auth_step_up_passkey',
         'api_auth_step_up_passkey_options',
+        'api_me_company_leave',
         'api_me_notification_preferences',
         'api_me_notification_preferences_change',
         'api_me_notification_read',

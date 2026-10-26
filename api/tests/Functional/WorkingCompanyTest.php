@@ -138,6 +138,36 @@ final class WorkingCompanyTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
     }
 
+    /** Done reading a company through support's access, the operator leaves it: the session works in none. */
+    public function testLeavingTheWorkingCompanyLeavesTheSessionInNone(): void
+    {
+        $first = $this->createCompany('Acme');
+        $second = $this->createCompany('Globex');
+        $this->memberOfBoth($first, $second);
+        $this->postJson('/api/me/company', ['companyId' => $second->getId()->toRfc4122()]);
+
+        $this->sendJson('DELETE', '/api/me/company');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->getJson('/api/auth/me');
+        $me = $this->json();
+        self::assertArrayHasKey('company', $me);
+        self::assertNull($me['company']);
+    }
+
+    public function testLeavingNeedsItsCsrfHeader(): void
+    {
+        $first = $this->createCompany('Acme');
+        $second = $this->createCompany('Globex');
+        $this->memberOfBoth($first, $second);
+
+        $this->sendJson('DELETE', '/api/me/company', withCsrf: false);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        $this->getJson('/api/auth/me');
+        self::assertSame('Acme', $this->section($this->json(), 'company')['name']);
+    }
+
     public function testSwitchingNeedsItsCsrfHeader(): void
     {
         $first = $this->createCompany('Acme');
