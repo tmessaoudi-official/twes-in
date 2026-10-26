@@ -139,6 +139,17 @@ describe('formatDay', () => {
     expect(formatDay('soon', 'fr')).toBe('soon');
     expect(formatDay('2026-13-40', 'fr')).toBe('2026-13-40');
   });
+
+  // An invitation's end or a last receipt is a moment the API sends whole: its day is the one it falls on where it is
+  // read, never the ISO text the pipe used to hand back.
+  it('writes the day a moment falls on in a time zone, in the chosen order too', () => {
+    expect(formatDay('2026-10-30T23:30:00+00:00', 'fr', 'auto', 'Africa/Tunis')).toBe('31/10/2026');
+    expect(formatDay('2026-10-30T23:30:00+00:00', 'fr', 'auto', 'UTC')).toBe('30/10/2026');
+    expect(formatDay('2026-10-30T10:00:00+00:00', 'en', 'ymd', 'UTC')).toBe(
+      formatDay('2026-10-30', 'en', 'ymd'),
+    );
+    expect(formatDay('2026-10-30T10:00:00+00:00', 'fr')).toMatch(/^\d{2}\/\d{2}\/2026$/);
+  });
 });
 
 describe('parseDay', () => {

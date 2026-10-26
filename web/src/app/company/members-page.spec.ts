@@ -302,7 +302,8 @@ describe('MembersPage', () => {
     rows.set([owner, { ...invited, status: 'expired', expiresAt: '2026-10-20T10:00:00+00:00' }]);
     fixture.detectChanges();
 
-    expect(text('member-invited@example.test')).toContain('Invitation expirée le');
+    // The day the moment falls on, never the moment's ISO text (10:00 UTC is the same day everywhere).
+    expect(text('member-invited@example.test')).toContain('Invitation expirée le 20/10/2026 sans');
     for (const action of ['resend', 'withdraw']) {
       expect(await menuEntry('invited:invited@example.test', action), action).not.toBeNull();
       document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));

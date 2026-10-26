@@ -669,6 +669,11 @@ describe('StockPage', () => {
       expect(q('receipt-cost-now')?.textContent).toMatch(/1[\s\u202f\u00a0.,]?200/);
       expect(q('receipt-cost-average')?.textContent).toMatch(/1[\s\u202f\u00a0.,]?280/);
       expect(q('receipt-cost-last')?.textContent).toMatch(/1[\s\u202f\u00a0.,]?100/);
+      // The last receipt's day, never its moment's ISO text.
+      expect(q('receipt-cost-last')?.textContent).not.toContain('T09:00');
+      expect(q('receipt-cost-last')?.textContent).toMatch(
+        /\(\d{2}[/.-]\d{2}[/.-]2026\)|\(2026[/.-]\d{2}[/.-]\d{2}\)|\(\d{1,2}\/\d{1,2}\/2026\)/,
+      );
       expect(q('field-applyCost')).not.toBeNull();
 
       form().get('applyCost')!.setValue('average');

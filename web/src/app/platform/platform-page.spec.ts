@@ -689,10 +689,11 @@ describe('PlatformPage', () => {
     const { query } = await render('/?tab=companies&company=c1');
 
     const open = query('owner-invitation-open@example.test')!;
-    expect(open.textContent).toContain('envoyée à open@example.test, valable jusqu’au');
+    // 10:00 UTC falls on the same day wherever the spec runs.
+    expect(open.textContent).toContain('envoyée à open@example.test, valable jusqu’au 30/10/2026.');
     expect(open.classList).not.toContain('text-error');
     const late = query('owner-invitation-late@example.test')!;
-    expect(late.textContent).toContain('envoyée à late@example.test a expiré le');
+    expect(late.textContent).toContain('envoyée à late@example.test a expiré le 01/10/2026');
     expect(late.textContent).toContain('invitez de nouveau.');
     expect(late.classList).toContain('text-error');
   });

@@ -137,8 +137,20 @@ function dayInOrder(
   }
 }
 
-/** A calendar day ("2026-09-05") as the locale writes it, "05/09/2026" in French; what is not a day shows as it came. */
-export function formatDay(value: string, locale: string, style: DateFormat = 'auto'): string {
+/**
+ * A calendar day ("2026-09-05") as the locale writes it, "05/09/2026" in French; a moment as the day it falls on in a
+ * time zone, the viewer's when none is given, as `formatMoment` reads it; what is neither shows as it came.
+ */
+export function formatDay(
+  value: string,
+  locale: string,
+  style: DateFormat = 'auto',
+  timeZone?: string,
+): string {
+  if (MOMENT.test(value) && !Number.isNaN(new Date(value).getTime())) {
+    const zone = timeZone ?? new Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return formatDay(dayKey(value, zone), locale, style);
+  }
   const match = DAY.exec(value);
   if (match === null) return value;
   const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
