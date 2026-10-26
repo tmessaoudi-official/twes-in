@@ -116,6 +116,19 @@ export class CompanyApi {
     });
   }
 
+  /** Takes back an invitation nobody has accepted: its link stops working. */
+  async withdrawInvitation(companyId: string, invitationId: string): Promise<boolean> {
+    return this.guard(async () => {
+      await firstValueFrom(
+        this.http.delete(
+          `/api/companies/${encodeURIComponent(companyId)}/invitations/${encodeURIComponent(invitationId)}`,
+        ),
+      );
+
+      return true;
+    });
+  }
+
   /** What the company's documents say about it, with what its fiscal preset asks for. */
   async profile(companyId: string): Promise<CompanyProfile> {
     return this.guard(
@@ -436,6 +449,8 @@ function toRow(row: MemberMemberRead): MemberRow {
     role: row.role ?? '',
     joinedAt: row.joinedAt ?? '',
     status: row.status ?? 'joined',
+    invitationId: row.invitationId ?? null,
+    expiresAt: row.expiresAt ?? null,
   };
 }
 

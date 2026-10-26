@@ -19,6 +19,7 @@ use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\InviteMemberProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\RemoveMemberProcessor;
+use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\WithdrawInvitationProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Provider\MemberCollectionProvider;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -47,6 +48,13 @@ use Symfony\Component\Validator\Constraints as Assert;
         new Delete(
             uriTemplate: '/companies/{companyId}/members/{userId}',
             processor: RemoveMemberProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+        ),
+        // An invitation sent to the wrong address is taken back; sending it again, or at another role, is inviting again.
+        new Delete(
+            uriTemplate: '/companies/{companyId}/invitations/{invitationId}',
+            processor: WithdrawInvitationProcessor::class,
             security: 'is_granted("ROLE_USER")',
             read: false,
         ),
@@ -98,6 +106,16 @@ final class MemberResource
     #[Groups([self::READ])]
     public string $status = self::JOINED;
 
+    /** The invitation an invited row stands for, which the screen withdraws or sends again; null on a member's row. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $invitationId = null;
+
+    /** Until when an invitation's link can be used; null on a member's row. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $expiresAt = null;
+
     public static function of(MemberView $view): self
     {
         $resource = new self();
@@ -107,6 +125,8 @@ final class MemberResource
         $resource->role = $view->role;
         $resource->joinedAt = $view->joinedAt;
         $resource->status = $view->status;
+        $resource->invitationId = $view->invitationId;
+        $resource->expiresAt = $view->expiresAt;
 
         return $resource;
     }

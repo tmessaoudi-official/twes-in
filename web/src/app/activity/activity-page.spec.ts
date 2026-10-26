@@ -98,6 +98,8 @@ describe('ActivityPage', () => {
         role: 'admin',
         joinedAt: '',
         status: 'joined' as const,
+        invitationId: null,
+        expiresAt: null,
       },
     ]).asReadonly(),
     load: vi.fn(),

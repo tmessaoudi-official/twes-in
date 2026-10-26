@@ -459,9 +459,10 @@ export class AppShell {
       inject(DestroyRef),
     );
     // The switcher's list too: a company joined, left or given a new logo is offered as it now is, not as it was when
-    // the shell opened.
+    // the shell opened. A subscription set or a payment confirmed by the operator moves the company's standing, which
+    // the notice bar and the locked page read from the session.
     inject(LiveChanges).reloadOn(
-      ['membership', 'role', 'module', 'company'],
+      ['membership', 'role', 'module', 'company', 'subscription', 'payment_declaration'],
       async () => {
         await Promise.all([this.auth.refresh(), this.companies.load()]);
       },

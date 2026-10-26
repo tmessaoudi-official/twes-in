@@ -98,6 +98,7 @@ final class RecordVersionsTest extends KernelTestCase
         '/companies/{companyId}/products/{productId}/photos/{photoId}' => 'a photo, never edited, and put back by its undo',
         '/companies/{companyId}/invoices/{invoiceId}/payments/{paymentId}' => 'a payment recorded, never edited, taken back under the invoice\'s row lock',
         '/companies/{companyId}/members/{userId}' => 'a membership, whose role is changed by its own action',
+        '/companies/{companyId}/invitations/{invitationId}' => 'an invitation, never edited: sent again or at another role, it is replaced',
         '/companies/{companyId}/products/{productId}/home-locations/{establishmentId}' => 'one place cleared, which moves the version the product\'s homes are checked against',
         '/companies/{companyId}/products/{productId}/reorder-points/{establishmentId}' => 'one point cleared, set again as a whole',
     ];

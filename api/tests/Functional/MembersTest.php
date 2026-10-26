@@ -92,6 +92,93 @@ final class MembersTest extends ApiTestCase
         self::assertSame(['admin@twes.local'], array_map(static fn (array $row) => $row['email'], $this->jsonList()));
     }
 
+    /** An owner who typed the address wrong takes the invitation back: its link stops working, and the list forgets it. */
+    public function testAnInvitationIsWithdrawnAndItsLinkNoLongerWorks(): void
+    {
+        $this->adminSignedIn();
+        $this->postJson($this->path(), ['email' => 'mistyped@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $invitation = $this->invitedRow('mistyped@twes.local');
+        self::assertNotNull($invitation['expiresAt'], 'the row says until when it can be used');
+
+        $this->sendJson('DELETE', $this->invitationPath($invitation['invitationId']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->getJson($this->path());
+        self::assertSame(['admin@twes.local'], array_map(static fn (array $row) => $row['email'], $this->jsonList()));
+        self::assertSame(0, $this->rowCount("SELECT COUNT(*) FROM invitation WHERE email = 'mistyped@twes.local'"), 'no token of it is left to accept');
+        self::assertSame(1, $this->rowCount("SELECT COUNT(*) FROM audit_log WHERE action = 'invitation.withdrawn'"));
+
+        $this->sendJson('DELETE', $this->invitationPath($invitation['invitationId']));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'withdrawn once');
+        $this->sendJson('DELETE', $this->invitationPath(Uuid::v7()->toRfc4122()));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /** Sent again, or to another role, an invitation is replaced: one row, one live link, the role now asked for. */
+    public function testInvitingTheSameAddressAgainResendsItAtTheRoleNowChosen(): void
+    {
+        $this->adminSignedIn();
+        $this->postJson($this->path(), ['email' => 'again@twes.local', 'role' => Role::MEMBER]);
+        self::assertSame(1, $this->deliverQueued(), 'mailed');
+        $first = $this->invitedRow('again@twes.local');
+
+        $this->postJson($this->path(), ['email' => 'again@twes.local', 'role' => Role::ACCOUNTANT]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(1, $this->deliverQueued(), 'mailed again, with a new link');
+        $second = $this->invitedRow('again@twes.local');
+        self::assertSame(Role::ACCOUNTANT, $second['role']);
+        self::assertNotSame($first['invitationId'], $second['invitationId']);
+    }
+
+    public function testAnotherCompanysInvitationIsNotWithdrawnHere(): void
+    {
+        $theirs = $this->createCompany('Globex');
+        $this->createUser('owner@globex.test', 'password-1234', $theirs);
+        $this->createAdmin();
+        $this->signInAs('owner@globex.test');
+        $this->postJson('/api/companies/'.$theirs->getId()->toRfc4122().'/members', ['email' => 'theirs@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->em()->getConnection()->fetchOne("SELECT id FROM invitation WHERE email = 'theirs@twes.local'");
+        self::assertIsString($id);
+
+        $this->signInAs('admin@twes.local');
+        $this->sendJson('DELETE', $this->invitationPath($id));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame(1, $this->rowCount("SELECT COUNT(*) FROM invitation WHERE email = 'theirs@twes.local'"));
+    }
+
+    /** Whoever may not give a role may not take back the invitation to it either. */
+    public function testAnAdminDoesNotWithdrawAnInvitationToBeAnOwner(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company);
+        $this->createAdmin();
+        $this->signInAs('owner@twes.local');
+        $this->postJson($this->path(), ['email' => 'co-owner@twes.local', 'role' => Role::OWNER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->invitedRow('co-owner@twes.local')['invitationId'];
+
+        $this->signInAs('admin@twes.local');
+        $this->sendJson('DELETE', $this->invitationPath($id));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+    }
+
+    public function testAPlainMemberMayNotWithdrawAnInvitation(): void
+    {
+        $this->createUser('plain@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
+        $this->adminSignedIn();
+        $this->postJson($this->path(), ['email' => 'kept@twes.local', 'role' => Role::MEMBER]);
+        $id = $this->invitedRow('kept@twes.local')['invitationId'];
+        $this->signInAs('plain@twes.local');
+
+        $this->sendJson('DELETE', $this->invitationPath($id));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testAMalformedAddressIsRefused(): void
     {
         $this->adminSignedIn();
@@ -371,9 +458,50 @@ final class MembersTest extends ApiTestCase
         return '/api/companies/'.$this->company->getId()->toRfc4122().'/members';
     }
 
-    private function adminSignedIn(): void
+    private function invitationPath(string $invitationId): string
+    {
+        return '/api/companies/'.$this->company->getId()->toRfc4122().'/invitations/'.$invitationId;
+    }
+
+    /** @return array{invitationId: string, role: string, expiresAt: string|null} the invited row the list shows for that address */
+    private function invitedRow(string $email): array
+    {
+        $this->getJson($this->path());
+        foreach ($this->jsonList() as $row) {
+            if ($email === ($row['email'] ?? null) && 'invited' === ($row['status'] ?? null)) {
+                self::assertIsString($row['invitationId'] ?? null);
+                self::assertIsString($row['role'] ?? null);
+
+                return ['invitationId' => $row['invitationId'], 'role' => $row['role'], 'expiresAt' => \is_string($row['expiresAt'] ?? null) ? $row['expiresAt'] : null];
+            }
+        }
+        self::fail(\sprintf('No invited row for %s.', $email));
+    }
+
+    private function rowCount(string $sql): int
+    {
+        $count = $this->em()->getConnection()->fetchOne($sql);
+        self::assertIsInt($count);
+
+        return $count;
+    }
+
+    /** Another person at the same browser: the session moves to them, with a recent proof as changing members asks. */
+    private function signInAs(string $email): void
+    {
+        $this->login($email, 'password-1234');
+        self::assertResponseIsSuccessful();
+        $this->stepUp('password-1234');
+    }
+
+    private function createAdmin(): void
     {
         $this->createUser('admin@twes.local', 'password-1234', $this->company, ['user.read', 'user.write', 'customer.read'], Role::ADMIN);
+    }
+
+    private function adminSignedIn(): void
+    {
+        $this->createAdmin();
         $this->login('admin@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
         // Changing who belongs to the company waits for a recent proof (docs/SPEC.md § 7, the step-up list).

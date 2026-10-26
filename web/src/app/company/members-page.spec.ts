@@ -44,6 +44,11 @@ class StaticLoader implements TranslateLoader {
         actions: 'Actions',
         add: 'Ajouter',
         invited_row: 'Invitation en attente',
+        invited_until: 'Invitation en attente jusqu’au {{day}}',
+        replaces: 'Une invitation attend déjà {{email}}.',
+        resend: 'Renvoyer l’invitation',
+        change_role: 'Changer le rôle',
+        withdraw: 'Retirer l’invitation',
         added: 'Membre ajouté.',
         remove: 'Retirer',
         remove_message: "{{name}} n'aura plus accès à cette entreprise.",
@@ -61,6 +66,19 @@ const owner: MemberRow = {
   role: 'owner',
   joinedAt: '2026-09-09T10:00:00+00:00',
   status: 'joined',
+  invitationId: null,
+  expiresAt: null,
+};
+
+const invited: MemberRow = {
+  userId: '',
+  email: 'invited@example.test',
+  displayName: '',
+  role: 'member',
+  joinedAt: '',
+  status: 'invited',
+  invitationId: 'i1',
+  expiresAt: '2026-11-02T10:00:00+00:00',
 };
 
 describe('MembersPage', () => {
@@ -76,6 +94,7 @@ describe('MembersPage', () => {
     refresh: vi.fn(async () => undefined),
     add: vi.fn(),
     remove: vi.fn(),
+    withdraw: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: signedIn }, company: { id: 'c1', name: 'Acme' } }),
@@ -116,6 +135,7 @@ describe('MembersPage', () => {
     members.load.mockReset().mockResolvedValue(undefined);
     members.add.mockReset().mockResolvedValue(owner);
     members.remove.mockReset().mockResolvedValue(true);
+    members.withdraw.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
     companyRoles.set([
       role('owner', true),
@@ -244,25 +264,94 @@ describe('MembersPage', () => {
     expect(document.querySelectorAll('[data-testid="row-menu-remove-u1"]').length).toBe(0);
   });
 
-  it('lists an open invitation as waiting, with nothing to remove', () => {
-    rows.set([
-      owner,
-      {
-        userId: '',
-        email: 'invited@example.test',
-        displayName: '',
-        role: 'member',
-        joinedAt: '',
-        status: 'invited',
-      },
-    ]);
+  /** Opens a row's « ⋮ » and answers the entry of that action, or null when the row does not offer it. */
+  async function menuEntry(rowId: string, action: string): Promise<HTMLElement | null> {
+    (
+      fixture.nativeElement.querySelector(`[data-testid="row-more-${rowId}"]`) as HTMLElement
+    ).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const entries = document.querySelectorAll<HTMLElement>(
+      `[data-testid="row-menu-${action}-${rowId}"]`,
+    );
+    return entries.length === 0 ? null : entries[entries.length - 1];
+  }
+
+  it('lists an open invitation as waiting, until when, offering to send it again, change its role or withdraw it', async () => {
+    // A mistyped address stayed listed with no way to take the invitation back: the link lived seven days.
+    rows.set([owner, invited]);
     fixture.detectChanges();
 
-    expect(text('member-invited@example.test')).toContain('Invitation en attente');
-    expect(
-      fixture.nativeElement.querySelector('[data-testid="row-more-invited:invited@example.test"]'),
-    ).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="row-more-u1"]')).not.toBeNull();
+    expect(text('member-invited@example.test')).toContain('Invitation en attente jusqu’au');
+    for (const action of ['resend', 'change-role', 'withdraw']) {
+      expect(await menuEntry('invited:invited@example.test', action), action).not.toBeNull();
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+    expect(await menuEntry('invited:invited@example.test', 'remove')).toBeNull();
+  });
+
+  it('withdraws an invitation without a question, and its toast sends it again', async () => {
+    rows.set([owner, invited]);
+    fixture.detectChanges();
+
+    (await menuEntry('invited:invited@example.test', 'withdraw'))!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await vi.waitFor(() => expect(members.withdraw).toHaveBeenCalledWith('c1', 'i1'));
+    expect(document.querySelector('[data-testid="confirm-run"]')).toBeNull();
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    await vi.waitFor(() =>
+      expect(said).toEqual([
+        expect.objectContaining({
+          key: 'members.withdrawn',
+          params: { email: 'invited@example.test' },
+          effect: 'corrigeable',
+        }),
+      ]),
+    );
+    said[0].action?.run();
+    await vi.waitFor(() =>
+      expect(members.add).toHaveBeenCalledWith('c1', 'invited@example.test', 'member'),
+    );
+  });
+
+  it('sends an invitation again at the same role, saying the old link stopped', async () => {
+    rows.set([owner, invited]);
+    fixture.detectChanges();
+
+    (await menuEntry('invited:invited@example.test', 'resend'))!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await vi.waitFor(() =>
+      expect(members.add).toHaveBeenCalledWith('c1', 'invited@example.test', 'member'),
+    );
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({
+          key: 'members.resent',
+          params: { email: 'invited@example.test' },
+        }),
+      ]),
+    );
+  });
+
+  it('puts an invitation in the form to change its role, and says sending replaces it', async () => {
+    rows.set([owner, invited]);
+    fixture.detectChanges();
+
+    (await menuEntry('invited:invited@example.test', 'change-role'))!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const email = fixture.nativeElement.querySelector(
+      '[data-testid="member-email"]',
+    ) as HTMLInputElement;
+    expect(email.value).toBe('invited@example.test');
+    expect(text('member-replaces')).toContain('invited@example.test');
   });
 
   it('asks before it removes a member, naming them, and removes nothing when the answer is no', async () => {

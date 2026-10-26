@@ -22,6 +22,10 @@ final readonly class MemberView
         public string $role,
         public ?string $joinedAt,
         public string $status = self::JOINED,
+        /** The invitation an invited row stands for, which the screen withdraws or sends again; null on a member's row. */
+        public ?string $invitationId = null,
+        /** Until when an invitation's link can be used; null on a member's row. */
+        public ?string $expiresAt = null,
     ) {
     }
 }

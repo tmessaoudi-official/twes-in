@@ -26,7 +26,11 @@
   >
     <ng-template appDataListCell="name" let-row>
       @if (row.status === 'invited') {
-        <span class="opacity-70">{{ 'members.invited_row' | translate }}</span>
+        <span class="opacity-70">{{
+          row.expiresAt
+            ? ('members.invited_until' | translate: { day: (row.expiresAt | day) })
+            : ('members.invited_row' | translate)
+        }}</span>
       } @else {
         {{ row.displayName }}
       }
@@ -88,6 +92,12 @@
           </button>
         </div>
       </form>
+      @if (replaces(); as waiting) {
+        <!-- Inviting an address again replaces its open invitation: said before, not discovered after. -->
+        <p class="text-sm text-on-surface-variant" data-testid="member-replaces">
+          {{ 'members.replaces' | translate: { email: waiting.email } }}
+        </p>
+      }
     </section>
   }
 </section>

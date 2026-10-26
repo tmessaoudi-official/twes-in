@@ -32,15 +32,21 @@ class StubSubscriptionPage {}
 
 describe('LockedSubscriptionPage', () => {
   const logout = vi.fn().mockResolvedValue(true);
+  const refresh = vi.fn().mockResolvedValue(undefined);
+  // Only what `leaveOnceOpen` reads: whether there is a session, and whether its company is still shut.
+  const me = signal<object | null>({ company: { status: 'active', access: 'locked' } });
+  const closed = signal(true);
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     logout.mockClear();
+    refresh.mockClear();
+    closed.set(true);
 
     await TestBed.configureTestingModule({
       imports: [LockedSubscriptionPage],
       providers: [
-        { provide: AuthFacade, useValue: { logout } },
+        { provide: AuthFacade, useValue: { logout, refresh, me, companyClosed: closed } },
         // A real router: the legal line under the page links through it (row 147).
         provideRouter([]),
         {
@@ -70,6 +76,17 @@ describe('LockedSubscriptionPage', () => {
     await fixture.whenStable();
     return fixture.nativeElement as HTMLElement;
   }
+
+  it('opens the application once the operator confirms the payment', async () => {
+    // The owner declared, the operator confirmed, and the owner stayed on the locked page until they signed out.
+    await render();
+    expect(navigateByUrl).not.toHaveBeenCalledWith('/');
+
+    closed.set(false);
+    TestBed.tick();
+
+    expect(navigateByUrl).toHaveBeenCalledWith('/');
+  });
 
   it('shows the page at its own width, not squeezed into the sign-in card', async () => {
     // A whole page inside the 26.25rem card lays its form out in two columns all the same, and the inputs collapse

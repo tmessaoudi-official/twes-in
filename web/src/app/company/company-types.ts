@@ -31,6 +31,10 @@ export interface MemberRow {
   readonly joinedAt: string;
   /** Whether that address became a member, or was sent an invitation because it has no account yet. */
   readonly status: 'joined' | 'invited';
+  /** The invitation an invited row stands for, which the page withdraws; null on a member's row. */
+  readonly invitationId: string | null;
+  /** Until when an invitation's link can be used; null on a member's row. */
+  readonly expiresAt: string | null;
 }
 
 /**

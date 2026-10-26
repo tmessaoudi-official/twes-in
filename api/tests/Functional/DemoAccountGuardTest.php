@@ -41,6 +41,7 @@ final class DemoAccountGuardTest extends ApiTestCase
     private const array ALLOWED = [
         '_api_/auth/me_get',
         '_api_/companies/{companyId}/closing_get',
+        '_api_/companies/{companyId}/invitations/{invitationId}_delete',
         '_api_/companies/{companyId}/members/{userId}_delete',
         '_api_/companies/{companyId}/members_get_collection',
         '_api_/companies/{companyId}/subscription_get',
@@ -80,7 +81,7 @@ final class DemoAccountGuardTest extends ApiTestCase
      * an invoice over as Factur-X, a file meant for a real customer's books, or the month's withholding declaration,
      * a file meant for the tax authority's platform.
      */
-    private const string SWEPT = '#^/api/(auth/|me/|companies$|companies/\{companyId\}/(members|support-access|close-down|closing|subscription|modules/\{moduleKey\}/interest|invoices/\{invoiceId\}/factur-x|withholding-declarations/))#';
+    private const string SWEPT = '#^/api/(auth/|me/|companies$|companies/\{companyId\}/(members|invitations|support-access|close-down|closing|subscription|modules/\{moduleKey\}/interest|invoices/\{invoiceId\}/factur-x|withholding-declarations/))#';
 
     /** The files an accountant's software takes in as the company's books, refused to a visitor with Factur-X. */
     private const array BOOKS = [

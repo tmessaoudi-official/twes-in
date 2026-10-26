@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { leaveOnceOpen } from '../auth/leave-once-open';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { SubscriptionPage } from './subscription-page';
 
@@ -32,6 +33,11 @@ import { SubscriptionPage } from './subscription-page';
 export class LockedSubscriptionPage {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+
+  constructor() {
+    // The operator confirming the payment opens the company: the owner is taken in, not left on a locked page.
+    leaveOnceOpen();
+  }
 
   protected async signOut(): Promise<void> {
     if (await this.auth.logout()) await this.router.navigateByUrl('/login');

@@ -1,0 +1,43 @@
+{
+  "members": {
+    "title": "Members",
+    "of": "Company {{company}}",
+    "name": "Name",
+    "email": "Email address",
+    "email_invalid": "This email address is not valid.",
+    "role": "Role",
+    "actions": "Actions",
+    "add": "Add",
+    "remove": "Remove",
+    "none": "No members.",
+    "errors": {
+      "unknown_user": "No account holds that address. Invitations are coming.",
+      "already_member": "That person already belongs to the company.",
+      "last_owner": "A company keeps at least one owner.",
+      "own_membership": "You cannot remove yourself from the company.",
+      "forbidden": "Your role in this company does not allow that.",
+      "not_found": "Company not found.",
+      "invalid": "Invalid request.",
+      "network": "The server could not be reached.",
+      "step_up_required": "Nothing changed: confirm it is you to make this change."
+    },
+    "no_company": "Choose a company first.",
+    "invited": "The invitation was sent by email.",
+    "invited_row": "Invitation pending",
+    "remove_title": "Remove this member?",
+    "remove_message": "{{name}} will lose access to this company. You can invite them again.",
+    "remove_confirm": "Remove",
+    "keep": "Keep",
+    "activity": "{{name}}’s activity",
+    "invite_title": "Invite a member",
+    "removed": "{{name}} no longer has access to this company.",
+    "resend": "Send the invitation again",
+    "resent": "A new invitation was sent to {{email}}. The previous link no longer works.",
+    "change_role": "Change the role",
+    "withdraw": "Withdraw the invitation",
+    "withdrawn": "The invitation to {{email}} is withdrawn. Its link no longer works.",
+    "undo": "Undo",
+    "invited_until": "Invitation pending until {{day}}",
+    "replaces": "An invitation is already waiting for {{email}}. Sending it again replaces it, at the role chosen."
+  }
+}

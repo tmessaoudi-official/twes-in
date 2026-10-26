@@ -76,7 +76,10 @@
       "suspended": "{{company}} is suspended. Contact the platform's team to find out more.",
       "sign_out": "Sign out",
       "locked": "{{company}} is closed until its subscription is settled. Contact us to reopen it.",
-      "declare_payment": "Declare a payment"
+      "declare_payment": "Declare a payment",
+      "closed": "{{company}} is closed. Contact the platform's team to find out more.",
+      "ask_owner": "Only the company's owner can declare the subscription's payment. Let them know to reopen it.",
+      "elsewhere": "Your other companies"
     },
     "scene": {
       "invoice_number": "INV-2026-0142",
@@ -185,39 +188,6 @@
       "write": "Draft, send and close purchase orders",
       "receive": "Receive ordered goods"
     }
-  },
-  "members": {
-    "title": "Members",
-    "of": "Company {{company}}",
-    "name": "Name",
-    "email": "Email address",
-    "email_invalid": "This email address is not valid.",
-    "role": "Role",
-    "actions": "Actions",
-    "add": "Add",
-    "remove": "Remove",
-    "none": "No members.",
-    "errors": {
-      "unknown_user": "No account holds that address. Invitations are coming.",
-      "already_member": "That person already belongs to the company.",
-      "last_owner": "A company keeps at least one owner.",
-      "own_membership": "You cannot remove yourself from the company.",
-      "forbidden": "Your role in this company does not allow that.",
-      "not_found": "Company not found.",
-      "invalid": "Invalid request.",
-      "network": "The server could not be reached.",
-      "step_up_required": "Nothing changed: confirm it is you to make this change."
-    },
-    "no_company": "Choose a company first.",
-    "invited": "The invitation was sent by email.",
-    "invited_row": "Invitation pending",
-    "remove_title": "Remove this member?",
-    "remove_message": "{{name}} will lose access to this company. You can invite them again.",
-    "remove_confirm": "Remove",
-    "keep": "Keep",
-    "activity": "{{name}}’s activity",
-    "invite_title": "Invite a member",
-    "removed": "{{name}} no longer has access to this company."
   },
   "company": {
     "choose": "Choose a company",

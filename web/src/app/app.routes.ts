@@ -27,6 +27,7 @@ import { customerScreenLock } from './customer-screen/customer-screen-lock';
 import { moduleGuard } from './shell/module-guard';
 import { textsOpened, textsPart } from './shared/i18n/texts-part';
 import { MFA_LOCKOUT_TEXTS } from './auth/mfa-lockout-texts';
+import { MEMBERS_TEXTS } from './company/members-texts';
 import { ROLES_TEXTS } from './company/roles-texts';
 import { CHECK_TEXTS } from './shared/check/check-texts';
 import { PURCHASE_HISTORY_TEXTS } from './shared/i18n/purchase-history-texts';
@@ -559,6 +560,7 @@ export const routes: Routes = [
           {
             path: 'members',
             title: 'nav.members',
+            canActivate: [textsOpened(MEMBERS_TEXTS)],
             loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
           },
           {

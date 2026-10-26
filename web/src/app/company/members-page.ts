@@ -5,12 +5,15 @@ import {
   Component,
   computed,
   DestroyRef,
+  DOCUMENT,
   inject,
   OnInit,
   signal,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { DayPipe } from '../shared/i18n/format-pipes';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -92,7 +95,7 @@ export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow
   ],
 });
 
-/** Who belongs to the company being worked in, and the two things an administrator does about it. */
+/** Who belongs to the company being worked in, and what an administrator does about it. */
 @Component({
   selector: 'app-members-page',
   imports: [
@@ -105,6 +108,7 @@ export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow
     DataList,
     DataListCell,
     CapitalizePipe,
+    DayPipe,
   ],
   templateUrl: './members-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -116,6 +120,7 @@ export class MembersPage implements OnInit {
   private readonly rolesFacade = inject(RolesFacade);
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
+  private readonly document = inject(DOCUMENT);
 
   protected readonly roles = this.rolesFacade.roles;
   protected readonly shippedRoles = computed(
@@ -134,8 +139,8 @@ export class MembersPage implements OnInit {
     })),
   );
   /**
-   * Removing somebody is destructive, so it sits behind "⋮" rather than under the pointer; an invitation is
-   * withdrawn from where it was sent rather than here, so the action is absent on a row nobody has joined at.
+   * Removing somebody is destructive, so it sits behind "⋮" rather than under the pointer. An invitation nobody has
+   * accepted is sent again, sent at another role or withdrawn where it is listed: a mistyped address is put right here.
    */
   protected readonly list = computed<ListDescriptor<MemberRow>>(() => ({
     ...membersList(this.roles()),
@@ -169,6 +174,35 @@ export class MembersPage implements OnInit {
           keepLabel: 'members.keep',
         }),
       },
+      {
+        id: 'resend',
+        // Occasional: behind « ⋮ », so the list keeps the width it had.
+        rare: true,
+        label: 'members.resend',
+        icon: 'forward_to_inbox',
+        run: (row) => void this.resend(row),
+        disabled: () => this.busy(),
+        shown: (row) => this.mayManage() && row.status === 'invited',
+      },
+      {
+        id: 'change-role',
+        rare: true,
+        label: 'members.change_role',
+        icon: 'manage_accounts',
+        run: (row) => this.changeRole(row),
+        disabled: () => this.busy(),
+        shown: (row) => this.mayManage() && row.status === 'invited',
+      },
+      {
+        // Undone from its toast, which sends it again: no question first.
+        id: 'withdraw',
+        rare: true,
+        label: 'members.withdraw',
+        icon: 'cancel',
+        run: (row) => void this.withdraw(row),
+        disabled: () => this.busy(),
+        shown: (row) => this.mayManage() && row.status === 'invited' && row.invitationId !== null,
+      },
     ],
   }));
   protected readonly rowTestId = (row: MemberRow): string => `member-${row.email}`;
@@ -185,6 +219,17 @@ export class MembersPage implements OnInit {
       validators: [Validators.required, Validators.email],
     }),
     role: new FormControl<string>('member', { nonNullable: true }),
+  });
+  private readonly typedEmail = toSignal(this.form.controls.email.valueChanges, {
+    initialValue: this.form.controls.email.value,
+  });
+  /** The invitation already waiting for the address typed, which sending replaces. */
+  protected readonly replaces = computed(() => {
+    const typed = this.typedEmail().trim().toLowerCase();
+    return (
+      this.rows().find((row) => row.status === 'invited' && row.email.toLowerCase() === typed) ??
+      null
+    );
   });
   /** An invitation typed and not sent: leaving or reloading would lose it, so the page is held while it is there. */
   protected readonly changes = unsavedChanges(signal(this.form), signal(null));
@@ -213,6 +258,31 @@ export class MembersPage implements OnInit {
       this.form.reset({ email: '', role: 'member' });
       // Every address is invited, one with an account included: nobody is a member until they accept.
       this.feedback.success('members.invited');
+    }
+  }
+
+  /** A new link to the same address at the same role: the one sent before stops working. */
+  protected async resend(row: MemberRow): Promise<void> {
+    const companyId = this.company()?.id;
+    if (companyId && (await this.members.add(companyId, row.email, row.role)) !== null) {
+      this.feedback.success('members.resent', { email: row.email });
+    }
+  }
+
+  /** The invitation's address put in the form, its role ready to change: inviting again replaces the one sent. */
+  protected changeRole(row: MemberRow): void {
+    this.form.setValue({ email: row.email, role: row.role });
+    this.document.getElementById('member-role-input')?.focus();
+  }
+
+  protected async withdraw(row: MemberRow): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!companyId || row.invitationId === null) return;
+    if (await this.members.withdraw(companyId, row.invitationId)) {
+      this.feedback.effect('members.withdrawn', { email: row.email }, 'corrigeable', {
+        key: 'members.undo',
+        run: () => void this.resend(row),
+      });
     }
   }
 

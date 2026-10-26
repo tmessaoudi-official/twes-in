@@ -8,7 +8,7 @@ import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, MemberRole, MemberRow } from './company-types';
 import { sessionSignal } from '../shared/session/session-data';
 
-/** The member list of one company, and the two things an administrator does to it. */
+/** The member list of one company, and what an administrator does to it: invite, withdraw an invitation, remove. */
 @Injectable({ providedIn: 'root' })
 export class MembersFacade {
   private readonly api = inject(CompanyApi);
@@ -37,6 +37,13 @@ export class MembersFacade {
 
   async remove(companyId: string, userId: string): Promise<boolean> {
     return (await this.mutate(companyId, () => this.api.removeMember(companyId, userId))) !== null;
+  }
+
+  async withdraw(companyId: string, invitationId: string): Promise<boolean> {
+    return (
+      (await this.mutate(companyId, () => this.api.withdrawInvitation(companyId, invitationId))) !==
+      null
+    );
   }
 
   private async mutate<T>(companyId: string, call: () => Promise<T>): Promise<T | null> {

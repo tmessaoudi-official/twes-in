@@ -46,7 +46,16 @@ final readonly class ListMembers
         );
         // An invitation names nobody: an existing account is not a member, and not shown as one, until it accepts.
         $invited = array_map(
-            static fn (Invitation $i) => new MemberView(null, $i->getEmail()->value, null, $i->getRoleName(), null, MemberView::INVITED),
+            static fn (Invitation $i) => new MemberView(
+                null,
+                $i->getEmail()->value,
+                null,
+                $i->getRoleName(),
+                null,
+                MemberView::INVITED,
+                $i->getId()->toRfc4122(),
+                $i->getExpiresAt()->format(\DATE_ATOM),
+            ),
             $this->invitations->openOfCompany($companyId, $this->clock->now()),
         );
 

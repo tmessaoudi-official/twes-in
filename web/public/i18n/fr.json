@@ -76,7 +76,10 @@
       "suspended": "{{company}} est suspendue. Contactez l’équipe de la plateforme pour en savoir plus.",
       "sign_out": "Se déconnecter",
       "locked": "{{company}} est fermée en attendant le règlement de l’abonnement. Contactez-nous pour la rouvrir.",
-      "declare_payment": "Déclarer un règlement"
+      "declare_payment": "Déclarer un règlement",
+      "closed": "{{company}} est fermée. Contactez l’équipe de la plateforme pour en savoir plus.",
+      "ask_owner": "Seul le propriétaire de l’entreprise peut déclarer le règlement de l’abonnement. Prévenez-le pour la rouvrir.",
+      "elsewhere": "Vos autres entreprises"
     },
     "scene": {
       "invoice_number": "FA-2026-0142",
@@ -185,39 +188,6 @@
       "write": "Préparer, envoyer et clore les commandes fournisseurs",
       "receive": "Réceptionner la marchandise commandée"
     }
-  },
-  "members": {
-    "title": "Membres",
-    "of": "Entreprise {{company}}",
-    "name": "Nom",
-    "email": "Adresse e-mail",
-    "email_invalid": "Cette adresse e-mail n’est pas valide.",
-    "role": "Rôle",
-    "actions": "Actions",
-    "add": "Ajouter",
-    "remove": "Retirer",
-    "none": "Aucun membre.",
-    "errors": {
-      "unknown_user": "Aucun compte ne porte cette adresse. L’invitation arrive bientôt.",
-      "already_member": "Cette personne fait déjà partie de l’entreprise.",
-      "last_owner": "Une entreprise garde au moins un propriétaire.",
-      "own_membership": "Vous ne pouvez pas vous retirer vous-même de l’entreprise.",
-      "forbidden": "Votre rôle dans cette entreprise ne le permet pas.",
-      "not_found": "Entreprise introuvable.",
-      "invalid": "Demande invalide.",
-      "network": "Impossible de joindre le serveur.",
-      "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
-    },
-    "no_company": "Choisissez d’abord une entreprise.",
-    "invited": "L’invitation a été envoyée par e-mail.",
-    "invited_row": "Invitation en attente",
-    "remove_title": "Retirer ce membre ?",
-    "remove_message": "{{name}} n’aura plus accès à cette entreprise. Vous pourrez l’inviter à nouveau.",
-    "remove_confirm": "Retirer",
-    "keep": "Garder",
-    "activity": "Activité de {{name}}",
-    "invite_title": "Inviter un membre",
-    "removed": "{{name}} n’a plus accès à cette entreprise."
   },
   "company": {
     "choose": "Choisir une entreprise",

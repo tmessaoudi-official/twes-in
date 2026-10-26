@@ -16,6 +16,8 @@ const owner: MemberRow = {
   role: 'owner',
   joinedAt: '2026-09-09T10:00:00+00:00',
   status: 'joined',
+  invitationId: null,
+  expiresAt: null,
 };
 
 // The proof dialog is answered by the test; `retrying` itself is StepUp's own.
