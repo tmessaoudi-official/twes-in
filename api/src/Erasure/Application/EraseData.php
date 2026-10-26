@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Erasure\Domain\Model\DataErasure;
 use App\Erasure\Domain\Repository\DataErasureRepository;
 use App\Identity\Application\StepUp\StepUpRequired;
@@ -86,7 +87,7 @@ final readonly class EraseData implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::ERASED => AuditScope::Company,
+            self::ERASED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\CurrencyScales;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Licensing\Domain\Exception\InvalidPayment;
@@ -228,9 +229,9 @@ final readonly class ManagePayments implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CONFIRMED => AuditScope::Company,
-            self::DECLARED => AuditScope::Company,
-            self::REJECTED => AuditScope::Company,
+            self::CONFIRMED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::DECLARED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::REJECTED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Demo\Domain\Repository\DemoSandboxRepository;
 use App\Files\Application\Files;
 use App\Identity\Application\Session\ManageSessions;
@@ -117,7 +118,7 @@ final readonly class RemoveSandboxes implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::REMOVED => AuditScope::Outside,
+            self::REMOVED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Outside),
         ];
     }
 }

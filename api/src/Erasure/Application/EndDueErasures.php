@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Erasure\Domain\Repository\DataErasureRepository;
 use App\Files\Application\Files;
 use App\Shared\Application\Transactions;
@@ -70,7 +71,7 @@ final readonly class EndDueErasures implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::ENDED => AuditScope::Company,
+            self::ENDED => new Recorded(EraseData::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

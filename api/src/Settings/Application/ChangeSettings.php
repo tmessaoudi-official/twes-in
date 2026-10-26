@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Settings\Domain\Event\PersonalSettingChanged;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\Repository\SettingRepository;
@@ -196,8 +197,8 @@ final readonly class ChangeSettings implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CHANGED => AuditScope::Either,
-            self::RESET => AuditScope::Either,
+            self::CHANGED => new Recorded(self::ENTITY_TYPE, AuditScope::Either),
+            self::RESET => new Recorded(self::ENTITY_TYPE, AuditScope::Either),
         ];
     }
 }

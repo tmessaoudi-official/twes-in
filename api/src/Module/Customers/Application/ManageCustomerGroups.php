@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Module\Customers\Domain\Exception\InvalidCustomerGroup;
 use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Module\Customers\Domain\Repository\CustomerGroupRepository;
@@ -140,9 +141,9 @@ final readonly class ManageCustomerGroups implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CREATED => AuditScope::Company,
-            self::DELETED => AuditScope::Company,
-            self::REVISED => AuditScope::Company,
+            self::CREATED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::DELETED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::REVISED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

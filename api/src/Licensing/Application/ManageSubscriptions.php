@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Licensing\Domain\Model\Subscription;
 use App\Licensing\Domain\Repository\SubscriptionRepository;
 use App\Licensing\Domain\ValueObject\SubscriptionTerms;
@@ -153,8 +154,8 @@ final readonly class ManageSubscriptions implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::SET => AuditScope::Company,
-            self::STOPPED => AuditScope::Company,
+            self::SET => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::STOPPED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

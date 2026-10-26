@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Records\Application\Merge\MergeAlias;
 use App\Records\Domain\Model\RecordRemoval;
 use App\Records\Domain\Repository\RecordRemovalRepository;
@@ -230,7 +231,7 @@ final readonly class RemoveRecords implements DeclaresAuditActions
     {
         $actions = [];
         foreach ($this->catalogue->subjects() as $subject) {
-            $actions[$subject->table.'.deleted'] = AuditScope::Company;
+            $actions[$subject->table.'.deleted'] = new Recorded($subject->table, AuditScope::Company);
         }
 
         return $actions;

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\CurrencyScales;
 use App\Module\Invoices\Application\Credit\ManageCustomerCredit;
 use App\Module\Invoices\Application\InvoiceNotFound;
@@ -114,8 +115,8 @@ final readonly class ManagePayments implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::DELETED => AuditScope::Company,
-            self::RECORDED => AuditScope::Company,
+            self::DELETED => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
+            self::RECORDED => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

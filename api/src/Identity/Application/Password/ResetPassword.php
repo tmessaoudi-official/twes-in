@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
@@ -91,8 +92,8 @@ final readonly class ResetPassword implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            ChangePassword::BREACH_CHECK_SKIPPED => AuditScope::Outside,
-            self::RESET => AuditScope::Outside,
+            ChangePassword::BREACH_CHECK_SKIPPED => new Recorded('user', AuditScope::Outside),
+            self::RESET => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

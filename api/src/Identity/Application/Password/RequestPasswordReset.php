@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Domain\Model\PasswordReset;
 use App\Identity\Domain\Repository\PasswordResetRepository;
 use App\Identity\Domain\Repository\UserRepository;
@@ -76,7 +77,7 @@ final readonly class RequestPasswordReset implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::REQUESTED => AuditScope::Outside,
+            self::REQUESTED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\CompanyRepository;
@@ -52,7 +53,7 @@ final readonly class RequireSecondFactor implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CHANGED => AuditScope::Company,
+            self::CHANGED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

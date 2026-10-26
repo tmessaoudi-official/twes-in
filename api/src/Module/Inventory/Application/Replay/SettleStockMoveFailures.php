@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Module\Inventory\Domain\Model\StockMoveFailure;
 use App\Module\Inventory\Domain\Repository\StockMoveFailureRepository;
 use App\Shared\Application\Transactions;
@@ -95,8 +96,8 @@ final readonly class SettleStockMoveFailures implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            StockMoveFailures::REPLAYED => AuditScope::Company,
-            StockMoveFailures::SETTLED => AuditScope::Company,
+            StockMoveFailures::REPLAYED => new Recorded(StockMoveFailures::KIND, AuditScope::Company),
+            StockMoveFailures::SETTLED => new Recorded(StockMoveFailures::KIND, AuditScope::Company),
         ];
     }
 }

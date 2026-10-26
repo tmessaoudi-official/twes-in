@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\Email;
 use App\Shared\Application\Notification;
@@ -132,7 +133,7 @@ final readonly class InviteToCompany implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::SENT => AuditScope::Company,
+            self::SENT => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

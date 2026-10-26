@@ -6,9 +6,9 @@ import { proveIfHeldBack, sendProving } from './step-up';
 import { toast } from './toast';
 
 // « Fermer l'entreprise » through the whole stack (the workflow hunt, F24): it existed in the API alone. The owner of a
-// company of its own closes it from its profile, typing its name, lands on the page a closed company shows, with the
-// day its documents are kept until and « Rouvrir l'entreprise », and takes the closing back, which opens the
-// application again. The seed makes the operator Demo's owner, so the company is made here; each run leaves one
+// company of its own closes it from its profile, typing its name, stays in the application read-only under a notice
+// saying the day its documents are kept until with « Rouvrir l'entreprise », and takes the closing back, which takes
+// the notice away. The seed makes the operator Demo's owner, so the company is made here; each run leaves one
 // company and one account behind.
 const THEIR_PASSWORD = 'a-long-enough-password';
 
@@ -19,7 +19,7 @@ async function signIn(page: Page, email: string, password: string): Promise<void
   await page.getByTestId('submit').click();
 }
 
-test('the owner closes the company from its profile, and reopens it from the page a closed company shows', async ({
+test('the owner closes the company from its profile, reads it under the notice, and reopens it from there', async ({
   page,
   browser,
   request,
@@ -80,18 +80,28 @@ test('the owner closes the company from its profile, and reopens it from the pag
   await theirPage.getByTestId('confirm-run').click();
   expect((await proveIfHeldBack(theirPage, THEIR_PASSWORD, closing)).ok()).toBe(true);
 
-  // The page a closed company shows says it, until when it is kept and until when its owner may take it back.
-  await expect(theirPage).toHaveURL(/\/awaiting-approval$/);
-  await expect(theirPage.getByTestId('awaiting-closed')).toContainText(name);
-  await expect(theirPage.getByTestId('awaiting-closed-kept')).toBeVisible();
-  await expect(theirPage.getByTestId('awaiting-reopen-until')).toBeVisible();
+  // Kept, not shut: the owner stays in the application, read-only, and the notice above every page says it is
+  // closed, until when it is kept and until when its owner may take it back.
+  await expect(theirPage).toHaveURL(/\/company\/profile$/);
+  await expect(theirPage.getByTestId('closed-notice')).toContainText(name);
+  await expect(theirPage.getByTestId('closed-notice-kept')).toBeVisible();
+  await expect(theirPage.getByTestId('closed-notice-reopen-until')).toBeVisible();
   await expect(toast(theirPage)).toContainText(name);
+  // The session no longer offers what the API would refuse: the profile's form and its closing are gone.
+  await expect(theirPage.getByTestId('profile-forbidden')).toBeVisible();
+  await expect(theirPage.getByTestId('company-close')).toHaveCount(0);
+
+  // Its records still read, under the same notice.
+  await theirPage.goto('/customers');
+  await expect(theirPage).toHaveURL(/\/customers$/);
+  await expect(theirPage.getByTestId('closed-notice')).toBeVisible();
+  await theirPage.screenshot({ path: test.info().outputPath('closed-company-notice.png') });
 
   const reopening = theirPage.waitForResponse(
     (response) => response.url().endsWith('/reopen') && response.request().method() === 'POST',
   );
-  await theirPage.getByTestId('awaiting-reopen').click();
+  await theirPage.getByTestId('closed-notice-reopen').click();
   expect((await proveIfHeldBack(theirPage, THEIR_PASSWORD, reopening)).ok()).toBe(true);
-  await expect(theirPage).toHaveURL(/\/$/);
+  await expect(theirPage.getByTestId('closed-notice')).toHaveCount(0);
   await theirs.close();
 });

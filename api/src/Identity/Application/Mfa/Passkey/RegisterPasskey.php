@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Mfa\IssueRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactors;
 use App\Identity\Application\PasskeyCeremonies;
@@ -78,7 +79,7 @@ final readonly class RegisterPasskey implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::REGISTERED => AuditScope::Outside,
+            self::REGISTERED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Domain\Repository\UserRepository;
@@ -92,7 +93,7 @@ final readonly class DeleteOwnAccount implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::REQUESTED => AuditScope::Outside,
+            self::REQUESTED => new Recorded(ManageAccounts::ENTITY_TYPE, AuditScope::Outside),
         ];
     }
 }

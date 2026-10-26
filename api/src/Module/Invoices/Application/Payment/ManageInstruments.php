@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Invoices\Application\Credit\ManageCustomerCredit;
@@ -254,10 +255,10 @@ final readonly class ManageInstruments implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CASHED => AuditScope::Company,
-            self::DEPOSITED => AuditScope::Company,
-            self::RECEIVED => AuditScope::Company,
-            self::UNPAID => AuditScope::Company,
+            self::CASHED => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
+            self::DEPOSITED => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
+            self::RECEIVED => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
+            self::UNPAID => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

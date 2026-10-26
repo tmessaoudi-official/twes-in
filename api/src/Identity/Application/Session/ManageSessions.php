@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Model\UserSession;
 use App\Identity\Domain\Repository\UserRepository;
@@ -145,8 +146,8 @@ final readonly class ManageSessions implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::ENDED => AuditScope::Outside,
-            self::OTHERS_ENDED => AuditScope::Outside,
+            self::ENDED => new Recorded('user', AuditScope::Outside),
+            self::OTHERS_ENDED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

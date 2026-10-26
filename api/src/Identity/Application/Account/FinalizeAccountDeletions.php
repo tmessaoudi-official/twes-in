@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Application\JournalAddresses;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Application\ReadSetting;
@@ -83,7 +84,7 @@ final readonly class FinalizeAccountDeletions implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::DELETED => AuditScope::Outside,
+            self::DELETED => new Recorded(ManageAccounts::ENTITY_TYPE, AuditScope::Outside),
         ];
     }
 }

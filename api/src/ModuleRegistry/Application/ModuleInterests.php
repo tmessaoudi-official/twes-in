@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\ModuleRegistry\Domain\Model\ModuleInterest;
 use App\ModuleRegistry\Domain\Repository\ModuleInterestRepository;
 use App\Shared\Application\Notification;
@@ -149,8 +150,8 @@ final readonly class ModuleInterests implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::RECORDED => AuditScope::Company,
-            self::WITHDRAWN => AuditScope::Company,
+            self::RECORDED => new Recorded(ManageModules::ENTITY_TYPE, AuditScope::Company),
+            self::WITHDRAWN => new Recorded(ManageModules::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

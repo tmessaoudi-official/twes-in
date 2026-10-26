@@ -108,6 +108,34 @@ final class CompanyClosingTest extends ApiTestCase
         self::assertSame(['retainUntil' => $this->stringAt($closed, 'retainUntil'), 'reopenUntil' => $this->stringAt($closed, 'reopenUntil')], $this->sessionCompany()['closing']);
     }
 
+    /** The screens offer what the session says may be done, so a closed company's says only what it still grants. */
+    public function testTheSessionOffersAClosedCompanysMembersOnlyWhatItStillGrants(): void
+    {
+        $this->login('owner@twes.local', self::PASSWORD);
+        $this->client->request('GET', '/api/auth/me');
+        self::assertSame(['*'], $this->sessionPermissions(), 'the owner holds everything in an open company');
+
+        $this->closeDown();
+        $this->client->request('GET', '/api/auth/me');
+
+        $permissions = $this->sessionPermissions();
+        self::assertContains('customer.read', $permissions);
+        self::assertContains('accounting.export', $permissions);
+        self::assertSame([], array_values(array_filter($permissions, fn (string $permission): bool => !$this->company->permitsWhileClosedDown($permission))));
+    }
+
+    /** A lapsed subscription locks a working company out; a closed one pays for nothing, so its session says nothing of it. */
+    public function testTheSessionOfAClosedCompanySaysNothingOfASubscriptionThatLapsed(): void
+    {
+        $this->closeDown();
+        $this->em()->getConnection()->executeStatement("INSERT INTO subscription (id, company_id, period_count, period_unit, paid_until, grace_days, unpaid_mode, created_at, updated_at) VALUES (gen_random_uuid(), ?, 1, 'month', '2020-01-31', 0, 'locked', now(), now())", [$this->company->getId()->toRfc4122()]);
+
+        $this->client->request('GET', '/api/auth/me');
+
+        self::assertSame('full', $this->sessionCompany()['access'], 'locked would send its members out of the application');
+        self::assertNull($this->sessionCompany()['subscription']);
+    }
+
     public function testAClosedCompanyIsReadAndItsBooksTakenButNothingChanges(): void
     {
         $this->closeDown();
@@ -258,6 +286,15 @@ final class CompanyClosingTest extends ApiTestCase
         }
 
         return $company;
+    }
+
+    /** @return list<string> */
+    private function sessionPermissions(): array
+    {
+        $permissions = $this->json()['permissions'] ?? null;
+        self::assertIsArray($permissions);
+
+        return array_values(array_filter($permissions, \is_string(...)));
     }
 
     private function closedDaysAgo(int $days): void

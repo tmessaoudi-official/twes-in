@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\SecretCipher;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
@@ -97,7 +98,7 @@ final readonly class RegenerateRecoveryCodes implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::REGENERATED => AuditScope::Outside,
+            self::REGENERATED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

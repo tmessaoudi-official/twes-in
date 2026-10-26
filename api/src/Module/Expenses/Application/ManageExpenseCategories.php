@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Module\Expenses\Domain\Exception\InvalidExpense;
 use App\Module\Expenses\Domain\Model\ExpenseCategory;
 use App\Module\Expenses\Domain\Repository\ExpenseCategoryRepository;
@@ -118,8 +119,8 @@ final readonly class ManageExpenseCategories implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CREATED => AuditScope::Company,
-            self::REVISED => AuditScope::Company,
+            self::CREATED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::REVISED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

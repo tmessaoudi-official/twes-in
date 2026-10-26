@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\SecretCipher;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Model\User;
@@ -153,9 +154,9 @@ final readonly class VerifySecondFactor implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::FAILED => AuditScope::Outside,
-            self::VERIFIED => AuditScope::Outside,
-            self::RECOVERY_USED => AuditScope::Outside,
+            self::FAILED => new Recorded('user', AuditScope::Outside),
+            self::VERIFIED => new Recorded('user', AuditScope::Outside),
+            self::RECOVERY_USED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Records\Application\Merge\MergeAlias;
@@ -131,9 +132,9 @@ final readonly class RestoreRecords implements DeclaresAuditActions
     {
         $actions = [];
         foreach ($this->catalogue->subjects() as $subject) {
-            $actions[$subject->table.'.restored'] = AuditScope::Company;
+            $actions[$subject->table.'.restored'] = new Recorded($subject->table, AuditScope::Company);
             if (null !== $subject->mergedAway) {
-                $actions[$subject->table.'.merge_undone'] = AuditScope::Company;
+                $actions[$subject->table.'.merge_undone'] = new Recorded($subject->table, AuditScope::Company);
             }
         }
 

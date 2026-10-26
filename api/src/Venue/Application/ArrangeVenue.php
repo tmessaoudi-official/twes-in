@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
@@ -372,15 +373,15 @@ final readonly class ArrangeVenue implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::AREA_CREATED => AuditScope::Company,
-            self::AREA_DELETED => AuditScope::Company,
-            self::AREA_REVISED => AuditScope::Company,
-            self::SPOT_CREATED => AuditScope::Company,
-            self::SPOT_DELETED => AuditScope::Company,
-            self::SPOT_REVISED => AuditScope::Company,
-            self::STRUCTURE_CREATED => AuditScope::Company,
-            self::STRUCTURE_DELETED => AuditScope::Company,
-            self::STRUCTURE_REVISED => AuditScope::Company,
+            self::AREA_CREATED => new Recorded(self::AREA_TYPE, AuditScope::Company),
+            self::AREA_DELETED => new Recorded(self::AREA_TYPE, AuditScope::Company),
+            self::AREA_REVISED => new Recorded(self::AREA_TYPE, AuditScope::Company),
+            self::SPOT_CREATED => new Recorded(self::SPOT_TYPE, AuditScope::Company),
+            self::SPOT_DELETED => new Recorded(self::SPOT_TYPE, AuditScope::Company),
+            self::SPOT_REVISED => new Recorded(self::SPOT_TYPE, AuditScope::Company),
+            self::STRUCTURE_CREATED => new Recorded(self::STRUCTURE_TYPE, AuditScope::Company),
+            self::STRUCTURE_DELETED => new Recorded(self::STRUCTURE_TYPE, AuditScope::Company),
+            self::STRUCTURE_REVISED => new Recorded(self::STRUCTURE_TYPE, AuditScope::Company),
         ];
     }
 }

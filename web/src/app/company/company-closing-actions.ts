@@ -2,7 +2,6 @@
 
 import { inject, Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { ActionConfirm } from '../shared/actions/screen-action';
@@ -20,9 +19,9 @@ export interface ClosedCompany {
 }
 
 /**
- * « Fermer l'entreprise » and « Rouvrir l'entreprise », the same from the profile, the toast and the page a closed
- * company's members land on. Closing is final once the days to reopen are over, so it is asked as « Définitif à terme »
- * with the company's name typed; reopening is the undo, asked nothing. Each proves who is at the screen only when the
+ * « Fermer l'entreprise » and « Rouvrir l'entreprise », the same from the profile, the toast and the notice a closed
+ * company's members read above every page. Closing is final once the days to reopen are over, so it is asked as
+ * « Définitif à terme » with the company's name typed; reopening is the undo, asked nothing. Each proves who is at the screen only when the
  * API asks, and says the dates from its answer and the session's.
  */
 @Injectable({ providedIn: 'root' })
@@ -33,9 +32,8 @@ export class CompanyClosingActions {
   private readonly stepUp = inject(StepUp);
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
-  private readonly router = inject(Router);
 
-  /** True once closed; the person then waits on the page a closed company's members see, with « Rouvrir » there. */
+  /** True once closed; the person stays where they are, read-only, the shell's notice saying it with « Rouvrir ». */
   async close(company: ClosedCompany): Promise<boolean> {
     if (!(await this.confirmed(company))) return false;
     try {
@@ -45,7 +43,6 @@ export class CompanyClosingActions {
         'company.closing.step_up',
       );
       await this.auth.refresh();
-      await this.router.navigateByUrl('/awaiting-approval');
       this.feedback.effect(
         'company.closing.done',
         {
@@ -63,7 +60,7 @@ export class CompanyClosingActions {
     }
   }
 
-  /** True once open again: the session follows, and the page outside the shell leaves by itself. */
+  /** True once open again: the session follows, and the shell's notice goes with the closing. */
   async reopen(company: ClosedCompany): Promise<boolean> {
     try {
       await this.stepUp.retrying(

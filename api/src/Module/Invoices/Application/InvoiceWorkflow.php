@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Preset\FiscalPresets;
@@ -301,8 +302,8 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CREDITED => AuditScope::Company,
-            self::ISSUED => AuditScope::Company,
+            self::CREDITED => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
+            self::ISSUED => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

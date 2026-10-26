@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
 use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
@@ -210,8 +211,8 @@ final readonly class ManagePurchaseOrders implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CREATED => AuditScope::Company,
-            self::REVISED => AuditScope::Company,
+            self::CREATED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::REVISED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

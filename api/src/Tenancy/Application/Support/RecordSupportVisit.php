@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\SupportGrant;
 use Psr\Clock\ClockInterface;
@@ -55,8 +56,8 @@ final readonly class RecordSupportVisit implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::ENTERED => AuditScope::Company,
-            self::READ => AuditScope::Company,
+            self::ENTERED => new Recorded(ManageSupportAccess::ENTITY_TYPE, AuditScope::Company),
+            self::READ => new Recorded(ManageSupportAccess::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

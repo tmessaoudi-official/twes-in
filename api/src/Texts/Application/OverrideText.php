@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\Languages;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
@@ -125,8 +126,8 @@ final readonly class OverrideText implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::OVERRIDDEN => AuditScope::Either,
-            self::RESET => AuditScope::Either,
+            self::OVERRIDDEN => new Recorded(self::ENTITY_TYPE, AuditScope::Either),
+            self::RESET => new Recorded(self::ENTITY_TYPE, AuditScope::Either),
         ];
     }
 }

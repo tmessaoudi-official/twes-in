@@ -43,7 +43,25 @@ final class AuditActionWordsTest extends KernelTestCase
         }
     }
 
-    public function testTheTrailRefusesAnActionNobodyDeclaresOrOneRecordedWhereItIsNotDeclared(): void
+    /** The journal names each row's kind of record and filters by it: every kind it can show, said, and no other. */
+    public function testEveryKindAJournalShowsIsListedAndSaidAndNothingElseIs(): void
+    {
+        $vocabulary = static::getContainer()->get(AuditVocabulary::class);
+        $web = \dirname(__DIR__, 4).'/web';
+        $listed = self::listed(self::read($web.'/src/app/activity/activity-list.ts'), 'export const ACTIVITY_KINDS = [');
+        $shown = $vocabulary->kindsShownInAJournal();
+
+        self::assertGreaterThanOrEqual(45, \count($shown));
+        self::assertSame([], array_values(array_diff($shown, $listed)), 'recorded on in a company, missing from ACTIVITY_KINDS');
+        self::assertSame([], array_values(array_diff($listed, $shown)), 'in ACTIVITY_KINDS, recorded on in no company');
+        foreach (ShippedLanguages::catalogue()->interface() as $language) {
+            $words = self::words($web, $language);
+            $unsaid = array_values(array_filter($shown, static fn (string $kind): bool => !\is_string(self::at($words, "activity.kinds.$kind"))));
+            self::assertSame([], $unsaid, "activity.kinds without words in $language");
+        }
+    }
+
+    public function testTheTrailRefusesAnActionNobodyDeclaresOrOneRecordedWhereOrOnWhatItIsNotDeclared(): void
     {
         $trail = static::getContainer()->get(AuditTrail::class);
 
@@ -53,6 +71,8 @@ final class AuditActionWordsTest extends KernelTestCase
             new AuditEntry('user', null, 'auth.login_failed', null, [], Uuid::v7()),
             // Declared as a company's, never outside one.
             new AuditEntry('invoice', null, 'invoice.issued', null),
+            // Declared on an invoice, never on a customer.
+            new AuditEntry('customer', null, 'invoice.issued', null, [], Uuid::v7()),
         ] as $entry) {
             try {
                 $trail->record($entry);

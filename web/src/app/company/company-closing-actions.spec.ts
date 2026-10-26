@@ -77,7 +77,7 @@ describe('CompanyClosingActions', () => {
     expect(api.closeDown).not.toHaveBeenCalled();
   });
 
-  it('closes it once proved, follows the session to the page a closed company shows, and says both dates', async () => {
+  it('closes it once proved, follows the session where the person is, and says both dates', async () => {
     api.closeDown
       .mockRejectedValueOnce(new CompanyClosingRefused('step_up_required'))
       .mockResolvedValueOnce(terms);
@@ -86,7 +86,8 @@ describe('CompanyClosingActions', () => {
 
     expect(api.closeDown).toHaveBeenCalledTimes(2);
     expect(auth.refresh).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith('/awaiting-approval');
+    // Still read in the shell: the person stays on their page, and the shell's notice says the closing.
+    expect(navigate).not.toHaveBeenCalled();
     const said = feedback.said.at(-1);
     expect(said?.key).toBe('company.closing.done');
     expect(said?.params).toEqual({

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Files\Application\Files;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CreateCompany;
@@ -61,7 +62,7 @@ final readonly class RemoveClosedCompanies implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::REMOVED => AuditScope::Outside,
+            self::REMOVED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Outside),
         ];
     }
 }

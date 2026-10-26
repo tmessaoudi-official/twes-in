@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Shared\Application\RecordChanged;
@@ -82,7 +83,7 @@ final readonly class ReviseCompanyProfile implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::REVISED => AuditScope::Company,
+            self::REVISED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

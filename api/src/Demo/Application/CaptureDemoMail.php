@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Demo\Domain\Model\DemoMail;
 use App\Demo\Domain\Model\DemoSandbox;
 use App\Demo\Domain\Repository\DemoMailRepository;
@@ -78,7 +79,7 @@ final readonly class CaptureDemoMail implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CAPTURED => AuditScope::Company,
+            self::CAPTURED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
@@ -134,9 +135,9 @@ final readonly class ConfirmStepUp implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CONFIRMED => AuditScope::Outside,
-            self::EXHAUSTED => AuditScope::Outside,
-            self::REFUSED => AuditScope::Outside,
+            self::CONFIRMED => new Recorded('user', AuditScope::Outside),
+            self::EXHAUSTED => new Recorded('user', AuditScope::Outside),
+            self::REFUSED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Legal\Domain\Model\LegalText;
 use App\Legal\Domain\Repository\LegalTextRepository;
 use App\Legal\Domain\ValueObject\LegalLanguage;
@@ -113,8 +114,8 @@ final readonly class ManageLegalTexts implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::VALIDATED => AuditScope::Outside,
-            self::WRITTEN => AuditScope::Outside,
+            self::VALIDATED => new Recorded(self::ENTITY_TYPE, AuditScope::Outside),
+            self::WRITTEN => new Recorded(self::ENTITY_TYPE, AuditScope::Outside),
         ];
     }
 }

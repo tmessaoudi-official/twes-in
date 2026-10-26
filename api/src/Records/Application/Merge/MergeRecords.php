@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Records\Application\MergedAway;
@@ -164,7 +165,7 @@ final readonly class MergeRecords implements DeclaresAuditActions
         $actions = [];
         foreach ($this->catalogue->subjects() as $subject) {
             if (null !== $subject->mergedAway) {
-                $actions[\sprintf(self::MERGED, $subject->table)] = AuditScope::Company;
+                $actions[\sprintf(self::MERGED, $subject->table)] = new Recorded($subject->table, AuditScope::Company);
             }
         }
 

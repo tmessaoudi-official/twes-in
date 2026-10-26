@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Files\Application\Files;
 use App\Files\Application\Pictures;
 use App\Files\Domain\Model\StoredFile;
@@ -349,11 +350,11 @@ final readonly class ProductPhotos implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::MAIN_CHANGED => AuditScope::Company,
-            self::ADDED => AuditScope::Company,
-            self::REMOVED => AuditScope::Company,
-            self::RESTORED => AuditScope::Company,
-            self::REORDERED => AuditScope::Company,
+            self::MAIN_CHANGED => new Recorded(ManageProducts::ENTITY_TYPE, AuditScope::Company),
+            self::ADDED => new Recorded(ManageProducts::ENTITY_TYPE, AuditScope::Company),
+            self::REMOVED => new Recorded(ManageProducts::ENTITY_TYPE, AuditScope::Company),
+            self::RESTORED => new Recorded(ManageProducts::ENTITY_TYPE, AuditScope::Company),
+            self::REORDERED => new Recorded(ManageProducts::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

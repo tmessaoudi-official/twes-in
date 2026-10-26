@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
@@ -312,12 +313,12 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::ACCEPTED => AuditScope::Company,
-            self::CANCELLED => AuditScope::Company,
-            self::DEPOSIT_DRAFTED => AuditScope::Company,
-            self::INVOICED => AuditScope::Company,
-            self::REFUSED => AuditScope::Company,
-            self::SENT => AuditScope::Company,
+            self::ACCEPTED => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
+            self::CANCELLED => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
+            self::DEPOSIT_DRAFTED => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
+            self::INVOICED => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
+            self::REFUSED => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
+            self::SENT => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

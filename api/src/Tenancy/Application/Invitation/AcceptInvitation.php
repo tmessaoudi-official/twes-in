@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\BreachedPasswordCheck;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Model\User;
@@ -172,8 +173,8 @@ final readonly class AcceptInvitation implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::ACCEPTED => AuditScope::Company,
-            self::BREACH_CHECK_SKIPPED => AuditScope::Company,
+            self::ACCEPTED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::BREACH_CHECK_SKIPPED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

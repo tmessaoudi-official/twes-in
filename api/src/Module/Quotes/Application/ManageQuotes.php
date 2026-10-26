@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Files\Application\AttachmentRefused;
 use App\Files\Application\Attachments;
 use App\Files\Application\StoredFileCorrupted;
@@ -380,11 +381,11 @@ final readonly class ManageQuotes implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::ATTACHMENT_ADDED => AuditScope::Company,
-            self::ATTACHMENT_REMOVED => AuditScope::Company,
-            self::ATTACHMENT_RESTORED => AuditScope::Company,
-            self::CREATED => AuditScope::Company,
-            self::REVISED => AuditScope::Company,
+            self::ATTACHMENT_ADDED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::ATTACHMENT_REMOVED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::ATTACHMENT_RESTORED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::CREATED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::REVISED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

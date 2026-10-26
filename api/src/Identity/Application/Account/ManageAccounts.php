@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\AccountSearch;
@@ -108,9 +109,9 @@ final readonly class ManageAccounts implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::DEACTIVATED => AuditScope::Outside,
-            self::REACTIVATED => AuditScope::Outside,
-            self::SESSIONS_ENDED => AuditScope::Outside,
+            self::DEACTIVATED => new Recorded(self::ENTITY_TYPE, AuditScope::Outside),
+            self::REACTIVATED => new Recorded(self::ENTITY_TYPE, AuditScope::Outside),
+            self::SESSIONS_ENDED => new Recorded(self::ENTITY_TYPE, AuditScope::Outside),
         ];
     }
 }

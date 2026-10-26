@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\ImportExport\Application\RunImport;
 use App\ImportExport\Domain\Repository\ImportRunRepository;
 use App\Records\Application\RemovalConflict;
@@ -64,7 +65,7 @@ final readonly class RestoreUndoneImport implements RemovalRestored, DeclaresAud
     public function auditActions(): array
     {
         return [
-            'import.restored' => AuditScope::Company,
+            'import.restored' => new Recorded(RunImport::RUN_KIND, AuditScope::Company),
         ];
     }
 }

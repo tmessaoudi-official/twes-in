@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Module\Inventory\Domain\Exception\InvalidStockLocation;
 use App\Module\Inventory\Domain\Model\ProductHomeLocation;
 use App\Module\Inventory\Domain\Repository\ProductHomeLocationRepository;
@@ -267,8 +268,8 @@ final readonly class KeepProductHomes implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CLEARED => AuditScope::Company,
-            self::SET => AuditScope::Company,
+            self::CLEARED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::SET => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

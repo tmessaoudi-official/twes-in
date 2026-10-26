@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\CurrentCompany;
 use Symfony\Component\Uid\Uuid;
 
@@ -30,7 +31,7 @@ final readonly class RecordLogout implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            LoginAudit::LOGOUT => AuditScope::Either,
+            LoginAudit::LOGOUT => new Recorded(LoginAudit::ENTITY_TYPE, AuditScope::Either),
         ];
     }
 }

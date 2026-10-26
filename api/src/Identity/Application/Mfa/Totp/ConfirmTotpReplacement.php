@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Mfa\IssueRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\SecondFactorUnreadable;
@@ -91,7 +92,7 @@ final readonly class ConfirmTotpReplacement implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::REPLACED => AuditScope::Outside,
+            self::REPLACED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

@@ -225,8 +225,13 @@ describe('AppShell', () => {
     access: computed(() => me()?.company?.access ?? 'full'),
     companyClosed: computed(() => {
       const company = me()?.company;
-      return !!company && (company.status !== 'active' || company.access === 'locked');
+      return (
+        !!company &&
+        ((company.status !== 'active' && company.status !== 'closed') ||
+          company.access === 'locked')
+      );
     }),
+    companyClosedDown: computed(() => me()?.company?.status === 'closed'),
     logout: vi.fn(async () => true),
     sessionEnded: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -374,6 +379,7 @@ describe('AppShell', () => {
         'header',
         'app-cookie-notice',
         'app-subscription-notice',
+        'app-closed-company-notice',
         'app-legal-footer',
       ].map((selector) => el.querySelector(selector) as Element);
     expect(el.querySelector('mat-sidenav-container')?.classList).not.toContain('is-immersive');
@@ -886,7 +892,7 @@ describe('AppShell', () => {
     },
   );
 
-  it.each(['suspended', 'closed'])(
+  it.each(['suspended', 'pending'])(
     'goes to the page that says why once the open company is %s, rather than leave its screen refused',
     async (status) => {
       // The guard runs only on a navigation: the operator's suspension left every request of the screen answering 404.
@@ -901,6 +907,27 @@ describe('AppShell', () => {
       expect(router.url).toBe('/awaiting-approval');
     },
   );
+
+  it('stays where it is once its owner closes the company, which the notice above the page says', async () => {
+    // Closed down, a company is kept, not shut: its members read it in the shell until its retention ends.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/customers');
+    const { fixture, el } = await render();
+
+    me.set({
+      ...owner,
+      company: {
+        ...owner.company!,
+        status: 'closed',
+        closing: { retainUntil: '2036-12-31', reopenUntil: '2020-01-01T00:00:00+00:00' },
+      },
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(router.url).toBe('/customers');
+    expect(el.querySelector('[data-testid="closed-notice"]')).not.toBeNull();
+  });
 
   it('stays where it is while the company works', async () => {
     const router = TestBed.inject(Router);

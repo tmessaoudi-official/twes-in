@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
@@ -59,8 +60,8 @@ final readonly class FinishPasskeyLogin implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            VerifySecondFactor::FAILED => AuditScope::Outside,
-            VerifySecondFactor::VERIFIED => AuditScope::Outside,
+            VerifySecondFactor::FAILED => new Recorded('user', AuditScope::Outside),
+            VerifySecondFactor::VERIFIED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

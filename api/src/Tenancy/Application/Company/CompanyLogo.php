@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Files\Application\AttachmentRefused;
 use App\Files\Application\Attachments;
 use App\Files\Application\StoredFileCorrupted;
@@ -132,8 +133,8 @@ final readonly class CompanyLogo implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CHANGED => AuditScope::Company,
-            self::REMOVED => AuditScope::Company,
+            self::CHANGED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
+            self::REMOVED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

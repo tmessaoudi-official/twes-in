@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\ImportExport\Application\RunImport;
@@ -114,7 +115,7 @@ final readonly class UndoImport implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            'import.undone' => AuditScope::Company,
+            'import.undone' => new Recorded(RunImport::RUN_KIND, AuditScope::Company),
         ];
     }
 }

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
 use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
 use App\Module\Purchases\Domain\Model\GoodsReceipt;
@@ -181,10 +182,10 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CANCELLED => AuditScope::Company,
-            self::CLOSED => AuditScope::Company,
-            self::RECEIVED => AuditScope::Company,
-            self::SENT => AuditScope::Company,
+            self::CANCELLED => new Recorded(ManagePurchaseOrders::ENTITY_TYPE, AuditScope::Company),
+            self::CLOSED => new Recorded(ManagePurchaseOrders::ENTITY_TYPE, AuditScope::Company),
+            self::RECEIVED => new Recorded(ManagePurchaseOrders::ENTITY_TYPE, AuditScope::Company),
+            self::SENT => new Recorded(ManagePurchaseOrders::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

@@ -4,22 +4,20 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { MatButtonModule } from '@angular/material/button';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { CompanyClosingActions } from '../company/company-closing-actions';
 import { CompanyFacade } from '../company/company-facade';
-import { DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { AuthFacade } from './auth-facade';
 import { leaveOnceOpen } from './leave-once-open';
 import { SignedOutLayout } from './signed-out-layout';
 
 /**
- * Where a member of a company that is not open lands: pending an operator's approval, suspended or closed by one, or
- * shut until its subscription is settled. Outside the shell on purpose, since the API refuses its members everything in
+ * Where a member of a company that is not open lands: pending an operator's approval, suspended by one, or shut
+ * until its subscription is settled; a company its owner closed is read in the shell instead (`ClosedCompanyNotice`). Outside the shell on purpose, since the API refuses its members everything in
  * that company and the shell could not load. It leaves by itself once the company opens, and offers the person's other
  * companies, which stay open to them.
  */
 @Component({
   selector: 'app-awaiting-approval-page',
-  imports: [SignedOutLayout, MatButtonModule, RouterLink, TranslatePipe, DayPipe, MomentPipe],
+  imports: [SignedOutLayout, MatButtonModule, RouterLink, TranslatePipe],
   templateUrl: './awaiting-approval-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -36,13 +34,6 @@ export class AwaitingApprovalPage {
     return this.companyFacade.companies().filter((company) => company.id !== current);
   });
   protected readonly switching = signal(false);
-  private readonly closing = inject(CompanyClosingActions);
-  /** Whether the closing may still be taken back, read again with the session, which this page asks for every while. */
-  protected readonly reopenable = computed(() => {
-    const until = this.company()?.closing?.reopenUntil;
-    return until !== undefined && Date.parse(until) > Date.now();
-  });
-  protected readonly reopening = signal(false);
 
   constructor() {
     void this.companyFacade.load();
@@ -55,18 +46,6 @@ export class AwaitingApprovalPage {
       if (await this.companyFacade.switchTo(companyId)) await this.router.navigateByUrl('/');
     } finally {
       this.switching.set(false);
-    }
-  }
-
-  /** Open again, the page leaves by itself (`leaveOnceOpen`). */
-  protected async reopen(): Promise<void> {
-    const company = this.company();
-    if (company === null || this.reopening()) return;
-    this.reopening.set(true);
-    try {
-      await this.closing.reopen({ id: company.id, name: company.name });
-    } finally {
-      this.reopening.set(false);
     }
   }
 

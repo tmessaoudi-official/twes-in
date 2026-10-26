@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Erasure\Domain\Exception\ErasureNoLongerPending;
 use App\Erasure\Domain\Model\DataErasure;
 use App\Erasure\Domain\Repository\DataErasureRepository;
@@ -76,7 +77,7 @@ final readonly class UndoErasure implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::UNDONE => AuditScope::Company,
+            self::UNDONE => new Recorded(EraseData::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

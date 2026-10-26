@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
@@ -77,7 +78,7 @@ final readonly class RemoveMember implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::REMOVED => AuditScope::Company,
+            self::REMOVED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

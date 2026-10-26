@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\CreateCompany;
@@ -116,9 +117,9 @@ final readonly class DecideCompanyApproval implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::APPROVED => AuditScope::Company,
-            self::REJECTED => AuditScope::Company,
-            self::SUSPENDED => AuditScope::Company,
+            self::APPROVED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
+            self::REJECTED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
+            self::SUSPENDED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

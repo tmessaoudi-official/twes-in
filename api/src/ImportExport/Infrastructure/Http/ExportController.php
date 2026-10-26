@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\ImportExport\Application\Export\ExportCatalogue;
@@ -124,7 +125,7 @@ final readonly class ExportController implements BulkFile, DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            'export.downloaded' => AuditScope::Company,
+            'export.downloaded' => new Recorded('export', AuditScope::Company),
         ];
     }
 }

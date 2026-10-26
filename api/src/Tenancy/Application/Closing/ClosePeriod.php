@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\CreateCompany;
@@ -59,7 +60,7 @@ final readonly class ClosePeriod implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CLOSED => AuditScope::Company,
+            self::CLOSED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

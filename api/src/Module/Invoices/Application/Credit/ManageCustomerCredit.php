@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Application\CustomerNotFound;
@@ -166,9 +167,9 @@ final readonly class ManageCustomerCredit implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::APPLIED => AuditScope::Company,
-            self::OVERPAID => AuditScope::Company,
-            ManagePayments::RECORDED => AuditScope::Company,
+            self::APPLIED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::OVERPAID => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            ManagePayments::RECORDED => new Recorded(ManageInvoices::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

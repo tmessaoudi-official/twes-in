@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Module\RecurringExpenses\Domain\Repository\RecurringExpenseRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
@@ -118,8 +119,8 @@ final readonly class RunRecurringExpenses implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::AUDIT_DRAFTED => AuditScope::Company,
-            self::AUDIT_PAUSED => AuditScope::Company,
+            self::AUDIT_DRAFTED => new Recorded(ManageRecurringExpenses::ENTITY_TYPE, AuditScope::Company),
+            self::AUDIT_PAUSED => new Recorded(ManageRecurringExpenses::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

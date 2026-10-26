@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\UserRepository;
@@ -66,7 +67,7 @@ final readonly class RecordFailedLogin implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            LoginAudit::LOGIN_FAILED => AuditScope::Outside,
+            LoginAudit::LOGIN_FAILED => new Recorded(LoginAudit::ENTITY_TYPE, AuditScope::Outside),
         ];
     }
 }

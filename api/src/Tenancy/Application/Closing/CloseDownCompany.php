@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
@@ -123,8 +124,8 @@ final readonly class CloseDownCompany implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CLOSED_DOWN => AuditScope::Company,
-            self::REOPENED => AuditScope::Company,
+            self::CLOSED_DOWN => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
+            self::REOPENED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

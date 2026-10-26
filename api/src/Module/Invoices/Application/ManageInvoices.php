@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Calculation\Decimal;
@@ -664,9 +665,9 @@ final readonly class ManageInvoices implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CANCELLED => AuditScope::Company,
-            self::CREATED => AuditScope::Company,
-            self::REVISED => AuditScope::Company,
+            self::CANCELLED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::CREATED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::REVISED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

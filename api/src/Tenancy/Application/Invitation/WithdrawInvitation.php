@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Member\RoleBounds;
 use App\Tenancy\Application\Member\RoleNotManageable;
@@ -65,7 +66,7 @@ final readonly class WithdrawInvitation implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::WITHDRAWN => AuditScope::Company,
+            self::WITHDRAWN => new Recorded(InviteToCompany::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

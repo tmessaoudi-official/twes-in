@@ -51,16 +51,22 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
     return mfa !== undefined && mfa.required && !mfa.enrolled;
   });
   /**
-   * The working company is not active, pending an operator's approval or suspended by one: the API refuses its members
-   * everything in it, so the application shows why instead. An operator is not held back, since approving is their job.
+   * The working company is shut, pending an operator's approval, suspended by one or locked by its subscription: the API
+   * refuses its members everything in it, so the application shows why instead. An operator is not held back, since
+   * approving is their job. A company its owner closed down is not shut: it is kept, and read in the shell.
    */
   readonly companyClosed = computed(() => {
     const state = this.stateSignal();
+    const company = state?.company;
     const closed =
-      !!state?.company && (state.company.status !== 'active' || 'locked' === state.company.access);
+      !!company &&
+      ((company.status !== 'active' && company.status !== 'closed') || 'locked' === company.access);
 
     return closed && !state.user.isPlatformOperator;
   });
+
+  /** The working company was closed down by its owner: read-only to its members until its records' retention ends. */
+  readonly companyClosedDown = computed(() => this.stateSignal()?.company?.status === 'closed');
 
   /** Where the working company stands in its subscription, null when licensing does not manage it. */
   readonly subscription = computed(() => this.stateSignal()?.company?.subscription ?? null);

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Mfa\LastSecondFactor;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
@@ -74,7 +75,7 @@ final readonly class RemovePasskey implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::REMOVED => AuditScope::Outside,
+            self::REMOVED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

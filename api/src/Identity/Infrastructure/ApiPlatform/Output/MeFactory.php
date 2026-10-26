@@ -26,6 +26,7 @@ use App\Settings\Application\SupportSettings;
 use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
+use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
 /** The signed-in state of the authenticated account: the user row, the Tenancy working context and its modules. */
@@ -61,7 +62,8 @@ final readonly class MeFactory
         $context = $this->describeWorkingContext->for($user->getId());
         $modules = null === $context ? [] : $this->modules->enabledKeys(Uuid::fromString($context->companyId));
 
-        $standing = null === $context ? null : $this->standings->of(Uuid::fromString($context->companyId));
+        // A company closed down pays for nothing: kept for its records, its subscription is no longer judged.
+        $standing = null === $context || Company::STATUS_CLOSED === $context->status ? null : $this->standings->of(Uuid::fromString($context->companyId));
 
         $planned = array_values(array_map(
             static fn (ModuleManifest $manifest) => new MePlannedModule($manifest->key, (string) $manifest->planned),

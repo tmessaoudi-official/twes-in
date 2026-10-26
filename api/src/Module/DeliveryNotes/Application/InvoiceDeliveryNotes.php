@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\TaxComponent;
 use App\Module\DeliveryNotes\Application\Quotes\QuoteDiscounts;
@@ -426,7 +427,7 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::INVOICED => AuditScope::Company,
+            self::INVOICED => new Recorded(ManageDeliveryNotes::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

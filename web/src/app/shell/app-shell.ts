@@ -36,6 +36,7 @@ import { DemoBanner } from '../auth/demo-banner';
 import { AuthFacade } from '../auth/auth-facade';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { SubscriptionNoticeBar } from '../licensing/subscription-notice';
+import { ClosedCompanyNotice } from '../company/closed-company-notice';
 import { CompanyFacade } from '../company/company-facade';
 import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
@@ -164,6 +165,7 @@ const TOP_BAR_HEIGHT = '--twes-top-bar-height';
     RouteFocus,
     ActivityBar,
     SubscriptionNoticeBar,
+    ClosedCompanyNotice,
     NavScroller,
     LegalFooter,
     CookieNotice,

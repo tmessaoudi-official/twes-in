@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\CurrencyScales;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
@@ -78,7 +79,7 @@ final readonly class ReviewProductPrice implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            ManageProducts::REVISED => AuditScope::Company,
+            ManageProducts::REVISED => new Recorded(ManageProducts::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

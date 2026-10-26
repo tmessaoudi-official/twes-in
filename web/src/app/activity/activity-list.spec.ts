@@ -36,8 +36,8 @@ describe('the activity journal list', () => {
       }
     }
     for (const kind of ACTIVITY_KINDS) {
-      expect(typeof at(fr, `activity.kinds.${kind}`), kind).toBe('string');
-      expect(typeof at(en, `activity.kinds.${kind}`), kind).toBe('string');
+      expect(typeof at(frActions, `activity.kinds.${kind}`), kind).toBe('string');
+      expect(typeof at(enActions, `activity.kinds.${kind}`), kind).toBe('string');
     }
   });
 

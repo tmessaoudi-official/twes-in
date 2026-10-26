@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Demo\Domain\Repository\DemoSandboxRepository;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Identity\Domain\Model\User;
@@ -90,7 +91,7 @@ final readonly class OpenSandboxCompany implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            CreateCompany::CREATED => AuditScope::Company,
+            CreateCompany::CREATED => new Recorded(CreateCompany::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

@@ -50,6 +50,7 @@ export const ICONS = [
   'density_medium',
   'density_small',
   'description',
+  'domain_disabled',
   'download',
   'drag_indicator',
   'dynamic_form',

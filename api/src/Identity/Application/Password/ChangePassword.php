@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Login\PasswordAttempts;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Application\Security\SecurityChange;
@@ -90,9 +91,9 @@ final readonly class ChangePassword implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::BREACH_CHECK_SKIPPED => AuditScope::Outside,
-            self::REFUSED => AuditScope::Outside,
-            self::CHANGED => AuditScope::Outside,
+            self::BREACH_CHECK_SKIPPED => new Recorded('user', AuditScope::Outside),
+            self::REFUSED => new Recorded('user', AuditScope::Outside),
+            self::CHANGED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

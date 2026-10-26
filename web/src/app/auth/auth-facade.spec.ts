@@ -226,11 +226,14 @@ describe('AuthFacade', () => {
       // A locked company is as closed to its members as a suspended one; read-only is not closed.
       [{ ...owner, company: { ...owner.company!, access: 'locked' as const } }, true],
       [{ ...owner, company: { ...owner.company!, access: 'read_only' as const } }, false],
+      // Closed down by its owner, it is still read, in the shell: kept, not shut.
+      [{ ...owner, company: { ...owner.company!, status: 'closed' } }, false],
     ];
     for (const [state, closed] of cases) {
       api.me.mockResolvedValue(state);
       await facade.load();
       expect(facade.companyClosed()).toBe(closed);
+      expect(facade.companyClosedDown()).toBe(state.company?.status === 'closed');
     }
   });
 

@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\ModuleRegistry\Domain\Repository\ModuleStateRepository;
 use App\Shared\Application\Transactions;
@@ -97,8 +98,8 @@ final readonly class ManageModules implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::DISABLED => AuditScope::Company,
-            self::ENABLED => AuditScope::Company,
+            self::DISABLED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::ENABLED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

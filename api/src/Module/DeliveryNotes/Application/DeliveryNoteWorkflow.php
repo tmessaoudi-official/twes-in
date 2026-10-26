@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Model\Unit;
@@ -238,9 +239,9 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            self::CANCELLED => AuditScope::Company,
-            self::DELIVERED => AuditScope::Company,
-            self::VALIDATED => AuditScope::Company,
+            self::CANCELLED => new Recorded(ManageDeliveryNotes::ENTITY_TYPE, AuditScope::Company),
+            self::DELIVERED => new Recorded(ManageDeliveryNotes::ENTITY_TYPE, AuditScope::Company),
+            self::VALIDATED => new Recorded(ManageDeliveryNotes::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

@@ -47,7 +47,14 @@ final readonly class DescribeWorkingContext
             return null === $grant ? null : $this->described($grant->getCompany(), SupportAccess::ROLE, $this->supportReads(), $grant->getEndsAt(), $grant->getReason());
         }
 
-        return $this->described($membership->getCompany(), $membership->getRole()->getName(), $membership->getRole()->getPermissions(), $this->support->liveUntil($companyId));
+        $company = $membership->getCompany();
+        $role = $membership->getRole();
+        // A closed company is still read, never worked in: the session offers what the voter still grants there.
+        $permissions = $company->isClosedDown()
+            ? array_values(array_filter($this->known(), static fn (string $permission): bool => $role->grants($permission) && $company->permitsWhileClosedDown($permission)))
+            : $role->getPermissions();
+
+        return $this->described($company, $role->getName(), $permissions, $this->support->liveUntil($companyId));
     }
 
     /** @param list<string> $permissions */
@@ -73,15 +80,19 @@ final readonly class DescribeWorkingContext
     /** @return list<string> */
     private function supportReads(): array
     {
-        $reads = [];
+        return array_values(array_filter($this->known(), SupportAccess::permits(...)));
+    }
+
+    /** @return list<string> every permission the application knows, once */
+    private function known(): array
+    {
+        $known = [];
         foreach ($this->permissions->groups() as $group) {
             foreach ($group->permissions as $permission) {
-                if (SupportAccess::permits($permission)) {
-                    $reads[] = $permission;
-                }
+                $known[] = $permission;
             }
         }
 
-        return array_values(array_unique($reads));
+        return array_values(array_unique($known));
     }
 }

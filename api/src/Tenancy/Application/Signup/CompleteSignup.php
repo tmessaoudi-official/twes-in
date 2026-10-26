@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Identity\Application\BreachedPasswordCheck;
 use App\Identity\Application\PasswordHasher;
@@ -148,8 +149,8 @@ final readonly class CompleteSignup implements DeclaresAuditActions
     public function auditActions(): array
     {
         return [
-            AcceptInvitation::BREACH_CHECK_SKIPPED => AuditScope::Company,
-            self::COMPLETED => AuditScope::Company,
+            AcceptInvitation::BREACH_CHECK_SKIPPED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
+            self::COMPLETED => new Recorded(self::ENTITY_TYPE, AuditScope::Company),
         ];
     }
 }

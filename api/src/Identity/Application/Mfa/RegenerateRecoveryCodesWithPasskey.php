@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Mfa\Passkey\PasskeyAssertions;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\Security\SecurityChange;
@@ -66,7 +67,7 @@ final readonly class RegenerateRecoveryCodesWithPasskey implements DeclaresAudit
     public function auditActions(): array
     {
         return [
-            RegenerateRecoveryCodes::REGENERATED => AuditScope::Outside,
+            RegenerateRecoveryCodes::REGENERATED => new Recorded('user', AuditScope::Outside),
         ];
     }
 }

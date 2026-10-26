@@ -5,8 +5,9 @@ import type { ListDescriptor, ListQuery, ListRangeFilter } from '../shared/list/
 import type { ActivityRow, ActivitySearch } from './activity-types';
 
 /**
- * The kinds of record the journal names, each with its label under `activity.kinds`. A kind recorded later and not
- * listed here still shows, under its own code.
+ * The kinds of record the journal names, each with its label under `activity.kinds` (the `activity` part): every kind
+ * the API declares an action a journal shows on, and no other, as `AuditActionWordsTest` holds them. A kind it no longer
+ * knows still shows, under its own code.
  */
 export const ACTIVITY_KINDS = [
   'customer',
@@ -41,6 +42,20 @@ export const ACTIVITY_KINDS = [
   'export',
   'support_grant',
   'record_removal',
+  'data_erasure',
+  'demo_mail',
+  'import_run',
+  'payment_declaration',
+  'product_home_location',
+  'product_reorder_point',
+  'signup',
+  'stock',
+  'stock_movement',
+  'subscription',
+  'text',
+  'venue_area',
+  'venue_spot',
+  'venue_structure',
 ] as const;
 
 /**
