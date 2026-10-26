@@ -68,6 +68,11 @@ if docker pull -q "$prefix/twes-in-api:master" >/dev/null 2>&1; then
 fi
 if [[ -n "$current" && "$current" != "$revision" ]] && ! git -C "$root" merge-base --is-ancestor "$current" "$revision"; then
   echo "publish: kept :master at $current, which $revision does not follow"
+  # A late run for an older commit is no fault. Anything else holds staging and the weekly image scan on images master
+  # left behind, run after run, so the run says it where it is seen, with the way to move it (docs/RUNBOOK.md).
+  if ! git -C "$root" merge-base --is-ancestor "$revision" "$current"; then
+    echo "::warning title=:master kept behind:::master stays on $current, which master no longer follows: staging and the weekly image scan read its images. Move it by hand: make point-master COMMIT=<commit> (docs/RUNBOOK.md « Point :master »)."
+  fi
   exit 0
 fi
 for part in "${parts[@]}"; do

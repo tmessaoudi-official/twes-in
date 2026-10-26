@@ -70,6 +70,16 @@ d=$(fixture); git -C "$d/repo" checkout -q HEAD~1; newer=$(git -C "$d/repo" rev-
 out=$(publish "$d" MASTER_REV="$newer"); code=$?
 check "an older commit is published but leaves :master where it is" "$code" 0 "$out" "kept :master at $newer"
 ! grep -q ":master$" <(grep "push" "$d/calls"); check "  and pushes no :master" "$?" 0 "$(cat "$d/calls")" ""
+[[ "$out" != *"::warning"* ]]; check "  and warns of nothing: a late run is no fault" "$?" 0 "$out" ""
+
+# A rewritten history (the re-signing of 2026-10-24) leaves :master on a commit master no longer follows; it is kept,
+# and the run says so where it is seen, with the way to move it, rather than a green job no one reads.
+d=$(fixture); old=$(git -C "$d/repo" rev-parse HEAD)
+git -C "$d/repo" -c user.name=t -c user.email=t@t commit -q --amend --allow-empty -m "two, written again"
+out=$(publish "$d" MASTER_REV="$old"); code=$?
+check "a :master on a commit master no longer follows is kept" "$code" 0 "$out" "kept :master at $old"
+check "  and the run warns of it, naming the way to move it" "$code" 0 "$out" "::warning title="
+check "  with make point-master" "$code" 0 "$out" "make point-master COMMIT="
 
 echo "publish.test: $pass passed, $fail failed"
 ((fail == 0))

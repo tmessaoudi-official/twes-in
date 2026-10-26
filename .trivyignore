@@ -414,3 +414,7 @@ CVE-2026-56860 exp:2026-11-25
 
 CVE-2026-56862 exp:2026-11-25
 #   HIGH database, postgres: gosu's Go stdlib — NOT REACHABLE: gosu runs once at start, as root, to exec postgres, and opens no TLS, HTTP or network connection; fixed when the official postgres image is rebuilt on gosu 1.20
+
+CVE-2026-92392 exp:2026-11-25
+#   HIGH caddy: curl, libcurl — NOT REACHABLE: the caddy binary is static and calls no curl, and nothing runs curl in a caddy container but the edge's own log test (infra/edge/tests/token-free-logs.test.sh) on a local stack; fixed in Alpine 8.23.0-r0, arrives with the tag's rebuild
+#   HIGH web: curl — only in the full-nginx image :master was left on by the re-signing (19f0ee08); every commit's slim image since carries no curl (sha-70270c6c read 2026-10-26): goes with make point-master
