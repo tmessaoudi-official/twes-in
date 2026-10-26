@@ -136,6 +136,15 @@ describe('CompanyApi, the members', () => {
 
   afterEach(() => http.verify());
 
+  it('changes a member’s role by its own address, answering their row', async () => {
+    const changing = api.changeMemberRole('c1', 'u2', 'admin');
+    const request = http.expectOne({ method: 'PUT', url: '/api/companies/c1/members/u2/role' });
+    expect(request.request.body).toEqual({ role: 'admin' });
+    request.flush({ userId: 'u2', email: 'a@example.test', role: 'admin', status: 'joined' });
+
+    expect((await changing).role).toBe('admin');
+  });
+
   it('names a removal the actor role does not reach as forbidden, not as invalid', async () => {
     const removing = api.removeMember('c1', 'u2');
     http
@@ -233,6 +242,24 @@ describe('CompanyApi, the company a sign-in opens', () => {
     expect((await reading).map((company) => [company.id, company.pinned])).toEqual([
       ['c1', true],
       ['c2', false],
+    ]);
+  });
+
+  it('says until when support may read a company, and nothing for a membership', async () => {
+    const reading = api.companies();
+    http.expectOne({ method: 'GET', url: '/api/me/companies' }).flush([
+      { companyId: 'c1', name: 'Acme', status: 'active', role: 'owner' },
+      {
+        companyId: 'c2',
+        name: 'Atlas',
+        status: 'active',
+        role: 'support',
+        supportAccessUntil: '2026-10-27T10:00:00+01:00',
+      },
+    ]);
+    expect((await reading).map((company) => [company.id, company.supportAccessUntil])).toEqual([
+      ['c1', null],
+      ['c2', '2026-10-27T10:00:00+01:00'],
     ]);
   });
 

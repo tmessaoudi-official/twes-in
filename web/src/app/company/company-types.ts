@@ -20,6 +20,8 @@ export interface CompanyOption {
   readonly pinned: boolean;
   /** The version of the company's logo, which changes with it; null when it has none. */
   readonly logoVersion: string | null;
+  /** Until when its owner lets support read it, for a company an operator reads only that way; null otherwise. */
+  readonly supportAccessUntil: string | null;
 }
 
 /** One person in the company being administered. */

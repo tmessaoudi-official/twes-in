@@ -93,6 +93,12 @@ class Membership
         return $this->openedAtSignIn;
     }
 
+    /** What the person may do here from now on; who may give which role is the use case's rule. */
+    public function changeRole(Role $role): void
+    {
+        $this->role = $role;
+    }
+
     /** The person opened this company now. */
     public function use(\DateTimeImmutable $now): void
     {

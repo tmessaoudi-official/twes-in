@@ -1,20 +1,21 @@
 @if (variant() === 'rail') {
   <!-- The head of the rail (docs/SPEC.md § 7, 2026-09-25 09:03): the company a person acts for, its country and its
-       currency; a menu of the others when there are others, a plain block when there is one. -->
-  @if (current(); as current) {
-    @if (companies().length > 1) {
-      <!-- Named by what it shows, the name, country and currency, hidden but read when folded: an aria-label of the
+       currency; a menu of the others when there are others, a plain block when there is one, and « Choisir une
+       entreprise » when none is open but one is offered, the only one too (an operator under support access). -->
+  @if (canSwitch()) {
+    <!-- Named by what it shows, the name, country and currency, hidden but read when folded: an aria-label of the
            name alone would leave out words a speech user reads off it (WCAG 2.5.3). -->
-      <button
-        type="button"
-        class="twes-rail-company"
-        [matMenuTriggerFor]="railMenu"
-        [disabled]="switching()"
-        [matTooltip]="current.name"
-        [matTooltipDisabled]="!folded()"
-        matTooltipPosition="right"
-        data-testid="company-switcher"
-      >
+    <button
+      type="button"
+      class="twes-rail-company"
+      [matMenuTriggerFor]="railMenu"
+      [disabled]="switching()"
+      [matTooltip]="current()?.name ?? ('company.choose' | translate)"
+      [matTooltipDisabled]="!folded()"
+      matTooltipPosition="right"
+      data-testid="company-switcher"
+    >
+      @if (current(); as current) {
         <span class="twes-rail-company-mark" aria-hidden="true">
           @if (logoOf(current); as url) {
             <img class="twes-rail-company-logo" [src]="url" alt="" data-testid="company-logo" />
@@ -50,65 +51,74 @@
             data-testid="company-unread-elsewhere"
           />
         }
-        @if (!folded()) {
-          <mat-icon aria-hidden="true">unfold_more</mat-icon>
-        }
-      </button>
-      <mat-menu #railMenu="matMenu" class="twes-company-menu">
-        @for (company of companies(); track company.id) {
-          <button
-            mat-menu-item
-            type="button"
-            (click)="choose(company.id)"
-            [attr.data-testid]="'company-option-' + company.name"
-            [attr.aria-current]="company.id === current.id ? 'true' : null"
-          >
-            <span class="twes-company-option">
-              @if (logoOf(company); as url) {
-                <img class="twes-rail-company-logo-small" [src]="url" alt="" aria-hidden="true" />
-              }
-              <span class="twes-company-option-name">
-                <bdi>{{ company.name }}</bdi>
-                &ngsp;<span class="text-on-surface-variant"
-                  >— {{ 'roles.' + company.role | translate }}</span
-                >
-              </span>
-              <app-count-badge
-                class="twes-company-option-count"
-                [count]="unread()[company.id] ?? 0"
-                [max]="9"
-                [label]="'company.unread' | translate: { count: unread()[company.id] ?? 0 }"
-              />
-            </span>
-          </button>
-        }
-      </mat-menu>
-    } @else {
-      <div
-        class="twes-rail-company"
-        [appLabel]="current.name"
-        [matTooltipDisabled]="!folded()"
-        matTooltipPosition="right"
-      >
+      } @else {
         <span class="twes-rail-company-mark" aria-hidden="true">
-          @if (logoOf(current); as url) {
-            <img class="twes-rail-company-logo" [src]="url" alt="" data-testid="company-logo" />
-          } @else {
-            {{ initial() }}
-          }
+          <mat-icon>business</mat-icon>
         </span>
         <span class="twes-rail-company-text" [class.sr-only]="folded()">
-          <span class="twes-rail-company-name twes-value" dir="auto" data-testid="company-name">{{
-            current.name
+          <span class="twes-rail-company-name" data-testid="company-name">{{
+            'company.choose' | translate
           }}</span>
-          <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
-          <span class="twes-rail-company-sub">{{ where() }}</span>
         </span>
-      </div>
-    }
+      }
+      @if (!folded()) {
+        <mat-icon aria-hidden="true">unfold_more</mat-icon>
+      }
+    </button>
+    <mat-menu #railMenu="matMenu" class="twes-company-menu">
+      @for (company of companies(); track company.id) {
+        <button
+          mat-menu-item
+          type="button"
+          (click)="choose(company.id)"
+          [attr.data-testid]="'company-option-' + company.name"
+          [attr.aria-current]="company.id === current()?.id ? 'true' : null"
+        >
+          <span class="twes-company-option">
+            @if (logoOf(company); as url) {
+              <img class="twes-rail-company-logo-small" [src]="url" alt="" aria-hidden="true" />
+            }
+            <span class="twes-company-option-name">
+              <bdi>{{ company.name }}</bdi>
+              &ngsp;<span class="text-on-surface-variant"
+                >— {{ 'roles.' + company.role | translate }}</span
+              >
+            </span>
+            <app-count-badge
+              class="twes-company-option-count"
+              [count]="unread()[company.id] ?? 0"
+              [max]="9"
+              [label]="'company.unread' | translate: { count: unread()[company.id] ?? 0 }"
+            />
+          </span>
+        </button>
+      }
+    </mat-menu>
+  } @else if (current(); as current) {
+    <div
+      class="twes-rail-company"
+      [appLabel]="current.name"
+      [matTooltipDisabled]="!folded()"
+      matTooltipPosition="right"
+    >
+      <span class="twes-rail-company-mark" aria-hidden="true">
+        @if (logoOf(current); as url) {
+          <img class="twes-rail-company-logo" [src]="url" alt="" data-testid="company-logo" />
+        } @else {
+          {{ initial() }}
+        }
+      </span>
+      <span class="twes-rail-company-text" [class.sr-only]="folded()">
+        <span class="twes-rail-company-name twes-value" dir="auto" data-testid="company-name">{{
+          current.name
+        }}</span>
+        <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
+        <span class="twes-rail-company-sub">{{ where() }}</span>
+      </span>
+    </div>
   }
 } @else {
-  @if (companies().length > 1) {
+  @if (canSwitch()) {
     <button
       mat-button
       type="button"

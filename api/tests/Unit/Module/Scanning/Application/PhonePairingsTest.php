@@ -315,7 +315,7 @@ final class PhonePairingsTest extends TestCase
             {
             }
 
-            public function issue(Uuid $userId, ?Uuid $workingCompanyId): RealtimeToken
+            public function issue(Uuid $userId, ?Uuid $workingCompanyId, bool $platformOperator = false): RealtimeToken
             {
                 throw new \LogicException('a phone is never issued a user token');
             }

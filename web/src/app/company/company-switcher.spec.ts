@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ApplicationRef, signal } from '@angular/core';
+import { ApplicationRef, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   provideTranslateLoader,
@@ -17,7 +17,7 @@ import type { CompanyOption } from './company-types';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
-      roles: { owner: 'Propriétaire' },
+      roles: { owner: 'Propriétaire', support: 'Support' },
       company: {
         choose: 'Choisir',
         unread: '{{count}} notification(s) non lue(s)',
@@ -36,15 +36,19 @@ describe('CompanySwitcher', () => {
     role: 'owner',
     pinned: false,
     logoVersion: 'v1',
+    supportAccessUntil: null,
   };
   const globex: CompanyOption = { ...acme, id: 'c2', name: 'Globex', logoVersion: null };
   const companies = signal<readonly CompanyOption[]>([acme, globex]);
   const unreadByCompany = signal<Readonly<Record<string, number>>>({});
 
+  const switchTo = vi.fn(() => Promise.resolve(true));
+
   async function render(
-    current: CompanyOption,
+    current: CompanyOption | null,
     variant: 'bar' | 'rail' = 'rail',
   ): Promise<HTMLElement> {
+    const open = current === null ? null : { ...current, countryCode: 'TN', currency: 'TND' };
     await TestBed.configureTestingModule({
       imports: [CompanySwitcher],
       providers: [
@@ -58,11 +62,13 @@ describe('CompanySwitcher', () => {
           provide: CompanyFacade,
           useValue: {
             companies,
-            current: () => ({ ...current, countryCode: 'TN', currency: 'TND' }),
-            canSwitch: () => true,
+            current: () => open,
+            canSwitch: computed(
+              () => companies().length > 1 || (companies().length > 0 && open === null),
+            ),
             switching: () => false,
             load: () => Promise.resolve(companies()),
-            switchTo: () => Promise.resolve(),
+            switchTo,
           },
         },
       ],
@@ -164,6 +170,52 @@ describe('CompanySwitcher', () => {
         .querySelector('[data-testid="company-option-Globex"] [role="img"]')
         ?.getAttribute('aria-label'),
     ).toBe('3 notification(s) non lue(s)');
+  });
+
+  describe('with no company open, as an operator offered one under support access', () => {
+    // docs/SPEC.md § 7: « Choisir une entreprise » whenever there is a company and none is open, the only one too.
+    const atlas: CompanyOption = {
+      ...acme,
+      id: 'c3',
+      name: 'Atlas',
+      role: 'support',
+      logoVersion: null,
+      supportAccessUntil: '2026-10-27T10:00:00+01:00',
+    };
+
+    beforeEach(() => {
+      companies.set([atlas]);
+      switchTo.mockClear();
+    });
+    afterEach(() => companies.set([acme, globex]));
+
+    it.each(['rail', 'bar'] as const)('offers it in the %s and opens it', async (variant) => {
+      const root = await render(null, variant);
+
+      const button = root.querySelector<HTMLButtonElement>('[data-testid="company-switcher"]');
+      expect(button?.textContent).toContain('Choisir');
+      button?.click();
+      TestBed.inject(ApplicationRef).tick();
+      await new Promise((resolve) => setTimeout(resolve));
+      const option = document.querySelector<HTMLButtonElement>(
+        '[data-testid="company-option-Atlas"]',
+      );
+      expect(option?.textContent).toContain('Support');
+      option?.click();
+      expect(switchTo).toHaveBeenCalledWith('c3');
+    });
+  });
+
+  it('draws no menu for the one company there is when it is open', async () => {
+    companies.set([acme]);
+    try {
+      const root = await render(acme, 'bar');
+
+      expect(root.querySelector('[data-testid="company-switcher"]')).toBeNull();
+      expect(root.querySelector('[data-testid="company-name"]')?.textContent?.trim()).toBe('Acme');
+    } finally {
+      companies.set([acme, globex]);
+    }
   });
 
   it('names the company in a tooltip on the phone’s bar, where a long name is cut short', async () => {

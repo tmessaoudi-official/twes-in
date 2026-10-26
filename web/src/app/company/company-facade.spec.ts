@@ -17,6 +17,7 @@ const acme: CompanyOption = {
   role: 'owner',
   pinned: false,
   logoVersion: null,
+  supportAccessUntil: null,
 };
 const globex: CompanyOption = {
   id: 'c2',
@@ -25,6 +26,7 @@ const globex: CompanyOption = {
   role: 'member',
   pinned: false,
   logoVersion: null,
+  supportAccessUntil: null,
 };
 
 describe('CompanyFacade', () => {
@@ -36,7 +38,7 @@ describe('CompanyFacade', () => {
     addMember: vi.fn(),
     removeMember: vi.fn(),
   };
-  const auth = { me: vi.fn(), load: vi.fn() };
+  const auth = { me: vi.fn(), load: vi.fn(), refresh: vi.fn() };
   let facade: CompanyFacade;
 
   const unsaved = { confirmLeave: vi.fn(() => of(true)) };
@@ -46,6 +48,7 @@ describe('CompanyFacade', () => {
     Object.values(api).forEach((fn) => fn.mockReset());
     auth.me.mockReset();
     auth.load.mockReset();
+    auth.refresh.mockReset();
     auth.me.mockReturnValue({ company: { id: 'c1', name: 'Acme', role: 'owner' } });
     TestBed.configureTestingModule({
       providers: [
@@ -84,6 +87,68 @@ describe('CompanyFacade', () => {
     await facade.load();
 
     expect(facade.canSwitch()).toBe(false);
+  });
+
+  it('offers the one company there is when none is open, as an operator reading one under support access', async () => {
+    // docs/SPEC.md § 7: with no company open, « Choisir une entreprise » is the way into the only one offered.
+    auth.me.mockReturnValue({ company: null });
+    api.companies.mockResolvedValue([
+      { ...acme, role: 'support', supportAccessUntil: '2026-10-27T10:00:00+01:00' },
+    ]);
+
+    await facade.load();
+
+    expect(facade.canSwitch()).toBe(true);
+  });
+
+  it('offers no switcher when no company is offered at all', async () => {
+    auth.me.mockReturnValue({ company: null });
+    api.companies.mockResolvedValue([]);
+
+    await facade.load();
+
+    expect(facade.canSwitch()).toBe(false);
+  });
+
+  describe('when a support grant runs out', () => {
+    // Nothing is recorded when a grant's time is up, so nothing is heard: the list is read again at that moment, and an
+    // ended grant is no longer offered (hunt OP-2).
+    const until = '2026-10-26T11:00:00+01:00';
+    const atlas: CompanyOption = {
+      ...globex,
+      id: 'c3',
+      name: 'Atlas',
+      role: 'support',
+      supportAccessUntil: until,
+    };
+
+    beforeEach(() => vi.useFakeTimers({ now: new Date('2026-10-26T10:00:00+01:00') }));
+    afterEach(() => vi.useRealTimers());
+
+    it('reads the list again once it has ended, and the session too when it was the company open', async () => {
+      auth.me.mockReturnValue({ company: { id: 'c3', name: 'Atlas', role: 'support' } });
+      api.companies.mockResolvedValue([acme, atlas]);
+      await facade.load();
+      api.companies.mockResolvedValue([acme]);
+
+      await vi.advanceTimersByTimeAsync(59 * 60 * 1000);
+      expect(api.companies).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+
+      expect(api.companies).toHaveBeenCalledTimes(2);
+      expect(facade.companies()).toEqual([acme]);
+      expect(auth.refresh).toHaveBeenCalledTimes(1);
+    });
+
+    it('reads nothing once the person has signed out', async () => {
+      api.companies.mockResolvedValue([atlas]);
+      await facade.load();
+      auth.me.mockReturnValue(null);
+
+      await vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000);
+
+      expect(api.companies).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('offers the switcher as soon as there are two', async () => {

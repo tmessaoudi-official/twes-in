@@ -14,9 +14,11 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Put;
 use App\Tenancy\Application\Member\MemberView;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
+use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\ChangeMemberRoleProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\InviteMemberProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\RemoveMemberProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\WithdrawInvitationProcessor;
@@ -45,6 +47,16 @@ use Symfony\Component\Validator\Constraints as Assert;
             denormalizationContext: ['groups' => [self::WRITE]],
             validationContext: ['groups' => ['add']],
         ),
+        // Another role for someone already a member, where they are listed: no removing and inviting again.
+        new Put(
+            uriTemplate: '/companies/{companyId}/members/{userId}/role',
+            processor: ChangeMemberRoleProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            normalizationContext: ['groups' => [self::READ]],
+            denormalizationContext: ['groups' => [self::ROLE]],
+            validationContext: ['groups' => [self::ROLE]],
+        ),
         new Delete(
             uriTemplate: '/companies/{companyId}/members/{userId}',
             processor: RemoveMemberProcessor::class,
@@ -72,6 +84,8 @@ final class MemberResource
      */
     public const string READ = 'member:read';
     public const string WRITE = 'member:write';
+    /** Changing a member's role takes the role alone. */
+    public const string ROLE = 'member:role';
 
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
@@ -89,8 +103,8 @@ final class MemberResource
      * request in sight. `InviteToCompany` resolves the name against that company and refuses an unknown one, which
      * is the same 422 with a message that can say which company it looked in.
      */
-    #[Assert\NotBlank(groups: ['add'])]
-    #[Groups([self::READ, self::WRITE])]
+    #[Assert\NotBlank(groups: ['add', self::ROLE])]
+    #[Groups([self::READ, self::WRITE, self::ROLE])]
     public string $role = Role::MEMBER;
 
     #[ApiProperty(writable: false)]

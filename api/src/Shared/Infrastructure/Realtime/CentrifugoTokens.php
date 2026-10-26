@@ -18,7 +18,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Centrifugo connection tokens (HS256, the key Centrifugo holds as `client.token.hmac_secret_key`). The `channels`
  * claim makes Centrifugo subscribe the connection server-side, so what a browser hears is decided here and nowhere
- * else: its user's channel and its working company's, in the two shapes the use cases publish to.
+ * else: its user's channel, its working company's, and the platform's for an operator.
  */
 final readonly class CentrifugoTokens implements RealtimeTokens
 {
@@ -34,11 +34,14 @@ final readonly class CentrifugoTokens implements RealtimeTokens
         }
     }
 
-    public function issue(Uuid $userId, ?Uuid $workingCompanyId): RealtimeToken
+    public function issue(Uuid $userId, ?Uuid $workingCompanyId, bool $platformOperator = false): RealtimeToken
     {
         $channels = ['user:'.$userId->toRfc4122()];
         if (null !== $workingCompanyId) {
             $channels[] = 'company:'.$workingCompanyId->toRfc4122();
+        }
+        if ($platformOperator) {
+            $channels[] = self::PLATFORM;
         }
 
         return $this->issueFor($userId->toRfc4122(), $channels);

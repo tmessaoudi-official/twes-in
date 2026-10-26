@@ -85,7 +85,8 @@ final readonly class NotificationsController
         // someone removed from it, or a member of a company since suspended, renews a token without its channel.
         $context = $this->workingContext->for($userId);
         $companyId = null !== $context && Company::STATUS_ACTIVE === $context->status ? Uuid::fromString($context->companyId) : null;
-        $token = $this->tokens->issue($userId, $companyId);
+        // An operator works in no company of their own, and hears what /platform shows on the platform's channel.
+        $token = $this->tokens->issue($userId, $companyId, $this->security->isGranted(SecurityUser::ROLE_PLATFORM_OPERATOR));
 
         return new JsonResponse(['token' => $token->token, 'expiresAt' => $token->expiresAt->format(\DATE_ATOM)]);
     }

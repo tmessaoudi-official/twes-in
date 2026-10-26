@@ -108,6 +108,18 @@ test('an owner opens the company to support for a day, support reads it read-onl
   await signIn(theirPage, owner, THEIR_PASSWORD);
   await expect(theirPage).toHaveURL(/\/$/);
 
+  // An operator, on a session of their own, since switching moves a session to another company; the second seeded
+  // one, whose code leaves the shared one's five in five minutes to the proofs.
+  const operators = await browser.newContext();
+  const operatorPage = await operators.newPage();
+  await signInWithCode(operatorPage, CODES_OPERATOR_EMAIL);
+  await operatorPage.evaluate((key) => localStorage.setItem(key, 'closed'), 'twes.cookie-notice');
+  // Already on /platform, where the company is not offered yet: a grant in a company the operator does not work in
+  // reaches them on the platform's channel alone, without a reload (docs/SPEC.md § 7, support access as a bug).
+  await operatorPage.goto('/platform');
+  await expect(operatorPage.getByTestId('platform-grants')).toBeVisible();
+  await expect(operatorPage.getByTestId(`platform-grant-${name}`)).toHaveCount(0);
+
   // The owner opens it for the day offered first, once they have proved who they are again: a sign-in is no proof.
   await theirPage.goto('/company/support-access');
   await expect(theirPage.getByTestId('support-access-closed')).toBeVisible();
@@ -118,16 +130,13 @@ test('an owner opens the company to support for a day, support reads it read-onl
   await expect(theirPage.getByTestId('support-access-open')).toBeVisible();
   await expect(theirPage.getByTestId('support-banner')).toBeVisible();
 
-  // An operator, on a session of their own, since switching moves a session to another company; the second seeded
-  // one, whose code leaves the shared one's five in five minutes to the proofs.
-  const operators = await browser.newContext();
-  const operatorPage = await operators.newPage();
-  await signInWithCode(operatorPage, CODES_OPERATOR_EMAIL);
-  await operatorPage.evaluate((key) => localStorage.setItem(key, 'closed'), 'twes.cookie-notice');
   expect(await companies(operatorPage)).toContainEqual(
     expect.objectContaining({ name, role: 'support' }),
   );
-  expect((await api(operatorPage, 'POST', '/api/me/company', { companyId })).status).toBe(201);
+  // Opened from « Accès du support » on /platform, where an operator in no company finds it.
+  await expect(operatorPage.getByTestId(`platform-grant-${name}`)).toBeVisible();
+  await operatorPage.getByTestId(`platform-grant-open-${name}`).click();
+  await expect(operatorPage.getByTestId('support-banner')).toContainText(name);
   await operatorPage.goto('/customers');
   await expect(operatorPage.getByTestId('support-banner')).toContainText(name);
 
@@ -140,10 +149,14 @@ test('an owner opens the company to support for a day, support reads it read-onl
   await theirPage.goto('/company/activity');
   await expect(theirPage.getByText('est entré pour le support').first()).toBeVisible();
 
-  // Closed again: the company leaves the operator's switcher, and its pages answer as a stranger's.
+  // Closed again: the company leaves the operator's switcher, and its pages answer as a stranger's; the operator's
+  // /platform, open meanwhile, drops it without a reload.
+  await operatorPage.goto('/platform');
+  await expect(operatorPage.getByTestId(`platform-grant-${name}`)).toBeVisible();
   await theirPage.goto('/company/support-access');
   await theirPage.getByTestId('support-access-end').click();
   await expect(theirPage.getByTestId('support-access-closed')).toBeVisible();
+  await expect(operatorPage.getByTestId(`platform-grant-${name}`)).toHaveCount(0);
   expect((await companies(operatorPage)).map((row) => row.name)).not.toContain(name);
   expect(
     (await api(operatorPage, 'GET', `/api/companies/${companyId}/customers`, null)).status,

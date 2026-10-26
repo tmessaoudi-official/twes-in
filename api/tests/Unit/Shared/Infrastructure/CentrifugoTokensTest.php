@@ -54,6 +54,18 @@ final class CentrifugoTokensTest extends TestCase
         self::assertSame(['user:'.$user->toRfc4122(), 'company:'.$company->toRfc4122()], $claims['channels']);
     }
 
+    public function testAnOperatorAlsoHearsThePlatformWhereverTheyWork(): void
+    {
+        $user = Uuid::v7();
+        $company = Uuid::v7();
+
+        self::assertSame(['user:'.$user->toRfc4122(), 'platform'], self::claimsOf($this->tokens(900)->issue($user, null, true)->token)['channels']);
+        self::assertSame(
+            ['user:'.$user->toRfc4122(), 'company:'.$company->toRfc4122(), 'platform'],
+            self::claimsOf($this->tokens(900)->issue($user, $company, true)->token)['channels'],
+        );
+    }
+
     public function testAConnectionThatIsNotAPersonsHearsTheChannelsNamedAndNoOther(): void
     {
         $issued = $this->tokens(900)->issueFor('scan:0199aaaa-0000-7000-8000-000000000001', ['scan:0199aaaa-0000-7000-8000-000000000001']);

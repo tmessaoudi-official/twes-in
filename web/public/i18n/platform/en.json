@@ -316,6 +316,13 @@
       "title": "Installation texts",
       "intro": "The application's words, on the screens, in the mails and on the printed documents, as every company reads them. Each one can still replace them with its own.",
       "link": "Manage the texts"
+    },
+    "grants": {
+      "title": "Support access",
+      "intro": "The companies whose owner lets support read them, read-only, until the time shown.",
+      "none": "No company has opened its access to support for now.",
+      "until": "until {{until}}",
+      "open": "Open read-only"
     }
   }
 }

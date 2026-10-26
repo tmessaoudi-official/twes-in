@@ -4037,11 +4037,13 @@
         "deleted": "حذف الدور"
       },
       "membership": {
-        "removed": "سحب عضوًا"
+        "removed": "سحب عضوًا",
+        "role_changed": "غيّر دور عضو"
       },
       "invitation": {
         "sent": "أرسل دعوة",
-        "accepted": "قبل الدعوة"
+        "accepted": "قبل الدعوة",
+        "withdrawn": "سحب دعوة"
       },
       "setting": {
         "changed": "غيّر إعدادًا",

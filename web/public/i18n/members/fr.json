@@ -38,6 +38,10 @@
     "withdrawn": "L’invitation de {{email}} est retirée. Son lien ne fonctionne plus.",
     "undo": "Annuler",
     "invited_until": "Invitation en attente jusqu’au {{day}}",
-    "replaces": "Une invitation attend déjà {{email}}. L’envoyer à nouveau la remplace, au rôle choisi."
+    "replaces": "Une invitation attend déjà {{email}}. L’envoyer à nouveau la remplace, au rôle choisi.",
+    "change_role_title": "Changer le rôle de {{name}}",
+    "change_role_hint": "Ce que {{name}} peut faire dans l’entreprise change dès que vous validez.",
+    "change_role_confirm": "Changer",
+    "role_changed": "{{name}} est maintenant {{role}}."
   }
 }

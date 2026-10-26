@@ -173,7 +173,15 @@ describe('HelloPage', () => {
    */
   it('tells a member of companies to choose one, rather than that they have none', async () => {
     companies.set([
-      { id: 'c1', name: 'Demo', status: 'active', role: 'owner', pinned: false, logoVersion: null },
+      {
+        id: 'c1',
+        name: 'Demo',
+        status: 'active',
+        role: 'owner',
+        pinned: false,
+        logoVersion: null,
+        supportAccessUntil: null,
+      },
       {
         id: 'c2',
         name: 'Atelier',
@@ -181,6 +189,7 @@ describe('HelloPage', () => {
         role: 'owner',
         pinned: false,
         logoVersion: null,
+        supportAccessUntil: null,
       },
     ]);
     me.set({ ...owner, company: null, permissions: [] });

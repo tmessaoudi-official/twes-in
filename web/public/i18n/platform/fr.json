@@ -316,6 +316,13 @@
       "title": "Textes de l’installation",
       "intro": "Les mots de l’application, sur les écrans, dans les courriels et sur les documents imprimés, tels que toutes les sociétés les lisent. Chacune peut encore les remplacer par les siens.",
       "link": "Gérer les textes"
+    },
+    "grants": {
+      "title": "Accès du support",
+      "intro": "Les entreprises dont le propriétaire laisse le support les lire, en lecture seule, jusqu’à l’heure dite.",
+      "none": "Aucune entreprise n’ouvre son accès au support pour le moment.",
+      "until": "jusqu’au {{until}}",
+      "open": "Ouvrir en lecture"
     }
   }
 }

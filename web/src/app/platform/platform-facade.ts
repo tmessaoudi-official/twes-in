@@ -393,6 +393,17 @@ export class PlatformFacade {
     this.versions = settings.versions;
   }
 
+  /**
+   * Reads again everything the page shows, quietly, when a company, its owner, a grant, a subscription or a payment
+   * changed elsewhere: the overview, and the lists as last searched.
+   */
+  async refresh(): Promise<void> {
+    await Promise.all([
+      this.readCompanies(),
+      this.accountSearch === null ? Promise.resolve() : this.loadAccounts(this.accountSearch),
+    ]);
+  }
+
   /** Reads again what the lists last showed and the overview's counts, since a company opened or decided moves them. */
   private async readCompanies(): Promise<void> {
     await Promise.all([this.refreshCompanies(), this.load()]);

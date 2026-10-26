@@ -13,11 +13,14 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * What a browser needs to open its real-time connection. The token decides which channels the connection hears:
- * the user's own and, when one is being worked in, the company's. The browser never names a channel itself.
+ * the user's own, the company's when one is being worked in, and the platform's for an operator. The browser never
+ * names a channel itself.
  */
 interface RealtimeTokens
 {
-    public function issue(Uuid $userId, ?Uuid $workingCompanyId): RealtimeToken;
+    public const string PLATFORM = 'platform';
+
+    public function issue(Uuid $userId, ?Uuid $workingCompanyId, bool $platformOperator = false): RealtimeToken;
 
     /**
      * A token for a connection that is not a person's: a paired phone hears its pairing's channel alone.

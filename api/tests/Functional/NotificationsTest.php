@@ -227,6 +227,20 @@ final class NotificationsTest extends ApiTestCase
         self::assertIsString($body['expiresAt']);
     }
 
+    public function testAnOperatorAlsoHearsThePlatformAndAMemberDoesNot(): void
+    {
+        // What changes about a company that /platform shows (a grant, an approval, an owner joining) reaches an operator
+        // who works in no company (docs/SPEC.md § 7, support access as a bug).
+        $operator = $this->createUser('operator@twes.local', 'password-1234', operator: true);
+        $this->login('operator@twes.local', 'password-1234');
+
+        self::assertSame(['user:'.$operator->getId()->toRfc4122(), 'platform'], $this->realtimeChannels());
+
+        $this->client->getCookieJar()->clear();
+        $this->login('owner@twes.local', 'password-1234');
+        self::assertNotContains('platform', $this->realtimeChannels());
+    }
+
     public function testSomeoneRemovedFromTheCompanyNoLongerHearsIt(): void
     {
         $this->login('owner@twes.local', 'password-1234');

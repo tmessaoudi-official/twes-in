@@ -17,7 +17,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { MatDialog } from '@angular/material/dialog';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 import { Select } from '../shared/form/select';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { AuthFacade } from '../auth/auth-facade';
@@ -29,6 +31,7 @@ import { CapitalizePipe } from '../shared/i18n/capitalize-pipe';
 import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { MemberRoleDialog, type MemberRoleChoice } from './member-role-dialog';
 
 /** The members list as configuration: its columns, what a person may hide, and its page sizes. */
 export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
@@ -121,6 +124,8 @@ export class MembersPage implements OnInit {
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
   private readonly document = inject(DOCUMENT);
+  private readonly dialog = inject(MatDialog);
+  private readonly translate = inject(TranslateService);
 
   protected readonly roles = this.rolesFacade.roles;
   protected readonly shippedRoles = computed(
@@ -185,13 +190,14 @@ export class MembersPage implements OnInit {
         shown: (row) => this.mayManage() && row.status === 'invited',
       },
       {
+        // An invitation's in the form, which sends it again; a member's from a dialog, its toast putting it back.
         id: 'change-role',
         rare: true,
         label: 'members.change_role',
         icon: 'manage_accounts',
         run: (row) => this.changeRole(row),
         disabled: () => this.busy(),
-        shown: (row) => this.mayManage() && row.status === 'invited',
+        shown: () => this.mayManage(),
       },
       {
         // Undone from its toast, which sends it again: no question first.
@@ -269,10 +275,53 @@ export class MembersPage implements OnInit {
     }
   }
 
-  /** The invitation's address put in the form, its role ready to change: inviting again replaces the one sent. */
+  /**
+   * An invitation's address put in the form, its role ready to change: inviting again replaces the one sent. A
+   * member's role chosen again in a dialog, without removing them and inviting them again (hunt F5).
+   */
   protected changeRole(row: MemberRow): void {
-    this.form.setValue({ email: row.email, role: row.role });
-    this.document.getElementById('member-role-input')?.focus();
+    if (row.status === 'invited') {
+      this.form.setValue({ email: row.email, role: row.role });
+      this.document.getElementById('member-role-input')?.focus();
+      return;
+    }
+    void this.chooseRole(row);
+  }
+
+  private async chooseRole(row: MemberRow): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    const chosen = await firstValueFrom(
+      this.dialog
+        .open<MemberRoleDialog, MemberRoleChoice, string | null>(MemberRoleDialog, {
+          data: { name: row.displayName, role: row.role, options: this.roleOptions() },
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
+    );
+    if (chosen) await this.setRole(companyId, row, chosen, row.role);
+  }
+
+  /** Said once done, naming the role now held; « Annuler » puts the one before back. */
+  private async setRole(
+    companyId: string,
+    row: MemberRow,
+    role: string,
+    before: string,
+  ): Promise<void> {
+    if (await this.members.changeRole(companyId, row.userId, role)) {
+      this.feedback.effect(
+        'members.role_changed',
+        { name: row.displayName, role: this.roleName(role) },
+        'corrigeable',
+        { key: 'members.undo', run: () => void this.setRole(companyId, row, before, role) },
+      );
+    }
+  }
+
+  private roleName(name: string): string {
+    const role = this.roles().find((each) => each.name === name);
+    return role === undefined ? name : this.translate.instant(roleLabel(role));
   }
 
   protected async withdraw(row: MemberRow): Promise<void> {

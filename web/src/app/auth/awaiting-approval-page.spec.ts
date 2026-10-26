@@ -101,6 +101,7 @@ describe('AwaitingApprovalPage', () => {
     role: 'member',
     pinned: false,
     logoVersion: null,
+    supportAccessUntil: null,
   });
   const listed = signal<readonly CompanyOption[]>([]);
   const companies = {

@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   linkedSignal,
   OnInit,
@@ -17,7 +18,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { map } from 'rxjs';
 import { refusalParams } from '../shared/form/refusal-words';
@@ -139,7 +140,10 @@ import type { WaitingPayment } from '../licensing/subscription-types';
 import { MatDialog } from '@angular/material/dialog';
 import { runAction } from '../shared/actions/run-action';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
-import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
+import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
+import { CompanyFacade } from '../company/company-facade';
+import { LiveChanges } from '../shared/realtime/live-changes';
+import { PLATFORM_KINDS } from './platform-kinds';
 
 /**
  * The operators' page: whether anyone may sign up, whether a company that signs up waits for approval, the
@@ -162,6 +166,7 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
     TranslatePipe,
     AmountPipe,
     DayPipe,
+    MomentPipe,
     DataList,
     DataListCell,
     StatusBadge,
@@ -181,6 +186,16 @@ export class PlatformPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly translate = inject(TranslateService);
   private readonly texts = inject(TextsParts);
+  private readonly workingCompanies = inject(CompanyFacade);
+  private readonly router = inject(Router);
+
+  /**
+   * « Accès du support »: every company whose owner lets support read it now, which an operator in no company opens
+   * from here as from the switcher (docs/SPEC.md § 7, support access as a bug).
+   */
+  protected readonly grants = computed(() =>
+    this.workingCompanies.companies().filter((company) => company.supportAccessUntil !== null),
+  );
 
   protected readonly tabs = PLATFORM_TABS;
   protected readonly roleLabel = membershipRoleLabel;
@@ -437,6 +452,18 @@ export class PlatformPage implements OnInit {
   });
 
   constructor() {
+    // What another operator, an owner or the worker changes about a company shows here at once: the platform's channel
+    // says it by kind alone, an owner joining or a grant opened in any company included.
+    inject(LiveChanges).reloadOn(
+      PLATFORM_KINDS,
+      () =>
+        Promise.all([
+          this.platform.refresh(),
+          this.payments.loadWaiting(),
+          this.workingCompanies.load(),
+        ]),
+      inject(DestroyRef),
+    );
     inject(UnsavedChanges).declare(this.cardChanges);
     inject(ScreenActions).declare(this.sheetActions);
     // The terms typed in the open panel and not saved, against what the panel last read; counted where it counts.
@@ -450,8 +477,13 @@ export class PlatformPage implements OnInit {
     // The words a setting's bounds and refusals are said in beyond the platform's own texts; a failure to read them
     // leaves each field saying « Valeur refusée. », as every form does for a reason it has no words for.
     void this.texts.open(SETTING_REFUSAL_TEXTS).catch(() => undefined);
-    await this.platform.load();
+    await Promise.all([this.platform.load(), this.workingCompanies.load()]);
     await this.payments.loadWaiting();
+  }
+
+  /** Opens a company support may read, read-only, in this session, then its home. */
+  protected async openGrant(companyId: string): Promise<void> {
+    if (await this.workingCompanies.switchTo(companyId)) await this.router.navigateByUrl('/');
   }
 
   /**

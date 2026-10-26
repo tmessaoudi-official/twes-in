@@ -104,6 +104,20 @@ export class CompanyApi {
     );
   }
 
+  /** Another role for someone already a member; answers their row as the list shows it. */
+  async changeMemberRole(companyId: string, userId: string, role: MemberRole): Promise<MemberRow> {
+    return this.guard(async () =>
+      toRow(
+        await firstValueFrom(
+          this.http.put<MemberMemberRead>(
+            `/api/companies/${encodeURIComponent(companyId)}/members/${encodeURIComponent(userId)}/role`,
+            { role },
+          ),
+        ),
+      ),
+    );
+  }
+
   async removeMember(companyId: string, userId: string): Promise<boolean> {
     return this.guard(async () => {
       await firstValueFrom(
@@ -438,6 +452,7 @@ function toOption(row: WorkingCompanyWorkingCompanyRead): CompanyOption {
     role: row.role ?? '',
     pinned: row.pinned ?? false,
     logoVersion: row.logoVersion ?? null,
+    supportAccessUntil: row.supportAccessUntil ?? null,
   };
 }
 

@@ -4037,11 +4037,13 @@
         "deleted": "deleted the role"
       },
       "membership": {
-        "removed": "removed a member"
+        "removed": "removed a member",
+        "role_changed": "changed a member’s role"
       },
       "invitation": {
         "sent": "sent an invitation",
-        "accepted": "accepted the invitation"
+        "accepted": "accepted the invitation",
+        "withdrawn": "withdrew an invitation"
       },
       "setting": {
         "changed": "changed a setting",

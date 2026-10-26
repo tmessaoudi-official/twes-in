@@ -31,6 +31,7 @@ final class RecordVersionsTest extends KernelTestCase
     /** Taking no version, each for its reason. */
     private const array WITHOUT = [
         '/companies/{companyId}/modules/{moduleKey}/interest' => 'a person\'s own wish to be told, where the last word is what they want',
+        '/companies/{companyId}/members/{userId}/role' => 'one role of one member, set as a whole: the last word is the role they hold, and the journal keeps each change',
         '/me/company-at-sign-in' => 'a person\'s own pin of the company they open at sign-in, where the last word is what they want',
         '/companies/{companyId}/modules/{moduleKey}' => 'one switch of the company, on or off, set as a whole',
         '/companies/{companyId}/security' => 'one switch of the company, set as a whole; it still moves the version the profile form is checked against',

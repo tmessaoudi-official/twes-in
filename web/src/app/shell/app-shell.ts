@@ -460,9 +460,18 @@ export class AppShell {
     );
     // The switcher's list too: a company joined, left or given a new logo is offered as it now is, not as it was when
     // the shell opened. A subscription set or a payment confirmed by the operator moves the company's standing, which
-    // the notice bar and the locked page read from the session.
+    // the notice bar and the locked page read from the session. A support grant opened or ended reaches an operator on
+    // the platform's channel, and the company's members on its own, whose banner says it.
     inject(LiveChanges).reloadOn(
-      ['membership', 'role', 'module', 'company', 'subscription', 'payment_declaration'],
+      [
+        'membership',
+        'role',
+        'module',
+        'company',
+        'subscription',
+        'payment_declaration',
+        'support_grant',
+      ],
       async () => {
         await Promise.all([this.auth.refresh(), this.companies.load()]);
       },

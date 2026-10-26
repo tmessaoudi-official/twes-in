@@ -48,6 +48,9 @@ class StaticLoader implements TranslateLoader {
         replaces: 'Une invitation attend déjà {{email}}.',
         resend: 'Renvoyer l’invitation',
         change_role: 'Changer le rôle',
+        change_role_title: 'Changer le rôle de {{name}}',
+        change_role_confirm: 'Changer',
+        keep: 'Garder',
         withdraw: 'Retirer l’invitation',
         added: 'Membre ajouté.',
         remove: 'Retirer',
@@ -95,6 +98,7 @@ describe('MembersPage', () => {
     add: vi.fn(),
     remove: vi.fn(),
     withdraw: vi.fn(),
+    changeRole: vi.fn(async () => true),
   };
   const auth = {
     me: () => ({ user: { id: signedIn }, company: { id: 'c1', name: 'Acme' } }),
@@ -337,6 +341,70 @@ describe('MembersPage', () => {
         }),
       ]),
     );
+  });
+
+  it('changes a member’s role from a dialog, without a question, and its toast puts the old one back', async () => {
+    // A member's role could only change by removing them and inviting them again (hunt F5).
+    const clerk: MemberRow = {
+      ...owner,
+      userId: 'u2',
+      email: 'clerk@example.test',
+      displayName: 'Nadia',
+      role: 'member',
+    };
+    rows.set([owner, clerk]);
+    fixture.detectChanges();
+    members.changeRole.mockClear();
+
+    (await menuEntry('u2', 'change-role'))!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-testid="member-role-title"]')?.textContent).toContain(
+        'Changer le rôle de Nadia',
+      ),
+    );
+    document.querySelector<HTMLElement>('[data-testid="member-role-change"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+      .find((option) => option.textContent?.includes('Administrateur'))!
+      .click();
+    fixture.detectChanges();
+    document.querySelector<HTMLElement>('[data-testid="member-role-confirm"]')!.click();
+
+    await vi.waitFor(() => expect(members.changeRole).toHaveBeenCalledWith('c1', 'u2', 'admin'));
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    await vi.waitFor(() =>
+      expect(said).toEqual([
+        expect.objectContaining({
+          key: 'members.role_changed',
+          params: { name: 'Nadia', role: 'administrateur' },
+          effect: 'corrigeable',
+        }),
+      ]),
+    );
+    said[0].action?.run();
+    await vi.waitFor(() =>
+      expect(members.changeRole).toHaveBeenLastCalledWith('c1', 'u2', 'member'),
+    );
+  });
+
+  it('changes nothing when the role kept is the one held', async () => {
+    rows.set([owner, { ...owner, userId: 'u2', email: 'clerk@example.test', role: 'member' }]);
+    fixture.detectChanges();
+    members.changeRole.mockClear();
+
+    (await menuEntry('u2', 'change-role'))!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-testid="member-role-confirm"]')).not.toBeNull(),
+    );
+    document.querySelector<HTMLElement>('[data-testid="member-role-confirm"]')!.click();
+    await fixture.whenStable();
+
+    expect(members.changeRole).not.toHaveBeenCalled();
   });
 
   it('puts an invitation in the form to change its role, and says sending replaces it', async () => {

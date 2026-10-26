@@ -121,6 +121,19 @@ test('an address that already has an account joins from the mailed link with not
   await theirPage.getByTestId('company-switcher').click();
   await expect(theirPage.getByTestId('company-option-Demo')).toBeVisible();
   await theirs.close();
+
+  // A member's role changes where they are listed, from a dialog, and the toast offers it back (hunt F5).
+  const row = page.getByTestId(`member-${existing}`);
+  await expect(row).toContainText('Membre');
+  await row.locator('[data-testid^="row-more-"]').click();
+  await page.locator('[data-testid^="row-menu-change-role-"]').click();
+  await expect(page.getByTestId('member-role-title')).toContainText('Existing Person');
+  await page.getByTestId('member-role-change').click();
+  await page.getByRole('option', { name: 'Administrateur' }).click();
+  await page.getByTestId('member-role-confirm').click();
+  await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
+  await expect(toast(page)).toContainText('Existing Person est maintenant administrateur.');
+  await expect(row).toContainText('Administrateur');
 });
 
 test('a link that has already been used is refused', async ({ page }) => {

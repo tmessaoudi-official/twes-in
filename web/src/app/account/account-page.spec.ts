@@ -108,6 +108,7 @@ const acme: CompanyOption = {
   role: 'owner',
   pinned: false,
   logoVersion: null,
+  supportAccessUntil: null,
 };
 const globex: CompanyOption = {
   id: 'c2',
@@ -116,6 +117,7 @@ const globex: CompanyOption = {
   role: 'member',
   pinned: false,
   logoVersion: null,
+  supportAccessUntil: null,
 };
 
 // docs/SPEC.md § 7, 2026-09-25 17:22 and the round-6 account boards: one page for the person's own account, where

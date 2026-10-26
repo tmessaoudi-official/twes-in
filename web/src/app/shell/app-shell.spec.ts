@@ -868,7 +868,7 @@ describe('AppShell', () => {
     expect(companies.load).toHaveBeenCalledTimes(2);
   });
 
-  it.each(['subscription', 'payment_declaration'])(
+  it.each(['subscription', 'payment_declaration', 'support_grant'])(
     'reads the session again when the operator changes the company’s standing (%s)',
     async (kind) => {
       // An owner whose payment the operator confirmed still read « abonnement expiré » until they signed out.

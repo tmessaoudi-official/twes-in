@@ -13,7 +13,9 @@ use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;
 use App\Shared\Application\RealtimePublisher;
+use App\Shared\Application\RealtimeTokens;
 use App\Shared\Infrastructure\Doctrine\StagedUntilCommit;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Service\ResetInterface;
@@ -26,7 +28,9 @@ use Symfony\Contracts\Service\ResetInterface;
  * Past ten changes of one kind and action by one person, as a file's import makes, they are said once as a bulk change
  * naming how many, so a screen reads its list again once; a deletion is always said record by record, since an open
  * editor must hear that its own record is gone. The tab itself never hears its echo through the connection, so what a
- * request from a tab said is kept for its answer (`LiveChangesAnswer`), and its own screens hear it there.
+ * request from a tab said is kept for its answer (`LiveChangesAnswer`), and its own screens hear it there. The kinds
+ * /platform shows (`app.realtime.platform_kinds`) are said on the platform's channel too, to operators who work in no
+ * company, by kind, record and action alone: who did it, and every other kind, stay the company's.
  */
 final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetInterface
 {
@@ -42,10 +46,13 @@ final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetIn
     /** @var list<array{kind: string, id: ?string, action: string, bulk?: true, count?: int}> */
     private array $said = [];
 
+    /** @param list<string> $platformKinds */
     public function __construct(
         private readonly RealtimePublisher $publisher,
         private readonly UserRepository $users,
         private readonly RequestStack $requests,
+        #[Autowire(param: 'app.realtime.platform_kinds')]
+        private readonly array $platformKinds,
     ) {
     }
 
@@ -140,6 +147,9 @@ final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetIn
             ...(null === $count ? [] : ['bulk' => true, 'count' => $count]),
         ];
         $origin = $this->origin();
+        if (null !== $change->companyId && \in_array($change->kind, $this->platformKinds, true)) {
+            $this->publisher->push(RealtimeTokens::PLATFORM, ['type' => 'changed', ...$said, 'actor' => null, 'origin' => null]);
+        }
         $this->publisher->push($channel, [
             'type' => 'changed',
             'kind' => $said['kind'],

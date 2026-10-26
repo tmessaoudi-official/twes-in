@@ -41,7 +41,7 @@ final class StagedLiveChangesTest extends TestCase
         $this->publisher = new RecordingRealtimePublisher();
         $this->users = new InMemoryUsers();
         $this->requests = new RequestStack();
-        $this->changes = new StagedLiveChanges($this->publisher, $this->users, $this->requests);
+        $this->changes = new StagedLiveChanges($this->publisher, $this->users, $this->requests, ['support_grant', 'company']);
         $this->nadia = new User(Email::fromString('nadia@example.test'), 'Nadia Belkacem', 'fr');
         $this->users->save($this->nadia);
         $this->company = Uuid::v7();
@@ -147,6 +147,26 @@ final class StagedLiveChangesTest extends TestCase
 
         self::assertCount(22, $this->publisher->pushed, 'an open editor is told its own record is gone');
         self::assertSame([], array_filter(array_column(array_column($this->publisher->pushed, 'data'), 'bulk')));
+    }
+
+    public function testWhatThePlatformShowsAlsoReachesItsOperatorsByKindAloneAndNothingElseDoes(): void
+    {
+        // Operators hold no standing access: the platform hears that a grant or a company changed, never who did it,
+        // nor anything of a company's own records.
+        $grant = Uuid::v7();
+        $this->requests->push(new Request(server: ['HTTP_X_TAB' => 'tab-1']));
+        $this->changes->begin();
+        $this->changes->stage(new LiveChange('support_grant', $grant, 'support_access.granted', $this->nadia->getId(), $this->company));
+        $this->changes->stage(new LiveChange('invoice', Uuid::v7(), 'invoice.issued', $this->nadia->getId(), $this->company));
+        $this->changes->commit();
+
+        $platform = array_values(array_filter($this->publisher->pushed, static fn (array $push): bool => 'platform' === $push['channel']));
+        self::assertSame([[
+            'channel' => 'platform',
+            'data' => ['type' => 'changed', 'kind' => 'support_grant', 'id' => $grant->toRfc4122(), 'action' => 'support_access.granted', 'actor' => null, 'origin' => null],
+        ]], $platform);
+        self::assertCount(3, $this->publisher->pushed, 'the company still hears both');
+        self::assertCount(2, $this->changes->saidHere(), 'the tab is answered once per change');
     }
 
     public function testWhatBelongsToNoCompanyReachesItsActorsOwnChannelAndWhatHasNeitherReachesNobody(): void

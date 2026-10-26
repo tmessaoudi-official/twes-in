@@ -179,6 +179,85 @@ final class MembersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /**
+     * A member's role changes where they are listed, without removing them and inviting them again (hunt F5): the
+     * journal says from what to what, and the session of the person moved reads its new rights on the next request.
+     */
+    public function testTheOwnerChangesAMembersRoleAndTheJournalSaysFromWhatToWhat(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company);
+        $clerk = $this->createUser('clerk@twes.local', 'password-1234', $this->company, ['sale.write'], Role::CLERK);
+        $this->signInAs('owner@twes.local');
+
+        $this->sendJson('PUT', $this->rolePath($clerk), ['role' => Role::ADMIN]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(Role::ADMIN, $this->json()['role']);
+        self::assertSame(Role::ADMIN, $this->em()->getConnection()->fetchOne('SELECT r.name FROM membership m JOIN role r ON r.id = m.role_id WHERE m.user_id = ?', [$clerk->getId()->toRfc4122()]));
+        $changes = $this->em()->getConnection()->fetchOne("SELECT changes FROM audit_log WHERE action = 'membership.role_changed'");
+        self::assertIsString($changes);
+        // A jsonb column keeps its keys in its own order.
+        self::assertEquals(['user_id' => $clerk->getId()->toRfc4122(), 'from' => Role::CLERK, 'to' => Role::ADMIN], json_decode($changes, true, 4, \JSON_THROW_ON_ERROR));
+
+        $this->sendJson('PUT', $this->rolePath($clerk), ['role' => Role::ADMIN]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->rowCount("SELECT COUNT(*) FROM audit_log WHERE action = 'membership.role_changed'"), 'the same role again changes nothing');
+    }
+
+    /** What an admin may not grant or remove, they may not change either. */
+    public function testAnAdminChangesNoRoleAboveTheirOwn(): void
+    {
+        $owner = $this->createUser('owner@twes.local', 'password-1234', $this->company);
+        $member = $this->createUser('plain@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
+        $other = $this->builtInMember('other-admin@twes.local', Role::ADMIN);
+        $this->adminSignedIn();
+
+        $this->sendJson('PUT', $this->rolePath($member), ['role' => Role::OWNER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'never raised above an admin');
+        $this->sendJson('PUT', $this->rolePath($other), ['role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'another admin is not theirs to lower');
+        $this->sendJson('PUT', $this->rolePath($owner), ['role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+
+        $this->sendJson('PUT', $this->rolePath($member), ['role' => Role::ACCOUNTANT]);
+        self::assertResponseIsSuccessful();
+    }
+
+    /** A company keeps an owner: the last one is never lowered, but an owner steps down beside another (hunt F7). */
+    public function testTheLastOwnerIsNeverLoweredAndAnOwnerStepsDownBesideAnother(): void
+    {
+        $owner = $this->createUser('owner@twes.local', 'password-1234', $this->company);
+        $heir = $this->builtInMember('heir@twes.local', Role::MEMBER);
+        $this->signInAs('owner@twes.local');
+
+        $this->sendJson('PUT', $this->rolePath($owner), ['role' => Role::ADMIN]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame([['propertyPath' => 'role', 'reason' => 'last_owner', 'params' => []]], $this->refusals());
+
+        $this->sendJson('PUT', $this->rolePath($heir), ['role' => Role::OWNER]);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->rolePath($owner), ['role' => Role::ADMIN]);
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testARoleChangeAnswersAsAStrangerOutsideItsCompanyAndRefusesAnInventedRole(): void
+    {
+        $theirs = $this->createCompany('Globex');
+        $stranger = $this->createUser('owner@globex.test', 'password-1234', $theirs);
+        $plain = $this->createUser('plain@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
+        $this->createUser('owner@twes.local', 'password-1234', $this->company);
+        $this->signInAs('owner@twes.local');
+
+        $this->sendJson('PUT', $this->rolePath($stranger), ['role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'not a member here');
+        $this->sendJson('PUT', $this->rolePath($plain), ['role' => 'emperor']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->signInAs('plain@twes.local');
+        $this->sendJson('PUT', $this->rolePath($plain), ['role' => Role::OWNER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'without the right to manage members, as a stranger');
+    }
+
     public function testAMalformedAddressIsRefused(): void
     {
         $this->adminSignedIn();
@@ -476,6 +555,25 @@ final class MembersTest extends ApiTestCase
             }
         }
         self::fail(\sprintf('No invited row for %s.', $email));
+    }
+
+    /** A member at one of the built-in roles, which several members share, unlike the role `createUser` makes each. */
+    private function builtInMember(string $email, string $roleName): User
+    {
+        $user = $this->createUser($email, 'password-1234');
+        $role = $this->em()->getRepository(Role::class)->findOneBy(['name' => $roleName, 'company' => null]);
+        self::assertInstanceOf(Role::class, $role);
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+        $this->em()->persist(new Membership($user, $company, $role));
+        $this->em()->flush();
+
+        return $user;
+    }
+
+    private function rolePath(User $member): string
+    {
+        return $this->path().'/'.$member->getId()->toRfc4122().'/role';
     }
 
     private function rowCount(string $sql): int

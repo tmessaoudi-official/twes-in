@@ -32,6 +32,7 @@ describe('MembersFacade', () => {
     members: vi.fn(),
     addMember: vi.fn(),
     removeMember: vi.fn(),
+    changeMemberRole: vi.fn(),
   };
   const auth = { refresh: vi.fn(async () => undefined), load: vi.fn(async () => null) };
   let facade: MembersFacade;
@@ -126,6 +127,24 @@ describe('MembersFacade', () => {
     const added = await facade.add('c1', 'stranger@example.test', 'member');
 
     expect(added?.status).toBe('invited');
+  });
+
+  it('changes a member’s role, then reads the list and the person’s own rights again', async () => {
+    api.changeMemberRole.mockResolvedValue({ ...owner, role: 'admin' });
+    api.members.mockResolvedValue([{ ...owner, role: 'admin' }]);
+
+    expect(await facade.changeRole('c1', 'u1', 'admin')).toBe(true);
+
+    expect(api.changeMemberRole).toHaveBeenCalledWith('c1', 'u1', 'admin');
+    expect(facade.members()).toEqual([{ ...owner, role: 'admin' }]);
+    expect(auth.refresh).toHaveBeenCalled();
+  });
+
+  it('says the last owner is kept when lowering them was refused', async () => {
+    api.changeMemberRole.mockRejectedValue(new CompanyRefused('last_owner'));
+
+    expect(await facade.changeRole('c1', 'u1', 'admin')).toBe(false);
+    expect(facade.error()).toBe('last_owner');
   });
 
   it('reports the last owner refusal', async () => {

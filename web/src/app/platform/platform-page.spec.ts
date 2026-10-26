@@ -39,6 +39,9 @@ import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { CompanyFacade } from '../company/company-facade';
+import type { CompanyOption } from '../company/company-types';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -64,6 +67,12 @@ class StaticLoader implements TranslateLoader {
         },
       },
       platform: {
+        grants: {
+          title: 'Accès du support',
+          none: 'Aucune entreprise n’ouvre son accès au support pour le moment.',
+          until: 'jusqu’au {{until}}',
+          open: 'Ouvrir en lecture',
+        },
         numbers: { empty: 'Indiquez un nombre.' },
         demo: { title: 'Démo', bounds: 'De {{min}} à {{max}} démos', save: 'Enregistrer' },
         imports: { title: 'Imports', bounds: 'De {{min}} à {{max}} lignes', save: 'Enregistrer' },
@@ -342,6 +351,12 @@ describe('PlatformPage', () => {
     stopSubscription: vi.fn(async () => true),
     clearError: vi.fn(),
   };
+  const offered = signal<readonly CompanyOption[]>([]);
+  const companyFacade = {
+    companies: offered.asReadonly(),
+    load: vi.fn(async () => offered()),
+    switchTo: vi.fn(async () => true),
+  };
   const payments = {
     waiting: waitingPayments.asReadonly(),
     loadWaiting: vi.fn(async () => undefined),
@@ -368,6 +383,9 @@ describe('PlatformPage', () => {
     accountsTotal.set(1);
     openedSubscription.set(null);
     subscription.set(null);
+    offered.set([]);
+    companyFacade.load.mockClear();
+    companyFacade.switchTo.mockClear();
     Object.values(payments)
       .filter((value) => typeof value === 'function' && 'mockReset' in value)
       .forEach((fn) => (fn as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(true));
@@ -382,6 +400,7 @@ describe('PlatformPage', () => {
         { provide: PlatformFacade, useValue: facade },
         { provide: TextsParts, useValue: { open: vi.fn(() => Promise.resolve()) } },
         { provide: SubscriptionFacade, useValue: payments },
+        { provide: CompanyFacade, useValue: companyFacade },
         {
           provide: AuthFacade,
           useValue: { me: () => ({ user: { id: 'op1' }, company: null }), refresh: vi.fn() },
@@ -1356,6 +1375,73 @@ describe('PlatformPage', () => {
     expect(kinds).toEqual(['Mots de passe oubliés 2', 'SomethingNew 1']);
     expect(query('platform-failed')?.textContent).toContain('messenger:failed:retry');
   });
+  // docs/SPEC.md § 7, support access as a bug: an operator in no company finds here every company opened to support.
+  describe('« Accès du support »', () => {
+    const grant = (
+      id: string,
+      name: string,
+      until: string | null,
+      role = 'support',
+    ): CompanyOption => ({
+      id,
+      name,
+      status: 'active',
+      role,
+      pinned: false,
+      logoVersion: null,
+      supportAccessUntil: until,
+    });
+
+    it('lists the companies support may read, and opens one read-only from there', async () => {
+      offered.set([
+        grant('c9', 'Demo', null, 'owner'),
+        grant('c3', 'Atlas', '2026-10-27T10:00:00+01:00'),
+      ]);
+      const { fixture, query } = await render();
+      fixture.detectChanges();
+
+      expect(query('platform-grant-Demo')).toBeNull();
+      expect(query('platform-grant-Atlas')?.textContent).toContain('Atlas');
+      expect(query('platform-grant-Atlas')?.textContent).toContain('jusqu’au');
+      query<HTMLButtonElement>('platform-grant-open-Atlas')!.click();
+      await fixture.whenStable();
+
+      expect(companyFacade.switchTo).toHaveBeenCalledWith('c3');
+      expect(TestBed.inject(Router).url).toBe('/');
+    });
+
+    it('says when no company opens its access', async () => {
+      const { fixture, query } = await render();
+      fixture.detectChanges();
+
+      expect(query('platform-grants-none')?.textContent).toContain('Aucune entreprise');
+    });
+
+    it.each([
+      'support_grant',
+      'company',
+      'invitation',
+      'membership',
+      'subscription',
+      'payment_declaration',
+    ])(
+      'reads the page again when %s changes in any company, as the platform hears it',
+      async (kind) => {
+        // An owner accepting the operator's invitation left « invitée » on /platform until a reload (hunt A1).
+        await render();
+        facade.refresh.mockClear();
+        payments.loadWaiting.mockClear();
+        companyFacade.load.mockClear();
+
+        await announceSaved(kind, 'x1', null);
+
+        expect(facade.refresh).toHaveBeenCalledTimes(1);
+        expect(payments.loadWaiting).toHaveBeenCalledTimes(1);
+        expect(companyFacade.load).toHaveBeenCalledTimes(1);
+      },
+    );
+  });
+
   // « Me prévenir » (row 150): the operator reads which planned modules companies wait for, and how many.
   it('lists the planned modules companies wait for, the most asked for first, and says when none is', async () => {
     const { fixture, query } = await render('/?tab=demand');

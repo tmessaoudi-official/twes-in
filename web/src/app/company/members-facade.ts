@@ -8,7 +8,10 @@ import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, MemberRole, MemberRow } from './company-types';
 import { sessionSignal } from '../shared/session/session-data';
 
-/** The member list of one company, and what an administrator does to it: invite, withdraw an invitation, remove. */
+/**
+ * The member list of one company, and what an administrator does to it: invite, withdraw an invitation, change a
+ * role, remove.
+ */
 @Injectable({ providedIn: 'root' })
 export class MembersFacade {
   private readonly api = inject(CompanyApi);
@@ -33,6 +36,14 @@ export class MembersFacade {
    */
   async add(companyId: string, email: string, role: MemberRole): Promise<MemberRow | null> {
     return this.mutate(companyId, () => this.api.addMember(companyId, email, role));
+  }
+
+  /** Another role for a member; their own rights follow at once when it is the person signed in. */
+  async changeRole(companyId: string, userId: string, role: MemberRole): Promise<boolean> {
+    return (
+      (await this.mutate(companyId, () => this.api.changeMemberRole(companyId, userId, role))) !==
+      null
+    );
   }
 
   async remove(companyId: string, userId: string): Promise<boolean> {
