@@ -116,6 +116,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'quote.sent',
   'quote.accepted',
   'quote.refused',
+  'quote.receiver_corrected',
   'quote.cancelled',
   'quote.invoiced',
   'quote.deleted',

@@ -13,12 +13,14 @@ use App\Module\Quotes\Application\Delivery\QuoteDeliveries;
 use App\Module\Quotes\Application\Delivery\QuoteDeliveryNotes;
 use App\Module\Quotes\Application\ManageQuotes;
 use App\Module\Quotes\Application\QuoteInvoices;
+use App\Module\Quotes\Application\QuoteSettings;
 use App\Module\Quotes\Application\QuoteTotals;
 use App\Module\Quotes\Domain\Model\Quote;
 use App\Module\Quotes\Domain\Model\QuoteLine;
 use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteResource;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Settings\Application\ReadSetting;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Psr\Clock\ClockInterface;
 
@@ -40,20 +42,24 @@ final readonly class QuoteView
         private QuoteDeliveryNotes $deliveries,
         private CompanyGuard $guard,
         private ModuleStates $modules,
+        private ReadSetting $settings,
     ) {
     }
 
     public function of(Quote $quote): QuoteResource
     {
-        return $this->page([$quote])[0];
+        return $this->page([$quote], true)[0];
     }
 
     /**
-     * @param list<Quote> $quotes one company's
+     * @param list<Quote> $quotes           one company's
+     * @param bool        $withReceiverRule whether each says if its customer's answers name who gave them: a quote's own
+     *                                      answer does, for its dialogs; a list's page does not, since settings are read
+     *                                      one customer at a time
      *
      * @return list<QuoteResource>
      */
-    public function page(array $quotes): array
+    public function page(array $quotes, bool $withReceiverRule = false): array
     {
         if ([] === $quotes) {
             return [];
@@ -70,6 +76,7 @@ final readonly class QuoteView
             $counts[$quote->getId()->toRfc4122()] ?? 0,
             $deposits[$quote->getId()->toRfc4122()] ?? [],
             $deliveries[$quote->getId()->toRfc4122()] ?? null,
+            $withReceiverRule ? QuoteSettings::receiverRule($this->settings, $quote->getCustomer()) : null,
         ), $quotes);
     }
 

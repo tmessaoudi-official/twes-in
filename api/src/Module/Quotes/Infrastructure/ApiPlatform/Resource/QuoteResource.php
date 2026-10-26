@@ -39,11 +39,15 @@ use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\CreateQuoteProc
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\DepositQuoteProcessor;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\InvoiceQuoteProcessor;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\PreviewQuoteProcessor;
+use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\ReceiveQuoteProcessor;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\ReviseQuoteProcessor;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Processor\SendQuoteProcessor;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Provider\QuoteCollectionProvider;
 use App\Module\Quotes\Infrastructure\ApiPlatform\State\Provider\QuoteItemProvider;
 use App\Shared\Application\ListLimits;
+use App\Shared\Application\Receivers\ReceiverChoice;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Submissions\Submissions;
 use App\Shared\Infrastructure\Validation\ListLimit;
@@ -70,7 +74,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             // One page at a time, with its total, which only JSON-LD carries.
             outputFormats: ['jsonld' => ['application/ld+json']],
             parameters: [
-                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, the customer\'s reference or the customer as the quote recorded them, whatever their case and accents; under three characters, the exact number only. A draft carries no number and no recorded customer: narrow it with customerId.'),
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, the customer\'s reference, the customer as the quote recorded them or who answered, whatever their case and accents; under three characters, the exact number only. A draft carries no number and no recorded customer: narrow it with customerId.'),
                 'status[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['draft', 'sent', 'accepted', 'refused', 'cancelled']]], description: 'Several statuses, OR\'d: `status[]=draft&status[]=sent`; a single `status=draft` is the same filter with one value.', constraints: []),
                 'customerId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => self::ID], description: 'Several customers, OR\'d; a single `customerId=…` still works.', constraints: []),
                 'issueDate[from]' => new QueryParameter(schema: self::DAY, description: 'Sent on or after this day. A draft has no issue day, so it is left out by any end.'),
@@ -158,6 +162,17 @@ use Symfony\Component\Validator\Constraints as Assert;
             validationContext: ['groups' => [self::ANSWER, self::REFUSE]],
         ),
         new Post(
+            uriTemplate: '/companies/{companyId}/quotes/{quoteId}/receiver',
+            openapi: new OpenApiOperation(summary: 'Puts right who answered an accepted or refused quote, or names nobody.', description: 'Takes `receivedBy` as accept and refuse take it and records it on an accepted or refused quote; the quote\'s print is not changed. Asks quote.write. Audited by the field it changed, never the name; sent again unchanged, nothing is recorded. 409 on a draft, a sent or a cancelled quote; 422 naming `receivedBy` as an answer refuses it.'),
+            status: 200,
+            processor: ReceiveQuoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            normalizationContext: self::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::RECEIVE]],
+            validationContext: ['groups' => [self::RECEIVE]],
+        ),
+        new Post(
             uriTemplate: '/companies/{companyId}/quotes/{quoteId}/cancel',
             status: 200,
             processor: CancelQuoteProcessor::class,
@@ -204,6 +219,9 @@ final class QuoteResource
     public const string ANSWER = 'quote:answer';
     public const string REFUSE = 'quote:refuse';
     public const string DEPOSIT = 'quote:deposit';
+    /** Who answered, alone: sent to put it right once the quote is answered. */
+    public const string RECEIVE = 'quote:receive';
+    private const array RECEIVER_GROUPS = [self::ANSWER, self::RECEIVE];
     /** Nulls are answered: a draft's absent number and a line without a product read alike; no identifiers read `{}`. */
     private const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
@@ -302,6 +320,40 @@ final class QuoteResource
     #[Assert\Length(max: Quote::REASON_MAX, groups: [self::REFUSE], payload: ['reason' => 'invalid_text', 'params' => ['max' => Quote::REASON_MAX]])]
     #[Groups([self::READ, self::REFUSE])]
     public ?string $refusalReason = null;
+
+    /**
+     * Who answered for the customer, as the quote copied them: `{name, contactId}`, contactId the customer's contact named
+     * or null for a name typed; null while nobody is named. Sent to accept, to refuse and to POST .../receiver:
+     * `{contactId}` names one of the customer's contacts, whose name is copied as it reads now; `{name, addToContacts}` a
+     * name typed, added to the customer's contacts when asked; null, nobody. Sent back as read, the receiver is kept as
+     * it was copied. Refused naming `receivedBy`: `unknown_choice`, `invalid_text`, `receiver_off` where the customer's
+     * quotes name nobody, `receiver_required` at an answer naming nobody where they must name someone.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ApiProperty(schema: [
+        'type' => ['object', 'null'],
+        'properties' => [
+            'contactId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'name' => ['type' => ['string', 'null'], 'maxLength' => Receiver::NAME_MAX],
+            'addToContacts' => ['type' => 'boolean', 'writeOnly' => true, 'description' => 'Adds the name typed to the customer\'s contacts as it is recorded.'],
+        ],
+    ])]
+    #[Assert\Collection(fields: [
+        'contactId' => new Assert\Optional([new Assert\Type('string', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+        'name' => new Assert\Optional([new Assert\Type('string', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+        'addToContacts' => new Assert\Optional([new Assert\Type('bool', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+    ], groups: self::RECEIVER_GROUPS)]
+    #[Groups([self::READ, self::ANSWER, self::RECEIVE])]
+    public ?array $receivedBy = null;
+
+    /**
+     * Whether the customer's quotes name who answered: `off`, `optional` or `required` (the setting quote.receiver). Said
+     * by a quote's own answer; null on a list's rows, which read no setting.
+     */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'enum' => ['off', 'optional', 'required', null]])]
+    #[Groups([self::READ])]
+    public ?string $receiverRule = null;
 
     /** The draft invoice an accepted quote was drafted into (POST .../invoice); null until it is. */
     #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
@@ -478,7 +530,7 @@ final class QuoteResource
 
     /** @param \DateTimeImmutable $today the company's day, which says whether a sent quote has expired */
     /** @param list<QuoteDeposit> $deposits */
-    public static function of(Quote $quote, DocumentTotals $totals, \DateTimeImmutable $today, int $attachmentCount, array $deposits = [], ?QuoteDeliveries $deliveries = null): self
+    public static function of(Quote $quote, DocumentTotals $totals, \DateTimeImmutable $today, int $attachmentCount, array $deposits = [], ?QuoteDeliveries $deliveries = null, ?ReceiverRule $receiverRule = null): self
     {
         $header = $quote->getHeader();
         $resource = new self();
@@ -496,6 +548,9 @@ final class QuoteResource
         $resource->validUntil = $quote->getValidUntil()?->format('Y-m-d');
         $resource->answeredOn = $quote->getAnsweredOn()?->format('Y-m-d');
         $resource->refusalReason = $quote->getRefusalReason();
+        $receiver = $quote->getReceivedBy();
+        $resource->receivedBy = null === $receiver ? null : ['name' => $receiver->name, 'contactId' => $receiver->contactId?->toRfc4122()];
+        $resource->receiverRule = $receiverRule?->value;
         $resource->invoiceId = $quote->getInvoiceId()?->toRfc4122();
         $resource->attachmentCount = $attachmentCount;
         $resource->deposits = array_map(static fn (QuoteDeposit $deposit): array => ['invoiceId' => $deposit->invoiceId, 'number' => $deposit->number, 'status' => $deposit->status, 'total' => $deposit->total], $deposits);
@@ -560,6 +615,18 @@ final class QuoteResource
             new QuoteHeader($this->customerReference, $this->notesPrinted, $this->notesInternal, $this->discountAmount),
             $lines,
         );
+    }
+
+    /** Who the request named as having answered; null for nobody. */
+    public function receiverChoice(): ?ReceiverChoice
+    {
+        if (null === $this->receivedBy) {
+            return null;
+        }
+        $contactId = $this->receivedBy['contactId'] ?? null;
+        $name = $this->receivedBy['name'] ?? null;
+
+        return new ReceiverChoice(\is_string($contactId) ? $contactId : null, \is_string($name) ? $name : null, true === ($this->receivedBy['addToContacts'] ?? false));
     }
 
     /** @param array<string, mixed> $line */

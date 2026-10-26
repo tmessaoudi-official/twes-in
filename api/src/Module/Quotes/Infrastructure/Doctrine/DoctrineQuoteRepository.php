@@ -32,7 +32,7 @@ use Symfony\Component\Uid\Uuid;
 final readonly class DoctrineQuoteRepository implements QuoteRepository
 {
     /** The condition the quote trigram index answers; `SearchIndexesTest` proves the pair. */
-    public const string MATCHES_WORDS = "SEARCH_TEXT(q.number, q.customerReference, JSON_VALUES(q.customerSnapshot)) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    public const string MATCHES_WORDS = "SEARCH_TEXT(q.number, q.customerReference, JSON_VALUES(q.customerSnapshot), q.receivedByName) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
 
     private const array SORTED_BY = [
         'number' => 'q.number',

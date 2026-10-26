@@ -25,7 +25,11 @@ use App\Module\Quotes\Domain\Model\Quote;
 use App\Module\Quotes\Domain\Model\QuoteLine;
 use App\Module\Quotes\Domain\Repository\QuoteRepository;
 use App\Settings\Application\ReadSetting;
+use App\Shared\Application\Receivers\ChooseReceiver;
+use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\Refusal;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\Exception\InvalidNumbering;
@@ -35,8 +39,9 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A quote past its draft: sent (numbered from its own series in the transaction that stores it, nothing being mailed
- * yet, so it is a mark the company makes), accepted or refused on the customer's word, cancelled while a draft, and
- * an accepted one invoiced wholly into a new draft invoice or added to an open one.
+ * yet, so it is a mark the company makes), accepted or refused on the customer's word, naming who gave it as the
+ * customer's setting says and put right afterwards, cancelled while a draft, and an accepted one invoiced wholly into a
+ * new draft invoice or added to an open one.
  * Every move is audited.
  */
 final readonly class QuoteWorkflow implements DeclaresAuditActions
@@ -48,6 +53,7 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
     public const string CANCELLED = 'quote.cancelled';
     public const string INVOICED = 'quote.invoiced';
     public const string DEPOSIT_DRAFTED = 'quote.deposit_drafted';
+    public const string RECEIVER_CORRECTED = 'quote.receiver_corrected';
     private const string PERCENTAGE = '/^(0|[1-9][0-9]?)(\.[0-9]{1,3})?$/';
     private const string AMOUNT = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
 
@@ -63,6 +69,7 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
         private DocumentNames $names,
         private ExcludedTaxFamilies $excluded,
         private QuoteDeliveryNotes $deliveries,
+        private ChooseReceiver $receivers,
     ) {
     }
 
@@ -102,18 +109,19 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
     }
 
     /**
-     * @param \DateTimeImmutable|null $on the day the customer agreed; left out, the company's today
+     * @param \DateTimeImmutable|null $on         the day the customer agreed; left out, the company's today
+     * @param ReceiverChoice|null     $receivedBy who agreed for the customer; left out, nobody
      *
      * @throws QuoteNotFound
      * @throws QuoteTransitionRefused
      * @throws InvalidQuote
      */
-    public function accept(Company $company, Uuid $id, ?\DateTimeImmutable $on, ?Uuid $actorUserId): Quote
+    public function accept(Company $company, Uuid $id, ?\DateTimeImmutable $on, ?Uuid $actorUserId, ?ReceiverChoice $receivedBy = null): Quote
     {
-        return $this->transactions->run(function () use ($company, $id, $on, $actorUserId): Quote {
+        return $this->transactions->run(function () use ($company, $id, $on, $actorUserId, $receivedBy): Quote {
             $quote = $this->locked($company, $id);
             $today = $this->today($company);
-            $quote->accept($on ?? $today, $today, $this->clock->now());
+            $quote->accept($on ?? $today, $today, $this->clock->now(), QuoteSettings::receiverRule($this->settings, $quote->getCustomer()), $this->receiver($company, $quote, $receivedBy, $actorUserId));
             $this->quotes->save($quote);
             $this->record($company, $quote, self::ACCEPTED, ['answeredOn' => $quote->getAnsweredOn()?->format('Y-m-d')], $actorUserId);
 
@@ -122,21 +130,50 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
     }
 
     /**
-     * @param \DateTimeImmutable|null $on the day the customer declined; left out, the company's today
+     * @param \DateTimeImmutable|null $on         the day the customer declined; left out, the company's today
+     * @param ReceiverChoice|null     $receivedBy who declined for the customer; left out, nobody
      *
      * @throws QuoteNotFound
      * @throws QuoteTransitionRefused
      * @throws InvalidQuote
      */
-    public function refuse(Company $company, Uuid $id, ?\DateTimeImmutable $on, ?string $reason, ?Uuid $actorUserId): Quote
+    public function refuse(Company $company, Uuid $id, ?\DateTimeImmutable $on, ?string $reason, ?Uuid $actorUserId, ?ReceiverChoice $receivedBy = null): Quote
     {
-        return $this->transactions->run(function () use ($company, $id, $on, $reason, $actorUserId): Quote {
+        return $this->transactions->run(function () use ($company, $id, $on, $reason, $actorUserId, $receivedBy): Quote {
             $quote = $this->locked($company, $id);
             $today = $this->today($company);
-            $quote->refuse($on ?? $today, $reason, $today, $this->clock->now());
+            $quote->refuse($on ?? $today, $reason, $today, $this->clock->now(), QuoteSettings::receiverRule($this->settings, $quote->getCustomer()), $this->receiver($company, $quote, $receivedBy, $actorUserId));
             $this->quotes->save($quote);
             // The reason is the customer's words: the audit names that one was given, never what it says.
             $this->record($company, $quote, self::REFUSED, ['answeredOn' => $quote->getAnsweredOn()?->format('Y-m-d'), 'fields' => null === $quote->getRefusalReason() ? [] : ['reason']], $actorUserId);
+
+            return $quote;
+        });
+    }
+
+    /**
+     * Who answered an accepted or refused quote for its customer, put right, or nobody when someone was named by mistake.
+     * Recorded by the field it changed, never the name: the journal keeps no one's name.
+     *
+     * @throws QuoteNotFound
+     * @throws QuoteTransitionRefused
+     * @throws InvalidQuote
+     */
+    public function correctReceiver(Company $company, Uuid $id, ?ReceiverChoice $receivedBy, ?Uuid $actorUserId): Quote
+    {
+        return $this->transactions->run(function () use ($company, $id, $receivedBy, $actorUserId): Quote {
+            $quote = $this->locked($company, $id);
+            // Nobody answered a quote not yet answered, whatever the setting would say of the name.
+            $quote->assertAnswered();
+            $receiver = $this->receiver($company, $quote, $receivedBy, $actorUserId);
+            $refused = QuoteSettings::receiverRule($this->settings, $quote->getCustomer())->refusal($receiver);
+            if (null !== $refused) {
+                throw new InvalidQuote('receivedBy', $refused->message, $refused->reason, $refused->params);
+            }
+            if ($quote->correctReceiver($receiver, $this->clock->now())) {
+                $this->quotes->save($quote);
+                $this->record($company, $quote, self::RECEIVER_CORRECTED, ['fields' => ['receivedBy']], $actorUserId);
+            }
 
             return $quote;
         });
@@ -267,6 +304,26 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
         }
     }
 
+    /**
+     * Who the person named, among the quote's customer's contacts or typed; null when they named nobody; the receiver the
+     * quote already names when that is who they named, kept as it was copied, whatever the contact is called since.
+     *
+     * @throws InvalidQuote
+     */
+    private function receiver(Company $company, Quote $quote, ?ReceiverChoice $receivedBy, ?Uuid $actorUserId): ?Receiver
+    {
+        $current = $quote->getReceivedBy();
+        if (null !== $receivedBy && $receivedBy->names($current)) {
+            return $current;
+        }
+        $receiver = $this->receivers->receiver($company, $quote->getCustomer()->getId(), $receivedBy, $actorUserId);
+        if ($receiver instanceof Refusal) {
+            throw new InvalidQuote('receivedBy', $receiver->message, $receiver->reason, $receiver->params);
+        }
+
+        return $receiver;
+    }
+
     private static function zero(string $decimal): bool
     {
         return '' === trim(str_replace('.', '', $decimal), '0');
@@ -317,6 +374,7 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
             self::CANCELLED => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
             self::DEPOSIT_DRAFTED => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
             self::INVOICED => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
+            self::RECEIVER_CORRECTED => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
             self::REFUSED => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
             self::SENT => new Recorded(ManageQuotes::ENTITY_TYPE, AuditScope::Company),
         ];

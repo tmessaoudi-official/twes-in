@@ -1118,6 +1118,13 @@
           "optional": "When wished",
           "required": "Always, at delivery"
         }
+      },
+      "quote": {
+        "receiver": {
+          "off": "Never",
+          "optional": "When wished",
+          "required": "Always, at the answer"
+        }
       }
     },
     "overrides": {
@@ -1178,7 +1185,8 @@
     },
     "quote": {
       "validity_days": "How long a quote binds (days)",
-      "signature_block": "Print the “Agreed” block (date, name, signature) on quotes"
+      "signature_block": "Print the “Agreed” block (date, name, signature) on quotes",
+      "receiver": "Name who accepted or refused a quote"
     },
     "activity": {
       "retention_months": "How long the activity journal is kept (months, 12 to 36)"

@@ -79,6 +79,7 @@
         "sent": "a envoyé le devis",
         "accepted": "a marqué le devis accepté",
         "refused": "a marqué le devis refusé",
+        "receiver_corrected": "a corrigé qui a reçu le devis",
         "cancelled": "a classé le devis sans suite",
         "invoiced": "a facturé le devis",
         "deleted": "a supprimé le brouillon de devis",

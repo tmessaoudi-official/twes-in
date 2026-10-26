@@ -27,7 +27,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * « Marquer accepté » and « Marquer refusé »: the customer's answer to a sent quote, on a day from its issue day to the
- * company's today, and why it was refused when the company was told.
+ * company's today, why it was refused when the company was told, and who answered as the customer's setting says.
  *
  * @implements ProcessorInterface<QuoteResource, QuoteResource>
  */
@@ -43,11 +43,12 @@ final readonly class AnswerQuoteProcessor implements ProcessorInterface
         $id = CompanyPath::identifier($uriVariables, 'quoteId');
         $on = null === $data->answeredOn ? null : new \DateTimeImmutable($data->answeredOn, new \DateTimeZone('UTC'));
         $actor = $this->guard->account()->getId();
+        $receivedBy = $data->receiverChoice();
 
         try {
             $quote = $operation instanceof HttpOperation && str_ends_with($operation->getUriTemplate() ?? '', '/refuse')
-                ? $this->workflow->refuse($company, $id, $on, $data->refusalReason, $actor)
-                : $this->workflow->accept($company, $id, $on, $actor);
+                ? $this->workflow->refuse($company, $id, $on, $data->refusalReason, $actor, $receivedBy)
+                : $this->workflow->accept($company, $id, $on, $actor, $receivedBy);
         } catch (QuoteNotFound $absent) {
             throw new NotFoundHttpException('No such quote.', $absent);
         } catch (QuoteTransitionRefused $conflict) {

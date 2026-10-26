@@ -30,6 +30,8 @@ use App\Module\Quotes\Domain\ValueObject\QuoteLineDetails;
 use App\Module\Quotes\Domain\ValueObject\QuotePrint;
 use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\InMemoryEstablishments;
@@ -171,34 +173,34 @@ final class QuoteTest extends TestCase
         self::assertFalse($quote->isExpired(new \DateTimeImmutable('2026-10-31 23:59:00')), 'the price holds on its last day');
         self::assertTrue($quote->isExpired(new \DateTimeImmutable('2026-11-01 00:00:00')));
 
-        $quote->accept(new \DateTimeImmutable('2026-11-02'), new \DateTimeImmutable('2026-11-02'), $this->now);
+        $quote->accept(new \DateTimeImmutable('2026-11-02'), new \DateTimeImmutable('2026-11-02'), $this->now, ReceiverRule::Optional);
         self::assertFalse($quote->isExpired(new \DateTimeImmutable('2026-11-03')), 'an answered quote no longer waits');
     }
 
     public function testASentQuoteIsAcceptedEvenExpiredOnADayFromItsIssueToToday(): void
     {
         $quote = $this->sent();
-        $this->assertRefused('answeredOn', fn () => $quote->accept(new \DateTimeImmutable('2026-09-30'), new \DateTimeImmutable('2026-12-01'), $this->now), 'before its issue day');
-        $this->assertRefused('answeredOn', fn () => $quote->accept(new \DateTimeImmutable('2026-12-02'), new \DateTimeImmutable('2026-12-01'), $this->now), 'after today');
+        $this->assertRefused('answeredOn', fn () => $quote->accept(new \DateTimeImmutable('2026-09-30'), new \DateTimeImmutable('2026-12-01'), $this->now, ReceiverRule::Optional), 'before its issue day');
+        $this->assertRefused('answeredOn', fn () => $quote->accept(new \DateTimeImmutable('2026-12-02'), new \DateTimeImmutable('2026-12-01'), $this->now, ReceiverRule::Optional), 'after today');
 
-        $quote->accept(new \DateTimeImmutable('2026-12-01'), new \DateTimeImmutable('2026-12-01'), $this->now);
+        $quote->accept(new \DateTimeImmutable('2026-12-01'), new \DateTimeImmutable('2026-12-01'), $this->now, ReceiverRule::Optional);
 
         self::assertSame([QuoteStatus::Accepted, '2026-12-01'], [$quote->getStatus(), $quote->getAnsweredOn()?->format('Y-m-d')]);
         $this->expectException(QuoteTransitionRefused::class);
-        $quote->refuse($this->now, null, $this->now, $this->now);
+        $quote->refuse($this->now, null, $this->now, $this->now, ReceiverRule::Optional);
     }
 
     public function testARefusalKeepsWhyWhenTheCompanyWasTold(): void
     {
         $quote = $this->sent();
-        $this->assertRefused('reason', fn () => $quote->refuse($this->now, str_repeat('x', Quote::REASON_MAX + 1), $this->now, $this->now));
+        $this->assertRefused('reason', fn () => $quote->refuse($this->now, str_repeat('x', Quote::REASON_MAX + 1), $this->now, $this->now, ReceiverRule::Optional));
         self::assertSame(QuoteStatus::Sent, $quote->getStatus(), 'a refused refusal changes nothing');
 
-        $quote->refuse($this->now, '  Trop cher.  ', $this->now, $this->now);
+        $quote->refuse($this->now, '  Trop cher.  ', $this->now, $this->now, ReceiverRule::Optional);
         self::assertSame([QuoteStatus::Refused, 'Trop cher.'], [$quote->getStatus(), $quote->getRefusalReason()]);
 
         $silent = $this->sent();
-        $silent->refuse($this->now, '   ', $this->now, $this->now);
+        $silent->refuse($this->now, '   ', $this->now, $this->now, ReceiverRule::Optional);
         self::assertNull($silent->getRefusalReason());
     }
 
@@ -206,7 +208,7 @@ final class QuoteTest extends TestCase
     {
         $draft = $this->draft();
         try {
-            $draft->accept($this->now, $this->now, $this->now);
+            $draft->accept($this->now, $this->now, $this->now, ReceiverRule::Optional);
             self::fail('a draft was accepted');
         } catch (QuoteTransitionRefused) {
         }
@@ -227,10 +229,71 @@ final class QuoteTest extends TestCase
         }
         self::assertNull($sent->getInvoiceId());
 
-        $sent->accept($this->now, $this->now, $this->now);
+        $sent->accept($this->now, $this->now, $this->now, ReceiverRule::Optional);
         $invoice = Uuid::v7();
         $sent->markInvoiced($invoice, $this->now);
         self::assertSame($invoice, $sent->getInvoiceId());
+    }
+
+    public function testWhoAnsweredIsNamedAsTheRuleSaysAndARefusedAnswerChangesNothing(): void
+    {
+        $sami = Receiver::named('Sami Trabelsi');
+        $quote = $this->sent();
+        try {
+            $quote->accept($this->now, $this->now, $this->now, ReceiverRule::Required);
+            self::fail('an answer naming nobody was taken where the customer\'s quotes require someone');
+        } catch (InvalidQuote $refused) {
+            self::assertSame(['receivedBy', 'receiver_required'], [$refused->field, $refused->reason]);
+        }
+        try {
+            $quote->refuse($this->now, 'Trop cher.', $this->now, $this->now, ReceiverRule::Off, $sami);
+            self::fail('someone was named where the customer\'s quotes name nobody');
+        } catch (InvalidQuote $refused) {
+            self::assertSame(['receivedBy', 'receiver_off'], [$refused->field, $refused->reason]);
+        }
+        self::assertSame([QuoteStatus::Sent, null, null, null], [$quote->getStatus(), $quote->getAnsweredOn(), $quote->getRefusalReason(), $quote->getReceivedBy()], 'a refused answer leaves the quote as it was');
+
+        $ahmed = Receiver::named('Ahmed Ben Salah', Uuid::v7());
+        $quote->accept($this->now, $this->now, $this->now, ReceiverRule::Required, $ahmed);
+        self::assertSame(QuoteStatus::Accepted, $quote->getStatus());
+        self::assertEquals($ahmed, $quote->getReceivedBy());
+
+        $refused = $this->sent();
+        $refused->refuse($this->now, null, $this->now, $this->now, ReceiverRule::Optional, $sami);
+        self::assertEquals($sami, $refused->getReceivedBy());
+        $nobody = $this->sent();
+        $nobody->refuse($this->now, null, $this->now, $this->now, ReceiverRule::Optional);
+        self::assertNull($nobody->getReceivedBy(), 'optional: nobody named is nobody');
+    }
+
+    public function testWhoAnsweredIsPutRightOnlyOnceTheQuoteIsAnswered(): void
+    {
+        $sami = Receiver::named('Sami Trabelsi');
+        $cancelled = $this->draft();
+        $cancelled->cancel($this->now);
+        foreach (['a draft' => $this->draft(), 'a sent quote' => $this->sent(), 'a cancelled quote' => $cancelled] as $case => $quote) {
+            try {
+                $quote->correctReceiver($sami, $this->now);
+                self::fail("$case had who answered put right");
+            } catch (QuoteTransitionRefused) {
+                self::assertNull($quote->getReceivedBy(), $case);
+            }
+        }
+
+        $quote = $this->sent();
+        $quote->accept($this->now, $this->now, $this->now, ReceiverRule::Optional, Receiver::named('Sami Trabelsy'));
+        $later = new \DateTimeImmutable('2026-10-02 10:00:00');
+        self::assertTrue($quote->correctReceiver($sami, $later));
+        self::assertEquals([$sami, $later], [$quote->getReceivedBy(), $quote->getUpdatedAt()]);
+        self::assertFalse($quote->correctReceiver(Receiver::named('Sami Trabelsi'), $this->now), 'the same name changes nothing');
+        self::assertEquals($later, $quote->getUpdatedAt());
+        self::assertTrue($quote->correctReceiver(null, $this->now), 'someone named by mistake');
+        self::assertNull($quote->getReceivedBy());
+        self::assertFalse($quote->correctReceiver(null, $this->now));
+
+        $refused = $this->sent();
+        $refused->refuse($this->now, null, $this->now, $this->now, ReceiverRule::Optional);
+        self::assertTrue($refused->correctReceiver($sami, $this->now), 'a refused quote is put right as an accepted one');
     }
 
     private function draft(): Quote

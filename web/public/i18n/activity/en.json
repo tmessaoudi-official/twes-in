@@ -79,6 +79,7 @@
         "sent": "sent the quote",
         "accepted": "marked the quote accepted",
         "refused": "marked the quote refused",
+        "receiver_corrected": "corrected who received the quote",
         "cancelled": "closed the quote as not pursued",
         "invoiced": "invoiced the quote",
         "deleted": "deleted the quote draft",

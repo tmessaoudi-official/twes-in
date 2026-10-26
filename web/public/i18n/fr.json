@@ -1118,6 +1118,13 @@
           "optional": "Si on le souhaite",
           "required": "Toujours, à la livraison"
         }
+      },
+      "quote": {
+        "receiver": {
+          "off": "Jamais",
+          "optional": "Si on le souhaite",
+          "required": "Toujours, à la réponse"
+        }
       }
     },
     "overrides": {
@@ -1178,7 +1185,8 @@
     },
     "quote": {
       "validity_days": "Durée de validité d’un devis (jours)",
-      "signature_block": "Imprimer le bloc « Bon pour accord » (date, nom, signature) sur les devis"
+      "signature_block": "Imprimer le bloc « Bon pour accord » (date, nom, signature) sur les devis",
+      "receiver": "Nommer qui a accepté ou refusé un devis"
     },
     "activity": {
       "retention_months": "Durée de conservation du journal d’activité (mois, de 12 à 36)"

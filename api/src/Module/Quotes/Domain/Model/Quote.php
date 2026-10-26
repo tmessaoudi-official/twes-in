@@ -21,6 +21,8 @@ use App\Module\Quotes\Domain\ValueObject\QuotePrint;
 use App\Module\Quotes\Domain\ValueObject\QuoteStatus;
 use App\Shared\Domain\Service\CompanyOwned;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
@@ -35,7 +37,7 @@ use Symfony\Component\Uid\Uuid;
  * with its own numbering, never the order (docs/SPEC.md § 7, 2026-09-21 14:55). A draft names its establishment, its
  * customer and its lines, every one of them its own company's, and changes freely; sending it gives it its number, its
  * issue and validity days, and what the customer and the seller were called that day. The customer then accepts or
- * refuses it, and an accepted quote is invoiced.
+ * refuses it, naming who answered when the company knows, and an accepted quote is invoiced.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'quote')]
@@ -111,6 +113,13 @@ class Quote implements CompanyOwned
     /** Why the customer declined, when the company was told. */
     #[ORM\Column(length: self::REASON_MAX, nullable: true)]
     private ?string $refusalReason = null;
+
+    /** Who answered for the customer, as the quote copied the name; with the contact it was copied from, when there was one. */
+    #[ORM\Column(length: Receiver::NAME_MAX, nullable: true)]
+    private ?string $receivedByName = null;
+
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $receivedByContactId = null;
 
     /** The invoice the accepted quote was drafted into. An id rather than an association: invoices are their own module. */
     #[ORM\Column(type: 'uuid', nullable: true)]
@@ -248,33 +257,69 @@ class Quote implements CompanyOwned
     }
 
     /**
-     * The customer agreed, on a day from the issue day to the company's today. An expired quote may still be accepted:
-     * the company's own gesture, once the customer agreed to it.
+     * The customer agreed, on a day from the issue day to the company's today, through whoever answered for them, whom
+     * the rule may require or refuse. An expired quote may still be accepted: the company's own gesture, once the
+     * customer agreed to it.
      *
      * @throws QuoteTransitionRefused
      * @throws InvalidQuote
      */
-    public function accept(\DateTimeImmutable $acceptedOn, \DateTimeImmutable $today, \DateTimeImmutable $now): void
+    public function accept(\DateTimeImmutable $acceptedOn, \DateTimeImmutable $today, \DateTimeImmutable $now, ReceiverRule $rule, ?Receiver $receiver = null): void
     {
-        $this->answer(QuoteStatus::Accepted, $acceptedOn, $today, 'accepted');
+        $this->answer(QuoteStatus::Accepted, $acceptedOn, $today, 'accepted', $rule, $receiver);
         $this->updatedAt = $now;
     }
 
     /**
-     * The customer declined, on a day from the issue day to the company's today, and why when the company was told.
+     * The customer declined, on a day from the issue day to the company's today, why when the company was told, and who
+     * answered for them as the rule says.
      *
      * @throws QuoteTransitionRefused
      * @throws InvalidQuote
      */
-    public function refuse(\DateTimeImmutable $refusedOn, ?string $reason, \DateTimeImmutable $today, \DateTimeImmutable $now): void
+    public function refuse(\DateTimeImmutable $refusedOn, ?string $reason, \DateTimeImmutable $today, \DateTimeImmutable $now, ReceiverRule $rule, ?Receiver $receiver = null): void
     {
         $reason = TypedText::trimmed($reason ?? '');
         if (mb_strlen($reason) > self::REASON_MAX) {
             throw new InvalidQuote('reason', \sprintf('At most %d characters.', self::REASON_MAX), 'invalid_text', ['max' => self::REASON_MAX]);
         }
-        $this->answer(QuoteStatus::Refused, $refusedOn, $today, 'refused');
+        $this->answer(QuoteStatus::Refused, $refusedOn, $today, 'refused', $rule, $receiver);
         $this->refusalReason = '' === $reason ? null : $reason;
         $this->updatedAt = $now;
+    }
+
+    /**
+     * Who answered for the customer, put right once the quote is answered: a name misspelt, the wrong contact, or someone
+     * named by mistake. Nobody answers a draft or a sent quote, and a cancelled one was never answered.
+     *
+     * @return bool whether it changed
+     *
+     * @throws QuoteTransitionRefused
+     */
+    public function correctReceiver(?Receiver $receiver, \DateTimeImmutable $now): bool
+    {
+        $this->assertAnswered();
+        if (null === $receiver ? null === $this->receivedByName : $receiver->equals($this->getReceivedBy())) {
+            return false;
+        }
+        $this->receive($receiver);
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    /** @throws QuoteTransitionRefused unless the customer accepted or refused the quote */
+    public function assertAnswered(): void
+    {
+        if (QuoteStatus::Accepted !== $this->status && QuoteStatus::Refused !== $this->status) {
+            throw new QuoteTransitionRefused(\sprintf('The quote %s is %s: only an accepted or refused quote names who answered.', $this->reference(), $this->status->value));
+        }
+    }
+
+    /** Who answered for the customer, as the quote copied them; null before an answer, or when nobody was named. */
+    public function getReceivedBy(): ?Receiver
+    {
+        return null === $this->receivedByName ? null : Receiver::named($this->receivedByName, $this->receivedByContactId);
     }
 
     /**
@@ -359,7 +404,7 @@ class Quote implements CompanyOwned
      * @throws QuoteTransitionRefused
      * @throws InvalidQuote
      */
-    private function answer(QuoteStatus $answer, \DateTimeImmutable $on, \DateTimeImmutable $today, string $what): void
+    private function answer(QuoteStatus $answer, \DateTimeImmutable $on, \DateTimeImmutable $today, string $what, ReceiverRule $rule, ?Receiver $receiver): void
     {
         if (QuoteStatus::Sent !== $this->status) {
             throw new QuoteTransitionRefused(\sprintf('The quote %s is %s: only a sent quote is %s.', $this->reference(), $this->status->value, $what));
@@ -372,9 +417,20 @@ class Quote implements CompanyOwned
         if ($day > self::day($today)) {
             throw new InvalidQuote('answeredOn', 'A quote is answered once the customer did, today at the latest.', 'after_today');
         }
+        $refused = $rule->refusal($receiver);
+        if (null !== $refused) {
+            throw new InvalidQuote('receivedBy', $refused->message, $refused->reason, $refused->params);
+        }
 
         $this->status = $answer;
         $this->answeredOn = $day;
+        $this->receive($receiver);
+    }
+
+    private function receive(?Receiver $receiver): void
+    {
+        $this->receivedByName = $receiver?->name;
+        $this->receivedByContactId = $receiver?->contactId;
     }
 
     private function apply(QuoteHeader $header): void

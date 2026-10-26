@@ -14,7 +14,9 @@ use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Module\Customers\Domain\Model\Contact;
 use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\ValueObject\ContactDetails;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\Products\Domain\Model\Product;
@@ -436,6 +438,119 @@ final class QuotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testWhoAnsweredIsNamedAtTheAnswerShownListedFoundAndPutRightAfterwards(): void
+    {
+        $elsewhere = $this->customer('CLI-0002');
+        $this->signedIn(self::WRITER);
+        $ahmed = $this->contact($this->customer->getId(), 'Ahmed', 'Ben Salah');
+        $theirs = $this->contact($elsewhere->getId(), 'Someone', 'Else');
+
+        $this->getJson($this->companyPath().'/quote-options/customers/'.$this->customer->getId()->toRfc4122().'/receivers');
+        self::assertResponseIsSuccessful();
+        self::assertSame([['contactId' => $ahmed, 'name' => 'Ahmed Ben Salah']], $this->jsonList(), 'the customer\'s contacts, by name only');
+
+        $accepted = $this->sent(['customerReference' => 'RFQ-BETA']);
+        $this->postJson($this->path($accepted).'/accept', ['receivedBy' => ['contactId' => $theirs]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'another customer\'s contact');
+        self::assertSame('unknown_choice', $this->refusalOf('receivedBy')[0]);
+        $this->postJson($this->path($accepted).'/accept', ['receivedBy' => ['contactId' => $ahmed]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['accepted', ['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], 'optional'], [$this->json()['status'], $this->json()['receivedBy'], $this->json()['receiverRule']]);
+
+        // Renamed since, the contact the quote copied stays as it was copied when the same choice is sent back.
+        $this->em()->getConnection()->executeStatement("UPDATE contact SET first_name = 'Ahmad' WHERE id = ?", [$ahmed]);
+        $this->postJson($this->path($accepted).'/receiver', ['receivedBy' => ['contactId' => $ahmed]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], $this->json()['receivedBy'], 'the name copied is kept');
+        self::assertSame(0, $this->rows("SELECT count(*) FROM audit_log WHERE action = 'quote.receiver_corrected'"), 'sent back as read, nothing changed');
+
+        $this->getJson($this->path().'?q=ben salah');
+        self::assertSame([$accepted], array_column($this->jsonList(), 'id'), 'the list finds a quote by who answered');
+        $row = $this->jsonList()[0];
+        self::assertSame([['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], null], [$row['receivedBy'] ?? 'absent', \array_key_exists('receiverRule', $row) ? $row['receiverRule'] : 'absent'],'a list row names who answered and leaves the rule to the quote\'s own answer');
+
+        $this->give(SettingLevel::Customer, 'quote.receiver', 'required');
+        $refused = $this->sent();
+        $this->postJson($this->path($refused).'/refuse', ['refusalReason' => 'Trop cher.']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'nobody named where the customer\'s quotes require someone');
+        self::assertSame('receiver_required', $this->refusalOf('receivedBy')[0]);
+        $this->postJson($this->path($refused).'/refuse', ['answeredOn' => '2000-01-01', 'receivedBy' => ['name' => 'Sami Trabelsi', 'addToContacts' => true]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'an answer refused for its day');
+        self::assertSame(1, $this->rows('SELECT count(*) FROM contact WHERE customer_id = \''.$this->customer->getId()->toRfc4122().'\''), 'a refused answer adds nobody to the contacts');
+        $this->postJson($this->path($refused).'/refuse', ['receivedBy' => ['name' => ' Sami Trabelsi ', 'addToContacts' => true]]);
+        self::assertResponseIsSuccessful();
+        $receivedBy = $this->json()['receivedBy'];
+        self::assertIsArray($receivedBy);
+        self::assertSame(['refused', 'Sami Trabelsi', 'required'], [$this->json()['status'], $receivedBy['name'] ?? null, $this->json()['receiverRule']]);
+        self::assertNotNull($receivedBy['contactId'] ?? null, 'the name typed became the customer\'s contact');
+        $added = $this->em()->getConnection()->fetchAllAssociative('SELECT first_name, last_name FROM contact WHERE customer_id = ? ORDER BY last_name', [$this->customer->getId()->toRfc4122()]);
+        self::assertSame([['first_name' => 'Ahmad', 'last_name' => 'Ben Salah'], ['first_name' => 'Sami', 'last_name' => 'Trabelsi']], $added);
+
+        $correct = ['receivedBy' => ['name' => 'Sami Trabelsy']];
+        $this->postJson($this->path($refused).'/receiver', $correct);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['name' => 'Sami Trabelsy', 'contactId' => null], $this->json()['receivedBy']);
+        $this->postJson($this->path($refused).'/receiver', $correct);
+        self::assertResponseIsSuccessful();
+        $corrections = $this->em()->getConnection()->fetchFirstColumn("SELECT changes::text FROM audit_log WHERE action = 'quote.receiver_corrected'");
+        self::assertCount(1, $corrections, 'the same name sent again records nothing');
+        self::assertSame(['fields' => ['receivedBy']], json_decode(\is_string($corrections[0]) ? $corrections[0] : '', true), 'the journal keeps the field, never the name');
+        $this->postJson($this->path($refused).'/receiver', ['receivedBy' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'nobody, where the customer\'s quotes must name someone');
+        self::assertSame('receiver_required', $this->refusalOf('receivedBy')[0]);
+
+        $draft = $this->draft();
+        $this->postJson($this->path($draft).'/receiver', $correct);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'nobody answers a draft');
+        $this->postJson($this->path($this->sent()).'/receiver', $correct);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a sent quote is answered first');
+        $this->postJson($this->path(self::ABSENT).'/receiver', $correct);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->give(SettingLevel::Customer, 'quote.receiver', 'off');
+        $off = $this->sent();
+        $this->postJson($this->path($off).'/accept', ['receivedBy' => ['name' => 'Sami']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('receiver_off', $this->refusalOf('receivedBy')[0]);
+        $this->postJson($this->path($off).'/accept', ['receivedBy' => ['name' => ['Sami']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a name is a text');
+        $this->getJson($this->path($off));
+        self::assertSame(['sent', null, 'off'], [$this->json()['status'], $this->json()['receivedBy'], $this->json()['receiverRule']]);
+        $this->postJson($this->path($refused).'/receiver', ['receivedBy' => null]);
+        self::assertResponseIsSuccessful();
+        self::assertNull($this->json()['receivedBy'], 'switched off, someone named by mistake is taken back');
+    }
+
+    public function testAReaderSeesWhoAnsweredWithoutPuttingItRightAndAnotherCompanyReachesNeither(): void
+    {
+        $other = $this->createCompany('Globex');
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['quote.read'], 'reader');
+        $this->createUser('stranger@twes.local', 'password-1234', $other, ['*'], 'owner');
+        $this->signedIn(self::WRITER);
+        $this->contact($this->customer->getId(), 'Ahmed', 'Ben Salah');
+        $id = $this->sent();
+        $this->postJson($this->path($id).'/accept', ['receivedBy' => ['name' => 'Sami Trabelsi']]);
+        self::assertResponseIsSuccessful();
+        $correct = ['receivedBy' => ['name' => 'Sami Trabelsy']];
+
+        $this->login('reader@twes.local', 'password-1234');
+        $this->getJson($this->path($id));
+        self::assertSame(['name' => 'Sami Trabelsi', 'contactId' => null], $this->json()['receivedBy']);
+        $this->postJson($this->path($id).'/receiver', $correct);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'putting it right needs quote.write');
+
+        $this->login('stranger@twes.local', 'password-1234');
+        $this->postJson('/api/companies/'.$other->getId()->toRfc4122().'/quotes/'.$id.'/receiver', $correct);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s quote');
+        $this->postJson($this->path($id).'/receiver', $correct);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a company the person is no member of');
+        $this->getJson('/api/companies/'.$other->getId()->toRfc4122().'/quote-options/customers/'.$this->customer->getId()->toRfc4122().'/receivers');
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->jsonList(), 'another company\'s customer offers no contact');
+        $this->getJson($this->companyPath().'/quote-options/customers/'.$this->customer->getId()->toRfc4122().'/receivers');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testTheListSearchesNarrowsAndCountsByStatus(): void
     {
         $this->signedIn(self::WRITER);
@@ -577,7 +692,27 @@ final class QuotesTest extends ApiTestCase
         ], ...$changes];
     }
 
-    private function give(SettingLevel $level, string $key, int|bool $value): void
+    /** A contact of the customer, as its file adds one; its id. */
+    private function contact(Uuid $customerId, string $firstName, string $lastName): string
+    {
+        $customer = $this->em()->find(Customer::class, $customerId) ?? throw new \LogicException('no customer');
+        $contact = Contact::create($customer, new ContactDetails($firstName, $lastName, null, null, null), false, new \DateTimeImmutable());
+        $this->em()->persist($contact);
+        $this->em()->flush();
+
+        return $contact->getId()->toRfc4122();
+    }
+
+    /** What a plain SQL count answers. */
+    private function rows(string $sql): int
+    {
+        $value = $this->em()->getConnection()->fetchOne($sql);
+        self::assertIsInt($value);
+
+        return $value;
+    }
+
+    private function give(SettingLevel $level, string $key, int|bool|string $value): void
     {
         // The test client's requests reboot the kernel: the company is the one its entity manager holds now.
         $company = $this->em()->find(Company::class, $this->company->getId());

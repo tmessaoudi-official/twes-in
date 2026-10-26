@@ -40,6 +40,9 @@ final readonly class QuoteRecordReferences implements DeclaresRecordReferences
             RecordReference::uses('quote_line', 'product_id', 'product', RecordMerge::Moves, 'A quote line names the product it offers; merged, a draft offers the product kept, a sent quote what it printed.')
                 ->through('quote', 'quote_id')
                 ->movingOnlyWhere('status', [QuoteStatus::Draft->value]),
+            // The name is what the quote says; the contact is a link kept beside it, with no foreign key.
+            RecordReference::ignored('quote', 'received_by_contact_id', 'customer', 'A quote keeps who answered as the name it copied: the contact it came from going, coming back or moving with a merge changes nothing it says.')
+                ->below('contact', 'customer_id'),
             RecordReference::uses('quote', 'customer_id', 'customer', RecordMerge::Moves, 'A quote is made to its customer; merged, a draft is made to the customer kept, a sent quote to whom it printed.')
                 ->movingOnlyWhere('status', [QuoteStatus::Draft->value])
                 ->transactingAt('updated_at'),
