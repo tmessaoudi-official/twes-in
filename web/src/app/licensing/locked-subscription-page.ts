@@ -35,8 +35,9 @@ export class LockedSubscriptionPage {
   private readonly router = inject(Router);
 
   constructor() {
-    // The operator confirming the payment opens the company: the owner is taken in, not left on a locked page.
-    leaveOnceOpen();
+    // A declaration, or the operator confirming the payment, opens the company: the owner is taken in, onto the
+    // shell's subscription page, which says the payment waits or is settled, never left on a locked page.
+    leaveOnceOpen('/company/subscription');
   }
 
   protected async signOut(): Promise<void> {

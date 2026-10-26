@@ -146,7 +146,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `DataFixtures/Scale/` is the large-data generator (`make scale-data`, docs/START.md § 4): it clones the demo company's
   invoice graph in SQL, and `ScaleGenerator::unaccounted` fails when a new table reaching that graph is not classified.
 - `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity` (a change to how an account signs in, ten of them (a lock set by wrong guesses among them), is
-  mailed to it through `Application/Security/SecurityNotices`, queued in the change's transaction, never switched off), `Tenancy`, `Audit`, `Inbox` (the notification
+  mailed to it through `Application/Security/SecurityNotices`, queued in the change's transaction, never switched off), `Tenancy`, `Audit` (the one trail: a class recording an action declares it and where it is recorded, a company's, an account's or either, with `DeclaresAuditActions`, collected into `AuditVocabulary`; the trail refuses an undeclared or misplaced action under kernel.debug, `UndeclaredAuditAction`, and warns in production; `AuditActionWordsTest` holds what a journal shows to the web's `ACTIVITY_ACTIONS` and its words in the `activity` part, both ways), `Inbox` (the notification
   centre behind the `Notifications` port; a `NotificationKind` names its payload's amounts, quantities, days and moments,
   which a mail writes through `Shared/Infrastructure/Mail/MailFigures` in its reader's formats, `Settings/Application/
   ReaderFormats`, and the bell through its `notificationRecord`; `NotificationFieldsTest` reds on a word's field left unnamed), `Fiscal`, `Settings` (the settings engine: declarations collected from every

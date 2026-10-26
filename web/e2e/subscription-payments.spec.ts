@@ -118,7 +118,9 @@ test('a locked company declares what it paid and the operator confirms it back o
   await expect(theirPage.getByTestId('subscription-waiting')).toBeVisible();
   // The form closes once the declaration is in: what it said is now the waiting line above it.
   await expect(theirPage.getByTestId('subscription-form-card')).toBeHidden();
-  // Held: the declaration holds the lock off, so the company works again while it waits.
+  // Held: the declaration holds the lock off, so the company works again while it waits, and the owner is taken
+  // into the application on the same page, which still says the payment waits.
+  await expect(theirPage).toHaveURL(/\/company\/subscription$/);
   await expect(theirPage.getByTestId('subscription-stage')).toContainText('Règlement en attente');
   await theirPage.screenshot({
     path: test.info().outputPath('subscription-declared.png'),

@@ -13,14 +13,15 @@ const ASK_AGAIN_EVERY_MS = 30_000;
 
 /**
  * For a page a member of a shut company waits on: the session is read again while the page is open and whenever the
- * window comes back in front, and the application opens as soon as the company does. Called in a constructor.
+ * window comes back in front, and the application opens as soon as the company does, at `into`: the page the shell
+ * shows for what was waited on, so an outcome said here is still read there. Called in a constructor.
  */
-export function leaveOnceOpen(): void {
+export function leaveOnceOpen(into = '/'): void {
   const auth = inject(AuthFacade);
   const router = inject(Router);
   const document = inject(DOCUMENT);
   effect(() => {
-    if (auth.me() !== null && !auth.companyClosed()) void router.navigateByUrl('/');
+    if (auth.me() !== null && !auth.companyClosed()) void router.navigateByUrl(into);
   });
   const askAgain = () => {
     if (document.visibilityState !== 'hidden') void auth.refresh();

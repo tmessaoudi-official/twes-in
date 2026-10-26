@@ -77,15 +77,16 @@ describe('LockedSubscriptionPage', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('opens the application once the operator confirms the payment', async () => {
-    // The owner declared, the operator confirmed, and the owner stayed on the locked page until they signed out.
+  it('opens the application on the same subscription page once the company opens', async () => {
+    // A declaration holds the lock off at once: taken to the home page, the owner never read « Règlement en
+    // attente »; the operator's confirmation opens it too, and the page they land on says it is paid.
     await render();
-    expect(navigateByUrl).not.toHaveBeenCalledWith('/');
+    expect(navigateByUrl).not.toHaveBeenCalled();
 
     closed.set(false);
     TestBed.tick();
 
-    expect(navigateByUrl).toHaveBeenCalledWith('/');
+    expect(navigateByUrl).toHaveBeenCalledWith('/company/subscription');
   });
 
   it('shows the page at its own width, not squeezed into the sign-in card', async () => {
