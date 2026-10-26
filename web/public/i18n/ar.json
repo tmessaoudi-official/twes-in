@@ -3903,6 +3903,7 @@
     "every_record": "كلّ البطاقات"
   },
   "titles": {
+    "not_allowed": "صفحة غير مسموح بها",
     "sign_in": "تسجيل الدخول",
     "two_factor": "التحقق بخطوتين",
     "invitation": "دعوة",

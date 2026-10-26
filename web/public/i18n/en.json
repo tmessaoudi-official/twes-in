@@ -3903,6 +3903,7 @@
     "every_record": "Every record"
   },
   "titles": {
+    "not_allowed": "Page not allowed",
     "sign_in": "Sign in",
     "two_factor": "Two-step verification",
     "invitation": "Invitation",

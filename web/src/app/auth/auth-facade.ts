@@ -416,11 +416,19 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
    * refuses — the same rule the API enforces, applied here so screens offer only what would be accepted.
    */
   hasPermission(permission: string): boolean {
-    const state = this.stateSignal();
-    const permissions = state?.permissions ?? [];
-    const granted = permissions.includes('*') || permissions.includes(permission);
+    return (
+      this.grantedByRole(permission) &&
+      permittedBy(this.stateSignal()?.company?.access ?? 'full', permission)
+    );
+  }
 
-    return granted && permittedBy(state?.company?.access ?? 'full', permission);
+  /**
+   * Whether the person's role grants the permission, whatever the subscription allows: a page refused for the
+   * subscription says so, rather than blaming the role.
+   */
+  grantedByRole(permission: string): boolean {
+    const permissions = this.stateSignal()?.permissions ?? [];
+    return permissions.includes('*') || permissions.includes(permission);
   }
 
   /** Whether the working company has the module on: its navigation and pages are offered only then. */

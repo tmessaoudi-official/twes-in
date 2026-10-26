@@ -50,4 +50,13 @@ test('an accountant invited to the company reads the books and takes their files
   await expect(page).toHaveURL(/\/accounting-export$/);
   await expect(page.getByTestId('accounting-file-vat-summary')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('accountant-role.png') });
+
+  // The catalogue the menu hides is closed to them when reached by its address too, saying so once (hunt P-2), rather
+  // than a list that fails to load and still offers « Exporter ».
+  await page.goto('/products');
+  await expect(page).toHaveURL(/\/not-allowed\?page=%2Fproducts&from=%2Fproducts$/);
+  await expect(page.getByTestId('not-allowed-reason')).toContainText('Produits');
+  await expect(page.getByTestId('products-export')).toHaveCount(0);
+  await page.getByTestId('not-allowed-home').click();
+  await expect(page).toHaveURL(/\/$/);
 });

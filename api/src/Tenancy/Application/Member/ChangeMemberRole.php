@@ -40,20 +40,26 @@ final readonly class ChangeMemberRole implements DeclaresAuditActions
     ) {
     }
 
+    /**
+     * What the actor's role refuses, said before anything else is asked of them: the processor runs it before the
+     * proof of who is at the screen, so nobody proves themselves only to be told no.
+     *
+     * @throws NotAMember|UnknownRole|RoleNotManageable
+     */
+    public function assertMayChange(Uuid $companyId, Uuid $userId, string $roleName, ?Uuid $actorUserId): void
+    {
+        $this->bounded($companyId, $userId, $roleName, $actorUserId);
+    }
+
     /** @throws NotAMember|UnknownRole|RoleNotManageable|LastOwner */
     public function handle(Uuid $companyId, Uuid $userId, string $roleName, ?Uuid $actorUserId): void
     {
         $this->transactions->run(function () use ($companyId, $userId, $roleName, $actorUserId): void {
-            $membership = $this->memberships->ofUserInCompany($userId, $companyId)
-                ?? throw new NotAMember(\sprintf('%s is not a member of that company.', $userId->toRfc4122()));
-            $role = $this->roles->ofNameForCompany($roleName, $companyId)
-                ?? throw new UnknownRole(\sprintf('"%s" is not a role of that company.', $roleName));
-            $from = $membership->getRole();
-            if ($from->getId()->equals($role->getId())) {
+            $bounded = $this->bounded($companyId, $userId, $roleName, $actorUserId);
+            if (null === $bounded) {
                 return;
             }
-            $this->bounds->assertMayRemove($companyId, $actorUserId, $from);
-            $this->bounds->assertMayGrant($companyId, $actorUserId, $role);
+            [$membership, $from, $role] = $bounded;
             if (Role::OWNER === $from->getName() && 1 === $this->countOwners($companyId)) {
                 throw new LastOwner('A company keeps at least one owner.');
             }
@@ -70,6 +76,30 @@ final readonly class ChangeMemberRole implements DeclaresAuditActions
                 $companyId,
             ));
         });
+    }
+
+    /**
+     * The membership, its role and the one asked for, once the bounds allow taking the one and giving the other; null
+     * when the role asked for is the one held, which changes nothing and so asks nothing.
+     *
+     * @return array{Membership, Role, Role}|null
+     *
+     * @throws NotAMember|UnknownRole|RoleNotManageable
+     */
+    private function bounded(Uuid $companyId, Uuid $userId, string $roleName, ?Uuid $actorUserId): ?array
+    {
+        $membership = $this->memberships->ofUserInCompany($userId, $companyId)
+            ?? throw new NotAMember(\sprintf('%s is not a member of that company.', $userId->toRfc4122()));
+        $role = $this->roles->ofNameForCompany($roleName, $companyId)
+            ?? throw new UnknownRole(\sprintf('"%s" is not a role of that company.', $roleName));
+        $from = $membership->getRole();
+        if ($from->getId()->equals($role->getId())) {
+            return null;
+        }
+        $this->bounds->assertMayRemove($companyId, $actorUserId, $from);
+        $this->bounds->assertMayGrant($companyId, $actorUserId, $role);
+
+        return [$membership, $from, $role];
     }
 
     private function countOwners(Uuid $companyId): int

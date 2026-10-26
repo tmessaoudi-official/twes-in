@@ -68,6 +68,9 @@ import frWatch from '../../public/i18n/watch/fr.json';
 import arMfaLockout from '../../public/i18n/mfa-lockout/ar.json';
 import enMfaLockout from '../../public/i18n/mfa-lockout/en.json';
 import frMfaLockout from '../../public/i18n/mfa-lockout/fr.json';
+import arNotAllowed from '../../public/i18n/not-allowed/ar.json';
+import enNotAllowed from '../../public/i18n/not-allowed/en.json';
+import frNotAllowed from '../../public/i18n/not-allowed/fr.json';
 import arSchedule from '../../public/i18n/schedule/ar.json';
 import enSchedule from '../../public/i18n/schedule/en.json';
 import frSchedule from '../../public/i18n/schedule/fr.json';
@@ -130,6 +133,7 @@ const parts: Record<string, Record<string, unknown>> = {
   reports: { fr: frReports, en: enReports, ar: arReports },
   roles: { fr: frRoles, en: enRoles, ar: arRoles },
   'mfa-lockout': { fr: frMfaLockout, en: enMfaLockout, ar: arMfaLockout },
+  'not-allowed': { fr: frNotAllowed, en: enNotAllowed, ar: arNotAllowed },
   schedule: { fr: frSchedule, en: enSchedule, ar: arSchedule },
   'form-refusals': { fr: frFormRefusals, en: enFormRefusals, ar: arFormRefusals },
   'settings-refusals': { fr: frSettingsRefusals, en: enSettingsRefusals, ar: arSettingsRefusals },

@@ -39,16 +39,22 @@ final readonly class RemoveMember implements DeclaresAuditActions
     ) {
     }
 
+    /**
+     * What the actor's role refuses, said before the proof of who is at the screen is asked: nobody proves themselves
+     * only to be told no.
+     *
+     * @throws NotAMember|OwnMembership|RoleNotManageable
+     */
+    public function assertMayRemove(Uuid $companyId, Uuid $userId, ?Uuid $actorUserId): void
+    {
+        $this->bounded($companyId, $userId, $actorUserId);
+    }
+
     /** @throws NotAMember|OwnMembership|LastOwner|RoleNotManageable */
     public function handle(Uuid $companyId, Uuid $userId, ?Uuid $actorUserId): void
     {
-        if (null !== $actorUserId && $actorUserId->equals($userId)) {
-            throw new OwnMembership('Nobody removes themselves from a company.');
-        }
         $this->transactions->run(function () use ($companyId, $userId, $actorUserId): void {
-            $membership = $this->memberships->ofUserInCompany($userId, $companyId)
-                ?? throw new NotAMember(\sprintf('%s is not a member of that company.', $userId->toRfc4122()));
-            $this->bounds->assertMayRemove($companyId, $actorUserId, $membership->getRole());
+            $membership = $this->bounded($companyId, $userId, $actorUserId);
 
             if (Role::OWNER === $membership->getRole()->getName() && 1 === $this->countOwners($companyId)) {
                 throw new LastOwner('A company keeps at least one owner.');
@@ -65,6 +71,23 @@ final readonly class RemoveMember implements DeclaresAuditActions
                 $companyId,
             ));
         });
+    }
+
+    /**
+     * The membership to remove, once the actor is someone else whose role may take that one away.
+     *
+     * @throws NotAMember|OwnMembership|RoleNotManageable
+     */
+    private function bounded(Uuid $companyId, Uuid $userId, ?Uuid $actorUserId): Membership
+    {
+        if (null !== $actorUserId && $actorUserId->equals($userId)) {
+            throw new OwnMembership('Nobody removes themselves from a company.');
+        }
+        $membership = $this->memberships->ofUserInCompany($userId, $companyId)
+            ?? throw new NotAMember(\sprintf('%s is not a member of that company.', $userId->toRfc4122()));
+        $this->bounds->assertMayRemove($companyId, $actorUserId, $membership->getRole());
+
+        return $membership;
     }
 
     private function countOwners(Uuid $companyId): int

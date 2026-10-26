@@ -3903,6 +3903,7 @@
     "every_record": "Toutes les fiches"
   },
   "titles": {
+    "not_allowed": "Page non autorisée",
     "sign_in": "Connexion",
     "two_factor": "Double authentification",
     "invitation": "Invitation",

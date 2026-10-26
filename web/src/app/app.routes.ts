@@ -10,22 +10,36 @@ import {
   operatorGuard,
   twoFactorGuard,
 } from './auth/auth-guard';
-import { CUSTOMERS_MODULE } from './customers/customers-nav';
-import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
-import { QUOTES_MODULE } from './quotes/quotes-nav';
-import { INVOICES_MODULE } from './invoices/invoices-nav';
-import { EXPENSES_MODULE, RECURRING_EXPENSES_MODULE } from './expenses/expenses-nav';
-import { ACCOUNTING_EXPORT_MODULE } from './accounting-export/accounting-export-nav';
+import { CUSTOMERS_COMMANDS, CUSTOMERS_MODULE, CUSTOMERS_NAV } from './customers/customers-nav';
+import {
+  DELIVERY_NOTES_COMMANDS,
+  DELIVERY_NOTES_MODULE,
+  DELIVERY_NOTES_NAV,
+} from './delivery-notes/delivery-notes-nav';
+import { QUOTES_COMMANDS, QUOTES_MODULE, QUOTES_NAV } from './quotes/quotes-nav';
+import { INVOICES_COMMANDS, INVOICES_MODULE, INVOICES_NAV } from './invoices/invoices-nav';
+import {
+  EXPENSES_COMMANDS,
+  EXPENSES_MODULE,
+  EXPENSES_NAV,
+  RECURRING_EXPENSES_MODULE,
+} from './expenses/expenses-nav';
+import {
+  ACCOUNTING_EXPORT_MODULE,
+  ACCOUNTING_EXPORT_NAV,
+} from './accounting-export/accounting-export-nav';
 import { RECURRING_MODULE } from './recurring/recurring-nav';
-import { INVENTORY_MODULE } from './inventory/inventory-nav';
-import { PRICE_LISTS_MODULE } from './price-lists/price-lists-nav';
-import { PRODUCTS_MODULE } from './products/products-nav';
-import { PURCHASES_MODULE } from './purchases/purchases-nav';
-import { REPORTS_MODULE } from './reports/reports-nav';
-import { VENDORS_MODULE } from './vendors/vendors-nav';
+import { INVENTORY_MODULE, INVENTORY_NAV, INVENTORY_TABS } from './inventory/inventory-nav';
+import { PRICE_LISTS_MODULE, PRICE_LISTS_NAV } from './price-lists/price-lists-nav';
+import { PRODUCTS_COMMANDS, PRODUCTS_MODULE, PRODUCTS_NAV } from './products/products-nav';
+import { PURCHASES_COMMANDS, PURCHASES_MODULE, PURCHASES_NAV } from './purchases/purchases-nav';
+import { REPORTS_MODULE, REPORTS_NAV } from './reports/reports-nav';
+import { VENDORS_COMMANDS, VENDORS_MODULE, VENDORS_NAV } from './vendors/vendors-nav';
 import { guardUnsaved } from './shared/form/unsaved-changes';
 import { customerScreenLock } from './customer-screen/customer-screen-lock';
 import { moduleGuard } from './shell/module-guard';
+import { MANAGE_NAV, SETTINGS_NAV } from './shell/settings-nav';
+import { permissionGuard } from './shell/permission-guard';
 import { FORM_REFUSAL_TEXTS } from './shared/form/form-refusal-texts';
 import { textsOpened, textsPart } from './shared/i18n/texts-part';
 import { MFA_LOCKOUT_TEXTS } from './auth/mfa-lockout-texts';
@@ -89,14 +103,14 @@ export const routes: Routes = [
       {
         path: 'location-labels',
         title: 'titles.location_labels',
-        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        canActivate: [moduleGuard(INVENTORY_MODULE), permissionGuard(INVENTORY_NAV, '/stock')],
         loadComponent: () =>
           import('./inventory/location-labels-page').then((m) => m.LocationLabelsPage),
       },
       {
         path: 'product-labels',
         title: 'titles.product_labels',
-        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        canActivate: [moduleGuard(PRODUCTS_MODULE), permissionGuard(PRODUCTS_NAV, '/products')],
         loadChildren: () =>
           import('./products/product-labels.routes').then((m) => m.PRODUCT_LABELS_ROUTES),
       },
@@ -189,13 +203,17 @@ export const routes: Routes = [
       {
         path: 'watch',
         title: 'watch.title',
-        canActivate: [textsOpened(WATCH_TEXTS)],
+        canActivate: [permissionGuard(MANAGE_NAV, '/watch'), textsOpened(WATCH_TEXTS)],
         loadComponent: () => import('./watch/watch-page').then((m) => m.WatchPage),
       },
       {
         path: 'watch/:kind',
         title: 'watch.title',
-        canActivate: [textsOpened(WATCH_TEXTS), textsOpened(CHECK_TEXTS)],
+        canActivate: [
+          permissionGuard(MANAGE_NAV, '/watch'),
+          textsOpened(WATCH_TEXTS),
+          textsOpened(CHECK_TEXTS),
+        ],
         loadComponent: () => import('./watch/watch-subject-page').then((m) => m.WatchSubjectPage),
       },
       {
@@ -213,6 +231,14 @@ export const routes: Routes = [
         loadComponent: () => import('./demo/demo-mails-page').then((m) => m.DemoMailsPage),
       },
       {
+        // Where a page the person's role, or the company's subscription, keeps closed sends them: it names the page
+        // and why, and offers the way home (hunt P-2).
+        path: 'not-allowed',
+        title: 'titles.not_allowed',
+        ...textsPart('not-allowed'),
+        loadComponent: () => import('./shell/not-allowed-page').then((m) => m.NotAllowedPage),
+      },
+      {
         // What the vision holds and is not built yet (docs/SPEC.md § 7, 2026-09-25 17:22).
         path: 'coming/:key',
         title: 'titles.coming',
@@ -223,6 +249,7 @@ export const routes: Routes = [
         title: 'nav.customers',
         canActivate: [
           moduleGuard(CUSTOMERS_MODULE),
+          permissionGuard(CUSTOMERS_NAV, '/customers'),
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
         ],
@@ -232,13 +259,17 @@ export const routes: Routes = [
         // Before ':customerId', which would otherwise take "new" and "groups" for identifiers.
         path: 'customers/new',
         title: 'titles.new_customer',
-        canActivate: [moduleGuard(CUSTOMERS_MODULE), textsOpened(CHECK_TEXTS)],
+        canActivate: [
+          moduleGuard(CUSTOMERS_MODULE),
+          permissionGuard(CUSTOMERS_COMMANDS, '/customers/new'),
+          textsOpened(CHECK_TEXTS),
+        ],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
       },
       {
         path: 'customers/groups',
         title: 'nav.customer_groups',
-        canActivate: [moduleGuard(CUSTOMERS_MODULE)],
+        canActivate: [moduleGuard(CUSTOMERS_MODULE), permissionGuard(CUSTOMERS_NAV, '/customers')],
         loadComponent: () =>
           import('./customers/customer-groups-page').then((m) => m.CustomerGroupsPage),
       },
@@ -247,6 +278,7 @@ export const routes: Routes = [
         title: 'titles.customer',
         canActivate: [
           moduleGuard(CUSTOMERS_MODULE),
+          permissionGuard(CUSTOMERS_NAV, '/customers'),
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
         ],
@@ -255,7 +287,10 @@ export const routes: Routes = [
       {
         path: 'price-lists',
         title: 'nav.price_lists',
-        canActivate: [moduleGuard(PRICE_LISTS_MODULE)],
+        canActivate: [
+          moduleGuard(PRICE_LISTS_MODULE),
+          permissionGuard(PRICE_LISTS_NAV, '/price-lists'),
+        ],
         loadComponent: () => import('./price-lists/price-lists-page').then((m) => m.PriceListsPage),
       },
       {
@@ -263,6 +298,7 @@ export const routes: Routes = [
         title: 'nav.products',
         canActivate: [
           moduleGuard(PRODUCTS_MODULE),
+          permissionGuard(PRODUCTS_NAV, '/products'),
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
         ],
@@ -272,13 +308,21 @@ export const routes: Routes = [
         // Before ':productId', which would otherwise take "new" and "categories" for identifiers.
         path: 'products/new',
         title: 'titles.new_product',
-        canActivate: [moduleGuard(PRODUCTS_MODULE), textsOpened(CHECK_TEXTS)],
+        canActivate: [
+          moduleGuard(PRODUCTS_MODULE),
+          permissionGuard(PRODUCTS_COMMANDS, '/products/new'),
+          textsOpened(CHECK_TEXTS),
+        ],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
       {
         path: 'products/categories',
         title: 'nav.product_categories',
-        canActivate: [moduleGuard(PRODUCTS_MODULE), textsOpened(RECORDS_TEXTS)],
+        canActivate: [
+          moduleGuard(PRODUCTS_MODULE),
+          permissionGuard(PRODUCTS_NAV, '/products'),
+          textsOpened(RECORDS_TEXTS),
+        ],
         loadComponent: () =>
           import('./products/product-categories-page').then((m) => m.ProductCategoriesPage),
       },
@@ -287,6 +331,7 @@ export const routes: Routes = [
         title: 'titles.product',
         canActivate: [
           moduleGuard(PRODUCTS_MODULE),
+          permissionGuard(PRODUCTS_NAV, '/products'),
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
         ],
@@ -295,58 +340,80 @@ export const routes: Routes = [
       {
         path: 'invoices',
         title: 'nav.invoices',
-        canActivate: [moduleGuard(INVOICES_MODULE), textsOpened(DELIVERIES_TEXTS)],
+        canActivate: [
+          moduleGuard(INVOICES_MODULE),
+          permissionGuard(INVOICES_NAV, '/invoices'),
+          textsOpened(DELIVERIES_TEXTS),
+        ],
         loadComponent: () => import('./invoices/invoices-page').then((m) => m.InvoicesPage),
       },
       {
         // Before ':invoiceId', which would otherwise take "new" for an identifier.
         path: 'invoices/new',
         title: 'titles.new_invoice',
-        canActivate: [moduleGuard(INVOICES_MODULE)],
+        canActivate: [
+          moduleGuard(INVOICES_MODULE),
+          permissionGuard(INVOICES_COMMANDS, '/invoices/new'),
+        ],
         loadComponent: () => import('./invoices/invoice-page').then((m) => m.InvoicePage),
       },
       {
         path: 'invoices/recurring',
         title: 'recurring.title',
         // The schedule's words load with the recurring lists and the dialog that makes one (the screen texts budget).
-        canActivate: [moduleGuard(RECURRING_MODULE), textsOpened(SCHEDULE_TEXTS)],
+        canActivate: [
+          moduleGuard(RECURRING_MODULE),
+          permissionGuard(INVOICES_NAV, '/invoices'),
+          textsOpened(SCHEDULE_TEXTS),
+        ],
         loadComponent: () => import('./recurring/recurring-page').then((m) => m.RecurringPage),
       },
       {
         path: 'invoices/:invoiceId',
         title: 'titles.invoice',
-        canActivate: [moduleGuard(INVOICES_MODULE), textsOpened(DELIVERIES_TEXTS)],
+        canActivate: [
+          moduleGuard(INVOICES_MODULE),
+          permissionGuard(INVOICES_NAV, '/invoices'),
+          textsOpened(DELIVERIES_TEXTS),
+        ],
         loadComponent: () => import('./invoices/invoice-page').then((m) => m.InvoicePage),
       },
       {
         path: 'instruments',
         title: 'nav.instruments',
-        canActivate: [moduleGuard(INVOICES_MODULE)],
+        canActivate: [moduleGuard(INVOICES_MODULE), permissionGuard(INVOICES_NAV, '/invoices')],
         loadComponent: () => import('./invoices/portfolio-page').then((m) => m.PortfolioPage),
       },
       {
         path: 'quotes',
         title: 'nav.quotes',
-        canActivate: [moduleGuard(QUOTES_MODULE)],
+        canActivate: [moduleGuard(QUOTES_MODULE), permissionGuard(QUOTES_NAV, '/quotes')],
         loadComponent: () => import('./quotes/quotes-page').then((m) => m.QuotesPage),
       },
       {
         // Before ':quoteId', which would otherwise take "new" for an identifier.
         path: 'quotes/new',
         title: 'titles.new_quote',
-        canActivate: [moduleGuard(QUOTES_MODULE)],
+        canActivate: [moduleGuard(QUOTES_MODULE), permissionGuard(QUOTES_COMMANDS, '/quotes/new')],
         loadComponent: () => import('./quotes/quote-page').then((m) => m.QuotePage),
       },
       {
         path: 'quotes/:quoteId',
         title: 'titles.quote',
-        canActivate: [moduleGuard(QUOTES_MODULE), textsOpened(DELIVERIES_TEXTS)],
+        canActivate: [
+          moduleGuard(QUOTES_MODULE),
+          permissionGuard(QUOTES_NAV, '/quotes'),
+          textsOpened(DELIVERIES_TEXTS),
+        ],
         loadComponent: () => import('./quotes/quote-page').then((m) => m.QuotePage),
       },
       {
         path: 'delivery-notes',
         title: 'nav.delivery_notes',
-        canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
+        canActivate: [
+          moduleGuard(DELIVERY_NOTES_MODULE),
+          permissionGuard(DELIVERY_NOTES_NAV, '/delivery-notes'),
+        ],
         loadComponent: () =>
           import('./delivery-notes/delivery-notes-page').then((m) => m.DeliveryNotesPage),
       },
@@ -354,41 +421,62 @@ export const routes: Routes = [
         // Before ':deliveryNoteId', which would otherwise take "new" for an identifier.
         path: 'delivery-notes/new',
         title: 'titles.new_delivery_note',
-        canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
+        canActivate: [
+          moduleGuard(DELIVERY_NOTES_MODULE),
+          permissionGuard(DELIVERY_NOTES_COMMANDS, '/delivery-notes/new'),
+        ],
         loadComponent: () =>
           import('./delivery-notes/delivery-note-page').then((m) => m.DeliveryNotePage),
       },
       {
         path: 'delivery-notes/:deliveryNoteId',
         title: 'titles.delivery_note',
-        canActivate: [moduleGuard(DELIVERY_NOTES_MODULE), textsOpened(DELIVERIES_TEXTS)],
+        canActivate: [
+          moduleGuard(DELIVERY_NOTES_MODULE),
+          permissionGuard(DELIVERY_NOTES_NAV, '/delivery-notes'),
+          textsOpened(DELIVERIES_TEXTS),
+        ],
         loadComponent: () =>
           import('./delivery-notes/delivery-note-page').then((m) => m.DeliveryNotePage),
       },
       {
         path: 'stock',
         title: 'nav.stock',
-        canActivate: [moduleGuard(INVENTORY_MODULE), textsOpened(STOCK_COUNT_TEXTS)],
+        canActivate: [
+          moduleGuard(INVENTORY_MODULE),
+          permissionGuard(INVENTORY_NAV, '/stock'),
+          textsOpened(STOCK_COUNT_TEXTS),
+        ],
         loadComponent: () => import('./inventory/stock-page').then((m) => m.StockPage),
       },
       {
         // Count mode (docs/SPEC.md § 7, 2026-09-23 slice 8): a scanner walking the shelves.
         path: 'stock/count',
         title: 'nav.stock_count',
-        canActivate: [moduleGuard(INVENTORY_MODULE), textsOpened(STOCK_COUNT_TEXTS)],
+        canActivate: [
+          moduleGuard(INVENTORY_MODULE),
+          permissionGuard(INVENTORY_NAV, '/stock'),
+          permissionGuard(INVENTORY_TABS, '/stock/count'),
+          textsOpened(STOCK_COUNT_TEXTS),
+        ],
         loadComponent: () => import('./inventory/stock-count-page').then((m) => m.StockCountPage),
       },
       {
         // A location label's QR code (slice 8): count mode, at that location.
         path: 'stock/locations/:location',
         title: 'nav.stock_count',
-        canActivate: [moduleGuard(INVENTORY_MODULE), textsOpened(STOCK_COUNT_TEXTS)],
+        canActivate: [
+          moduleGuard(INVENTORY_MODULE),
+          permissionGuard(INVENTORY_NAV, '/stock'),
+          permissionGuard(INVENTORY_TABS, '/stock/count'),
+          textsOpened(STOCK_COUNT_TEXTS),
+        ],
         loadComponent: () => import('./inventory/stock-count-page').then((m) => m.StockCountPage),
       },
       {
         path: 'stock/movements',
         title: 'nav.stock_movements',
-        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        canActivate: [moduleGuard(INVENTORY_MODULE), permissionGuard(INVENTORY_NAV, '/stock')],
         loadComponent: () =>
           import('./inventory/stock-movements-page').then((m) => m.StockMovementsPage),
       },
@@ -396,14 +484,22 @@ export const routes: Routes = [
         path: 'stock/locations',
         title: 'nav.stock_locations',
         // A place's contents open over the list in the plan's own dialog, which reads the plan's texts.
-        ...textsPart('stock-plan', moduleGuard(INVENTORY_MODULE)),
+        ...textsPart(
+          'stock-plan',
+          moduleGuard(INVENTORY_MODULE),
+          permissionGuard(INVENTORY_NAV, '/stock'),
+        ),
         loadComponent: () =>
           import('./inventory/stock-locations-page').then((m) => m.StockLocationsPage),
       },
       {
         path: 'stock/valuation',
         title: 'nav.stock_valuation',
-        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        canActivate: [
+          moduleGuard(INVENTORY_MODULE),
+          permissionGuard(INVENTORY_NAV, '/stock'),
+          permissionGuard(INVENTORY_TABS, '/stock/valuation'),
+        ],
         loadComponent: () =>
           import('./inventory/stock-valuation-page').then((m) => m.StockValuationPage),
       },
@@ -411,7 +507,12 @@ export const routes: Routes = [
         path: 'stock/plan',
         title: 'titles.stock_plan',
         // The plan's texts are read on these pages only: they load with them (the screen texts budget).
-        ...textsPart('stock-plan', moduleGuard(INVENTORY_MODULE), textsOpened(STOCK_COUNT_TEXTS)),
+        ...textsPart(
+          'stock-plan',
+          moduleGuard(INVENTORY_MODULE),
+          permissionGuard(INVENTORY_NAV, '/stock'),
+          textsOpened(STOCK_COUNT_TEXTS),
+        ),
         loadComponent: () => import('./inventory/stock-map-page').then((m) => m.StockMapPage),
       },
       {
@@ -429,6 +530,7 @@ export const routes: Routes = [
         title: 'nav.vendors',
         canActivate: [
           moduleGuard(VENDORS_MODULE),
+          permissionGuard(VENDORS_NAV, '/vendors'),
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
         ],
@@ -437,7 +539,11 @@ export const routes: Routes = [
       {
         path: 'vendors/new',
         title: 'titles.new_vendor',
-        canActivate: [moduleGuard(VENDORS_MODULE), textsOpened(CHECK_TEXTS)],
+        canActivate: [
+          moduleGuard(VENDORS_MODULE),
+          permissionGuard(VENDORS_COMMANDS, '/vendors/new'),
+          textsOpened(CHECK_TEXTS),
+        ],
         loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
       },
       {
@@ -445,6 +551,7 @@ export const routes: Routes = [
         title: 'titles.vendor',
         canActivate: [
           moduleGuard(VENDORS_MODULE),
+          permissionGuard(VENDORS_NAV, '/vendors'),
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
           textsOpened(PURCHASE_HISTORY_TEXTS),
@@ -455,33 +562,49 @@ export const routes: Routes = [
         path: 'purchases',
         title: 'modules.purchases',
         // The orders' texts are read on these pages only: they load with them (the screen texts budget).
-        ...textsPart('purchases', moduleGuard(PURCHASES_MODULE)),
+        ...textsPart(
+          'purchases',
+          moduleGuard(PURCHASES_MODULE),
+          permissionGuard(PURCHASES_NAV, '/purchases'),
+        ),
         loadComponent: () => import('./purchases/purchases-page').then((m) => m.PurchasesPage),
       },
       {
         path: 'purchases/new',
         title: 'nav.new_purchase',
-        ...textsPart('purchases', moduleGuard(PURCHASES_MODULE)),
+        ...textsPart(
+          'purchases',
+          moduleGuard(PURCHASES_MODULE),
+          permissionGuard(PURCHASES_COMMANDS, '/purchases/new'),
+        ),
         loadComponent: () =>
           import('./purchases/purchase-order-page').then((m) => m.PurchaseOrderPage),
       },
       {
         path: 'purchases/:purchaseOrderId',
         title: 'modules.purchases',
-        ...textsPart('purchases', moduleGuard(PURCHASES_MODULE)),
+        ...textsPart(
+          'purchases',
+          moduleGuard(PURCHASES_MODULE),
+          permissionGuard(PURCHASES_NAV, '/purchases'),
+        ),
         loadComponent: () =>
           import('./purchases/purchase-order-page').then((m) => m.PurchaseOrderPage),
       },
       {
         path: 'expenses',
         title: 'nav.expenses',
-        canActivate: [moduleGuard(EXPENSES_MODULE)],
+        canActivate: [moduleGuard(EXPENSES_MODULE), permissionGuard(EXPENSES_NAV, '/expenses')],
         loadComponent: () => import('./expenses/expenses-page').then((m) => m.ExpensesPage),
       },
       {
         path: 'expenses/categories',
         title: 'nav.expense_categories',
-        canActivate: [moduleGuard(EXPENSES_MODULE), textsOpened(RECORDS_TEXTS)],
+        canActivate: [
+          moduleGuard(EXPENSES_MODULE),
+          permissionGuard(EXPENSES_NAV, '/expenses'),
+          textsOpened(RECORDS_TEXTS),
+        ],
         loadComponent: () =>
           import('./expenses/expense-categories-page').then((m) => m.ExpenseCategoriesPage),
       },
@@ -494,6 +617,7 @@ export const routes: Routes = [
         ...textsPart(
           'expense',
           moduleGuard(RECURRING_EXPENSES_MODULE),
+          permissionGuard(EXPENSES_NAV, '/expenses'),
           textsOpened(SCHEDULE_TEXTS),
         ),
         loadComponent: () =>
@@ -505,33 +629,52 @@ export const routes: Routes = [
         path: 'expenses/new',
         title: 'titles.new_expense',
         // The bill's texts are read on this page only: they load with it (the screen texts budget).
-        ...textsPart('expense', moduleGuard(EXPENSES_MODULE)),
+        ...textsPart(
+          'expense',
+          moduleGuard(EXPENSES_MODULE),
+          permissionGuard(EXPENSES_COMMANDS, '/expenses/new'),
+        ),
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
       },
       {
         path: 'expenses/:expenseId',
         title: 'titles.expense',
         // The bill's texts are read on this page only: they load with it (the screen texts budget).
-        ...textsPart('expense', moduleGuard(EXPENSES_MODULE)),
+        ...textsPart(
+          'expense',
+          moduleGuard(EXPENSES_MODULE),
+          permissionGuard(EXPENSES_NAV, '/expenses'),
+        ),
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
       },
       {
         path: 'reports',
         title: 'modules.reports',
         // The reports' texts are read on these two pages only: they load with them (the screen texts budget).
-        ...textsPart('reports', moduleGuard(REPORTS_MODULE)),
+        ...textsPart(
+          'reports',
+          moduleGuard(REPORTS_MODULE),
+          permissionGuard(REPORTS_NAV, '/reports'),
+        ),
         loadComponent: () => import('./reports/reports-page').then((m) => m.ReportsPage),
       },
       {
         path: 'reports/:key',
         title: 'modules.reports',
-        ...textsPart('reports', moduleGuard(REPORTS_MODULE)),
+        ...textsPart(
+          'reports',
+          moduleGuard(REPORTS_MODULE),
+          permissionGuard(REPORTS_NAV, '/reports'),
+        ),
         loadComponent: () => import('./reports/report-page').then((m) => m.ReportPage),
       },
       {
         path: 'accounting-export',
         title: 'nav.accounting_export',
-        canActivate: [moduleGuard(ACCOUNTING_EXPORT_MODULE)],
+        canActivate: [
+          moduleGuard(ACCOUNTING_EXPORT_MODULE),
+          permissionGuard(ACCOUNTING_EXPORT_NAV, '/accounting-export'),
+        ],
         loadComponent: () =>
           import('./accounting-export/accounting-export-page').then((m) => m.AccountingExportPage),
       },
@@ -575,7 +718,7 @@ export const routes: Routes = [
           {
             path: 'members',
             title: 'nav.members',
-            canActivate: [textsOpened(MEMBERS_TEXTS)],
+            canActivate: [permissionGuard(SETTINGS_NAV, '/members'), textsOpened(MEMBERS_TEXTS)],
             loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
           },
           {
@@ -587,54 +730,70 @@ export const routes: Routes = [
           {
             path: 'company/roles',
             title: 'nav.roles',
-            canActivate: [textsOpened(ROLES_TEXTS)],
+            canActivate: [
+              permissionGuard(SETTINGS_NAV, '/company/roles'),
+              textsOpened(ROLES_TEXTS),
+            ],
             loadComponent: () => import('./company/roles-page').then((m) => m.RolesPage),
           },
           {
             path: 'company/activity',
             title: 'nav.activity',
-            canActivate: [textsOpened(ACTIVITY_TEXTS)],
+            canActivate: [
+              permissionGuard(SETTINGS_NAV, '/company/activity'),
+              textsOpened(ACTIVITY_TEXTS),
+            ],
             loadComponent: () => import('./activity/activity-page').then((m) => m.ActivityPage),
           },
           {
             path: 'fiscal/taxes',
             title: 'nav.taxes',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/fiscal/taxes')],
             loadComponent: () =>
               import('./fiscal/fiscal-taxes-page').then((m) => m.FiscalTaxesPage),
           },
           {
             path: 'fiscal/units',
             title: 'nav.units',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/fiscal/units')],
             loadComponent: () =>
               import('./fiscal/fiscal-units-page').then((m) => m.FiscalUnitsPage),
           },
           {
             path: 'settings',
             title: 'nav.settings',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/settings')],
             loadComponent: () => import('./settings/settings-page').then((m) => m.SettingsPage),
           },
           {
             path: 'company/profile',
             title: 'nav.company_profile',
+            // route-open: « Fermer l'entreprise » sits on this page, and the owner of a company its subscription made
+            // read-only, which narrows company.settings away, must still reach it to close the company.
             loadComponent: () =>
               import('./company/company-profile-page').then((m) => m.CompanyProfilePage),
           },
           {
             path: 'company/security',
             title: 'nav.company_security',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/company/security')],
             loadComponent: () =>
               import('./company/company-security-page').then((m) => m.CompanySecurityPage),
           },
           {
             path: 'company/support-access',
             title: 'nav.support_access',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/company/support-access')],
             loadComponent: () =>
               import('./support-access/support-access-page').then((m) => m.SupportAccessPage),
           },
           {
             path: 'company/recently-deleted',
             title: 'nav.recently_deleted',
-            canActivate: [textsOpened(RECORDS_TEXTS)],
+            canActivate: [
+              permissionGuard(SETTINGS_NAV, '/company/recently-deleted'),
+              textsOpened(RECORDS_TEXTS),
+            ],
             loadComponent: () =>
               import('./recently-deleted/recently-deleted-page').then((m) => m.RecentlyDeletedPage),
           },
@@ -642,48 +801,54 @@ export const routes: Routes = [
             path: 'company/data-erasure',
             title: 'nav.data_erasure',
             // Only the banner's words stay with the language's file: the banner shows on every page.
-            ...textsPart('data-erasure'),
+            ...textsPart('data-erasure', permissionGuard(SETTINGS_NAV, '/company/data-erasure')),
             loadComponent: () =>
               import('./data-erasure/data-erasure-page').then((m) => m.DataErasurePage),
           },
           {
             path: 'company/closing',
             title: 'nav.closing',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/company/closing')],
             loadComponent: () => import('./company/closing-page').then((m) => m.ClosingPage),
           },
           {
             path: 'company/establishments',
             title: 'nav.establishments',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/company/establishments')],
             loadComponent: () =>
               import('./company/establishments-page').then((m) => m.EstablishmentsPage),
           },
           {
             path: 'company/numbering',
             title: 'nav.numbering',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/company/numbering')],
             loadComponent: () => import('./company/numbering-page').then((m) => m.NumberingPage),
           },
           {
             path: 'company/documents',
             title: 'nav.document_templates',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/company/documents')],
             loadComponent: () =>
               import('./company/document-design-page').then((m) => m.DocumentDesignPage),
           },
           {
             path: 'company/custom-fields',
             title: 'nav.custom_fields',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/company/custom-fields')],
             loadComponent: () =>
               import('./company/custom-fields-page').then((m) => m.CustomFieldsPage),
           },
           {
             path: 'company/modules',
             title: 'nav.modules',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/company/modules')],
             loadComponent: () => import('./company/modules-page').then((m) => m.ModulesPage),
           },
           {
             // The application's texts as the company words them, over the installation's.
             path: 'company/texts',
             title: 'nav.texts',
-            ...textsPart('texts'),
+            ...textsPart('texts', permissionGuard(SETTINGS_NAV, '/company/texts')),
             loadComponent: () => import('./texts/texts-page').then((m) => m.TextsPage),
           },
           {
@@ -691,6 +856,7 @@ export const routes: Routes = [
             // way out of it (docs/SPEC.md § 7, 2026-09-17).
             path: 'company/subscription',
             title: 'nav.subscription',
+            canActivate: [permissionGuard(SETTINGS_NAV, '/company/subscription')],
             loadComponent: () =>
               import('./licensing/subscription-page').then((m) => m.SubscriptionPage),
           },

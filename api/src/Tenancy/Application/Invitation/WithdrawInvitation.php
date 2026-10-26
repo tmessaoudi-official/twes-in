@@ -17,6 +17,7 @@ use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Member\RoleBounds;
 use App\Tenancy\Application\Member\RoleNotManageable;
+use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Repository\InvitationRepository;
 use Symfony\Component\Uid\Uuid;
 
@@ -36,19 +37,22 @@ final readonly class WithdrawInvitation implements DeclaresAuditActions
     ) {
     }
 
+    /**
+     * What the actor's role refuses, said before the proof of who is at the screen is asked: nobody proves themselves
+     * only to be told no.
+     *
+     * @throws InvitationNotFound|RoleNotManageable
+     */
+    public function assertMayWithdraw(Uuid $companyId, Uuid $invitationId, ?Uuid $actorUserId): void
+    {
+        $this->bounded($companyId, $invitationId, $actorUserId);
+    }
+
     /** @throws InvitationNotFound|RoleNotManageable */
     public function handle(Uuid $companyId, Uuid $invitationId, ?Uuid $actorUserId): void
     {
         $this->transactions->run(function () use ($companyId, $invitationId, $actorUserId): void {
-            $invitation = $this->invitations->ofId($invitationId);
-            if (null === $invitation || !$invitation->getCompany()->getId()->equals($companyId) || null !== $invitation->getAcceptedAt()) {
-                throw new InvitationNotFound(\sprintf('No open invitation %s here.', $invitationId->toRfc4122()));
-            }
-            // A role deleted since leaves the invitation its name alone, and nothing to bound.
-            $role = $invitation->getRole();
-            if (null !== $role) {
-                $this->bounds->assertMayGrant($companyId, $actorUserId, $role);
-            }
+            $invitation = $this->bounded($companyId, $invitationId, $actorUserId);
 
             $this->invitations->remove($invitation);
 
@@ -61,6 +65,27 @@ final readonly class WithdrawInvitation implements DeclaresAuditActions
                 $companyId,
             ));
         });
+    }
+
+    /**
+     * The open invitation, once the actor's role may give the role it offers: whoever may not give a role may not take
+     * back the invitation to it either.
+     *
+     * @throws InvitationNotFound|RoleNotManageable
+     */
+    private function bounded(Uuid $companyId, Uuid $invitationId, ?Uuid $actorUserId): Invitation
+    {
+        $invitation = $this->invitations->ofId($invitationId);
+        if (null === $invitation || !$invitation->getCompany()->getId()->equals($companyId) || null !== $invitation->getAcceptedAt()) {
+            throw new InvitationNotFound(\sprintf('No open invitation %s here.', $invitationId->toRfc4122()));
+        }
+        // A role deleted since leaves the invitation its name alone, and nothing to bound.
+        $role = $invitation->getRole();
+        if (null !== $role) {
+            $this->bounds->assertMayGrant($companyId, $actorUserId, $role);
+        }
+
+        return $invitation;
     }
 
     public function auditActions(): array

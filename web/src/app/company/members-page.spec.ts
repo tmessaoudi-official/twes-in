@@ -88,6 +88,11 @@ const invited: MemberRow = {
 describe('MembersPage', () => {
   // Who is signed in: someone else than the owner row, whom the removal cases act on.
   let signedIn = 'u-me';
+  // The role the signed-in person holds here, and its own permissions: what the API's role bounds read.
+  const actor = signal<{ role: string; permissions: readonly string[] }>({
+    role: 'owner',
+    permissions: ['*'],
+  });
   const rows = signal<readonly MemberRow[]>([]);
   const error = signal<string | null>(null);
   const members = {
@@ -102,15 +107,19 @@ describe('MembersPage', () => {
     changeRole: vi.fn(async () => true),
   };
   const auth = {
-    me: () => ({ user: { id: signedIn }, company: { id: 'c1', name: 'Acme' } }),
+    me: () => ({
+      user: { id: signedIn },
+      company: { id: 'c1', name: 'Acme', role: actor().role },
+      permissions: actor().permissions,
+    }),
     hasPermission: vi.fn(),
   };
-  const role = (name: string, builtIn: boolean): RoleRow => ({
+  const role = (name: string, builtIn: boolean, permissions: readonly string[] = []): RoleRow => ({
     id: `r-${name}`,
     name,
     builtIn,
     wildcard: false,
-    permissions: [],
+    permissions,
     memberCount: 0,
     version: 1,
   });
@@ -135,6 +144,7 @@ describe('MembersPage', () => {
 
   beforeEach(async () => {
     signedIn = 'u-me';
+    actor.set({ role: 'owner', permissions: ['*'] });
     rows.set([owner]);
     error.set(null);
     members.load.mockReset().mockResolvedValue(undefined);
@@ -271,9 +281,12 @@ describe('MembersPage', () => {
 
   /** Opens a row's « ⋮ » and answers the entry of that action, or null when the row does not offer it. */
   async function menuEntry(rowId: string, action: string): Promise<HTMLElement | null> {
-    (
-      fixture.nativeElement.querySelector(`[data-testid="row-more-${rowId}"]`) as HTMLElement
-    ).click();
+    const more = fixture.nativeElement.querySelector(
+      `[data-testid="row-more-${rowId}"]`,
+    ) as HTMLElement | null;
+    // A row offering nothing behind « ⋮ » draws no « ⋮ » at all.
+    if (more === null) return null;
+    more.click();
     fixture.detectChanges();
     await fixture.whenStable();
     const entries = document.querySelectorAll<HTMLElement>(
@@ -525,6 +538,137 @@ describe('MembersPage', () => {
     empty.detectChanges();
 
     expect(empty.nativeElement.querySelector('[data-testid="members-empty"]')).not.toBeNull();
+  });
+
+  /** What the role dialog of a row offers, by name, or null when the row offers no « Changer le rôle ». */
+  async function dialogRoles(rowId: string): Promise<string[] | null> {
+    const entry = await menuEntry(rowId, 'change-role');
+    if (entry === null) return null;
+    entry.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-testid="member-role-change"]')).not.toBeNull(),
+    );
+    document.querySelector<HTMLElement>('[data-testid="member-role-change"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return [...document.querySelectorAll('[role="option"] [data-option-label]')].map(
+      (option) => option.textContent?.trim() ?? '',
+    );
+  }
+
+  describe('for an admin, offering only what the API accepts (hunt N-1)', () => {
+    const anotherOwner: MemberRow = { ...owner, userId: 'u3', email: 'co@example.test' };
+    const me: MemberRow = { ...owner, userId: 'u-me', email: 'me@example.test', role: 'admin' };
+    const plain: MemberRow = {
+      ...owner,
+      userId: 'u2',
+      email: 'plain@example.test',
+      role: 'member',
+    };
+    const ownerInvited: MemberRow = { ...invited, email: 'next@example.test', role: 'owner' };
+
+    beforeEach(() => {
+      actor.set({ role: 'admin', permissions: ['user.read', 'user.write', 'customer.read'] });
+      companyRoles.set([
+        role('owner', true),
+        role('admin', true),
+        role('member', true),
+        role('barista', false, ['customer.read']),
+        role('manager', false, ['company.settings']),
+      ]);
+    });
+
+    it('offers no action on an owner’s row and no role change on the admin’s own', async () => {
+      rows.set([owner, anotherOwner, me, plain]);
+      fixture.detectChanges();
+
+      for (const id of ['u1', 'u3']) {
+        for (const action of ['remove', 'change-role']) {
+          expect(await menuEntry(id, action), `${action} on ${id}`).toBeNull();
+          document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+          fixture.detectChanges();
+          await fixture.whenStable();
+        }
+      }
+      expect(await menuEntry('u-me', 'change-role')).toBeNull();
+    });
+
+    it('still offers to remove a member below admin and change their role', async () => {
+      rows.set([owner, me, plain]);
+      fixture.detectChanges();
+
+      expect(await menuEntry('u2', 'remove')).not.toBeNull();
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(await menuEntry('u2', 'change-role')).not.toBeNull();
+    });
+
+    it('offers nothing on an invitation to be an owner', async () => {
+      rows.set([owner, me, ownerInvited]);
+      fixture.detectChanges();
+
+      for (const action of ['resend', 'change-role', 'withdraw']) {
+        expect(await menuEntry('invited:next@example.test', action), action).toBeNull();
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+        fixture.detectChanges();
+        await fixture.whenStable();
+      }
+    });
+
+    it('offers in the dialog only the roles an admin gives', async () => {
+      rows.set([owner, me, plain]);
+      fixture.detectChanges();
+
+      expect(await dialogRoles('u2')).toEqual(['Administrateur', 'Membre', 'barista']);
+    });
+
+    it('offers in the invitation form only the roles an admin gives', async () => {
+      fixture.nativeElement.querySelector('[data-testid="member-role"]').click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const offered = [...document.querySelectorAll('[role="option"] [data-option-label]')].map(
+        (option) => option.textContent?.trim(),
+      );
+      expect(offered).toEqual(['Administrateur', 'Membre', 'barista']);
+    });
+  });
+
+  it('offers no « Annuler » when an owner steps down: the undo would ask what their new role refuses', async () => {
+    const self: MemberRow = {
+      ...owner,
+      userId: 'u-me',
+      email: 'me@example.test',
+      displayName: 'Moi',
+    };
+    rows.set([owner, self]);
+    fixture.detectChanges();
+    members.changeRole.mockClear();
+
+    (await menuEntry('u-me', 'change-role'))!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-testid="member-role-change"]')).not.toBeNull(),
+    );
+    document.querySelector<HTMLElement>('[data-testid="member-role-change"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    [...document.querySelectorAll<HTMLElement>('[role="option"]')]
+      .find((option) => option.textContent?.includes('Administrateur'))!
+      .click();
+    fixture.detectChanges();
+    document.querySelector<HTMLElement>('[data-testid="member-role-confirm"]')!.click();
+
+    await vi.waitFor(() => expect(members.changeRole).toHaveBeenCalledWith('c1', 'u-me', 'admin'));
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    await vi.waitFor(() =>
+      expect(said).toEqual([expect.objectContaining({ key: 'members.role_changed' })]),
+    );
+    expect(said[0].action).toBeUndefined();
   });
 });
 

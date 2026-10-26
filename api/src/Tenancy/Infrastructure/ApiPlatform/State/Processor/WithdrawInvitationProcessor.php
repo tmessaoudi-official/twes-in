@@ -37,13 +37,15 @@ final readonly class WithdrawInvitationProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): null
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), MemberPermission::WRITE);
-        $this->proof->demand($this->guard->account()->getId());
         $invitationId = $uriVariables['invitationId'] ?? null;
         if (!\is_string($invitationId) || !Uuid::isValid($invitationId)) {
             throw new NotFoundHttpException('No such invitation.');
         }
 
         try {
+            // What the role refuses is said first: nobody proves who they are only to be told no (hunt N-1).
+            $this->withdraw->assertMayWithdraw($company->getId(), Uuid::fromString($invitationId), $this->guard->account()->getId());
+            $this->proof->demand($this->guard->account()->getId());
             $this->withdraw->handle($company->getId(), Uuid::fromString($invitationId), $this->guard->account()->getId());
         } catch (InvitationNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);

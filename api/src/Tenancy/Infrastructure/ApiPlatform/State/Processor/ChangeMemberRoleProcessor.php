@@ -43,13 +43,15 @@ final readonly class ChangeMemberRoleProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): MemberResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), MemberPermission::WRITE);
-        $this->proof->demand($this->guard->account()->getId());
         $userId = $uriVariables['userId'] ?? null;
         if (!\is_string($userId) || !Uuid::isValid($userId)) {
             throw new NotFoundHttpException('No such member.');
         }
 
         try {
+            // What the role refuses is said first: nobody proves who they are only to be told no (hunt N-1).
+            $this->change->assertMayChange($company->getId(), Uuid::fromString($userId), $data->role, $this->guard->account()->getId());
+            $this->proof->demand($this->guard->account()->getId());
             $this->change->handle($company->getId(), Uuid::fromString($userId), $data->role, $this->guard->account()->getId());
         } catch (NotAMember $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);

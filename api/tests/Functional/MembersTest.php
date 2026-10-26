@@ -553,6 +553,64 @@ final class MembersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
     }
 
+    /**
+     * What the admin's role refuses is answered before the proof is asked: nobody proves who they are only to be told
+     * no (hunt N-1). What it allows still waits for the proof.
+     */
+    public function testWhatAnAdminMayNotDoIsRefusedBeforeTheProof(): void
+    {
+        $owner = $this->createUser('owner@twes.local', 'password-1234', $this->company);
+        $member = $this->createUser('plain@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
+        $this->createAdmin();
+        $this->signInAs('owner@twes.local');
+        $this->postJson($this->path(), ['email' => 'co-owner@twes.local', 'role' => Role::OWNER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $invitation = $this->invitedRow('co-owner@twes.local')['invitationId'];
+
+        $this->login('admin@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
+
+        $this->sendJson('PUT', $this->rolePath($owner), ['role' => Role::MEMBER]);
+        $this->assertRefusedBeforeTheProof('an owner lowered');
+        $this->sendJson('PUT', $this->rolePath($member), ['role' => Role::OWNER]);
+        $this->assertRefusedBeforeTheProof('a member raised to owner');
+        $this->sendJson('DELETE', $this->path().'/'.$owner->getId()->toRfc4122());
+        $this->assertRefusedBeforeTheProof('an owner removed');
+        $this->sendJson('DELETE', $this->invitationPath($invitation));
+        $this->assertRefusedBeforeTheProof('an owner invitation withdrawn');
+        $this->postJson($this->path(), ['email' => 'another@twes.local', 'role' => Role::OWNER]);
+        $this->assertRefusedBeforeTheProof('an owner invited');
+
+        $this->sendJson('PUT', $this->rolePath($member), ['role' => Role::ACCOUNTANT]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertStringStartsWith('step_up_required:', $this->stringAt($this->json(), 'detail'), 'what the role allows still waits for the proof');
+    }
+
+    /**
+     * Inviting an address again replaces its open invitation, which takes that invitation back: whoever may not withdraw
+     * an invitation to be an owner may not replace it by one to be a member either.
+     */
+    public function testAnAdminDoesNotReplaceAnInvitationToBeAnOwner(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company);
+        $this->createAdmin();
+        $this->signInAs('owner@twes.local');
+        $this->postJson($this->path(), ['email' => 'co-owner@twes.local', 'role' => Role::OWNER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->signInAs('admin@twes.local');
+        $this->postJson($this->path(), ['email' => 'co-owner@twes.local', 'role' => Role::MEMBER]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame(Role::OWNER, $this->invitedRow('co-owner@twes.local')['role']);
+    }
+
+    private function assertRefusedBeforeTheProof(string $what): void
+    {
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, $what);
+        self::assertStringStartsNotWith('step_up_required:', $this->stringAt($this->json(), 'detail'), $what);
+    }
+
     private function path(): string
     {
         return '/api/companies/'.$this->company->getId()->toRfc4122().'/members';

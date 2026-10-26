@@ -40,13 +40,13 @@ final readonly class InviteMemberProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): MemberResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), MemberPermission::WRITE);
-        $this->proof->demand($this->guard->account()->getId());
+        $request = new InviteRequest($company->getId(), $data->email, $data->role);
 
         try {
-            $outcome = $this->invite->handle(
-                new InviteRequest($company->getId(), $data->email, $data->role),
-                $this->guard->account()->getId(),
-            );
+            // What the role refuses is said first: nobody proves who they are only to be told no (hunt N-1).
+            $this->invite->assertMayInvite($request, $this->guard->account()->getId());
+            $this->proof->demand($this->guard->account()->getId());
+            $outcome = $this->invite->handle($request, $this->guard->account()->getId());
         } catch (AlreadyAMember $already) {
             throw new ConflictHttpException($already->getMessage(), $already);
         } catch (UnknownRole $refused) {

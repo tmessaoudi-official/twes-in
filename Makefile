@@ -224,6 +224,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/setting-labels.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/presentation-settings-parity.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/tour-anchors.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/route-permissions.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/effect-kinds.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/row-defaults.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/database-clock.test.sh
@@ -300,6 +301,7 @@ in-gate-licences:
 	bash scripts/gates/setting-labels.sh
 	bash scripts/gates/presentation-settings-parity.sh
 	bash scripts/gates/tour-anchors.sh
+	bash scripts/gates/route-permissions.sh
 	bash scripts/gates/effect-kinds.sh
 	bash scripts/gates/row-defaults.sh
 	bash scripts/gates/database-clock.sh

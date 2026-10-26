@@ -1,0 +1,10 @@
+{
+  "not_allowed": {
+    "role": "Votre rôle dans {{company}} ne permet pas d’ouvrir « {{page}} ».",
+    "role_any": "Votre rôle dans {{company}} ne permet pas d’ouvrir cette page.",
+    "subscription": "L’abonnement de {{company}} ne permet pas d’ouvrir « {{page}} » en ce moment.",
+    "ask": "Si vous en avez besoin, demandez à un propriétaire de {{company}} de changer votre rôle.",
+    "see_subscription": "Voir l’abonnement",
+    "home": "Retour à l’accueil"
+  }
+}

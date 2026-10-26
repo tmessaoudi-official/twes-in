@@ -1,0 +1,10 @@
+{
+  "not_allowed": {
+    "role": "Your role in {{company}} does not allow opening “{{page}}”.",
+    "role_any": "Your role in {{company}} does not allow opening this page.",
+    "subscription": "The subscription of {{company}} does not allow opening “{{page}}” at the moment.",
+    "ask": "If you need it, ask an owner of {{company}} to change your role.",
+    "see_subscription": "See the subscription",
+    "home": "Back to home"
+  }
+}

@@ -24,7 +24,9 @@ use App\Tenancy\Application\Member\AlreadyAMember;
 use App\Tenancy\Application\Member\RoleBounds;
 use App\Tenancy\Application\Member\RoleNotManageable;
 use App\Tenancy\Application\Member\UnknownRole;
+use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Repository\CompanyRepository;
 use App\Tenancy\Domain\Repository\InvitationRepository;
 use App\Tenancy\Domain\Repository\MembershipRepository;
@@ -62,19 +64,23 @@ final readonly class InviteToCompany implements DeclaresAuditActions
     ) {
     }
 
+    /**
+     * What the actor's role refuses, said before the proof of who is at the screen is asked: nobody proves themselves
+     * only to be told no.
+     *
+     * @throws CompanyNotFound|UnknownRole|RoleNotManageable
+     */
+    public function assertMayInvite(InviteRequest $request, ?Uuid $actorUserId): void
+    {
+        $this->bounded($request, $actorUserId);
+    }
+
     /** @throws CompanyNotFound|UnknownRole|RoleNotManageable|AlreadyAMember */
     public function handle(InviteRequest $request, ?Uuid $actorUserId): InviteOutcome
     {
         [$company, $email, $existing] = $this->transactions->run(function () use ($request, $actorUserId): array {
-            $company = $this->companies->ofId($request->companyId)
-                ?? throw new CompanyNotFound(\sprintf('No company %s.', $request->companyId->toRfc4122()));
-
             // Checked before anything is written or sent, so a bad role cannot leave a half-made invitation behind.
-            // Resolved against THIS company: the built-in five plus the roles it made for itself. A role belonging
-            // to another company is as unknown here as an invented name, and answers the same way.
-            $role = $this->roles->ofNameForCompany($request->roleName, $company->getId())
-                ?? throw new UnknownRole(\sprintf('"%s" is not a role %s may give.', $request->roleName, $company->getName()));
-            $this->bounds->assertMayGrant($company->getId(), $actorUserId, $role);
+            [$company, $role] = $this->bounded($request, $actorUserId);
 
             $email = Email::fromString($request->email);
             $existing = $this->users->ofEmail($email);
@@ -128,6 +134,32 @@ final readonly class InviteToCompany implements DeclaresAuditActions
         }
 
         return new InviteOutcome($email->value, $request->roleName);
+    }
+
+    /**
+     * The company and the role asked for, once the actor's role may give it. Resolved against THIS company: the
+     * built-in five plus the roles it made for itself; a role belonging to another company is as unknown here as an
+     * invented name, and answers the same way. Inviting an address again replaces its open invitation, which takes
+     * that one back: it is bounded as withdrawing it is, or an admin re-inviting an owner's address as a member would
+     * withdraw what they may not.
+     *
+     * @return array{Company, Role}
+     *
+     * @throws CompanyNotFound|UnknownRole|RoleNotManageable
+     */
+    private function bounded(InviteRequest $request, ?Uuid $actorUserId): array
+    {
+        $company = $this->companies->ofId($request->companyId)
+            ?? throw new CompanyNotFound(\sprintf('No company %s.', $request->companyId->toRfc4122()));
+        $role = $this->roles->ofNameForCompany($request->roleName, $company->getId())
+            ?? throw new UnknownRole(\sprintf('"%s" is not a role %s may give.', $request->roleName, $company->getName()));
+        $this->bounds->assertMayGrant($company->getId(), $actorUserId, $role);
+        $replaced = $this->invitations->pendingFor($company->getId(), Email::fromString($request->email)->value)?->getRole();
+        if (null !== $replaced) {
+            $this->bounds->assertMayGrant($company->getId(), $actorUserId, $replaced);
+        }
+
+        return [$company, $role];
     }
 
     public function auditActions(): array

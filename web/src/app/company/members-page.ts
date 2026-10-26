@@ -32,6 +32,7 @@ import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { MemberRoleDialog, type MemberRoleChoice } from './member-role-dialog';
+import { type Actor, mayGrant, mayRemove } from './role-bounds';
 
 /** The members list as configuration: its columns, what a person may hide, and its page sizes. */
 export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
@@ -136,8 +137,9 @@ export class MembersPage implements OnInit {
           .map((role) => role.name),
       ),
   );
+  /** The roles the person may give, as the API bounds them: an admin is never offered « propriétaire » (hunt N-1). */
   protected readonly roleOptions = computed(() =>
-    this.roles().map((role) => ({
+    this.grantable().map((role) => ({
       value: role.name,
       label: roleLabel(role),
       capitalize: role.builtIn,
@@ -169,7 +171,10 @@ export class MembersPage implements OnInit {
         disabled: () => this.busy(),
         // Removing someone is not leaving: one's own row offers no « Retirer », and the API refuses it as well.
         shown: (row) =>
-          this.mayManage() && row.status === 'joined' && row.userId !== this.auth.me()?.user.id,
+          this.mayManage() &&
+          row.status === 'joined' &&
+          row.userId !== this.auth.me()?.user.id &&
+          this.mayTake(row.role),
         confirm: (row) => ({
           kind: 'corrigeable',
           title: 'members.remove_title',
@@ -187,7 +192,7 @@ export class MembersPage implements OnInit {
         icon: 'forward_to_inbox',
         run: (row) => void this.resend(row),
         disabled: () => this.busy(),
-        shown: (row) => this.mayManage() && row.status !== 'joined',
+        shown: (row) => this.mayManage() && row.status !== 'joined' && this.mayGive(row.role),
       },
       {
         // An invitation's in the form, which sends it again; a member's from a dialog, its toast putting it back.
@@ -197,7 +202,11 @@ export class MembersPage implements OnInit {
         icon: 'manage_accounts',
         run: (row) => this.changeRole(row),
         disabled: () => this.busy(),
-        shown: () => this.mayManage(),
+        // A member's role is taken and another given; an invitation's is withdrawn and sent again: both bounded.
+        shown: (row) =>
+          this.mayManage() &&
+          (row.status === 'joined' ? this.mayTake(row.role) : this.mayGive(row.role)) &&
+          this.roleOptions().some((option) => option.value !== row.role),
       },
       {
         // Undone from its toast, which sends it again: no question first.
@@ -207,7 +216,11 @@ export class MembersPage implements OnInit {
         icon: 'cancel',
         run: (row) => void this.withdraw(row),
         disabled: () => this.busy(),
-        shown: (row) => this.mayManage() && row.status !== 'joined' && row.invitationId !== null,
+        shown: (row) =>
+          this.mayManage() &&
+          row.status !== 'joined' &&
+          row.invitationId !== null &&
+          this.mayGive(row.role),
       },
     ],
   }));
@@ -218,6 +231,28 @@ export class MembersPage implements OnInit {
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('user.write'));
   protected readonly mayReadActivity = computed(() => this.auth.hasPermission('audit.read'));
+  /** The person acting, as the API's role bounds read them: their role here and what it grants, unnarrowed. */
+  private readonly actor = computed<Actor>(() => {
+    const me = this.auth.me();
+    return { role: me?.company?.role ?? '', permissions: me?.permissions ?? [] };
+  });
+  private readonly grantable = computed(() =>
+    this.roles().filter((role) => mayGrant(this.actor(), role)),
+  );
+
+  /** Whether a role may be taken from whoever holds it: removing them, or changing it for another. */
+  private mayTake(roleName: string): boolean {
+    return mayRemove(this.actor(), roleName);
+  }
+
+  /**
+   * Whether an invitation to a role may be sent again, changed or withdrawn. A role deleted since bounds nothing, as
+   * the API says; one this company still has is given only by whoever may give it.
+   */
+  private mayGive(roleName: string): boolean {
+    const role = this.roles().find((each) => each.name === roleName);
+    return role === undefined || mayGrant(this.actor(), role);
+  }
 
   protected readonly form = new FormGroup({
     email: new FormControl('', {
@@ -302,21 +337,26 @@ export class MembersPage implements OnInit {
     if (chosen) await this.setRole(companyId, row, chosen, row.role);
   }
 
-  /** Said once done, naming the role now held; « Annuler » puts the one before back. */
+  /**
+   * Said once done, naming the role now held; « Annuler » puts the one before back. An owner stepping down is offered
+   * no « Annuler »: putting it back would ask of their new role what it no longer grants.
+   */
   private async setRole(
     companyId: string,
     row: MemberRow,
     role: string,
     before: string,
   ): Promise<void> {
-    if (await this.members.changeRole(companyId, row.userId, role)) {
-      this.feedback.effect(
-        'members.role_changed',
-        { name: row.displayName, role: this.roleName(role) },
-        'corrigeable',
-        { key: 'members.undo', run: () => void this.setRole(companyId, row, before, role) },
-      );
+    if (!(await this.members.changeRole(companyId, row.userId, role))) return;
+    const said = { name: row.displayName, role: this.roleName(role) };
+    if (row.userId === this.auth.me()?.user.id) {
+      this.feedback.effect('members.role_changed', said, 'corrigeable');
+      return;
     }
+    this.feedback.effect('members.role_changed', said, 'corrigeable', {
+      key: 'members.undo',
+      run: () => void this.setRole(companyId, row, before, role),
+    });
   }
 
   private roleName(name: string): string {
