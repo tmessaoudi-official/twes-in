@@ -76,7 +76,7 @@ test('a product label prints its code as a barcode a scanner reads back', async 
   }
 });
 
-test('the products selected on the list print on one sheet, which names the one without a code', async ({
+test('the products selected on the list print on one sheet, the one without a code under its reference', async ({
   page,
 }) => {
   const run = Date.now().toString(36).toUpperCase();
@@ -100,23 +100,36 @@ test('the products selected on the list print on one sheet, which names the one 
       page.getByTestId('products-bulk-labels').click(),
     ]);
 
-    // Before anything is printed, the sheet names the product that gets no label, and why.
-    await expect(sheet.getByTestId(`product-labels-left-out-${ids[1]}`)).toContainText(
+    // Loose goods with no code of their own print their reference, which a scan finds: nothing is left out.
+    const label = sheet.getByTestId('product-label');
+    await expect(label).toHaveCount(2);
+    await expect(label.nth(0)).toContainText(`${reference}-A`);
+    await expect(label.nth(0).locator('svg[role="img"]')).toHaveAttribute('aria-label', code);
+    await expect(label.nth(1).locator('svg[role="img"]')).toHaveAttribute(
+      'aria-label',
       `${reference}-B`,
     );
-    await expect(sheet.getByTestId(`product-labels-left-out-${ids[1]}`)).toContainText(
-      'Aucun code',
-    );
-    const label = sheet.getByTestId('product-label');
-    await expect(label).toHaveCount(1);
-    await expect(label).toContainText(`${reference}-A`);
-    await expect(label.locator('svg[role="img"]')).toHaveAttribute('aria-label', code);
+    await expect(sheet.getByTestId(`product-labels-left-out-${ids[1]}`)).toHaveCount(0);
     expect(await wcagViolations(sheet)).toEqual([]);
+
+    // The scan reads that reference back to its product, as the counter's scanner would.
+    const found = await page.evaluate(async (scanned) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const params = new URLSearchParams({ code: scanned });
+      const answer = await fetch(`/api/companies/${me.company.id}/product-scan?${params}`);
+      if (!answer.ok) throw new Error(`product-scan answered ${answer.status}`);
+      return answer.json();
+    }, `${reference}-B`);
+    expect(found).toMatchObject({
+      productId: ids[1],
+      code: `${reference}-B`,
+      role: 'unit',
+      quantity: 1,
+    });
 
     // The paper carries the labels alone: what was left out stays on the screen.
     await sheet.emulateMedia({ media: 'print' });
-    await expect(sheet.getByTestId('product-labels-left-out')).toBeHidden();
-    await expect(label).toBeVisible();
+    await expect(label.first()).toBeVisible();
     await sheet.close();
   } finally {
     await forget(page, ids);
