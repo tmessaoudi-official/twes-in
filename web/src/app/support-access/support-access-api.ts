@@ -10,13 +10,17 @@ export interface SupportAccessState {
   /** ISO moments, null while support may not read the company. */
   readonly startsAt: string | null;
   readonly endsAt: string | null;
+  /** What the owner said is wrong when opening it, null when they said nothing or it is closed. */
+  readonly reason: string | null;
   /** The windows offered, in hours. */
   readonly hours: readonly number[];
+  /** The longest reason the API keeps, in characters. */
+  readonly reasonMax: number;
 }
 
 /** Why the API refused, as the page translates it. */
 export type SupportAccessError =
-  'network' | 'not_found' | 'owner_only' | 'support_window' | 'step_up_required';
+  'network' | 'not_found' | 'owner_only' | 'support_window' | 'support_reason' | 'step_up_required';
 
 export class SupportAccessRefused extends Error {
   constructor(readonly code: SupportAccessError) {
@@ -36,9 +40,16 @@ export class SupportAccessApi {
     return this.call(() => this.http.get<SupportAccessState>(path(companyId)));
   }
 
-  /** Opens the company to support from now for that many hours; a window still open is replaced. */
-  async grant(companyId: string, hours: number): Promise<SupportAccessState> {
-    return this.call(() => this.http.post<SupportAccessState>(path(companyId), { hours }));
+  /**
+   * Opens the company to support from now for that many hours, saying what is wrong if the owner wrote it; a window
+   * still open is replaced.
+   */
+  async grant(
+    companyId: string,
+    hours: number,
+    reason: string | null,
+  ): Promise<SupportAccessState> {
+    return this.call(() => this.http.post<SupportAccessState>(path(companyId), { hours, reason }));
   }
 
   async end(companyId: string): Promise<void> {
@@ -68,7 +79,10 @@ function refusal(error: unknown): SupportAccessRefused {
   return refusedFor(
     error,
     new SupportAccessRefused(
-      code === 'owner_only' || code === 'support_window' || code === 'step_up_required'
+      code === 'owner_only' ||
+        code === 'support_window' ||
+        code === 'support_reason' ||
+        code === 'step_up_required'
         ? code
         : 'network',
     ),

@@ -48,14 +48,26 @@ describe('notificationKindKey', () => {
 });
 
 describe('stock notifications', () => {
+  it('a move that failed has words and leads to « À surveiller », where each such document is', () => {
+    for (const type of [
+      'stock.delivery_note_moved_no_stock',
+      'stock.invoice_moved_no_stock',
+      'stock.credit_moved_no_stock',
+    ]) {
+      expect(notificationKey(type)).toBe(`notifications.types.${type.replace('.', '_')}`);
+      expect(notificationRecord(type)).toMatchObject({
+        icon: 'inventory_2',
+        route: '/watch/stock.move_failed',
+        permission: 'stock.read',
+      });
+    }
+  });
+
   it('have words and lead to the stock movements for whoever may read them', () => {
     for (const type of [
       'stock.delivery_note_lines_left_out',
-      'stock.delivery_note_moved_no_stock',
       'stock.invoice_lines_left_out',
-      'stock.invoice_moved_no_stock',
       'stock.credit_lines_not_returned',
-      'stock.credit_moved_no_stock',
       'stock.count_difference',
       'stock.imported',
     ]) {

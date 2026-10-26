@@ -35,6 +35,10 @@
         "receipt_cost_to_complete": {
           "title": "Receipt costs to complete",
           "hint": "Receipts recorded by someone who cannot see costs: their cost is still to be entered."
+        },
+        "move_failed": {
+          "title": "Stock not updated",
+          "hint": "Documents whose stock did not move when they were validated, issued or cancelled. Open each: “Update the stock” moves it, or “Settled” if it was put right otherwise."
         }
       },
       "members": {
@@ -108,7 +112,8 @@
       "cost": "Cost price",
       "reasons": "To check",
       "note": "Note",
-      "vendor": "Vendor"
+      "vendor": "Vendor",
+      "move": "Move"
     },
     "actions": {
       "see_invoices": "See {{name}}'s overdue invoices",
@@ -118,7 +123,14 @@
       "open_expense": "Open {{name}}",
       "review_price": "Review the price of {{name}}",
       "open_vendor": "Open {{name}}",
-      "open_customer": "Open {{name}}"
+      "open_customer": "Open {{name}}",
+      "open_document": "Open {{name}}"
+    },
+    "moves": {
+      "delivery_note": "Delivery note validated",
+      "delivery_note_cancelled": "Delivery note cancelled",
+      "invoice": "Invoice issued",
+      "credit_note": "Credit note returned"
     }
   }
 }

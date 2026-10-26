@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { decimalShown, formatAmount, formatDay } from '../shared/i18n/format';
-import { watchRowView } from './watch-view';
+import { subjectView } from './watch-subjects';
+import { type WatchRowView, watchRowView } from './watch-view';
 
 const figures = {
   amount: (value: string, scale: number | null) => formatAmount(value, scale, 'fr-FR', 'auto'),
@@ -115,6 +116,26 @@ describe('watchRowView', () => {
       say,
     );
     expect(own.cells['role']).toBe('Comptable');
+  });
+
+  it('writes a document whose stock move failed with its number, the move named and the day it failed', () => {
+    const say = (key: string): string =>
+      key === 'watch.moves.delivery_note_cancelled' ? 'Annulation du bon de livraison' : key;
+    const view = watchRowView(
+      {
+        kind: 'stock.move_failed',
+        subjectId: 'd1',
+        params: { number: 'BL-2026-0007', move: 'delivery_note_cancelled', date: '2026-10-26' },
+      },
+      0,
+      figures,
+      say,
+    );
+    expect([view.cells['number'], view.cells['move'], view.cells['date']]).toEqual([
+      'BL-2026-0007',
+      'Annulation du bon de livraison',
+      '26/10/2026',
+    ]);
   });
 
   it('writes a receipt whose cost is to complete with its place and the day it arrived', () => {
@@ -235,5 +256,24 @@ describe('watchRowView', () => {
     );
 
     expect(Object.keys(view.cells)).toEqual(['product']);
+  });
+
+  it('leads a failed move to its delivery note, or to its invoice or credit note', () => {
+    const link = subjectView('stock.move_failed')?.list.link;
+    const row = (move: string): WatchRowView => ({
+      id: '0',
+      row: { kind: 'stock.move_failed', subjectId: 'd1', params: { move } },
+      cells: {},
+    });
+    expect(
+      ['delivery_note', 'delivery_note_cancelled', 'invoice', 'credit_note'].map((move) =>
+        link?.(row(move)),
+      ),
+    ).toEqual([
+      ['/delivery-notes', 'd1'],
+      ['/delivery-notes', 'd1'],
+      ['/invoices', 'd1'],
+      ['/invoices', 'd1'],
+    ]);
   });
 });

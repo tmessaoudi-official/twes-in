@@ -31,6 +31,8 @@ final readonly class WorkingContext
         public ?\DateTimeImmutable $supportAccessUntil = null,
         /** until when a closed company is kept and may be reopened, null while it works */
         public ?ClosedDown $closing = null,
+        /** what the owner said is wrong, for the support reading the company through a grant; null for a member */
+        public ?string $supportAccessReason = null,
     ) {
     }
 }

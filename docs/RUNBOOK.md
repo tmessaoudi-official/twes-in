@@ -297,10 +297,14 @@ Untried on staging; `app:stock:replay-delivery-note` and `app:stock:replay-invoi
 The nightly `app:data:check` mails the operators the check, the company and a count, never a document's contents.
 Stock moves when a delivery note is validated or cancelled, or an invoice or credit note issued, in a listener after the
 commit, so a crash between the two can lose the move; the stock keepers are notified with the document's number.
+A move that failed with an error is recorded: the document's page offers « Remettre le stock à jour » and « C'est réglé »
+to whoever writes the stock, and « À surveiller » lists it, so the company puts it right itself. The steps below are for
+a move lost without a record (a crash), or a company that asks.
 
 1. Run the check by hand to see the current state: `docker compose … exec api bin/console app:data:check`.
 2. For a delivery note whose move is missing: `… exec api bin/console app:stock:replay-delivery-note <company id>
-   <delivery note id>`. It moves what the note says, and answers « already moved: nothing to do » for a note whose stock moved.
+   <delivery note id>`. It moves what the note says, and answers « already moved: nothing to do » for a note whose stock moved; either
+   way the note's recorded failure is settled with it, and leaves its page.
 3. For an issued invoice or credit note whose move is missing: `… exec api bin/console app:stock:replay-invoice <company id>
    <invoice id>`. It runs the move its issue ran, from the same lines, and answers the same way for one whose stock moved.
 4. Anything else the check names has no replay command yet: read the record, correct it through the screens (an

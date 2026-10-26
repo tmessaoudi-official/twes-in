@@ -37,6 +37,7 @@ describe('CompanySwitcher', () => {
     pinned: false,
     logoVersion: 'v1',
     supportAccessUntil: null,
+    supportAccessReason: null,
   };
   const globex: CompanyOption = { ...acme, id: 'c2', name: 'Globex', logoVersion: null };
   const companies = signal<readonly CompanyOption[]>([acme, globex]);
@@ -181,6 +182,7 @@ describe('CompanySwitcher', () => {
       role: 'support',
       logoVersion: null,
       supportAccessUntil: '2026-10-27T10:00:00+01:00',
+      supportAccessReason: null,
     };
 
     beforeEach(() => {

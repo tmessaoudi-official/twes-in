@@ -12,6 +12,8 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanyFacade } from '../company/company-facade';
 import { Session } from '../shared/session/session';
+import { noticeToasts, provideQuietFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
   PageMemoryStorage,
@@ -36,12 +38,16 @@ class StaticLoader implements TranslateLoader {
 describe('SupportBanner', () => {
   const me = signal<unknown>(null);
   const companies = { switching: signal(false), leave: vi.fn(async () => true) };
+  /** What the session says once read again; a grant closed leaves the operator in no company. */
+  let afterRefresh: unknown = null;
+  const refresh = vi.fn(async () => me.set(afterRefresh));
 
-  function shown(role: string, until: string | null): HTMLElement {
+  function shown(role: string, until: string | null, reason: string | null = null): HTMLElement {
     me.set({
       user: { id: 'u1' },
       company: { id: 'c1', name: 'Carthage', timezone: 'Africa/Tunis', role, countryCode: 'TN' },
       supportAccessUntil: until,
+      supportAccessReason: reason,
     });
     const fixture = TestBed.createComponent(SupportBanner);
     fixture.detectChanges();
@@ -49,6 +55,8 @@ describe('SupportBanner', () => {
   }
 
   beforeEach(() => {
+    afterRefresh = null;
+    refresh.mockClear();
     TestBed.configureTestingModule({
       imports: [SupportBanner],
       providers: [
@@ -58,7 +66,8 @@ describe('SupportBanner', () => {
           fallbackLang: 'fr',
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
-        { provide: AuthFacade, useValue: { me } },
+        provideQuietFeedback(),
+        { provide: AuthFacade, useValue: { me, refresh } },
         { provide: CompanyFacade, useValue: companies },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -77,6 +86,16 @@ describe('SupportBanner', () => {
     expect(banner?.querySelector('[data-testid="support-banner-manage"]')).toBeNull();
   });
 
+  it('tells the operator what the owner said is wrong, and says nothing of it when they said nothing', () => {
+    const said = shown('support', '2026-10-13T09:00:00+00:00', 'La facture du 3 mars');
+    expect(said.querySelector('[data-testid="support-banner-reason"]')?.textContent).toContain(
+      'La facture du 3 mars',
+    );
+
+    const silent = shown('support', '2026-10-13T09:00:00+00:00');
+    expect(silent.querySelector('[data-testid="support-banner-reason"]')).toBeNull();
+  });
+
   it('lets the operator leave the company, back to the platform: nothing read after is journalled', async () => {
     // Done reading, the operator had no way out but the home's « Gérer la plateforme », the session left in the shop.
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
@@ -86,6 +105,34 @@ describe('SupportBanner', () => {
 
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/platform'));
     expect(companies.leave).toHaveBeenCalled();
+  });
+
+  it('tells the operator the owner closed the access, and takes them back to the platform', async () => {
+    // Workflow hunt SUP-3: the open page turned to « introuvable » with nothing said.
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    shown('support', '2026-10-13T09:00:00+00:00');
+    afterRefresh = { user: { id: 'u1' }, company: null, supportAccessUntil: null };
+
+    await announceSaved('support_grant', 'g1', null, 'support_access.ended');
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/platform'));
+    expect(noticeToasts()).toEqual([
+      { key: 'support_access.closed_by_owner', params: { company: 'Carthage' } },
+    ]);
+  });
+
+  it('says nothing when the owner opens it again, or a member hears it', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    shown('support', '2026-10-13T09:00:00+00:00');
+    afterRefresh = me();
+    await announceSaved('support_grant', 'g2', null, 'support_access.granted');
+
+    shown('owner', '2026-10-13T09:00:00+00:00');
+    afterRefresh = { user: { id: 'u1' }, company: null };
+    await announceSaved('support_grant', 'g2', null, 'support_access.ended');
+
+    expect(noticeToasts()).toEqual([]);
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it('offers no way out to the company’s own members, who work there', () => {

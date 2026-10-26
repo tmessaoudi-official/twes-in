@@ -33,6 +33,7 @@ import type {
   StockValuation,
   MapSearch,
   StockPlanSaved,
+  StockMoveFailureRow,
 } from './inventory-types';
 import type { PlanStep } from './stock-plan-draft';
 import { sessionSignal } from '../shared/session/session-data';
@@ -153,6 +154,28 @@ export class InventoryFacade {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * A document's stock moves that failed, or null when they could not be read: shown beside the document, so a refusal
+   * neither marks the screen busy nor fills its error line.
+   */
+  async failedMoves(companyId: string, documentId: string): Promise<StockMoveFailureRow[] | null> {
+    try {
+      return await this.api.failedMoves(companyId, documentId);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Moves a failed move again: true when the stock moved, false when it failed again; a refusal is thrown. */
+  replayMove(companyId: string, failureId: string): Promise<boolean> {
+    return this.api.replayMove(companyId, failureId);
+  }
+
+  /** Says a failed move settled, the stock set right otherwise; a refusal is thrown. */
+  settleMove(companyId: string, failureId: string): Promise<void> {
+    return this.api.settleMove(companyId, failureId);
   }
 
   /**

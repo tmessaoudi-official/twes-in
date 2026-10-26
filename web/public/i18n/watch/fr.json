@@ -35,6 +35,10 @@
         "receipt_cost_to_complete": {
           "title": "Coûts de réception à compléter",
           "hint": "Des réceptions saisies par quelqu’un qui ne voit pas les coûts : leur coût reste à saisir."
+        },
+        "move_failed": {
+          "title": "Stock non mis à jour",
+          "hint": "Des documents dont le stock n’a pas bougé quand ils ont été validés, émis ou annulés. Ouvrez chacun : « Remettre le stock à jour » le fait bouger, ou « C’est réglé » s’il a été corrigé autrement."
         }
       },
       "members": {
@@ -108,7 +112,8 @@
       "cost": "Prix de revient",
       "reasons": "À vérifier",
       "note": "Note",
-      "vendor": "Fournisseur"
+      "vendor": "Fournisseur",
+      "move": "Mouvement"
     },
     "actions": {
       "see_invoices": "Voir les factures en retard de {{name}}",
@@ -118,7 +123,14 @@
       "open_expense": "Ouvrir {{name}}",
       "review_price": "Revoir le prix de {{name}}",
       "open_vendor": "Ouvrir {{name}}",
-      "open_customer": "Ouvrir {{name}}"
+      "open_customer": "Ouvrir {{name}}",
+      "open_document": "Ouvrir {{name}}"
+    },
+    "moves": {
+      "delivery_note": "Validation du bon de livraison",
+      "delivery_note_cancelled": "Annulation du bon de livraison",
+      "invoice": "Émission de la facture",
+      "credit_note": "Retour de l’avoir"
     }
   }
 }

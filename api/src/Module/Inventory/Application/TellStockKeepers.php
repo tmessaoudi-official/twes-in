@@ -25,12 +25,12 @@ final readonly class TellStockKeepers
     public const string PERMISSION = 'stock.write';
     /** Some lines of a validated note moved no stock: another unit than the product's, or no quantity. */
     public const string LINES_LEFT_OUT = 'stock.delivery_note_lines_left_out';
-    /** Moving a note's stock failed and nothing moved; `app:stock:replay-delivery-note` moves it again. */
+    /** Moving a note's stock failed and nothing moved; « À surveiller » leads to the note, whose page moves it again. */
     public const string MOVED_NO_STOCK = 'stock.delivery_note_moved_no_stock';
 
     /** Some lines of an issued invoice moved no stock, for the reasons a delivery note's lines may not. */
     public const string INVOICE_LINES_LEFT_OUT = 'stock.invoice_lines_left_out';
-    /** Moving an invoice's stock failed and nothing moved. */
+    /** Moving an invoice's stock failed and nothing moved; moved again from its page, as a note's. */
     public const string INVOICE_MOVED_NO_STOCK = 'stock.invoice_moved_no_stock';
     /** A credit note's returned lines brought back nothing, or less than they said. */
     public const string CREDIT_LINES_NOT_RETURNED = 'stock.credit_lines_not_returned';

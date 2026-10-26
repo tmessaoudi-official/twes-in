@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import {
@@ -9,6 +9,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { Session } from '../session/session';
 import { type PageTab, PageTabs } from './page-tabs';
 
 class StaticLoader implements TranslateLoader {
@@ -43,11 +44,38 @@ class NamedHost {
   readonly tabs = new Host().tabs;
 }
 
+@Component({
+  imports: [PageTabs],
+  template: `<app-page-tabs [tabs]="tabs" label="tabs.label"><p>La page</p></app-page-tabs>`,
+})
+class GuardedHost {
+  readonly tabs: readonly PageTab[] = [
+    { labelKey: 'tabs.list', route: '/customers', testId: 'customers-tab' },
+    {
+      labelKey: 'tabs.groups',
+      route: '/customers/groups',
+      testId: 'customer-groups-link',
+      permission: 'customer.write',
+    },
+  ];
+}
+
+const held = signal<readonly string[]>([]);
+
 describe('PageTabs', () => {
   beforeEach(async () => {
+    held.set([]);
     await TestBed.configureTestingModule({
       imports: [Host],
       providers: [
+        {
+          provide: Session,
+          useValue: {
+            me: signal(null),
+            hasPermission: (permission: string) => held().includes(permission),
+            hasModule: () => true,
+          },
+        },
         provideRouter([
           { path: 'customers', component: Blank },
           { path: 'customers/groups', component: Blank },
@@ -81,6 +109,22 @@ describe('PageTabs', () => {
     expect(tab('customers-tab')?.getAttribute('aria-selected')).toBe('false');
     expect(tab('customer-groups-link')?.getAttribute('aria-selected')).toBe('true');
     expect(tab('page')?.closest('[role="tabpanel"]')).not.toBeNull();
+  });
+
+  it('draws a tab only for whoever holds its permission, as the sidebar draws its entries', async () => {
+    // Workflow hunt ROLE-2: a clerk was shown « Comptage » and « Valorisation », whose pages then said they could not.
+    const fixture = TestBed.createComponent(GuardedHost);
+    const tab = (id: string) =>
+      (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(tab('customers-tab')).not.toBeNull();
+    expect(tab('customer-groups-link')).toBeNull();
+
+    held.set(['customer.write']);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(tab('customer-groups-link')).not.toBeNull();
   });
 
   it('selects the tab a page names, when the page opens at an address of its own', async () => {

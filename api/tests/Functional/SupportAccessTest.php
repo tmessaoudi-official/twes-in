@@ -269,6 +269,54 @@ final class SupportAccessTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /** Workflow hunt SUP-1: the owner says what is wrong, so the operator opens the company knowing where to look. */
+    public function testTheOwnerSaysWhatIsWrongAndOnlyTheOperatorReadingItIsShown(): void
+    {
+        $this->as(self::OWNER);
+        $this->stepUp(self::PASSWORD);
+        $reason = 'La facture du 3 mars s’imprime sans le timbre';
+        $this->postJson($this->path('/support-access'), ['hours' => 24, 'reason' => "\u{00A0} {$reason}\n"]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame($reason, $this->json()['reason'] ?? null, 'kept without what was typed around it');
+        $this->getJson($this->path('/support-access'));
+        self::assertSame($reason, $this->json()['reason'] ?? null);
+        $changes = $this->connection()->fetchOne("SELECT changes FROM audit_log WHERE action = 'support_access.granted'");
+        self::assertIsString($changes);
+        self::assertStringContainsString('reason', $changes);
+        self::assertStringNotContainsString('timbre', $changes, 'the journal names the field, never what it says');
+
+        $this->as(self::OPERATOR);
+        $this->getJson('/api/me/companies');
+        self::assertSame($reason, $this->jsonList()[0]['supportAccessReason'] ?? null);
+        $this->postJson('/api/me/company', ['companyId' => $this->companyId()]);
+        $this->getJson('/api/auth/me');
+        self::assertSame($reason, $this->json()['supportAccessReason'] ?? null);
+
+        $this->as(self::MANAGER);
+        $this->getJson('/api/auth/me');
+        self::assertNull($this->json()['supportAccessReason'] ?? null, 'a member sees that support is in, not what the owner asked of it');
+
+        $this->as(self::OWNER);
+        $this->stepUp(self::PASSWORD);
+        $this->postJson($this->path('/support-access'), ['hours' => 1, 'reason' => " \u{200B} "]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertNull($this->json()['reason'] ?? null, 'nothing said is no reason');
+    }
+
+    public function testAReasonIsTextAndShortEnoughToRead(): void
+    {
+        $this->as(self::OWNER);
+        $this->stepUp(self::PASSWORD);
+        foreach ([42, ['a'], str_repeat('é', 501)] as $reason) {
+            $this->postJson($this->path('/support-access'), ['hours' => 24, 'reason' => $reason]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, (string) json_encode($reason));
+            self::assertSame(['error' => 'support_reason', 'max' => 500], $this->json());
+        }
+        self::assertEquals(0, $this->connection()->fetchOne('SELECT COUNT(*) FROM support_grant'));
+        $this->postJson($this->path('/support-access'), ['hours' => 24, 'reason' => str_repeat('é', 500)]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
     public function testOnlyTheOwnerGrantsAndOnlyForAnHourADayOrThree(): void
     {
         $this->as(self::MANAGER);

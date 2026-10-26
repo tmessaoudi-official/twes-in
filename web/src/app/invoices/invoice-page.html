@@ -120,6 +120,9 @@
   }
 
   @if (current(); as invoice) {
+    @if (invoice.status !== 'draft') {
+      <app-stock-move-failures [documentId]="invoice.id" />
+    }
     @if (!isCreditNote() && invoice.status !== 'draft' && invoice.status !== 'cancelled') {
       <mat-card data-testid="invoice-due">
         <mat-card-content>

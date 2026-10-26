@@ -61,6 +61,7 @@ final readonly class ListCompaniesOfUser
                 false,
                 $logos[$grant->getCompany()->getId()->toRfc4122()] ?? null,
                 $grant->getEndsAt(),
+                $grant->getReason(),
             ),
             $grants,
         )];

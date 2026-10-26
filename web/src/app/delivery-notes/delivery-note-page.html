@@ -99,6 +99,9 @@
     }
   }
   @if (current(); as note) {
+    @if (note.status !== 'draft') {
+      <app-stock-move-failures [documentId]="note.id" />
+    }
     @if (
       (note.status === 'draft' || note.status === 'validated') && mayReadAccount() && options();
       as opts

@@ -414,6 +414,19 @@ export type CostOnReceive = 'suggest' | 'average' | 'last' | 'manual';
 export type CostBasis = 'average' | 'last';
 export const COST_BASES: readonly CostBasis[] = ['average', 'last'];
 
+/** Which of a document's stock moves failed: a delivery note's validation or cancellation, an invoice's issue, a credit note's return. */
+export type FailedMove = 'delivery_note' | 'delivery_note_cancelled' | 'invoice' | 'credit_note';
+
+/** A document's stock move that failed after the document was kept, until it is moved again or said settled. */
+export interface StockMoveFailureRow {
+  id: string;
+  move: FailedMove;
+  documentId: string;
+  number: string;
+  /** ISO 8601 */
+  failedAt: string;
+}
+
 /** What a receipt of a product would do to its cost, as the form shows it before anything is saved. */
 export interface ReceiptCostView {
   mode: CostOnReceive;

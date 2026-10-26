@@ -39,6 +39,7 @@ import type {
   StockCountContextStockCountContextRead,
   ReceiptCostEntryReceiptCostEntryWriteValidationReceiptCostEntryWrite as ReceiptCostEntryWrite,
   StockLossAttachmentStockLossAttachmentRead,
+  StockMoveFailureStockMoveFailureRead,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import { apiRangeKey } from '../shared/list/list-filters';
@@ -69,6 +70,7 @@ import {
   type StockReceiptInput,
   type StockMovementRow,
   type StockLossFile,
+  type StockMoveFailureRow,
   API_DECIMALS,
   type StockOptions,
   type StockProductOption,
@@ -252,6 +254,44 @@ export class InventoryApi {
         lastCost: cost.lastCost ?? null,
         lastAt: cost.lastAt ?? null,
       };
+    });
+  }
+
+  /** The stock moves of a delivery note, invoice or credit note that failed and wait to be moved again. */
+  async failedMoves(companyId: string, documentId: string): Promise<StockMoveFailureRow[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<StockMoveFailureStockMoveFailureRead[]>(
+            path(companyId, 'stock-move-failures'),
+            {
+              params: new HttpParams().set('document', documentId),
+            },
+          ),
+        )
+      ).map(toMoveFailure),
+    );
+  }
+
+  /** Moves a failed move again; true when the stock moved and the failure is gone, false when it failed again. */
+  async replayMove(companyId: string, failureId: string): Promise<boolean> {
+    return this.guard(
+      async () =>
+        (
+          await firstValueFrom(
+            this.http.post<StockMoveFailureStockMoveFailureRead>(
+              `${path(companyId, 'stock-move-failures', failureId)}/replay`,
+              null,
+            ),
+          )
+        ).settled === true,
+    );
+  }
+
+  /** Says a failed move settled without moving anything, the stock having been set right otherwise. */
+  async settleMove(companyId: string, failureId: string): Promise<void> {
+    await this.guard(async () => {
+      await firstValueFrom(this.http.delete(path(companyId, 'stock-move-failures', failureId)));
     });
   }
 
@@ -753,6 +793,16 @@ export class InventoryApi {
       );
     }
   }
+}
+
+function toMoveFailure(failure: StockMoveFailureStockMoveFailureRead): StockMoveFailureRow {
+  return {
+    id: failure.id ?? '',
+    move: failure.move ?? 'delivery_note',
+    documentId: failure.documentId ?? '',
+    number: failure.number ?? '',
+    failedAt: failure.failedAt ?? '',
+  };
 }
 
 function codeOf(

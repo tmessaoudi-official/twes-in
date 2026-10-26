@@ -636,11 +636,11 @@
       "invitation_accepted": "{{display_name}} joined the company.",
       "invitation_received": "An invitation to join {{company}} is waiting in your email.",
       "stock_delivery_note_lines_left_out": "Delivery note {{number}} is validated, but some of its lines moved no stock (another unit, or no quantity).",
-      "stock_delivery_note_moved_no_stock": "The stock of delivery note {{number}} could not be updated. Nothing moved: tell the platform administrator, who can replay it.",
+      "stock_delivery_note_moved_no_stock": "The stock of delivery note {{number}} could not be updated. Nothing moved: update it from “To watch”.",
       "stock_invoice_lines_left_out": "Invoice {{number}} is issued, but some of its lines moved no stock (another unit, or no quantity).",
-      "stock_invoice_moved_no_stock": "The stock of invoice {{number}} could not be updated. Nothing moved: record a stock adjustment, or tell the platform administrator.",
+      "stock_invoice_moved_no_stock": "The stock of invoice {{number}} could not be updated. Nothing moved: update it from “To watch”.",
       "stock_credit_lines_not_returned": "Credit note {{number}} is issued, but some of the goods it marks as returned did not come back to stock (neither sold by that invoice nor delivered by its delivery notes, or already returned).",
-      "stock_credit_moved_no_stock": "The goods of credit note {{number}} could not be returned to stock. Nothing moved: record a receipt, or tell the platform administrator.",
+      "stock_credit_moved_no_stock": "The goods of credit note {{number}} could not be returned to stock. Nothing moved: update the stock from “To watch”.",
       "unknown": "New notification.",
       "subscription_payment_declared": "{{company}} declared a payment of {{amount}} {{currency}}.",
       "subscription_payment_decided": "Your payment of {{amount}} {{currency}} was answered.",
@@ -4389,6 +4389,7 @@
       "not_found": "This company can no longer be reached.",
       "owner_only": "Only the owner opens support access.",
       "support_window": "Choose one of the lengths offered.",
+      "support_reason": "What is wrong is too long for support: shorten it.",
       "step_up_required": "Nothing changed: confirm it is you to make this change."
     },
     "read_only": "Support reads the company read-only: nothing is changed or exported.",
@@ -4396,6 +4397,10 @@
     "banner_members": "The platform’s support may read the company until {{until}}.",
     "manage": "Manage",
     "switcher": "Support",
+    "reason": "What is wrong (optional)",
+    "reason_hint": "What support should look at, for instance “the 3 March invoice prints without the stamp”. They read it on opening the company.",
+    "reason_said": "What is wrong:",
+    "closed_by_owner": "The owner of {{company}} closed support access. Back to the platform.",
     "leave": "Leave"
   },
   "demo_mails": {

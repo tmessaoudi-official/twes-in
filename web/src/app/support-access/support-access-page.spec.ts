@@ -27,6 +27,7 @@ import {
 } from './support-access-api';
 import { DEFAULT_SUPPORT_HOURS, SupportAccessPage } from './support-access-page';
 import { refusedByTheDemo } from '../shared/testing/said-answers';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -39,18 +40,29 @@ const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
   request: vi.fn<(intro?: string) => Promise<boolean>>(),
 });
 
-const CLOSED: SupportAccessState = { startsAt: null, endsAt: null, hours: [1, 24, 72] };
+const CLOSED: SupportAccessState = {
+  startsAt: null,
+  endsAt: null,
+  reason: null,
+  hours: [1, 24, 72],
+  reasonMax: 500,
+};
 const OPEN: SupportAccessState = {
   startsAt: '2026-10-12T09:00:00+00:00',
   endsAt: '2026-10-13T09:00:00+00:00',
+  reason: null,
   hours: [1, 24, 72],
+  reasonMax: 500,
 };
 
 describe('SupportAccessPage', () => {
   let fixture: ComponentFixture<SupportAccessPage>;
   const api = {
     read: vi.fn<(companyId: string) => Promise<SupportAccessState>>(),
-    grant: vi.fn<(companyId: string, hours: number) => Promise<SupportAccessState>>(),
+    grant:
+      vi.fn<
+        (companyId: string, hours: number, reason: string | null) => Promise<SupportAccessState>
+      >(),
     end: vi.fn<(companyId: string) => Promise<void>>(),
   };
   const refresh = vi.fn(async () => undefined);
@@ -118,11 +130,48 @@ describe('SupportAccessPage', () => {
     q('support-access-grant')!.click();
     await settle();
 
-    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 72);
+    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 72, null);
     expect(q('support-access-open')).not.toBeNull();
     expect(effectToasts()).toEqual(['support_access.granted:corrigeable']);
     // The banner reads the session, which says until when.
     expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it('sends what is wrong with the window, counts it unsaved until sent, and shows it while open', async () => {
+    // Workflow hunt SUP-1: the operator opened the company with no idea where to look.
+    const said = 'La facture du 3 mars s’imprime sans le timbre';
+    api.grant.mockResolvedValue({ ...OPEN, reason: said });
+    await open();
+    const unsaved = TestBed.inject(UnsavedChanges);
+
+    const field = q('support-access-reason') as HTMLTextAreaElement;
+    expect(field.getAttribute('maxlength')).toBe('500');
+    field.value = said;
+    field.dispatchEvent(new Event('input'));
+    await settle();
+    expect(unsaved.count()).toBe(1);
+    expect(q('support-access-reason-count')?.textContent).toContain(`${said.length} / 500`);
+
+    q('support-access-grant')!.click();
+    await settle();
+
+    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 24, said);
+    expect(q('support-access-reason-said')?.textContent).toContain(said);
+    expect(field.value).toBe('');
+    expect(unsaved.count()).toBe(0);
+  });
+
+  it('sends no reason for one left blank', async () => {
+    await open();
+    const field = q('support-access-reason') as HTMLTextAreaElement;
+    field.value = '   ';
+    field.dispatchEvent(new Event('input'));
+    await settle();
+
+    q('support-access-grant')!.click();
+    await settle();
+
+    expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 24, null);
   });
 
   it('closes an open window when the owner asks', async () => {

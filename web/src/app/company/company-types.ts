@@ -22,6 +22,8 @@ export interface CompanyOption {
   readonly logoVersion: string | null;
   /** Until when its owner lets support read it, for a company an operator reads only that way; null otherwise. */
   readonly supportAccessUntil: string | null;
+  /** What its owner said is wrong, for a company an operator reads through support access; null otherwise. */
+  readonly supportAccessReason: string | null;
 }
 
 /** One person in the company being administered. */

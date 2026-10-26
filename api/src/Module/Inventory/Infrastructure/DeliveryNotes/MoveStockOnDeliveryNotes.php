@@ -12,7 +12,9 @@ namespace App\Module\Inventory\Infrastructure\DeliveryNotes;
 use App\Module\DeliveryNotes\Domain\Event\DeliveryNoteCancelled;
 use App\Module\DeliveryNotes\Domain\Event\DeliveryNoteValidated;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
+use App\Module\Inventory\Application\Replay\StockMoveFailures;
 use App\Module\Inventory\Application\TellStockKeepers;
+use App\Module\Inventory\Domain\ValueObject\FailedMove;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
@@ -25,7 +27,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 #[AsEventListener(event: DeliveryNoteCancelled::class, method: 'onCancelled')]
 final readonly class MoveStockOnDeliveryNotes
 {
-    public function __construct(private MoveStockForDeliveryNotes $move, private TellStockKeepers $tell, private LoggerInterface $logger)
+    public function __construct(private MoveStockForDeliveryNotes $move, private TellStockKeepers $tell, private LoggerInterface $logger, private StockMoveFailures $failures)
     {
     }
 
@@ -35,6 +37,7 @@ final readonly class MoveStockOnDeliveryNotes
             $reasons = $this->move->validated($event->deliveryNoteId, $event->companyId, $event->establishmentId, $event->lines);
         } catch (\Throwable $failure) {
             $this->logger->error('Delivery note {number} was validated, but its stock could not be moved: {failure}.', ['number' => $event->number, 'failure' => $failure->getMessage(), 'exception' => $failure]);
+            $this->told(fn () => $this->failures->record($event->companyId, FailedMove::DeliveryNote, $event->deliveryNoteId, $event->number));
             $this->told(fn () => $this->tell->deliveryNoteMovedNoStock($event->companyId, $event->deliveryNoteId, $event->number));
 
             return;
@@ -53,11 +56,12 @@ final readonly class MoveStockOnDeliveryNotes
             $this->move->cancelled($event->deliveryNoteId, $event->companyId);
         } catch (\Throwable $failure) {
             $this->logger->error('Delivery note {number} was cancelled, but its stock could not be returned: {failure}.', ['number' => $event->number, 'failure' => $failure->getMessage(), 'exception' => $failure]);
+            $this->told(fn () => $this->failures->record($event->companyId, FailedMove::DeliveryNoteCancelled, $event->deliveryNoteId, $event->number));
             $this->told(fn () => $this->tell->deliveryNoteMovedNoStock($event->companyId, $event->deliveryNoteId, $event->number));
         }
     }
 
-    /** Telling is best effort too: a notification that cannot be written leaves the log line as the record. */
+    /** Recording and telling are best effort too: what cannot be written leaves the log line as the record. */
     private function told(\Closure $tell): void
     {
         try {

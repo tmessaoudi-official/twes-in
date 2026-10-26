@@ -148,6 +148,8 @@ export interface SignedInState {
   support?: SupportContact;
   /** until when the working company lets the platform's support read it, null while it does not: the banner says so */
   supportAccessUntil?: string | null;
+  /** what the owner said is wrong, given only to the support reading the company: its banner says it */
+  supportAccessReason?: string | null;
 }
 
 /** The phone, WhatsApp number and address the platform's operators are reached at, each null when not given. */

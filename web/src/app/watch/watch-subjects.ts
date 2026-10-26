@@ -62,6 +62,20 @@ const OPEN_INVOICE: RowAction<WatchRowView> = {
   shown: (view) => view.row.subjectId !== null,
 };
 
+/** The delivery note, invoice or credit note whose stock move failed: its page moves it again or says it is settled. */
+function failedMoveDocument(view: WatchRowView): unknown[] {
+  const move = String(view.row.params['move'] ?? '');
+  return [move.startsWith('delivery_note') ? '/delivery-notes' : '/invoices', view.row.subjectId];
+}
+
+const OPEN_DOCUMENT: RowAction<WatchRowView> = {
+  id: 'open-document',
+  label: 'watch.actions.open_document',
+  labelParams: (view) => ({ name: String(view.cells['number'] ?? '') }),
+  icon: 'sync_problem',
+  link: failedMoveDocument,
+};
+
 /** The product page, where its stock, its lots and its reorder points are. */
 const OPEN_PRODUCT: RowAction<WatchRowView> = {
   id: 'open-product',
@@ -258,6 +272,23 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
         cell('invitedOn', { width: 140 }),
         cell('expiresOn', { width: 140 }),
       ],
+    },
+  },
+  // A document whose stock did not move when it was kept: moved again on its page.
+  'stock.move_failed': {
+    icon: 'sync_problem',
+    list: {
+      id: 'watch-move-failed',
+      rowId: (view) => view.id,
+      pageSizes: PAGE_SIZES,
+      link: failedMoveDocument,
+      linkColumn: 'number',
+      columns: [
+        cell('number', { hideable: false }),
+        cell('move', { priority: 'high' }),
+        cell('date', { width: 140 }),
+      ],
+      actions: [OPEN_DOCUMENT],
     },
   },
   'stock.receipt_cost_to_complete': {

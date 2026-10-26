@@ -128,6 +128,7 @@ final class SubmissionStancesTest extends KernelTestCase
         '/companies/{companyId}/record-removals/{removalId}/restore' => self::TRANSITION,
         '/companies/{companyId}/reopen' => self::TRANSITION,
         '/companies/{companyId}/scan-pairings/{id}/photos/{photoId}/take' => self::TRANSITION,
+        '/companies/{companyId}/stock-move-failures/{failureId}/replay' => self::TRANSITION,
         '/companies/{companyId}/stock-movements/{movementId}/cost' => self::TRANSITION,
         '/platform/payment-declarations/{declarationId}/confirm' => self::TRANSITION,
         '/platform/payment-declarations/{declarationId}/reject' => self::TRANSITION,

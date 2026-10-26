@@ -17,7 +17,9 @@ use App\Module\DeliveryNotes\Domain\ValueObject\DeliveredQuantity;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\Location\ManageStockLocations;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
+use App\Module\Inventory\Application\Replay\StockMoveFailures;
 use App\Module\Inventory\Application\TellStockKeepers;
+use App\Module\Inventory\Domain\ValueObject\FailedMove;
 use App\Module\Inventory\Infrastructure\DeliveryNotes\MoveStockOnDeliveryNotes;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Module\Products\Domain\Model\Product;
@@ -39,6 +41,7 @@ use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
+use App\Tests\Support\InMemoryCompanies;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryModuleStates;
@@ -49,6 +52,7 @@ use App\Tests\Support\InMemoryRecordVersions;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockLots;
+use App\Tests\Support\InMemoryStockMoveFailures;
 use App\Tests\Support\InMemoryStockMovements;
 use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\TestCase;
@@ -59,6 +63,7 @@ use Symfony\Component\Uid\Uuid;
 final class MoveStockOnDeliveryNotesTest extends TestCase
 {
     private InMemoryNotifications $notifications;
+    private InMemoryStockMoveFailures $failures;
     private InMemoryStockMovements $movements;
     private Company $company;
     private Establishment $establishment;
@@ -86,6 +91,8 @@ final class MoveStockOnDeliveryNotesTest extends TestCase
         self::assertSame('error', $logger->logged[0][0]);
         self::assertStringContainsString('BL-2026-00001', $logger->logged[0][1]);
         self::assertSame([TellStockKeepers::MOVED_NO_STOCK], array_map(static fn ($n) => $n->type, $this->notifications->published));
+        // Recorded, so a stock keeper moves it again from the note's page rather than wait for a console.
+        self::assertSame([[FailedMove::DeliveryNote, 'BL-2026-00001']], array_map(static fn ($f) => [$f->getMove(), $f->getNumber()], $this->failures->failures));
     }
 
     public function testALineLeftOutIsLoggedAndItsStockKeepersToldWhileTheRestMoves(): void
@@ -116,6 +123,7 @@ final class MoveStockOnDeliveryNotesTest extends TestCase
     {
         $this->notifications = new InMemoryNotifications();
         $this->movements = new InMemoryStockMovements();
+        $this->failures = new InMemoryStockMoveFailures();
         $now = new \DateTimeImmutable('2026-09-15 09:00:00');
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->establishment = Establishment::create($this->company, '000', 'Siège', true, $now);
@@ -155,12 +163,21 @@ final class MoveStockOnDeliveryNotesTest extends TestCase
             }
         };
 
-        return [new MoveStockOnDeliveryNotes($move, new TellStockKeepers($memberships, $this->notifications), $logger), $logger];
+        return [new MoveStockOnDeliveryNotes($move, new TellStockKeepers($memberships, $this->notifications), $logger, $this->recorded()), $logger];
     }
 
     /** @param list<DeliveredQuantity> $lines */
     private function validated(array $lines): DeliveryNoteValidated
     {
         return new DeliveryNoteValidated(Uuid::v7(), $this->company->getId(), $this->establishment->getId(), 'BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $lines);
+    }
+
+    /** Where a failed move is recorded, its company known as the real repository knows it. */
+    private function recorded(): StockMoveFailures
+    {
+        $companies = new InMemoryCompanies();
+        $companies->save($this->company);
+
+        return new StockMoveFailures($this->failures, $companies, new RecordingLiveChanges(), new FakeTransactions(), new MockClock('2026-09-15 10:00:00'));
     }
 }

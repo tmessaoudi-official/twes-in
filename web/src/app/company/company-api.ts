@@ -460,6 +460,7 @@ function toOption(row: WorkingCompanyWorkingCompanyRead): CompanyOption {
     pinned: row.pinned ?? false,
     logoVersion: row.logoVersion ?? null,
     supportAccessUntil: row.supportAccessUntil ?? null,
+    supportAccessReason: row.supportAccessReason ?? null,
   };
 }
 

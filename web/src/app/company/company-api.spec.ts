@@ -255,11 +255,18 @@ describe('CompanyApi, the company a sign-in opens', () => {
         status: 'active',
         role: 'support',
         supportAccessUntil: '2026-10-27T10:00:00+01:00',
+        supportAccessReason: 'La facture du 3 mars',
       },
     ]);
-    expect((await reading).map((company) => [company.id, company.supportAccessUntil])).toEqual([
-      ['c1', null],
-      ['c2', '2026-10-27T10:00:00+01:00'],
+    expect(
+      (await reading).map((company) => [
+        company.id,
+        company.supportAccessUntil,
+        company.supportAccessReason,
+      ]),
+    ).toEqual([
+      ['c1', null, null],
+      ['c2', '2026-10-27T10:00:00+01:00', 'La facture du 3 mars'],
     ]);
   });
 

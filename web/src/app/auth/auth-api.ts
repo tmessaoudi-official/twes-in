@@ -292,6 +292,7 @@ function toState(me: Me): SignedInState {
     })),
     customerScreenCompanyId: me.customerScreenCompanyId,
     supportAccessUntil: me.supportAccessUntil,
+    supportAccessReason: me.supportAccessReason,
     support: {
       phone: me.support.phone,
       whatsapp: me.support.whatsapp,

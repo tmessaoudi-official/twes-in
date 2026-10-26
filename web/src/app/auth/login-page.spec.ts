@@ -80,6 +80,7 @@ const me: Me = {
   plannedModules: [],
   customerScreenCompanyId: null,
   supportAccessUntil: null,
+  supportAccessReason: null,
   support: { phone: null, whatsapp: null, email: null },
 };
 

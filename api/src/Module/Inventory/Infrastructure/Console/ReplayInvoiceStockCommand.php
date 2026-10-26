@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Infrastructure\Console;
 
 use App\Module\Inventory\Application\IssuedInvoices;
+use App\Module\Inventory\Application\Replay\SettleStockMoveFailures;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use App\Module\Inventory\Infrastructure\Invoices\MoveStockOnInvoices;
@@ -33,6 +34,7 @@ final class ReplayInvoiceStockCommand extends Command
     public function __construct(
         private readonly IssuedInvoices $invoices,
         private readonly StockMovementRepository $movements,
+        private readonly SettleStockMoveFailures $failures,
         private readonly MoveStockOnInvoices $move,
     ) {
         parent::__construct();
@@ -65,6 +67,8 @@ final class ReplayInvoiceStockCommand extends Command
         if ($this->written($source, $issued->invoiceId, $company) > 0) {
             $io->success(\sprintf('The stock of %s already moved: nothing to do.', $issued->number));
 
+            $this->failures->replayAllOf($company, $issued->invoiceId);
+
             return Command::SUCCESS;
         }
 
@@ -78,6 +82,8 @@ final class ReplayInvoiceStockCommand extends Command
             return Command::SUCCESS;
         }
         $io->success(\sprintf('%s: %d movement%s written.', $issued->number, $moved, 1 === $moved ? '' : 's'));
+
+        $this->failures->replayAllOf($company, $issued->invoiceId);
 
         return Command::SUCCESS;
     }

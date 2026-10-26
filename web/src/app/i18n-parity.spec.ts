@@ -12,6 +12,9 @@ import frDemoMails from '../../public/i18n/demo-mails/fr.json';
 import arPurchaseHistory from '../../public/i18n/purchase-history/ar.json';
 import enPurchaseHistory from '../../public/i18n/purchase-history/en.json';
 import frPurchaseHistory from '../../public/i18n/purchase-history/fr.json';
+import arStockMoves from '../../public/i18n/stock-moves/ar.json';
+import enStockMoves from '../../public/i18n/stock-moves/en.json';
+import frStockMoves from '../../public/i18n/stock-moves/fr.json';
 import arPurchases from '../../public/i18n/purchases/ar.json';
 import enPurchases from '../../public/i18n/purchases/en.json';
 import frPurchases from '../../public/i18n/purchases/fr.json';
@@ -115,6 +118,7 @@ const parts: Record<string, Record<string, unknown>> = {
   schedule: { fr: frSchedule, en: enSchedule, ar: arSchedule },
   'settings-refusals': { fr: frSettingsRefusals, en: enSettingsRefusals, ar: arSettingsRefusals },
   'stock-count': { fr: frStockCount, en: enStockCount, ar: arStockCount },
+  'stock-moves': { fr: frStockMoves, en: enStockMoves, ar: arStockMoves },
   'stock-plan': { fr: frStockPlan, en: enStockPlan, ar: arStockPlan },
   texts: { fr: frTexts, en: enTexts, ar: arTexts },
   'two-factor': { fr: frTwoFactor, en: enTwoFactor, ar: arTwoFactor },

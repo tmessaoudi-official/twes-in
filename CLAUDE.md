@@ -180,7 +180,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `Legal` (the legal pages' versions, read by anyone at `GET /api/legal/{page}/{language}`; the shipped drafts are
   `api/resources/legal/<page>.<language>.md`, written at start where a page has none; the operator writes a new
   version and validates the latest through `/api/platform/legal-texts`, from `/platform/legal`),
-  `Tenancy` also holds « Accès du support » (the owner's `SupportGrant`; `Application/Support/SupportAccess`, which `CompanyGuard`
+  `Tenancy` also holds « Accès du support » (the owner's `SupportGrant`, with what is wrong if they say, which only the operator
+  reading it is given, on /platform and in the banner, which also says it when the owner closes it mid-visit; `Application/Support/SupportAccess`, which `CompanyGuard`
   and `PermissionVoter` ask for an operator's read-only way in; `SupportReadOnlyListener`, which refuses anything but a GET
   and every file a controller marked `BulkFile` answers under a grant (`BulkFilesTest`: every action recording
   `export.downloaded` carries the mark), and records each page read),

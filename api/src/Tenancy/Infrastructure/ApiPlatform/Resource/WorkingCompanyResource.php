@@ -79,6 +79,11 @@ final class WorkingCompanyResource
     #[Groups([self::READ])]
     public ?string $supportAccessUntil = null;
 
+    /** What its owner said is wrong, for a company the operator reads only through support access; absent otherwise. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $supportAccessReason = null;
+
     public static function of(CompanySummary $summary): self
     {
         $resource = new self();
@@ -89,6 +94,7 @@ final class WorkingCompanyResource
         $resource->pinned = $summary->pinned;
         $resource->logoVersion = $summary->logoVersion;
         $resource->supportAccessUntil = $summary->supportAccessUntil?->format(\DateTimeInterface::ATOM);
+        $resource->supportAccessReason = $summary->supportAccessReason;
 
         return $resource;
     }

@@ -19,24 +19,29 @@ describe('SupportAccessApi', () => {
 
   afterEach(() => http.verify());
 
-  it('opens the company to support for the hours chosen', async () => {
-    const opened = api.grant('c1', 24);
+  it('opens the company to support for the hours chosen, with what is wrong', async () => {
+    const opened = api.grant('c1', 24, 'La facture du 3 mars');
     const request = http.expectOne('/api/companies/c1/support-access');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ hours: 24 });
+    expect(request.request.body).toEqual({ hours: 24, reason: 'La facture du 3 mars' });
     request.flush({ startsAt: 'a', endsAt: 'b', hours: [1, 24, 72] });
     expect((await opened).endsAt).toBe('b');
   });
 
   // docs/SPEC.md § 7, the step-up list: opening the company to support waits for the owner's recent proof.
   it('names each refusal the page translates, the proof the API waits for among them', async () => {
-    for (const code of ['owner_only', 'support_window', 'step_up_required'] as const) {
-      const refused = api.grant('c1', 24);
+    for (const code of [
+      'owner_only',
+      'support_window',
+      'support_reason',
+      'step_up_required',
+    ] as const) {
+      const refused = api.grant('c1', 24, null);
       http
         .expectOne('/api/companies/c1/support-access')
         .flush(
           { error: code },
-          { status: code === 'support_window' ? 422 : 403, statusText: 'No' },
+          { status: code.startsWith('support_') ? 422 : 403, statusText: 'No' },
         );
       await expect(refused).rejects.toEqual(new SupportAccessRefused(code));
     }

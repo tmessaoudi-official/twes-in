@@ -102,6 +102,7 @@ final class RecordVersionsTest extends KernelTestCase
         '/companies/{companyId}/invitations/{invitationId}' => 'an invitation, never edited: sent again or at another role, it is replaced',
         '/companies/{companyId}/products/{productId}/home-locations/{establishmentId}' => 'one place cleared, which moves the version the product\'s homes are checked against',
         '/companies/{companyId}/products/{productId}/reorder-points/{establishmentId}' => 'one point cleared, set again as a whole',
+        '/companies/{companyId}/stock-move-failures/{failureId}' => 'a failed stock move recorded, never edited: said settled once, and a second sending finds it gone',
     ];
 
     /**

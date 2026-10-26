@@ -95,6 +95,14 @@
                         'platform.grants.until'
                           | translate: { until: grant.supportAccessUntil | moment }
                       }}</span>
+                      @if (grant.supportAccessReason; as said) {
+                        <span
+                          class="block text-sm"
+                          [attr.data-testid]="'platform-grant-reason-' + grant.name"
+                          >{{ 'support_access.reason_said' | translate }}
+                          <bdi>{{ said }}</bdi></span
+                        >
+                      }
                     </span>
                     <button
                       mat-stroked-button

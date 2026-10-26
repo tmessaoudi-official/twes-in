@@ -1,0 +1,22 @@
+{
+  "stock_moves": {
+    "failed": {
+      "delivery_note": "Le stock de ce bon de livraison n’a pas bougé à sa validation, le {{moment}}.",
+      "delivery_note_cancelled": "Le stock de ce bon de livraison n’est pas revenu à son annulation, le {{moment}}.",
+      "invoice": "Le stock de cette facture n’a pas bougé à son émission, le {{moment}}.",
+      "credit_note": "Les marchandises de cet avoir ne sont pas revenues en stock, le {{moment}}."
+    },
+    "replay": "Remettre le stock à jour",
+    "settle": "C’est réglé",
+    "ask_writer": "Une personne qui gère le stock peut le remettre à jour depuis cette page.",
+    "replayed": "Stock de {{number}} remis à jour.",
+    "failed_again": "Le stock de {{number}} n’a toujours pas pu bouger. Réessayez plus tard, ou corrigez-le par un ajustement de stock puis choisissez « C’est réglé ».",
+    "settled": "{{number}} : stock dit réglé.",
+    "refused": "Le stock n’a pas pu être remis à jour. Réessayez.",
+    "ask": {
+      "title": "Le stock est-il réglé ?",
+      "message": "Le stock de {{number}} ne sera pas remis à jour par ce document. Choisissez-le seulement si vous l’avez corrigé vous-même, par un ajustement ou une réception.",
+      "keep": "Garder le rappel"
+    }
+  }
+}

@@ -195,7 +195,7 @@ describe('DeliveryNotePage', () => {
       `/api/companies/${companyId}/delivery-notes/${id}/pdf`,
   };
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
-  const inventory = { onHand: vi.fn() };
+  const inventory = { onHand: vi.fn(), failedMoves: vi.fn() };
   const display = {
     show: vi.fn(),
     total: vi.fn(),
@@ -308,6 +308,7 @@ describe('DeliveryNotePage', () => {
     ['delivery_notes', 'invoices'].forEach((each) => modules.add(each));
     shownOptions.set(options);
     inventory.onHand.mockReset().mockResolvedValue([]);
+    inventory.failedMoves.mockReset().mockResolvedValue([]);
     facade.preview.mockReset().mockResolvedValue(null);
     facade.invoice.mockReset().mockResolvedValue('i7');
     facade.draftsOf.mockReset().mockResolvedValue([]);
@@ -1067,6 +1068,27 @@ describe('DeliveryNotePage', () => {
 
     expect(facade.credit).not.toHaveBeenCalled();
     expect(q('delivery-note-credit-unchecked')).toBeNull();
+  });
+
+  it('says on a validated note that its stock did not move, to whoever reads the stock', async () => {
+    // Workflow hunt CON-1: the stock keepers were told to call the platform administrator, who ran a console command.
+    modules.add('inventory');
+    granted.add('stock.read');
+    inventory.failedMoves.mockResolvedValue([
+      {
+        id: 'f1',
+        move: 'delivery_note',
+        documentId: 'n1',
+        number: 'BL-2026-00001',
+        failedAt: '2026-10-26T03:10:00+00:00',
+      },
+    ]);
+    note.set(validated);
+    await open('n1');
+    await settle();
+
+    expect(inventory.failedMoves).toHaveBeenCalledWith('c1', 'n1');
+    expect(q('stock-move-failure')).not.toBeNull();
   });
 
   it('shows a validated note as it was issued, with its PDF, its delivery and its cancellation', async () => {

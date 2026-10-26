@@ -31,6 +31,7 @@ use App\Module\DeliveryNotes\Application\Quotes\DeliverQuotes;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\Merge\CarryMergedStock;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
+use App\Module\Inventory\Application\Replay\StockMoveFailures;
 use App\Module\Inventory\Application\StockMap\DrawStockMap;
 use App\Module\Invoices\Application\Bulk\CashInvoicesInBulk;
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
@@ -104,6 +105,7 @@ final class CommandsAndQueriesTest extends TestCase
         BuildSandbox::class => 'its company is opened by OpenSandboxCompany, which records it, and the demo data is written through the use cases, which record theirs',
         RemindLateInvoices::class => 'a scheduled run with no actor: the stage it records stops it telling twice and is staged as a live change, its notification is the signal, and a late fee it drafts goes through ManageInvoices, which audits it',
         ResealSecondFactors::class => 'the same secrets under a new key, run on the console with the service stopped, which no person changes; the runbook is its record',
+        StockMoveFailures::class => 'a stock move that failed after its document was kept, with no actor: it is logged, told to the stock keepers and staged as a live change; moving it again or saying it settled is audited',
     ];
 
     /** @var array<class-string, list<string>>|null */

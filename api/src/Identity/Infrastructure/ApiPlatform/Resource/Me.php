@@ -56,6 +56,8 @@ final readonly class Me
         #[ApiProperty(required: true)] public MeSupport $support = new MeSupport(),
         /** Until when the working company lets the platform's support read it, null while it does not: the banner. */
         #[ApiProperty(required: true)] public ?string $supportAccessUntil = null,
+        /** What the owner said is wrong, for the support reading the company; null for a member: the banner. */
+        #[ApiProperty(required: true)] public ?string $supportAccessReason = null,
     ) {
     }
 
@@ -76,6 +78,7 @@ final readonly class Me
             $customerScreenCompanyId,
             $support,
             $context?->supportAccessUntil?->format(\DateTimeInterface::ATOM),
+            $context?->supportAccessReason,
         );
     }
 }

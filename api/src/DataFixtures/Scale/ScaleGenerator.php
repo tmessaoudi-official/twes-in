@@ -95,6 +95,7 @@ final class ScaleGenerator
         'record_merge_move' => 'the rows a merge pointed at the record kept, for its undo: a clone merged none',
         'recurring_expense' => 'a schedule copying a model expense: expenses are not cloned, so it has none to copy',
         'recurring_invoice' => 'a schedule copying a model invoice: a clone drafts nothing by itself',
+        'stock_move_failure' => 'a document\'s stock move that failed, waiting to be moved again: a clone moved nothing',
         'stock_movement' => 'stock movements: a follow-up slice',
         'submission_claim' => 'the keys sent with writes that add, forgotten after a day: a clone sent none',
         'support_grant' => 'the windows an owner opened to support: a clone opened none',

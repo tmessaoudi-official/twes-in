@@ -44,14 +44,14 @@ final readonly class DescribeWorkingContext
         if (null === $membership) {
             $grant = $this->support->grantOf($userId, $companyId);
 
-            return null === $grant ? null : $this->described($grant->getCompany(), SupportAccess::ROLE, $this->supportReads(), $grant->getEndsAt());
+            return null === $grant ? null : $this->described($grant->getCompany(), SupportAccess::ROLE, $this->supportReads(), $grant->getEndsAt(), $grant->getReason());
         }
 
         return $this->described($membership->getCompany(), $membership->getRole()->getName(), $membership->getRole()->getPermissions(), $this->support->liveUntil($companyId));
     }
 
     /** @param list<string> $permissions */
-    private function described(Company $company, string $role, array $permissions, ?\DateTimeImmutable $supportAccessUntil): WorkingContext
+    private function described(Company $company, string $role, array $permissions, ?\DateTimeImmutable $supportAccessUntil, ?string $supportAccessReason = null): WorkingContext
     {
         return new WorkingContext(
             $company->getId()->toRfc4122(),
@@ -66,6 +66,7 @@ final readonly class DescribeWorkingContext
             $this->logo->current($company)?->getFile()->getId()->toRfc4122(),
             $supportAccessUntil,
             $this->closing->of($company),
+            $supportAccessReason,
         );
     }
 

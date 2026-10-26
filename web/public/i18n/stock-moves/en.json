@@ -1,0 +1,22 @@
+{
+  "stock_moves": {
+    "failed": {
+      "delivery_note": "The stock of this delivery note did not move when it was validated, on {{moment}}.",
+      "delivery_note_cancelled": "The stock of this delivery note did not come back when it was cancelled, on {{moment}}.",
+      "invoice": "The stock of this invoice did not move when it was issued, on {{moment}}.",
+      "credit_note": "The goods of this credit note did not come back into stock, on {{moment}}."
+    },
+    "replay": "Update the stock",
+    "settle": "Settled",
+    "ask_writer": "Someone who manages the stock can update it from this page.",
+    "replayed": "Stock of {{number}} updated.",
+    "failed_again": "The stock of {{number}} still could not move. Try again later, or correct it with a stock adjustment, then choose “Settled”.",
+    "settled": "{{number}}: stock marked settled.",
+    "refused": "The stock could not be updated. Try again.",
+    "ask": {
+      "title": "Is the stock settled?",
+      "message": "The stock of {{number}} will not be updated by this document. Choose this only if you corrected it yourself, with an adjustment or a receipt.",
+      "keep": "Keep the reminder"
+    }
+  }
+}

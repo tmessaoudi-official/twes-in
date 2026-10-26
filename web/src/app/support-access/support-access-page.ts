@@ -9,12 +9,15 @@ import {
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { saidAlready } from '../shared/errors/said-already';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
@@ -34,7 +37,15 @@ export const DEFAULT_SUPPORT_HOURS = 24;
  */
 @Component({
   selector: 'app-support-access-page',
-  imports: [MatButtonModule, MatIconModule, MatRadioModule, RouterLink, TranslatePipe],
+  imports: [
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatRadioModule,
+    RouterLink,
+    TranslatePipe,
+  ],
   templateUrl: './support-access-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -50,13 +61,18 @@ export class SupportAccessPage {
   /** True when the API says only the owner may come here. */
   protected readonly ownerOnly = signal(false);
   protected readonly hours = signal(DEFAULT_SUPPORT_HOURS);
+  /** What is wrong, as the owner types it for support to read on opening the company. */
+  protected readonly reason = signal('');
   protected readonly busy = signal(false);
+  /** A reason typed and not yet sent is work a person would lose by leaving. */
+  private readonly reasonTyped = computed(() => (this.reason().trim() === '' ? 0 : 1));
   protected readonly until = computed(() => {
     const endsAt = this.state()?.endsAt ?? null;
     return endsAt === null ? null : this.format.moment(endsAt, this.company()?.timezone);
   });
 
   constructor() {
+    inject(UnsavedChanges).declare(this.reasonTyped);
     // Another owner may open or close it meanwhile, and a window ends by itself.
     inject(LiveChanges).reloadOn(['support_grant'], () => this.reload(), inject(DestroyRef));
     void this.reload();
@@ -69,13 +85,15 @@ export class SupportAccessPage {
     try {
       // Opening the company to support waits for the owner to prove who is at the screen (docs/SPEC.md § 7).
       const hours = this.hours();
+      const reason = this.reason().trim() === '' ? null : this.reason();
       this.state.set(
         await this.stepUp.retrying(
-          () => this.api.grant(companyId, hours),
+          () => this.api.grant(companyId, hours, reason),
           (error) => error instanceof SupportAccessRefused && error.code === 'step_up_required',
           'step_up.intro_change',
         ),
       );
+      this.reason.set('');
       this.feedback.effect('support_access.granted', { until: this.until() }, 'corrigeable');
       await this.auth.refresh();
     } catch (error) {
@@ -99,6 +117,10 @@ export class SupportAccessPage {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  protected typed(event: Event): void {
+    this.reason.set((event.target as HTMLTextAreaElement).value);
   }
 
   private async reload(): Promise<void> {

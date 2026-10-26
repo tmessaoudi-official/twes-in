@@ -25,7 +25,7 @@ function text(params: WatchRow['params'], name: string): string {
 /**
  * Each figure as the screen writes figures (`FormatFacade`: the locale, or the person's chosen formats). Days are
  * signed by the API (a lot's date past is negative); the table says each in the direction its column names. `say`
- * translates a key, for the one figure the API names by code: the kind of a cheque or traite.
+ * translates a key, for the figures the API names by code: the kind of a cheque or traite, a stock move.
  */
 export function watchRowView(
   row: WatchRow,
@@ -72,6 +72,8 @@ export function watchRowView(
     ].join(', ');
   }
   if ('kind' in params) cells['kind'] = say(`invoices.instruments.kinds.${text(params, 'kind')}`);
+  // Which of a document's stock moves failed, by code: its validation, its cancellation, its issue, its return.
+  if ('move' in params) cells['move'] = say(`watch.moves.${text(params, 'move')}`);
   if ('invoices' in params) cells['invoices'] = Number(params['invoices']);
   if ('amount' in params) {
     const currency = text(params, 'currency');

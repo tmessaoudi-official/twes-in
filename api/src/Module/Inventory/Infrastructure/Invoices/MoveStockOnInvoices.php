@@ -11,8 +11,10 @@ namespace App\Module\Inventory\Infrastructure\Invoices;
 
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveredQuantity;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
+use App\Module\Inventory\Application\Replay\StockMoveFailures;
 use App\Module\Inventory\Application\SourceDeliveryNotes;
 use App\Module\Inventory\Application\TellStockKeepers;
+use App\Module\Inventory\Domain\ValueObject\FailedMove;
 use App\Module\Invoices\Domain\Event\InvoiceIssued;
 use App\Module\Invoices\Domain\ValueObject\InvoicedQuantity;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
@@ -29,7 +31,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 #[AsEventListener(event: InvoiceIssued::class)]
 final readonly class MoveStockOnInvoices
 {
-    public function __construct(private MoveStockForDeliveryNotes $move, private TellStockKeepers $tell, private LoggerInterface $logger, private SourceDeliveryNotes $notes)
+    public function __construct(private MoveStockForDeliveryNotes $move, private TellStockKeepers $tell, private LoggerInterface $logger, private SourceDeliveryNotes $notes, private StockMoveFailures $failures)
     {
     }
 
@@ -51,6 +53,7 @@ final readonly class MoveStockOnInvoices
             $reasons = $this->move->invoiced($event->invoiceId, $event->companyId, $event->establishmentId, $lines);
         } catch (\Throwable $failure) {
             $this->logger->error('Invoice {number} was issued, but its stock could not be moved: {failure}.', ['number' => $event->number, 'failure' => $failure->getMessage(), 'exception' => $failure]);
+            $this->told(fn () => $this->failures->record($event->companyId, FailedMove::Invoice, $event->invoiceId, $event->number));
             $this->told(fn () => $this->tell->invoiceMovedNoStock($event->companyId, $event->invoiceId, $event->number));
 
             return;
@@ -73,6 +76,7 @@ final readonly class MoveStockOnInvoices
             $reasons = $this->move->returned($event->invoiceId, $event->correctsInvoiceId, $event->companyId, $lines, $this->notes->ofLines($event->correctedSourceLineIds, $event->companyId));
         } catch (\Throwable $failure) {
             $this->logger->error('Credit note {number} was issued, but its goods could not be returned to stock: {failure}.', ['number' => $event->number, 'failure' => $failure->getMessage(), 'exception' => $failure]);
+            $this->told(fn () => $this->failures->record($event->companyId, FailedMove::CreditNote, $event->invoiceId, $event->number));
             $this->told(fn () => $this->tell->creditMovedNoStock($event->companyId, $event->invoiceId, $event->number));
 
             return;
@@ -85,7 +89,7 @@ final readonly class MoveStockOnInvoices
         }
     }
 
-    /** Telling is best effort too: a notification that cannot be written leaves the log line as the record. */
+    /** Recording and telling are best effort too: what cannot be written leaves the log line as the record. */
     private function told(\Closure $tell): void
     {
         try {

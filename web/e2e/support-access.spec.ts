@@ -8,6 +8,7 @@ import {
   signInWithCode,
 } from './session';
 import { sendProving } from './step-up';
+import { toast } from './toast';
 
 // « Accès du support » through the whole stack (docs/SPEC.md § 8 row 67): the owner of a company the operator is NOT a
 // member of opens it to support for a day; the operator finds it in their switcher, reads it under a banner and is
@@ -124,10 +125,14 @@ test('an owner opens the company to support for a day, support reads it read-onl
   await theirPage.goto('/company/support-access');
   await expect(theirPage.getByTestId('support-access-closed')).toBeVisible();
   await expect(theirPage.getByTestId('support-access-hours-24').locator('input')).toBeChecked();
+  // What is wrong, so the operator opens the company knowing where to look (workflow hunt SUP-1).
+  const wrong = 'La facture du 3 mars s’imprime sans le timbre';
+  await theirPage.getByTestId('support-access-reason').fill(wrong);
   await theirPage.getByTestId('support-access-grant').click();
   await theirPage.getByTestId('step-up-password').fill(THEIR_PASSWORD);
   await theirPage.getByTestId('step-up-confirm').click();
   await expect(theirPage.getByTestId('support-access-open')).toBeVisible();
+  await expect(theirPage.getByTestId('support-access-reason-said')).toContainText(wrong);
   await expect(theirPage.getByTestId('support-banner')).toBeVisible();
 
   expect(await companies(operatorPage)).toContainEqual(
@@ -135,8 +140,10 @@ test('an owner opens the company to support for a day, support reads it read-onl
   );
   // Opened from « Accès du support » on /platform, where an operator in no company finds it.
   await expect(operatorPage.getByTestId(`platform-grant-${name}`)).toBeVisible();
+  await expect(operatorPage.getByTestId(`platform-grant-reason-${name}`)).toContainText(wrong);
   await operatorPage.getByTestId(`platform-grant-open-${name}`).click();
   await expect(operatorPage.getByTestId('support-banner')).toContainText(name);
+  await expect(operatorPage.getByTestId('support-banner-reason')).toContainText(wrong);
   await operatorPage.goto('/customers');
   await expect(operatorPage.getByTestId('support-banner')).toContainText(name);
 
@@ -149,13 +156,15 @@ test('an owner opens the company to support for a day, support reads it read-onl
   await theirPage.goto('/company/activity');
   await expect(theirPage.getByText('est entré pour le support').first()).toBeVisible();
 
-  // Closed again: the company leaves the operator's switcher, and its pages answer as a stranger's; the operator's
-  // /platform, open meanwhile, drops it without a reload.
-  await operatorPage.goto('/platform');
-  await expect(operatorPage.getByTestId(`platform-grant-${name}`)).toBeVisible();
+  // Closed again while the operator reads one of its pages: the operator is told and taken back to /platform, which
+  // no longer offers it (workflow hunt SUP-3); the company leaves the switcher, and its pages answer as a stranger's.
+  await operatorPage.goto('/customers');
+  await expect(operatorPage.getByTestId('support-banner')).toContainText(name);
   await theirPage.goto('/company/support-access');
   await theirPage.getByTestId('support-access-end').click();
   await expect(theirPage.getByTestId('support-access-closed')).toBeVisible();
+  await expect(toast(operatorPage)).toContainText(name);
+  await expect(operatorPage).toHaveURL(/\/platform$/);
   await expect(operatorPage.getByTestId(`platform-grant-${name}`)).toHaveCount(0);
   expect((await companies(operatorPage)).map((row) => row.name)).not.toContain(name);
   expect(

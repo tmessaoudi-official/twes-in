@@ -294,7 +294,7 @@ describe('InvoicePage', () => {
   /** The company's country, which says whether Factur-X is written for it at all; none in most cases. */
   let country: string | undefined;
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
-  const inventory = { onHand: vi.fn() };
+  const inventory = { onHand: vi.fn(), failedMoves: vi.fn() };
   const display = {
     show: vi.fn(),
     total: vi.fn(),
@@ -413,6 +413,7 @@ describe('InvoicePage', () => {
     facade.pickProducts.mockClear();
     scans.piecesPerScan.mockReset().mockResolvedValue(null);
     inventory.onHand.mockReset().mockResolvedValue([]);
+    inventory.failedMoves.mockReset().mockResolvedValue([]);
     scans.named.mockReset().mockResolvedValue(null);
     Object.values(display).forEach((each) => each.mockReset());
     recurring.create.mockReset().mockResolvedValue({ id: 'r1' });

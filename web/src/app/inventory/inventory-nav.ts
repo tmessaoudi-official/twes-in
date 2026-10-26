@@ -19,12 +19,25 @@ export const INVENTORY_NAV: readonly NavEntry[] = [
   },
 ];
 
-/** The stock screens as tabs: what is on hand, how it moved, and where it is kept. */
+/**
+ * The stock screens as tabs: what is on hand, how it moved, and where it is kept. Counting writes the stock and the
+ * valuation reads costs, so those two are shown only to whoever may.
+ */
 export const INVENTORY_TABS: readonly PageTab[] = [
   { labelKey: 'nav.stock', route: '/stock', testId: 'stock-tab' },
   { labelKey: 'nav.stock_movements', route: '/stock/movements', testId: 'stock-movements-tab' },
-  { labelKey: 'nav.stock_count', route: '/stock/count', testId: 'stock-count-tab' },
+  {
+    labelKey: 'nav.stock_count',
+    route: '/stock/count',
+    testId: 'stock-count-tab',
+    permission: 'stock.write',
+  },
   { labelKey: 'nav.stock_locations', route: '/stock/locations', testId: 'stock-locations-tab' },
-  { labelKey: 'nav.stock_valuation', route: '/stock/valuation', testId: 'stock-valuation-tab' },
+  {
+    labelKey: 'nav.stock_valuation',
+    route: '/stock/valuation',
+    testId: 'stock-valuation-tab',
+    permission: 'product.cost.read',
+  },
   { labelKey: 'nav.stock_plan', route: '/stock/plan', testId: 'stock-plan-tab' },
 ];

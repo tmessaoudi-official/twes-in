@@ -873,22 +873,83 @@ final class InventoryTest extends ApiTestCase
         $noteId = $this->validatedNote($customerId, '3');
         // What a failed listener leaves behind: a validated note and no movement of it.
         $this->em()->getConnection()->executeStatement("DELETE FROM stock_movement WHERE source_type = 'delivery_note'");
+        $this->failedMove($noteId, 'delivery_note');
         self::assertSame(['10.000'], array_column($this->levels(), 'quantity'));
         $companyId = $this->company->getId()->toRfc4122();
 
+        $failures = fn (): array => $this->em()->getConnection()->fetchFirstColumn('SELECT id FROM stock_move_failure');
         $first = $this->replay([$companyId, $noteId]);
+        self::assertSame([], $failures(), 'the failure recorded is settled with the move, not left on the screens');
+        // One recorded though the stock has moved since, as by a person's « Remettre le stock à jour » racing the command.
+        $this->failedMove($noteId, 'delivery_note');
         $second = $this->replay([$companyId, $noteId]);
 
         self::assertSame([0, 0], [$first->getStatusCode(), $second->getStatusCode()], $first->getDisplay().$second->getDisplay());
         self::assertStringContainsString('1 movement', $first->getDisplay());
         self::assertStringContainsString('already moved', $second->getDisplay());
         self::assertSame(['7.000'], array_column($this->levels(), 'quantity'));
+        self::assertSame([], $failures(), 'and one whose stock had already moved is settled too');
 
         $draftId = $this->draftNote($customerId, '1');
         foreach ([[$companyId, $draftId], [$this->createCompany('Globex')->getId()->toRfc4122(), $noteId], [$companyId, 'not-an-id']] as $arguments) {
             self::assertSame(1, $this->replay($arguments)->getStatusCode(), implode(' ', $arguments));
         }
         self::assertSame(['7.000'], array_column($this->levels(), 'quantity'));
+    }
+
+    /**
+     * A failed move is moved again from the document's page, not a console on the shop's computer (workflow hunt,
+     * CON-1): listed for its document, moved once, then gone; one set right by hand is said settled.
+     */
+    public function testAFailedMoveIsMovedAgainOnceOrSaidSettledThroughTheApi(): void
+    {
+        $this->signedIn(['company.read', 'stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
+        $noteId = $this->validatedNote($this->customer(), '3');
+        // What a failed listener leaves behind: a validated note, no movement of it, and the failure it recorded.
+        $connection = $this->em()->getConnection();
+        $connection->executeStatement("DELETE FROM stock_movement WHERE source_type = 'delivery_note'");
+        $failureId = $this->failedMove($noteId, 'delivery_note');
+
+        $this->getJson($this->path('stock-move-failures').'?document='.$noteId);
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$failureId, 'delivery_note', $noteId]], array_map(static fn (array $row): array => [$row['id'] ?? null, $row['move'] ?? null, $row['documentId'] ?? null], $this->jsonList()));
+        $this->getJson($this->path('watch/stock.move_failed'));
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$noteId, 'delivery_note']], array_map(fn (array $row): array => [$row['subjectId'] ?? null, $this->section($row, 'params')['move'] ?? null], $this->jsonList()), 'on « À surveiller » until moved again');
+
+        $this->postJson($this->path('stock-move-failures', $failureId).'/replay', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertTrue($this->json()['settled'] ?? null);
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'));
+        $this->getJson($this->path('stock-move-failures').'?document='.$noteId);
+        self::assertSame([], $this->jsonList());
+        $this->getJson($this->path('watch/stock.move_failed'));
+        self::assertSame([], $this->jsonList());
+        $this->postJson($this->path('stock-move-failures', $failureId).'/replay', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'), 'moved once');
+
+        $settledId = $this->failedMove($noteId, 'delivery_note_cancelled');
+        $this->sendJson('DELETE', $this->path('stock-move-failures', $settledId));
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'), 'settled moves nothing');
+        self::assertSame(['stock.move_replayed', 'stock.move_settled'], $connection->fetchFirstColumn("SELECT action FROM audit_log WHERE action LIKE 'stock.move_%' ORDER BY action"));
+
+        $this->getJson($this->path('stock-move-failures'));
+        self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
+    }
+
+    public function testAFailedMoveIsMovedAgainOnlyWithTheRightToWriteTheStock(): void
+    {
+        $this->signedIn(['stock.read', 'delivery_note.read']);
+        $failureId = $this->failedMove(Uuid::v7()->toRfc4122(), 'invoice');
+
+        $this->postJson($this->path('stock-move-failures', $failureId).'/replay', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->sendJson('DELETE', $this->path('stock-move-failures', $failureId));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame([$failureId], $this->em()->getConnection()->fetchFirstColumn('SELECT id FROM stock_move_failure'));
     }
 
     /** An issued invoice's or credit note's stock move that failed is made again by a person naming it, once. */
@@ -901,9 +962,15 @@ final class InventoryTest extends ApiTestCase
         $companyId = $this->company->getId()->toRfc4122();
         // What a failed listener leaves behind: an issued invoice and no movement of it.
         $this->em()->getConnection()->executeStatement("DELETE FROM stock_movement WHERE source_type = 'invoice'");
+        $this->failedMove($invoice, 'invoice');
         self::assertSame(['10.000'], array_column($this->levels(), 'quantity'));
+        $failures = fn (): array => $this->em()->getConnection()->fetchFirstColumn('SELECT id FROM stock_move_failure');
 
-        [$first, $second] = [$this->replayInvoice($companyId, $invoice), $this->replayInvoice($companyId, $invoice)];
+        $first = $this->replayInvoice($companyId, $invoice);
+        self::assertSame([], $failures(), 'the failure recorded is settled with the move');
+        $this->failedMove($invoice, 'invoice');
+        $second = $this->replayInvoice($companyId, $invoice);
+        self::assertSame([], $failures(), 'and one whose stock had already moved is settled too');
         self::assertSame([0, 0], [$first->getStatusCode(), $second->getStatusCode()], $first->getDisplay().$second->getDisplay());
         self::assertStringContainsString('1 movement', $first->getDisplay());
         self::assertStringContainsString('already moved', $second->getDisplay());
@@ -1669,6 +1736,18 @@ final class InventoryTest extends ApiTestCase
         $this->createUser('stock@twes.local', 'password-1234', $this->company, $permissions, 'member');
         $this->login('stock@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
+    }
+
+    /** A failed move as its listener records it; its id. */
+    private function failedMove(string $documentId, string $move): string
+    {
+        $id = Uuid::v7()->toRfc4122();
+        $this->em()->getConnection()->executeStatement(
+            'INSERT INTO stock_move_failure (id, company_id, move, document_id, number, failed_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [$id, $this->company->getId()->toRfc4122(), $move, $documentId, 'BL-1', self::apiNow()],
+        );
+
+        return $id;
     }
 
     /** The version a product is stored at, which a revision of it sends back. */

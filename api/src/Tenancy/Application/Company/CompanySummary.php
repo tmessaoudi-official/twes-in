@@ -22,6 +22,8 @@ final readonly class CompanySummary
         public ?string $logoVersion = null,
         /** Until when its owner lets support read it, for a company an operator reads only through that; null otherwise. */
         public ?\DateTimeImmutable $supportAccessUntil = null,
+        /** What its owner said is wrong, for a company an operator reads only through support access; null otherwise. */
+        public ?string $supportAccessReason = null,
     ) {
     }
 }

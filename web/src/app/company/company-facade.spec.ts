@@ -18,6 +18,7 @@ const acme: CompanyOption = {
   pinned: false,
   logoVersion: null,
   supportAccessUntil: null,
+  supportAccessReason: null,
 };
 const globex: CompanyOption = {
   id: 'c2',
@@ -27,6 +28,7 @@ const globex: CompanyOption = {
   pinned: false,
   logoVersion: null,
   supportAccessUntil: null,
+  supportAccessReason: null,
 };
 
 describe('CompanyFacade', () => {
@@ -143,6 +145,7 @@ describe('CompanyFacade', () => {
       name: 'Atlas',
       role: 'support',
       supportAccessUntil: until,
+      supportAccessReason: null,
     };
 
     beforeEach(() => vi.useFakeTimers({ now: new Date('2026-10-26T10:00:00+01:00') }));

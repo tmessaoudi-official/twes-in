@@ -17,6 +17,7 @@ use App\Identity\Domain\Model\User;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;
+use App\Tenancy\Domain\Exception\InvalidSupportReason;
 use App\Tenancy\Domain\Exception\InvalidSupportWindow;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
@@ -63,16 +64,20 @@ final readonly class ManageSupportAccess
      *
      * @throws OwnerOnly
      * @throws InvalidSupportWindow
+     * @throws InvalidSupportReason
      * @throws StepUpRequired
      */
-    public function grant(Company $company, Uuid $userId, mixed $hours): SupportGrant
+    public function grant(Company $company, Uuid $userId, mixed $hours, mixed $reason = null): SupportGrant
     {
         $owner = $this->owner($company, $userId);
         if (!\is_int($hours)) {
             throw new InvalidSupportWindow('Support access lasts a whole number of hours.');
         }
+        if (null !== $reason && !\is_string($reason)) {
+            throw new InvalidSupportReason('What is wrong is said in words.');
+        }
         $now = $this->clock->now();
-        $grant = new SupportGrant($company, $owner, $hours, $now);
+        $grant = new SupportGrant($company, $owner, $hours, $now, $reason);
         if (!$this->stepUp->isRecent($userId)) {
             throw new StepUpRequired();
         }
@@ -125,7 +130,8 @@ final readonly class ManageSupportAccess
 
     private function record(SupportGrant $grant, string $action, User $owner): void
     {
-        $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $grant->getId(), $action, $owner->getId(), ['fields' => ['endsAt']], $grant->getCompany()->getId()));
+        $fields = self::GRANTED === $action && null !== $grant->getReason() ? ['endsAt', 'reason'] : ['endsAt'];
+        $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $grant->getId(), $action, $owner->getId(), ['fields' => $fields], $grant->getCompany()->getId()));
     }
 
     private function tellOtherOwners(SupportGrant $grant, string $type, User $actor): void

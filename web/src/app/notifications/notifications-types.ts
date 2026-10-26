@@ -98,14 +98,15 @@ const RECORDS = new Map<string, NotificationRecord>([
   // An invitation is to another company, and its link is in the mail alone: nothing here to open either.
   ['invitation.received', { icon: 'mail', route: null, permission: null }],
   ['invitation.accepted', { icon: 'group_add', route: '/members', permission: 'user.read' }],
-  // A delivery note whose stock did not all move: the movements show what did.
+  // A delivery note whose stock did not all move: the movements show what did. One whose stock failed to move waits on
+  // « À surveiller », which leads to the document, where it is moved again.
   [
     'stock.delivery_note_lines_left_out',
     { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
   ],
   [
     'stock.delivery_note_moved_no_stock',
-    { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+    { icon: 'inventory_2', route: '/watch/stock.move_failed', permission: 'stock.read' },
   ],
   [
     'stock.invoice_lines_left_out',
@@ -113,7 +114,7 @@ const RECORDS = new Map<string, NotificationRecord>([
   ],
   [
     'stock.invoice_moved_no_stock',
-    { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+    { icon: 'inventory_2', route: '/watch/stock.move_failed', permission: 'stock.read' },
   ],
   [
     'stock.credit_lines_not_returned',
@@ -121,7 +122,7 @@ const RECORDS = new Map<string, NotificationRecord>([
   ],
   [
     'stock.credit_moved_no_stock',
-    { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+    { icon: 'inventory_2', route: '/watch/stock.move_failed', permission: 'stock.read' },
   ],
   // A count that found a difference leads to the movements, where the adjustment it wrote is; a product fallen to its
   // reorder point leads to the stock it is reordered from.

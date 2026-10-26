@@ -181,6 +181,7 @@ describe('HelloPage', () => {
         pinned: false,
         logoVersion: null,
         supportAccessUntil: null,
+        supportAccessReason: null,
       },
       {
         id: 'c2',
@@ -190,6 +191,7 @@ describe('HelloPage', () => {
         pinned: false,
         logoVersion: null,
         supportAccessUntil: null,
+        supportAccessReason: null,
       },
     ]);
     me.set({ ...owner, company: null, permissions: [] });

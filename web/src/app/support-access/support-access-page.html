@@ -30,6 +30,11 @@
           <mat-icon aria-hidden="true">support_agent</mat-icon>
           {{ 'support_access.open_until' | translate: { until: closesAt } }}
         </p>
+        @if (current.reason; as said) {
+          <p class="m-0" data-testid="support-access-reason-said">
+            {{ 'support_access.reason_said' | translate }} <bdi>{{ said }}</bdi>
+          </p>
+        }
         <button
           mat-stroked-button
           type="button"
@@ -58,6 +63,21 @@
           </mat-radio-button>
         }
       </mat-radio-group>
+      <mat-form-field class="w-full">
+        <mat-label>{{ 'support_access.reason' | translate }}</mat-label>
+        <textarea
+          matInput
+          rows="3"
+          [value]="reason()"
+          (input)="typed($event)"
+          [attr.maxlength]="current.reasonMax"
+          data-testid="support-access-reason"
+        ></textarea>
+        <mat-hint>{{ 'support_access.reason_hint' | translate }}</mat-hint>
+        <mat-hint align="end" data-testid="support-access-reason-count"
+          ><bdi>{{ reason().length }} / {{ current.reasonMax }}</bdi></mat-hint
+        >
+      </mat-form-field>
       <button
         mat-flat-button
         type="button"

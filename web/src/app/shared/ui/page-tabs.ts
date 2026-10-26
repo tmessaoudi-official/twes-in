@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { type IsActiveMatchOptions, RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { Session } from '../session/session';
 import { SelectedTabInView } from './selected-tab-in-view';
 
 export interface PageTab {
   readonly labelKey: string;
   readonly route: string;
   readonly testId: string;
+  /** What its page needs beyond the feature's own read, such as counting the stock: absent, the tab is everyone's. */
+  readonly permission?: string;
 }
 
 /**
@@ -30,7 +33,7 @@ export interface PageTab {
       [tabPanel]="panel"
       [attr.aria-label]="label() | translate"
     >
-      @for (tab of tabs(); track tab.route) {
+      @for (tab of shown(); track tab.route) {
         <a
           mat-tab-link
           [routerLink]="tab.route"
@@ -51,7 +54,15 @@ export interface PageTab {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PageTabs {
+  private readonly session = inject(Session);
+
   readonly tabs = input.required<readonly PageTab[]>();
+  /** The tabs whose page the person may open, as the sidebar shows only the entries a role may reach. */
+  protected readonly shown = computed(() =>
+    this.tabs().filter(
+      (tab) => tab.permission === undefined || this.session.hasPermission(tab.permission),
+    ),
+  );
   /** The translation key naming the tabs' navigation. */
   readonly label = input.required<string>();
   /**

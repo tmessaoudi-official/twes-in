@@ -1390,6 +1390,7 @@ describe('PlatformPage', () => {
       pinned: false,
       logoVersion: null,
       supportAccessUntil: until,
+      supportAccessReason: null,
     });
 
     it('lists the companies support may read, and opens one read-only from there', async () => {
@@ -1408,6 +1409,22 @@ describe('PlatformPage', () => {
 
       expect(companyFacade.switchTo).toHaveBeenCalledWith('c3');
       expect(TestBed.inject(Router).url).toBe('/');
+    });
+
+    it('says what the owner wrote is wrong beside the company, and nothing when they wrote nothing', async () => {
+      // Workflow hunt SUP-1: the operator opened the company blind and phoned the owner back.
+      offered.set([
+        {
+          ...grant('c3', 'Atlas', '2026-10-27T10:00:00+01:00'),
+          supportAccessReason: 'La facture du 3 mars',
+        },
+        grant('c4', 'Carthage', '2026-10-27T10:00:00+01:00'),
+      ]);
+      const { fixture, query } = await render();
+      fixture.detectChanges();
+
+      expect(query('platform-grant-reason-Atlas')?.textContent).toContain('La facture du 3 mars');
+      expect(query('platform-grant-reason-Carthage')).toBeNull();
     });
 
     it('says when no company opens its access', async () => {

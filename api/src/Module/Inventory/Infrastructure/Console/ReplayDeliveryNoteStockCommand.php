@@ -12,6 +12,7 @@ namespace App\Module\Inventory\Infrastructure\Console;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
+use App\Module\Inventory\Application\Replay\SettleStockMoveFailures;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -33,6 +34,7 @@ final class ReplayDeliveryNoteStockCommand extends Command
     public function __construct(
         private readonly DeliveryNoteRepository $notes,
         private readonly StockMovementRepository $movements,
+        private readonly SettleStockMoveFailures $failures,
         private readonly MoveStockForDeliveryNotes $move,
     ) {
         parent::__construct();
@@ -69,6 +71,8 @@ final class ReplayDeliveryNoteStockCommand extends Command
             if ($before > 0) {
                 $io->success(\sprintf('The stock of %s already moved: nothing to do.', $note->getNumber()));
 
+                $this->failures->replayAllOf($company, $note->getId());
+
                 return Command::SUCCESS;
             }
             foreach ($this->move->validated($note->getId(), $company, $note->getEstablishment()->getId(), $note->deliveredQuantities()) as $reason) {
@@ -84,6 +88,8 @@ final class ReplayDeliveryNoteStockCommand extends Command
         $io->success(0 === $moved
             ? \sprintf('The stock of %s already moved: nothing to do.', $note->getNumber() ?? $note->getId()->toRfc4122())
             : \sprintf('%s: %d movement%s written.', $note->getNumber() ?? $note->getId()->toRfc4122(), $moved, 1 === $moved ? '' : 's'));
+
+        $this->failures->replayAllOf($company, $note->getId());
 
         return Command::SUCCESS;
     }

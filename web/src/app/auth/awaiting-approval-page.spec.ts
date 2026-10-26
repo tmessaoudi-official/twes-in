@@ -116,6 +116,7 @@ describe('AwaitingApprovalPage', () => {
     pinned: false,
     logoVersion: null,
     supportAccessUntil: null,
+    supportAccessReason: null,
   });
   const listed = signal<readonly CompanyOption[]>([]);
   const closingActions = { reopen: vi.fn(async () => true) };
