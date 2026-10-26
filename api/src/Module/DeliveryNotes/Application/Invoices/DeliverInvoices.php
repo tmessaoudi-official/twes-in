@@ -67,13 +67,13 @@ final readonly class DeliverInvoices
             if (null !== $quantities) {
                 foreach ($quantities as $lineId => $quantity) {
                     if (!isset($left[$lineId])) {
-                        throw new InvalidDeliveryNote('quantities', \sprintf('The line %s is not among the goods the invoice %s billed.', $lineId, InvoiceDelivery::reference($invoice)));
+                        throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('The line %s is not among the goods the invoice %s billed.', $lineId, InvoiceDelivery::reference($invoice)), 'unknown_choice');
                     }
                     if (!is_numeric($quantity) || Decimal::of($quantity)->compare(0) <= 0) {
-                        throw new InvalidDeliveryNote('quantities', \sprintf('The quantity of the line %s is more than nothing.', $lineId));
+                        throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('The quantity of the line %s is more than nothing.', $lineId), 'quantity_above_zero');
                     }
                     if (Decimal::of($quantity)->compare($left[$lineId]) > 0) {
-                        throw new InvalidDeliveryNote('quantities', \sprintf('Only %s of the line %s is left to deliver.', Decimal::format($left[$lineId]->compare(0) < 0 ? Decimal::zero() : $left[$lineId], 3), $lineId));
+                        throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('Only %s of the line %s is left to deliver.', Decimal::format($left[$lineId]->compare(0) < 0 ? Decimal::zero() : $left[$lineId], 3), $lineId), 'left_to_deliver', ['quantity' => Decimal::format($left[$lineId]->compare(0) < 0 ? Decimal::zero() : $left[$lineId], 3)]);
                     }
                 }
             } elseif ([] === array_filter($left, static fn (\BcMath\Number $each): bool => $each->compare(0) > 0)) {

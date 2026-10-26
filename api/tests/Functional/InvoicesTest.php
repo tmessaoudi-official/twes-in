@@ -2060,6 +2060,44 @@ final class InvoicesTest extends ApiTestCase
         return $this->stringAt($this->json(), 'number');
     }
 
+    public function testARefusedStepOfAnInvoiceSaysWhyBesideItsField(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write', 'customer.read']);
+        $today = self::dayOf($this->company);
+        $yesterday = self::dayOf($this->company, '-1 day');
+        $this->postJson($this->path(), $this->invoice(['lines' => []]));
+        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'an invoice of nothing');
+        self::assertSame(['lines_required', []], $this->refusalOf('lines'));
+
+        $id = $this->issuedInvoice();
+        $this->getJson($this->path($id));
+        $due = $this->stringAt($this->json(), 'amountDue');
+        self::assertIsNumeric($due);
+        /** @var array<string, array{string, array<string, string>, string, array{string, array<string, int|string>}}> $steps */
+        $steps = [
+            'nothing paid' => ['payments', ['date' => $today, 'amount' => '0'], 'amount', ['invalid_amount', ['decimals' => 3]]],
+            'more than is due' => ['payments', ['date' => $today, 'amount' => bcadd($due, '1', 3)], 'amount', ['above_due', ['amount' => $due]]],
+            'paid before it was issued' => ['payments', ['date' => $yesterday, 'amount' => '1'], 'date', ['on_or_after', ['day' => $today]]],
+            'paid tomorrow' => ['payments', ['date' => self::dayOf($this->company, '+1 day'), 'amount' => '1'], 'date', ['after_today', []]],
+            'a cheque beyond what is due' => ['instruments', ['kind' => 'check', 'dueOn' => $today, 'amount' => bcadd($due, '1', 3)], 'amount', ['above_uncovered', ['amount' => $due]]],
+            'a cheque due before it was issued' => ['instruments', ['kind' => 'check', 'dueOn' => $yesterday, 'amount' => '1'], 'dueOn', ['on_or_after', ['day' => $today]]],
+        ];
+        foreach ($steps as $case => [$step, $body, $field, $refusal]) {
+            $this->postJson($this->path($id).'/'.$step, 'payments' === $step ? ['method' => 'cash', ...$body] : $body);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
+            self::assertSame($refusal, $this->refusalOf($field), $case);
+        }
+        $this->postJson($this->path($id).'/payments', ['date' => $today, 'amount' => $due, 'method' => 'cash']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->path($id).'/overpayments', ['date' => $yesterday, 'amount' => '5']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'paid beyond it before it was issued');
+        self::assertSame(['on_or_after', ['day' => $today]], $this->refusalOf('date'));
+        $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => '']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note says why');
+        self::assertSame(['value_required', []], $this->refusalOf('creditNoteReason'));
+    }
+
     private function issuedInvoice(): string
     {
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));

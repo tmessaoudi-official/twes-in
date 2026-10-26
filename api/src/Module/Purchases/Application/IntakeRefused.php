@@ -15,8 +15,15 @@ namespace App\Module\Purchases\Application;
  */
 final class IntakeRefused extends \DomainException
 {
-    public function __construct(public readonly ?int $index, public readonly string $field, string $message, ?\Throwable $previous = null)
-    {
+    /** @param array<string, string|int> $params */
+    public function __construct(
+        public readonly ?int $index,
+        public readonly string $field,
+        string $message,
+        ?\Throwable $previous = null,
+        public readonly ?string $reason = null,
+        public readonly array $params = [],
+    ) {
         parent::__construct($message, 0, $previous);
     }
 }

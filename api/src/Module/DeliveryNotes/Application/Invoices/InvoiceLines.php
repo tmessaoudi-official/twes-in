@@ -52,11 +52,11 @@ final readonly class InvoiceLines
                 continue;
             }
             if (null !== $line->sourceQuoteLineId) {
-                throw new InvalidDeliveryNote("lines[$index].sourceInvoiceLineId", 'A line delivers a quote line or an invoice line, never both: the invoice already billed what the quote offered.');
+                throw new InvalidDeliveryNote("lines[$index].sourceInvoiceLineId", 'A line delivers a quote line or an invoice line, never both: the invoice already billed what the quote offered.', 'source_quote_or_invoice');
             }
             $key = $line->sourceInvoiceLineId->toRfc4122();
             if (isset($named[$key])) {
-                throw new InvalidDeliveryNote("lines[$index].sourceInvoiceLineId", 'An invoice line is delivered once on a note: change the quantity of the line already there.');
+                throw new InvalidDeliveryNote("lines[$index].sourceInvoiceLineId", 'An invoice line is delivered once on a note: change the quantity of the line already there.', 'line_drawn_once');
             }
             $named[$key] = $line->sourceInvoiceLineId;
         }
@@ -66,24 +66,24 @@ final readonly class InvoiceLines
 
         $invoices = $this->invoices->ofLines($company, array_values($named), $locked);
         if (\count($invoices) > 1) {
-            throw new InvalidDeliveryNote('lines', \sprintf('A delivery note delivers one invoice, and these lines come from %d: draw one note from each.', \count($invoices)));
+            throw new InvalidDeliveryNote('lines', \sprintf('A delivery note delivers one invoice, and these lines come from %d: draw one note from each.', \count($invoices)), 'one_source_document', ['count' => \count($invoices)]);
         }
         $invoice = $invoices[0] ?? null;
         if (null !== $invoice) {
             $refused = InvoiceDelivery::refusal($invoice);
             if (null !== $refused) {
-                throw new InvalidDeliveryNote('lines', $refused);
+                throw new InvalidDeliveryNote('lines', $refused, ...(InvoiceDelivery::refusalReason($invoice) ?? throw new \LogicException('A refusal has its reason.')));
             }
             foreach ($lines as $index => $line) {
                 if (null === $line->sourceInvoiceLineId) {
-                    throw new InvalidDeliveryNote("lines[$index]", \sprintf('A note delivering the invoice %s carries its lines only, whose goods it billed: draw another note for anything else.', InvoiceDelivery::reference($invoice)));
+                    throw new InvalidDeliveryNote("lines[$index]", \sprintf('A note delivering the invoice %s carries its lines only, whose goods it billed: draw another note for anything else.', InvoiceDelivery::reference($invoice)), 'other_lines_of_source', ['reference' => InvoiceDelivery::reference($invoice)]);
                 }
             }
             if (!$invoice->customer->standingFor()->getId()->equals($customer->standingFor()->getId())) {
-                throw new InvalidDeliveryNote('customerId', \sprintf('A note delivering the invoice %s goes to its customer, %s.', InvoiceDelivery::reference($invoice), $invoice->customer->standingFor()->getProfile()->name));
+                throw new InvalidDeliveryNote('customerId', \sprintf('A note delivering the invoice %s goes to its customer, %s.', InvoiceDelivery::reference($invoice), $invoice->customer->standingFor()->getProfile()->name), 'customer_of_source', ['reference' => InvoiceDelivery::reference($invoice), 'name' => $invoice->customer->standingFor()->getProfile()->name]);
             }
             if (!$invoice->establishment->getId()->equals($establishment->getId())) {
-                throw new InvalidDeliveryNote('establishmentId', \sprintf('A note delivering the invoice %s leaves its establishment, %s.', InvoiceDelivery::reference($invoice), $invoice->establishment->getCode()));
+                throw new InvalidDeliveryNote('establishmentId', \sprintf('A note delivering the invoice %s leaves its establishment, %s.', InvoiceDelivery::reference($invoice), $invoice->establishment->getCode()), 'establishment_of_source', ['reference' => InvoiceDelivery::reference($invoice), 'code' => $invoice->establishment->getCode()]);
             }
         }
         $taken = null === $invoice ? [] : $this->notes->invoiceLineQuantities($company->getId(), array_values($named), $current?->getId());
@@ -93,7 +93,7 @@ final readonly class InvoiceLines
             $sourceId = $line->sourceInvoiceLineId ?? throw new \LogicException('Every line of a note delivering an invoice names its line.');
             $source = null === $invoice ? null : InvoiceDelivery::line($invoice, $sourceId);
             if (null === $source) {
-                throw new InvalidDeliveryNote("lines[$index].sourceInvoiceLineId", 'No issued invoice of this company has this line among those it billed with their goods.');
+                throw new InvalidDeliveryNote("lines[$index].sourceInvoiceLineId", 'No issued invoice of this company has this line among those it billed with their goods.', 'unknown_choice');
             }
             try {
                 $resolved[] = self::fromInvoice($line, $source, InvoiceDelivery::left($source, $taken));
@@ -115,23 +115,23 @@ final readonly class InvoiceLines
     {
         $product = $source->product->standingFor();
         if (null !== $line->productId && !$line->productId->equals($product->getId()) && !$line->productId->equals($source->product->getId())) {
-            throw new InvalidDeliveryNote('productId', 'A line delivered from an invoice delivers the product the invoice billed.');
+            throw new InvalidDeliveryNote('productId', 'A line delivered from an invoice delivers the product the invoice billed.', 'source_product');
         }
         if (null !== $line->unitId && !$line->unitId->equals($source->unit->getId())) {
-            throw new InvalidDeliveryNote('unitId', \sprintf('A line delivered from an invoice counts in the invoice\'s unit, %s.', $source->unit->getCode()));
+            throw new InvalidDeliveryNote('unitId', \sprintf('A line delivered from an invoice counts in the invoice\'s unit, %s.', $source->unit->getCode()), 'source_unit', ['unit' => $source->unit->getCode()]);
         }
         if (null !== $line->unitPriceNet && (!is_numeric($line->unitPriceNet) || 0 !== Decimal::of($line->unitPriceNet)->compare(Decimal::of($source->unitPriceNet)))) {
-            throw new InvalidDeliveryNote('unitPriceNet', \sprintf('A line delivered from an invoice keeps the price it billed, %s.', Decimal::format(Decimal::of($source->unitPriceNet), 4)));
+            throw new InvalidDeliveryNote('unitPriceNet', \sprintf('A line delivered from an invoice keeps the price it billed, %s.', Decimal::format(Decimal::of($source->unitPriceNet), 4)), 'source_price', ['price' => Decimal::format(Decimal::of($source->unitPriceNet), 4)]);
         }
         $taxIds = array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $source->taxes);
         if (null !== $line->taxComponentIds) {
             $sent = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $line->taxComponentIds);
             if ([] !== array_diff($sent, $taxIds) || [] !== array_diff($taxIds, $sent)) {
-                throw new InvalidDeliveryNote('taxComponentIds', 'A line delivered from an invoice carries the taxes the invoice charged.');
+                throw new InvalidDeliveryNote('taxComponentIds', 'A line delivered from an invoice carries the taxes the invoice charged.', 'source_taxes');
             }
         }
         if (is_numeric($line->quantity) && Decimal::of($line->quantity)->compare($left) > 0) {
-            throw new InvalidDeliveryNote('quantity', \sprintf('Only %s of this invoice line is left to deliver: its credit notes and its other notes take the rest.', Decimal::format($left->compare(0) < 0 ? Decimal::zero() : $left, 3)));
+            throw new InvalidDeliveryNote('quantity', \sprintf('Only %s of this invoice line is left to deliver: its credit notes and its other notes take the rest.', Decimal::format($left->compare(0) < 0 ? Decimal::zero() : $left, 3)), 'left_to_deliver', ['quantity' => Decimal::format($left->compare(0) < 0 ? Decimal::zero() : $left, 3)]);
         }
 
         return new DeliveryNoteLineInput(

@@ -110,14 +110,14 @@ final readonly class InvoiceLineDetails
     private function assertGivesBack(Deduction $deduction): void
     {
         if (null !== $this->product || null !== $this->discountRate || null !== $this->discountAmount || null !== $this->lotCode || $this->returned || null !== $this->sourceDeliveryNoteLineId || null !== $this->creditedLineId || '1.000' !== $this->quantity) {
-            throw new InvalidInvoice('deductsInvoiceId', 'A line giving a deposit back counts one, names no product, lot or delivery note and takes no discount.');
+            throw new InvalidInvoice('deductsInvoiceId', 'A line giving a deposit back counts one, names no product, lot or delivery note and takes no discount.', 'deduction_line_shape');
         }
         $codes = array_map(static fn (TaxComponent $tax): string => $tax->getCode(), $this->taxes);
         $stated = array_map(strval(...), array_keys($deduction->taxes));
         sort($codes);
         sort($stated);
         if ($codes !== $stated) {
-            throw new InvalidInvoice('deductsInvoiceId', 'A line giving a deposit back states what the deposit charged of each of its taxes.');
+            throw new InvalidInvoice('deductsInvoiceId', 'A line giving a deposit back states what the deposit charged of each of its taxes.', 'deduction_line_taxes');
         }
     }
 

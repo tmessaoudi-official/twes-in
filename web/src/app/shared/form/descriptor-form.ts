@@ -34,6 +34,7 @@ import type { FieldRefusal } from './field-refusals';
 import type { FieldConflict } from './form-merge';
 import type { FieldValue, FormDescriptor, FormField, FormSection, FormValues } from './form-types';
 import { applicableValues, applyVisibility, fieldApplies } from './form-visibility';
+import { RefusalFigures } from './refusal-figures';
 import { refusedError } from './refusal-words';
 
 /** Where one `pick` field's rows come from, and the record it holds now as that record itself says it. */
@@ -327,6 +328,7 @@ export class DescriptorForm {
     const form = this.form();
     applyVisibility(this.descriptor(), form, this.readOnly());
     const translate = this.injector.get(TranslateService);
+    const figures = this.injector.get(RefusalFigures);
     const unplaced: FieldRefusal[] = [];
     for (const refusal of refusals) {
       const control = form.controls[refusal.field];
@@ -334,7 +336,7 @@ export class DescriptorForm {
         unplaced.push(refusal);
         continue;
       }
-      control.setErrors({ refused: refusedError(translate, refusal) });
+      control.setErrors({ refused: refusedError(translate, refusal, refusal.params, figures) });
       control.markAsTouched();
     }
     // A refusal is often mended in another field (the regime, for taxes it does not charge): the first change

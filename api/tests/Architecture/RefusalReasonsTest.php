@@ -91,8 +91,9 @@ final class RefusalReasonsTest extends KernelTestCase
                 preg_match_all('/new (?:InvalidCustomer|InvalidVendor|IdentifierRefusal|InvalidCustomFieldValue|InvalidCompanyProfile|InvalidProduct|InvalidExpense|InvalidStockMovement|InvalidReorderPoint|InvalidSchedule|InvalidRecurringInvoice|InvalidRecurringExpense|InvalidStockLocation|InvalidProductCategory|InvalidInvoice|InvalidDeliveryNote|InvalidQuote|InvalidPurchaseOrder|InvalidVenue|InvalidFiscalValue|QuoteInvoicingRefused|InvalidPriceList|InvalidCustomerGroup|InvalidCustomFieldDefinition|InvalidContact|InvalidNumbering|InvalidEstablishment|InvalidDocument)\((.*?)\);/s', $source, $found);
                 // A custom field's refusals go through its helper, one per arm of a match.
                 preg_match_all('/self::refuse\((.*?)\),$/m', $source, $helped);
-                // A record no new document may name says why as a reason of its own, which the documents' refusals spread.
-                preg_match_all('/function switchedOffReason\(\): array\s*\{(.*?)\n    \}/s', $source, $switchedOff);
+                // A record no new document may name says why as a reason of its own, which the documents' refusals spread;
+                // so does what keeps a document from being delivered or taking a deposit, which several paths refuse with.
+                preg_match_all('/function (?:switchedOffReason|refusal|refusalReason|billedOtherwise)\([^)]*\): \??array\s*\{(.*?)\n    \}/s', $source, $switchedOff);
                 foreach ([...$found[1], ...$helped[1], ...$switchedOff[1]] as $arguments) {
                     ++$statements;
                     preg_match_all("/'([a-z]+(?:_[a-z]+)+)'/", $arguments, $reasons);
@@ -107,6 +108,32 @@ final class RefusalReasonsTest extends KernelTestCase
 
         self::assertGreaterThan(90, $statements, 'the domain refusals are found');
         self::assertSame([], $untranslated);
+    }
+
+    /**
+     * A document's refusal names its reason, so the screen says why in the reader's words rather than « Valeur refusée. »:
+     * a reason written in the call, spread from a helper that gives one, or carried from the refusal it re-throws.
+     */
+    public function testEveryRefusalOfADocumentNamesItsReason(): void
+    {
+        $root = \dirname(__DIR__, 2).'/src';
+        $statements = 0;
+        $reasonless = [];
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS));
+        foreach ($files as $file) {
+            \assert($file instanceof \SplFileInfo);
+            $source = (string) file_get_contents($file->getPathname());
+            preg_match_all('/new (?:Invalid(?:Invoice|Quote|DeliveryNote|PurchaseOrder)|QuoteInvoicingRefused)(\(((?:[^()\'"]++|\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|(?1))*)\))/s', $source, $found, \PREG_OFFSET_CAPTURE);
+            foreach ($found[2] as [$arguments, $offset]) {
+                ++$statements;
+                if (1 === preg_match("/'[a-z]+(?:_[a-z]+)+'|\\.\\.\\.|->reason\\b/", $arguments)) {
+                    continue;
+                }
+                $reasonless[] = \sprintf('%s:%d', substr($file->getPathname(), \strlen($root) + 1), substr_count($source, "\n", 0, $offset) + 1);
+            }
+        }
+        self::assertGreaterThan(230, $statements, 'the documents\' refusals are found');
+        self::assertSame([], $reasonless);
     }
 
     /**

@@ -79,11 +79,13 @@ final class QuoteDeliveriesTest extends ApiTestCase
 
         $this->postJson($this->deliver($quoteId), ['quantities' => [$lathe => '4.001']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('quantities: Only 4.000', $this->detail());
+        self::assertSame(['left_to_deliver', ['quantity' => '4.000']], $this->refusalOf("quantities[$lathe]"), 'said beside its line');
         $this->postJson($this->deliver($quoteId), ['quantities' => [self::ABSENT => '1']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['unknown_choice', []], $this->refusalOf('quantities['.self::ABSENT.']'));
         $this->postJson($this->deliver($quoteId), ['quantities' => [$lathe => '0']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['quantity_above_zero', []], $this->refusalOf("quantities[$lathe]"));
 
         $this->postJson($this->deliver($quoteId), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -122,17 +124,17 @@ final class QuoteDeliveriesTest extends ApiTestCase
         $note = $this->json();
         $line = $this->listOf($note, 'lines')[0];
         // Seven of six: the lathe counts in whole pieces, so 6.001 would be refused for its decimals, not for what is left.
-        foreach (['quantity' => '7', 'unitPriceNet' => '1000', 'taxComponentIds' => [$this->taxId('TVA19')], 'unitId' => $this->unitId('HUR')] as $field => $value) {
+        foreach (['quantity' => ['7', 'left_to_deliver'], 'unitPriceNet' => ['1000', 'source_price'], 'taxComponentIds' => [[$this->taxId('TVA19')], 'source_taxes'], 'unitId' => [$this->unitId('HUR'), 'source_unit']] as $field => [$value, $reason]) {
             $this->sendJson('PUT', $this->path('delivery-notes', $noteId), [...$this->writable($note), 'lines' => [[...$this->writableLine($line), $field => $value]]]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
-            self::assertStringContainsString("lines[0].$field", $this->detail(), $field);
+            self::assertSame($reason, $this->refusalOf("lines[0].$field")[0], $field);
         }
         $this->sendJson('PUT', $this->path('delivery-notes', $noteId), [...$this->writable($note), 'lines' => [$this->writableLine($line), $this->writableLine($line)]]);
-        self::assertStringContainsString('lines[1].sourceQuoteLineId', $this->detail(), 'a quote line once on a note');
+        self::assertSame(['line_drawn_once', []], $this->refusalOf('lines[1].sourceQuoteLineId'), 'a quote line once on a note');
 
         $this->postJson($this->path('delivery-notes'), [...$this->writable($note), 'customerId' => $this->customer($this->company, 'CLI-0002')->getId()->toRfc4122(), 'lines' => [[...$this->writableLine($line), 'quantity' => '1']]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('customerId', $this->detail(), 'a quote is delivered to its customer');
+        self::assertSame('customer_of_source', $this->refusalOf('customerId')[0], 'a quote is delivered to its customer');
     }
 
     public function testWhatIsNotAnAcceptedQuoteOfTheCompanyOrNotTheCallersToDeliverIsRefused(): void
@@ -172,14 +174,14 @@ final class QuoteDeliveriesTest extends ApiTestCase
         $discounted = $this->accepted(['discountAmount' => '10']);
         $this->postJson($this->deliver($discounted), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('discountAmount: ', $this->detail());
+        self::assertSame('quote_document_discount', $this->refusalOf('discountAmount')[0]);
 
         $deposited = $this->accepted();
         $this->postJson($this->path('quotes', $deposited).'/deposit-invoices', ['depositPercentage' => '30', 'depositAmount' => null]);
         self::assertResponseIsSuccessful();
         $this->postJson($this->deliver($deposited), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('deposits: ', $this->detail());
+        self::assertSame('quote_has_deposit', $this->refusalOf('deposits')[0]);
 
         $delivered = $this->accepted();
         $this->postJson($this->deliver($delivered), ['quantities' => null]);
@@ -241,7 +243,7 @@ final class QuoteDeliveriesTest extends ApiTestCase
 
         $this->postJson($this->path('delivery-notes', $binned).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the six accepted are all on the other note');
-        self::assertStringContainsString('Only 0.000 of this quote line is left', $this->detail());
+        self::assertSame(['left_to_deliver', ['quantity' => '0.000']], $this->refusalOf('lines[0].quantity'));
         $this->getJson($this->path('delivery-notes', $binned));
         self::assertSame(['draft', null], [$this->json()['status'], $this->json()['number']], 'it stays a draft, and takes no number');
         self::assertSame($onHand, $this->onHand(), 'and nothing left stock');
@@ -256,7 +258,7 @@ final class QuoteDeliveriesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->postJson($this->path('delivery-notes', $binned).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'its goods are delivered from that invoice');
-        self::assertStringContainsString('is on an invoice drafted from it as a whole', $this->detail());
+        self::assertSame('quote_invoiced_whole', $this->refusalOf('quoteId')[0]);
     }
 
     /**

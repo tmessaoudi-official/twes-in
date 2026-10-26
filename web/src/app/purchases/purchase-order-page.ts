@@ -18,7 +18,7 @@ import { MatCardModule } from '@angular/material/card';
 import { FormControl } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { Router, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { PlannedAction } from '../shared/actions/planned-actions';
@@ -28,6 +28,8 @@ import { productsIntoLines, takeInAdded, type TakenIn } from '../shared/document
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import { RefusalFigures } from '../shared/form/refusal-figures';
+import { RefusalLine } from '../shared/documents/refusal-line';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { liveRecord } from '../shared/form/live-record';
@@ -116,7 +118,16 @@ export class PurchaseOrderPage {
   protected readonly stages = PURCHASE_ORDER_STATUS_STAGES;
   protected readonly plain = plainDecimal;
   protected readonly busy = this.facade.busy;
+  private readonly translate = inject(TranslateService);
   protected readonly error = this.facade.error;
+  private readonly refusalFigures = inject(RefusalFigures);
+  /** The line above the form: what no field took, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'purchases.errors.',
+    this.translate,
+    this.refusalFigures,
+  );
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('purchase.write'));
   protected readonly mayReceive = computed(() => this.auth.hasPermission('purchase.receive'));
@@ -522,7 +533,8 @@ export class PurchaseOrderPage {
   private showRefused(refusals: readonly FieldRefusal[]): void {
     if (refusals.length === 0) return;
     const header = this.linesEditor()?.showRefused(refusals) ?? refusals;
-    if (header.length > 0) this.headerEditor()?.showRefused(header);
+    const unplaced = header.length > 0 ? (this.headerEditor()?.showRefused(header) ?? header) : [];
+    this.refusalLine.placed(refusals, unplaced);
   }
 
   protected async send(): Promise<void> {

@@ -71,13 +71,13 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
             $order = $this->locked($company, $id);
             $order->assertDraft('is sent');
             if ([] === $order->getLines()) {
-                throw new InvalidPurchaseOrder('lines', 'An order is sent with at least one line.');
+                throw new InvalidPurchaseOrder('lines', 'An order is sent with at least one line.', 'lines_required');
             }
             $vendor = $this->vendors->ofId($company, $order->getVendorId())
-                ?? throw new InvalidPurchaseOrder('vendorId', 'The vendor of this order is gone: choose another.');
+                ?? throw new InvalidPurchaseOrder('vendorId', 'The vendor of this order is gone: choose another.', 'unknown_choice');
             // A draft put back from the bin after a merge still names the vendor merged away, which the merge never moved.
             if (null !== $vendor->keptNumber) {
-                throw new InvalidPurchaseOrder('vendorId', \sprintf('The vendor %s was merged into %s: an order sent names the vendor kept.', $vendor->number, $vendor->keptNumber));
+                throw new InvalidPurchaseOrder('vendorId', \sprintf('The vendor %s was merged into %s: an order sent names the vendor kept.', $vendor->number, $vendor->keptNumber), 'vendor_merged_draft', ['number' => $vendor->number, 'kept' => $vendor->keptNumber]);
             }
             $allocated = $this->numbers->allocate($company, $order->getEstablishment(), self::DOCUMENT_TYPE);
             if ($this->orders->numberTaken($company->getId(), $allocated->number)) {
@@ -127,7 +127,7 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
             try {
                 $this->stock->receive($company, new IntakeDocument($order->getVendorId(), $receipt->getSupplierReference(), $receipt->getReceivedOn()), $lines, $seesCost ? $apply : null, $actorUserId);
             } catch (IntakeRefused $refused) {
-                throw new InvalidPurchaseOrder(null === $refused->index ? $refused->field : \sprintf('lines[%d].%s', $refused->index, $refused->field), $refused->getMessage());
+                throw new InvalidPurchaseOrder(null === $refused->index ? $refused->field : \sprintf('lines[%d].%s', $refused->index, $refused->field), $refused->getMessage(), $refused->reason, $refused->params);
             }
             $this->orders->save($order);
             $this->record($company, $order, self::RECEIVED, ['receiptId' => $receipt->getId()->toRfc4122(), 'status' => $order->getStatus()->value], $actorUserId);

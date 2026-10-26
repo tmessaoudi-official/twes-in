@@ -383,16 +383,17 @@ final class DepositInvoicesTest extends ApiTestCase
 
         $quoteId = $this->accepted();
         foreach ([
-            ['depositPercentage' => '0', 'depositAmount' => null],
-            ['depositPercentage' => '100', 'depositAmount' => null],
-            ['depositPercentage' => 'trente', 'depositAmount' => null],
-            ['depositPercentage' => null, 'depositAmount' => null],
-            ['depositPercentage' => '10', 'depositAmount' => '100'],
-            ['depositPercentage' => null, 'depositAmount' => '2775.675'],
-            ['depositPercentage' => null, 'depositAmount' => '0.0001'],
-        ] as $body) {
+            [['depositPercentage' => '0', 'depositAmount' => null], 'depositPercentage', 'invalid_deposit_rate'],
+            [['depositPercentage' => '100', 'depositAmount' => null], 'depositPercentage', 'invalid_deposit_rate'],
+            [['depositPercentage' => 'trente', 'depositAmount' => null], 'depositPercentage', 'invalid_deposit_rate'],
+            [['depositPercentage' => null, 'depositAmount' => null], 'depositPercentage', 'deposit_rate_or_amount'],
+            [['depositPercentage' => '10', 'depositAmount' => '100'], 'depositAmount', 'deposit_rate_or_amount'],
+            [['depositPercentage' => null, 'depositAmount' => '2775.675'], 'depositAmount', 'deposit_below_quote'],
+            [['depositPercentage' => null, 'depositAmount' => '0.0001'], 'depositAmount', 'invalid_amount'],
+        ] as [$body, $field, $reason]) {
             $this->postJson($this->quotePath($quoteId).'/deposit-invoices', $body);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, json_encode($body, \JSON_THROW_ON_ERROR));
+            self::assertSame($reason, $this->refusalOf($field)[0], json_encode($body, \JSON_THROW_ON_ERROR));
         }
         self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM invoice'), 'a refusal drafts nothing');
 
@@ -403,6 +404,7 @@ final class DepositInvoicesTest extends ApiTestCase
 
         $this->postJson($this->quotePath($quoteId).'/deposit-invoices', ['depositPercentage' => '81', 'depositAmount' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the deposits of a quote never go beyond it');
+        self::assertSame('deposits_beyond_quote', $this->refusalOf('depositPercentage')[0], 'said with what is left of the quote');
         $this->deposit($quoteId, ['depositPercentage' => '80', 'depositAmount' => null]);
 
         $this->postJson($this->companyPath().'/invoices/'.$first.'/cancel', null);

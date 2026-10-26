@@ -55,7 +55,7 @@ final readonly class DepositDeductions
     public function linesGivingBack(Company $company, Uuid $depositId, ?Invoice $by, string $language): array
     {
         $deposit = $this->invoices->ofIdInCompany($depositId, $company->getId())
-            ?? throw new InvalidInvoice('deductsInvoiceId', 'No invoice of this company has this id.');
+            ?? throw new InvalidInvoice('deductsInvoiceId', 'No invoice of this company has this id.', 'unknown_choice');
         $this->assertDeductible($company, $deposit, $by);
         $number = $deposit->getNumber() ?? throw new \LogicException('An issued deposit has a number.');
         $day = $deposit->getIssueDate() ?? throw new \LogicException('An issued deposit has an issue day.');
@@ -99,14 +99,14 @@ final readonly class DepositDeductions
     {
         $reference = $deposit->getNumber() ?? $deposit->getId()->toRfc4122();
         if (!$deposit->isDeposit()) {
-            throw new InvalidInvoice('deductsInvoiceId', \sprintf('The invoice %s is not a deposit invoice: only a deposit is given back on another invoice.', $reference));
+            throw new InvalidInvoice('deductsInvoiceId', \sprintf('The invoice %s is not a deposit invoice: only a deposit is given back on another invoice.', $reference), 'not_a_deposit', ['reference' => $reference]);
         }
         if (!$deposit->isDeductible()) {
-            throw new InvalidInvoice('deductsInvoiceId', \sprintf('The deposit %s is given back once it is issued, and not once a credit note corrects it.', $reference));
+            throw new InvalidInvoice('deductsInvoiceId', \sprintf('The deposit %s is given back once it is issued, and not once a credit note corrects it.', $reference), 'deposit_not_issued', ['reference' => $reference]);
         }
         foreach ($this->invoices->givingBack($company->getId(), $deposit->getId()) as $other) {
             if (null === $by || !$other->getId()->equals($by->getId())) {
-                throw new InvalidInvoice('deductsInvoiceId', \sprintf('The deposit %s is already given back by the invoice %s.', $reference, $other->getNumber() ?? $other->getId()->toRfc4122().', a draft'));
+                throw new InvalidInvoice('deductsInvoiceId', \sprintf('The deposit %s is already given back by the invoice %s.', $reference, $other->getNumber() ?? $other->getId()->toRfc4122().', a draft'), ...(null === $other->getNumber() ? ['deposit_on_draft', ['reference' => $reference]] : ['deposit_given_back', ['reference' => $reference, 'invoice' => $other->getNumber()]]));
             }
         }
     }

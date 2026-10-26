@@ -32,10 +32,10 @@ final readonly class ReceivedGoods
     {
         $code = TypedText::trimmed($lotCode ?? '');
         if (mb_strlen($code) > self::LOT_CODE_MAX) {
-            throw new InvalidPurchaseOrder('lotCode', \sprintf('A lot code is at most %d characters.', self::LOT_CODE_MAX));
+            throw new InvalidPurchaseOrder('lotCode', \sprintf('A lot code is at most %d characters.', self::LOT_CODE_MAX), 'lot_code', ['max' => self::LOT_CODE_MAX]);
         }
         if ('' === $code && null !== $lotExpiresOn) {
-            throw new InvalidPurchaseOrder('lotExpiresOn', 'A use-by date belongs to a lot: name the lot.');
+            throw new InvalidPurchaseOrder('lotExpiresOn', 'A use-by date belongs to a lot: name the lot.', 'expiry_needs_lot');
         }
         $this->lotCode = '' === $code ? null : $code;
         $this->unitCost = null === $unitCost || '' === TypedText::trimmed($unitCost) ? null : PurchaseOrderLineDetails::price(TypedText::trimmed($unitCost));

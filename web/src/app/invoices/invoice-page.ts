@@ -23,6 +23,8 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { FieldError } from '../shared/form/form-builder';
 import { refusedError } from '../shared/form/refusal-words';
+import { RefusalFigures } from '../shared/form/refusal-figures';
+import { RefusalLine } from '../shared/documents/refusal-line';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { Select, type SelectOption } from '../shared/form/select';
 import { buildFormGroup } from '../shared/form/form-builder';
@@ -189,6 +191,14 @@ export class InvoicePage {
   protected readonly taxName = computed(() => taxNames(this.options()?.taxes ?? []));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  private readonly refusalFigures = inject(RefusalFigures);
+  /** The line above the form: what no field took, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'invoices.errors.',
+    this.translate,
+    this.refusalFigures,
+  );
   protected readonly scale = computed(() => this.options()?.currencyScale ?? null);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly today = computed(() => todayIn(this.company()?.timezone));
@@ -707,14 +717,17 @@ export class InvoicePage {
     const rest = this.linesEditor()?.showRefused(refusals) ?? refusals;
     const said = (field: string): FieldError | null => {
       const refusal = rest.find((each) => each.field === field);
-      return refusal === undefined ? null : refusedError(this.translate, refusal);
+      return refusal === undefined
+        ? null
+        : refusedError(this.translate, refusal, refusal.params, this.refusalFigures);
     };
     this.customerRefused.set(said('customerId'));
     this.documentTaxesRefused.set(said('documentTaxComponentIds'));
     const header = rest.filter(
       (each) => each.field !== 'customerId' && each.field !== 'documentTaxComponentIds',
     );
-    if (header.length > 0) this.headerEditor()?.showRefused(header);
+    const unplaced = header.length > 0 ? (this.headerEditor()?.showRefused(header) ?? header) : [];
+    this.refusalLine.placed(refusals, unplaced);
   }
 
   private readonly rights = computed(() => this.invoiceActions.rights());

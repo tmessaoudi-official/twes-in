@@ -211,10 +211,10 @@ class Quote implements CompanyOwned
     {
         $this->assertDraft('is sent');
         if ($this->lines->isEmpty()) {
-            throw new InvalidQuote('lines', 'A quote is sent with at least one line.');
+            throw new InvalidQuote('lines', 'A quote is sent with at least one line.', 'lines_required');
         }
         if ($validityDays < 1) {
-            throw new InvalidQuote('validityDays', 'A quote binds its price for one day at least.');
+            throw new InvalidQuote('validityDays', 'A quote binds its price for one day at least.', 'validity_days');
         }
         // Every unit it prints is named before anything is fixed, so a refusal leaves the draft as it was.
         foreach ($this->getLines() as $line) {
@@ -367,10 +367,10 @@ class Quote implements CompanyOwned
         $issued = $this->issueDate ?? throw new \LogicException('A sent quote has an issue day.');
         $day = self::day($on);
         if ($day < $issued) {
-            throw new InvalidQuote('answeredOn', \sprintf('A quote is answered on or after its issue day, %s.', $issued->format('Y-m-d')));
+            throw new InvalidQuote('answeredOn', \sprintf('A quote is answered on or after its issue day, %s.', $issued->format('Y-m-d')), 'on_or_after', ['day' => $issued->format('Y-m-d')]);
         }
         if ($day > self::day($today)) {
-            throw new InvalidQuote('answeredOn', 'A quote is answered once the customer did, today at the latest.');
+            throw new InvalidQuote('answeredOn', 'A quote is answered once the customer did, today at the latest.', 'after_today');
         }
 
         $this->status = $answer;

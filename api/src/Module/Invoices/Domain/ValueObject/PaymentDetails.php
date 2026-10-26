@@ -43,12 +43,12 @@ final readonly class PaymentDetails
     {
         $amount = TypedText::trimmed($amount);
         if (1 !== preg_match(self::AMOUNT, $amount)) {
-            throw new InvalidInvoice('amount', 'A payment is an amount above 0 with at most three decimals.');
+            throw new InvalidInvoice('amount', 'A payment is an amount above 0 with at most three decimals.', 'invalid_amount', ['decimals' => 3]);
         }
         [$units, $decimals] = [...explode('.', $amount), ''];
         $amount = $units.'.'.str_pad($decimals, 3, '0');
         if ('0.000' === $amount) {
-            throw new InvalidInvoice('amount', 'A payment is an amount above 0 with at most three decimals.');
+            throw new InvalidInvoice('amount', 'A payment is an amount above 0 with at most three decimals.', 'invalid_amount', ['decimals' => 3]);
         }
 
         return $amount;

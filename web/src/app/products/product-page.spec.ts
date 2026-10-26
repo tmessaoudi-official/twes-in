@@ -410,7 +410,8 @@ describe('ProductPage', () => {
     expect(navigate).toHaveBeenCalledWith(['/products']);
   });
 
-  it('stays on the product when the delete is refused, and offers none to whoever may not write products', async () => {
+  // One page per case: a case opening it twice outran Vitest's five seconds beside a gate.
+  it('stays on the product when the delete is refused', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     deletes.remove.mockResolvedValue(false);
     product.set(laptop);
@@ -418,9 +419,11 @@ describe('ProductPage', () => {
     (await menuEntry('delete'))!.click();
     await settle();
     expect(navigate).not.toHaveBeenCalled();
+  });
 
-    fixture.destroy();
+  it('offers no delete to whoever may not write products', async () => {
     auth.hasPermission.mockImplementation((permission: string) => permission !== 'product.write');
+    product.set(laptop);
     await open(laptop.id);
     expect(await menuEntry('delete')).toBeNull();
   });

@@ -79,11 +79,11 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
     public function draftInvoice(Company $company, array $noteIds, ?Uuid $actorUserId, ?array $quantities = null): Uuid
     {
         if ([] === $noteIds) {
-            throw new InvalidDeliveryNote('deliveryNoteIds', 'An invoice is drafted from at least one delivery note.');
+            throw new InvalidDeliveryNote('deliveryNoteIds', 'An invoice is drafted from at least one delivery note.', 'value_required');
         }
         $named = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $noteIds);
         if (\count(array_unique($named)) !== \count($named)) {
-            throw new InvalidDeliveryNote('deliveryNoteIds', 'Each delivery note is named once.');
+            throw new InvalidDeliveryNote('deliveryNoteIds', 'Each delivery note is named once.', 'named_twice');
         }
 
         return $this->transactions->run(function () use ($company, $noteIds, $named, $actorUserId, $quantities): Uuid {
@@ -111,21 +111,21 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
     public function addToDraft(Company $company, Uuid $invoiceId, array $noteIds, ?Uuid $actorUserId, ?array $quantities = null): void
     {
         if ([] === $noteIds) {
-            throw new InvalidDeliveryNote('deliveryNoteIds', 'Delivery notes are added to an invoice at least one at a time.');
+            throw new InvalidDeliveryNote('deliveryNoteIds', 'Delivery notes are added to an invoice at least one at a time.', 'value_required');
         }
         $named = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $noteIds);
         if (\count(array_unique($named)) !== \count($named)) {
-            throw new InvalidDeliveryNote('deliveryNoteIds', 'Each delivery note is named once.');
+            throw new InvalidDeliveryNote('deliveryNoteIds', 'Each delivery note is named once.', 'named_twice');
         }
 
         $this->transactions->run(function () use ($company, $invoiceId, $noteIds, $named, $actorUserId, $quantities): void {
             $invoice = $this->invoicing->ofId($company, $invoiceId, true) ?? throw new InvoiceNotFound();
             if (!$invoice->takesLines) {
-                throw new InvalidDeliveryNote('invoiceId', self::NOT_AN_INVOICE);
+                throw new InvalidDeliveryNote('invoiceId', self::NOT_AN_INVOICE, 'not_an_invoice');
             }
             [$notes, $lines] = $this->plan($company, $noteIds, $named, $quantities);
             if (!$notes[0]->getCustomer()->standingFor()->getId()->equals($invoice->customerId) || !$notes[0]->getEstablishment()->getId()->equals($invoice->establishmentId)) {
-                throw new InvalidDeliveryNote('invoiceId', 'Delivery notes are added to an invoice of their customer and their establishment.');
+                throw new InvalidDeliveryNote('invoiceId', 'Delivery notes are added to an invoice of their customer and their establishment.', 'notes_other_party');
             }
 
             $this->invoicing->appendLines($company, $invoiceId, $lines, ['deliveryNoteIds' => array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes)], $actorUserId);
@@ -223,7 +223,7 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
         $found = array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes);
         foreach ($named as $id) {
             if (!\in_array($id, $found, true)) {
-                throw new InvalidDeliveryNote('deliveryNoteIds', \sprintf('No delivery note of this company has the id %s.', $id));
+                throw new InvalidDeliveryNote('deliveryNoteIds', \sprintf('No delivery note of this company has the id %s.', $id), 'unknown_choice');
             }
         }
         foreach ($notes as $note) {
@@ -237,10 +237,10 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
         $first = $notes[0];
         foreach ($notes as $note) {
             if (!$note->getCustomer()->standingFor()->getId()->equals($first->getCustomer()->standingFor()->getId())) {
-                throw new InvalidDeliveryNote('deliveryNoteIds', 'An invoice is drafted from delivery notes of one customer.');
+                throw new InvalidDeliveryNote('deliveryNoteIds', 'An invoice is drafted from delivery notes of one customer.', 'notes_one_customer');
             }
             if (!$note->getEstablishment()->getId()->equals($first->getEstablishment()->getId())) {
-                throw new InvalidDeliveryNote('deliveryNoteIds', 'An invoice is drafted from delivery notes of one establishment, whose series numbers it.');
+                throw new InvalidDeliveryNote('deliveryNoteIds', 'An invoice is drafted from delivery notes of one establishment, whose series numbers it.', 'notes_one_establishment');
             }
         }
         $taken = $this->invoiced->taken($company->getId(), self::lineIds($notes));
@@ -254,13 +254,13 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
         if (null !== $quantities) {
             foreach ($quantities as $lineId => $quantity) {
                 if (!isset($left[$lineId])) {
-                    throw new InvalidDeliveryNote('quantities', \sprintf('The line %s is not on the notes asked for.', $lineId));
+                    throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('The line %s is not on the notes asked for.', $lineId), 'unknown_choice');
                 }
                 if (!is_numeric($quantity) || Decimal::of($quantity)->compare(0) <= 0) {
-                    throw new InvalidDeliveryNote('quantities', \sprintf('The quantity of the line %s is more than nothing.', $lineId));
+                    throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('The quantity of the line %s is more than nothing.', $lineId), 'quantity_above_zero');
                 }
                 if (Decimal::of($quantity)->compare($left[$lineId]) > 0) {
-                    throw new InvalidDeliveryNote('quantities', \sprintf('Only %s of the line %s is left to invoice.', Decimal::format($left[$lineId], 3), $lineId));
+                    throw new InvalidDeliveryNote("quantities[$lineId]", \sprintf('Only %s of the line %s is left to invoice.', Decimal::format($left[$lineId], 3), $lineId), 'left_to_invoice', ['quantity' => Decimal::format($left[$lineId], 3)]);
                 }
             }
         } elseif ([] === array_filter($left, static fn (\BcMath\Number $each): bool => $each->compare(0) > 0)) {

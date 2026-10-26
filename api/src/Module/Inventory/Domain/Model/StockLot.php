@@ -80,7 +80,7 @@ class StockLot implements CompanyOwned
     public static function open(Product $product, string $code, ?\DateTimeImmutable $expiresOn, \DateTimeImmutable $now): self
     {
         if (ProductTracking::None === $product->getTracking()) {
-            throw new InvalidStockMovement('lot', \sprintf('The product %s is not tracked by lot or serial number: its stock names no lot.', $product->getReference()));
+            throw new InvalidStockMovement('lot', \sprintf('The product %s is not tracked by lot or serial number: its stock names no lot.', $product->getReference()), reason: 'lot_not_tracked');
         }
 
         return new self($product, self::code($code), $expiresOn, $now);

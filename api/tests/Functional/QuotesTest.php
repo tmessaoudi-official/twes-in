@@ -223,6 +223,7 @@ final class QuotesTest extends ApiTestCase
 
         $this->postJson($this->path($refused).'/refuse', ['answeredOn' => '2000-01-01', 'refusalReason' => 'Trop cher.']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'before its issue day');
+        self::assertSame('on_or_after', $this->refusalOf('answeredOn')[0]);
         $this->postJson($this->path($refused).'/refuse', ['refusalReason' => 'Trop cher.']);
         self::assertResponseIsSuccessful();
         self::assertSame(['refused', 'Trop cher.'], [$this->json()['status'], $this->json()['refusalReason']]);

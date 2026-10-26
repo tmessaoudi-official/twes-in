@@ -113,9 +113,11 @@
   }
   @if (error(); as code) {
     @if (code !== 'customer_unavailable') {
-      <p role="alert" data-testid="invoice-error" class="text-error">
-        {{ 'invoices.errors.' + code | translate }}
-      </p>
+      @if (refusalLine.for(code); as said) {
+        <p role="alert" data-testid="invoice-error" class="text-error">
+          {{ said.key | translate: said.params }}
+        </p>
+      }
     }
   }
 

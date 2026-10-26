@@ -97,14 +97,14 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
             throw new QuoteTargetInvoiceNotDraft($invoice->getNumber() ?? $invoice->getId()->toRfc4122());
         }
         if (InvoiceType::Invoice !== $invoice->getType() || $invoice->isDeposit()) {
-            throw new QuoteInvoicingRefused('invoiceId', 'A quote is added to an invoice, never to a deposit invoice or a credit note.');
+            throw new QuoteInvoicingRefused('invoiceId', 'A quote is added to an invoice, never to a deposit invoice or a credit note.', null, 'quote_not_on_invoice');
         }
         if (!$invoice->getCustomer()->getId()->equals($quote->getCustomer()->standingFor()->getId()) || !$invoice->getEstablishment()->getId()->equals($quote->getEstablishment()->getId())) {
-            throw new QuoteInvoicingRefused('invoiceId', 'A quote is added to an invoice of its customer and its establishment.');
+            throw new QuoteInvoicingRefused('invoiceId', 'A quote is added to an invoice of its customer and its establishment.', null, 'quote_other_party');
         }
         $discount = $quote->getHeader()->discountAmount;
         if (null !== $discount && 0 !== Decimal::of($discount)->compare(0)) {
-            throw new QuoteInvoicingRefused('discountAmount', 'A quote with a discount on the whole is invoiced on a draft of its own: spread over the other lines of an invoice, it would move tax from one rate to another.');
+            throw new QuoteInvoicingRefused('discountAmount', 'A quote with a discount on the whole is invoiced on a draft of its own: spread over the other lines of an invoice, it would move tax from one rate to another.', null, 'quote_discount_own_draft');
         }
         try {
             $this->manage->appendLines($company, $invoiceId, $this->withDepositsGivenBack($quote, $this->linesOf($quote)), ['quoteId' => $quote->getId()->toRfc4122()], $actorUserId);
@@ -122,10 +122,10 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
             $whole = $this->wholeOf($quote);
             $tax = Decimal::of($whole->netAfterDocumentDiscount)->add(Decimal::of($whole->totalTax));
             if (null !== $amount && Decimal::of($amount)->compare($tax) >= 0) {
-                throw new QuoteInvoicingRefused($field, \sprintf('A deposit is less than the quote, %s tax included.', Decimal::format($tax, $scale)));
+                throw new QuoteInvoicingRefused($field, \sprintf('A deposit is less than the quote, %s tax included.', Decimal::format($tax, $scale)), null, 'deposit_below_quote', ['amount' => Decimal::format($tax, $scale)]);
             }
             if (null !== $amount && 0 !== Decimal::round(Decimal::of($amount), $scale)->compare(Decimal::of($amount))) {
-                throw new QuoteInvoicingRefused($field, \sprintf('The currency %s has %d decimals.', $company->getCurrency(), $scale));
+                throw new QuoteInvoicingRefused($field, \sprintf('The currency %s has %d decimals.', $company->getCurrency(), $scale), null, 'invalid_amount', ['decimals' => $scale]);
             }
             $share = null === $percentage ? Decimal::of((string) $amount)->div($tax, Decimal::WORKING_SCALE) : Decimal::of($percentage)->div(100, Decimal::WORKING_SCALE);
 
@@ -150,11 +150,11 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
             }
             $left = Decimal::of($whole->netAfterDocumentDiscount)->sub($taken);
             if (Decimal::sum($nets)->compare($left) > 0) {
-                throw new QuoteInvoicingRefused($field, \sprintf('The deposits of a quote never go beyond it: %s net of tax is left.', Decimal::format($left, $scale)));
+                throw new QuoteInvoicingRefused($field, \sprintf('The deposits of a quote never go beyond it: %s net of tax is left.', Decimal::format($left, $scale)), null, 'deposits_beyond_quote', ['amount' => Decimal::format($left, $scale)]);
             }
 
             $unit = $this->units->ofCodeInCompany(self::ONE, $company->getId())
-                ?? throw new QuoteInvoicingRefused('unitId', \sprintf('A deposit line counts in the unit %s, which the company does not have.', self::ONE));
+                ?? throw new QuoteInvoicingRefused('unitId', \sprintf('A deposit line counts in the unit %s, which the company does not have.', self::ONE), null, 'deposit_unit_missing', ['unit' => self::ONE]);
             $description = $this->wording->depositLine($this->deductions->language($company, $quote->getCustomer()->standingFor()), $quote->getNumber() ?? '', $percentage);
             $lines = [];
             foreach ($groups as $index => [$taxes]) {
@@ -164,7 +164,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
                 $lines[] = new InvoiceLineDetails(null, $description, '1', $unit, Decimal::format($nets[$index], InvoiceLineDetails::PRICE_DECIMALS), null, $taxes);
             }
             if ([] === $lines) {
-                throw new QuoteInvoicingRefused($field, 'A deposit this small comes to nothing in the currency.');
+                throw new QuoteInvoicingRefused($field, 'A deposit this small comes to nothing in the currency.', null, 'deposit_too_small');
             }
 
             $invoice = $this->manage->createFromLines(
@@ -230,7 +230,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
         $language = $this->deductions->language($company, $quote->getCustomer()->standingFor());
         foreach ($this->invoices->depositsOfQuotes($company->getId(), [$quote->getId()]) as $deposit) {
             if (InvoiceStatus::Draft === $deposit->getStatus()) {
-                throw new QuoteInvoicingRefused('deposits', \sprintf('The deposit invoice drafted %s is still a draft: issue or cancel it before invoicing the quote.', $deposit->getCreatedAt()->format('Y-m-d')));
+                throw new QuoteInvoicingRefused('deposits', \sprintf('The deposit invoice drafted %s is still a draft: issue or cancel it before invoicing the quote.', $deposit->getCreatedAt()->format('Y-m-d')), null, 'deposit_still_draft', ['day' => $deposit->getCreatedAt()->format('Y-m-d')]);
             }
             // A cancelled draft, a credited deposit or one another invoice already gives back is not given back here.
             if (!$deposit->isDeductible() || [] !== $this->invoices->givingBack($company->getId(), $deposit->getId())) {

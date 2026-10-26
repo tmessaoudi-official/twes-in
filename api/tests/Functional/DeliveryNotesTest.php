@@ -289,6 +289,10 @@ final class DeliveryNotesTest extends ApiTestCase
             $this->postJson($this->path($id).'/deliver', ['delivered' => $moment]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
             self::assertStringContainsString('delivered: ', (string) $this->client->getResponse()->getContent(), $case.', named as sent');
+            $reason = ['before its issue day' => 'on_or_after', 'after now' => 'after_today'][$case] ?? null;
+            if (null !== $reason) {
+                self::assertSame($reason, $this->refusalOf('delivered')[0], $case.', said why');
+            }
         }
         $before = new \DateTimeImmutable('-1 second');
         $this->postJson($this->path($id).'/deliver', []);
@@ -303,7 +307,7 @@ final class DeliveryNotesTest extends ApiTestCase
         $this->postJson($this->path(), $this->note());
         $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a note without a line is not validated');
-        self::assertStringContainsString('lines', (string) $this->client->getResponse()->getContent());
+        self::assertSame(['lines_required', []], $this->refusalOf('lines'));
 
         $second = $this->draftWithALine();
         $this->postJson($this->path($second).'/validate', null);

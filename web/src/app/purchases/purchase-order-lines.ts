@@ -17,6 +17,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { FieldError } from '../shared/form/form-builder';
 import { LineRefusals, refusedOn } from '../shared/documents/line-refusals';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { type LineGroup, lineGroup, plainDecimal } from './purchase-order-forms';
@@ -146,6 +147,7 @@ export class PurchaseOrderLines {
   private readonly refusals = new LineRefusals(
     () => this.lines(),
     this.translate,
+    inject(RefusalFigures),
     () => this.revision.update((revision) => revision + 1),
   );
 

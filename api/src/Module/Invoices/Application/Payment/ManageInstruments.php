@@ -104,14 +104,14 @@ final readonly class ManageInstruments implements DeclaresAuditActions
             $scale = $this->scales->of($company->getCurrency());
             $amount = Decimal::of($details->amount);
             if (0 !== Decimal::round($amount, $scale)->compare($amount)) {
-                throw new InvalidInvoice('amount', \sprintf('The currency %s has %d decimals.', $company->getCurrency(), $scale));
+                throw new InvalidInvoice('amount', \sprintf('The currency %s has %d decimals.', $company->getCurrency(), $scale), 'invalid_amount', ['decimals' => $scale]);
             }
             $free = $this->free($company, $invoice);
             if ($amount->compare($free) > 0) {
-                throw new InvalidInvoice('amount', \sprintf('An instrument is at most what is still due and not already covered by another, %s.', Decimal::format($free, $scale)));
+                throw new InvalidInvoice('amount', \sprintf('An instrument is at most what is still due and not already covered by another, %s.', Decimal::format($free, $scale)), 'above_uncovered', ['amount' => Decimal::format($free, $scale)]);
             }
             if ($details->dueOn < $issued) {
-                throw new InvalidInvoice('dueOn', \sprintf('An instrument falls due from the issue day, %s.', $issued->format('Y-m-d')));
+                throw new InvalidInvoice('dueOn', \sprintf('An instrument falls due from the issue day, %s.', $issued->format('Y-m-d')), 'on_or_after', ['day' => $issued->format('Y-m-d')]);
             }
 
             $instrument = new PaymentInstrument($invoice, $details, $actorUserId, $this->clock->now());

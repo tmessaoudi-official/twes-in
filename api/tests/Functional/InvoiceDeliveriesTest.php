@@ -81,9 +81,10 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a service line has no goods to deliver');
         $this->postJson($this->deliver($invoiceId), ['quantities' => [$lathe => '4.001']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('quantities: Only 4.000', $this->detail());
+        self::assertSame(['left_to_deliver', ['quantity' => '4.000']], $this->refusalOf("quantities[$lathe]"), 'said beside its line');
         $this->postJson($this->deliver($invoiceId), ['quantities' => [$lathe => '0']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['quantity_above_zero', []], $this->refusalOf("quantities[$lathe]"));
 
         $firstId = $this->stringAt($first, 'id');
         $this->postJson($this->path('delivery-notes', $firstId).'/validate', null);
@@ -189,6 +190,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         $this->postJson($this->path('delivery-notes', $binned).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the six billed are all on the other note');
         self::assertStringContainsString('Only 0.000 of this invoice line is left', $this->detail());
+        self::assertSame(['left_to_deliver', ['quantity' => '0.000']], $this->refusalOf('lines[0].quantity'));
         $this->getJson($this->path('delivery-notes', $binned));
         self::assertSame(['draft', null], [$this->json()['status'], $this->json()['number']], 'it stays a draft, and takes no number');
 
@@ -200,6 +202,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         $this->postJson($this->path('delivery-notes', $overtaken).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note issued after the draft took two back');
         self::assertStringContainsString('Only 4.000 of this invoice line is left', $this->detail());
+        self::assertSame(['left_to_deliver', ['quantity' => '4.000']], $this->refusalOf('lines[0].quantity'));
     }
 
     public function testWhatIsNotAnIssuedInvoiceOfTheCompanyOrNotTheCallersToDeliverIsRefused(): void
@@ -248,21 +251,21 @@ final class InvoiceDeliveriesTest extends ApiTestCase
 
         $note = $this->json();
         $line = $this->listOf($note, 'lines')[0];
-        foreach (['quantity' => '7', 'unitPriceNet' => '1000', 'taxComponentIds' => [$this->taxId('TVA19')], 'unitId' => $this->unitId('HUR')] as $field => $value) {
+        foreach (['quantity' => ['7', 'left_to_deliver'], 'unitPriceNet' => ['1000', 'source_price'], 'taxComponentIds' => [[$this->taxId('TVA19')], 'source_taxes'], 'unitId' => [$this->unitId('HUR'), 'source_unit']] as $field => [$value, $reason]) {
             $this->sendJson('PUT', $this->path('delivery-notes', $noteId), [...$this->writable($note), 'lines' => [[...$this->writableLine($line), $field => $value]]]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
-            self::assertStringContainsString("lines[0].$field", $this->detail(), $field);
+            self::assertSame($reason, $this->refusalOf("lines[0].$field")[0], $field);
         }
         $this->sendJson('PUT', $this->path('delivery-notes', $noteId), [...$this->writable($note), 'lines' => [$this->writableLine($line), $this->writableLine($line)]]);
-        self::assertStringContainsString('lines[1].sourceInvoiceLineId', $this->detail(), 'an invoice line once on a note');
+        self::assertSame(['line_drawn_once', []], $this->refusalOf('lines[1].sourceInvoiceLineId'), 'an invoice line once on a note');
         $free = ['productId' => $this->productId, 'description' => null, 'quantity' => '1', 'unitId' => null, 'unitPriceNet' => null, 'taxComponentIds' => null, 'lotCode' => null];
         $this->sendJson('PUT', $this->path('delivery-notes', $noteId), [...$this->writable($note), 'lines' => [$this->writableLine($line), $free]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('lines[1]', $this->detail(), 'goods the invoice did not bill go on another note');
+        self::assertSame('other_lines_of_source', $this->refusalOf('lines[1]')[0], 'goods the invoice did not bill go on another note');
 
         $this->postJson($this->path('delivery-notes'), [...$this->writable($note), 'customerId' => $this->customer($this->company, 'CLI-0002')->getId()->toRfc4122(), 'lines' => [[...$this->writableLine($line), 'quantity' => '1']]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('customerId', $this->detail(), 'an invoice is delivered to its customer');
+        self::assertSame('customer_of_source', $this->refusalOf('customerId')[0], 'an invoice is delivered to its customer');
     }
 
     public function testThePrintedNoteNamesTheInvoiceItDelivers(): void

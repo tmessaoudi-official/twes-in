@@ -226,18 +226,22 @@ final class PurchaseOrdersTest extends ApiTestCase
         [$screws, $paint] = $this->lineIds($id);
 
         foreach ([
-            ['lines[1].quantity', [['orderLineId' => $screws, 'locationId' => $this->site, 'quantity' => '4'], ['orderLineId' => $screws, 'locationId' => $this->site, 'quantity' => '7']]],
-            ['lines[0].orderLineId', [['orderLineId' => self::ABSENT, 'locationId' => $this->site, 'quantity' => '1']]],
-            ['lines[0].locationId', [['orderLineId' => $screws, 'locationId' => self::ABSENT, 'quantity' => '1']]],
-            ['lines[1].lotCode', [['orderLineId' => $screws, 'locationId' => $this->site, 'quantity' => '1'], ['orderLineId' => $paint, 'locationId' => $this->site, 'quantity' => '1']]],
-            ['lines[0].lotExpiresOn', [['orderLineId' => $paint, 'locationId' => $this->site, 'quantity' => '1', 'lotExpiresOn' => '2027-01-01']]],
-        ] as [$field, $lines]) {
+            ['lines[1].quantity', [['orderLineId' => $screws, 'locationId' => $this->site, 'quantity' => '4'], ['orderLineId' => $screws, 'locationId' => $this->site, 'quantity' => '7']], 'above_expected'],
+            ['lines[0].orderLineId', [['orderLineId' => self::ABSENT, 'locationId' => $this->site, 'quantity' => '1']], 'unknown_choice'],
+            ['lines[0].locationId', [['orderLineId' => $screws, 'locationId' => self::ABSENT, 'quantity' => '1']], 'unknown_choice'],
+            ['lines[1].lotCode', [['orderLineId' => $screws, 'locationId' => $this->site, 'quantity' => '1'], ['orderLineId' => $paint, 'locationId' => $this->site, 'quantity' => '1']], 'lot_required'],
+            ['lines[0].lotExpiresOn', [['orderLineId' => $paint, 'locationId' => $this->site, 'quantity' => '1', 'lotExpiresOn' => '2027-01-01']], 'expiry_needs_lot'],
+        ] as [$field, $lines, $reason]) {
             $this->postJson($this->path($id).'/receipts', ['receivedOn' => $this->today(), 'lines' => $lines]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringStartsWith($field.': ', $this->stringAt($this->json(), 'detail'), $field);
+            self::assertSame($reason, $this->refusalOf($field)[0], "$field: said in the reader's words");
         }
+        $this->postJson($this->path($id).'/receipts', ['receivedOn' => $this->today(), 'lines' => [['orderLineId' => $screws, 'locationId' => $this->site, 'quantity' => '11']]]);
+        self::assertSame('above_expected', $this->refusalOf('lines[0].quantity')[0], 'what is still expected');
         $this->postJson($this->path($id).'/receipts', ['receivedOn' => '2099-01-01', 'lines' => [['orderLineId' => $screws, 'locationId' => $this->site, 'quantity' => '1']]]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'goods do not arrive tomorrow');
+        self::assertSame(['after_today', []], $this->refusalOf('receivedOn'));
 
         $connection = $this->em()->getConnection();
         self::assertEquals([0, 0], [$connection->fetchOne('SELECT count(*) FROM stock_movement'), $connection->fetchOne('SELECT count(*) FROM goods_receipt')]);

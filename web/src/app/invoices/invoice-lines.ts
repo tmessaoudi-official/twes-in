@@ -57,6 +57,7 @@ import { productPhotoUrl } from '../products/product-photo-url';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { FieldError } from '../shared/form/form-builder';
 import { LineRefusals, refusedOn } from '../shared/documents/line-refusals';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -374,6 +375,7 @@ export class InvoiceLines {
   private readonly refusals = new LineRefusals(
     () => this.lines(),
     this.translate,
+    inject(RefusalFigures),
     () => this.revision.update((revision) => revision + 1),
   );
 

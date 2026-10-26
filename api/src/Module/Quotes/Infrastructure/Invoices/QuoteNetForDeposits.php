@@ -48,7 +48,7 @@ final readonly class QuoteNetForDeposits implements DepositQuotes
         }
     }
 
-    public function billedOtherwise(Company $company, Uuid $quoteId): ?string
+    public function billedOtherwise(Company $company, Uuid $quoteId): ?array
     {
         $quote = $this->quotes->ofIdInCompany($quoteId, $company->getId());
         if (null === $quote) {
@@ -57,12 +57,12 @@ final readonly class QuoteNetForDeposits implements DepositQuotes
         $number = $quote->getNumber() ?? $quoteId->toRfc4122();
         $invoiceId = $quote->getInvoiceId();
         if (null !== $invoiceId && $this->invoices->stands($company, $invoiceId)) {
-            return \sprintf('The quote %s is already on an invoice drafted from it as a whole: its deposits come before it.', $number);
+            return [\sprintf('The quote %s is already on an invoice drafted from it as a whole: its deposits come before it.', $number), 'quote_invoiced_first', ['number' => $number]];
         }
         $key = $quoteId->toRfc4122();
         $lines = array_map(static fn (QuoteLine $line): Uuid => $line->getId(), $quote->getLines());
         if ([] !== ($this->deliveries->ofQuotes($company, [$key => $lines])[$key]->notes ?? [])) {
-            return \sprintf('The quote %s is delivered by delivery notes that are not cancelled, whose invoices give no deposit back.', $number);
+            return [\sprintf('The quote %s is delivered by delivery notes that are not cancelled, whose invoices give no deposit back.', $number), 'quote_delivered_by_notes', ['number' => $number]];
         }
 
         return null;

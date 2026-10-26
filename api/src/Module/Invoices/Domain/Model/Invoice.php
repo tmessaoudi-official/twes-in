@@ -396,10 +396,10 @@ class Invoice implements CompanyOwned
         }
         $reason = TypedText::trimmed($reason);
         if ('' === $reason) {
-            throw new InvalidInvoice('creditNoteReason', 'A credit note states why it corrects its invoice.');
+            throw new InvalidInvoice('creditNoteReason', 'A credit note states why it corrects its invoice.', 'value_required');
         }
         if (mb_strlen($reason) > self::CREDIT_NOTE_REASON_MAX) {
-            throw new InvalidInvoice('creditNoteReason', \sprintf('A credit note\'s reason is at most %d characters.', self::CREDIT_NOTE_REASON_MAX));
+            throw new InvalidInvoice('creditNoteReason', \sprintf('A credit note\'s reason is at most %d characters.', self::CREDIT_NOTE_REASON_MAX), 'invalid_text', ['max' => self::CREDIT_NOTE_REASON_MAX]);
         }
         $credit = new self($invoice->company, $now);
         $credit->documentType = InvoiceType::CreditNote;
@@ -539,7 +539,7 @@ class Invoice implements CompanyOwned
     private function assertOwnDiscount(InvoiceHeader $header): void
     {
         if (null !== $this->correctsInvoice && null !== $header->discountAmount) {
-            throw new InvalidInvoice('discountAmount', 'A credit note gives back its share of its invoice\'s discount: it takes none of its own.');
+            throw new InvalidInvoice('discountAmount', 'A credit note gives back its share of its invoice\'s discount: it takes none of its own.', 'credit_note_no_discount');
         }
     }
 
@@ -576,7 +576,7 @@ class Invoice implements CompanyOwned
         $establishment = $this->establishmentOfThisCompany($establishment);
         $customer = $this->customerOfThisCompany($customer);
         if (null !== $this->correctsInvoice && !$customer->getId()->equals($this->correctsInvoice->getCustomer()->getId())) {
-            throw new InvalidInvoice('customerId', 'A credit note goes to the customer of the invoice it corrects.');
+            throw new InvalidInvoice('customerId', 'A credit note goes to the customer of the invoice it corrects.', 'credit_note_customer');
         }
         $lines = $this->deductionsFor($this->depositsCredited($this->linesOfThisCompany($lines)), $customer);
         $documentTaxes = $this->documentTaxesOfThisCompany($documentTaxes);
@@ -584,10 +584,10 @@ class Invoice implements CompanyOwned
         // invoices note lines keeps both, or one customer's delivered goods are invoiced to another.
         if (array_any($lines, static fn (InvoiceLineDetails $line): bool => null !== $line->sourceDeliveryNoteLineId)) {
             if (!$customer->getId()->equals($this->customer->getId())) {
-                throw new InvalidInvoice('customerId', 'An invoice of delivery notes stays with their customer: take their lines off first.');
+                throw new InvalidInvoice('customerId', 'An invoice of delivery notes stays with their customer: take their lines off first.', 'notes_keep_customer');
             }
             if (!$establishment->getId()->equals($this->establishment->getId())) {
-                throw new InvalidInvoice('establishmentId', 'An invoice of delivery notes stays with their establishment: take their lines off first.');
+                throw new InvalidInvoice('establishmentId', 'An invoice of delivery notes stays with their establishment: take their lines off first.', 'notes_keep_establishment');
             }
         }
 
@@ -608,11 +608,11 @@ class Invoice implements CompanyOwned
     {
         $this->assertDraft('changes');
         if (InvoiceType::Invoice !== $this->documentType) {
-            throw new InvalidInvoice('lines', 'Only an invoice takes the lines of other documents.');
+            throw new InvalidInvoice('lines', 'Only an invoice takes the lines of other documents.', 'only_invoice_takes_lines');
         }
         // A deposit is a share of its own quote, worked out from it: goods added to it would be charged twice.
         if ($this->deposit) {
-            throw new InvalidInvoice('lines', 'A deposit invoice takes no other document\'s lines.');
+            throw new InvalidInvoice('lines', 'A deposit invoice takes no other document\'s lines.', 'deposit_takes_no_lines');
         }
         $added = $this->deductionsFor($this->linesOfThisCompany($lines), $this->customer);
         if ([] === $added) {
@@ -698,7 +698,7 @@ class Invoice implements CompanyOwned
     {
         $this->assertDraft('is issued');
         if ($this->lines->isEmpty()) {
-            throw new InvalidInvoice('lines', 'An invoice is issued with at least one line.');
+            throw new InvalidInvoice('lines', 'An invoice is issued with at least one line.', 'lines_required');
         }
         // Every unit it prints is named before anything is fixed, so a refusal leaves the draft as it was.
         foreach ($this->getLines() as $line) {
@@ -802,18 +802,18 @@ class Invoice implements CompanyOwned
         }
         $amount = Decimal::of($details->amount);
         if (0 !== Decimal::round($amount, $scale)->compare($amount)) {
-            throw new InvalidInvoice('amount', \sprintf('The currency %s has %d decimals.', $this->company->getCurrency(), $scale));
+            throw new InvalidInvoice('amount', \sprintf('The currency %s has %d decimals.', $this->company->getCurrency(), $scale), 'invalid_amount', ['decimals' => $scale]);
         }
         $due = Decimal::of($this->amountDue ?? '0');
         if ($amount->compare($due) > 0) {
-            throw new InvalidInvoice('amount', \sprintf('A payment is at most what is still due, %s.', Decimal::format($due, $scale)));
+            throw new InvalidInvoice('amount', \sprintf('A payment is at most what is still due, %s.', Decimal::format($due, $scale)), 'above_due', ['amount' => Decimal::format($due, $scale)]);
         }
         $day = $details->date->format('Y-m-d');
         if ($day < $this->issueDate->format('Y-m-d')) {
-            throw new InvalidInvoice('date', \sprintf('A payment is dated from the issue day, %s.', $this->issueDate->format('Y-m-d')));
+            throw new InvalidInvoice('date', \sprintf('A payment is dated from the issue day, %s.', $this->issueDate->format('Y-m-d')), 'on_or_after', ['day' => $this->issueDate->format('Y-m-d')]);
         }
         if ($day > $today->format('Y-m-d')) {
-            throw new InvalidInvoice('date', \sprintf('A payment is dated today at the latest, %s.', $today->format('Y-m-d')));
+            throw new InvalidInvoice('date', \sprintf('A payment is dated today at the latest, %s.', $today->format('Y-m-d')), 'after_today');
         }
 
         $payment = new Payment($this, $details, $recordedBy, $now);
@@ -839,7 +839,7 @@ class Invoice implements CompanyOwned
             throw new InvoiceTransitionRefused(\sprintf('The invoice %s still has %s due: that is paid on it first.', $this->reference(), $this->amountDue));
         }
         if ($day->format('Y-m-d') < $this->issueDate->format('Y-m-d')) {
-            throw new InvalidInvoice('date', \sprintf('Money paid beyond an invoice is dated from its issue day, %s.', $this->issueDate->format('Y-m-d')));
+            throw new InvalidInvoice('date', \sprintf('Money paid beyond an invoice is dated from its issue day, %s.', $this->issueDate->format('Y-m-d')), 'on_or_after', ['day' => $this->issueDate->format('Y-m-d')]);
         }
     }
 
@@ -1261,7 +1261,7 @@ class Invoice implements CompanyOwned
         $amount = Decimal::absolute(Decimal::of($creditNoteAmountDue));
         $creditable = Decimal::of($this->totalGross ?? '0')->sub(Decimal::of($this->withholdingAmount ?? '0'))->sub(Decimal::of($this->amountCredited));
         if ($amount->compare($creditable) > 0) {
-            throw new InvalidInvoice('amountDue', \sprintf('A credit note takes at most what the invoice %s invoiced less its earlier credit notes, %s.', $this->reference(), Decimal::format($creditable, self::STORED_SCALE)));
+            throw new InvalidInvoice('amountDue', \sprintf('A credit note takes at most what the invoice %s invoiced less its earlier credit notes, %s.', $this->reference(), Decimal::format($creditable, self::STORED_SCALE)), 'above_creditable', ['reference' => $this->reference(), 'amount' => Decimal::format($creditable, self::STORED_SCALE)]);
         }
 
         return $amount;
@@ -1411,14 +1411,14 @@ class Invoice implements CompanyOwned
         $sources = [];
         foreach ($lines as $index => $line) {
             if ($line->returned && InvoiceType::CreditNote !== $this->documentType) {
-                throw new InvalidInvoice("lines[$index].returned", 'Only a credit note returns goods to stock.');
+                throw new InvalidInvoice("lines[$index].returned", 'Only a credit note returns goods to stock.', 'returned_credit_note_only');
             }
             if (null !== $line->creditedLineId && !\in_array($line->creditedLineId->toRfc4122(), array_map(static fn (InvoiceLine $credited): string => $credited->getId()->toRfc4122(), $this->correctsInvoice?->getLines() ?? []), true)) {
-                throw new InvalidInvoice("lines[$index].creditedLineId", 'A credit note\'s line gives back a line of the invoice it corrects.');
+                throw new InvalidInvoice("lines[$index].creditedLineId", 'A credit note\'s line gives back a line of the invoice it corrects.', 'credited_line_of_invoice');
             }
             $source = $line->sourceDeliveryNoteLineId?->toRfc4122();
             if (null !== $source && isset($sources[$source])) {
-                throw new InvalidInvoice("lines[$index].sourceDeliveryNoteLineId", 'A document invoices a delivery note line once.');
+                throw new InvalidInvoice("lines[$index].sourceDeliveryNoteLineId", 'A document invoices a delivery note line once.', 'line_drawn_once');
             }
             $sources[$source ?? ''] = true;
             if (null !== $line->product && !$line->product->getCompany()->getId()->equals($companyId)) {
@@ -1454,10 +1454,10 @@ class Invoice implements CompanyOwned
                 continue;
             }
             if ($this->deposit) {
-                throw new InvalidInvoice("lines[$index].deductsInvoiceId", 'A deposit invoice gives no other deposit back.');
+                throw new InvalidInvoice("lines[$index].deductsInvoiceId", 'A deposit invoice gives no other deposit back.', 'deposit_gives_no_deposit');
             }
             if (!$deposit->company->getId()->equals($this->company->getId()) || !$deposit->customer->getId()->equals($customer->getId())) {
-                throw new InvalidInvoice("lines[$index].deductsInvoiceId", 'An invoice gives back the deposits of its own customer.');
+                throw new InvalidInvoice("lines[$index].deductsInvoiceId", 'An invoice gives back the deposits of its own customer.', 'deposit_other_customer');
             }
         }
 

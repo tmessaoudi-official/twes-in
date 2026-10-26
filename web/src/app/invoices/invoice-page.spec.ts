@@ -62,6 +62,7 @@ class StaticLoader implements TranslateLoader {
     return of({
       import: {
         rejections: {
+          lines_required: 'Ajoutez au moins une ligne.',
           invalid_value: 'Valeur refusée.',
           quantity_decimals: '« {{unit}} » se compte en nombres entiers.',
           customer_deactivated: 'Le client « {{number}} » est désactivé.',
@@ -2006,6 +2007,25 @@ describe('InvoicePage', () => {
     expect(text('document-taxes-error')).toContain('TVA19 se compte sur chaque ligne.');
     expect(text('field-error-paymentTermsDays')).toContain(
       'Délai de paiement refusé : de 0 à 365 jours.',
+    );
+    expect(q('invoice-error')).toBeNull();
+  });
+
+  it('says above the form, in its own words, a refusal no field takes, and nothing there once the fields say it all', async () => {
+    invoice.set(draft);
+    await open('i1');
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'lines', reason: 'lines_required', params: {} }]);
+      return null;
+    });
+    type('line-0-quantity', '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('invoice-error')?.textContent?.trim()).toBe('Ajoutez au moins une ligne.'),
     );
   });
 

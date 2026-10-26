@@ -73,13 +73,13 @@ final readonly class DeliveryNoteRoom
             }
             $source = $sources[$id];
             if ($source->cancelled) {
-                throw (new InvalidInvoice('sourceDeliveryNoteLineId', 'The delivery note of this line was cancelled since the draft was written: its goods are back in stock and nothing of it is left to invoice. Remove the line.'))->within("lines[$index]");
+                throw (new InvalidInvoice('sourceDeliveryNoteLineId', 'The delivery note of this line was cancelled since the draft was written: its goods are back in stock and nothing of it is left to invoice. Remove the line.', 'source_note_cancelled'))->within("lines[$index]");
             }
             if (!(null === $source->productId ? null === $line['product'] : null !== $line['product'] && $source->productId->equals($line['product']))) {
-                throw (new InvalidInvoice('productId', 'A line taken from a delivery note keeps the product the note delivered.'))->within("lines[$index]");
+                throw (new InvalidInvoice('productId', 'A line taken from a delivery note keeps the product the note delivered.', 'source_product'))->within("lines[$index]");
             }
             if (is_numeric($line['quantity']) && Decimal::of($line['quantity'])->compare(Decimal::of($room[$id])) > 0) {
-                throw (new InvalidInvoice('quantity', \sprintf('Only %s of this delivery note line is left to invoice.', $room[$id])))->within("lines[$index]");
+                throw (new InvalidInvoice('quantity', \sprintf('Only %s of this delivery note line is left to invoice.', $room[$id]), 'left_to_invoice', ['quantity' => $room[$id]]))->within("lines[$index]");
             }
         }
     }

@@ -117,9 +117,11 @@
     }
   }
   @if (error(); as code) {
-    <p role="alert" data-testid="delivery-note-error" class="text-error">
-      {{ 'delivery_notes.errors.' + code | translate }}
-    </p>
+    @if (refusalLine.for(code); as said) {
+      <p role="alert" data-testid="delivery-note-error" class="text-error">
+        {{ said.key | translate: said.params }}
+      </p>
+    }
   }
 
   @if (form(); as form) {

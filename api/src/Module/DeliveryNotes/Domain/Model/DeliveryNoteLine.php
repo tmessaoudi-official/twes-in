@@ -118,7 +118,7 @@ class DeliveryNoteLine implements CompanyOwned
     {
         [, $decimals] = [...explode('.', $this->quantity), ''];
         if (\strlen(rtrim($decimals, '0')) > $this->unit->getDecimals()) {
-            throw new InvalidDeliveryNote('quantity', \sprintf('Line %d delivers %s, but the unit %s now counts with %d decimals: revise the line before validating.', $this->position, $this->quantity, $this->unit->getCode(), $this->unit->getDecimals()));
+            throw new InvalidDeliveryNote('quantity', \sprintf('Line %d delivers %s, but the unit %s now counts with %d decimals: revise the line before validating.', $this->position, $this->quantity, $this->unit->getCode(), $this->unit->getDecimals()), 'quantity_decimals', ['unit' => $this->unit->getCode(), 'decimals' => $this->unit->getDecimals()]);
         }
     }
 

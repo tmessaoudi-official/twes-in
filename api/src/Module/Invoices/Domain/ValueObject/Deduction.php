@@ -31,7 +31,7 @@ final readonly class Deduction
     public function __construct(public Invoice $deposit, array $taxes)
     {
         if (!$deposit->isDeposit()) {
-            throw new InvalidInvoice('deductsInvoiceId', \sprintf('The %s %s is not a deposit invoice: only a deposit is given back on another invoice.', $deposit->getType()->value, $deposit->getNumber() ?? $deposit->getId()->toRfc4122()));
+            throw new InvalidInvoice('deductsInvoiceId', \sprintf('The %s %s is not a deposit invoice: only a deposit is given back on another invoice.', $deposit->getType()->value, $deposit->getNumber() ?? $deposit->getId()->toRfc4122()), 'not_a_deposit', ['reference' => $deposit->getNumber() ?? $deposit->getId()->toRfc4122()]);
         }
         $kept = [];
         foreach ($taxes as $code => $amount) {

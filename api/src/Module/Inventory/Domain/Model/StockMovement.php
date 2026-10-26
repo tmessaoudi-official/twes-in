@@ -468,10 +468,10 @@ class StockMovement implements CompanyOwned
     {
         $tracked = ProductTracking::None !== $product->getTracking();
         if ($tracked && null === $lot) {
-            throw new InvalidStockMovement('lot', \sprintf('The product %s is tracked by %s: say which one moved.', $product->getReference(), ProductTracking::Serial === $product->getTracking() ? 'serial number' : 'lot'));
+            throw new InvalidStockMovement('lot', \sprintf('The product %s is tracked by %s: say which one moved.', $product->getReference(), ProductTracking::Serial === $product->getTracking() ? 'serial number' : 'lot'), reason: 'lot_required', params: ['reference' => $product->getReference()]);
         }
         if (!$tracked && null !== $lot) {
-            throw new InvalidStockMovement('lot', \sprintf('The product %s is not tracked by lot or serial number: its stock names no lot.', $product->getReference()));
+            throw new InvalidStockMovement('lot', \sprintf('The product %s is not tracked by lot or serial number: its stock names no lot.', $product->getReference()), reason: 'lot_not_tracked');
         }
         if (null !== $lot && $lot->getProduct() !== $product) {
             throw new InvalidStockMovement('lot', \sprintf('The lot %s is not one of %s.', $lot->getCode(), $product->getReference()));

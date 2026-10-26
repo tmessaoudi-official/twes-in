@@ -99,10 +99,10 @@ final readonly class ManageCustomerCredit implements DeclaresAuditActions
             $scale = $this->scales->of($company->getCurrency());
             $amount = Decimal::of($details->amount);
             if (0 !== Decimal::round($amount, $scale)->compare($amount)) {
-                throw new InvalidInvoice('amount', \sprintf('The currency %s has %d decimals.', $company->getCurrency(), $scale));
+                throw new InvalidInvoice('amount', \sprintf('The currency %s has %d decimals.', $company->getCurrency(), $scale), 'invalid_amount', ['decimals' => $scale]);
             }
             if ($details->date->format('Y-m-d') > $today->format('Y-m-d')) {
-                throw new InvalidInvoice('date', \sprintf('Money is received today at the latest, %s.', $today->format('Y-m-d')));
+                throw new InvalidInvoice('date', \sprintf('Money is received today at the latest, %s.', $today->format('Y-m-d')), 'after_today');
             }
             $invoice->assertPaidBeyond($details->date);
 
@@ -135,12 +135,12 @@ final readonly class ManageCustomerCredit implements DeclaresAuditActions
                 $due = Decimal::of($invoice->getIssuedFigures()->amountDue ?? '0');
                 $amount = Decimal::format($due->compare($balance) < 0 ? $due : $balance, $this->scales->of($company->getCurrency()));
                 if (Decimal::of($amount)->compare(0) <= 0) {
-                    throw new InvalidInvoice('amount', 'There is nothing to apply: no credit, or nothing due.');
+                    throw new InvalidInvoice('amount', 'There is nothing to apply: no credit, or nothing due.', 'nothing_to_apply');
                 }
             }
             $details = new PaymentDetails($today, $amount, PaymentMethod::Other, self::PAYMENT_REFERENCE);
             if (Decimal::of($details->amount)->compare($balance) > 0) {
-                throw new InvalidInvoice('amount', \sprintf('Only %s is to the customer\'s credit.', Decimal::format($balance, 3)));
+                throw new InvalidInvoice('amount', \sprintf('Only %s is to the customer\'s credit.', Decimal::format($balance, 3)), 'above_credit', ['amount' => Decimal::format($balance, 3)]);
             }
 
             $payment = $invoice->recordPayment($details, $today, $this->scales->of($company->getCurrency()), $actorUserId, $now);

@@ -13,6 +13,7 @@ import { buildFormGroup } from './form-builder';
 import { DescriptorForm } from './descriptor-form';
 import type { FieldRefusal } from './field-refusals';
 import type { FormDescriptor } from './form-types';
+import { RefusalFigures } from './refusal-figures';
 
 const party: FormDescriptor = {
   id: 'party',
@@ -82,6 +83,7 @@ class StaticLoader implements TranslateLoader {
         rejections: {
           invalid_email: 'E-mail refused.',
           invalid_text: 'Text refused: {{max}} characters at most.',
+          above_due: 'At most what is still due, {{amount}}.',
           invalid_value: 'Value refused.',
           regime_excludes_tax: 'This regime does not charge that tax.',
           identifier_part: 'Part refused: {{part}} (example: {{example}}).',
@@ -143,6 +145,20 @@ describe('DescriptorForm, a save the API refused', () => {
     expect(text('field-error-email')).toBe('E-mail refused.');
     expect(text('field-error-city')).toBe('Text refused: 120 characters at most.');
     expect(text('field-error-website')).toBe('Value refused.');
+  });
+
+  it('says a refusal’s figures as the reader reads figures', async () => {
+    vi.spyOn(TestBed.inject(RefusalFigures), 'written').mockImplementation((params) => ({
+      ...params,
+      amount: '1 250,500',
+    }));
+
+    fixture.componentInstance
+      .shown()
+      .showRefused([{ field: 'city', reason: 'above_due', params: { amount: '1250.5' } }]);
+    await settle();
+
+    expect(text('field-error-city')).toBe('At most what is still due, 1 250,500.');
   });
 
   it('says the part of a registration number the API names, and the rule it breaks, in the reader’s words', async () => {

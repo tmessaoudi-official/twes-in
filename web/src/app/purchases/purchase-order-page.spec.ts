@@ -47,6 +47,7 @@ class StaticLoader implements TranslateLoader {
     return of({
       import: {
         rejections: {
+          lines_required: 'Ajoutez au moins une ligne.',
           quantity_above_zero: 'Attendu : une quantité au-dessus de zéro.',
           vendor_deactivated: 'Le fournisseur « {{number}} » est désactivé.',
         },
@@ -578,6 +579,25 @@ describe('PurchaseOrderPage', () => {
       'Le fournisseur « F-0007 » est désactivé.',
     );
     expect(q('purchase-line-0-refused')).toBeNull();
+    expect(q('purchase-order-error')).toBeNull();
+  });
+
+  it('says above the form, in its own words, a refusal no field takes, and nothing there once the fields say it all', async () => {
+    order.set(orderIn('draft'));
+    await open('o1');
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'lines', reason: 'lines_required', params: {} }]);
+      return null;
+    });
+    type('purchase-line-0-quantity', '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('purchase-order-error')?.textContent?.trim()).toBe('Ajoutez au moins une ligne.'),
+    );
   });
 
   describe('the products « Ajouter à… » sends', () => {

@@ -342,7 +342,7 @@ final readonly class ManageInvoices implements DeclaresAuditActions
     private function checked(Company $company, InvoiceInput $input, ?Invoice $current): array
     {
         if (null !== $input->header->operationCategory && !$this->presets->get($company->getFiscalPreset())->invoiceFields->operationCategory) {
-            throw new InvalidInvoice('operationCategory', 'This company\'s invoices state no category of operations: its country\'s law asks for none.');
+            throw new InvalidInvoice('operationCategory', 'This company\'s invoices state no category of operations: its country\'s law asks for none.', 'no_operation_category');
         }
         $customer = $this->customers->ofIdInCompany($input->customerId, $company->getId())
             ?? throw new InvalidInvoice('customerId', 'No customer of this company has this id.', 'unknown_choice');
@@ -453,7 +453,7 @@ final readonly class ManageInvoices implements DeclaresAuditActions
     {
         $lines = $credit->getCorrectedInvoice()?->linesGivingBack($depositId) ?? [];
         if ([] === $lines) {
-            throw new InvalidInvoice('deductsInvoiceId', 'A credit note gives back only the deposits the invoice it corrects gave back.');
+            throw new InvalidInvoice('deductsInvoiceId', 'A credit note gives back only the deposits the invoice it corrects gave back.', 'deposit_not_given_back');
         }
 
         return $lines;
@@ -490,7 +490,7 @@ final readonly class ManageInvoices implements DeclaresAuditActions
     private function line(Company $company, Customer $customer, InvoiceLineInput $line, array $kept): InvoiceLineDetails
     {
         if (null !== $line->sourceDeliveryNoteLineId && !\in_array($line->sourceDeliveryNoteLineId->toRfc4122(), $kept['sources'], true)) {
-            throw new InvalidInvoice('sourceDeliveryNoteLineId', 'A line invoices a delivery note line only when its draft already did: an invoice of delivery notes is drafted from them.');
+            throw new InvalidInvoice('sourceDeliveryNoteLineId', 'A line invoices a delivery note line only when its draft already did: an invoice of delivery notes is drafted from them.', 'source_note_line_not_drafted');
         }
 
         $product = null;

@@ -24,6 +24,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { FieldError } from '../shared/form/form-builder';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import { RefusalFigures } from '../shared/form/refusal-figures';
+import { RefusalLine } from '../shared/documents/refusal-line';
 import { refusedError } from '../shared/form/refusal-words';
 import { liveRecord } from '../shared/form/live-record';
 import { PartConflict } from '../shared/form/part-conflict';
@@ -166,6 +168,14 @@ export class DeliveryNotePage {
   protected readonly taxName = computed(() => taxNames(this.options()?.taxes ?? []));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  private readonly refusalFigures = inject(RefusalFigures);
+  /** The line above the form: what no field took, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'delivery_notes.errors.',
+    this.translate,
+    this.refusalFigures,
+  );
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('delivery_note.write'));
   /** The credit notice shows the customer's account, which takes the right to read the customer and its invoices. */
@@ -853,10 +863,13 @@ export class DeliveryNotePage {
     const rest = this.linesEditor()?.showRefused(refusals) ?? refusals;
     const customer = rest.find((each) => each.field === 'customerId');
     this.customerRefused.set(
-      customer === undefined ? null : refusedError(this.translate, customer),
+      customer === undefined
+        ? null
+        : refusedError(this.translate, customer, customer.params, this.refusalFigures),
     );
     const header = rest.filter((each) => each.field !== 'customerId');
-    if (header.length > 0) this.headerEditor()?.showRefused(header);
+    const unplaced = header.length > 0 ? (this.headerEditor()?.showRefused(header) ?? header) : [];
+    this.refusalLine.placed(refusals, unplaced);
   }
 
   /** A note handing over an issued invoice's goods is never invoiced: that invoice billed them already. */

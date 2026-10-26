@@ -47,6 +47,7 @@ class StaticLoader implements TranslateLoader {
     return of({
       import: {
         rejections: {
+          lines_required: 'Ajoutez au moins une ligne.',
           discount_rate_or_amount: 'Un pourcentage ou un montant, pas les deux.',
           customer_deactivated: 'Le client « {{number}} » est désactivé.',
         },
@@ -435,6 +436,25 @@ describe('QuotePage', () => {
     );
     expect(q('quote-customer-refused')?.textContent).toContain(
       'Le client « C-0042 » est désactivé.',
+    );
+    expect(q('quote-error')).toBeNull();
+  });
+
+  it('says above the form, in its own words, a refusal no field takes, and nothing there once the fields say it all', async () => {
+    quote.set(draft);
+    await open('q1');
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'lines', reason: 'lines_required', params: {} }]);
+      return null;
+    });
+    typeIn(q('line-0-quantity') as HTMLInputElement, '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('quote-error')?.textContent?.trim()).toBe('Ajoutez au moins une ligne.'),
     );
   });
 

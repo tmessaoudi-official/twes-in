@@ -116,9 +116,9 @@ final readonly class KeepStock
             foreach ($lines as $index => $line) {
                 try {
                     $product = $this->products->ofIdInCompany($line->productId, $company->getId())
-                        ?? throw new InvalidStockMovement('productId', 'No product of this company has this id.');
+                        ?? throw new InvalidStockMovement('productId', 'No product of this company has this id.', reason: 'unknown_choice');
                     if (null === $this->locations->ofIdInCompany($line->locationId, $company->getId())) {
-                        throw new InvalidStockMovement('locationId', 'No stock location of this company has this id.');
+                        throw new InvalidStockMovement('locationId', 'No stock location of this company has this id.', reason: 'unknown_choice');
                     }
                     if (!$this->tracked($product)) {
                         continue;
@@ -397,7 +397,7 @@ final readonly class KeepStock
         return $this->transactions->run(function () use ($company, $productId, $fromLocationId, $toLocationId, $quantity, $actorUserId, $named): array {
             [$product, $from] = $this->trackedAt($company, $productId, $fromLocationId);
             $to = $this->locations->ofIdInCompany($toLocationId, $company->getId())
-                ?? throw new InvalidStockMovement('toLocationId', 'No stock location of this company has this id.');
+                ?? throw new InvalidStockMovement('toLocationId', 'No stock location of this company has this id.', reason: 'unknown_choice');
             // A move carries goods that are there, so it names a lot that exists; it never opens one.
             $lot = $this->lotFor($product, $named, false);
             $this->movements->lockStockOf($product->getId(), $from->getId());
@@ -582,7 +582,7 @@ final readonly class KeepStock
             return null;
         }
         if (ProductTracking::None === $product->getTracking()) {
-            throw new InvalidStockMovement('lot', \sprintf('The product %s is not tracked by lot or serial number: its stock names no lot.', $product->getReference()));
+            throw new InvalidStockMovement('lot', \sprintf('The product %s is not tracked by lot or serial number: its stock names no lot.', $product->getReference()), reason: 'lot_not_tracked');
         }
         $code = StockLot::code($named->code);
         $this->lots->lock($product->getId(), $code);
@@ -635,12 +635,12 @@ final readonly class KeepStock
     private function trackedAt(Company $company, Uuid $productId, Uuid $locationId): array
     {
         $product = $this->products->ofIdInCompany($productId, $company->getId())?->standingFor()
-            ?? throw new InvalidStockMovement('productId', 'No product of this company has this id.');
+            ?? throw new InvalidStockMovement('productId', 'No product of this company has this id.', reason: 'unknown_choice');
         if (!$this->tracked($product)) {
-            throw new InvalidStockMovement('productId', \sprintf('No stock is kept of %s: only goods whose stock tracking is on are kept.', $product->getReference()));
+            throw new InvalidStockMovement('productId', \sprintf('No stock is kept of %s: only goods whose stock tracking is on are kept.', $product->getReference()), reason: 'not_stocked');
         }
         $location = $this->locations->ofIdInCompany($locationId, $company->getId())
-            ?? throw new InvalidStockMovement('locationId', 'No stock location of this company has this id.');
+            ?? throw new InvalidStockMovement('locationId', 'No stock location of this company has this id.', reason: 'unknown_choice');
 
         return [$product, $location];
     }

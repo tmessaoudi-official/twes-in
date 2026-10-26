@@ -31,6 +31,18 @@ final class InvoiceDelivery
         };
     }
 
+    /** @return array{string, array{reference: string}}|null the reason `refusal` gives, and its params */
+    public static function refusalReason(InvoiceToDeliver $invoice): ?array
+    {
+        $reference = ['reference' => self::reference($invoice)];
+
+        return match (true) {
+            !$invoice->sale => ['not_goods_invoice', $reference],
+            !$invoice->issued => ['invoice_not_issued', $reference],
+            default => null,
+        };
+    }
+
     /** Its number, or its id while it has none. */
     public static function reference(InvoiceToDeliver $invoice): string
     {

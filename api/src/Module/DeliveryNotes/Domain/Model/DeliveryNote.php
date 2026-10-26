@@ -224,7 +224,7 @@ class DeliveryNote implements CompanyOwned
     {
         $this->assertDraft('is validated');
         if ($this->lines->isEmpty()) {
-            throw new InvalidDeliveryNote('lines', 'A delivery note is validated with at least one line.');
+            throw new InvalidDeliveryNote('lines', 'A delivery note is validated with at least one line.', 'lines_required');
         }
         // Every unit it prints is named before anything is fixed, so a refusal leaves the draft as it was.
         foreach ($this->getLines() as $line) {
@@ -292,10 +292,10 @@ class DeliveryNote implements CompanyOwned
         }
         $issued = $this->issueDate ?? throw new \LogicException('A validated delivery note has an issue day.');
         if ($this->localDay($deliveredAt) < $issued) {
-            throw new InvalidDeliveryNote('deliveredAt', \sprintf('Goods are delivered on or after the issue day, %s.', $issued->format('Y-m-d')));
+            throw new InvalidDeliveryNote('deliveredAt', \sprintf('Goods are delivered on or after the issue day, %s.', $issued->format('Y-m-d')), 'on_or_after', ['day' => $issued->format('Y-m-d')]);
         }
         if ($deliveredAt > $now) {
-            throw new InvalidDeliveryNote('deliveredAt', 'A delivery is confirmed once it happened, now at the latest.');
+            throw new InvalidDeliveryNote('deliveredAt', 'A delivery is confirmed once it happened, now at the latest.', 'after_today');
         }
 
         $this->deliveryDate = $deliveredAt->setTimezone(new \DateTimeZone('UTC'));

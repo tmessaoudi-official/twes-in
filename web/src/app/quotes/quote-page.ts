@@ -46,6 +46,8 @@ import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { FieldError } from '../shared/form/form-builder';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import { RefusalFigures } from '../shared/form/refusal-figures';
+import { RefusalLine } from '../shared/documents/refusal-line';
 import { refusedError } from '../shared/form/refusal-words';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { FileDrop } from '../shared/form/file-drop';
@@ -148,6 +150,14 @@ export class QuotePage {
   protected readonly taxName = computed(() => taxNames(this.options()?.taxes ?? []));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  private readonly refusalFigures = inject(RefusalFigures);
+  /** The line above the form: what no field took, or the error's own words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'quotes.errors.',
+    this.translate,
+    this.refusalFigures,
+  );
   protected readonly attachments = this.facade.attachments;
   protected readonly maxBytes = ATTACHMENT_MAX_BYTES;
   protected readonly scale = computed(() => this.options()?.currencyScale ?? null);
@@ -693,10 +703,13 @@ export class QuotePage {
     const rest = this.linesEditor()?.showRefused(refusals) ?? refusals;
     const customer = rest.find((each) => each.field === 'customerId');
     this.customerRefused.set(
-      customer === undefined ? null : refusedError(this.translate, customer),
+      customer === undefined
+        ? null
+        : refusedError(this.translate, customer, customer.params, this.refusalFigures),
     );
     const header = rest.filter((each) => each.field !== 'customerId');
-    if (header.length > 0) this.headerEditor()?.showRefused(header);
+    const unplaced = header.length > 0 ? (this.headerEditor()?.showRefused(header) ?? header) : [];
+    this.refusalLine.placed(refusals, unplaced);
   }
 
   protected async send(): Promise<void> {

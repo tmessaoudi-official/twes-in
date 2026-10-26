@@ -55,6 +55,7 @@ class StaticLoader implements TranslateLoader {
     return of({
       import: {
         rejections: {
+          lines_required: 'Ajoutez au moins une ligne.',
           product_deactivated: 'Le produit « {{reference}} » est désactivé.',
           customer_deactivated: 'Le client « {{number}} » est désactivé.',
           invalid_text: 'Texte refusé : {{max}} caractères au plus.',
@@ -854,6 +855,25 @@ describe('DeliveryNotePage', () => {
     );
     expect(q('field-error-customerReference')?.textContent).toContain(
       'Texte refusé : 64 caractères au plus.',
+    );
+    expect(q('delivery-note-error')).toBeNull();
+  });
+
+  it('says above the form, in its own words, a refusal no field takes, and nothing there once the fields say it all', async () => {
+    note.set(draft);
+    await open('n1');
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'lines', reason: 'lines_required', params: {} }]);
+      return null;
+    });
+    type('line-0-quantity', '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('delivery-note-error')?.textContent?.trim()).toBe('Ajoutez au moins une ligne.'),
     );
   });
 

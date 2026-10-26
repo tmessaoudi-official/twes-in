@@ -132,7 +132,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             $language = $this->settings->text($context, 'document.language');
             // Before the series and the mentions, which depend on it: a document that cannot say what its operations are takes no number.
             $fields = $this->presets->get($company->getFiscalPreset())->invoiceFields;
-            $operations = $fields->operationCategory ? ($invoice->operations() ?? throw new InvalidInvoice('operationCategory', 'Say what this invoice\'s operations are: deliveries of goods, services or both. A line naming no product says nothing of it.')) : null;
+            $operations = $fields->operationCategory ? ($invoice->operations() ?? throw new InvalidInvoice('operationCategory', 'Say what this invoice\'s operations are: deliveries of goods, services or both. A line naming no product says nothing of it.', 'operations_unknown')) : null;
             $vatOnDebits = $fields->offersVatOnDebits() ? $company->getProfile()->vatOnDebits : null;
             // Before the series: a document refused for a mention it cannot print takes no number.
             $mentions = $this->mentions->forIssue($company, $customer, $type, $language, $operations);
@@ -173,7 +173,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             );
             $excess = null === $corrected ? '0.000' : $corrected->creditExcess($invoice->getIssuedFigures() ?? throw new \LogicException('An issued credit note has its figures.'));
             $destination = Decimal::of($excess)->compare(0) > 0
-                ? ($excessTo ?? throw new InvalidInvoice('excessTo', \sprintf('%s of this credit note was already paid: say whether it goes to the customer\'s credit balance or is refunded.', $excess)))
+                ? ($excessTo ?? throw new InvalidInvoice('excessTo', \sprintf('%s of this credit note was already paid: say whether it goes to the customer\'s credit balance or is refunded.', $excess), 'excess_to', ['amount' => $excess]))
                 : null;
             $this->invoices->save($invoice);
             // Still holding the series: it takes the place after the last one issued, and whatever an earlier release
@@ -275,7 +275,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
         // billed the quote meanwhile, and issued it would bill what no invoice gives back.
         $billed = $this->depositQuotes->billedOtherwise($company, $quoteId);
         if (null !== $billed) {
-            throw new InvalidInvoice('deposit', $billed);
+            throw new InvalidInvoice('deposit', ...$billed);
         }
         $charged = Decimal::zero();
         foreach ($this->invoices->depositsOfQuotes($company->getId(), [$quoteId]) as $other) {
@@ -285,7 +285,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
         }
         $left = Decimal::of($quote)->sub($charged);
         if (Decimal::of($this->totals->figures($deposit)->totalNet)->compare($left) > 0) {
-            throw new InvalidInvoice('deposit', \sprintf('The deposits of a quote never go beyond it: %s net of tax is left of it once its issued deposits are charged.', Decimal::format($left, $this->scales->of($company->getCurrency()))));
+            throw new InvalidInvoice('deposit', \sprintf('The deposits of a quote never go beyond it: %s net of tax is left of it once its issued deposits are charged.', Decimal::format($left, $this->scales->of($company->getCurrency()))), 'deposits_beyond_quote', ['amount' => Decimal::format($left, $this->scales->of($company->getCurrency()))]);
         }
     }
 

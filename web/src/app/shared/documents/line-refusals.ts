@@ -5,6 +5,7 @@ import type { TranslateService } from '@ngx-translate/core';
 import { type Subscription, take } from 'rxjs';
 import type { FieldRefusal } from '../form/field-refusals';
 import type { FieldError } from '../form/form-builder';
+import type { RefusalFigures } from '../form/refusal-figures';
 import { refusedError } from '../form/refusal-words';
 
 /**
@@ -34,6 +35,7 @@ export class LineRefusals {
   constructor(
     private readonly lines: () => FormArray<FormGroup>,
     private readonly translate: TranslateService,
+    private readonly figures: RefusalFigures,
     private readonly changed: () => void,
   ) {}
 
@@ -49,7 +51,9 @@ export class LineRefusals {
         rest.push(refusal);
         continue;
       }
-      control.setErrors({ refused: refusedError(this.translate, refusal) });
+      control.setErrors({
+        refused: refusedError(this.translate, refusal, refusal.params, this.figures),
+      });
       control.markAsTouched();
       placed = true;
     }

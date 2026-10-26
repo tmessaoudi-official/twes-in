@@ -46,7 +46,7 @@ final readonly class StockForOrders implements StockIntake
         try {
             $named = $this->documents->named($company, $document->vendorId->toRfc4122(), $document->supplierReference, $document->receivedOn->format('Y-m-d'), ofASentOrder: true);
         } catch (InvalidStockMovement $refused) {
-            throw new IntakeRefused(null, $refused->field, $refused->getMessage(), $refused);
+            throw new IntakeRefused(null, $refused->field, $refused->getMessage(), $refused, $refused->reason, $refused->params);
         }
         if (null === $named) {
             throw new \LogicException('A receipt against an order always names its vendor and its day.');
@@ -68,7 +68,7 @@ final readonly class StockForOrders implements StockIntake
                 null => null,
             }, $actorUserId);
         } catch (OrderedGoodsRefused $refused) {
-            throw new IntakeRefused($refused->index, self::FIELDS[$refused->refusal->field] ?? $refused->refusal->field, $refused->getMessage(), $refused);
+            throw new IntakeRefused($refused->index, self::FIELDS[$refused->refusal->field] ?? $refused->refusal->field, $refused->getMessage(), $refused, $refused->refusal->reason, $refused->refusal->params);
         }
     }
 

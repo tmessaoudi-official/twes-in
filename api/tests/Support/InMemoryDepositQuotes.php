@@ -18,7 +18,7 @@ final class InMemoryDepositQuotes implements DepositQuotes
 {
     /** @var array<string, string> net by company and quote id */
     private array $nets = [];
-    /** @var array<string, string> why each quote was billed otherwise, by company and quote id */
+    /** @var array<string, array{string, string, array{number: string}}> why each quote was billed otherwise, by company and quote id */
     private array $billed = [];
 
     public function quote(Company $company, Uuid $quoteId, string $net): void
@@ -33,10 +33,10 @@ final class InMemoryDepositQuotes implements DepositQuotes
 
     public function billed(Company $company, Uuid $quoteId, string $why): void
     {
-        $this->billed[$company->getId()->toRfc4122().'|'.$quoteId->toRfc4122()] = $why;
+        $this->billed[$company->getId()->toRfc4122().'|'.$quoteId->toRfc4122()] = [$why, 'quote_invoiced_first', ['number' => $quoteId->toRfc4122()]];
     }
 
-    public function billedOtherwise(Company $company, Uuid $quoteId): ?string
+    public function billedOtherwise(Company $company, Uuid $quoteId): ?array
     {
         return $this->billed[$company->getId()->toRfc4122().'|'.$quoteId->toRfc4122()] ?? null;
     }

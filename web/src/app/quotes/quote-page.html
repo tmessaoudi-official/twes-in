@@ -73,9 +73,11 @@
   }
   @if (error(); as code) {
     @if (code !== 'customer_unavailable') {
-      <p role="alert" data-testid="quote-error" class="text-error">
-        {{ 'quotes.errors.' + code | translate }}
-      </p>
+      @if (refusalLine.for(code); as said) {
+        <p role="alert" data-testid="quote-error" class="text-error">
+          {{ said.key | translate: said.params }}
+        </p>
+      }
     }
   }
 

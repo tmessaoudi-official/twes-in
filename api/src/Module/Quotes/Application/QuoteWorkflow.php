@@ -227,13 +227,13 @@ final readonly class QuoteWorkflow implements DeclaresAuditActions
     public function deposit(Company $company, Uuid $id, ?string $percentage, ?string $amount, ?Uuid $actorUserId): Quote
     {
         if ((null === $percentage) === (null === $amount)) {
-            throw new InvalidQuote(null === $percentage ? 'depositPercentage' : 'depositAmount', 'A deposit is a percentage of the quote or an amount, one of them.');
+            throw new InvalidQuote(null === $percentage ? 'depositPercentage' : 'depositAmount', 'A deposit is a percentage of the quote or an amount, one of them.', 'deposit_rate_or_amount');
         }
         if (null !== $percentage && (1 !== preg_match(self::PERCENTAGE, $percentage) || self::zero($percentage))) {
-            throw new InvalidQuote('depositPercentage', 'A deposit is a percentage above 0 and below 100, with at most three decimals.');
+            throw new InvalidQuote('depositPercentage', 'A deposit is a percentage above 0 and below 100, with at most three decimals.', 'invalid_deposit_rate');
         }
         if (null !== $amount && (1 !== preg_match(self::AMOUNT, $amount) || self::zero($amount))) {
-            throw new InvalidQuote('depositAmount', 'A deposit is a positive amount with at most three decimals.');
+            throw new InvalidQuote('depositAmount', 'A deposit is a positive amount with at most three decimals.', 'invalid_amount', ['decimals' => 3]);
         }
 
         return $this->transactions->run(function () use ($company, $id, $percentage, $amount, $actorUserId): Quote {

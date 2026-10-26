@@ -190,7 +190,7 @@ class PurchaseOrder implements CompanyOwned
     {
         $this->assertDraft('is sent');
         if ($this->lines->isEmpty()) {
-            throw new InvalidPurchaseOrder('lines', 'An order is sent with at least one line.');
+            throw new InvalidPurchaseOrder('lines', 'An order is sent with at least one line.', 'lines_required');
         }
         $this->vendorSnapshot = $vendor->toArray();
         $this->vendorName = $vendor->name;
@@ -217,25 +217,25 @@ class PurchaseOrder implements CompanyOwned
             throw new PurchaseOrderTransitionRefused(\sprintf('The order %s is %s: goods are received against a sent order that is still open.', $this->reference(), $this->status->value));
         }
         if ([] === $goods) {
-            throw new InvalidPurchaseOrder('lines', 'A receipt brings at least one line.');
+            throw new InvalidPurchaseOrder('lines', 'A receipt brings at least one line.', 'lines_required');
         }
         $receivedOn = self::day($receivedOn);
         $issued = $this->issueDate ?? throw new \LogicException('A sent order has an issue day.');
         if ($receivedOn < $issued) {
-            throw new InvalidPurchaseOrder('receivedOn', \sprintf('Goods arrive on or after the day the order was sent, %s.', $issued->format('Y-m-d')));
+            throw new InvalidPurchaseOrder('receivedOn', \sprintf('Goods arrive on or after the day the order was sent, %s.', $issued->format('Y-m-d')), 'on_or_after', ['day' => $issued->format('Y-m-d')]);
         }
         if ($receivedOn > self::day($today)) {
-            throw new InvalidPurchaseOrder('receivedOn', 'Goods are received once they arrived, today at the latest.');
+            throw new InvalidPurchaseOrder('receivedOn', 'Goods are received once they arrived, today at the latest.', 'after_today');
         }
         $reference = TypedText::trimmed($supplierReference ?? '');
         if (mb_strlen($reference) > GoodsReceipt::REFERENCE_MAX) {
-            throw new InvalidPurchaseOrder('supplierReference', \sprintf('A supplier reference is at most %d characters.', GoodsReceipt::REFERENCE_MAX));
+            throw new InvalidPurchaseOrder('supplierReference', \sprintf('A supplier reference is at most %d characters.', GoodsReceipt::REFERENCE_MAX), 'invalid_text', ['max' => GoodsReceipt::REFERENCE_MAX]);
         }
 
         $parts = [];
         $brought = [];
         foreach ($goods as $index => $part) {
-            $line = $this->lineOfThisOrder($part->orderLineId) ?? throw new InvalidPurchaseOrder(\sprintf('lines[%d].orderLineId', $index), 'A receipt brings goods of a line of its own order.');
+            $line = $this->lineOfThisOrder($part->orderLineId) ?? throw new InvalidPurchaseOrder(\sprintf('lines[%d].orderLineId', $index), 'A receipt brings goods of a line of its own order.', 'unknown_choice');
             try {
                 $quantity = PurchaseOrderLineDetails::quantity(TypedText::trimmed($part->quantity), $line->getUnit());
             } catch (InvalidPurchaseOrder $refused) {
@@ -244,7 +244,7 @@ class PurchaseOrder implements CompanyOwned
             $key = $line->getId()->toRfc4122();
             $brought[$key] = ($brought[$key] ?? Decimal::of('0'))->add(Decimal::of($quantity));
             if ($brought[$key]->compare(Decimal::of($line->outstanding())) > 0) {
-                throw new InvalidPurchaseOrder(\sprintf('lines[%d].quantity', $index), \sprintf('%s of %s is still expected: a receipt brings no more than that.', $line->outstanding(), $line->getProductReference()));
+                throw new InvalidPurchaseOrder(\sprintf('lines[%d].quantity', $index), \sprintf('%s of %s is still expected: a receipt brings no more than that.', $line->outstanding(), $line->getProductReference()), 'above_expected', ['quantity' => $line->outstanding(), 'reference' => $line->getProductReference()]);
             }
             $parts[] = [$line, new ReceivedGoods($part->orderLineId, $part->locationId, $quantity, $part->lotCode, $part->lotExpiresOn, $part->unitCost)];
         }
