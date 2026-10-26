@@ -61,6 +61,8 @@ test(
       await screen.getByTestId('phone-code').fill(code);
       await screen.getByTestId('phone-send').click();
       await expect(screen.getByTestId('phone-unsent')).toContainText(code);
+      // In words, so the page's own texts are known to load on a page opened with no session.
+      await expect(screen.getByTestId('phone-unsent')).toContainText('Non envoyé');
       expect(await wcagViolations(screen)).toEqual([]);
       await screen.unroute(scans);
       await screen.getByTestId('phone-resend').click();
