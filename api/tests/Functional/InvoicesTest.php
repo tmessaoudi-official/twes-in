@@ -15,8 +15,14 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Module\Customers\Domain\Model\Contact;
 use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\ValueObject\ContactDetails;
+use App\Module\Invoices\Application\InvoiceInput;
+use App\Module\Invoices\Application\InvoiceLineInput;
+use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Application\Print\PrintInvoice;
+use App\Module\Invoices\Application\Receiver\InvoiceReceiverSettings;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
 use App\Module\Products\Domain\Model\Product;
@@ -2096,6 +2102,129 @@ final class InvoicesTest extends ApiTestCase
         $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => '']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note says why');
         self::assertSame(['value_required', []], $this->refusalOf('creditNoteReason'));
+    }
+
+    public function testWhoReceivedTheGoodsIsNamedOnTheDraftPrintedOnTheIssuedInvoiceAndNeverChangedAfter(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $customer = $this->em()->find(Customer::class, Uuid::fromString($this->customerId)) ?? throw new \LogicException('no customer');
+        $contact = Contact::create($customer, new ContactDetails('Ahmed', 'Ben Salah', null, null, null), false, new \DateTimeImmutable());
+        $elsewhere = $this->customer('CLI-0002', 'standard');
+        $theirs = Contact::create($elsewhere, new ContactDetails('Someone', 'Else', null, null, null), false, new \DateTimeImmutable());
+        $this->em()->persist($contact);
+        $this->em()->persist($theirs);
+        $this->em()->flush();
+        $ahmed = $contact->getId()->toRfc4122();
+        $goods = [['productId' => $this->productId, 'quantity' => '1']];
+
+        $this->getJson($this->companyPath().'/invoice-options/customers/'.$this->customerId.'/receivers');
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$ahmed, 'Ahmed Ben Salah']], array_map(static fn (array $row): array => [$row['contactId'] ?? null, $row['name'] ?? null], $this->jsonList()), 'the contacts an invoice offers, by name');
+
+        $this->postJson($this->path(), $this->invoice(['lines' => $goods, 'receivedBy' => ['contactId' => $ahmed]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $invoice = $this->json();
+        $id = $this->stringAt($invoice, 'id');
+        self::assertSame([['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], 'optional'], [$invoice['receivedBy'], $invoice['receiverRule']]);
+        // A page of the list names who received but leaves the rule out, read one customer at a time; its search finds them.
+        $this->getJson($this->path().'?q=ben%20salah');
+        $rows = $this->jsonList();
+        self::assertSame([$id], array_column($rows, 'id'), 'found by who received');
+        self::assertSame([['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], null], [$rows[0]['receivedBy'] ?? 'missing', $rows[0]['receiverRule'] ?? null]);
+
+        // The contact renamed since, the draft sent back as read keeps the name it copied rather than taking the new one.
+        $renamed = $this->em()->find(Contact::class, $contact->getId()) ?? throw new \LogicException('no contact');
+        $renamed->revise(new ContactDetails('Ahmed', 'Ben Salem', null, null, null), new \DateTimeImmutable());
+        $this->em()->flush();
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => $invoice['version'], 'lines' => $goods, 'receivedBy' => ['contactId' => $ahmed]]));
+        self::assertResponseIsSuccessful();
+        $invoice = $this->json();
+        self::assertSame(['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], $invoice['receivedBy']);
+
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => $invoice['version'], 'lines' => $goods, 'receivedBy' => ['contactId' => $theirs->getId()->toRfc4122()]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'another customer\'s contact');
+        self::assertSame('unknown_choice', $this->refusalOf('receivedBy')[0]);
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => $invoice['version'], 'lines' => [['description' => 'Conseil', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '10']], 'receivedBy' => ['contactId' => $ahmed]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'an invoice handing no goods over names nobody');
+        self::assertSame('receiver_off', $this->refusalOf('receivedBy')[0]);
+        $this->postJson($this->path().'/preview', $this->invoice(['lines' => $goods, 'receivedBy' => ['name' => ['Sami']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a name is a text');
+
+        $this->changeReceiverRule($customer, 'required');
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseIsSuccessful('named on the draft, issued');
+        $this->postJson($this->path(), $this->invoice(['lines' => $goods]));
+        $nobody = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($nobody).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('receiver_required', $this->refusalOf('receivedBy')[0]);
+        $this->getJson($this->path($nobody));
+        $draft = $this->json();
+        self::assertSame(['draft', null, 'required'], [$draft['status'], $draft['number'], $draft['receiverRule']]);
+        $this->sendJson('PUT', $this->path($nobody), $this->invoice(['version' => $draft['version'], 'lines' => $goods, 'receivedBy' => ['name' => ' Sami Trabelsi ', 'addToContacts' => true]]));
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path($nobody).'/issue', null);
+        self::assertResponseIsSuccessful();
+        $issued = $this->json();
+        self::assertSame(['Sami Trabelsi', 'required'], [$this->receivedName($issued), $issued['receiverRule']]);
+        self::assertNotNull($issued['number']);
+        self::assertSame([['first_name' => 'Ahmed', 'last_name' => 'Ben Salem'], ['first_name' => 'Sami', 'last_name' => 'Trabelsi']], $this->em()->getConnection()->fetchAllAssociative('SELECT first_name, last_name FROM contact WHERE customer_id = ? ORDER BY last_name', [$this->customerId]));
+
+        $this->client->request('GET', $this->path($nobody).'/pdf');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('<bdi>Sami Trabelsi</bdi>', (string) $this->client->getResponse()->getContent(), 'the stored PDF says who received');
+        $this->sendJson('PUT', $this->path($nobody), $this->invoice(['version' => $issued['version'], 'lines' => $goods, 'receivedBy' => ['name' => 'Sami Trabelsy']]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is never changed');
+        $this->getJson($this->path($nobody));
+        self::assertSame('Sami Trabelsi', $this->receivedName($this->json()));
+
+        $journal = $this->em()->getConnection()->fetchFirstColumn("SELECT changes::text FROM audit_log WHERE entity_type = 'invoice'");
+        self::assertContains('{"fields": ["receivedBy"]}', $journal, 'the journal keeps the field');
+        self::assertSame([], array_values(array_filter($journal, static fn (mixed $changes): bool => \is_string($changes) && (str_contains($changes, 'Sami') || str_contains($changes, 'Ahmed')))), 'and never the name');
+
+        $this->changeReceiverRule($customer, 'off');
+        $this->postJson($this->path(), $this->invoice(['lines' => $goods, 'receivedBy' => ['name' => 'Sami', 'addToContacts' => true]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('receiver_off', $this->refusalOf('receivedBy')[0]);
+        self::assertEquals(2, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM contact WHERE customer_id = ?', [$this->customerId]), 'nobody added by a refusal');
+    }
+
+    public function testNamingWhoReceivedAsksTheInvoicesOwnRightsInItsOwnCompany(): void
+    {
+        $globex = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($globex);
+        $their = $this->customer('CLI-0009', 'standard', company: $globex);
+        $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $globex->getId()) ?? throw new \LogicException('no unit');
+        $theirInvoice = static::getContainer()->get(ManageInvoices::class)->create($globex, new InvoiceInput($their->getId(), null, new InvoiceHeader(), [new InvoiceLineInput(null, 'Pose', '1', $unit->getId(), '10')]), null)->getId()->toRfc4122();
+
+        $this->signedIn(['invoice.read']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']], 'receivedBy' => ['name' => 'Sami']]));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'naming who received is writing the invoice: invoice.write');
+        $this->getJson($this->companyPath().'/invoice-options/customers/'.$their->getId()->toRfc4122().'/receivers');
+        self::assertSame([], $this->jsonList(), 'another company\'s customer offers no contact');
+        $this->sendJson('PUT', $this->path($theirInvoice), $this->invoice(['version' => 1, 'receivedBy' => ['name' => 'Sami']]));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s invoice');
+        $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoice-options/customers/'.$their->getId()->toRfc4122().'/receivers');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a company the person is not a member of');
+    }
+
+    /**
+     * The name an invoice's answer says received its goods.
+     *
+     * @param array<array-key, mixed> $answer
+     */
+    private function receivedName(array $answer): mixed
+    {
+        $receivedBy = $answer['receivedBy'] ?? null;
+        self::assertIsArray($receivedBy, 'who received is named');
+
+        return $receivedBy['name'] ?? null;
+    }
+
+    private function changeReceiverRule(Customer $customer, string $rule): void
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($company, customerId: $customer->getId()), InvoiceReceiverSettings::RECEIVER, SettingLevel::Customer, $rule, null);
     }
 
     private function issuedInvoice(): string

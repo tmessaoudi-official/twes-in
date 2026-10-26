@@ -25,6 +25,7 @@ use App\Fiscal\Domain\ValueObject\TaxKind;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
 use App\Module\Invoices\Application\Deposit\DepositDeductions;
+use App\Module\Invoices\Application\Receiver\InvoiceReceiverSettings;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
@@ -37,13 +38,18 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceSearch;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Settings\Application\ReadSetting;
 use App\Shared\Application\ListLimits;
+use App\Shared\Application\Receivers\ChooseReceiver;
+use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
+use App\Shared\Domain\ValueObject\ReceiverRule;
+use App\Shared\Domain\ValueObject\Refusal;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
@@ -83,6 +89,8 @@ final readonly class ManageInvoices implements DeclaresAuditActions
         private FiscalPresets $presets,
         private RecordVersions $versions,
         private ListLimits $limits,
+        private ChooseReceiver $receivers,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -144,7 +152,8 @@ final readonly class ManageInvoices implements DeclaresAuditActions
     {
         return $this->transactions->run(function () use ($company, $input, $actorUserId): Invoice {
             [$establishment, $customer, $lines, $documentTaxes] = $this->checked($company, $input, null);
-            $invoice = Invoice::create($company, $establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
+            $header = $this->received($company, $customer, $input, null, $actorUserId);
+            $invoice = Invoice::create($company, $establishment, $customer, $header, $lines, $documentTaxes, $this->clock->now());
             $this->totals->checked($invoice);
             $this->invoices->save($invoice);
             $this->record($company, $invoice->getId(), self::CREATED, [], $actorUserId);
@@ -281,7 +290,8 @@ final readonly class ManageInvoices implements DeclaresAuditActions
                 $this->versions->expect($invoice, $version);
             }
             [$establishment, $customer, $lines, $documentTaxes] = $this->checked($company, $input, $invoice);
-            $changed = $invoice->revise($establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
+            $header = $this->received($company, $customer, $input, $invoice, $actorUserId);
+            $changed = $invoice->revise($establishment, $customer, $header, $lines, $documentTaxes, $this->clock->now());
             if ([] !== $changed) {
                 $this->totals->checked($invoice);
                 $this->invoices->save($invoice);
@@ -306,9 +316,12 @@ final readonly class ManageInvoices implements DeclaresAuditActions
         $current = null === $id ? null : $this->get($company, $id);
         $current?->assertDraft('changes');
         [$establishment, $customer, $lines, $documentTaxes, $sentAt] = $this->checked($company, $input, $current);
+        // Refused as a save would refuse it, without adding the name typed to the customer's contacts.
+        $choice = $input->receivedBy;
+        $header = $this->received($company, $customer, new InvoiceInput($input->customerId, $input->establishmentId, $input->header, $input->lines, $input->documentTaxComponentIds, null === $choice ? null : new ReceiverChoice($choice->contactId, $choice->name)), $current, null);
         $draft = null === $current
-            ? Invoice::create($company, $establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now())
-            : $current->previewOf($establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
+            ? Invoice::create($company, $establishment, $customer, $header, $lines, $documentTaxes, $this->clock->now())
+            : $current->previewOf($establishment, $customer, $header, $lines, $documentTaxes, $this->clock->now());
 
         $kept = null === $current ? array_keys($lines) : $current->linesSentFrom($lines);
         $sentFrom = array_map(static fn (?int $index): ?int => null === $index ? null : $sentAt[$index], $kept);
@@ -330,6 +343,37 @@ final readonly class ManageInvoices implements DeclaresAuditActions
 
             return $invoice;
         });
+    }
+
+    /**
+     * The header naming whoever the person chose to receive the goods: as the draft copied them when sent back as read,
+     * whatever the contact is called since; else a contact's name copied now, or the name typed, added to the customer's
+     * contacts when asked. Where the customer's invoices name nobody, naming someone is refused, and nobody is added;
+     * where they must name someone, it is the issue that asks.
+     *
+     * @throws InvalidInvoice
+     */
+    private function received(Company $company, Customer $customer, InvoiceInput $input, ?Invoice $current, ?Uuid $actorUserId): InvoiceHeader
+    {
+        $choice = $input->receivedBy;
+        $kept = null !== $current && $current->getCustomer()->getId()->equals($customer->getId()) ? $current->getHeader()->receivedBy : null;
+        if (null !== $kept && null !== $choice && $choice->names($kept)) {
+            return $input->header->withReceiver($kept);
+        }
+        $rule = InvoiceReceiverSettings::ruleFor($this->settings, $customer);
+        if (ReceiverRule::Off === $rule && null !== $choice) {
+            $choice = new ReceiverChoice($choice->contactId, $choice->name);
+        }
+        $receiver = $this->receivers->receiver($company, $customer->getId(), $choice, $actorUserId);
+        if ($receiver instanceof Refusal) {
+            throw new InvalidInvoice('receivedBy', $receiver->message, $receiver->reason, $receiver->params);
+        }
+        $refused = ReceiverRule::Off === $rule ? $rule->refusal($receiver) : null;
+        if (null !== $refused) {
+            throw new InvalidInvoice('receivedBy', $refused->message, $refused->reason, $refused->params);
+        }
+
+        return $input->header->withReceiver($receiver);
     }
 
     /**

@@ -57,6 +57,7 @@ invoice:
     operations_services: 'إسداء خدمات'
     operations_both: 'تسليم سلع وإسداء خدمات'
     customer_reference: 'مرجعكم'
+    received_by: 'المستلم'
     payment: 'الدفع'
     credit_transfer: 'فائض الفاتورة التعديلية'
     payment_terms: 'الأجل بالأيام: %days%'

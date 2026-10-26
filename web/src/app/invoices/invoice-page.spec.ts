@@ -56,6 +56,7 @@ import {
 } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import type { ReceiverContact } from '../shared/receivers/receiver';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -70,6 +71,7 @@ class StaticLoader implements TranslateLoader {
           invalid_payment_terms: 'Délai de paiement refusé : de 0 à {{max}} jours.',
           tax_twice: '{{tax}} est choisie deux fois.',
           above_due: 'Un paiement couvre au plus ce qui reste à payer, {{amount}}.',
+          receiver_off: 'Ce document ne remet aucune marchandise.',
         },
       },
       invoices: {
@@ -204,6 +206,8 @@ const draft: InvoiceRow = {
   customerReference: null,
   notesPrinted: null,
   notesInternal: null,
+  receivedBy: null,
+  receiverRule: 'optional',
   discountAmount: null,
   operationCategory: null,
   vatOnDebits: null,
@@ -284,6 +288,9 @@ describe('InvoicePage', () => {
       'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
     ),
     productPrice: vi.fn(),
+    receivers: vi.fn<(companyId: string, customerId: string) => Promise<ReceiverContact[]>>(
+      async () => [],
+    ),
     pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
     ),
@@ -419,6 +426,7 @@ describe('InvoicePage', () => {
     facade.facturX.mockReset();
     saver.save.mockReset();
     facade.productPrice.mockReset().mockResolvedValue(null);
+    facade.receivers.mockReset().mockResolvedValue([]);
     ['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write'].forEach(
       (each) => granted.add(each),
     );
@@ -2070,6 +2078,97 @@ describe('InvoicePage', () => {
       'Délai de paiement refusé : de 0 à 365 jours.',
     );
     expect(q('invoice-error')).toBeNull();
+  });
+
+  describe('« Reçu par »', () => {
+    it('asks who received the goods a draft hands over itself, offers the customer’s contacts and sends the name typed', async () => {
+      facade.receivers.mockResolvedValue([{ contactId: 'ct1', name: 'Sami Trabelsi' }]);
+      invoice.set(draft);
+      await open('i1');
+      await vi.waitFor(() => expect(facade.receivers).toHaveBeenCalledWith('c1', 'k1'));
+
+      type('invoice-receiver-name', 'Mme Ben Salah');
+      await settle();
+      (q('invoice-receiver-add')?.querySelector('input') as HTMLInputElement).click();
+      await settle();
+      q('document-action-save')!.click();
+      await settle();
+
+      expect(facade.revise).toHaveBeenCalledWith(
+        'c1',
+        'i1',
+        expect.objectContaining({
+          receivedBy: { contactId: null, name: 'Mme Ben Salah', addToContacts: true },
+        }),
+        1,
+      );
+    });
+
+    // One page per case: a second page opened beside the first would read the shared invoice through the first's form.
+    it.each([
+      ['the customer’s invoices name nobody', { ...draft, receiverRule: 'off' as const }],
+      ['the lines are services', { ...draft, lines: [{ ...draft.lines[0]!, productId: null }] }],
+      [
+        'a delivery note handed the goods over',
+        { ...draft, lines: [{ ...draft.lines[0]!, sourceDeliveryNoteLineId: 'dl1' }] },
+      ],
+    ])('asks nobody where %s, and sends nobody', async (_where, shown) => {
+      invoice.set(shown);
+      await open('i1');
+      expect(q('invoice-receiver-name')).toBeNull();
+      expect(facade.receivers).not.toHaveBeenCalled();
+
+      type('line-0-quantity', '3');
+      await settle();
+      q('document-action-save')!.click();
+      await settle();
+      expect(facade.revise).toHaveBeenCalledWith(
+        'c1',
+        'i1',
+        expect.objectContaining({ receivedBy: null }),
+        1,
+      );
+    });
+
+    it('keeps a receiver already named in view, so the API’s refusal of it is said under it', async () => {
+      invoice.set({
+        ...draft,
+        receivedBy: { name: 'Sami Trabelsi', contactId: 'ct1' },
+        lines: [{ ...draft.lines[0]!, productId: null }],
+      });
+      await open('i1');
+      expect((q('invoice-receiver-name') as HTMLInputElement).value).toBe('Sami Trabelsi');
+      expect(q('invoice-receiver-is-contact')).not.toBeNull();
+
+      refusedOn('revise', { field: 'receivedBy', reason: 'receiver_off', params: {} });
+      type('line-0-quantity', '3');
+      await settle();
+      q('document-action-save')!.click();
+      await settle();
+
+      await vi.waitFor(() =>
+        expect(text('invoice-receiver-error')).toContain(
+          'Ce document ne remet aucune marchandise.',
+        ),
+      );
+      expect(q('invoice-error')).toBeNull();
+      expect(facade.revise).toHaveBeenCalledWith(
+        'c1',
+        'i1',
+        expect.objectContaining({
+          receivedBy: { contactId: 'ct1', name: null, addToContacts: false },
+        }),
+        1,
+      );
+    });
+
+    it('says on an issued invoice who received its goods, as it was printed', async () => {
+      invoice.set({ ...issued, receivedBy: { name: 'Sami Trabelsi', contactId: null } });
+      await open('i1');
+      expect(text('invoice-received-by')).toContain('Sami Trabelsi');
+      expect(q('invoice-received-by')?.querySelector('bdi')?.textContent).toBe('Sami Trabelsi');
+      expect(q('invoice-receiver-name')).toBeNull();
+    });
   });
 
   it('says above the form, in its own words, a refusal no field takes, and nothing there once the fields say it all', async () => {

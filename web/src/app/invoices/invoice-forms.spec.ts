@@ -23,6 +23,7 @@ import {
   dropRefusedLineTaxes,
   figuresReady,
   lineStock,
+  handsGoods,
 } from './invoice-forms';
 import { FormArray } from '@angular/forms';
 import type { LineGroup } from './invoice-forms';
@@ -122,6 +123,8 @@ function invoice(overrides: Partial<InvoiceRow> = {}): InvoiceRow {
     customerReference: null,
     notesPrinted: null,
     notesInternal: null,
+    receivedBy: null,
+    receiverRule: 'optional',
     discountAmount: null,
     operationCategory: null,
     vatOnDebits: null,
@@ -835,6 +838,44 @@ describe('invoice forms', () => {
       invoiceInput({ ...values, paymentTermsDays: '' }, linesArray([], options, null), [], 'k1')
         .paymentTermsDays,
     ).toBeNull();
+  });
+
+  it('sends who received as chosen, and nobody when the screen asks nobody', () => {
+    const values = invoiceValues(null, options);
+    const lines = linesArray([], options, null);
+    expect(invoiceInput(values, lines, [], 'k1').receivedBy).toBeNull();
+    const choice = { contactId: 'ct1', name: null, addToContacts: false };
+    expect(invoiceInput(values, lines, [], 'k1', choice).receivedBy).toEqual(choice);
+  });
+
+  it('asks who received only of lines handing goods over themselves, as the API reads them', () => {
+    const line = {
+      productId: 'p1',
+      sourceDeliveryNoteLineId: null,
+      deductsInvoiceId: null,
+    };
+    expect(handsGoods([line])).toBe(true);
+    // A service line, a line a delivery note handed over, and a deposit given back hand nothing over.
+    expect(handsGoods([{ ...line, productId: null }])).toBe(false);
+    expect(handsGoods([{ ...line, productId: '' }])).toBe(false);
+    expect(handsGoods([{ ...line, sourceDeliveryNoteLineId: 'dl1' }])).toBe(false);
+    expect(handsGoods([{ ...line, deductsInvoiceId: 'i0' }])).toBe(false);
+    expect(handsGoods([{ ...line, productId: null }, line])).toBe(true);
+    expect(handsGoods([])).toBe(false);
+  });
+
+  it('shows in the list who received an invoice’s goods, and nothing where nobody is named', () => {
+    const column = INVOICES_LIST.columns.find((candidate) => candidate.id === 'receivedBy');
+    const [named, nobody] = invoiceListRows(
+      [
+        invoice({ receivedBy: { name: 'Sami Trabelsi', contactId: 'ct1' } }),
+        invoice({ id: 'i2', receivedBy: null }),
+      ],
+      '2026-09-16',
+    );
+    expect(column?.value(named!)).toBe('Sami Trabelsi');
+    expect(column?.shown?.(named!)).toBe(true);
+    expect(column?.shown?.(nobody!)).toBe(false);
   });
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: amounts show and take the locale's decimal separator.

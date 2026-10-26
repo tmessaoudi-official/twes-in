@@ -24,6 +24,7 @@ use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
+use App\Module\Invoices\Application\Receiver\InvoiceReceiverSettings;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
@@ -35,7 +36,17 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Settings\Application\BusinessDefaultSettings;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\ResolveSettings;
+use App\Settings\Application\SettingCatalog;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\ListLimits;
+use App\Shared\Application\Receivers\ChooseReceiver;
+use App\Shared\Application\Receivers\ReceiverChoice;
+use App\Shared\Domain\ValueObject\Receiver;
 use App\Shared\Infrastructure\Validation\ParameterListLimits;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
@@ -46,13 +57,17 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemoryReceiverContacts;
 use App\Tests\Support\InMemoryRecordVersions;
+use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemorySourceDeliveryNoteLines;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\RecordingDomainEvents;
 use App\Tests\Support\ShelfLinePrices;
 use App\Tests\Support\ShippedDepositDeductions;
 use App\Tests\Support\ShippedFiscalPresets;
+use App\Tests\Support\ShippedLanguages;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -74,6 +89,8 @@ final class ManageInvoicesTest extends TestCase
     private InMemoryInvoices $invoices;
     private InvoiceTotals $totals;
     private Company $company;
+    private ChangeSettings $change;
+    private InMemoryReceiverContacts $contacts;
 
     protected function setUp(): void
     {
@@ -87,7 +104,11 @@ final class ManageInvoicesTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new DeliveryNoteRoom($this->sourceLines = new InMemorySourceDeliveryNoteLines(), $this->invoices), ShippedDepositDeductions::of($this->invoices, $this->totals), ShippedFiscalPresets::presets(), new InMemoryRecordVersions(), new ParameterListLimits([ListLimits::DOCUMENT_LINES => self::LINES_MOST]));
+        $settings = new InMemorySettings();
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(ShippedLanguages::catalogue()), new InvoiceReceiverSettings()]);
+        $resolve = new ResolveSettings($catalog, $settings);
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents());
+        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new DeliveryNoteRoom($this->sourceLines = new InMemorySourceDeliveryNoteLines(), $this->invoices), ShippedDepositDeductions::of($this->invoices, $this->totals), ShippedFiscalPresets::presets(), new InMemoryRecordVersions(), new ParameterListLimits([ListLimits::DOCUMENT_LINES => self::LINES_MOST]), new ChooseReceiver($this->contacts = new InMemoryReceiverContacts()), new ReadSetting($resolve));
         $this->invoices->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->provision->handle($this->company);
@@ -330,13 +351,64 @@ final class ManageInvoicesTest extends TestCase
         $this->manage->get($globex, $invoice->getId());
     }
 
+    public function testTheDraftNamesWhoReceivedItsGoodsKeepsThemAsCopiedAndNamesNobodyWhereTheCustomersInvoicesDoNot(): void
+    {
+        $customer = $this->customer();
+        $ahmed = Uuid::v7();
+        $this->contacts->contacts[$customer->getId()->toRfc4122()][$ahmed->toRfc4122()] = 'Ahmed Ben Salah';
+        $lines = [new InvoiceLineInput($this->product([])->getId(), null, '1')];
+
+        $invoice = $this->manage->create($this->company, $this->input($customer, $lines, receivedBy: new ReceiverChoice($ahmed->toRfc4122())), null);
+        self::assertEquals(Receiver::named('Ahmed Ben Salah', $ahmed), $invoice->getHeader()->receivedBy);
+
+        $this->contacts->contacts[$customer->getId()->toRfc4122()][$ahmed->toRfc4122()] = 'Ahmed B. Salah';
+        $this->manage->revise($this->company, $invoice->getId(), $this->input($customer, $lines, receivedBy: new ReceiverChoice($ahmed->toRfc4122(), 'Ahmed Ben Salah')), null);
+        self::assertSame('Ahmed Ben Salah', $invoice->getHeader()->receivedBy?->name, 'sent back as read, the name the draft copied is kept');
+
+        $this->manage->preview($this->company, $this->input($customer, $lines, receivedBy: new ReceiverChoice(name: 'Sami', addToContacts: true)), $invoice->getId());
+        self::assertSame([], $this->contacts->added, 'a preview writes no contact');
+
+        $this->manage->revise($this->company, $invoice->getId(), $this->input($customer, $lines, receivedBy: new ReceiverChoice(name: ' Sami ', addToContacts: true)), null);
+        self::assertSame(['Sami', [[$customer->getId()->toRfc4122(), 'Sami']]], [$invoice->getHeader()->receivedBy->name, $this->contacts->added]);
+        $last = array_last($this->audit->entries);
+        self::assertNotNull($last);
+        self::assertSame(['invoice.revised', ['fields' => ['receivedBy']]], [$last->action, $last->changes], 'the journal keeps the field, never the name');
+
+        $this->manage->revise($this->company, $invoice->getId(), $this->input($customer, $lines), null);
+        self::assertNull($invoice->getHeader()->receivedBy, 'left out, nobody');
+
+        $services = [new InvoiceLineInput(null, 'Pose', '1', $this->unit('C62')->getId(), '10')];
+        $this->assertRefusedFor('receiver_off', fn () => $this->manage->create($this->company, $this->input($customer, $services, receivedBy: new ReceiverChoice(name: 'Sami')), null), 'an invoice handing no goods names nobody');
+
+        $atCustomer = new SettingContext($this->company, customerId: $customer->getId());
+        $this->change->change($atCustomer, InvoiceReceiverSettings::RECEIVER, SettingLevel::Customer, 'required', null);
+        $this->manage->create($this->company, $this->input($customer, $lines), null);
+
+        $this->change->change($atCustomer, InvoiceReceiverSettings::RECEIVER, SettingLevel::Customer, 'off', null);
+        $this->assertRefusedFor('receiver_off', fn () => $this->manage->create($this->company, $this->input($customer, $lines, receivedBy: new ReceiverChoice(name: 'Sami', addToContacts: true)), null), 'the customer\'s invoices name nobody');
+        $this->assertRefusedFor('receiver_off', fn () => $this->manage->preview($this->company, $this->input($customer, $lines, receivedBy: new ReceiverChoice(name: 'Sami')), null), 'nor does a preview');
+        $this->assertRefusedFor('unknown_choice', fn () => $this->manage->create($this->company, $this->input($customer, $lines, receivedBy: new ReceiverChoice(Uuid::v7()->toRfc4122())), null), 'a contact of no customer');
+        self::assertCount(1, $this->contacts->added, 'nobody added by a refusal');
+    }
+
+    /** @param \Closure(): mixed $attempt */
+    private function assertRefusedFor(string $reason, \Closure $attempt, string $case): void
+    {
+        try {
+            $attempt();
+            self::fail("accepted: $case");
+        } catch (InvalidInvoice $refused) {
+            self::assertSame(['receivedBy', $reason], [$refused->field, $refused->reason], $case);
+        }
+    }
+
     /**
      * @param list<InvoiceLineInput> $lines
      * @param list<Uuid>|null        $documentTaxes
      */
-    private function input(Customer $customer, array $lines, ?array $documentTaxes = null, InvoiceHeader $header = new InvoiceHeader()): InvoiceInput
+    private function input(Customer $customer, array $lines, ?array $documentTaxes = null, InvoiceHeader $header = new InvoiceHeader(), ?ReceiverChoice $receivedBy = null): InvoiceInput
     {
-        return new InvoiceInput($customer->getId(), null, $header, $lines, $documentTaxes);
+        return new InvoiceInput($customer->getId(), null, $header, $lines, $documentTaxes, $receivedBy);
     }
 
     /**

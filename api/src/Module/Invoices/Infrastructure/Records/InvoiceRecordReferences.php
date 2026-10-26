@@ -46,6 +46,8 @@ final readonly class InvoiceRecordReferences implements DeclaresRecordReferences
             RecordReference::uses('invoice_line', 'source_delivery_note_line_id', 'delivery_note', RecordMerge::Ignored, 'An invoice line names the delivery note line it invoices; a draft note so invoiced is kept.')
                 ->below('delivery_note_line', 'delivery_note_id'),
             RecordReference::uses('customer_credit_entry', 'invoice_id', 'invoice', RecordMerge::Ignored, 'A credit entry names the invoice it was spent on or came from; a draft so named is kept.'),
+            RecordReference::ignored('invoice', 'received_by_contact_id', 'customer', 'An invoice copies the name of who received its goods; the contact it came from is kept beside it as history, and neither a delete nor a merge changes what was received.')
+                ->below('contact', 'customer_id'),
             RecordReference::uses('invoice', 'quote_id', 'quote', RecordMerge::Ignored, 'An invoice names the quote it was made from; that quote is kept.'),
             RecordReference::uses('invoice_reminder', 'invoice_id', 'invoice', RecordMerge::Ignored, 'A reminder chases an issued invoice; one naming a draft keeps it.'),
             RecordReference::uses('invoice_reminder', 'late_fee_invoice_id', 'invoice', RecordMerge::Ignored, 'A reminder names the late-fee invoice it made; that draft is kept, cancelled rather than deleted.'),

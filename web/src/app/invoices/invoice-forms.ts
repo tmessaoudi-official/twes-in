@@ -9,6 +9,7 @@ import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import type { PickOption } from '../shared/form/pick-field';
 import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
 import { type LineStock, type OnHand, stockOfLines } from '../shared/documents/line-stock';
+import type { ReceiverChoice } from '../shared/receivers/receiver';
 import {
   type CustomerOption,
   INVOICE_SHOWN_STATUSES,
@@ -206,6 +207,14 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       width: 126,
       // The status says « En retard » once it passes: the day itself is shown on request.
       defaultHidden: true,
+    },
+    {
+      id: 'receivedBy',
+      priority: 'low',
+      label: `${FIELDS}.receivedBy`,
+      value: (row) => row.receivedBy?.name ?? '',
+      shown: (row) => row.receivedBy !== null,
+      wraps: true,
     },
     {
       id: 'total',
@@ -821,6 +830,7 @@ export function invoiceInput(
   lines: LinesArray,
   documentTaxComponentIds: readonly string[],
   customerId: string,
+  receivedBy: ReceiverChoice | null = null,
 ): InvoiceInput {
   const terms = text(values['paymentTermsDays']);
   return {
@@ -855,7 +865,27 @@ export function invoiceInput(
       section: text(line.section),
       creditedLineId: line.creditedLineId === '' ? null : line.creditedLineId,
     })),
+    receivedBy,
   };
+}
+
+/**
+ * Whether lines of goods are handed over by the invoice itself, as the API reads them: a line naming a product, neither
+ * taken from a delivery note, which handed those goods over, nor giving a deposit back.
+ */
+export function handsGoods(
+  lines: readonly {
+    productId: string | null;
+    sourceDeliveryNoteLineId: string | null;
+    deductsInvoiceId: string | null;
+  }[],
+): boolean {
+  return lines.some(
+    (line) =>
+      (line.productId ?? '') !== '' &&
+      (line.sourceDeliveryNoteLineId ?? '') === '' &&
+      (line.deductsInvoiceId ?? '') === '',
+  );
 }
 
 /** A payment: its day, amount, method, and the reference and notes kept with it. */

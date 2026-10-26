@@ -75,6 +75,8 @@ const invoice: InvoiceRow = {
   customerReference: null,
   notesPrinted: null,
   notesInternal: null,
+  receivedBy: null,
+  receiverRule: 'optional',
   discountAmount: null,
   operationCategory: null,
   vatOnDebits: null,

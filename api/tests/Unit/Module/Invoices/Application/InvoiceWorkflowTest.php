@@ -29,6 +29,7 @@ use App\Module\Invoices\Application\InvoiceWorkflow;
 use App\Module\Invoices\Application\Print\InvoiceMentions;
 use App\Module\Invoices\Application\Print\MentionDatumMissing;
 use App\Module\Invoices\Application\Print\PartyIdentity;
+use App\Module\Invoices\Application\Receiver\InvoiceReceiverSettings;
 use App\Module\Invoices\Domain\Event\InvoiceIssued;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
@@ -40,6 +41,9 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Domain\ValueObject\OperationCategory;
+use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\ValueObject\ProductDetails;
+use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\PresentationSettings;
@@ -53,6 +57,7 @@ use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Shared\Domain\ValueObject\DocumentLayout;
 use App\Shared\Domain\ValueObject\DocumentWatermark;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\Receiver;
 use App\Shared\Domain\ValueObject\WatermarkIntensity;
 use App\Shared\Domain\ValueObject\WatermarkSpread;
 use App\Tenancy\Application\Numbering\AllocateNumber;
@@ -114,7 +119,7 @@ final class InvoiceWorkflowTest extends TestCase
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->events = new RecordingDomainEvents($this->transactions);
         $settings = new InMemorySettings();
-        $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new InvoiceReceiverSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents());
         $numbers = new AllocateNumber($this->series, $this->transactions, $this->clock);
@@ -142,6 +147,42 @@ final class InvoiceWorkflowTest extends TestCase
         foreach ([$this->company, $this->globex] as $company) {
             $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));
         }
+    }
+
+    public function testIssuingAnInvoiceOfGoodsAsksWhoReceivedThemWhereTheCustomersInvoicesMustSayBeforeTakingANumber(): void
+    {
+        $customer = $this->customer('standard', null);
+        $atCustomer = new SettingContext($this->company, customerId: $customer->getId());
+        $this->change->change($atCustomer, InvoiceReceiverSettings::RECEIVER, SettingLevel::Customer, 'required', null);
+        $unit = $this->units->ofCodeInCompany('C62', $this->company->getId()) ?? throw new \LogicException('no unit');
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '10'), $unit, null, [], $this->clock->now());
+        $goods = [new InvoiceLineDetails($product, 'Portable 14"', '1', $unit, '10', null, [])];
+
+        $nobody = $this->draft($customer, lines: $goods);
+        try {
+            $this->workflow->issue($this->company, $nobody->getId(), null);
+            self::fail('an invoice of goods was issued naming nobody where the customer\'s invoices must name someone');
+        } catch (InvalidInvoice $refused) {
+            self::assertSame(['receivedBy', 'receiver_required'], [$refused->field, $refused->reason]);
+        }
+        self::assertSame([InvoiceStatus::Draft, null], [$nobody->getStatus(), $nobody->getNumber()]);
+
+        self::assertSame('FAC-2026-09-00001', $this->workflow->issue($this->company, $this->draft($customer)->getId(), null)->getNumber(), 'a service hands nothing over, and the refusal took no number');
+        $named = $this->workflow->issue($this->company, $this->draft($customer, new InvoiceHeader(receivedBy: Receiver::named('Sami')), $goods)->getId(), null);
+        self::assertSame(['FAC-2026-09-00002', 'Sami'], [$named->getNumber(), $named->getHeader()->receivedBy?->name]);
+        $last = array_last($this->audit->entries);
+        self::assertNotNull($last);
+        self::assertSame(['number' => 'FAC-2026-09-00002'], $last->changes, 'the journal names no one');
+
+        $sami = $this->draft($customer, new InvoiceHeader(receivedBy: Receiver::named('Sami')), $goods);
+        $this->change->change($atCustomer, InvoiceReceiverSettings::RECEIVER, SettingLevel::Customer, 'off', null);
+        try {
+            $this->workflow->issue($this->company, $sami->getId(), null);
+            self::fail('a receiver was issued where the customer\'s invoices name nobody since the draft was saved');
+        } catch (InvalidInvoice $refused) {
+            self::assertSame(['receivedBy', 'receiver_off'], [$refused->field, $refused->reason]);
+        }
+        self::assertSame('FAC-2026-09-00003', $this->workflow->issue($this->company, $nobody->getId(), null)->getNumber(), 'off, nobody is asked for');
     }
 
     public function testIssuingNumbersTheInvoiceWithWhatItsCustomerAndCompanySayAndTellsOnceItIsStored(): void

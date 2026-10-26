@@ -30,6 +30,7 @@ import type {
 import type { PreviewBody } from '../shared/documents/document-figures';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { ReceiverContact } from '../shared/receivers/receiver';
 
 /** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
@@ -138,6 +139,11 @@ export class InvoicesFacade {
 
   async pickProducts(companyId: string, asked: PickAsked): Promise<ProductOption[]> {
     return this.pick(() => this.api.pickProducts(companyId, asked));
+  }
+
+  /** The customer's contacts « Reçu par » offers; none when they cannot be read, which the screen says. */
+  async receivers(companyId: string, customerId: string): Promise<ReceiverContact[]> {
+    return this.pick(() => this.api.receivers(companyId, customerId));
   }
 
   /** What the product sells at for that customer and quantity; null where the price cannot be read. */

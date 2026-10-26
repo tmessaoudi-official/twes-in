@@ -12,12 +12,14 @@ namespace App\Module\Invoices\Domain\ValueObject;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Model\Payment;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\ValueObject\Receiver;
 
 /**
  * What an invoice says besides its customer, its lines and its document taxes: the day the goods or services were
  * supplied, its payment terms in days (none: the customer's at issue), the customer's own reference, notes printed
  * and notes kept inside the company, a discount on the whole document as an amount, and the category of its operations
- * where its country's law asks for one (none: worked out at issue from its lines). Empty texts are absent.
+ * where its country's law asks for one (none: worked out at issue from its lines), and who received the goods it hands
+ * over itself, named before it is issued. Empty texts are absent.
  */
 final readonly class InvoiceHeader
 {
@@ -42,6 +44,7 @@ final readonly class InvoiceHeader
         ?string $notesInternal = null,
         ?string $discountAmount = null,
         public ?OperationCategory $operationCategory = null,
+        public ?Receiver $receivedBy = null,
     ) {
         if (null !== $paymentTermsDays && ($paymentTermsDays < 0 || $paymentTermsDays > self::TERMS_MAX)) {
             throw new InvalidInvoice('paymentTermsDays', \sprintf('Payment terms run from 0 to %d days.', self::TERMS_MAX), 'invalid_payment_terms', ['max' => self::TERMS_MAX]);
@@ -65,8 +68,17 @@ final readonly class InvoiceHeader
                 $changed[] = $field;
             }
         }
+        if (null === $this->receivedBy ? null !== $other->receivedBy : !$this->receivedBy->equals($other->receivedBy)) {
+            $changed[] = 'receivedBy';
+        }
 
         return $changed;
+    }
+
+    /** The same header naming another receiver, or nobody. */
+    public function withReceiver(?Receiver $receivedBy): self
+    {
+        return new self($this->supplyDate, $this->paymentTermsDays, $this->customerReference, $this->notesPrinted, $this->notesInternal, $this->discountAmount, $this->operationCategory, $receivedBy);
     }
 
     private static function text(string $field, ?string $value, int $max): ?string

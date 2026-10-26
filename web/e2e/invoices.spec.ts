@@ -1050,3 +1050,49 @@ test('an issued invoice is delivered by a note, which names it, moves no stock a
     await forget(page, [productId]);
   }
 });
+
+// « Reçu par » on an invoice handing goods over itself: the name typed on the draft is added to the customer's
+// contacts, printed when the invoice is issued, and read on the issued invoice, where it is no longer a field.
+test('an invoice of goods names who received them, kept as it was issued', async ({ page }) => {
+  // A draft, its issue, an accessibility scan and a PDF rendered.
+  test.setTimeout(60_000);
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-IRCV-${run}`;
+  const reference = `E2E-IRCV-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  const productId = await aProduct(page, reference);
+  try {
+    await page.goto('/invoices/new');
+    await page.getByTestId('invoice-customer').fill(customerNumber);
+    await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+    // A service line asks nobody: only goods the invoice hands over itself are received.
+    await expect(page.getByTestId('invoice-receiver-name')).toHaveCount(0);
+    await page.getByTestId('line-0-product').fill(reference);
+    await page.getByRole('option', { name: new RegExp(`^${reference} · `) }).click();
+    await choose(page, 'line-0-taxes', /19/);
+    await page.getByTestId('invoice-receiver-name').fill('Sami Trabelsi');
+    await page.getByTestId('invoice-receiver-add').getByRole('checkbox').check();
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('document-action-save').click();
+    await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('invoice-receiver-name')).toHaveValue('Sami Trabelsi');
+    // Added to the customer's contacts, it is now offered as one.
+    await expect(page.getByTestId('invoice-receiver-is-contact')).toBeVisible();
+
+    await page.getByTestId('document-action-issue').click();
+    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
+    await expect(page.getByTestId('invoice-received-by')).toContainText('Sami Trabelsi');
+    await expect(page.getByTestId('invoice-receiver-name')).toHaveCount(0);
+    const pdf = await download(
+      page,
+      (await page.getByTestId('document-action-pdf').getAttribute('href')) ?? '',
+    );
+    expect([pdf.status, pdf.magic]).toEqual([200, '%PDF-']);
+  } finally {
+    await forget(page, [productId]);
+    await retire(page, customerNumber);
+  }
+});

@@ -997,6 +997,9 @@
       "reception_block": "Imprimer le bloc de réception (date et heure, nom, signature et cachet, réserves)",
       "receiver": "Nommer qui a reçu les marchandises"
     },
+    "invoice": {
+      "receiver": "Nommer qui a reçu les marchandises remises avec la facture"
+    },
     "presentation": {
       "accent": "Couleur d’accent",
       "scheme": "Thème",
@@ -1117,6 +1120,13 @@
           "off": "Jamais",
           "optional": "Si on le souhaite",
           "required": "Toujours, à la livraison"
+        }
+      },
+      "invoice": {
+        "receiver": {
+          "off": "Jamais",
+          "optional": "Si on le souhaite",
+          "required": "Toujours, à l’émission"
         }
       },
       "quote": {
@@ -1462,6 +1472,7 @@
       "amountDue": "Reste à payer",
       "notesPrinted": "Notes imprimées sur la facture",
       "notesInternal": "Notes internes",
+      "receivedBy": "Reçu par",
       "operationCategory": "Nature des opérations"
     },
     "form": {

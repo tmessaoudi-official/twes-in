@@ -3,6 +3,7 @@
 import type { ProductTracking } from '../products/products-types';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
+import type { Receiver, ReceiverChoice, ReceiverRule } from '../shared/receivers/receiver';
 
 /** Why the API refused, as the invoices screens translate it. */
 export type InvoicesError =
@@ -368,6 +369,13 @@ export interface InvoiceRow {
   customerReference: string | null;
   notesPrinted: string | null;
   notesInternal: string | null;
+  /** Who received the goods it hands over itself, as it copied them; null while nobody is named. Fixed once issued. */
+  receivedBy: Receiver | null;
+  /**
+   * Whether the customer's invoices name who received the goods they hand over: never, when wished, or always at issue;
+   * null on a row of the list, which does not read it.
+   */
+  receiverRule: ReceiverRule | null;
   /** The document discount as it was typed; null for none. */
   discountAmount: string | null;
   /**
@@ -411,6 +419,8 @@ export interface InvoiceInput {
   operationCategory: OperationCategory | null;
   documentTaxComponentIds: string[] | null;
   lines: InvoiceLineInput[];
+  /** Who received the goods it hands over itself, as chosen; sent back as read, the draft keeps them as it copied them. */
+  receivedBy: ReceiverChoice | null;
 }
 
 export interface EstablishmentOption {

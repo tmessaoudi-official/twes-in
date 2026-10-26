@@ -36,6 +36,8 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Shared\Domain\ValueObject\PaymentMethod;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\InMemoryEstablishments;
@@ -601,6 +603,78 @@ final class InvoiceTest extends TestCase
 
         $draft->addLines([$givingBack($deposit)], $this->now);
         self::assertSame([null, $deposit], array_map(static fn ($line): ?Invoice => $line->getDeduction()?->deposit, $draft->getLines()));
+    }
+
+    public function testWhoReceivedTheGoodsIsNamedOnADraftHandingGoodsOfItsOwnAndKeptAsCopied(): void
+    {
+        $contactId = Uuid::v7();
+        $ahmed = Receiver::named(' Ahmed Ben Salah ', $contactId);
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(receivedBy: $ahmed), [$this->pieceLine($this->product($this->company))], [], $this->now);
+
+        self::assertTrue($invoice->getHeader()->receivedBy?->equals(Receiver::named('Ahmed Ben Salah', $contactId)));
+        self::assertCount(1, $invoice->goodsOfItsOwn());
+        $lines = $invoice->getLines();
+        $same = [new InvoiceLineDetails($lines[0]->getProduct(), 'Pièce', '1', $lines[0]->getUnit(), '10', null, [])];
+        self::assertSame([], $invoice->revise($this->establishment(), $invoice->getCustomer(), new InvoiceHeader(receivedBy: $ahmed), $same, [], $this->now), 'the same receiver is no change');
+        self::assertSame(['receivedBy'], $invoice->revise($this->establishment(), $invoice->getCustomer(), new InvoiceHeader(receivedBy: Receiver::named('Sami')), $same, [], $this->now));
+        self::assertSame(['Sami', null], [$invoice->getHeader()->receivedBy->name, $invoice->getHeader()->receivedBy->contactId]);
+        self::assertSame(['receivedBy'], new InvoiceHeader()->differencesFrom(new InvoiceHeader(receivedBy: $ahmed)));
+        self::assertSame([], new InvoiceHeader(receivedBy: Receiver::named('Sami'))->differencesFrom(new InvoiceHeader(receivedBy: Receiver::named('Sami'))));
+    }
+
+    public function testADocumentHandingNoGoodsOfItsOwnNamesNobodyWhoReceivedThem(): void
+    {
+        $sami = Receiver::named('Sami');
+        $customer = $this->customer($this->company);
+        $this->assertRefusedFor('receivedBy', 'receiver_off', fn () => Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(receivedBy: $sami), [$this->pieceLine()], [], $this->now), 'a line of service');
+        $this->assertRefusedFor('receivedBy', 'receiver_off', fn () => Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(receivedBy: $sami), [$this->pieceLine($this->product($this->company))], [], $this->now, deposit: true), 'a deposit');
+        $draft = Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(receivedBy: $sami), [$this->pieceLine($this->product($this->company))], [], $this->now);
+        $this->assertRefusedFor('receivedBy', 'receiver_off', fn () => $draft->revise($this->establishment(), $customer, new InvoiceHeader(receivedBy: $sami), [$this->pieceLine()], [], $this->now), 'its goods taken off');
+        $this->assertRefusedFor('receivedBy', 'receiver_off', fn () => $draft->previewOf($this->establishment(), $customer, new InvoiceHeader(receivedBy: $sami), [$this->pieceLine()], [], $this->now), 'previewed so');
+        self::assertSame($sami->name, $draft->getHeader()->receivedBy?->name, 'a refused revision leaves the draft as it was');
+        self::assertCount(1, $draft->getLines());
+        self::assertSame([], Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(), [$this->pieceLine()], [], $this->now)->goodsOfItsOwn());
+    }
+
+    public function testTheRuleRefusesNobodyOnlyWhereTheInvoiceHandsGoodsAndAnyoneWhereItIsOff(): void
+    {
+        $customer = $this->customer($this->company);
+        $goods = Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(), [$this->pieceLine($this->product($this->company))], [], $this->now);
+        $services = Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
+        $named = Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(receivedBy: Receiver::named('Sami')), [$this->pieceLine($this->product($this->company))], [], $this->now);
+
+        $this->assertRefusedFor('receivedBy', 'receiver_required', static fn () => $goods->assertReceiverRule(ReceiverRule::Required));
+        $services->assertReceiverRule(ReceiverRule::Required);
+        $named->assertReceiverRule(ReceiverRule::Required);
+        $goods->assertReceiverRule(ReceiverRule::Off);
+        $this->assertRefusedFor('receivedBy', 'receiver_off', static fn () => $named->assertReceiverRule(ReceiverRule::Off));
+        $named->assertReceiverRule(ReceiverRule::Optional);
+    }
+
+    public function testAnIssuedInvoiceKeepsWhoReceivedAsItWasIssuedAndACopyNamesNobody(): void
+    {
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(receivedBy: Receiver::named('Sami')), [$this->pieceLine($this->product($this->company))], [], $this->now);
+        $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($invoice)), fn (Invoice $i) => $this->figures(), $this->now);
+
+        self::assertSame('Sami', $invoice->getHeader()->receivedBy?->name);
+        $this->expectException(InvoiceNotDraft::class);
+        try {
+            self::assertNull(Invoice::duplicateOf($invoice, $this->now)->getHeader()->receivedBy, 'a copy is a new sale');
+            self::assertNull(Invoice::creditNoteFor($invoice, 'Retour', $this->now)->getHeader()->receivedBy, 'a credit note hands nothing over');
+        } finally {
+            $invoice->revise($this->establishment(), $invoice->getCustomer(), new InvoiceHeader(receivedBy: Receiver::named('Someone else')), [$this->pieceLine($this->product($this->company))], [], $this->now);
+        }
+    }
+
+    /** @param \Closure(): mixed $attempt */
+    private function assertRefusedFor(string $field, string $reason, \Closure $attempt, string $case = ''): void
+    {
+        try {
+            $attempt();
+            self::fail("$field accepted $case");
+        } catch (InvalidInvoice $refused) {
+            self::assertSame([$field, $reason], [$refused->field, $refused->reason], $case);
+        }
     }
 
     private function issuedCreditNote(Invoice $invoice, string $due): Invoice

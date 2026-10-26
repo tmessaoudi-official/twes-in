@@ -32,11 +32,7 @@ final class GoodsToDeliver
     /** @return list<InvoiceLine> its lines of goods it billed itself, in order; none for a credit note or a deposit */
     public static function lines(Invoice $invoice): array
     {
-        if (InvoiceType::Invoice !== $invoice->getType() || $invoice->isDeposit()) {
-            return [];
-        }
-
-        return array_values(array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => null !== $line->getProduct() && null === $line->getSourceDeliveryNoteLineId() && null === $line->getDeduction()));
+        return $invoice->goodsOfItsOwn();
     }
 
     /**

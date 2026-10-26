@@ -38,7 +38,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
      * All of it is the invoice's own, because an index cannot span a join — and a condition OR-ed onto the customer
      * table would leave this half indexed and scan the other, which no assertion here would notice.
      */
-    public const string MATCHES_WORDS = "SEARCH_TEXT(i.number, i.customerReference, JSON_VALUES(i.customerSnapshot)) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    public const string MATCHES_WORDS = "SEARCH_TEXT(i.number, i.customerReference, JSON_VALUES(i.customerSnapshot), i.receivedByName) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
     private const string OVERDUE = 'overdue';
     private const array SORTED_BY = ['number' => 'i.number', 'customer' => 'CASE WHEN ck.id IS NULL THEN c.name ELSE ck.name END', 'issueDate' => 'i.issueDate', 'dueDate' => 'i.dueDate', 'status' => 'i.status'];
 

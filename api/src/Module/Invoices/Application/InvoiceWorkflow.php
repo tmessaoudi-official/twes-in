@@ -27,6 +27,7 @@ use App\Module\Invoices\Application\Deposit\DepositQuotes;
 use App\Module\Invoices\Application\Print\InvoiceMentions;
 use App\Module\Invoices\Application\Print\PartyIdentity;
 use App\Module\Invoices\Application\Print\PartyIdentityMissing;
+use App\Module\Invoices\Application\Receiver\InvoiceReceiverSettings;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Domain\Model\CustomerCreditEntry;
@@ -99,6 +100,8 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
      * @throws InvalidInvoice       on `lines[i].taxComponentIds` or `documentTaxComponentIds` when the customer's or the company's
      *                              regime, changed since the draft was saved, no longer charges one of its taxes
      * @throws InvalidInvoice       on `operationCategory` when the law asks what its operations are and neither a choice nor its lines say
+     * @throws InvalidInvoice       on `receivedBy` when an invoice handing goods over names nobody where its customer's invoices
+     *                              must name someone, or names someone where they name nobody
      * @throws InvalidInvoice       on `amountDue` when a credit note comes to more than its invoice invoiced less its earlier credit notes;
      *                              on `excessTo` when part of it was already paid and it does not say where that goes
      */
@@ -127,6 +130,9 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             }
             // Before the series, as a mention is: an invoice that cannot name its parties takes no number.
             $this->parties->assertNamed($company, $invoice->getEstablishment(), $customer);
+            // Before the series too: who received the goods an invoice hands over is printed on it, and the customer's
+            // rule may have changed since the draft was saved.
+            $invoice->assertReceiverRule(InvoiceReceiverSettings::ruleFor($this->settings, $customer));
             $this->chargedByItsRegimes($company, $invoice);
             $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
             $language = $this->settings->text($context, 'document.language');

@@ -16,6 +16,7 @@ const input: InvoiceInput = {
   customerReference: 'PO-77',
   notesPrinted: 'Virement',
   notesInternal: null,
+  receivedBy: null,
   discountAmount: null,
   operationCategory: null,
   documentTaxComponentIds: null,
@@ -312,6 +313,38 @@ describe('InvoicesApi', () => {
       reference: 'VIR 882104',
       notes: null,
     });
+  });
+
+  it('reads who received the goods and whether the customer’s invoices name them; a list row reads no rule', async () => {
+    const named = api.invoice('c1', 'i1');
+    http.expectOne('/api/companies/c1/invoices/i1').flush({
+      ...issued,
+      receivedBy: { name: 'Sami Trabelsi', contactId: 'ct1' },
+      receiverRule: 'required',
+    });
+    expect(await named).toMatchObject({
+      receivedBy: { name: 'Sami Trabelsi', contactId: 'ct1' },
+      receiverRule: 'required',
+    });
+
+    const nobody = api.invoice('c1', 'i1');
+    http.expectOne('/api/companies/c1/invoices/i1').flush({ ...issued, receivedBy: null });
+    expect(await nobody).toMatchObject({ receivedBy: null, receiverRule: null });
+  });
+
+  it('asks the customer’s contacts « Reçu par » offers under the invoice’s own path, and sends the choice', async () => {
+    const pending = api.receivers('c1', 'k 1');
+    http
+      .expectOne('/api/companies/c1/invoice-options/customers/k%201/receivers')
+      .flush([{ contactId: 'ct1', name: 'Sami Trabelsi' }]);
+    expect(await pending).toEqual([{ contactId: 'ct1', name: 'Sami Trabelsi' }]);
+
+    const choice = { contactId: null, name: 'Mme Ben Salah', addToContacts: true };
+    const created = api.create('c1', { ...input, receivedBy: choice });
+    const post = http.expectOne('/api/companies/c1/invoices');
+    expect(post.request.body.receivedBy).toEqual(choice);
+    post.flush({ ...issued, status: 'draft', number: null });
+    await created;
   });
 
   it('asks the API for one page of documents, with what it searches, narrows and sorts by', async () => {

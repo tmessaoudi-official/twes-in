@@ -49,6 +49,11 @@
           @if (invoice.dueDate && !isCreditNote()) {
             <span>{{ 'invoices.fields.dueDate' | translate }} {{ invoice.dueDate | day }}</span>
           }
+          @if (invoice.receivedBy; as receivedBy) {
+            <span data-testid="invoice-received-by"
+              >{{ 'receivers.received_by' | translate }} <bdi>{{ receivedBy.name }}</bdi></span
+            >
+          }
         </p>
         @if (invoice.correctsInvoiceId; as corrected) {
           <a
@@ -235,6 +240,25 @@
                 }
               </div>
             </app-descriptor-form>
+            @if (receiverAsked() ? receiver() : null; as receiver) {
+              <div
+                class="max-w-md pt-4"
+                [class.twes-field-updated]="sync.updated().has('receivedBy')"
+              >
+                @if (sync.conflicts().some(isReceiverConflict)) {
+                  <app-part-conflict
+                    field="receivedBy"
+                    message="live.receiver_conflict"
+                    (resolved)="sync.resolve(form, $event)"
+                  />
+                }
+                <app-receiver-field
+                  [form]="receiver"
+                  [contacts]="receiverContacts()"
+                  testId="invoice-receiver"
+                />
+              </div>
+            }
           }
         </mat-card-content>
       </mat-card>

@@ -10,11 +10,13 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Module\Invoices\Domain\ValueObject\InvoiceHeader;
+use App\Shared\Application\Receivers\ReceiverChoice;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * An invoice as it is written: its customer and establishment by id (none: the company's default), its header, its
- * lines and its document taxes (null: the company's and the customer's defaults the customer's regime charges).
+ * lines, its document taxes (null: the company's and the customer's defaults the customer's regime charges), and who
+ * received the goods it hands over itself as the person chose them, which the header carries once found.
  */
 final readonly class InvoiceInput
 {
@@ -28,6 +30,7 @@ final readonly class InvoiceInput
         public InvoiceHeader $header,
         public array $lines,
         public ?array $documentTaxComponentIds = null,
+        public ?ReceiverChoice $receivedBy = null,
     ) {
     }
 }

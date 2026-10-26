@@ -28,12 +28,14 @@ import type {
   InvoiceNextNumberInvoiceNextNumberRead,
   InvoiceOptionsInvoiceOptionsRead,
   InvoiceProductPickInvoiceProductPickRead,
+  InvoiceReceiverPickInvoiceReceiverPickRead,
   InvoiceStatusCountsInvoiceStatusCountsRead,
   InvoiceSummaryInvoiceSummaryRead,
   PaymentPaymentWriteValidationPaymentWrite as PaymentPaymentWrite,
   ProductPriceProductPriceRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
+import type { ReceiverContact } from '../shared/receivers/receiver';
 import { trackingOf } from '../products/products-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import { apiRangeKey } from '../shared/list/list-filters';
@@ -139,6 +141,18 @@ export class InvoicesApi {
         defaultDiscountRate: customer.defaultDiscountRate,
         defaultTaxComponentIds: [...customer.defaultTaxComponentIds],
       }));
+    });
+  }
+
+  /** The customer's contacts an invoice offers to name who received its goods, under the invoice's own permission. */
+  async receivers(companyId: string, customerId: string): Promise<ReceiverContact[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<InvoiceReceiverPickInvoiceReceiverPickRead[]>(
+          `${companyPath(companyId)}/invoice-options/customers/${encodeURIComponent(customerId)}/receivers`,
+        ),
+      );
+      return rows.map((row) => ({ contactId: row.contactId ?? '', name: row.name }));
     });
   }
 
@@ -698,6 +712,10 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
     customerReference: raw.customerReference ?? null,
     notesPrinted: raw.notesPrinted ?? null,
     notesInternal: raw.notesInternal ?? null,
+    receivedBy: raw.receivedBy?.name
+      ? { name: raw.receivedBy.name, contactId: raw.receivedBy.contactId ?? null }
+      : null,
+    receiverRule: raw.receiverRule ?? null,
     discountAmount: raw.discountAmount ?? null,
     operationCategory: operationsOf(raw.operationCategory),
     vatOnDebits: raw.vatOnDebits ?? null,

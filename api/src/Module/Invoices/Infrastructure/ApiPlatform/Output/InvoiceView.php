@@ -15,12 +15,14 @@ use App\Module\Invoices\Application\Delivery\GoodsToDeliver;
 use App\Module\Invoices\Application\Delivery\InvoiceDeliveries;
 use App\Module\Invoices\Application\Delivery\InvoiceDeliveryNote;
 use App\Module\Invoices\Application\InvoiceTotals;
+use App\Module\Invoices\Application\Receiver\InvoiceReceiverSettings;
 use App\Module\Invoices\Application\SourceDeliveryNote;
 use App\Module\Invoices\Application\SourceDeliveryNoteLines;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\Model\InvoiceLine;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Settings\Application\ReadSetting;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\Uid\Uuid;
@@ -43,13 +45,21 @@ final readonly class InvoiceView
         private CompanyGuard $guard,
         private ModuleStates $modules,
         private DeliveryNotesOfInvoices $deliveries,
+        private ReadSetting $settings,
     ) {
     }
 
-    /** @param array<string, string> $sourceRoom what a draft's lines may take of their delivery note lines, by note line id */
+    /**
+     * One invoice, with whether its customer's invoices name who received: a page of the list leaves that out, read one
+     * customer at a time.
+     *
+     * @param array<string, string> $sourceRoom what a draft's lines may take of their delivery note lines, by note line id
+     */
     public function of(Company $company, Invoice $invoice, bool $withCosts = false, array $sourceRoom = []): InvoiceResource
     {
-        return $this->delivered(InvoiceResource::of($invoice, $this->totals->figures($invoice), $withCosts, $sourceRoom, $this->notesOf($company, [$invoice])[0]), $invoice, $this->deliveriesOf($company, [$invoice]));
+        $rule = InvoiceReceiverSettings::ruleFor($this->settings, $invoice->getCustomer());
+
+        return $this->delivered(InvoiceResource::of($invoice, $this->totals->figures($invoice), $withCosts, $sourceRoom, $this->notesOf($company, [$invoice])[0], $rule), $invoice, $this->deliveriesOf($company, [$invoice]));
     }
 
     /**

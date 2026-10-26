@@ -997,6 +997,9 @@
       "reception_block": "Print the receipt block (date and time, name, signature and stamp, reservations)",
       "receiver": "Name who received the goods"
     },
+    "invoice": {
+      "receiver": "Name who received the goods handed over with the invoice"
+    },
     "presentation": {
       "accent": "Accent colour",
       "scheme": "Colour scheme",
@@ -1117,6 +1120,13 @@
           "off": "Never",
           "optional": "When wished",
           "required": "Always, at delivery"
+        }
+      },
+      "invoice": {
+        "receiver": {
+          "off": "Never",
+          "optional": "When wished",
+          "required": "Always, at issue"
         }
       },
       "quote": {
@@ -1462,6 +1472,7 @@
       "amountDue": "Amount due",
       "notesPrinted": "Notes printed on the invoice",
       "notesInternal": "Internal notes",
+      "receivedBy": "Received by",
       "operationCategory": "Operations"
     },
     "form": {

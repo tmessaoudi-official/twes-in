@@ -36,6 +36,7 @@ import {
   documentTaxOptions,
   invoiceForm,
   figuresReady,
+  handsGoods,
   invoiceInput,
   invoiceValues,
   linesArray,
@@ -56,6 +57,8 @@ import { linePriced } from '../shared/customer-display/line-price';
 import { liveRecord } from '../shared/form/live-record';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { PartConflict } from '../shared/form/part-conflict';
+import { type ReceiverContact, receiverChoice, receiverForm } from '../shared/receivers/receiver';
+import { ReceiverField } from '../shared/receivers/receiver-field';
 import { RecordChanged } from '../shared/form/record-changed';
 import { InvoicesFacade } from './invoices-facade';
 import {
@@ -134,6 +137,7 @@ export const INVOICE_PLANNED: readonly PlannedAction[] = [
     QuantityTotalsView,
     PartConflict,
     PickField,
+    ReceiverField,
     RecordChanged,
     RecordHistory,
     StatusBadge,
@@ -297,6 +301,27 @@ export class InvoicePage {
       return linesArray(current?.lines ?? [], options, this.customer());
     });
   });
+  protected readonly isReceiverConflict = (conflict: { field: string }): boolean =>
+    conflict.field === 'receivedBy';
+  /** Who received the goods, as the draft names them; keyed like the form, so a reload does not undo typing. */
+  protected readonly receiver = computed(() => {
+    if (this.formKey() === null) return null;
+    return untracked(() => receiverForm(this.current()?.receivedBy ?? null));
+  });
+  /** The customer's contacts « Reçu par » offers, read again when the invoice goes to another customer. */
+  protected readonly receiverContacts = signal<readonly ReceiverContact[]>([]);
+  private readonly savedReceiver = computed(() => {
+    const current = this.current();
+    if (current === undefined) return null;
+    const receivedBy = current?.receivedBy ?? null;
+    return {
+      name: receivedBy?.name ?? '',
+      contactId: receivedBy?.contactId ?? null,
+      addToContacts: false,
+    };
+  });
+  protected readonly receiverChanges = unsavedChanges(this.receiver, this.savedReceiver);
+
   /** The saved version the document stands on, and what another person's save changed in it. */
   protected readonly sync = liveRecord({
     kind: 'invoice',
@@ -313,8 +338,20 @@ export class InvoicePage {
       return current && options ? invoiceValues(current, options) : null;
     },
     version: () => this.current()?.version ?? null,
-    // The lines and the document taxes are one field: a line is never merged with another person's.
+    // The lines and the document taxes are one field: a line is never merged with another person's; so is who received.
     parts: [
+      {
+        field: 'receivedBy',
+        saved: () => {
+          const saved = this.savedReceiver();
+          return saved === null ? null : JSON.stringify([saved.name, saved.contactId]);
+        },
+        shown: () => {
+          const shown = this.receiver()?.getRawValue();
+          return JSON.stringify([shown?.name ?? '', shown?.contactId ?? null]);
+        },
+        take: () => this.showSavedReceiver(),
+      },
       {
         field: 'lines',
         saved: () => {
@@ -337,6 +374,22 @@ export class InvoicePage {
   protected readonly nets = computed(() => (this.current()?.lines ?? []).map((line) => line.net));
   /** Bumped by every value the form or the lines take, so the figures read what is typed now. */
   private readonly typed = signal(0);
+  /**
+   * The draft asks who received the goods it hands over itself, as its lines are typed, unless the customer's invoices
+   * name nobody; a receiver already named stays shown, so a refusal of it is said under it rather than going unseen.
+   */
+  protected readonly receiverAsked = computed(() => {
+    this.typed();
+    const current = this.current();
+    if (!this.editable() || current === undefined) return false;
+    if (current?.receivedBy) return true;
+    const ofGoods = current === null || (current.type === 'invoice' && !current.deposit);
+    return (
+      ofGoods &&
+      (current?.receiverRule ?? 'optional') !== 'off' &&
+      handsGoods(this.lines()?.getRawValue() ?? [])
+    );
+  });
   /** The establishment the document is typed at, whose shelves its lines read; null for the main one. */
   protected readonly typedEstablishment = computed(() => {
     this.typed();
@@ -696,7 +749,14 @@ export class InvoicePage {
   private readonly revisedHere = (): void => {
     const form = this.form();
     if (form !== null) this.sync.savedHere(form);
+    this.showSavedReceiver();
   };
+
+  /** Shows who the saved invoice names, in place of what the field holds. */
+  private showSavedReceiver(): void {
+    const saved = this.savedReceiver();
+    if (saved !== null) this.receiver()?.reset(saved);
+  }
 
   /** A save made over a version saved since is merged and said; any other refusal stays as the screen shows it. */
   private async refused(): Promise<void> {
@@ -723,8 +783,18 @@ export class InvoicePage {
     };
     this.customerRefused.set(said('customerId'));
     this.documentTaxesRefused.set(said('documentTaxComponentIds'));
+    const receiver = this.receiver();
+    const receiverRefused = said('receivedBy');
+    const receiverPlaced = receiverRefused !== null && receiver !== null && this.receiverAsked();
+    if (receiverPlaced) {
+      receiver.controls.name.setErrors({ refused: receiverRefused });
+      receiver.controls.name.markAsTouched();
+    }
     const header = rest.filter(
-      (each) => each.field !== 'customerId' && each.field !== 'documentTaxComponentIds',
+      (each) =>
+        each.field !== 'customerId' &&
+        each.field !== 'documentTaxComponentIds' &&
+        !(receiverPlaced && each.field === 'receivedBy'),
     );
     const unplaced = header.length > 0 ? (this.headerEditor()?.showRefused(header) ?? header) : [];
     this.refusalLine.placed(refusals, unplaced);
@@ -837,6 +907,16 @@ export class InvoicePage {
 
   constructor() {
     this.unsaved.declare(this.customerChanges);
+    // « Reçu par » offers the contacts of the customer the draft names now; an answer for an earlier one is dropped.
+    effect(() => {
+      const companyId = this.company()?.id;
+      const customerId = this.customer()?.id;
+      untracked(() => this.receiverContacts.set([]));
+      if (!companyId || !customerId || !this.receiverAsked()) return;
+      void untracked(() => this.facade.receivers(companyId, customerId)).then((contacts) => {
+        if (this.customer()?.id === customerId) this.receiverContacts.set(contacts);
+      });
+    });
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
     // declaration, so an action cannot be offered in one of them and missing from another.
     inject(ScreenActions).declare(this.actions);
@@ -1029,6 +1109,8 @@ export class InvoicePage {
   /** Naming another customer charges the document what that customer would be charged, and discounts its lines so. */
   protected chooseCustomer(option: PickOption | null): void {
     const customer = option === null ? null : (this.knownCustomers.get(option.id) ?? null);
+    // A contact is the customer's: named for another, it stays as a name typed.
+    if (customer?.id !== this.customer()?.id) this.receiver()?.controls.contactId.setValue(null);
     this.customer.set(customer);
     this.customerMissing.set(customer === null);
     this.customerRefused.set(null);
@@ -1197,11 +1279,19 @@ export class InvoicePage {
     if (form === null || lines === null || this.busy()) return null;
     const customerId = this.customer()?.id ?? '';
     this.customerMissing.set(customerId === '');
-    if (form.invalid || lines.invalid || customerId === '') {
+    const receiver = this.receiverAsked() ? this.receiver() : null;
+    if (form.invalid || lines.invalid || customerId === '' || receiver?.invalid === true) {
       form.markAllAsTouched();
       lines.markAllAsTouched();
+      receiver?.markAllAsTouched();
       return null;
     }
-    return invoiceInput(form.getRawValue(), lines, this.documentTaxes(), customerId);
+    return invoiceInput(
+      form.getRawValue(),
+      lines,
+      this.documentTaxes(),
+      customerId,
+      receiver === null ? null : receiverChoice(receiver),
+    );
   }
 }

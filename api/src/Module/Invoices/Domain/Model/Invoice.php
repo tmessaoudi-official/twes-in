@@ -36,6 +36,8 @@ use App\Shared\Domain\Event\DomainEvent;
 use App\Shared\Domain\Service\CompanyOwned;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\PrintSettings;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
@@ -138,6 +140,16 @@ class Invoice implements CompanyOwned
 
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
     private ?string $discountAmount = null;
+
+    /**
+     * Who received the goods it hands over itself, as it prints them; with the customer's contact it was copied from, when
+     * there was one. Fixed with the rest once it is issued.
+     */
+    #[ORM\Column(length: Receiver::NAME_MAX, nullable: true)]
+    private ?string $receivedByName = null;
+
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $receivedByContactId = null;
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $dueDate = null;
@@ -312,6 +324,7 @@ class Invoice implements CompanyOwned
         $invoice->apply($header);
         $invoice->writeLines($invoice->deductionsFor($invoice->linesOfThisCompany($lines), $invoice->customer));
         $invoice->writeDocumentTaxes($invoice->documentTaxesOfThisCompany($documentTaxes));
+        $invoice->assertReceiverHandsGoods();
 
         return $invoice;
     }
@@ -459,6 +472,9 @@ class Invoice implements CompanyOwned
         $this->assertDraft('changes');
         $this->assertOwnDiscount($header);
         [$establishment, $customer, $lines, $documentTaxes] = $this->checkedRevision($establishment, $customer, $lines, $documentTaxes);
+        if (null !== $header->receivedBy && [] === $this->goodsAmong($lines)) {
+            throw self::receiverWithoutGoods();
+        }
 
         $changed = [];
         if (!$establishment->getId()->equals($this->establishment->getId())) {
@@ -526,6 +542,7 @@ class Invoice implements CompanyOwned
         if (null !== $preview->correctsInvoice) {
             $preview->retakeTaxes();
         }
+        $preview->assertReceiverHandsGoods();
 
         return $preview;
     }
@@ -948,7 +965,41 @@ class Invoice implements CompanyOwned
 
     public function getHeader(): InvoiceHeader
     {
-        return new InvoiceHeader($this->supplyDate, $this->paymentTermsDays, $this->customerReference, $this->notesPrinted, $this->notesInternal, $this->discountAmount, $this->isIssued() ? null : $this->operationCategory);
+        return new InvoiceHeader($this->supplyDate, $this->paymentTermsDays, $this->customerReference, $this->notesPrinted, $this->notesInternal, $this->discountAmount, $this->isIssued() ? null : $this->operationCategory, $this->receiver());
+    }
+
+    /**
+     * Its lines of goods it bills and hands over itself, in order: lines naming a product, neither taken from a delivery
+     * note, which handed those goods over, nor giving a deposit back; none for a credit note or a deposit.
+     *
+     * @return list<InvoiceLine>
+     */
+    public function goodsOfItsOwn(): array
+    {
+        if (InvoiceType::Invoice !== $this->documentType || $this->deposit) {
+            return [];
+        }
+
+        return array_values(array_filter($this->getLines(), static fn (InvoiceLine $line): bool => null !== $line->getProduct() && null === $line->getSourceDeliveryNoteLineId() && null === $line->getDeduction()));
+    }
+
+    /**
+     * Whether who received its goods is as its customer's documents ask: anyone refused where they name nobody, and
+     * nobody refused where they must name someone and it hands goods over itself. A document handing no goods over
+     * names nobody, whatever the rule.
+     *
+     * @throws InvalidInvoice
+     */
+    public function assertReceiverRule(ReceiverRule $rule): void
+    {
+        $this->assertReceiverHandsGoods();
+        if ([] === $this->goodsOfItsOwn()) {
+            return;
+        }
+        $refused = $rule->refusal($this->receiver());
+        if (null !== $refused) {
+            throw new InvalidInvoice('receivedBy', $refused->message, $refused->reason, $refused->params);
+        }
     }
 
     /**
@@ -1317,6 +1368,42 @@ class Invoice implements CompanyOwned
         $this->notesInternal = $header->notesInternal;
         $this->discountAmount = $header->discountAmount;
         $this->operationCategory = $header->operationCategory;
+        $this->receivedByName = $header->receivedBy?->name;
+        $this->receivedByContactId = $header->receivedBy?->contactId;
+    }
+
+    private function receiver(): ?Receiver
+    {
+        return null === $this->receivedByName ? null : Receiver::named($this->receivedByName, $this->receivedByContactId);
+    }
+
+    /** @throws InvalidInvoice */
+    private function assertReceiverHandsGoods(): void
+    {
+        if (null !== $this->receivedByName && [] === $this->goodsOfItsOwn()) {
+            throw self::receiverWithoutGoods();
+        }
+    }
+
+    /**
+     * The lines of goods a revision would hand over itself, read as `goodsOfItsOwn` reads the lines written.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<InvoiceLineDetails>
+     */
+    private function goodsAmong(array $lines): array
+    {
+        if (InvoiceType::Invoice !== $this->documentType || $this->deposit) {
+            return [];
+        }
+
+        return array_values(array_filter($lines, static fn (InvoiceLineDetails $line): bool => null !== $line->product && null === $line->sourceDeliveryNoteLineId && null === $line->deduction));
+    }
+
+    private static function receiverWithoutGoods(): InvalidInvoice
+    {
+        return new InvalidInvoice('receivedBy', 'This document hands over no goods of its own: only an invoice of goods it sells itself names who received them.', 'receiver_off');
     }
 
     /** @param list<InvoiceLineDetails> $lines */

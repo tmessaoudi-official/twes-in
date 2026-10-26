@@ -43,6 +43,9 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider\InvoiceCollect
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider\InvoiceItemProvider;
 use App\Module\Products\Domain\Service\LotCode;
 use App\Shared\Application\ListLimits;
+use App\Shared\Application\Receivers\ReceiverChoice;
+use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -365,6 +368,44 @@ final class InvoiceResource
     public ?string $notesInternal = null;
 
     /**
+     * Who received the goods the invoice hands over itself (its lines of a product neither taken from a delivery note
+     * nor giving a deposit back), as it copied them: `{name, contactId}`, contactId the customer's contact named or null
+     * for a name typed; null while nobody is named. Chosen on the draft and printed on the issued invoice, never changed
+     * once issued. Sent to a save and a preview: `{contactId}` names one of the customer's contacts (GET
+     * .../invoice-options/customers/{customerId}/receivers), whose name is copied as it reads now; `{name,
+     * addToContacts}` a name typed, added to the customer's contacts when asked; null, nobody. Sent back as read, the
+     * receiver is kept as it was copied. Refused naming `receivedBy`: `unknown_choice`, `invalid_text`, `receiver_off`
+     * where the customer's invoices name nobody or the document hands no goods over itself, and, at issue,
+     * `receiver_required` for an invoice handing goods over that names nobody where they must name someone.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ApiProperty(schema: [
+        'type' => ['object', 'null'],
+        'properties' => [
+            'contactId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+            'name' => ['type' => ['string', 'null'], 'maxLength' => Receiver::NAME_MAX],
+            'addToContacts' => ['type' => 'boolean', 'writeOnly' => true, 'description' => 'Adds the name typed to the customer\'s contacts as it is recorded.'],
+        ],
+    ])]
+    #[Assert\Collection(fields: [
+        'contactId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'name' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'addToContacts' => new Assert\Optional([new Assert\Type('bool', groups: [self::WRITE])], groups: [self::WRITE]),
+    ], groups: [self::WRITE])]
+    // count: an object of three named keys, which Assert\Collection holds to them, never a list
+    #[Groups([self::READ, self::WRITE])]
+    public ?array $receivedBy = null;
+
+    /**
+     * Whether the customer's invoices name who received the goods they hand over: `off`, `optional` or `required` (the
+     * setting invoice.receiver); null on a page of the list, which does not read it.
+     */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'enum' => ['off', 'optional', 'required', null]])]
+    #[Groups([self::READ])]
+    public ?string $receiverRule = null;
+
+    /**
      * An amount off the whole document, spread over its lines; at most what the lines come to. A credit note takes none
      * of its own: it gives back its share of its invoice's, which `documentDiscount` answers.
      */
@@ -616,8 +657,9 @@ final class InvoiceResource
      * @param bool                     $withCosts     whether the caller may read costs (product.cost.read), which each issued line froze
      * @param array<string, string>    $sourceRoom    what a draft's lines may take of their delivery note lines, by note line id
      * @param list<SourceDeliveryNote> $deliveryNotes the delivery notes its lines were taken from, each once, by number
+     * @param ReceiverRule|null        $receiverRule  whether its customer's invoices name who received; null on a page of the list
      */
-    public static function of(Invoice $invoice, InvoiceFigures $figures, bool $withCosts = false, array $sourceRoom = [], array $deliveryNotes = []): self
+    public static function of(Invoice $invoice, InvoiceFigures $figures, bool $withCosts = false, array $sourceRoom = [], array $deliveryNotes = [], ?ReceiverRule $receiverRule = null): self
     {
         $header = $invoice->getHeader();
         $resource = new self();
@@ -640,6 +682,8 @@ final class InvoiceResource
         $resource->customerReference = $header->customerReference;
         $resource->notesPrinted = $header->notesPrinted;
         $resource->notesInternal = $header->notesInternal;
+        $resource->receivedBy = null === $header->receivedBy ? null : ['name' => $header->receivedBy->name, 'contactId' => $header->receivedBy->contactId?->toRfc4122()];
+        $resource->receiverRule = $receiverRule?->value;
         $resource->discountAmount = $header->discountAmount;
         $resource->operationCategory = ($invoice->getOperationCategory() ?? $header->operationCategory)?->value;
         $resource->vatOnDebits = $invoice->getVatOnDebits();
@@ -735,7 +779,20 @@ final class InvoiceResource
             ),
             $lines,
             null === $this->documentTaxComponentIds ? null : self::uuids($this->documentTaxComponentIds),
+            $this->receiverChoice(),
         );
+    }
+
+    /** Who the request named as receiver; null for nobody. */
+    private function receiverChoice(): ?ReceiverChoice
+    {
+        if (null === $this->receivedBy) {
+            return null;
+        }
+        $contactId = $this->receivedBy['contactId'] ?? null;
+        $name = $this->receivedBy['name'] ?? null;
+
+        return new ReceiverChoice(\is_string($contactId) ? $contactId : null, \is_string($name) ? $name : null, true === ($this->receivedBy['addToContacts'] ?? false));
     }
 
     /**
