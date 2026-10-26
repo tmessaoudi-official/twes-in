@@ -28,6 +28,7 @@ import { ArticleSettings } from '../products/article-settings-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -38,6 +39,12 @@ class StaticLoader implements TranslateLoader {
           yes: 'Oui',
           no: 'Non',
           errors: { code_taken: 'Un autre établissement porte déjà ce code.' },
+        },
+      },
+      import: {
+        rejections: {
+          default_kept: 'L’entreprise garde toujours un établissement par défaut.',
+          code_kept: 'Des documents numérotés portent ce code : il ne change plus.',
         },
       },
     });
@@ -63,10 +70,12 @@ const head: EstablishmentRow = {
 describe('EstablishmentsPage', () => {
   const error = signal<CompanyError | null>(null);
   const establishments = signal<readonly EstablishmentRow[]>([head]);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const facade = {
     establishments: establishments.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadEstablishments: vi.fn(),
     createEstablishment: vi.fn(),
     reviseEstablishment: vi.fn(),
@@ -110,6 +119,7 @@ describe('EstablishmentsPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    refusals.set([]);
     establishments.set([head]);
     facade.loadEstablishments.mockReset().mockResolvedValue(undefined);
     facade.clearError.mockReset().mockImplementation(() => error.set(null));
@@ -221,6 +231,31 @@ describe('EstablishmentsPage', () => {
     await settle();
 
     expect(facade.createEstablishment).not.toHaveBeenCalled();
+  });
+
+  it('says each refusal of a save under its field', async () => {
+    q('row-action-edit-e1')!.click();
+    await settle();
+    facade.reviseEstablishment.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'isDefault', reason: 'default_kept', params: {} },
+        { field: 'code', reason: 'code_kept', params: {} },
+      ]);
+      return false;
+    });
+    type('field-name', 'Siège social');
+    fixture.detectChanges();
+    q('establishment-save')!.click();
+    await settle();
+
+    expect(facade.reviseEstablishment).toHaveBeenCalled();
+    expect(q('field-error-isDefault')?.textContent).toContain(
+      'L’entreprise garde toujours un établissement par défaut.',
+    );
+    expect(q('field-error-code')?.textContent).toContain(
+      'Des documents numérotés portent ce code : il ne change plus.',
+    );
   });
 
   it('revises an establishment by its identifier', async () => {

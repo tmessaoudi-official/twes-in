@@ -120,10 +120,10 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
                 throw new EstablishmentCodeTaken(\sprintf('The company already has an establishment coded %s.', $code));
             }
             if ($code !== $establishment->getCode() && $this->isCodeLocked($company, $establishment)) {
-                throw new InvalidEstablishment('code', \sprintf('Numbered documents carry the code %s: it no longer changes.', $establishment->getCode()));
+                throw new InvalidEstablishment('code', \sprintf('Numbered documents carry the code %s: it no longer changes.', $establishment->getCode()), 'code_kept');
             }
             if ($establishment->isDefault() && !$details->isDefault) {
-                throw new InvalidEstablishment('isDefault', 'A company keeps one default establishment: make another one the default instead.');
+                throw new InvalidEstablishment('isDefault', 'A company keeps one default establishment: make another one the default instead.', 'default_kept');
             }
 
             $now = $this->clock->now();
@@ -159,9 +159,10 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
     private function checkedCode(Company $company, string $code): string
     {
         $code = TypedText::trimmed($code);
-        $pattern = $this->codePattern($company);
-        if (1 !== preg_match('#'.str_replace('#', '\#', $pattern).'#u', $code)) {
-            throw new InvalidEstablishment('code', \sprintf('"%s" does not have the shape the %s preset gives an establishment code.', $code, $company->getFiscalPreset()));
+        $preset = $this->presets->get($company->getFiscalPreset())->establishment;
+        if (1 !== preg_match('#'.str_replace('#', '\#', $preset->codePattern).'#u', $code)) {
+            // The preset's own first code shows the shape: a pattern means nothing to the person typing.
+            throw new InvalidEstablishment('code', \sprintf('"%s" does not have the shape the %s preset gives an establishment code.', $code, $company->getFiscalPreset()), 'establishment_code', ['example' => $preset->defaultCode]);
         }
 
         return $code;

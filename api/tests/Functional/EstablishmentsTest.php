@@ -66,6 +66,7 @@ final class EstablishmentsTest extends ApiTestCase
         $this->postJson($this->path(), ['code' => '12', 'name' => 'Agence']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'code', 'reason' => 'establishment_code', 'params' => ['example' => '000']]], $this->refusals());
     }
 
     public function testACodeAlreadyUsedIsAConflict(): void
@@ -98,6 +99,7 @@ final class EstablishmentsTest extends ApiTestCase
         $this->revise($this->idOf('000'), ['code' => '000', 'name' => 'Siège', 'isDefault' => false]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'isDefault', 'reason' => 'default_kept', 'params' => []]], $this->refusals());
     }
 
     public function testAnAdministratorCorrectsTheDefaultEstablishment(): void
@@ -128,6 +130,7 @@ final class EstablishmentsTest extends ApiTestCase
         $this->revise($id, ['code' => '002', 'name' => 'Acme', 'isDefault' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('code', $this->stringAt($this->json(), 'detail'));
+        self::assertSame([['propertyPath' => 'code', 'reason' => 'code_kept', 'params' => []]], $this->refusals());
 
         $this->revise($id, ['code' => '000', 'name' => 'Siège social', 'isDefault' => true]);
         self::assertResponseIsSuccessful();

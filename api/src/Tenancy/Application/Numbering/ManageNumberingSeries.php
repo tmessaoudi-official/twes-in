@@ -67,7 +67,7 @@ final readonly class ManageNumberingSeries implements DeclaresAuditActions
                 $this->versions->expect($series, $version);
             }
             $reset = ResetPeriod::tryFrom($changes->resetPeriod)
-                ?? throw new InvalidNumbering('resetPeriod', \sprintf('"%s" is not a reset period: %s.', $changes->resetPeriod, implode(', ', array_map(static fn (ResetPeriod $p): string => $p->value, ResetPeriod::cases()))));
+                ?? throw new InvalidNumbering('resetPeriod', \sprintf('"%s" is not a reset period: %s.', $changes->resetPeriod, implode(', ', array_map(static fn (ResetPeriod $p): string => $p->value, ResetPeriod::cases()))), 'unknown_choice');
 
             $format = new NumberFormat($changes->format);
             // One document type's numbers are one company's, whichever establishment issues them: the refusal comes

@@ -74,7 +74,7 @@ final class CustomFieldResource
     public ?string $id = null;
 
     #[ApiProperty(schema: ['type' => 'string', 'enum' => ['customer', 'product']])]
-    #[Assert\Choice(callback: [self::class, 'entities'], groups: [self::WRITE])]
+    #[Assert\Choice(callback: [self::class, 'entities'], groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public string $entity = 'customer';
 
@@ -83,14 +83,14 @@ final class CustomFieldResource
     #[Groups([self::READ, self::WRITE])]
     public string $key = '';
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Length(max: CustomFieldDefinition::LABEL_MAX, groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: CustomFieldDefinition::LABEL_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => CustomFieldDefinition::LABEL_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public string $label = '';
 
     /** Fixed once declared. */
     #[ApiProperty(schema: ['type' => 'string', 'enum' => ['text', 'number', 'date', 'bool', 'choice']])]
-    #[Assert\Choice(callback: [self::class, 'types'], groups: [self::WRITE])]
+    #[Assert\Choice(callback: [self::class, 'types'], groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public string $type = 'text';
 
@@ -100,11 +100,11 @@ final class CustomFieldResource
     /** @var list<string> the values a choice field offers, in order; empty for any other type */
     #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Type('string')], groups: [self::WRITE])]
-    #[Assert\Count(max: CustomFieldDefinition::CHOICES_MAX, groups: [self::WRITE])]
+    #[Assert\Count(max: CustomFieldDefinition::CHOICES_MAX, groups: [self::WRITE], payload: ['reason' => 'choices_count', 'params' => ['max' => CustomFieldDefinition::CHOICES_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public array $choices = [];
 
-    #[Assert\Range(min: 0, max: 10000, groups: [self::WRITE])]
+    #[Assert\Range(min: 0, max: 10000, groups: [self::WRITE], payload: ['reason' => 'whole_number_between', 'params' => ['min' => 0, 'max' => 10000]])]
     #[Groups([self::READ, self::WRITE])]
     public int $sortOrder = 0;
 

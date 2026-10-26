@@ -64,38 +64,38 @@ final class EstablishmentResource
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
     #[Assert\Regex(pattern: Establishment::CODE, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public string $code = '';
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Length(max: 120, groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: 120, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 120]])]
     #[Groups([self::READ, self::WRITE])]
     public string $name = '';
 
-    #[Assert\Length(max: 200, groups: [self::WRITE])]
+    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $addressLine1 = null;
 
-    #[Assert\Length(max: 200, groups: [self::WRITE])]
+    #[Assert\Length(max: 200, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 200]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $addressLine2 = null;
 
-    #[Assert\Length(max: 20, groups: [self::WRITE])]
+    #[Assert\Length(max: 20, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 20]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $postalCode = null;
 
-    #[Assert\Length(max: 120, groups: [self::WRITE])]
+    #[Assert\Length(max: 120, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 120]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $city = null;
 
-    #[Assert\Length(max: 40, groups: [self::WRITE])]
+    #[Assert\Length(max: 40, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 40]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $phone = null;
 
-    #[Assert\Email(groups: [self::WRITE])]
-    #[Assert\Length(max: 254, groups: [self::WRITE])]
+    #[Assert\Email(groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
+    #[Assert\Length(max: 254, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 254]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;
 

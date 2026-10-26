@@ -81,7 +81,7 @@ class NumberingSeries implements CompanyOwned
     private function __construct(Company $company, Establishment $establishment, string $documentType, \DateTimeImmutable $now)
     {
         if (1 !== preg_match(self::DOCUMENT_TYPE, $documentType)) {
-            throw new InvalidNumbering('documentType', \sprintf('"%s" is not a document type.', $documentType));
+            throw new InvalidNumbering('documentType', \sprintf('"%s" is not a document type.', $documentType), 'unknown_choice');
         }
         $this->id = Uuid::v7();
         $this->company = $company;
@@ -114,11 +114,11 @@ class NumberingSeries implements CompanyOwned
     public function revise(NumberFormat $format, ResetPeriod $resetPeriod, int $nextNumber, \DateTimeImmutable $now): bool
     {
         if ($nextNumber < 1) {
-            throw new InvalidNumbering('nextNumber', 'A sequence resumes at one or above.');
+            throw new InvalidNumbering('nextNumber', 'A sequence resumes at one or above.', 'sequence_from', ['next' => 1]);
         }
         self::assertPrintsItsPeriod($format, $resetPeriod);
         if ($this->isNumbered() && $nextNumber !== $this->nextNumber) {
-            throw new InvalidNumbering('nextNumber', \sprintf('Documents already carry numbers from this series: it resumes at %d, so no number is skipped or issued twice.', $this->nextNumber));
+            throw new InvalidNumbering('nextNumber', \sprintf('Documents already carry numbers from this series: it resumes at %d, so no number is skipped or issued twice.', $this->nextNumber), 'sequence_from', ['next' => $this->nextNumber]);
         }
         if ($format->pattern === $this->format && $resetPeriod === $this->resetPeriod && $nextNumber === $this->nextNumber) {
             return false;
@@ -196,13 +196,14 @@ class NumberingSeries implements CompanyOwned
      */
     private static function assertPrintsItsPeriod(NumberFormat $format, ResetPeriod $resetPeriod): void
     {
+        $reason = ResetPeriod::Monthly === $resetPeriod ? 'format_prints_month' : 'format_prints_year';
         $message = match ($resetPeriod) {
             ResetPeriod::Yearly => $format->printsYear() ? null : 'A series that starts again each year prints the year, {YYYY} or {YY}: otherwise the first number of a new year is one it already gave.',
             ResetPeriod::Monthly => $format->printsYear() && $format->printsMonth() ? null : 'A series that starts again each month prints the month and the year, {MM} with {YYYY} or {YY}: otherwise the first number of a new month is one it already gave.',
             ResetPeriod::Never => null,
         };
         if (null !== $message) {
-            throw new InvalidNumbering('format', $message);
+            throw new InvalidNumbering('format', $message, $reason);
         }
     }
 

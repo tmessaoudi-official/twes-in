@@ -32,17 +32,17 @@ final readonly class NumberFormat
     public function __construct(string $pattern)
     {
         if ('' === TypedText::trimmed($pattern)) {
-            throw new InvalidNumbering('format', 'A numbering format cannot be blank.');
+            throw new InvalidNumbering('format', 'A numbering format cannot be blank.', 'value_required');
         }
         if (\strlen($pattern) > self::MAX_LENGTH) {
-            throw new InvalidNumbering('format', \sprintf('A numbering format holds at most %d characters.', self::MAX_LENGTH));
+            throw new InvalidNumbering('format', \sprintf('A numbering format holds at most %d characters.', self::MAX_LENGTH), 'invalid_text', ['max' => self::MAX_LENGTH]);
         }
 
         $sequences = 0;
         foreach (self::parts($pattern) as $part) {
             if (!str_starts_with($part, '{')) {
                 if (1 !== preg_match(self::LITERAL, $part)) {
-                    throw new InvalidNumbering('format', \sprintf('"%s" may only carry letters, digits, spaces, "_", ".", "/" and "-" around its tokens.', $pattern));
+                    throw new InvalidNumbering('format', \sprintf('"%s" may only carry letters, digits, spaces, "_", ".", "/" and "-" around its tokens.', $pattern), 'numbering_format', ['max' => self::MAX_PADDING]);
                 }
                 continue;
             }
@@ -51,16 +51,16 @@ final readonly class NumberFormat
                 continue;
             }
             if (1 !== preg_match('/^SEQ(?::([0-9]{1,2}))?$/', $token, $match)) {
-                throw new InvalidNumbering('format', \sprintf('"%s" is not a numbering token: use {YYYY}, {YY}, {MM}, {EST}, {SEQ} or {SEQ:n}.', $part));
+                throw new InvalidNumbering('format', \sprintf('"%s" is not a numbering token: use {YYYY}, {YY}, {MM}, {EST}, {SEQ} or {SEQ:n}.', $part), 'numbering_format', ['max' => self::MAX_PADDING]);
             }
             $padding = isset($match[1]) ? (int) $match[1] : 1;
             if ($padding < 1 || $padding > self::MAX_PADDING) {
-                throw new InvalidNumbering('format', \sprintf('A sequence is padded to 1 to %d digits.', self::MAX_PADDING));
+                throw new InvalidNumbering('format', \sprintf('A sequence is padded to 1 to %d digits.', self::MAX_PADDING), 'numbering_format', ['max' => self::MAX_PADDING]);
             }
             ++$sequences;
         }
         if (1 !== $sequences) {
-            throw new InvalidNumbering('format', 'A numbering format carries exactly one sequence, {SEQ} or {SEQ:n}.');
+            throw new InvalidNumbering('format', 'A numbering format carries exactly one sequence, {SEQ} or {SEQ:n}.', 'numbering_format', ['max' => self::MAX_PADDING]);
         }
 
         $this->pattern = $pattern;

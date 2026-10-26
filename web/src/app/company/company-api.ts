@@ -37,7 +37,7 @@ import { refusedFor } from '../shared/errors/said-already';
 export class CompanyRefused extends Error {
   constructor(
     readonly code: CompanyError,
-    /** Each field a profile revision was refused on, when the API named them. */
+    /** Each field a revision was refused on, when the API named them. */
     readonly refusals: readonly FieldRefusal[] = [],
   ) {
     super(code);
@@ -222,7 +222,6 @@ export class CompanyApi {
         ),
       );
     } catch (error) {
-      // Only a revision names its fields: the other calls' refusals are about the row as a whole.
       throw refusedFor(error, new CompanyRefused(profileCodeOf(error), refusalsOf(error)));
     }
   }
@@ -330,7 +329,7 @@ export class CompanyApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new CompanyRefused(refusal(error)));
+      throw refusedFor(error, new CompanyRefused(refusal(error), refusalsOf(error)));
     }
   }
 }
@@ -503,7 +502,7 @@ function codeOf(error: unknown): CompanyError {
   }
 }
 
-/** The fields a profile revision was refused on, read from a 422's body only. */
+/** The fields a save was refused on, read from a 422's body only. */
 function refusalsOf(error: unknown): readonly FieldRefusal[] {
   return error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
 }

@@ -79,6 +79,24 @@ describe('EstablishmentsFacade', () => {
     expect(api.establishments).not.toHaveBeenCalled();
   });
 
+  it('keeps the fields a save was refused on until the next save', async () => {
+    const kept = { field: 'isDefault', reason: 'default_kept', params: {} };
+    api.reviseEstablishment.mockRejectedValueOnce(new CompanyRefused('invalid', [kept]));
+    expect(await facade.reviseEstablishment('c1', 'e1', sfax, 1)).toBe(false);
+    expect(facade.refusals()).toEqual([kept]);
+
+    const format = { field: 'format', reason: 'numbering_format', params: { max: 12 } };
+    api.reviseNumberingSeries.mockRejectedValueOnce(new CompanyRefused('invalid', [format]));
+    const changes = { format: 'F', nextNumber: 1, resetPeriod: 'yearly' } as const;
+    expect(await facade.reviseSeries('c1', 's1', changes, 1)).toBe(false);
+    expect(facade.refusals()).toEqual([format]);
+
+    api.reviseEstablishment.mockResolvedValueOnce(head);
+    api.establishments.mockResolvedValue([head]);
+    await facade.reviseEstablishment('c1', 'e1', sfax, 1);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it('reads the series again after revising one', async () => {
     const revised = { ...invoices, format: 'F-{SEQ}', preview: 'F-1' };
     api.reviseNumberingSeries.mockResolvedValue(revised);

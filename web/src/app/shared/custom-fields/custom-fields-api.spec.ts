@@ -86,6 +86,22 @@ describe('CustomFieldsApi', () => {
     await expect(changed).rejects.toEqual(new CustomFieldsRefused('record_changed'));
   });
 
+  it('names each field a save was refused on', async () => {
+    const pending = api.create('c1', sector);
+    http.expectOne('/api/companies/c1/custom-fields').flush(
+      {
+        violations: [
+          { propertyPath: 'choices', message: 'x', payload: { reason: 'choice_twice' } },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(pending).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'choices', reason: 'choice_twice', params: {} }],
+    });
+  });
+
   it('names why the API refused', async () => {
     const cases: [number, string][] = [
       [409, 'key_taken'],

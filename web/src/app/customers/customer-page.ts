@@ -353,6 +353,7 @@ export class CustomerPage {
 
   /** The record's own form, which shows what a save from the bar refused and puts the person on it. */
   private readonly mainForm = viewChild<DescriptorForm>('mainForm');
+  private readonly contactEditor = viewChild<DescriptorForm>('contactEditor');
 
   /** From the bar beside the title, which holds no form of its own. */
   protected saveFromBar(): void {
@@ -452,6 +453,9 @@ export class CustomerPage {
     } else if (this.facade.error() === 'record_changed') {
       this.facade.clearError();
       await this.contactSync.savedElsewhere();
+    } else {
+      const refused = this.facade.refusals();
+      if (refused.length > 0) this.contactEditor()?.showRefused(refused);
     }
   }
 

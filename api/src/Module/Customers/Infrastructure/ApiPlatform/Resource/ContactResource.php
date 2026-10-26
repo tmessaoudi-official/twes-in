@@ -73,24 +73,24 @@ final class ContactResource
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    #[Assert\Length(max: ContactDetails::NAME_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: ContactDetails::NAME_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ContactDetails::NAME_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $firstName = null;
 
-    #[Assert\Length(max: ContactDetails::NAME_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: ContactDetails::NAME_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ContactDetails::NAME_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $lastName = null;
 
-    #[Assert\Email(groups: [self::WRITE])]
-    #[Assert\Length(max: 254, groups: [self::WRITE])]
+    #[Assert\Email(groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
+    #[Assert\Length(max: 254, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 254]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;
 
-    #[Assert\Regex(pattern: '/^\+?[0-9 ().\-]{3,40}$/', groups: [self::WRITE])]
+    #[Assert\Regex(pattern: '/^\+?[0-9 ().\-]{3,40}$/', groups: [self::WRITE], payload: ['reason' => 'invalid_phone'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $phone = null;
 
-    #[Assert\Length(max: ContactDetails::NAME_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: ContactDetails::NAME_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => ContactDetails::NAME_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $role = null;
 

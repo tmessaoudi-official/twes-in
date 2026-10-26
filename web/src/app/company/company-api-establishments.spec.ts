@@ -72,9 +72,20 @@ describe('CompanyApi establishments and numbering', () => {
     const request = http.expectOne('/api/companies/c1/establishments/e%201');
     expect(request.request.method).toBe('PUT');
     expect(request.request.body).toEqual({ ...sfax, version: 3 });
-    request.flush({ detail: 'isDefault' }, { status: 422, statusText: 'Unprocessable' });
+    request.flush(
+      {
+        detail: 'isDefault: A company keeps one default establishment.',
+        violations: [
+          { propertyPath: 'isDefault', message: 'x', payload: { reason: 'default_kept' } },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
 
-    await expect(pending).rejects.toMatchObject({ code: 'invalid' });
+    await expect(pending).rejects.toMatchObject({
+      code: 'invalid',
+      refusals: [{ field: 'isDefault', reason: 'default_kept', params: {} }],
+    });
   });
 
   it('tells an establishment saved elsewhere since from a code another one has', async () => {

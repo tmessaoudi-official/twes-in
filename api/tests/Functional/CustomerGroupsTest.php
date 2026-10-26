@@ -98,6 +98,10 @@ final class CustomerGroupsTest extends ApiTestCase
 
         $this->postJson($this->path(), ['name' => '  ']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'name', 'reason' => 'value_required', 'params' => []]], $this->refusals());
+
+        $this->postJson($this->path(), ['name' => 'Détaillants', 'description' => str_repeat('x', 501)]);
+        self::assertSame([['propertyPath' => 'description', 'reason' => 'invalid_text', 'params' => ['max' => 500]]], $this->refusals());
     }
 
     public function testAGroupHoldingACustomerIsKept(): void

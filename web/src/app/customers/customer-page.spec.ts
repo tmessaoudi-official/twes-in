@@ -67,6 +67,7 @@ class StaticLoader implements TranslateLoader {
           invalid_email: 'E-mail refusé.',
           identifier_checksum: 'Ce numéro d’immatriculation est mal formé.',
           invalid_value: 'Valeur refusée.',
+          name_required: 'Un contact a un prénom ou un nom : remplissez l’un des deux.',
         },
       },
     });
@@ -717,6 +718,28 @@ describe('CustomerPage', () => {
       1,
     );
     expect(successToasts()).toContain('customers.saved');
+  });
+
+  it("says a refusal of a contact's save under its field", async () => {
+    customer.set(carthage);
+    await open('k1');
+    await openTab('Contacts');
+    q('contact-add')!.click();
+    await settle();
+    facade.addContact.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'lastName', reason: 'name_required', params: {} }]);
+      return false;
+    });
+    type('field-email', 'compta@carthage.tn');
+    q('contact-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('field-error-lastName')?.textContent).toContain(
+        'Un contact a un prénom ou un nom : remplissez l’un des deux.',
+      ),
+    );
   });
 
   it('adds a contact to the customer and removes one', async () => {

@@ -68,17 +68,17 @@ final class NumberingSeriesResource
     public string $documentType = '';
 
     /** Text around {YYYY}, {YY}, {MM}, {EST} and exactly one {SEQ} or {SEQ:n}. */
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Length(max: NumberFormat::MAX_LENGTH, groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: NumberFormat::MAX_LENGTH, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => NumberFormat::MAX_LENGTH]])]
     #[Groups([self::READ, self::WRITE])]
     public string $format = '';
 
-    #[Assert\Positive(groups: [self::WRITE])]
+    #[Assert\Positive(groups: [self::WRITE], payload: ['reason' => 'sequence_from', 'params' => ['next' => 1]])]
     #[Groups([self::READ, self::WRITE])]
     public int $nextNumber = 1;
 
     #[ApiProperty(schema: ['type' => 'string', 'enum' => ['yearly', 'monthly', 'never']])]
-    #[Assert\Choice(choices: ['yearly', 'monthly', 'never'], groups: [self::WRITE])]
+    #[Assert\Choice(choices: ['yearly', 'monthly', 'never'], groups: [self::WRITE], payload: ['reason' => 'unknown_choice'])]
     #[Groups([self::READ, self::WRITE])]
     public string $resetPeriod = 'yearly';
 

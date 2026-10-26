@@ -65,4 +65,15 @@ describe('CustomFieldsFacade', () => {
     facade.clearError();
     expect(facade.error()).toBeNull();
   });
+
+  it('keeps the fields a save was refused on until the next save', async () => {
+    const twice = { field: 'choices', reason: 'choice_twice', params: {} };
+    api.revise.mockRejectedValueOnce(new CustomFieldsRefused('invalid', [twice]));
+    expect(await facade.revise('c1', 'f1', input, 1)).toBe(false);
+    expect(facade.refusals()).toEqual([twice]);
+
+    api.revise.mockResolvedValueOnce(sector);
+    await facade.revise('c1', 'f1', input, 1);
+    expect(facade.refusals()).toEqual([]);
+  });
 });

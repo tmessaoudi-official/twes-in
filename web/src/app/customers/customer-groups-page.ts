@@ -172,6 +172,10 @@ export class CustomerGroupsPage implements OnInit {
     } else if (this.facade.error() === 'record_changed') {
       this.facade.clearError();
       await this.sync.savedElsewhere();
+    } else {
+      // Each field the API refused said on that field; the line above the form stays for what it says as a whole.
+      const refused = this.facade.refusals();
+      if (refused.length > 0) this.editor()?.showRefused(refused);
     }
   }
 

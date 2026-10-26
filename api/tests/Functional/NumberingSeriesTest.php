@@ -68,6 +68,10 @@ final class NumberingSeriesTest extends ApiTestCase
         $this->revise($this->idOf('invoice'), ['format' => 'FAC-{YYYY}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'format', 'reason' => 'numbering_format', 'params' => ['max' => 12]]], $this->refusals());
+
+        $this->revise($this->idOf('invoice'), ['format' => 'FAC-{YYYY}-{SEQ:13}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+        self::assertSame([['propertyPath' => 'format', 'reason' => 'numbering_format', 'params' => ['max' => 12]]], $this->refusals());
     }
 
     public function testAResetWhosePeriodTheFormatDoesNotPrintIsUnprocessable(): void
@@ -77,6 +81,10 @@ final class NumberingSeriesTest extends ApiTestCase
         $this->revise($this->idOf('invoice'), ['format' => 'F{YY}-{SEQ:4}', 'nextNumber' => 120, 'resetPeriod' => 'monthly']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'format', 'reason' => 'format_prints_month', 'params' => []]], $this->refusals());
+
+        $this->revise($this->idOf('invoice'), ['format' => 'F-{SEQ:4}', 'nextNumber' => 120, 'resetPeriod' => 'yearly']);
+        self::assertSame([['propertyPath' => 'format', 'reason' => 'format_prints_year', 'params' => []]], $this->refusals());
     }
 
     public function testASequenceBelowOneIsUnprocessable(): void
@@ -86,6 +94,7 @@ final class NumberingSeriesTest extends ApiTestCase
         $this->revise($this->idOf('invoice'), ['format' => 'FAC-{SEQ}', 'nextNumber' => 0, 'resetPeriod' => 'yearly']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'nextNumber', 'reason' => 'sequence_from', 'params' => ['next' => 1]]], $this->refusals());
     }
 
     public function testAResetPeriodThatDoesNotExistIsUnprocessable(): void
@@ -95,6 +104,7 @@ final class NumberingSeriesTest extends ApiTestCase
         $this->revise($this->idOf('invoice'), ['format' => 'FAC-{SEQ}', 'nextNumber' => 1, 'resetPeriod' => 'weekly']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'resetPeriod', 'reason' => 'unknown_choice', 'params' => []]], $this->refusals());
     }
 
     public function testAReaderMayNotReviseASeries(): void
@@ -133,6 +143,7 @@ final class NumberingSeriesTest extends ApiTestCase
         $this->revise($id, ['format' => 'BL-{YY}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('nextNumber', $this->stringAt($this->json(), 'detail'));
+        self::assertSame([['propertyPath' => 'nextNumber', 'reason' => 'sequence_from', 'params' => ['next' => 2]]], $this->refusals());
 
         $this->revise($id, ['format' => 'BL-{YY}-{SEQ:5}', 'nextNumber' => 2, 'resetPeriod' => 'yearly']);
         self::assertResponseIsSuccessful();

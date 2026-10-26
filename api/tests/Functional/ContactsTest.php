@@ -105,7 +105,10 @@ final class ContactsTest extends ApiTestCase
         $this->postJson($this->path(), ['email' => 'nobody@carthage.tn', 'isPrimary' => false]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('lastName', (string) $this->client->getResponse()->getContent());
+        self::assertSame([['propertyPath' => 'lastName', 'reason' => 'name_required', 'params' => []]], $this->refusals());
+
+        $this->postJson($this->path(), ['lastName' => str_repeat('x', 101), 'isPrimary' => false]);
+        self::assertSame([['propertyPath' => 'lastName', 'reason' => 'invalid_text', 'params' => ['max' => 100]]], $this->refusals());
     }
 
     public function testAContactIsOnlyReachedThroughItsCustomerAndAReaderOnlyReads(): void

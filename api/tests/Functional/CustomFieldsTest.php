@@ -72,7 +72,13 @@ final class CustomFieldsTest extends ApiTestCase
 
         $this->sendJson('POST', $this->path(), [...self::sector(), 'key' => 'segment', 'choices' => []]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        self::assertStringContainsString('choices', (string) $this->client->getResponse()->getContent());
+        self::assertSame([['propertyPath' => 'choices', 'reason' => 'choices_count', 'params' => ['max' => 50]]], $this->refusals());
+
+        $this->sendJson('POST', $this->path(), [...self::sector(), 'key' => 'segment', 'choices' => ['retail', 'retail']]);
+        self::assertSame([['propertyPath' => 'choices', 'reason' => 'choice_twice', 'params' => []]], $this->refusals());
+
+        $this->sendJson('POST', $this->path(), [...self::sector(), 'key' => 'segment', 'choices' => [str_repeat('x', 81)]]);
+        self::assertSame([['propertyPath' => 'choices', 'reason' => 'invalid_text', 'params' => ['max' => 80]]], $this->refusals());
 
         $this->sendJson('POST', $this->path(), [...self::sector(), 'key' => 'segment', 'choices' => ['first' => 'retail']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'choices are a list, never a map');

@@ -17,6 +17,7 @@ import {
   type CustomFieldInput,
 } from './custom-fields-types';
 import { refusedFor } from '../errors/said-already';
+import { type FieldRefusal, refusalsIn } from '../form/field-refusals';
 
 /** Why the API refused, as the screens translate it. */
 export type CustomFieldsError =
@@ -24,7 +25,11 @@ export type CustomFieldsError =
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CustomFieldsRefused extends Error {
-  constructor(readonly code: CustomFieldsError) {
+  constructor(
+    readonly code: CustomFieldsError,
+    /** Each field a save was refused on, when the API named them. */
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -82,7 +87,13 @@ export class CustomFieldsApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new CustomFieldsRefused(codeOf(error)));
+      throw refusedFor(
+        error,
+        new CustomFieldsRefused(
+          codeOf(error),
+          error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [],
+        ),
+      );
     }
   }
 }

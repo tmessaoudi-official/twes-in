@@ -13,6 +13,7 @@ import type {
   CustomFieldInput,
 } from '../shared/custom-fields/custom-fields-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /** The custom fields the company being worked in adds to one kind of record, retired ones included. */
 @Injectable({ providedIn: 'root' })
@@ -20,10 +21,13 @@ export class CustomFieldsFacade {
   private readonly api = inject(CustomFieldsApi);
   private readonly fieldsSignal = sessionSignal<readonly CustomFieldDefinition[]>([]);
   private readonly state = requestState(codeOf);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
 
   readonly fields = this.fieldsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** The fields the last save was refused on, for the form to say under each. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   async load(companyId: string, entity: CustomFieldEntity): Promise<void> {
     await this.state.read(async () =>
@@ -56,10 +60,17 @@ export class CustomFieldsFacade {
     entity: CustomFieldEntity,
     call: () => Promise<unknown>,
   ): Promise<boolean> {
-    return this.state.write(async () => {
-      await call();
-      this.fieldsSignal.set(await this.api.list(companyId, entity));
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await call();
+        this.fieldsSignal.set(await this.api.list(companyId, entity));
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof CustomFieldsRefused ? error.refusals : []),
+      },
+    );
   }
 }
 

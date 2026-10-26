@@ -30,7 +30,7 @@ final readonly class ContactDetails
         $this->firstName = self::text($firstName, 'firstName');
         $this->lastName = self::text($lastName, 'lastName');
         if (null === $this->firstName && null === $this->lastName) {
-            throw new InvalidContact('lastName', 'A contact has a first or a last name.');
+            throw new InvalidContact('lastName', 'A contact has a first or a last name.', 'name_required');
         }
         $this->email = self::text($email, 'email');
         $this->phone = self::text($phone, 'phone');
@@ -46,7 +46,7 @@ final readonly class ContactDetails
     {
         $value = null === $value ? '' : TypedText::trimmed($value);
         if (\in_array($field, ['firstName', 'lastName', 'role'], true) && mb_strlen($value) > self::NAME_MAX) {
-            throw new InvalidContact($field, \sprintf('At most %d characters.', self::NAME_MAX));
+            throw new InvalidContact($field, \sprintf('At most %d characters.', self::NAME_MAX), 'invalid_text', ['max' => self::NAME_MAX]);
         }
 
         return '' === $value ? null : $value;

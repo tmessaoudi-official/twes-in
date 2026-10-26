@@ -152,7 +152,7 @@ class CustomFieldDefinition implements CompanyOwned
     {
         $label = TypedText::trimmed($label);
         if ('' === $label || mb_strlen($label) > self::LABEL_MAX) {
-            throw new InvalidCustomFieldDefinition('label', \sprintf('A label of 1 to %d characters.', self::LABEL_MAX));
+            throw new InvalidCustomFieldDefinition('label', \sprintf('A label of 1 to %d characters.', self::LABEL_MAX), '' === $label ? 'value_required' : 'invalid_text', '' === $label ? [] : ['max' => self::LABEL_MAX]);
         }
 
         return $label;
@@ -174,15 +174,15 @@ class CustomFieldDefinition implements CompanyOwned
             return [];
         }
         if ([] === $choices || \count($choices) > self::CHOICES_MAX) {
-            throw new InvalidCustomFieldDefinition('choices', \sprintf('A choice field offers 1 to %d choices.', self::CHOICES_MAX));
+            throw new InvalidCustomFieldDefinition('choices', \sprintf('A choice field offers 1 to %d choices.', self::CHOICES_MAX), 'choices_count', ['max' => self::CHOICES_MAX]);
         }
         foreach ($choices as $choice) {
             if ('' === $choice || mb_strlen($choice) > self::LABEL_MAX) {
-                throw new InvalidCustomFieldDefinition('choices', \sprintf('Each choice is 1 to %d characters.', self::LABEL_MAX));
+                throw new InvalidCustomFieldDefinition('choices', \sprintf('Each choice is 1 to %d characters.', self::LABEL_MAX), '' === $choice ? 'value_required' : 'invalid_text', '' === $choice ? [] : ['max' => self::LABEL_MAX]);
             }
         }
         if (\count(array_unique($choices)) !== \count($choices)) {
-            throw new InvalidCustomFieldDefinition('choices', 'Each choice is offered once.');
+            throw new InvalidCustomFieldDefinition('choices', 'Each choice is offered once.', 'choice_twice');
         }
 
         return $choices;
@@ -191,7 +191,7 @@ class CustomFieldDefinition implements CompanyOwned
     private static function sortOrder(int $sortOrder): int
     {
         if ($sortOrder < 0 || $sortOrder > 10000) {
-            throw new InvalidCustomFieldDefinition('sortOrder', 'A position from 0 to 10000.');
+            throw new InvalidCustomFieldDefinition('sortOrder', 'A position from 0 to 10000.', 'whole_number_between', ['min' => 0, 'max' => 10000]);
         }
 
         return $sortOrder;

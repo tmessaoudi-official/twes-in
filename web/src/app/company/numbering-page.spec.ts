@@ -25,6 +25,7 @@ import { EstablishmentsFacade } from './establishments-facade';
 import { NumberingPage } from './numbering-page';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -36,6 +37,12 @@ class StaticLoader implements TranslateLoader {
           preview_invalid: 'Format invalide',
           document_types: { delivery_note: 'Bon de livraison' },
           reset: { yearly: 'Chaque année' },
+        },
+      },
+      import: {
+        rejections: {
+          sequence_from: 'Cette série reprend à {{next}} au moins.',
+          numbering_format: 'Format refusé : {SEQ:n} sur 1 à {{max}} chiffres.',
         },
       },
     });
@@ -59,10 +66,12 @@ const deliveryNotes: NumberingSeriesRow = {
 describe('NumberingPage', () => {
   const series = signal<readonly NumberingSeriesRow[]>([deliveryNotes]);
   const error = signal<string | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const facade = {
     series: series.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadSeries: vi.fn(),
     reviseSeries: vi.fn(),
     clearError: vi.fn(),
@@ -91,6 +100,7 @@ describe('NumberingPage', () => {
   beforeEach(async () => {
     series.set([deliveryNotes]);
     error.set(null);
+    refusals.set([]);
     facade.loadSeries.mockReset().mockResolvedValue(undefined);
     facade.clearError.mockReset().mockImplementation(() => error.set(null));
     facade.reviseSeries.mockReset().mockResolvedValue(true);
@@ -165,6 +175,29 @@ describe('NumberingPage', () => {
       },
       1,
     );
+  });
+
+  it('says each refusal of a save under its field', async () => {
+    q('row-action-edit-s1')!.click();
+    await settle();
+    facade.reviseSeries.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        { field: 'format', reason: 'numbering_format', params: { max: 12 } },
+        { field: 'nextNumber', reason: 'sequence_from', params: { next: 7 } },
+      ]);
+      return false;
+    });
+    type('field-format', 'BL-{SEQ:13}');
+    fixture.detectChanges();
+    q('series-save')!.click();
+    await settle();
+
+    expect(facade.reviseSeries).toHaveBeenCalled();
+    expect(q('field-error-format')?.textContent).toContain(
+      'Format refusé : {SEQ:n} sur 1 à 12 chiffres.',
+    );
+    expect(q('field-error-nextNumber')?.textContent).toContain('Cette série reprend à 7 au moins.');
   });
 
   it('revises the series with what was typed', async () => {

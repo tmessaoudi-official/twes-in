@@ -27,6 +27,7 @@ import { CustomFieldsPage } from './custom-fields-page';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -37,6 +38,9 @@ class StaticLoader implements TranslateLoader {
           statuses: { active: 'Actif', retired: 'Retiré' },
           errors: { key_taken: 'Un autre champ porte déjà cette clé.' },
         },
+      },
+      import: {
+        rejections: { choice_twice: 'Ce choix est déjà proposé : retirez l’un des deux.' },
       },
     });
   }
@@ -58,10 +62,12 @@ const sector: CustomFieldDefinition = {
 describe('CustomFieldsPage', () => {
   const error = signal<CustomFieldsError | null>(null);
   const fields = signal<readonly CustomFieldDefinition[]>([sector]);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const facade = {
     fields: fields.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     create: vi.fn(),
@@ -91,6 +97,7 @@ describe('CustomFieldsPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    refusals.set([]);
     fields.set([sector]);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.clearError.mockReset().mockImplementation(() => error.set(null));
@@ -179,6 +186,25 @@ describe('CustomFieldsPage', () => {
     await settle();
 
     expect(facade.create).not.toHaveBeenCalled();
+  });
+
+  it('says a refusal of a save under its field', async () => {
+    q('row-action-edit-f1')!.click();
+    await settle();
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'choices', reason: 'choice_twice', params: {} }]);
+      return false;
+    });
+    type('field-label', 'Activité');
+    fixture.detectChanges();
+    q('custom-field-save')!.click();
+    await settle();
+
+    expect(facade.revise).toHaveBeenCalled();
+    expect(q('field-error-choices')?.textContent).toContain(
+      'Ce choix est déjà proposé : retirez l’un des deux.',
+    );
   });
 
   it('revises a field by its identifier, keeping its key and type', async () => {

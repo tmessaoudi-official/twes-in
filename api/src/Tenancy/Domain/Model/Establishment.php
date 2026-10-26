@@ -141,7 +141,7 @@ class Establishment implements CompanyOwned
     {
         $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidEstablishment('name', \sprintf('An establishment is named in 1 to %d characters.', self::NAME_MAX));
+            throw new InvalidEstablishment('name', \sprintf('An establishment is named in 1 to %d characters.', self::NAME_MAX), '' === $name ? 'value_required' : 'invalid_text', '' === $name ? [] : ['max' => self::NAME_MAX]);
         }
 
         return $name;

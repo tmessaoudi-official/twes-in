@@ -29,6 +29,7 @@ import type { CustomerGroupRow, CustomersError } from './customers-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -39,6 +40,7 @@ class StaticLoader implements TranslateLoader {
           delete_message: '{{name}} sera supprimé.',
         },
       },
+      import: { rejections: { invalid_text: 'Texte refusé : {{max}} caractères au plus.' } },
     });
   }
 }
@@ -54,10 +56,12 @@ const wholesalers: CustomerGroupRow = {
 describe('CustomerGroupsPage', () => {
   const error = signal<CustomersError | null>(null);
   const groups = signal<readonly CustomerGroupRow[]>([wholesalers]);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const facade = {
     groups: groups.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     loadGroups: vi.fn(),
     createGroup: vi.fn(),
     reviseGroup: vi.fn(),
@@ -104,6 +108,7 @@ describe('CustomerGroupsPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    refusals.set([]);
     groups.set([wholesalers]);
     error.set(null);
     facade.loadGroups.mockReset().mockResolvedValue(undefined);
@@ -185,6 +190,25 @@ describe('CustomerGroupsPage', () => {
     expect(q('customer-group-form')).toBeNull();
     expect(unsaved.count()).toBe(0);
     expect(facade.reviseGroup).not.toHaveBeenCalled();
+  });
+
+  it('says a refusal of a save under its field', async () => {
+    q('row-action-edit-g1')!.click();
+    await settle();
+    facade.reviseGroup.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'description', reason: 'invalid_text', params: { max: 500 } }]);
+      return false;
+    });
+    type('field-name', 'Grossistes TN');
+    fixture.detectChanges();
+    q('customer-group-save')!.click();
+    await settle();
+
+    expect(facade.reviseGroup).toHaveBeenCalled();
+    expect(q('field-error-description')?.textContent).toContain(
+      'Texte refusé : 500 caractères au plus.',
+    );
   });
 
   it('renames a group and deletes one by its identifier', async () => {

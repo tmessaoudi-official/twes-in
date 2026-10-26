@@ -94,7 +94,7 @@ class CustomerGroup implements CompanyOwned
     {
         $name = TypedText::trimmed($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidCustomerGroup('name', \sprintf('A customer group is named in 1 to %d characters.', self::NAME_MAX));
+            throw new InvalidCustomerGroup('name', \sprintf('A customer group is named in 1 to %d characters.', self::NAME_MAX), '' === $name ? 'value_required' : 'invalid_text', '' === $name ? [] : ['max' => self::NAME_MAX]);
         }
 
         return $name;
@@ -104,7 +104,7 @@ class CustomerGroup implements CompanyOwned
     {
         $description = null === $description ? '' : TypedText::trimmed($description);
         if (mb_strlen($description) > self::DESCRIPTION_MAX) {
-            throw new InvalidCustomerGroup('description', \sprintf('A customer group is described in at most %d characters.', self::DESCRIPTION_MAX));
+            throw new InvalidCustomerGroup('description', \sprintf('A customer group is described in at most %d characters.', self::DESCRIPTION_MAX), 'invalid_text', ['max' => self::DESCRIPTION_MAX]);
         }
 
         return '' === $description ? null : $description;

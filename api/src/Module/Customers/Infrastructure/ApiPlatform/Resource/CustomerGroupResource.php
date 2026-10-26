@@ -71,12 +71,12 @@ final class CustomerGroupResource
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
-    #[Assert\Length(max: CustomerGroup::NAME_MAX, groups: [self::WRITE])]
+    #[Assert\NotBlank(groups: [self::WRITE], payload: ['reason' => 'value_required'])]
+    #[Assert\Length(max: CustomerGroup::NAME_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => CustomerGroup::NAME_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public string $name = '';
 
-    #[Assert\Length(max: CustomerGroup::DESCRIPTION_MAX, groups: [self::WRITE])]
+    #[Assert\Length(max: CustomerGroup::DESCRIPTION_MAX, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => CustomerGroup::DESCRIPTION_MAX]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $description = null;
 

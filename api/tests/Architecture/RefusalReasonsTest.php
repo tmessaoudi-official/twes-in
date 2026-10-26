@@ -15,6 +15,7 @@ use App\Settings\Domain\ValueObject\SettingChain;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Constraints\Composite;
+use Symfony\Component\Validator\Constraints\Count;
 use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\Range;
 use Symfony\Component\Validator\Mapping\ClassMetadata;
@@ -59,7 +60,7 @@ final class RefusalReasonsTest extends KernelTestCase
                             $wrong[] = \sprintf('%s: its text names {{%s}}, which the payload does not send', $where, $unfilled);
                         }
                         $max = \is_array($params) ? $params['max'] ?? null : 'params that are not a map';
-                        if (null !== $max && (!($constraint instanceof Length || $constraint instanceof Range) || $constraint->max !== $max)) {
+                        if (null !== $max && (!($constraint instanceof Length || $constraint instanceof Range || $constraint instanceof Count) || $constraint->max !== $max)) {
                             $wrong[] = \sprintf('%s: a maximum of %s said, not the constraint\'s', $where, json_encode($max));
                         }
                     }

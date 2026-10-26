@@ -148,6 +148,7 @@
                       [conflicts]="contactSync.conflicts()"
                       (resolved)="contactSync.resolve(contactForm, $event)"
                       testId="contact-form"
+                      #contactEditor
                       (submitted)="saveContact($event)"
                     >
                       <div class="flex flex-wrap justify-end gap-2">

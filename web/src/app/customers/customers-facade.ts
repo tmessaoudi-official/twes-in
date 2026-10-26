@@ -212,10 +212,17 @@ export class CustomersFacade {
   }
 
   private async write(call: () => Promise<unknown>, reload: () => Promise<void>): Promise<boolean> {
-    return this.state.write(async () => {
-      await call();
-      await reload();
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await call();
+        await reload();
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof CustomersRefused ? error.refusals : []),
+      },
+    );
   }
 }
 

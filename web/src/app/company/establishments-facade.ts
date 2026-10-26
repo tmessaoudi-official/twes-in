@@ -11,6 +11,7 @@ import type {
   NumberingSeriesRow,
 } from './company-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /** The establishments of the company being worked in, and how each of them numbers its documents. */
 @Injectable({ providedIn: 'root' })
@@ -19,11 +20,14 @@ export class EstablishmentsFacade {
   private readonly establishmentsSignal = sessionSignal<readonly EstablishmentRow[]>([]);
   private readonly seriesSignal = sessionSignal<readonly NumberingSeriesRow[]>([]);
   private readonly state = requestState(codeOf);
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
 
   readonly establishments = this.establishmentsSignal.asReadonly();
   readonly series = this.seriesSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** The fields the last save was refused on, for the form to say under each. */
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   async loadEstablishments(companyId: string): Promise<void> {
     await this.state.read(async () =>
@@ -74,10 +78,17 @@ export class EstablishmentsFacade {
   }
 
   private async write(call: () => Promise<unknown>, reload: () => Promise<void>): Promise<boolean> {
-    return this.state.write(async () => {
-      await call();
-      await reload();
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await call();
+        await reload();
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof CompanyRefused ? error.refusals : []),
+      },
+    );
   }
 }
 
