@@ -32,6 +32,7 @@ import {
   type Receiver,
   type ReceiverChoice,
   type ReceiverContact,
+  NOBODY,
   receiverChoice,
   receiverForm,
 } from '../shared/receivers/receiver';
@@ -210,7 +211,12 @@ export class DeliverDialog {
     const fields = receiver === null ? [this.form] : [this.form, receiver];
     if (revealInvalid(fields, this.host) || this.step.busy()) return;
     const answer = await this.step.run(
-      () => this.data.deliver(this.moment(), receiver === null ? null : receiverChoice(receiver)),
+      // The field shown is what is recorded: emptied, nobody, said as such, since no choice keeps the draft's name.
+      () =>
+        this.data.deliver(
+          this.moment(),
+          receiver === null ? null : (receiverChoice(receiver) ?? NOBODY),
+        ),
       // The day the API refuses (`delivered`, before the note or after now) is said under the day, and who received
       // under « Reçu par ».
       (refusals) =>

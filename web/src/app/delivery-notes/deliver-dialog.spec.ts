@@ -11,6 +11,7 @@ import {
 import { of } from 'rxjs';
 import { formatDay } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
+import { NOBODY } from '../shared/receivers/receiver';
 import { DeliverDialog, type DeliverDialogData } from './deliver-dialog';
 
 class StaticLoader implements TranslateLoader {
@@ -38,7 +39,7 @@ describe('DeliverDialog', () => {
   const ref = { close: vi.fn() };
   const delivered = vi.fn<DeliverDialogData['deliver']>();
 
-  async function open() {
+  async function open(receiver?: DeliverDialogData['receiver']) {
     ref.close.mockReset();
     delivered.mockReset().mockResolvedValue({ kept: true });
     TestBed.configureTestingModule({
@@ -50,7 +51,10 @@ describe('DeliverDialog', () => {
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
-        { provide: MAT_DIALOG_DATA, useValue: { zone: 'Africa/Tunis', deliver: delivered } },
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: { zone: 'Africa/Tunis', deliver: delivered, receiver },
+        },
         { provide: MatDialogRef, useValue: ref },
         {
           provide: FormatFacade,
@@ -138,6 +142,37 @@ describe('DeliverDialog', () => {
     await deliver();
 
     expect(delivered).toHaveBeenCalledWith('', null);
+  });
+
+  // What « Reçu par » shows when « Marquer livré » is pressed is what the note records: emptied, it names nobody,
+  // rather than leaving whoever the draft named on the note unsaid.
+  const named = {
+    current: { name: 'Karim Jaziri', contactId: null },
+    required: false,
+    contacts: Promise.resolve([]),
+  };
+
+  it('opens « Reçu par » on whoever the note names and records that name', async () => {
+    const { q, deliver } = await open(named);
+
+    expect(q<HTMLInputElement>('deliver-receiver-name')!.value).toBe('Karim Jaziri');
+    await deliver();
+
+    expect(delivered).toHaveBeenCalledWith('', {
+      contactId: null,
+      name: 'Karim Jaziri',
+      addToContacts: false,
+    });
+  });
+
+  it('records nobody once « Reçu par » is emptied, never the name it opened on', async () => {
+    const { type, deliver } = await open(named);
+
+    await type('deliver-receiver-name', '');
+    await deliver();
+
+    expect(delivered).toHaveBeenCalledWith('', NOBODY);
+    expect(ref.close).toHaveBeenCalledWith(true);
   });
 
   it('stays open on a refused day, saying why under it, and what no field takes below', async () => {

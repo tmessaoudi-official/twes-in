@@ -48,6 +48,12 @@ export function receiverForm(receiver: Receiver | null, required = false): Recei
   });
 }
 
+/**
+ * Nobody, said: where leaving the choice out keeps whoever the document named (a delivery), an emptied field sends this,
+ * so what the screen showed is what is recorded.
+ */
+export const NOBODY: ReceiverChoice = { contactId: null, name: null, addToContacts: false };
+
 /** What the API is sent: a contact by its id, the name typed, or null for nobody. */
 export function receiverChoice(form: ReceiverForm): ReceiverChoice | null {
   const { name, contactId, addToContacts } = form.getRawValue();

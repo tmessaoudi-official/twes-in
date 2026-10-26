@@ -38,6 +38,7 @@ import type {
   ProductOption,
 } from './delivery-notes-types';
 import type { PickAsked } from '../shared/form/pick-api';
+import { NOBODY } from '../shared/receivers/receiver';
 import {
   effectToasts,
   failureToasts,
@@ -1235,7 +1236,7 @@ describe('DeliveryNotePage', () => {
     expect((over('delivery-note-delivered-on') as HTMLInputElement).value).toBe('21/09/2026');
     expect((over('delivery-note-delivered-time') as HTMLInputElement).value).toBe('00:30');
     over('delivery-note-deliver')!.click();
-    await vi.waitFor(() => expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', null, null));
+    await vi.waitFor(() => expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', null, NOBODY));
 
     // A round recorded at its end: the moment written is sent as the company's clock reads it.
     facade.deliver.mockClear();
@@ -1254,7 +1255,7 @@ describe('DeliveryNotePage', () => {
     await settle();
     over('delivery-note-deliver')!.click();
     await vi.waitFor(() =>
-      expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20T09:05', null),
+      expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20T09:05', NOBODY),
     );
 
     // Cancelling is destructive, so it is behind "⋮" and asks before it runs.

@@ -209,7 +209,8 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
     private function delivered(Company $company, DeliveryNote $note, ?\DateTimeImmutable $deliveredAt, ?ReceiverChoice $receivedBy, ?Uuid $actorUserId): DeliveryNote
     {
         $now = $this->clock->now();
-        $receiver = null === $receivedBy ? null : $this->receiver($company, $note, $receivedBy, $actorUserId);
+        // A choice naming nobody (the field emptied) records nobody; no choice at all keeps whoever the draft named.
+        $receiver = null === $receivedBy ? $note->getHeader()->receivedBy : $this->receiver($company, $note, $receivedBy, $actorUserId);
         $note->deliver($deliveredAt ?? $now, $now, DeliveryNoteSettings::receiverRule($this->settings, $note), $receiver);
         $this->notes->save($note);
         $this->record($company, $note, self::DELIVERED, ['deliveryDate' => $note->getHeader()->deliveryDate?->format('Y-m-d')], $actorUserId);

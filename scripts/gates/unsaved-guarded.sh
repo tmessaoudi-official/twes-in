@@ -46,6 +46,7 @@ declare -A exempt=(
   [web/src/app/shared/form/file-drop.ts]="a field of a form, counted by the page that owns the form"
   [web/src/app/shared/form/pick-field.ts]="a field of a form, counted by the page that owns the form"
   [web/src/app/shared/form/select.ts]="a field of a form, counted by the page that owns the form"
+  [web/src/app/shared/receivers/receiver-field.ts]="a field of a form, counted by the page or dialog that owns the form"
   [web/src/app/shared/i18n/language-menu.ts]="the screen's language, applied the moment it is chosen"
   [web/src/app/shared/legal/legal-text.ts]="the language a legal text is read in"
   [web/src/app/shared/list/data-list.ts]="a list's search and choices, kept in the address"

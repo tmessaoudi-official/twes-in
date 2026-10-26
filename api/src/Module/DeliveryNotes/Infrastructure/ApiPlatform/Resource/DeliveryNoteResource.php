@@ -350,6 +350,7 @@ final class DeliveryNoteResource
         'name' => new Assert\Optional([new Assert\Type('string', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
         'addToContacts' => new Assert\Optional([new Assert\Type('bool', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
     ], groups: self::RECEIVER_GROUPS)]
+    // count: an object of three named keys, held by its Assert\Collection, never a list
     #[Groups([self::READ, self::WRITE, self::DELIVER, self::RECEIVE])]
     public ?array $receivedBy = null;
 

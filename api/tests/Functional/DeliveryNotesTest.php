@@ -373,6 +373,32 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testADeliveryNamingNobodyRecordsNobodyWhileOneSayingNothingKeepsTheDrafts(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $named = function (): string {
+            $this->postJson($this->path(), $this->note(['lines' => [['productId' => $this->productId, 'quantity' => '1']], 'receivedBy' => ['name' => 'Karim Jaziri']]));
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            $id = $this->stringAt($this->json(), 'id');
+            $this->postJson($this->path($id).'/validate', null);
+            self::assertResponseIsSuccessful();
+
+            return $id;
+        };
+
+        // The field emptied in the dialog is sent as a choice naming nobody: what the screen showed is what is recorded.
+        $emptied = $named();
+        $this->postJson($this->path($emptied).'/deliver', ['receivedBy' => ['contactId' => null, 'name' => null, 'addToContacts' => false]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['delivered', null], [$this->json()['status'] ?? null, $this->json()['receivedBy'] ?? null]);
+
+        // A body that says nothing of who received (an API client, « Livrer » with no field) keeps whoever the draft named.
+        $kept = $named();
+        $this->postJson($this->path($kept).'/deliver', []);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['name' => 'Karim Jaziri', 'contactId' => null], $this->json()['receivedBy'] ?? null);
+    }
+
     public function testWhoReceivedIsNamedOnTheDraftAtTheDeliveryAndPutRightAfterwards(): void
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);

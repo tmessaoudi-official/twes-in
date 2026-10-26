@@ -415,8 +415,11 @@ final class DeliveryNoteTest extends TestCase
 
         $chosen = $this->validated($this->customer, new DeliveryNoteHeader(receivedBy: $sami));
         self::assertEquals($sami, $chosen->getHeader()->receivedBy, 'a validated note keeps the receiver its draft chose, which it prints');
-        $chosen->deliver($this->now, $this->now, ReceiverRule::Required);
-        self::assertEquals($sami, $chosen->getHeader()->receivedBy, 'a delivery naming nobody keeps the one chosen');
+        $chosen->deliver($this->now, $this->now, ReceiverRule::Required, $chosen->getHeader()->receivedBy);
+        self::assertEquals($sami, $chosen->getHeader()->receivedBy, 'a delivery given the one chosen keeps it');
+        $emptied = $this->validated($this->customer, new DeliveryNoteHeader(receivedBy: $sami));
+        $emptied->deliver($this->now, $this->now, ReceiverRule::Optional, null);
+        self::assertNull($emptied->getHeader()->receivedBy, 'a delivery naming nobody records nobody, whoever the draft named');
 
         $required = $this->validated($this->customer, new DeliveryNoteHeader());
         $this->assertRefusedFor('receivedBy', 'receiver_required', fn () => $required->deliver($this->now, $this->now, ReceiverRule::Required));

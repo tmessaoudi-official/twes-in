@@ -298,7 +298,8 @@ class DeliveryNote implements CompanyOwned
     /**
      * A validated note's goods reached the customer at a moment from its issue day, the company's, to now. Stamped now
      * unless told otherwise, and correctable: the deliveries of a round are often recorded together at its end. Who
-     * received them is the one given, else the one the draft chose, which the rule may require or refuse.
+     * received them is the one given, null for nobody, which the rule may require or refuse; whoever the draft named is
+     * the caller's to pass on when the person said nothing of it.
      *
      * @throws DeliveryNoteTransitionRefused
      * @throws InvalidDeliveryNote
@@ -315,7 +316,6 @@ class DeliveryNote implements CompanyOwned
         if ($deliveredAt > $now) {
             throw new InvalidDeliveryNote('deliveredAt', 'A delivery is confirmed once it happened, now at the latest.', 'after_today');
         }
-        $receiver ??= $this->receiver();
         $refused = $rule->refusal($receiver);
         if (null !== $refused) {
             throw new InvalidDeliveryNote('receivedBy', $refused->message, $refused->reason, $refused->params);
