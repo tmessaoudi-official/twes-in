@@ -1894,6 +1894,8 @@
       "cancelled": "Ce bon est annulé et ne change plus ; il peut encore être imprimé."
     },
     "invoiced_note": "Ce bon figure sur une facture émise : il n’est plus ni livré ni annulé, et peut encore être imprimé.",
+    "not_delivered": "Livraison non enregistrée",
+    "awaits_validation": "Un responsable valide ce bon : il le retrouve dans « À surveiller ».",
     "on_invoices": "Facturé sur",
     "invoice_draft": "facture en brouillon",
     "statuses": {
@@ -4177,6 +4179,8 @@
     "nobody": "Personne",
     "save": "Enregistrer",
     "keep": "Ne rien changer",
-    "undo": "Annuler"
+    "undo": "Annuler",
+    "dropped": "« Reçu par » est désactivé pour ce document : {{name}} ne sera pas gardé.",
+    "undo_refused": "{{why}} Qui a reçu n’a pas été remis comme avant."
   }
 }

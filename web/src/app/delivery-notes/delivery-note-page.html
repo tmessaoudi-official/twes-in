@@ -32,6 +32,11 @@
               >{{ 'delivery_notes.fields.deliveryDate' | translate }}
               {{ note.deliveredAt | moment: company()?.timezone }}</span
             >
+          } @else if (note.status === 'invoiced') {
+            <!-- Invoiced at the counter before the goods left: nothing says they have. -->
+            <span data-testid="delivery-note-not-delivered">{{
+              'delivery_notes.not_delivered' | translate
+            }}</span>
           }
           @if (note.receivedBy; as receivedBy) {
             <span data-testid="delivery-note-received-by"
@@ -100,6 +105,10 @@
     @if (note.status !== 'draft') {
       <p data-testid="delivery-note-fixed">
         {{ 'delivery_notes.fixed_notes.' + note.status | translate }}
+      </p>
+    } @else if (!mayValidate()) {
+      <p data-testid="delivery-note-awaits-validation">
+        {{ 'delivery_notes.awaits_validation' | translate }}
       </p>
     }
   }

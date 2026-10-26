@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { RecordDeletes } from '../shared/records/record-deletes';
+import { MatDialog } from '@angular/material/dialog';
+import type { ReceiverDialogData } from '../shared/receivers/receiver-dialog';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -1307,6 +1309,49 @@ describe('DeliveryNotePage', () => {
     expect(q('document-action-pdf')).not.toBeNull();
   });
 
+  it('tells whoever cannot validate that their draft waits for someone who can, and where they find it', async () => {
+    // A clerk's draft had « Enregistrer » and no « Valider », and nothing said who validates it.
+    granted.delete('delivery_note.validate');
+    note.set(draft);
+    await open('n1');
+    expect(q('delivery-note-awaits-validation')?.textContent).toContain(
+      'delivery_notes.awaits_validation',
+    );
+    fixture.destroy();
+
+    granted.add('delivery_note.validate');
+    await open('n1');
+    expect(q('delivery-note-awaits-validation')).toBeNull();
+    fixture.destroy();
+
+    granted.delete('delivery_note.validate');
+    note.set(validated);
+    await open('n1');
+    expect(q('delivery-note-awaits-validation')).toBeNull();
+  });
+
+  it('says a note invoiced before its goods left has no delivery recorded, and nothing of it once one is', async () => {
+    // « Facturé · Reçu par Nour » read as if Nour had the goods, which had never left.
+    note.set({
+      ...validated,
+      status: 'invoiced',
+      deliveredAt: null,
+      receivedBy: { name: 'Nour', contactId: null },
+    });
+    await open('n1');
+    expect(q('delivery-note-not-delivered')?.textContent).toContain('delivery_notes.not_delivered');
+    fixture.destroy();
+
+    note.set({ ...validated, status: 'invoiced', deliveredAt: '2026-09-20T13:05:00+00:00' });
+    await open('n1');
+    expect(q('delivery-note-not-delivered')).toBeNull();
+    fixture.destroy();
+
+    note.set(validated);
+    await open('n1');
+    expect(q('delivery-note-not-delivered')).toBeNull();
+  });
+
   it('links to each invoice carrying the note, a draft by what it is, and says nothing when none does', async () => {
     note.set({
       ...validated,
@@ -2129,6 +2174,41 @@ describe('DeliveryNotePage', () => {
       );
       expect(readById()).toEqual([]);
     });
+  });
+
+  it('says why « Annuler » could not put back who received, and offers nothing more', async () => {
+    // The contact named before was removed meanwhile: the undo answered 422 and the screen said nothing.
+    note.set({
+      ...validated,
+      status: 'delivered',
+      deliveredAt: '2026-09-20T13:05:00+00:00',
+      receivedBy: { name: 'Karim', contactId: 'kc1' },
+    });
+    await open('n1');
+    let data: ReceiverDialogData | undefined;
+    vi.spyOn(TestBed.inject(MatDialog), 'open').mockImplementation((_, config) => {
+      data = config?.data as ReceiverDialogData;
+      return { afterClosed: () => of(true) } as never;
+    });
+    facade.correctReceiver.mockResolvedValue({ kept: note() });
+    q('document-more')!.click();
+    await settle();
+    document.body
+      .querySelector<HTMLElement>('[data-testid="document-menu-correct-receiver"]')!
+      .click();
+    await settle();
+    await vi.waitFor(() => expect(data).toBeDefined());
+    await vi.waitFor(() =>
+      expect(effectToasts()).toEqual(['delivery_notes.receiver_corrected:corrigeable']),
+    );
+
+    facade.correctReceiver.mockResolvedValueOnce({
+      refused: [{ field: 'receivedBy', reason: 'unknown_choice', params: {} }],
+    });
+    offeredNext()!.run();
+
+    await vi.waitFor(() => expect(failureToasts()).toEqual(['receivers.undo_refused']));
+    expect(effectToasts()).toEqual(['delivery_notes.receiver_corrected:corrigeable']);
   });
 
   describe('deleting a draft', () => {

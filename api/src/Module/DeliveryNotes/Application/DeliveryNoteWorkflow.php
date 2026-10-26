@@ -32,6 +32,7 @@ use App\Shared\Application\Receivers\ChooseReceiver;
 use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Shared\Domain\ValueObject\Refusal;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
@@ -209,9 +210,13 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
     private function delivered(Company $company, DeliveryNote $note, ?\DateTimeImmutable $deliveredAt, ?ReceiverChoice $receivedBy, ?Uuid $actorUserId): DeliveryNote
     {
         $now = $this->clock->now();
-        // A choice naming nobody (the field emptied) records nobody; no choice at all keeps whoever the draft named.
-        $receiver = null === $receivedBy ? $note->getHeader()->receivedBy : $this->receiver($company, $note, $receivedBy, $actorUserId);
-        $note->deliver($deliveredAt ?? $now, $now, DeliveryNoteSettings::receiverRule($this->settings, $note), $receiver);
+        $rule = DeliveryNoteSettings::receiverRule($this->settings, $note);
+        // A choice naming nobody (the field emptied) records nobody; no choice at all keeps whoever the draft named, unless
+        // « Reçu par » was switched off since: the dialog then shows no field and says the name is not kept.
+        $receiver = null === $receivedBy
+            ? (ReceiverRule::Off === $rule ? null : $note->getHeader()->receivedBy)
+            : $this->receiver($company, $note, $receivedBy, $actorUserId);
+        $note->deliver($deliveredAt ?? $now, $now, $rule, $receiver);
         $this->notes->save($note);
         $this->record($company, $note, self::DELIVERED, ['deliveryDate' => $note->getHeader()->deliveryDate?->format('Y-m-d')], $actorUserId);
 

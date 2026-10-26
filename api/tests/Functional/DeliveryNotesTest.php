@@ -399,6 +399,31 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertSame(['name' => 'Karim Jaziri', 'contactId' => null], $this->json()['receivedBy'] ?? null);
     }
 
+    /**
+     * A note validated naming someone, whose customer's « Reçu par » was switched off since: « Marquer livré » shows no
+     * field, so delivering records nobody, as the dialog says, rather than asking to empty a field it does not show.
+     */
+    public function testARuleSwitchedOffAfterANameWasRecordedDeliversNamingNobody(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $customer = $this->em()->find(Customer::class, Uuid::fromString($this->customerId)) ?? throw new \LogicException('no customer');
+        $this->postJson($this->path(), $this->note(['lines' => [['productId' => $this->productId, 'quantity' => '1']], 'receivedBy' => ['name' => 'Sami Ben Ali']]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($id).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $this->changeReceiverRule($customer, 'off');
+
+        $this->postJson($this->path($id).'/deliver', ['receivedBy' => ['contactId' => null, 'name' => 'Sami Ben Ali', 'addToContacts' => false]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a name sent where the rule is off is still refused');
+        self::assertSame('receiver_off', $this->refusalOf('receivedBy')[0]);
+
+        $this->postJson($this->path($id).'/deliver', []);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['delivered', null], [$this->json()['status'] ?? null, $this->json()['receivedBy'] ?? null]);
+    }
+
     public function testWhoReceivedIsNamedOnTheDraftAtTheDeliveryAndPutRightAfterwards(): void
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);

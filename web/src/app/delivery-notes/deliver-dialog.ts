@@ -60,6 +60,11 @@ export interface DeliverDialogData {
     contacts: Promise<readonly ReceiverContact[]>;
   };
   /**
+   * The name the note carries where « Reçu par » was switched off since it was named: no field is shown, and the line
+   * says the name is not kept, as the API records nobody.
+   */
+  dropped?: string;
+  /**
    * Marks the note delivered at the moment written, '' for now, received by whoever is named; null keeps whoever the
    * note names. The dialog stays open on a refusal.
    */
@@ -139,6 +144,10 @@ export interface DeliverDialogData {
         <div class="pt-3">
           <app-receiver-field [form]="receiver" [contacts]="contacts()" testId="deliver-receiver" />
         </div>
+      } @else if (data.dropped; as name) {
+        <p class="pt-3 text-sm" data-testid="deliver-receiver-dropped">
+          {{ 'receivers.dropped' | translate: { name } }}
+        </p>
       }
       @if (step.unplaced(); as said) {
         <p role="alert" class="text-sm text-error" data-testid="deliver-refused">
@@ -164,7 +173,7 @@ export interface DeliverDialogData {
 })
 export class DeliverDialog {
   protected readonly ref = inject<MatDialogRef<DeliverDialog, boolean>>(MatDialogRef);
-  private readonly data = inject<DeliverDialogData>(MAT_DIALOG_DATA);
+  protected readonly data = inject<DeliverDialogData>(MAT_DIALOG_DATA);
   private readonly zone = this.data.zone;
   protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
   private readonly opened = {

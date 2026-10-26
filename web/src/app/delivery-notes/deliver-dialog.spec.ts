@@ -17,6 +17,9 @@ import { DeliverDialog, type DeliverDialogData } from './deliver-dialog';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      receivers: {
+        dropped: '« Reçu par » est désactivé pour ce document : {{name}} ne sera pas gardé.',
+      },
       form: {
         errors: {
           required: 'Ce champ est obligatoire.',
@@ -39,7 +42,7 @@ describe('DeliverDialog', () => {
   const ref = { close: vi.fn() };
   const delivered = vi.fn<DeliverDialogData['deliver']>();
 
-  async function open(receiver?: DeliverDialogData['receiver']) {
+  async function open(receiver?: DeliverDialogData['receiver'], dropped?: string) {
     ref.close.mockReset();
     delivered.mockReset().mockResolvedValue({ kept: true });
     TestBed.configureTestingModule({
@@ -53,7 +56,7 @@ describe('DeliverDialog', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         {
           provide: MAT_DIALOG_DATA,
-          useValue: { zone: 'Africa/Tunis', deliver: delivered, receiver },
+          useValue: { zone: 'Africa/Tunis', deliver: delivered, receiver, dropped },
         },
         { provide: MatDialogRef, useValue: ref },
         {
@@ -173,6 +176,24 @@ describe('DeliverDialog', () => {
 
     expect(delivered).toHaveBeenCalledWith('', NOBODY);
     expect(ref.close).toHaveBeenCalledWith(true);
+  });
+
+  it('says the name the note carries is not kept where « Reçu par » was switched off since, and delivers', async () => {
+    // The dialog showed no field and refused with « videz ce champ »: the note could not be delivered from it.
+    const { q, deliver } = await open(undefined, 'Sami Ben Ali');
+
+    expect(q('deliver-receiver-name')).toBeNull();
+    expect(q('deliver-receiver-dropped')?.textContent).toContain('Sami Ben Ali ne sera pas gardé');
+    await deliver();
+
+    expect(delivered).toHaveBeenCalledWith('', null);
+    expect(ref.close).toHaveBeenCalledWith(true);
+  });
+
+  it('says nothing of a name when the note names nobody', async () => {
+    const { q } = await open(undefined);
+
+    expect(q('deliver-receiver-dropped')).toBeNull();
   });
 
   it('stays open on a refused day, saying why under it, and what no field takes below', async () => {

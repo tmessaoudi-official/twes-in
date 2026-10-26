@@ -85,6 +85,7 @@ import {
 } from '../shared/receivers/receiver';
 import { ReceiverDialog, type ReceiverDialogData } from '../shared/receivers/receiver-dialog';
 import { ReceiverField } from '../shared/receivers/receiver-field';
+import { sayReceiverUndoRefused } from '../shared/receivers/receiver-undo';
 import {
   InvoicePartDialog,
   type InvoicePartData,
@@ -1063,6 +1064,8 @@ export class DeliveryNotePage {
             zone: this.company()?.timezone ?? null,
             // At the moment written on the company's clock, or now for ''.
             receiver: this.deliverReceiver(current),
+            dropped:
+              current.receiverRule === 'off' ? (current.receivedBy?.name ?? undefined) : undefined,
             deliver: (at, receivedBy) =>
               this.facade.deliver(companyId, id, at === '' ? null : at, receivedBy),
           },
@@ -1126,7 +1129,15 @@ export class DeliveryNotePage {
                 : { contactId: null, name: before.name, addToContacts: false },
           )
           .then((answer) => {
-            if (answer !== null && 'kept' in answer) this.saidCorrected(companyId, id, shown);
+            if (answer === null) return;
+            if ('kept' in answer) this.saidCorrected(companyId, id, shown);
+            else
+              sayReceiverUndoRefused(
+                this.feedback,
+                this.translate,
+                this.refusalFigures,
+                answer.refused,
+              );
           }),
     });
   }

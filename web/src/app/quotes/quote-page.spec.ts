@@ -784,6 +784,29 @@ describe('QuotePage', () => {
       );
     });
 
+    it('says why « Annuler » could not put back who answered, and offers nothing more', async () => {
+      // The contact named before was removed meanwhile: the undo answered 422 and the screen said nothing.
+      quote.set({ ...accepted, receivedBy: { name: 'Karim', contactId: 'kc1' } });
+      await open('q1');
+      await openMenu();
+      over('document-menu-correct-receiver')!.click();
+      await settle();
+      typeIn(over('receiver-dialog-name') as HTMLInputElement, 'Leila');
+      await settle();
+      over('receiver-dialog-save')!.click();
+      await vi.waitFor(() =>
+        expect(effectToasts()).toEqual(['quotes.receiver_corrected:corrigeable']),
+      );
+
+      facade.correctReceiver.mockResolvedValueOnce({
+        refused: [{ field: 'receivedBy', reason: 'unknown_choice', params: {} }],
+      });
+      offeredNext()!.run();
+
+      await vi.waitFor(() => expect(failureToasts()).toEqual(['receivers.undo_refused']));
+      expect(effectToasts()).toEqual(['quotes.receiver_corrected:corrigeable']);
+    });
+
     it('offers to put it right only on an answered quote, to whoever writes quotes, unless nobody is ever named', async () => {
       const offered = async (): Promise<boolean> => {
         if (q('document-more') === null) return false;

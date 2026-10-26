@@ -29,6 +29,7 @@ import {
   type RecordedFeedback,
   successToasts,
   effectToasts,
+  failureToasts,
   offeredNext,
 } from '../shared/testing/feedback';
 import { PurchaseOrderPage } from './purchase-order-page';
@@ -642,6 +643,32 @@ describe('PurchaseOrderPage', () => {
         name: null,
         addToContacts: false,
       });
+    });
+
+    it('says why « Annuler » could not put back who received, and offers nothing more', async () => {
+      // The member named before had left the company: the undo was refused and the screen said nothing.
+      order.set({ ...orderIn('partly_received'), receiverRule: 'required' });
+      await open('o1');
+      let data: ReceiverDialogData | undefined;
+      vi.spyOn(TestBed.inject(MatDialog), 'open').mockImplementation((_, config) => {
+        data = config?.data as ReceiverDialogData;
+        return { afterClosed: () => of(true) } as never;
+      });
+      q('purchase-order-receipt-r1-correct-receiver')!.click();
+      await settle();
+      await vi.waitFor(() => expect(data).toBeDefined());
+      await data!.save({ contactId: null, name: 'Sami Trabelsi', addToContacts: false });
+      await vi.waitFor(() =>
+        expect(effectToasts()).toEqual(['purchases.receipts.receiver_corrected:corrigeable']),
+      );
+
+      facade.correctReceiver.mockResolvedValueOnce({
+        refused: [{ field: 'receivedBy', reason: 'unknown_choice', params: {} }],
+      });
+      offeredNext()!.run();
+
+      await vi.waitFor(() => expect(failureToasts()).toEqual(['receivers.undo_refused']));
+      expect(effectToasts()).toEqual(['purchases.receipts.receiver_corrected:corrigeable']);
     });
   });
 

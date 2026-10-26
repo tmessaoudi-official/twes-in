@@ -71,6 +71,7 @@ import {
 import { DeliverPartDialog, type DeliverPartData } from '../shared/documents/deliver-part-dialog';
 import type { Receiver } from '../shared/receivers/receiver';
 import { ReceiverDialog, type ReceiverDialogData } from '../shared/receivers/receiver-dialog';
+import { sayReceiverUndoRefused } from '../shared/receivers/receiver-undo';
 import { QuoteDepositDialog, type QuoteDepositDialogData } from './quote-deposit-dialog';
 import { quoteForm, quoteInput, quoteValues, shownStatus } from './quote-forms';
 import { QuotesFacade } from './quotes-facade';
@@ -850,7 +851,15 @@ export class QuotePage {
                 : { contactId: null, name: before.name, addToContacts: false },
           )
           .then((answer) => {
-            if (answer !== null && 'kept' in answer) this.saidCorrected(companyId, id, shown);
+            if (answer === null) return;
+            if ('kept' in answer) this.saidCorrected(companyId, id, shown);
+            else
+              sayReceiverUndoRefused(
+                this.feedback,
+                this.translate,
+                this.refusalFigures,
+                answer.refused,
+              );
           }),
     });
   }

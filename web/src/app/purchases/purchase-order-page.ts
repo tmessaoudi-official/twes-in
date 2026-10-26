@@ -65,6 +65,7 @@ import {
 } from './purchases-types';
 import { ReceiveDialog, type ReceiveDialogData } from './receive-dialog';
 import { ReceiverDialog, type ReceiverDialogData } from '../shared/receivers/receiver-dialog';
+import { sayReceiverUndoRefused } from '../shared/receivers/receiver-undo';
 import type { Receiver } from '../shared/receivers/receiver';
 
 /** What an order will offer once its planned modules ship, shown « Bientôt » beside what it offers today. */
@@ -679,8 +680,15 @@ export class PurchaseOrderPage {
                 : { contactId: null, name: before.name, addToContacts: false },
           )
           .then((answer) => {
-            if (answer !== null && 'kept' in answer)
-              this.saidCorrected(companyId, id, receiptId, shown);
+            if (answer === null) return;
+            if ('kept' in answer) this.saidCorrected(companyId, id, receiptId, shown);
+            else
+              sayReceiverUndoRefused(
+                this.feedback,
+                this.translate,
+                this.refusalFigures,
+                answer.refused,
+              );
           }),
     });
   }

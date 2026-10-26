@@ -1894,6 +1894,8 @@
       "cancelled": "This note is cancelled and no longer changes; it can still be printed."
     },
     "invoiced_note": "This note is on an issued invoice: it is neither delivered nor cancelled any more, and can still be printed.",
+    "not_delivered": "Delivery not recorded",
+    "awaits_validation": "A manager validates this note: they find it under “To watch”.",
     "on_invoices": "Invoiced on",
     "invoice_draft": "draft invoice",
     "statuses": {
@@ -4177,6 +4179,8 @@
     "nobody": "Nobody",
     "save": "Save",
     "keep": "Change nothing",
-    "undo": "Undo"
+    "undo": "Undo",
+    "dropped": "“Received by” is switched off for this document: {{name}} will not be kept.",
+    "undo_refused": "{{why}} Who received it was not put back."
   }
 }
