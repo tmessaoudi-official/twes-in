@@ -12,13 +12,17 @@ namespace App\Module\Invoices\Application\Reminder;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Domain\Repository\CustomerRepository;
+use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Model\InvoiceReminder;
 use App\Module\Invoices\Domain\Repository\InvoiceReminderRepository;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Application\LiveChange;
+use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\MembershipRepository;
 use Psr\Clock\ClockInterface;
@@ -36,6 +40,7 @@ final readonly class RemindLateInvoices
 {
     public const string PERMISSION = 'invoice.issue';
     public const string REMINDER_DUE = 'invoice.reminder_due';
+    public const string REMINDED = 'invoice.reminded';
     public const string LATE_FEE_DRAFTED = 'invoice.late_fee_drafted';
 
     public function __construct(
@@ -48,6 +53,8 @@ final readonly class RemindLateInvoices
         private CurrencyScales $scales,
         private ClockInterface $clock,
         private DraftLateFee $lateFees,
+        private Transactions $transactions,
+        private LiveChanges $liveChanges,
     ) {
     }
 
@@ -88,7 +95,17 @@ final readonly class RemindLateInvoices
             if (!$reminded[$customer]) {
                 continue;
             }
-            if (!$this->reminders->recordOnce(new InvoiceReminder($company, $row['invoiceId'], $stage, $daysLate, $today, $this->clock->now()))) {
+            $reminder = new InvoiceReminder($company, $row['invoiceId'], $stage, $daysLate, $today, $this->clock->now());
+            // Said as a change of its invoice, whose page lists the stages reached: nothing else records it.
+            $kept = $this->transactions->run(function () use ($reminder, $row, $company): bool {
+                if (!$this->reminders->recordOnce($reminder)) {
+                    return false;
+                }
+                $this->liveChanges->stage(new LiveChange(ManageInvoices::ENTITY_TYPE, $row['invoiceId'], self::REMINDED, null, $company->getId()));
+
+                return true;
+            });
+            if (!$kept) {
                 continue;
             }
             ++$recorded;

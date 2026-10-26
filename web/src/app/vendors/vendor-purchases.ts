@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, input, type OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  input,
+  type OnInit,
+} from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -33,6 +41,15 @@ export class VendorPurchasesSection implements OnInit {
   protected readonly busy = this.purchases.busy;
   protected readonly error = this.purchases.error;
   protected readonly more = this.purchases.more;
+
+  constructor() {
+    // An order received, or a purchase history imported, elsewhere is a line of this list at once (hunt C5).
+    inject(LiveChanges).reloadOn(
+      ['purchase_order', 'vendor'],
+      () => this.purchases.load(this.companyId(), this.vendorId()),
+      inject(DestroyRef),
+    );
+  }
 
   async ngOnInit(): Promise<void> {
     void this.texts.open(PURCHASE_HISTORY_TEXTS);

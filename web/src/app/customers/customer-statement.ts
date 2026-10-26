@@ -4,12 +4,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
   signal,
   untracked,
 } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -88,6 +90,14 @@ export class CustomerStatementView {
       const period = { from: this.from(), to: this.to() };
       untracked(() => void this.facade.load(companyId, customerId, period));
     });
+    // An invoice issued, a payment or a credit note recorded by a colleague is a line of this statement, read out to a
+    // customer at the counter (hunt C2): the period on screen is read again.
+    inject(LiveChanges).reloadOn(
+      ['invoice', 'customer'],
+      () =>
+        this.facade.load(this.companyId(), this.customerId(), { from: this.from(), to: this.to() }),
+      inject(DestroyRef),
+    );
   }
 
   /** A day once it is one (or nothing, to clear the limit); what is still being typed waits. */

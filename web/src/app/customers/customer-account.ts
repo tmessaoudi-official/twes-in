@@ -4,11 +4,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
   untracked,
 } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { CustomerAccountFacade } from './customer-account-facade';
@@ -46,5 +48,11 @@ export class CustomerAccountView {
       const customerId = this.customerId();
       untracked(() => void this.facade.load(companyId, customerId));
     });
+    // What the customer owes and has on account moves with every invoice, payment and credit recorded elsewhere (hunt C3).
+    inject(LiveChanges).reloadOn(
+      ['invoice', 'customer'],
+      () => this.facade.load(this.companyId(), this.customerId()),
+      inject(DestroyRef),
+    );
   }
 }

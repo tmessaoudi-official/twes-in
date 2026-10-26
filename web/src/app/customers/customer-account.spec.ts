@@ -11,7 +11,11 @@ import { of } from 'rxjs';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { CustomerAccountFacade } from './customer-account-facade';
 import { CustomerAccountView } from './customer-account';
+import { announceSaved } from '../shared/testing/live';
 import type { CustomerAccount } from './customers-types';
+import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -56,6 +60,9 @@ describe('CustomerAccountView', () => {
     await TestBed.configureTestingModule({
       imports: [CustomerAccountView],
       providers: [
+        ...provideQuietFeedback(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideTranslateService({
           fallbackLang: 'fr',
           loader: provideTranslateLoader(StaticLoader),
@@ -89,6 +96,18 @@ describe('CustomerAccountView', () => {
     await render();
     expect(load).toHaveBeenCalledWith('c1', 'k1');
   });
+
+  it.each(['invoice', 'customer'])(
+    'reads the account again when %s changes elsewhere',
+    async (kind) => {
+      await render();
+      load.mockClear().mockResolvedValue(undefined);
+
+      await announceSaved(kind, 'x1');
+
+      expect(load).toHaveBeenCalledWith('c1', 'k1');
+    },
+  );
 
   it('says nothing of lateness, money on account or a limit the customer does not have', async () => {
     const root = await render();

@@ -20,6 +20,10 @@ import { InvoiceReminders } from './invoice-reminders';
 import { InvoicesRefused } from './invoices-api';
 import { RemindersApi } from './reminders-api';
 import type { InvoiceReminderRow } from './invoices-types';
+import { announceSaved } from '../shared/testing/live';
+import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -62,6 +66,9 @@ describe('InvoiceReminders', () => {
     TestBed.configureTestingModule({
       imports: [InvoiceReminders],
       providers: [
+        ...provideQuietFeedback(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideRouter([]),
         provideTranslateService({
           lang: 'fr',
@@ -85,6 +92,17 @@ describe('InvoiceReminders', () => {
 
     expect(api.list).toHaveBeenCalledWith('c1', 'f1');
     expect(q('invoice-reminders')).toBeNull();
+  });
+
+  it('reads again in place when the worker records a stage, keeping what is listed meanwhile', async () => {
+    // The worker's reminder used to stay unseen until the invoice was opened again (hunt C4).
+    api.list.mockResolvedValue([]);
+    await show();
+    api.list.mockClear();
+
+    await announceSaved('invoice', 'f1', null, 'invoice.reminded');
+
+    expect(api.list).toHaveBeenCalledWith('c1', 'f1');
   });
 
   it('lists each stage reached, and leads to the late fee a stage drafted', async () => {

@@ -73,7 +73,6 @@ final class CommandsAndQueriesTest extends TestCase
         PasskeyAssertions::class => "a passkey's signature counter, kept by the sign-in or step-up that audits it",
         NotificationCentre::class => 'whether a person has read their own notifications',
         NotificationPreferences::class => 'how a person chooses to be told their own notifications, as reading them is',
-        RemindLateInvoices::class => 'a scheduled run with no actor; the stage it records stops it telling twice, its notification is the signal, and a late fee it drafts goes through ManageInvoices, which audits it',
         ForgetSettings::class => 'a part of deleting the subject, whose own use case records the deletion',
         CarryMergedStock::class => 'a part of merging products and of undoing it, inside the merge\'s transaction, which records it',
         SeedPlatform::class => 'the seed and the convergence at start, which no person changes',
@@ -103,6 +102,7 @@ final class CommandsAndQueriesTest extends TestCase
         CashInvoicesInBulk::class => 'every payment goes through ManagePayments, which records it on its invoice',
         KeepSandboxPool::class => 'the platform keeping a demo of each country ready, which no person changes; each build records the company it opens',
         BuildSandbox::class => 'its company is opened by OpenSandboxCompany, which records it, and the demo data is written through the use cases, which record theirs',
+        RemindLateInvoices::class => 'a scheduled run with no actor: the stage it records stops it telling twice and is staged as a live change, its notification is the signal, and a late fee it drafts goes through ManageInvoices, which audits it',
         ResealSecondFactors::class => 'the same secrets under a new key, run on the console with the service stopped, which no person changes; the runbook is its record',
     ];
 

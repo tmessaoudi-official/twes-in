@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   input,
   linkedSignal,
@@ -12,6 +13,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -177,6 +179,17 @@ export class ProductBarcodesSection implements OnInit {
 
   constructor() {
     inject(UnsavedChanges).declare(this.unsaved);
+    // A vendor added or renamed elsewhere is offered as the supplier of a code at once.
+    inject(LiveChanges).reloadOn(
+      ['vendor'],
+      async () => {
+        const companyId = this.companyId();
+        if (companyId !== null && !this.readOnly() && this.mayName()) {
+          await this.facade.loadSuppliers(companyId);
+        }
+      },
+      inject(DestroyRef),
+    );
   }
 
   async ngOnInit(): Promise<void> {

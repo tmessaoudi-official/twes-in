@@ -13,6 +13,10 @@ import { AuthFacade } from '../auth/auth-facade';
 import { ProductSubstitutes } from './product-substitutes-facade';
 import { ProductSubstitutesSection } from './product-substitutes';
 import type { ProductSubstituteRow } from './products-types';
+import { announceSaved } from '../shared/testing/live';
+import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -67,6 +71,9 @@ describe('ProductSubstitutesSection', () => {
     TestBed.configureTestingModule({
       imports: [ProductSubstitutesSection],
       providers: [
+        ...provideQuietFeedback(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideRouter([]),
         provideTranslateService({ lang: 'fr', loader: provideTranslateLoader(StaticLoader) }),
         { provide: ProductSubstitutes, useValue: facade },
@@ -84,6 +91,18 @@ describe('ProductSubstitutesSection', () => {
     expect(q('product-substitute-ART-003')).not.toBeNull();
     expect(q('product-substitute-stock-ART-003')).toBeNull();
   });
+
+  it.each(['product', 'stock_movement'])(
+    'reads the substitutes again when %s changes elsewhere',
+    async (kind) => {
+      await open('Portables');
+      facade.load.mockClear().mockResolvedValue(undefined);
+
+      await announceSaved(kind, 'x1');
+
+      expect(facade.load).toHaveBeenCalledWith('c1', 'p1');
+    },
+  );
 
   it('says so when the group has no other active product', async () => {
     rows.set([]);

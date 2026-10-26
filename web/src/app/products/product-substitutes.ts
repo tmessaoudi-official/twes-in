@@ -4,10 +4,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   input,
   type OnInit,
 } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
@@ -42,7 +44,20 @@ export class ProductSubstitutesSection implements OnInit {
   protected readonly error = this.substitutes.error;
   protected readonly grouped = computed(() => (this.group() ?? '') !== '');
 
+  constructor() {
+    // A product joining or leaving the group, or its stock moving, shows here at once.
+    inject(LiveChanges).reloadOn(
+      ['product', 'stock_movement'],
+      () => this.load(),
+      inject(DestroyRef),
+    );
+  }
+
   async ngOnInit(): Promise<void> {
+    await this.load();
+  }
+
+  private async load(): Promise<void> {
     const companyId = this.auth.me()?.company?.id ?? null;
     if (companyId !== null) await this.substitutes.load(companyId, this.productId());
   }

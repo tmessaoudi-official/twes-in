@@ -4,12 +4,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   input,
   type OnInit,
   output,
   signal,
 } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -69,6 +71,15 @@ export class ProductHomesSection implements OnInit {
 
   constructor() {
     inject(UnsavedChanges).declare(this.unsaved);
+    // A home given or taken elsewhere, or a location renamed, shows here at once.
+    inject(LiveChanges).reloadOn(
+      ['product_home_location', 'stock_location'],
+      async () => {
+        const companyId = this.companyId();
+        if (companyId !== null) await this.homes.load(companyId, this.productId());
+      },
+      inject(DestroyRef),
+    );
   }
 
   async ngOnInit(): Promise<void> {

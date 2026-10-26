@@ -19,6 +19,7 @@ import { ProductHomes } from './product-homes-facade';
 import { ProductHomesSection } from './product-homes';
 import { groupByEstablishment } from './product-home-order';
 import type { ProductHomeRow } from './products-types';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -125,6 +126,18 @@ describe('ProductHomesSection', () => {
 
     expect(facade.load).toHaveBeenCalledWith('c1', 'p1');
   });
+
+  it.each(['product_home_location', 'stock_location'])(
+    'reads the homes again when %s changes elsewhere',
+    async (kind) => {
+      await open();
+      facade.load.mockClear().mockResolvedValue(undefined);
+
+      await announceSaved(kind, 'x1');
+
+      expect(facade.load).toHaveBeenCalledWith('c1', 'p1');
+    },
+  );
 
   it('says so plainly while the product lives nowhere in particular', async () => {
     await open();

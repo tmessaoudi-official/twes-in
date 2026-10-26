@@ -3,12 +3,14 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   effect,
   inject,
   input,
   signal,
   untracked,
 } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatCardModule } from '@angular/material/card';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -83,11 +85,17 @@ export class InvoiceReminders {
       const invoiceId = this.invoiceId();
       untracked(() => void this.load(companyId, invoiceId));
     });
+    // The worker records a stage while the invoice is open: read again in place, what is listed kept meanwhile.
+    inject(LiveChanges).reloadOn(
+      ['invoice'],
+      () => this.load(this.companyId(), this.invoiceId(), true),
+      inject(DestroyRef),
+    );
   }
 
-  private async load(companyId: string, invoiceId: string): Promise<void> {
+  private async load(companyId: string, invoiceId: string, quiet = false): Promise<void> {
     const request = ++this.request;
-    this.rows.set([]);
+    if (!quiet) this.rows.set([]);
     this.error.set(false);
     try {
       const rows = await this.api.list(companyId, invoiceId);

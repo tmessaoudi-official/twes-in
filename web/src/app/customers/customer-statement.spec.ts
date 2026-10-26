@@ -13,6 +13,10 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { CustomerStatementFacade } from './customer-statement-facade';
 import { CustomerStatementView } from './customer-statement';
 import type { CustomerStatement } from './customers-types';
+import { announceSaved } from '../shared/testing/live';
+import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -83,6 +87,9 @@ describe('CustomerStatementView', () => {
     await TestBed.configureTestingModule({
       imports: [CustomerStatementView],
       providers: [
+        ...provideQuietFeedback(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideRouter([]),
         provideTranslateService({
           fallbackLang: 'fr',
@@ -134,6 +141,18 @@ describe('CustomerStatementView', () => {
     statement.set(account);
     error.set(null);
   });
+
+  it.each(['invoice', 'customer'])(
+    'reads the period on screen again when %s changes elsewhere',
+    async (kind) => {
+      await render();
+      load.mockClear().mockResolvedValue(undefined);
+
+      await announceSaved(kind, 'x1');
+
+      expect(load).toHaveBeenCalledWith('c1', 'k1', { from: '', to: '' });
+    },
+  );
 
   it('asks for the company year to date until a day is chosen, then for the days chosen', async () => {
     const { fixture, el } = await render();

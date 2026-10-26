@@ -10,18 +10,24 @@ repo() {
   echo "$d"
 }
 echo "live-reload gate"
-d=$(repo); printf 'export class APage { init() { this.live.reloadOn(["a"], () => this.facade.load(id), this.destroyRef); void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
+d=$(repo); printf '@Component({}) export class APage { init() { this.live.reloadOn(["a"], () => this.facade.load(id), this.destroyRef); void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page that reads and calls reloadOn passes" $? 0 "$out" "OK — 1 "
-printf 'export class APage { init() { void this.facade.loadValuation(id); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
+printf '@Component({}) export class APage { init() { void this.facade.loadValuation(id); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page that reads through its facade and never reloads is named" $? 1 "$out" "x/a-page.ts"
-printf 'export class APage { look() { return this.api.find(id, words); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
+printf '@Component({}) export class APage { look() { return this.api.find(id, words); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page that reads through its API and never reloads is named" $? 1 "$out" "x/a-page.ts"
-printf 'export class APage { readonly record = liveRecord(this.facade.loadOne(id)); }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
+printf '@Component({}) export class APage { readonly record = liveRecord(this.facade.loadOne(id)); }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page keeping its record live passes" $? 0 "$out" "OK"
-d=$(repo); printf 'export class ImportPage { init() { void this.facade.load(id, subject); } }\n' > "$d/web/src/app/import/import-page.ts"
-printf 'export class APage { init() { this.live.reloadOn(["a"], r, d); void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
+printf '@Component({}) export class APanel { init() { void this.homes.load(id, productId); } }\n' > "$d/web/src/app/x/a-panel.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a panel inside a page, reading through any member, is asked too" $? 1 "$out" "x/a-panel.ts"
+printf '@Component({}) export class APanel { init() { leaveOnceOpen(); void this.companies.load(); } }\n' > "$d/web/src/app/x/a-panel.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a screen outside the shell asking again on focus passes" $? 0 "$out" "OK — 2 "
+printf 'export class AFacade { async refresh() { this.rows.set(await this.api.list(id)); } }\n' > "$d/web/src/app/x/a-facade.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a facade is not a screen" $? 0 "$out" "OK — 2 "
+d=$(repo); printf '@Component({}) export class ImportPage { init() { void this.facade.load(id, subject); } }\n' > "$d/web/src/app/import/import-page.ts"
+printf '@Component({}) export class APage { init() { this.live.reloadOn(["a"], r, d); void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page listed with its reason is not asked" $? 0 "$out" "OK — 1 "
-d=$(repo); printf 'export class APage { init() { void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.spec.ts"; git -C "$d" add -A
+d=$(repo); printf '@Component({}) export class APage { init() { void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.spec.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a spec is not a page" $? 1 "$out" "pass over nothing"
 d=$(repo); git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a tree with no page reading anything reds rather than passing over nothing" $? 1 "$out" "pass over nothing"

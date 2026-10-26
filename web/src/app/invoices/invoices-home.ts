@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   untracked,
@@ -15,6 +16,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { formatMonth } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { versus } from '../shared/ui/versus';
 import { agingBars, chaseDue, collectedBars, initials } from './invoice-summary-view';
 import { InvoicesFacade } from './invoices-facade';
@@ -113,5 +115,15 @@ export class InvoicesHome {
         untracked(() => void this.facade.loadSummary(companyId));
       }
     });
+    // A payment, a credit note or an invoice issued by a colleague moves what is to collect and to chase at once
+    // (payments are recorded as `invoice`), and a customer renamed changes a line to chase.
+    inject(LiveChanges).reloadOn(
+      ['invoice', 'customer'],
+      async () => {
+        const companyId = this.companyId();
+        if (companyId !== null) await this.facade.loadSummary(companyId);
+      },
+      inject(DestroyRef),
+    );
   }
 }

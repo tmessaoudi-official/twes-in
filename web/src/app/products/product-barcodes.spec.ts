@@ -16,6 +16,7 @@ import { provideQuietFeedback, successToasts } from '../shared/testing/feedback'
 import { ProductBarcodes } from './product-barcodes-facade';
 import { ProductBarcodesSection } from './product-barcodes';
 import type { BarcodesRefusal, ProductBarcode } from './products-types';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -106,6 +107,15 @@ describe('ProductBarcodesSection', () => {
 
     expect(codes()).toEqual(['3017620422003']);
     expect((q('product-barcodes-save') as HTMLButtonElement).disabled).toBe(true);
+    expect(facade.loadSuppliers).toHaveBeenCalledWith('c1');
+  });
+
+  it('reads the suppliers again when a vendor changes elsewhere', async () => {
+    await open();
+    facade.loadSuppliers.mockClear().mockResolvedValue(undefined);
+
+    await announceSaved('vendor', 'x1');
+
     expect(facade.loadSuppliers).toHaveBeenCalledWith('c1');
   });
 

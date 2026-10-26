@@ -21,6 +21,10 @@ import { VendorPurchasesSection } from './vendor-purchases';
 import { VENDOR_PURCHASES_PAGE } from './vendor-purchases-facade';
 import { VendorsApi } from './vendors-api';
 import type { VendorPurchaseRow } from './vendors-types';
+import { announceSaved } from '../shared/testing/live';
+import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -84,6 +88,9 @@ describe('VendorPurchasesSection', () => {
     TestBed.configureTestingModule({
       imports: [VendorPurchasesSection],
       providers: [
+        ...provideQuietFeedback(),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideTranslateService({ lang: 'fr', loader: provideTranslateLoader(StaticLoader) }),
         provideRouter([]),
         { provide: VendorsApi, useValue: api },
@@ -119,6 +126,19 @@ describe('VendorPurchasesSection', () => {
     // Everything is on screen: nothing more to show.
     expect(q('vendor-purchases-more')).toBeNull();
   });
+
+  it.each(['purchase_order', 'vendor'])(
+    'reads the lines again when %s changes elsewhere',
+    async (kind) => {
+      api.purchases.mockResolvedValue({ rows: [], total: 0 });
+      await open();
+      api.purchases.mockClear();
+
+      await announceSaved(kind, 'x1');
+
+      expect(api.purchases).toHaveBeenCalledWith('c1', 'v1', 1, VENDOR_PURCHASES_PAGE);
+    },
+  );
 
   it('adds the next page under the lines shown when asked, until every line is there', async () => {
     api.purchases

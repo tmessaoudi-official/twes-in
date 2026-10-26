@@ -21,7 +21,9 @@ import {
 } from '../shared/settings/settings-facade';
 import { InvoicesFacade } from './invoices-facade';
 import { InvoicesHome } from './invoices-home';
+import { announceSaved } from '../shared/testing/live';
 import type { InvoicesError, InvoiceSummary } from './invoices-types';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -163,6 +165,7 @@ describe('InvoicesHome', () => {
     TestBed.configureTestingModule({
       imports: [InvoicesHome],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -188,6 +191,18 @@ describe('InvoicesHome', () => {
     await settle();
     expect(facade.loadSummary).toHaveBeenLastCalledWith('c2');
   });
+
+  it.each(['invoice', 'customer'])(
+    'reads the summary again when %s changes elsewhere, as a payment a colleague records',
+    async (kind) => {
+      // The owner chased a customer a colleague had just recorded paid (hunt C1).
+      facade.loadSummary.mockClear().mockResolvedValue(undefined);
+
+      await announceSaved(kind, 'x1');
+
+      expect(facade.loadSummary).toHaveBeenCalledWith('c1');
+    },
+  );
 
   it('shows what is to collect, what is late, what came in and the VAT collected, as the API has them', () => {
     expect(text('home-outstanding')).toContain('3 531,050');

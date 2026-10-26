@@ -18,7 +18,9 @@ use App\Module\Invoices\Application\Reminder\RemindLateInvoices;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\RealtimePublisher;
 use App\Tenancy\Domain\Model\Company;
+use App\Tests\Support\RecordingRealtimePublisher;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Clock\NativeClock;
@@ -75,6 +77,24 @@ final class InvoiceRemindersTest extends ApiTestCase
         $this->runAt('10:00');
         self::assertCount(1, $this->reminders(), 'the same stage is never recorded twice');
         self::assertCount(1, $this->toldTo($this->userId), 'nor told twice');
+    }
+
+    /** The invoice's page lists its reminders, and hears the worker record one (hunt C4). */
+    public function testARecordedStageIsSaidToTheCompanyAsAChangeOfItsInvoice(): void
+    {
+        $invoice = $this->issue('100');
+        $this->dueDaysAgo($invoice, 8);
+        // A kernel of its own, whose live changes the recorder hears: the last request's has its publisher already.
+        static::ensureKernelShutdown();
+        $publisher = new RecordingRealtimePublisher();
+        static::getContainer()->set(RealtimePublisher::class, $publisher);
+
+        $this->runAt('09:05');
+
+        $said = array_values(array_filter($publisher->pushed, static fn (array $push): bool => 'invoice.reminded' === ($push['data']['action'] ?? null)));
+        self::assertCount(1, $said);
+        self::assertSame('company:'.$this->company->getId()->toRfc4122(), $said[0]['channel']);
+        self::assertSame(['invoice', $invoice], [$said[0]['data']['kind'] ?? null, $said[0]['data']['id'] ?? null]);
     }
 
     public function testAnInvoiceAlreadyFarLateRecordsOnlyTheHighestStageReached(): void
