@@ -19,7 +19,10 @@ git verify-tag v2026.10.DD.1                     # « Good signature » from key
 git push origin v2026.10.DD.1                    # a pushed tag never moves
 ```
 
-If the shop's policy is `auto`, it takes the release in its night window after the push; otherwise § 3 takes it.
+**When to push.** The shop takes the newest signed tag by itself in its daily window: `twes install` set the policy to
+`auto` unless it was changed since (`twes status` reads « updates: auto HH:MM-HH:MM »). The tag can be made any time; to
+run the update in front of the shop on Wednesday, push it on Wednesday after that window has passed, before leaving.
+Pushed on Tuesday, the shop updates itself in its next window, and § 3 starts at its first step.
 
 ## 2. Before leaving
 
@@ -29,8 +32,14 @@ If the shop's policy is `auto`, it takes the release in its night window after t
 
 ## 3. At the shop: the update (about 10 minutes)
 
-1. `twes status`: note the version it runs and « backups to: ». Already on the new tag (the night window took it): go to § 4.
-2. `twes update`. It says each step and its expected time, and must end « updated to v2026.10.DD.1 ».
+1. `twes status`: note the version it runs and « backups to: ». Already on the new tag (the window took it): go to § 4.
+   Still on `v2026.10.25.1` although the tag was pushed before the window: read the end of `.twes-in/state/twes.log`
+   (`wsl -d Ubuntu --cd ~ -- tail -n 30 .twes-in/state/twes.log`). A line « … is unhealthy (…): starting
+   v2026.10.25.1 again » means the window tried the update and took the shop back: nothing is lost, the shop works.
+   Send that file and § 5's, and do not run `twes update` by hand.
+2. `twes update`. This update is run by the `twes` the shop has now, `v2026.10.25.1`'s: it says « backed up before
+   the update: … », shows the images downloading, and must end « updated to v2026.10.DD.1 ». It does not number its
+   steps or say how long each usually takes: that comes with this release, from the next update on.
 3. It ends « … is unhealthy (…): starting v2026.10.25.1 again » instead: nothing is lost, the shop works on the
    previous release. Copy the whole output (and § 5's log) and send it; do not retry by hand.
 4. It refuses with « Mise à jour annulée : la sauvegarde d'avant n'a pas été faite »: the backup folder is missing (the
