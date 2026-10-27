@@ -89,24 +89,28 @@ reached » on 1 with « DNS privé » on a name: repeat with it set to automatic
 **« Reçu par » : qui a reçu la marchandise**
 
 - Sur un **bon de livraison**, à « Livrer » ou « Valider et livrer » : choisir un contact du client, ou taper un nom
-  (cocher « Ajouter à ses contacts » pour le retrouver la prochaine fois). Le nom s'imprime sur le bon.
+  (cocher « Ajouter à ses contacts » pour le retrouver la prochaine fois). Nommé avant la validation, le nom s'imprime
+  sur le bon ; nommé à « Livrer », il s'imprime sur la « Copie — livrée ».
 - Sur une **facture** qui remet elle-même la marchandise (sans bon de livraison) : le même champ, sur le brouillon.
 - Sur un **devis** : à « Marquer accepté » ou « Marquer refusé », qui a répondu pour le client.
 - Sur une **réception de commande fournisseur** : qui, dans la boutique, a reçu la marchandise (un membre ou un nom).
-- Un nom faux se corrige : « ⋮ » puis « Corriger qui a reçu… ». Le message qui suit propose « Annuler ». Le PDF déjà
-  émis garde le nom d'origine ; la page et la copie à jour disent le nom corrigé.
+- Un nom faux se corrige : « ⋮ » puis « Corriger qui a reçu… » (sur une réception, le bouton « Corriger qui a reçu… »
+  sous la réception). Le message qui suit propose « Annuler ». Le bon ou la facture déjà émis gardent le nom imprimé
+  d'origine ; la page et la copie à jour disent le nom corrigé. Un devis n'imprime pas qui a répondu.
 - **Paramètres** : pour chaque document, « Jamais », « Si on le souhaite » (par défaut) ou « Toujours ». Le même réglage
   se fait par groupe de clients et par client, onglet « Valeurs par défaut ».
 
 **Les rôles**
 
 - Une page qu'un rôle ne peut pas ouvrir le dit (« Votre rôle dans … ne permet pas d'ouvrir … ») et propose le retour
-  à l'accueil, au lieu d'échouer.
+  à l'accueil, au lieu d'échouer ; de même pour un module désactivé, et pour l'abonnement (seul le propriétaire voit
+  « Voir l'abonnement », les autres sont invités à le prévenir).
 - La page « Membres » ne propose plus à un administrateur ce qu'il ne peut pas faire : rien sur la ligne d'un
   propriétaire, et seulement les rôles qu'il peut donner.
 - « À surveiller », son compteur et les rapports suivent tout de suite un changement de rôle, sans recharger la page.
 - Un bon de livraison qu'un employé ne peut pas valider le dit : « Un responsable valide ce bon : il le retrouve dans
-  « À surveiller ». » Le responsable le voit sous « Bons à valider ».
+  « À surveiller ». » Le responsable le voit sous « Bons à valider » deux heures après le dernier enregistrement du
+  brouillon (pas tout de suite).
 
 **Abonnement et compte**
 
@@ -119,3 +123,4 @@ reached » on 1 with « DNS privé » on a name: repeat with it set to automatic
 - Un bon facturé avant le départ de la marchandise dit « Livraison non enregistrée ».
 - Le code d'appairage d'un téléphone (scanner) dit quand il a expiré.
 - Un contact ajouté par un collègue apparaît tout de suite, sur la fiche client comme dans un brouillon ouvert.
+- « Ajouter à ses contacts » n'est plus proposé pour un nom qui y est déjà.

@@ -24,6 +24,11 @@ class StaticLoader implements TranslateLoader {
         subscription:
           'L’abonnement de {{company}} ne permet pas d’ouvrir « {{page}} » en ce moment.',
         ask: 'Si vous en avez besoin, demandez à un propriétaire de {{company}} de changer votre rôle.',
+        subscription_ask:
+          'Seul un propriétaire de {{company}} peut régler l’abonnement\u00a0: prévenez-le.',
+        module: 'Le module de «\u00a0{{page}}\u00a0» est désactivé dans {{company}}.',
+        module_ask:
+          'Si vous en avez besoin, demandez à qui gère {{company}} de l’activer dans Paramètres › Modules.',
         see_subscription: 'Voir l’abonnement',
         home: 'Retour à l’accueil',
       },
@@ -36,8 +41,13 @@ class Blank {}
 
 // The guard's declaration, registered as app.routes registers the real ones.
 const SUPPLIERS = [
-  { labelKey: 'nav.suppliers', route: '/suppliers', permission: 'vendor.read' },
-  { labelKey: 'nav.new_supplier', route: '/suppliers/new', permission: 'vendor.write' },
+  { labelKey: 'nav.suppliers', route: '/suppliers', permission: 'vendor.read', module: 'vendors' },
+  {
+    labelKey: 'nav.new_supplier',
+    route: '/suppliers/new',
+    permission: 'vendor.write',
+    module: 'vendors',
+  },
 ] as const;
 permissionGuard(SUPPLIERS, '/suppliers');
 permissionGuard(SUPPLIERS, '/suppliers/new');
@@ -50,7 +60,7 @@ describe('NotAllowedPage', () => {
   });
   const auth = {
     me: state.asReadonly(),
-    hasModule: () => true,
+    hasModule: (module: string) => !state().modules.includes(`off:${module}`),
     grantedByRole: (permission: string) =>
       state().permissions.some((held) => held === '*' || held === permission),
     hasPermission: (permission: string) =>
@@ -121,6 +131,38 @@ describe('NotAllowedPage', () => {
       root.querySelector('[data-testid="not-allowed-subscription"]')?.getAttribute('href'),
     ).toBe('/company/subscription');
     expect(root.querySelector('[data-testid="not-allowed-ask"]')).toBeNull();
+  });
+
+  it('offers the subscription only to whoever may open it, and tells the others to warn an owner', async () => {
+    state.set({
+      company: { id: 'c1', name: 'Atelier Ben Salah', role: 'clerk', access: 'read_only' },
+      permissions: ['vendor.read', 'vendor.write'],
+      modules: [],
+    });
+    const root = await render('/suppliers/new', '/suppliers/new');
+
+    expect(text(root, 'not-allowed-reason')).toBe(
+      'L’abonnement de Atelier Ben Salah ne permet pas d’ouvrir « Nouveau fournisseur » en ce moment.',
+    );
+    expect(root.querySelector('[data-testid="not-allowed-subscription"]')).toBeNull();
+    expect(text(root, 'not-allowed-ask')).toBe(
+      'Seul un propriétaire de Atelier Ben Salah peut régler l’abonnement\u00a0: prévenez-le.',
+    );
+  });
+
+  it('says the module is off, not the role, and who can switch it on', async () => {
+    state.set({
+      company: { id: 'c1', name: 'Atelier Ben Salah', role: 'admin', access: 'full' },
+      permissions: ['*'],
+      modules: ['off:vendors'],
+    });
+    const root = await render('/suppliers', '/suppliers');
+
+    expect(text(root, 'not-allowed-reason')).toBe(
+      'Le module de «\u00a0Fournisseurs\u00a0» est désactivé dans Atelier Ben Salah.',
+    );
+    expect(text(root, 'not-allowed-ask')).toContain('Paramètres › Modules');
+    expect(root.querySelector('[data-testid="not-allowed-subscription"]')).toBeNull();
   });
 
   it('names no page it does not know, and still offers the way home', async () => {

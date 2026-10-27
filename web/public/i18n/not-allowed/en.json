@@ -3,6 +3,9 @@
     "role": "Your role in {{company}} does not allow opening “{{page}}”.",
     "role_any": "Your role in {{company}} does not allow opening this page.",
     "subscription": "The subscription of {{company}} does not allow opening “{{page}}” at the moment.",
+    "subscription_ask": "Only an owner of {{company}} can settle the subscription: let them know.",
+    "module": "The module of “{{page}}” is switched off in {{company}}.",
+    "module_ask": "If you need it, ask an owner or an administrator of {{company}} to switch it on in “Modules”.",
     "ask": "If you need it, ask an owner of {{company}} to change your role.",
     "see_subscription": "See the subscription",
     "home": "Back to home"

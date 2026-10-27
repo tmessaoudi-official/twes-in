@@ -9,6 +9,8 @@ import {
 import { of } from 'rxjs';
 import { NotificationsFacade } from '../notifications/notifications-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { LiveChanges } from '../shared/realtime/live-changes';
+import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 import { type NotificationChoice, NotificationChoicesApi } from './notification-choices-api';
 import { NotificationChoices } from './notification-choices';
@@ -90,6 +92,7 @@ const told: NotificationChoice[] = [
 describe('NotificationChoices', () => {
   const api = { list: vi.fn(), change: vi.fn() };
   const bell = { refresh: vi.fn() };
+  const live = { reloadOn: vi.fn() };
   let fixture: ComponentFixture<NotificationChoices>;
 
   async function render(): Promise<HTMLElement> {
@@ -103,6 +106,7 @@ describe('NotificationChoices', () => {
         ...provideQuietFeedback(),
         { provide: NotificationChoicesApi, useValue: api },
         { provide: NotificationsFacade, useValue: bell },
+        { provide: LiveChanges, useValue: live },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(NotificationChoices);
@@ -122,8 +126,27 @@ describe('NotificationChoices', () => {
     api.list.mockReset();
     api.change.mockReset();
     bell.refresh.mockReset();
+    live.reloadOn.mockReset();
     api.list.mockResolvedValue(told.map((choice) => ({ ...choice })));
     api.change.mockResolvedValue(undefined);
+  });
+
+  // What each company tells is filtered by the person's role and modules there: raised, lowered or a module switched,
+  // the list follows at once rather than at the next reload.
+  it('reads again on every change of the session', async () => {
+    await render();
+    expect(live.reloadOn).toHaveBeenCalledTimes(1);
+    expect(live.reloadOn.mock.calls[0]![0]).toEqual(expect.arrayContaining([...SESSION_KINDS]));
+    api.list.mockResolvedValue(told.slice(0, 1).map((choice) => ({ ...choice })));
+    await (live.reloadOn.mock.calls[0]![1] as () => Promise<unknown>)();
+    fixture.detectChanges();
+    expect(api.list).toHaveBeenCalledTimes(2);
+    const groups = (fixture.nativeElement as HTMLElement).querySelectorAll(
+      '[data-testid^="notification-group-"]',
+    );
+    expect([...groups].map((group) => group.getAttribute('data-testid'))).toEqual([
+      'notification-group-c1',
+    ]);
   });
 
   it('lists what each company tells under its name, then what is about the account, each with its bell as chosen', async () => {

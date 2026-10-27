@@ -2,16 +2,25 @@
   <h1 class="text-2xl font-semibold">{{ 'titles.not_allowed' | translate }}</h1>
   @if (declaration(); as declaration) {
     <p data-testid="not-allowed-reason">
-      @if (refusal() === 'subscription') {
-        {{
-          'not_allowed.subscription'
-            | translate: { company: company(), page: (declaration.labelKey | translate) }
-        }}
-      } @else {
-        {{
-          'not_allowed.role'
-            | translate: { company: company(), page: (declaration.labelKey | translate) }
-        }}
+      @switch (refusal()) {
+        @case ('subscription') {
+          {{
+            'not_allowed.subscription'
+              | translate: { company: company(), page: (declaration.labelKey | translate) }
+          }}
+        }
+        @case ('module') {
+          {{
+            'not_allowed.module'
+              | translate: { company: company(), page: (declaration.labelKey | translate) }
+          }}
+        }
+        @default {
+          {{
+            'not_allowed.role'
+              | translate: { company: company(), page: (declaration.labelKey | translate) }
+          }}
+        }
       }
     </p>
   } @else {
@@ -19,16 +28,16 @@
       {{ 'not_allowed.role_any' | translate: { company: company() } }}
     </p>
   }
-  @if (refusal() !== 'subscription') {
+  @if (askKey(); as askKey) {
     <p class="text-on-surface-variant" data-testid="not-allowed-ask">
-      {{ 'not_allowed.ask' | translate: { company: company() } }}
+      {{ askKey | translate: { company: company() } }}
     </p>
   }
   <div class="flex flex-wrap gap-2">
     <a mat-flat-button routerLink="/" data-testid="not-allowed-home">{{
       'not_allowed.home' | translate
     }}</a>
-    @if (refusal() === 'subscription') {
+    @if (seesSubscription()) {
       <a mat-button routerLink="/company/subscription" data-testid="not-allowed-subscription">{{
         'not_allowed.see_subscription' | translate
       }}</a>

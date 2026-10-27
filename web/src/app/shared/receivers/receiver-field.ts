@@ -9,6 +9,11 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { RECEIVER_NAME_MAX, type ReceiverContact, type ReceiverForm } from './receiver';
 
+/** A name as two people write it alike: case and the spaces around and between its words set aside. */
+function sameName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
 /**
  * « Reçu par »: one of the customer's contacts (or, for goods received from a vendor, the company's members), offered
  * as the person types, or any name typed, which a tick adds to the customer's contacts as the document is recorded;
@@ -37,6 +42,7 @@ import { RECEIVER_NAME_MAX, type ReceiverContact, type ReceiverForm } from './re
           [maxlength]="nameMax"
           [formControl]="form().controls.name"
           [matAutocomplete]="contactsOffered"
+          matAutocompletePosition="above"
           (input)="typed()"
           [attr.data-testid]="testId() + '-name'"
         />
@@ -99,10 +105,19 @@ export class ReceiverField {
       : this.contacts().filter((contact) => contact.name.toLocaleLowerCase().includes(typed));
   }
 
-  /** A name typed that is not a contact, which the person may add to the customer's contacts. */
+  /**
+   * A name typed that is not a contact, which the person may add to the customer's contacts. One typed in full that
+   * already is one, case and spaces aside, is not offered: added, the customer would hold the person twice.
+   */
   protected addable(): boolean {
     const { name, contactId } = this.form().controls;
-    return this.offersAdding() && contactId.value === null && name.value.trim() !== '';
+    const typed = sameName(name.value);
+    return (
+      this.offersAdding() &&
+      contactId.value === null &&
+      typed !== '' &&
+      !this.contacts().some((contact) => sameName(contact.name) === typed)
+    );
   }
 
   /** A contact picked, copied by its name, which the list then writes into the field. */

@@ -6,6 +6,7 @@ import {
   computed,
   DestroyRef,
   effect,
+  ElementRef,
   inject,
   input,
   signal,
@@ -159,6 +160,7 @@ export class InvoicePage {
   private readonly linesEditor = viewChild(InvoiceLines);
   private readonly headerEditor = viewChild(DescriptorForm);
   private readonly translate = inject(TranslateService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   /** Set once the sale was created and is opened at its own address, which the customer display keeps showing. */
   private handedOver = false;
   /**
@@ -798,6 +800,11 @@ export class InvoicePage {
     );
     const unplaced = header.length > 0 ? (this.headerEditor()?.showRefused(header) ?? header) : [];
     this.refusalLine.placed(refusals, unplaced);
+    // Alone refused, « Reçu par » takes the cursor as the first wrong field of a form does: the bar pressed may lie
+    // far below it, and nothing else on screen would say why the step did not happen.
+    if (receiverPlaced && header.length === 0 && rest.length === refusals.length) {
+      this.host.nativeElement.querySelector<HTMLElement>('app-receiver-field input')?.focus();
+    }
   }
 
   private readonly rights = computed(() => this.invoiceActions.rights());

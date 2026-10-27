@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   type OnInit,
   signal,
@@ -13,6 +14,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { NotificationsFacade } from '../notifications/notifications-facade';
 import { notificationKindKey } from '../notifications/notifications-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { LiveChanges } from '../shared/realtime/live-changes';
+import { SESSION_KINDS } from '../shared/session/session-kinds';
 import { type NotificationChoice, NotificationChoicesApi } from './notification-choices-api';
 
 /** The kinds told in one company, or about the account when `companyId` is null. */
@@ -38,6 +41,8 @@ export class NotificationChoices implements OnInit {
   private readonly api = inject(NotificationChoicesApi);
   private readonly bell = inject(NotificationsFacade);
   private readonly feedback = inject(Feedback);
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly choices = signal<NotificationChoice[] | null>(null);
   protected readonly unreachable = signal(false);
@@ -62,6 +67,9 @@ export class NotificationChoices implements OnInit {
   });
 
   ngOnInit(): void {
+    // What each company tells is filtered by the person's role and modules there: a member raised, lowered or a module
+    // switched sees the kinds follow at once.
+    this.live.reloadOn(SESSION_KINDS, () => this.load(), this.destroyRef);
     void this.load();
   }
 

@@ -513,6 +513,48 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a name is a text');
     }
 
+    /**
+     * Who received a note's goods is put right, offered and printed only within the person's own company: another
+     * company's note, a company the person is not a member of, and a reader putting it right are all answered 404.
+     */
+    public function testWhoReceivedIsReachedOnlyInItsOwnCompanyAndPutRightWithTheWriteRight(): void
+    {
+        $globex = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($globex);
+        $theirEstablishment = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($globex->getId())[0];
+        $theirCustomer = $this->customer('CLI-0009', 'standard', company: $globex);
+        $theirContact = Contact::create($theirCustomer, new ContactDetails('Someone', 'Else', null, null, null), false, new \DateTimeImmutable());
+        $theirs = DeliveryNote::create($globex, $theirEstablishment, $theirCustomer, new DeliveryNoteHeader(), [], new \DateTimeImmutable());
+        $this->em()->persist($theirContact);
+        $this->em()->persist($theirs);
+        $this->em()->flush();
+        $theirId = $theirs->getId()->toRfc4122();
+        $theirPath = '/api/companies/'.$globex->getId()->toRfc4122().'/delivery-notes/'.$theirId;
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['delivery_note.read'], 'reader');
+
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $mine = $this->draftWithALine();
+        $this->postJson($this->path($mine).'/validate-and-deliver', ['receivedBy' => ['name' => 'Sami']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        foreach ([$this->path($theirId), $theirPath] as $path) {
+            $this->postJson($path.'/receiver', ['receivedBy' => ['name' => 'Ali']]);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $path.': putting right another company\'s note');
+            $this->client->request('GET', $path.'/pdf/delivered');
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $path.': another company\'s delivered copy');
+        }
+        $this->getJson($this->companyPath().'/delivery-note-options/customers/'.$theirCustomer->getId()->toRfc4122().'/receivers');
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->jsonList(), 'another company\'s customer offers none of its contacts');
+
+        $this->postJson('/api/auth/logout', null);
+        $this->login('reader@twes.local', 'password-1234');
+        $this->client->request('GET', $this->path($mine).'/pdf/delivered');
+        self::assertResponseIsSuccessful('a reader reads the delivered copy');
+        $this->postJson($this->path($mine).'/receiver', ['receivedBy' => ['name' => 'Ali']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'putting right who received is writing the note: delivery_note.write');
+        self::assertEquals(0, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action = 'delivery_note.receiver_corrected'"));
+    }
+
     public function testValidatingAndDeliveringNeedsBothPermissions(): void
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write']);

@@ -355,7 +355,8 @@ An address that already has an account is invited the same way. Accepting adds t
 1. Sign in as an owner or admin of the company. Demo's owner is the operator.
 2. Open the gear (settings) → **Members** (http://localhost:8090/members). The list fills a moment after the
    page opens.
-3. Enter the address, choose the role (`owner`, `admin` or `member`), then **Add**. The row shows "Invitation pending".
+3. Enter the address, choose the role, then **Add**. The row shows "Invitation pending". The choices are the roles the
+   person inviting may give: an owner gives any role, an admin any role but `owner` (the table above).
 4. The invited person follows the mail's link in Mailpit, as in § 5.1 step 4, then signs in with that address and
    password. Accepting does not sign anyone in: if you accept in a browser that is already signed in as someone
    else, sign out first (account menu → Sign out) to see the new member's view.

@@ -387,6 +387,12 @@ describe('InvoiceActions', () => {
       expect(corrects({ ...handed, receivedBy: null }), 'nobody named yet').toBe(true);
       expect(corrects({ ...paid, lines: [goodsLine] }), 'paid, the goods still left').toBe(true);
       expect(corrects({ ...handed, receiverRule: null }), 'a row reads no rule').toBe(true);
+      // A row that reads no rule offers it only where someone is named: its customer may name nobody, which its page,
+      // reading the rule, would say by not offering it.
+      expect(
+        corrects({ ...handed, receiverRule: null, receivedBy: null }),
+        'a row naming nobody',
+      ).toBe(false);
 
       expect(corrects({ ...handed, status: 'draft' }), 'a draft names it in its form').toBe(false);
       expect(corrects({ ...handed, status: 'cancelled' })).toBe(false);

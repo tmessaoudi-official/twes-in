@@ -112,10 +112,12 @@ describe('permissionGuard', () => {
     expect(TestBed.inject(RouteGates).refusal(OWNERS_ONLY[0])).toBe('role');
   });
 
-  it('sends home, as the module guard does, when the module is off', () => {
+  it('sends to the page that says so when the module is off, never home without a word', () => {
     state.set({ company: company('admin'), permissions: ['*'], modules: [] });
 
-    expect(decide(VENDORS[0], '/vendors')).toBe('/');
+    expect(decide(VENDORS[0], '/vendors')).toBe(
+      `${NOT_ALLOWED_ROUTE}?page=%2Fvendors&from=%2Fvendors`,
+    );
   });
 
   it('leaves an open page that switching company no longer allows (hunt P-2)', async () => {
@@ -131,13 +133,15 @@ describe('permissionGuard', () => {
     );
   });
 
-  it('leaves it home when the company switched to has the module off', async () => {
+  it('leaves it for the page that says so when the module is switched off while it is open', async () => {
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/vendors');
 
     state.set({ company: company('admin'), permissions: ['*'], modules: [] });
     TestBed.tick();
-    await vi.waitFor(() => expect(router.url).toBe('/'));
+    await vi.waitFor(() =>
+      expect(router.url).toBe(`${NOT_ALLOWED_ROUTE}?page=%2Fvendors&from=%2Fvendors`),
+    );
   });
 
   it('decides nothing while the session is being read again', async () => {

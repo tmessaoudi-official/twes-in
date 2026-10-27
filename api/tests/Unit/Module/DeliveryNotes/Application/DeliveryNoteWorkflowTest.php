@@ -377,6 +377,33 @@ final class DeliveryNoteWorkflowTest extends TestCase
         }
     }
 
+    /**
+     * A customer whose documents name nobody has nobody printed on the note's original either: a name its draft kept from
+     * before « Reçu par » was switched off is dropped as the delivery drops it, and one sent with the validation is
+     * refused, the contact it would add with it (its transaction undone).
+     */
+    public function testAValidationUnderASettingOffPrintsAndKeepsNobody(): void
+    {
+        $default = array_find($this->establishments->ofCompany($this->company->getId()), static fn (Establishment $e): bool => $e->isDefault());
+        self::assertNotNull($default);
+        $note = DeliveryNote::create($this->company, $default, $this->customer, new DeliveryNoteHeader()->withReceiver(Receiver::named('Ahmed', null)), [
+            new DeliveryNoteLineDetails(null, 'Pièce', '2', $this->unit('C62'), '10', []),
+        ], $this->clock->now());
+        $this->notes->save($note);
+        $atCustomer = new SettingContext($this->company, customerId: $this->customer->getId());
+        $this->change->change($atCustomer, 'delivery_note.receiver', SettingLevel::Customer, 'off', null);
+
+        $validated = $this->workflow->validate($this->company, $note->getId(), null);
+        self::assertSame([null, null], [$validated->getPrintedReceiverName(), $validated->getHeader()->receivedBy]);
+
+        try {
+            $this->workflow->validateAndDeliver($this->company, $this->draft()->getId(), null, new ReceiverChoice(name: 'Sami', addToContacts: true));
+            self::fail('a receiver was taken at validation for a customer whose setting is off');
+        } catch (InvalidDeliveryNote $refused) {
+            self::assertSame(['receivedBy', 'receiver_off'], [$refused->field, $refused->reason]);
+        }
+    }
+
     public function testWhatCannotBeValidatedIsNeitherNumberedNorDelivered(): void
     {
         $empty = $this->draft([]);

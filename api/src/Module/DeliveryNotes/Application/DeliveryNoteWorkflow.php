@@ -199,7 +199,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         }
         $printing = DeliveryNotePrinting::today($this->settings, $note);
         $units = array_map(static fn (DeliveryNoteLine $line): Unit => $line->getUnit(), $note->getLines());
-        $note->validate($allocated->number, $allocated->issueDate, $printing, $this->names->now($company, $printing->language, $units), $this->clock->now(), $receiver);
+        $note->validate($allocated->number, $allocated->issueDate, $printing, $this->names->now($company, $printing->language, $units), $this->clock->now(), $receiver, DeliveryNoteSettings::receiverRule($this->settings, $note));
         $this->totals->checked($note);
         $this->notes->save($note);
         $this->record($company, $note, self::VALIDATED, ['number' => $allocated->number], $actorUserId);

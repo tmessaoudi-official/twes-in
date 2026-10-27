@@ -35,6 +35,21 @@ export class NotAllowedPage {
     const declaration = this.declaration();
     return declaration === null ? 'role' : this.gates.refusal(declaration);
   });
+  /** The subscription is offered only to whoever may open it: anyone else would meet a second refusal page. */
+  protected readonly seesSubscription = computed(
+    () => this.refusal() === 'subscription' && this.auth.hasPermission('subscription.read'),
+  );
+  /** Who can lift what keeps the page closed, said only where it is not the person themselves. */
+  protected readonly askKey = computed(() => {
+    switch (this.refusal()) {
+      case 'subscription':
+        return this.seesSubscription() ? null : 'not_allowed.subscription_ask';
+      case 'module':
+        return 'not_allowed.module_ask';
+      default:
+        return 'not_allowed.ask';
+    }
+  });
 
   constructor() {
     effect(() => {

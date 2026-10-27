@@ -139,7 +139,8 @@ export const invoiceMay = {
     invoice.deliveries.some((line) => aboveZero(line.left)),
   /**
    * Who received the goods an issued invoice handed over itself is put right by whoever writes invoices, unless its
-   * customer's invoices name nobody and it names nobody; a row, which reads no rule, offers it as the rule allows it.
+   * customer's invoices name nobody and it names nobody; a row, which reads no rule, offers it only where someone is
+   * named, since the rule it cannot see may refuse any name.
    */
   correctReceiver: (invoice: InvoiceRow, rights: InvoiceRights) =>
     rights.write &&
@@ -147,7 +148,8 @@ export const invoiceMay = {
     invoice.type === 'invoice' &&
     !invoice.deposit &&
     handsGoods(invoice.lines) &&
-    ((invoice.receiverRule ?? 'optional') !== 'off' || invoice.receivedBy !== null),
+    (invoice.receivedBy !== null ||
+      (invoice.receiverRule != null && invoice.receiverRule !== 'off')),
 } as const;
 
 /** What a screen adds to the declaration: what only it knows, and what it does once an action changed the document. */

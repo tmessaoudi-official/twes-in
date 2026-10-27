@@ -921,6 +921,24 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-error')).toBeNull();
   });
 
+  it('puts the cursor in « Reçu par » when it alone is refused, wherever the person pressed from', async () => {
+    note.set({ ...draft, receiverRule: 'required' });
+    await open('n1');
+    facade.revise.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'receivedBy', reason: 'receiver_required', params: {} }]);
+      return null;
+    });
+    type('line-0-quantity', '3');
+    await settle();
+    q('document-action-save')!.click();
+    await settle();
+
+    await vi.waitFor(() => expect(q('delivery-note-receiver-error')).not.toBeNull());
+    expect(document.activeElement).toBe(q('delivery-note-receiver-name'));
+    expect(q('delivery-note-error')).toBeNull();
+  });
+
   it('says above the form, in its own words, a refusal no field takes, and nothing there once the fields say it all', async () => {
     note.set(draft);
     await open('n1');

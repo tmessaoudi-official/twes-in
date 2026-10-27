@@ -19,7 +19,6 @@ declare -A exempt=(
   [web/src/app/platform/platform-legal-page.ts]="the legal texts the operators write, which no company changes and the platform's channel does not say"
   [web/src/app/account/account-page.ts]="reads the person's companies, which the shell reads again on every membership, company and grant change"
   [web/src/app/account/connected-devices.ts]="a device signing in is recorded outside any unit of work, so no change is said of it: read when opened"
-  [web/src/app/account/notification-choices.ts]="the person's own choices, changed by them alone, here"
   [web/src/app/auth/two-factor-page.ts]="the person's own passkeys and factors, changed by them alone, and every change mailed to them"
   [web/src/app/auth/login-page.ts]="signed out, with no live connection: reads whether sign-up is open"
   [web/src/app/signup/signup-page.ts]="signed out, with no live connection: reads whether sign-up is open"

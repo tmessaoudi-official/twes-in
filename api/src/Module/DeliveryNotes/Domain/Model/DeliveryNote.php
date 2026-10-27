@@ -228,14 +228,20 @@ class DeliveryNote implements CompanyOwned
      * the rates its taxes had that day, and, when it names no delivery address, where the customer takes goods
      * (its shipping address, else its billing one), it prints as its settings said that day (`$print`), and it keeps
      * what its units and taxes were called that day (`$names`). It prints who receives the goods as named then: the
-     * draft's receiver, or `$receiver` when one is given as it is validated. Records `delivery_note.validated`.
+     * draft's receiver, or `$receiver` when one is given as it is validated; nobody where its customer's documents name
+     * nobody (`$rule` off), which refuses a receiver given and drops one the draft kept from before, as a delivery does.
+     * Records `delivery_note.validated`.
      *
      * @throws DeliveryNoteNotDraft
      * @throws InvalidDeliveryNote
      */
-    public function validate(string $number, \DateTimeImmutable $issueDate, DeliveryNotePrint $print, PrintedNames $names, \DateTimeImmutable $now, ?Receiver $receiver = null): void
+    public function validate(string $number, \DateTimeImmutable $issueDate, DeliveryNotePrint $print, PrintedNames $names, \DateTimeImmutable $now, ?Receiver $receiver = null, ReceiverRule $rule = ReceiverRule::Optional): void
     {
         $this->assertDraft('is validated');
+        $refused = ReceiverRule::Off === $rule ? $rule->refusal($receiver) : null;
+        if (null !== $refused) {
+            throw new InvalidDeliveryNote('receivedBy', $refused->message, $refused->reason, $refused->params);
+        }
         if ($this->lines->isEmpty()) {
             throw new InvalidDeliveryNote('lines', 'A delivery note is validated with at least one line.', 'lines_required');
         }
@@ -259,7 +265,7 @@ class DeliveryNote implements CompanyOwned
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->printSettings = $print->toArray();
         $this->printedNames = $names->toArray();
-        if (null !== $receiver) {
+        if (null !== $receiver || ReceiverRule::Off === $rule) {
             $this->receive($receiver);
         }
         $this->printedReceiverName = $this->receivedByName;
@@ -422,16 +428,16 @@ class DeliveryNote implements CompanyOwned
         return null === $this->customerSnapshot ? null : CustomerSnapshot::fromArray($this->customerSnapshot);
     }
 
-    /**
-     * The names its units and the company's taxes had in its language the day it was validated; null while it is a draft,
-     * or for one validated before they were kept, which prints them as they are.
-     */
     /** Who received, as the issued print names them; null for a draft, or when nobody was named at validation. */
     public function getPrintedReceiverName(): ?string
     {
         return $this->printedReceiverName;
     }
 
+    /**
+     * The names its units and the company's taxes had in its language the day it was validated; null while it is a draft,
+     * or for one validated before they were kept, which prints them as they are.
+     */
     public function getPrintedNames(): ?PrintedNames
     {
         return null === $this->printedNames ? null : PrintedNames::fromArray($this->printedNames);

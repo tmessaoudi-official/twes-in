@@ -80,7 +80,7 @@ export class RouteGates {
   admit(page: GatedPage, url: string): true | UrlTree {
     const refusal = this.refusal(page);
     if (refusal === null) return true;
-    if (refusal === 'module') return this.router.createUrlTree(['/']);
+    // A module switched off is said as the role and the subscription are: home without a word read as a fault.
     return this.router.createUrlTree([NOT_ALLOWED_ROUTE], {
       queryParams: { page: page.route, from: url },
     });

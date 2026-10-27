@@ -2163,6 +2163,8 @@ describe('InvoicePage', () => {
           'Ce document ne remet aucune marchandise.',
         ),
       );
+      // The field may be off screen from the bar the person pressed: the cursor brings it into view.
+      expect(document.activeElement).toBe(q('invoice-receiver-name'));
       expect(q('invoice-error')).toBeNull();
       expect(facade.revise).toHaveBeenCalledWith(
         'c1',

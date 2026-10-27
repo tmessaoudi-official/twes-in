@@ -2,7 +2,9 @@
 
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatAutocompleteTrigger } from '@angular/material/autocomplete';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { By } from '@angular/platform-browser';
 import { provideTranslateService } from '@ngx-translate/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { type ReceiverContact, receiverChoice, receiverForm } from './receiver';
@@ -96,6 +98,20 @@ describe('ReceiverField', () => {
       name: 'Ahmed B.',
       addToContacts: true,
     });
+  });
+
+  it('offers no adding for a name typed in full that already is a contact, whatever its case and spaces', async () => {
+    await type('  ahmed  ben SALAH ');
+    expect(q('receiver-add')).toBeNull();
+    await type('Ahmed Ben Salah Junior');
+    expect(q('receiver-add')).not.toBeNull();
+  });
+
+  it('opens the contacts above the field, never over the buttons a dialog has below it', () => {
+    const trigger = fixture.debugElement
+      .query(By.directive(MatAutocompleteTrigger))
+      .injector.get(MatAutocompleteTrigger);
+    expect(trigger.position).toBe('above');
   });
 
   it('offers no adding where the list cannot take a name, and says what a pick is', async () => {
