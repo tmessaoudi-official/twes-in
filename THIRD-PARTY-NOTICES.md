@@ -68,7 +68,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | phpunit/php-invoker | 7.0.0 | BSD-3-Clause | dev |
 | phpunit/php-text-template | 6.0.1 | BSD-3-Clause | dev |
 | phpunit/php-timer | 9.0.0 | BSD-3-Clause | dev |
-| phpunit/phpunit | 13.4.3 | BSD-3-Clause | dev |
+| phpunit/phpunit | 13.4.5 | BSD-3-Clause | dev |
 | psr/cache | 3.0.0 | MIT | runtime |
 | psr/clock | 1.0.0 | MIT | runtime |
 | psr/container | 2.0.2 | MIT | runtime |
