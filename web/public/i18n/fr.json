@@ -1436,6 +1436,7 @@
     "back": "Retour aux factures",
     "saved": "Le brouillon a été enregistré.",
     "duplicated": "Le document a été dupliqué.",
+    "receiver_corrected": "Qui a reçu la marchandise est corrigé.",
     "read_only": "Vous pouvez consulter les factures, pas les modifier.",
     "corrects": "Voir la facture corrigée",
     "credit_note": {
@@ -1697,6 +1698,7 @@
       "issue": "Émettre la facture",
       "issue_credit_note": "Émettre l’avoir",
       "credit_note": "Créer un avoir",
+      "correct_receiver": "Corriger qui a reçu…",
       "cancel": "Abandonner le brouillon…",
       "duplicate": "Dupliquer",
       "cancel_title": "Abandonner ce brouillon ?",

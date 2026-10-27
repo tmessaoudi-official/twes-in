@@ -126,6 +126,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'invoice.issued',
   'invoice.cancelled',
   'invoice.credited',
+  'invoice.receiver_corrected',
   'invoice.deleted',
   'invoice.restored',
   'payment.recorded',

@@ -522,6 +522,27 @@ describe('InvoicesApi', () => {
     expect((await read).creditNoteReason).toBeNull();
   });
 
+  it('puts right who received an issued invoice’s goods, or names nobody', async () => {
+    const corrected = api.correctReceiver('c1', 'i1', {
+      contactId: null,
+      name: 'Sami Trabelsi',
+      addToContacts: false,
+    });
+    const request = http.expectOne('/api/companies/c1/invoices/i1/receiver');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      receivedBy: { contactId: null, name: 'Sami Trabelsi', addToContacts: false },
+    });
+    request.flush({ ...issued, receivedBy: { name: 'Sami Trabelsi', contactId: null } });
+    expect((await corrected).receivedBy).toEqual({ name: 'Sami Trabelsi', contactId: null });
+
+    const cleared = api.correctReceiver('c1', 'i1', null);
+    const nobody = http.expectOne('/api/companies/c1/invoices/i1/receiver');
+    expect(nobody.request.body).toEqual({ receivedBy: null });
+    nobody.flush({ ...issued, receivedBy: null });
+    expect((await cleared).receivedBy).toBeNull();
+  });
+
   it('records and deletes a payment', async () => {
     const recorded = api.recordPayment('c1', 'i1', {
       date: '2026-09-12',

@@ -2211,6 +2211,131 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a company the person is not a member of');
     }
 
+    public function testWhoReceivedAnIssuedInvoicesGoodsIsPutRightByTheFieldWhileItsPrintAsIssuedKeepsTheName(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $customer = $this->em()->find(Customer::class, Uuid::fromString($this->customerId)) ?? throw new \LogicException('no customer');
+        $contact = Contact::create($customer, new ContactDetails('Ahmed', 'Ben Salah', null, null, null), false, new \DateTimeImmutable());
+        $this->em()->persist($contact);
+        $this->em()->flush();
+        $ahmed = $contact->getId()->toRfc4122();
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']], 'receivedBy' => ['name' => 'Mauvais 4821']]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->postJson($this->path($id).'/receiver', ['receivedBy' => ['name' => 'Sami']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft names its receiver as it is revised');
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseIsSuccessful();
+        $this->client->request('GET', $this->path($id).'/pdf');
+        $sha = $this->em()->getConnection()->fetchOne('SELECT f.sha256 FROM file f JOIN invoice i ON i.pdf_file_id = f.id WHERE i.id = ?', [$id]);
+        self::assertIsString($sha);
+
+        $this->postJson($this->path($id).'/receiver', ['receivedBy' => ['contactId' => $ahmed]]);
+        self::assertResponseIsSuccessful();
+        $answer = $this->json();
+        self::assertSame([['name' => 'Ahmed Ben Salah', 'contactId' => $ahmed], 'issued'], [$answer['receivedBy'] ?? null, $answer['status'] ?? null]);
+        $this->postJson($this->path($id).'/receiver', ['receivedBy' => $answer['receivedBy']]);
+        self::assertResponseIsSuccessful('sent back as read');
+        $this->postJson($this->path($id).'/receiver', ['receivedBy' => ['name' => ' Sami Trabelsi ']]);
+        self::assertResponseIsSuccessful();
+        self::assertSame('Sami Trabelsi', $this->receivedName($this->json()));
+        $this->getJson($this->path($id));
+        self::assertSame(['Sami Trabelsi', 'issued'], [$this->receivedName($this->json()), $this->json()['status'] ?? null], 'the screen says the corrected name');
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+        $original = (string) $this->client->getResponse()->getContent();
+        self::assertSame($sha, hash('sha256', $original), 'the original is still the file stored at issue');
+        self::assertStringContainsString('<bdi>Mauvais 4821</bdi>', $original);
+        $this->client->request('GET', $this->path($id).'/pdf/duplicate');
+        $duplicate = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('<bdi>Mauvais 4821</bdi>', $duplicate, 'a duplicate shows the invoice as issued');
+        self::assertStringNotContainsString('Sami Trabelsi', $duplicate);
+        $this->client->request('GET', $this->path($id).'/pdf/current');
+        $current = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('<bdi>Sami Trabelsi</bdi>', $current, 'an up-to-date copy says the correction');
+        self::assertStringNotContainsString('Mauvais 4821', $current);
+
+        $corrections = $this->em()->getConnection()->fetchFirstColumn("SELECT changes::text FROM audit_log WHERE action = 'invoice.receiver_corrected' AND entity_id = ?", [$id]);
+        self::assertSame(['{"fields": ["receivedBy"]}', '{"fields": ["receivedBy"]}'], $corrections, 'twice changed, once sent back unchanged; the field, never the name');
+        self::assertEquals(0, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE changes::text LIKE '%Sami%' OR changes::text LIKE '%Ahmed%' OR changes::text LIKE '%Mauvais%'"));
+
+        $this->postJson($this->path($id).'/receiver', ['receivedBy' => ['name' => ['Sami']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a name is a text');
+        $this->changeReceiverRule($customer, 'required');
+        $this->postJson($this->path($id).'/receiver', ['receivedBy' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('receiver_required', $this->refusalOf('receivedBy')[0]);
+        $this->changeReceiverRule($customer, 'off');
+        $this->postJson($this->path($id).'/receiver', ['receivedBy' => ['name' => 'Leila']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('receiver_off', $this->refusalOf('receivedBy')[0]);
+        $this->postJson($this->path($id).'/receiver', ['receivedBy' => null]);
+        self::assertResponseIsSuccessful('switched off, the name given by mistake is taken back');
+        self::assertNull($this->json()['receivedBy'] ?? null);
+        $this->changeReceiverRule($customer, 'optional');
+
+        $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        $creditId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($creditId).'/issue', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path($creditId).'/receiver', ['receivedBy' => ['name' => 'Sami']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note hands no goods over');
+        self::assertSame('receiver_off', $this->refusalOf('receivedBy')[0]);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['description' => 'Conseil', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '10']]]));
+        $services = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($services).'/issue', null);
+        $this->postJson($this->path($services).'/receiver', ['receivedBy' => ['name' => 'Sami']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'nor does an invoice of services');
+        self::assertSame('receiver_off', $this->refusalOf('receivedBy')[0]);
+    }
+
+    public function testAnOriginalStoredAfterTheReceiverWasPutRightStillSaysWhoItWasIssuedNaming(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        // Kept across requests, so the renderer is down while the invoice is issued and nothing is stored then.
+        $this->client->disableReboot();
+        $renderer = static::getContainer()->get(FakePdfRenderer::class);
+        $renderer->failing = true;
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']], 'receivedBy' => ['name' => 'Mauvais 4821']]));
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseIsSuccessful();
+        $renderer->failing = false;
+        self::assertNull($this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM invoice WHERE id = ?', [$id]));
+        $this->postJson($this->path($id).'/receiver', ['receivedBy' => ['name' => 'Sami Trabelsi']]);
+        self::assertResponseIsSuccessful();
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+        $original = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('<bdi>Mauvais 4821</bdi>', $original, 'rendered on its first download, the original prints what was issued');
+        self::assertStringNotContainsString('Sami Trabelsi', $original);
+    }
+
+    public function testPuttingRightWhoReceivedAsksTheInvoicesWriteRightInItsOwnCompany(): void
+    {
+        $globex = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($globex);
+        $their = $this->customer('CLI-0009', 'standard', company: $globex);
+        $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $globex->getId()) ?? throw new \LogicException('no unit');
+        $theirInvoice = static::getContainer()->get(ManageInvoices::class)->create($globex, new InvoiceInput($their->getId(), null, new InvoiceHeader(), [new InvoiceLineInput(null, 'Pose', '1', $unit->getId(), '10')]), null)->getId()->toRfc4122();
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
+
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $id = $this->issuedInvoice();
+        $this->postJson($this->path($theirInvoice).'/receiver', ['receivedBy' => ['name' => 'Sami']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s invoice');
+        $this->postJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoices/'.$theirInvoice.'/receiver', ['receivedBy' => ['name' => 'Sami']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a company the person is not a member of');
+        $this->postJson($this->path(self::ABSENT).'/receiver', ['receivedBy' => ['name' => 'Sami']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->postJson('/api/auth/logout', null);
+        $this->login('reader@twes.local', 'password-1234');
+        $this->postJson($this->path($id).'/receiver', ['receivedBy' => ['name' => 'Sami']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'putting right who received is writing the invoice: invoice.write');
+        self::assertEquals(0, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action = 'invoice.receiver_corrected'"));
+    }
+
     /**
      * The name an invoice's answer says received its goods.
      *

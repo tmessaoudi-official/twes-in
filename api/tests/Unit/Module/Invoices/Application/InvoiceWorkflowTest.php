@@ -29,10 +29,12 @@ use App\Module\Invoices\Application\InvoiceWorkflow;
 use App\Module\Invoices\Application\Print\InvoiceMentions;
 use App\Module\Invoices\Application\Print\MentionDatumMissing;
 use App\Module\Invoices\Application\Print\PartyIdentity;
+use App\Module\Invoices\Application\Receiver\CorrectInvoiceReceiver;
 use App\Module\Invoices\Application\Receiver\InvoiceReceiverSettings;
 use App\Module\Invoices\Domain\Event\InvoiceIssued;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
+use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\Model\InvoiceLineTax;
 use App\Module\Invoices\Domain\Model\InvoiceTax;
@@ -52,6 +54,8 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\Receivers\ChooseReceiver;
+use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Shared\Domain\ValueObject\DocumentLayout;
@@ -71,6 +75,7 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryInvoiceChains;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
+use App\Tests\Support\InMemoryReceiverContacts;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemorySourceDeliveryNoteLines;
 use App\Tests\Support\InMemoryTaxComponents;
@@ -98,6 +103,7 @@ final class InvoiceWorkflowTest extends TestCase
     private FakeTransactions $transactions;
     private RecordingDomainEvents $events;
     private ChangeSettings $change;
+    private ReadSetting $read;
     private InvoiceWorkflow $workflow;
     private InMemoryDepositQuotes $quotes;
     private Company $company;
@@ -121,6 +127,7 @@ final class InvoiceWorkflowTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new InvoiceReceiverSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
+        $this->read = new ReadSetting($resolve);
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents());
         $numbers = new AllocateNumber($this->series, $this->transactions, $this->clock);
         $this->workflow = new InvoiceWorkflow(
@@ -183,6 +190,66 @@ final class InvoiceWorkflowTest extends TestCase
             self::assertSame(['receivedBy', 'receiver_off'], [$refused->field, $refused->reason]);
         }
         self::assertSame('FAC-2026-09-00003', $this->workflow->issue($this->company, $nobody->getId(), null)->getNumber(), 'off, nobody is asked for');
+    }
+
+    public function testWhoReceivedAnIssuedInvoicesGoodsIsPutRightRecordingTheFieldNeverTheNameAndOnlyWhenItChanges(): void
+    {
+        $customer = $this->customer('standard', null);
+        $atCustomer = new SettingContext($this->company, customerId: $customer->getId());
+        $unit = $this->units->ofCodeInCompany('C62', $this->company->getId()) ?? throw new \LogicException('no unit');
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '10'), $unit, null, [], $this->clock->now());
+        $goods = [new InvoiceLineDetails($product, 'Portable 14"', '1', $unit, '10', null, [])];
+        $contacts = new InMemoryReceiverContacts();
+        $sami = Uuid::v7();
+        $contacts->contacts[$customer->getId()->toRfc4122()] = [$sami->toRfc4122() => 'Sami Trabelsi'];
+        $correct = new CorrectInvoiceReceiver($this->invoices, $this->transactions, new ChooseReceiver($contacts), $this->read, $this->audit, $this->clock);
+        $actor = Uuid::v7();
+        $invoice = $this->workflow->issue($this->company, $this->draft($customer, new InvoiceHeader(receivedBy: Receiver::named('Mauvais 4821')), $goods)->getId(), null);
+        $corrections = fn (): array => array_values(array_filter($this->audit->entries, static fn ($entry): bool => CorrectInvoiceReceiver::RECEIVER_CORRECTED === $entry->action));
+
+        $this->clock->modify('+1 hour');
+        self::assertSame($invoice, $correct->correct($this->company, $invoice->getId(), new ReceiverChoice($sami->toRfc4122()), $actor));
+        self::assertEquals(Receiver::named('Sami Trabelsi', $sami), $invoice->getHeader()->receivedBy);
+        self::assertSame('Mauvais 4821', $invoice->getPrintedReceiverName());
+        $correct->correct($this->company, $invoice->getId(), new ReceiverChoice($sami->toRfc4122()), $actor);
+        self::assertCount(1, $corrections(), 'sent again unchanged, nothing is recorded');
+        $entry = $corrections()[0];
+        self::assertEquals(['invoice', $invoice->getId(), $actor, ['fields' => ['receivedBy']], $this->company->getId()], [$entry->entityType, $entry->entityId, $entry->actorUserId, $entry->changes, $entry->companyId], 'the journal keeps the field, never the name');
+
+        $correct->correct($this->company, $invoice->getId(), new ReceiverChoice(name: ' Leila Ben Ali ', addToContacts: true), $actor);
+        self::assertEquals(Receiver::named('Leila Ben Ali', $invoice->getHeader()->receivedBy?->contactId), $invoice->getHeader()->receivedBy);
+        self::assertSame([[$customer->getId()->toRfc4122(), 'Leila Ben Ali']], $contacts->added, 'added to the customer\'s contacts when asked');
+
+        $this->change->change($atCustomer, InvoiceReceiverSettings::RECEIVER, SettingLevel::Customer, 'required', null);
+        $this->assertReceiverRefused('receiver_required', fn () => $correct->correct($this->company, $invoice->getId(), null, $actor), 'nobody, where the customer\'s invoices must name someone');
+        $this->change->change($atCustomer, InvoiceReceiverSettings::RECEIVER, SettingLevel::Customer, 'off', null);
+        $this->assertReceiverRefused('receiver_off', fn () => $correct->correct($this->company, $invoice->getId(), new ReceiverChoice(name: 'Sami'), $actor), 'someone, where they name nobody');
+        $correct->correct($this->company, $invoice->getId(), null, $actor);
+        self::assertNull($invoice->getHeader()->receivedBy, 'switched off, the name given by mistake is taken back');
+        $this->change->change($atCustomer, InvoiceReceiverSettings::RECEIVER, SettingLevel::Customer, 'optional', null);
+        $theirs = Uuid::v7();
+        $contacts->contacts[Uuid::v7()->toRfc4122()] = [$theirs->toRfc4122() => 'Someone Else'];
+        $this->assertReceiverRefused('unknown_choice', fn () => $correct->correct($this->company, $invoice->getId(), new ReceiverChoice($theirs->toRfc4122()), $actor), 'another customer\'s contact');
+        self::assertCount(3, $corrections(), 'a refusal records nothing');
+
+        try {
+            $correct->correct($this->company, $this->draft($customer, lines: $goods)->getId(), new ReceiverChoice(name: 'Sami'), $actor);
+            self::fail('a draft was corrected');
+        } catch (InvoiceTransitionRefused) {
+        }
+        $this->expectException(InvoiceNotFound::class);
+        $correct->correct($this->globex, $invoice->getId(), new ReceiverChoice(name: 'Sami'), $actor);
+    }
+
+    /** @param \Closure(): mixed $attempt */
+    private function assertReceiverRefused(string $reason, \Closure $attempt, string $case): void
+    {
+        try {
+            $attempt();
+            self::fail("accepted: $case");
+        } catch (InvalidInvoice $refused) {
+            self::assertSame(['receivedBy', $reason], [$refused->field, $refused->reason], $case);
+        }
     }
 
     public function testIssuingNumbersTheInvoiceWithWhatItsCustomerAndCompanySayAndTellsOnceItIsStored(): void

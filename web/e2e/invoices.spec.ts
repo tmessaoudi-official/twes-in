@@ -1096,3 +1096,63 @@ test('an invoice of goods names who received them, kept as it was issued', async
     await retire(page, customerNumber);
   }
 });
+
+// The slip at the counter: an invoice of goods issued naming the wrong person is put right from « ⋮ » rather than by a
+// credit note and a new invoice, and « Annuler » in the toast names the first person again.
+test('who received an issued invoice’s goods is put right, and « Annuler » puts it back', async ({
+  page,
+}) => {
+  // A draft, its issue, an accessibility scan of the dialog and two corrections.
+  test.setTimeout(60_000);
+  const run = Date.now().toString();
+  const customerNumber = `E2E-IRCC-${run}`;
+  const reference = `E2E-IRCC-${run}`;
+  const wrong = `Mauvais ${run.slice(-6)}`;
+  const right = `Correct ${run.slice(-6)}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  const productId = await aProduct(page, reference);
+  try {
+    await page.goto('/invoices/new');
+    await page.getByTestId('invoice-customer').fill(customerNumber);
+    await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+    await page.getByTestId('line-0-product').fill(reference);
+    await page.getByRole('option', { name: new RegExp(`^${reference} · `) }).click();
+    await choose(page, 'line-0-taxes', /19/);
+    await page.getByTestId('invoice-receiver-name').fill(wrong);
+    await page.getByTestId('document-action-save').click();
+    await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
+    await page.getByTestId('document-action-issue').click();
+    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
+    await expect(page.getByTestId('invoice-received-by')).toContainText(wrong);
+
+    await page.getByTestId('document-more').click();
+    await page.getByTestId('document-menu-correct-receiver').click();
+    const name = page.getByTestId('receiver-dialog-name');
+    await expect(name).toHaveValue(wrong);
+    await name.fill(right);
+    expect(await wcagViolations(page)).toEqual([]);
+    const corrected = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && response.url().endsWith('/receiver'),
+    );
+    await page.getByTestId('receiver-dialog-save').click();
+    expect((await corrected).ok()).toBe(true);
+    await expect(page.getByTestId('receiver-dialog-save')).toHaveCount(0);
+    await expect(page.getByTestId('invoice-received-by')).toContainText(right);
+    await expect(toast(page)).toContainText(/marchandise est corrigé|goods is corrected/);
+
+    // « Annuler » names again whom the invoice was issued naming.
+    const undone = page.waitForResponse(
+      (response) => response.request().method() === 'POST' && response.url().endsWith('/receiver'),
+    );
+    await toast(page).getByTestId('toast-action').click();
+    expect((await undone).ok()).toBe(true);
+    await expect(page.getByTestId('invoice-received-by')).toContainText(wrong);
+    await expect(page.getByTestId('invoice-received-by')).not.toContainText(right);
+  } finally {
+    await forget(page, [productId]);
+    await retire(page, customerNumber);
+  }
+});

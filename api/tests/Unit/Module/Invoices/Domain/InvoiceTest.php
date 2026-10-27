@@ -666,6 +666,64 @@ final class InvoiceTest extends TestCase
         }
     }
 
+    public function testWhoReceivedAnIssuedInvoicesGoodsIsPutRightWhileItsPrintKeepsTheNameItWasIssuedWith(): void
+    {
+        $customer = $this->customer($this->company);
+        $goods = [$this->pieceLine($this->product($this->company))];
+        $draft = Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(receivedBy: Receiver::named('Mauvais 4821')), $goods, [], $this->now);
+        $this->assertTransitionRefused(fn () => $draft->correctReceiver(Receiver::named('Sami'), $this->now), 'a draft names its receiver as it is revised');
+
+        $invoice = $this->issuedWith($draft);
+        self::assertSame('Mauvais 4821', $invoice->getPrintedReceiverName(), 'frozen as it is issued');
+        $later = $this->now->modify('+1 hour');
+        $sami = Receiver::named('Sami Trabelsi', Uuid::v7());
+
+        self::assertTrue($invoice->correctReceiver($sami, $later));
+        self::assertTrue($invoice->getHeader()->receivedBy?->equals($sami), 'the screen says the corrected name');
+        self::assertSame('Mauvais 4821', $invoice->getPrintedReceiverName(), 'what it was issued naming stays');
+        self::assertEquals($later, $invoice->getUpdatedAt());
+        self::assertFalse($invoice->correctReceiver(Receiver::named('Sami Trabelsi', $sami->contactId), $this->now->modify('+2 hours')), 'the same receiver changes nothing');
+        self::assertEquals($later, $invoice->getUpdatedAt());
+        self::assertTrue($invoice->correctReceiver(null, $later), 'someone named by mistake is taken away');
+        self::assertNull($invoice->getHeader()->receivedBy);
+        self::assertFalse($invoice->correctReceiver(null, $later));
+
+        $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable('2026-09-15'), '12.900', PaymentMethod::Cash, null, null), new \DateTimeImmutable('2026-09-15'), 3, null, $this->now);
+        self::assertSame(InvoiceStatus::Paid, $invoice->getStatus());
+        self::assertTrue($invoice->correctReceiver(Receiver::named('Sami'), $later), 'paid, it was still handed over');
+
+        $cancelled = Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(), $goods, [], $this->now);
+        $cancelled->cancel($this->now);
+        $this->assertTransitionRefused(static fn () => $cancelled->correctReceiver(Receiver::named('Sami'), $later), 'a cancelled draft hands nothing over');
+
+        $services = $this->issuedWith(Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(), [$this->pieceLine()], [], $this->now));
+        $this->assertRefusedFor('receivedBy', 'receiver_off', static fn () => $services->correctReceiver(Receiver::named('Sami'), $later), 'an invoice of services');
+        self::assertFalse($services->correctReceiver(null, $later), 'naming nobody on it changes nothing');
+        $credit = $this->issuedCreditNote($invoice, '-12.900');
+        $this->assertRefusedFor('receivedBy', 'receiver_off', static fn () => $credit->correctReceiver(Receiver::named('Sami'), $later), 'a credit note');
+        self::assertNull($credit->getPrintedReceiverName());
+        $deposit = $this->issuedWith(Invoice::create($this->company, $this->establishment(), $customer, new InvoiceHeader(), $goods, [], $this->now, deposit: true));
+        $this->assertRefusedFor('receivedBy', 'receiver_off', static fn () => $deposit->correctReceiver(Receiver::named('Sami'), $later), 'a deposit');
+    }
+
+    private function issuedWith(Invoice $draft): Invoice
+    {
+        $draft->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($draft)), fn (Invoice $i) => $this->figures(), $this->now);
+
+        return $draft;
+    }
+
+    /** @param \Closure(): mixed $attempt */
+    private function assertTransitionRefused(\Closure $attempt, string $case): void
+    {
+        try {
+            $attempt();
+            self::fail("accepted: $case");
+        } catch (InvoiceTransitionRefused $refused) {
+            self::assertStringContainsString('draft', $refused->getMessage(), $case);
+        }
+    }
+
     /** @param \Closure(): mixed $attempt */
     private function assertRefusedFor(string $field, string $reason, \Closure $attempt, string $case = ''): void
     {

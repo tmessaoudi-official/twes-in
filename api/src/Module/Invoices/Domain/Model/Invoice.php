@@ -142,14 +142,18 @@ class Invoice implements CompanyOwned
     private ?string $discountAmount = null;
 
     /**
-     * Who received the goods it hands over itself, as it prints them; with the customer's contact it was copied from, when
-     * there was one. Fixed with the rest once it is issued.
+     * Who received the goods it hands over itself; with the customer's contact it was copied from, when there was one.
+     * Chosen on the draft, and put right once issued through `correctReceiver`.
      */
     #[ORM\Column(length: Receiver::NAME_MAX, nullable: true)]
     private ?string $receivedByName = null;
 
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $receivedByContactId = null;
+
+    /** Who received, as its print as issued names them: the receiver the day it was issued, kept as it was then. */
+    #[ORM\Column(length: Receiver::NAME_MAX, nullable: true)]
+    private ?string $printedReceiverName = null;
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $dueDate = null;
@@ -747,6 +751,7 @@ class Invoice implements CompanyOwned
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->printSettings = $issue->print->toArray();
         $this->printedNames = $issue->names->toArray();
+        $this->printedReceiverName = $this->receivedByName;
         $this->status = InvoiceStatus::Issued;
         $this->number = $issue->number;
         $this->issueDate = self::day($issue->issueDate);
@@ -785,6 +790,35 @@ class Invoice implements CompanyOwned
         $correctedSources = null === $this->correctsInvoice || [] === $returned ? [] : array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $this->correctsInvoice->getLines())));
 
         return new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $this->number, $this->issueDate, $sources, $direct, $this->correctsInvoice?->getId(), $returned, $correctedSources);
+    }
+
+    /**
+     * Who received the goods an issued invoice handed over itself, put right: a name misspelt, the wrong contact, or
+     * someone named by mistake. Who took the goods is no mention the law asks of an invoice, so nothing it states
+     * fiscally moves, and its print as issued keeps the name it was issued with; its page and its up-to-date copy say
+     * the corrected one.
+     *
+     * @return bool whether it changed
+     *
+     * @throws InvoiceTransitionRefused when it is a draft, which names its receiver as it is revised, or a cancelled draft
+     * @throws InvalidInvoice           on `receivedBy` naming someone on a document handing no goods over itself
+     */
+    public function correctReceiver(?Receiver $receiver, \DateTimeImmutable $now): bool
+    {
+        if (!$this->isIssued()) {
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: a draft names who received as it is revised, and a cancelled draft hands nothing over.', $this->documentType->value, $this->reference(), $this->status->value));
+        }
+        if (null !== $receiver && [] === $this->goodsOfItsOwn()) {
+            throw self::receiverWithoutGoods();
+        }
+        if (null === $receiver ? null === $this->receivedByName : $receiver->equals($this->receiver())) {
+            return false;
+        }
+        $this->receivedByName = $receiver?->name;
+        $this->receivedByContactId = $receiver?->contactId;
+        $this->updatedAt = $now;
+
+        return true;
     }
 
     /**
@@ -1095,6 +1129,12 @@ class Invoice implements CompanyOwned
     public function getCustomerSnapshot(): ?CustomerSnapshot
     {
         return null === $this->customerSnapshot ? null : CustomerSnapshot::fromArray($this->customerSnapshot);
+    }
+
+    /** Who received, as its print as issued names them: the receiver the day it was issued; null for a draft, or nobody named then. */
+    public function getPrintedReceiverName(): ?string
+    {
+        return $this->printedReceiverName;
     }
 
     /** The notes and formats the document printed the day it was issued; null while it is a draft, or for one issued before this was kept. */

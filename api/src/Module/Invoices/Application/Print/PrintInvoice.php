@@ -214,6 +214,10 @@ final readonly class PrintInvoice
             self::quantities($invoice, $names),
             $operations,
             $names,
+            // The original and its duplicate show the invoice as issued, whatever was put right since; the up-to-date
+            // copy and a draft say who is named now. Read from the number, not the watermark: an original rendered on
+            // its first download, when storing it at issue failed, still prints what was issued.
+            InvoiceCopy::UpToDate !== $copy && null !== $invoice->getNumber() ? $invoice->getPrintedReceiverName() : $invoice->getHeader()->receivedBy?->name,
         ));
     }
 

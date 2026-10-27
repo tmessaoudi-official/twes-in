@@ -20,6 +20,7 @@ import type {
   ApiCompaniesCompanyIdinvoicesGetCollectionResponse,
   CustomerCreditBalanceCustomerCreditBalanceRead,
   InvoiceInvoiceCreditValidationInvoiceCredit as InvoiceInvoiceCredit,
+  InvoiceInvoiceReceiveValidationInvoiceReceive as InvoiceReceiveBody,
   InvoiceInvoiceRead,
   InvoiceJsonldInvoiceRead,
   InvoiceInvoiceWriteRecordReviseValidationInvoiceWriteRecordRevise as InvoiceInvoiceRevise,
@@ -35,7 +36,7 @@ import type {
   ProductPriceProductPriceRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
-import type { ReceiverContact } from '../shared/receivers/receiver';
+import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 import { trackingOf } from '../products/products-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import { apiRangeKey } from '../shared/list/list-filters';
@@ -348,6 +349,19 @@ export class InvoicesApi {
   }
 
   /**
+   * Who received the goods an issued invoice handed over itself, put right, or nobody; its print as issued keeps the
+   * name it was issued with. 409 on a draft, 422 naming `receivedBy` as a save refuses it.
+   */
+  async correctReceiver(
+    companyId: string,
+    id: string,
+    receivedBy: ReceiverChoice | null,
+  ): Promise<InvoiceRow> {
+    const body: InvoiceReceiveBody = { receivedBy };
+    return this.step(companyId, id, 'receiver', body);
+  }
+
+  /**
    * « Livrer » or « Livrer une partie »: a draft delivery note of the issued invoice's goods, every line for what is left
    * of it, or with `quantities` (by invoice line id) those lines alone; answers the note's id. 409 when the invoice is
    * not issued, is a credit note or a deposit, or has nothing left; 422 when a quantity is more than is left.
@@ -525,8 +539,8 @@ export class InvoicesApi {
   private async step(
     companyId: string,
     id: string,
-    action: 'issue' | 'cancel' | 'credit-notes' | 'duplicate',
-    body: InvoiceInvoiceCredit | null = null,
+    action: 'issue' | 'cancel' | 'credit-notes' | 'duplicate' | 'receiver',
+    body: InvoiceInvoiceCredit | InvoiceReceiveBody | null = null,
     excessTo?: CreditExcessTo,
   ): Promise<InvoiceRow> {
     const params =

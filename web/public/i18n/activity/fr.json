@@ -95,6 +95,7 @@
         "issued": "a émis la facture",
         "cancelled": "a abandonné le brouillon",
         "credited": "a établi un avoir sur la facture",
+        "receiver_corrected": "a corrigé qui a reçu la marchandise de la facture",
         "deleted": "a supprimé le brouillon de facture",
         "restored": "a remis le brouillon de facture"
       },

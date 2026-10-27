@@ -4,6 +4,7 @@ import { RecordDeletes } from '../shared/records/record-deletes';
 import { inject, Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Router } from '@angular/router';
+import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import {
@@ -27,10 +28,15 @@ import { DELIVERIES_TEXTS } from '../shared/documents/deliveries-texts';
 import { DeliverPartDialog, type DeliverPartData } from '../shared/documents/deliver-part-dialog';
 import { DELIVERY_NOTES_MODULE } from '../delivery-notes/delivery-notes-nav';
 import { versus } from '../shared/ui/versus';
+import { RefusalFigures } from '../shared/form/refusal-figures';
+import type { Receiver, ReceiverChoice } from '../shared/receivers/receiver';
+import { ReceiverDialog, type ReceiverDialogData } from '../shared/receivers/receiver-dialog';
+import { sayReceiverUndoRefused } from '../shared/receivers/receiver-undo';
 import { CreditNoteDialog, type CreditNoteDialogData } from './credit-note-dialog';
 import { FacturXRefusalDialog, type FacturXRefusal } from './factur-x-refusal-dialog';
 import {
   creditNoteForm,
+  handsGoods,
   paidInFull,
   paymentForm,
   paymentInput,
@@ -54,6 +60,14 @@ export interface InvoiceRights {
   facturX: boolean;
   /** Writing delivery notes, with their module on: what « Livrer » takes, as the API asks. */
   deliver: boolean;
+}
+
+/** Whoever was named before, named again as a choice: the same contact, the same name typed, or nobody. */
+function receiverAgain(before: Receiver | null): ReceiverChoice | null {
+  if (before === null) return null;
+  return before.contactId !== null
+    ? { contactId: before.contactId, name: null, addToContacts: false }
+    : { contactId: null, name: before.name, addToContacts: false };
 }
 
 /** A quantity the API wrote above zero, "0.500" or "4.000": something left. */
@@ -123,6 +137,17 @@ export const invoiceMay = {
     !isCreditNote(invoice) &&
     !invoice.deposit &&
     invoice.deliveries.some((line) => aboveZero(line.left)),
+  /**
+   * Who received the goods an issued invoice handed over itself is put right by whoever writes invoices, unless its
+   * customer's invoices name nobody and it names nobody; a row, which reads no rule, offers it as the rule allows it.
+   */
+  correctReceiver: (invoice: InvoiceRow, rights: InvoiceRights) =>
+    rights.write &&
+    isOpen(invoice) &&
+    invoice.type === 'invoice' &&
+    !invoice.deposit &&
+    handsGoods(invoice.lines) &&
+    ((invoice.receiverRule ?? 'optional') !== 'off' || invoice.receivedBy !== null),
 } as const;
 
 /** What a screen adds to the declaration: what only it knows, and what it does once an action changed the document. */
@@ -152,6 +177,8 @@ export class InvoiceActions {
   private readonly format = inject(FormatFacade);
   private readonly texts = inject(TextsParts);
   private readonly deletes = inject(RecordDeletes);
+  private readonly translate = inject(TranslateService);
+  private readonly refusalFigures = inject(RefusalFigures);
 
   rights(): InvoiceRights {
     const country = this.auth.me()?.company?.countryCode;
@@ -310,6 +337,17 @@ export class InvoiceActions {
         effect: { kind: 'plain' },
         shown: (invoice) => invoiceMay.credit(invoice, rights),
         run: (invoice) => void this.creditNote(invoice),
+      },
+      {
+        id: 'correct-receiver',
+        label: 'invoices.actions.correct_receiver',
+        icon: 'person_edit',
+        group: 'correct',
+        frequency: 'rare',
+        // The dialog is the step: it asks who, and « Annuler » in the toast names again whoever was named before.
+        effect: { kind: 'plain' },
+        shown: (invoice) => invoiceMay.correctReceiver(invoice, rights),
+        run: (invoice) => void this.correctReceiver(invoice, changed),
       },
       {
         id: 'cancel',
@@ -512,6 +550,75 @@ export class InvoiceActions {
         recurringFailure(error instanceof RecurringRefused ? error.field : null),
       );
     }
+  }
+
+  /**
+   * « Reçu par » put right once the invoice is issued: its page and its up-to-date copy say the new name, its print as
+   * issued keeps the one it was issued with.
+   */
+  private async correctReceiver(
+    invoice: InvoiceRow,
+    changed: (invoice: InvoiceRow) => void,
+  ): Promise<void> {
+    const companyId = this.companyId();
+    if (!companyId || this.facade.busy()) return;
+    // What the dialog's save answered, which the toast's « Annuler » undoes.
+    const answered: { kept: InvoiceRow | null } = { kept: null };
+    const saved = await firstValueFrom(
+      this.dialog
+        .open<ReceiverDialog, ReceiverDialogData, boolean>(ReceiverDialog, {
+          data: {
+            title: 'invoices.actions.correct_receiver',
+            current: invoice.receivedBy,
+            required: invoice.receiverRule === 'required',
+            contacts: this.facade.receivers(companyId, invoice.customerId),
+            save: async (receivedBy) => {
+              const answer = await this.facade.correctReceiver(companyId, invoice.id, receivedBy);
+              if (answer !== null && 'kept' in answer) answered.kept = answer.kept;
+              return answer;
+            },
+          },
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
+    );
+    if (saved !== true) return;
+    const now = answered.kept ?? invoice;
+    changed(now);
+    this.saidCorrected(companyId, now, invoice.receivedBy, changed);
+  }
+
+  /**
+   * Said once put right; « Annuler » names again whoever was named before: the same contact, the same name typed, or
+   * nobody. A refused « Annuler » says why, so nobody takes the name for put back.
+   */
+  private saidCorrected(
+    companyId: string,
+    invoice: InvoiceRow,
+    before: Receiver | null,
+    changed: (invoice: InvoiceRow) => void,
+  ): void {
+    const shown = invoice.receivedBy;
+    this.feedback.effect('invoices.receiver_corrected', {}, 'corrigeable', {
+      key: 'receivers.undo',
+      run: () =>
+        void this.facade
+          .correctReceiver(companyId, invoice.id, receiverAgain(before))
+          .then((answer) => {
+            if (answer === null) return;
+            if ('kept' in answer) {
+              changed(answer.kept);
+              this.saidCorrected(companyId, answer.kept, shown, changed);
+            } else {
+              sayReceiverUndoRefused(
+                this.feedback,
+                this.translate,
+                this.refusalFigures,
+                answer.refused,
+              );
+            }
+          }),
+    });
   }
 
   /** Asks why first: a credit note states its reason when it is drafted (docs/SPEC.md § 7, 2026-09-24 22:51). */

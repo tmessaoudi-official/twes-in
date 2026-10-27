@@ -30,7 +30,7 @@ import type {
 import type { PreviewBody } from '../shared/documents/document-figures';
 import { sessionSignal } from '../shared/session/session-data';
 import type { FieldRefusal } from '../shared/form/field-refusals';
-import type { ReceiverContact } from '../shared/receivers/receiver';
+import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
 
 /** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
@@ -215,6 +215,18 @@ export class InvoicesFacade {
    */
   async creditNote(companyId: string, id: string, reason: string): Promise<FormAnswer<InvoiceRow>> {
     return this.inDialog(() => this.api.creditNote(companyId, id, reason));
+  }
+
+  /**
+   * Who received the goods an issued invoice handed over itself, put right; asked in a dialog, which says a refusal
+   * under its field, and answered as the document on screen.
+   */
+  async correctReceiver(
+    companyId: string,
+    id: string,
+    receivedBy: ReceiverChoice | null,
+  ): Promise<FormAnswer<InvoiceRow>> {
+    return this.inDialog(() => this.api.correctReceiver(companyId, id, receivedBy));
   }
 
   /**

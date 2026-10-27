@@ -95,6 +95,7 @@
         "issued": "issued the invoice",
         "cancelled": "abandoned the draft",
         "credited": "credited the invoice",
+        "receiver_corrected": "corrected who received the invoice’s goods",
         "deleted": "deleted the invoice draft",
         "restored": "restored the invoice draft"
       },

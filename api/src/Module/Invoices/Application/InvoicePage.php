@@ -79,6 +79,8 @@ final readonly class InvoicePage
         /** What its operations are, printed where its country's law asks: as issued, or as its draft says today; null when not said. */
         public ?OperationCategory $operations = null,
         public PrintedNames $names = new PrintedNames([], []),
+        /** Who received its goods: as issued on its original and its duplicate, as put right since on its up-to-date copy, as named now on a draft. */
+        public ?string $receiverName = null,
     ) {
     }
 

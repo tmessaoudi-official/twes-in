@@ -38,6 +38,7 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\CreateInvoice
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\DuplicateInvoiceProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\IssueInvoiceProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\PreviewInvoiceProcessor;
+use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\ReceiveInvoiceProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Processor\ReviseInvoiceProcessor;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider\InvoiceCollectionProvider;
 use App\Module\Invoices\Infrastructure\ApiPlatform\State\Provider\InvoiceItemProvider;
@@ -153,6 +154,17 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: self::NORMALIZATION,
         ),
         new Post(
+            uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/receiver',
+            openapi: new OpenApiOperation(summary: 'Puts right who received the goods an issued invoice handed over itself, or names nobody.', description: 'Takes `receivedBy` as a save takes it and records it on an issued, partly paid or paid invoice; what the invoice states fiscally does not move, and its stored PDF and its duplicate keep the name it was issued with, while its up-to-date copy says the corrected one. Asks invoice.write. Audited by the field it changed, never the name; sent again unchanged, nothing is recorded. 409 on a draft or a cancelled draft; 422 naming `receivedBy` as a save refuses it, `receiver_off` too on a credit note, a deposit or an invoice of services, which hand no goods over, and `receiver_required` naming nobody where the customer\'s invoices must name someone.'),
+            status: 200,
+            processor: ReceiveInvoiceProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            normalizationContext: self::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::RECEIVE]],
+            validationContext: ['groups' => [self::RECEIVE]],
+        ),
+        new Post(
             uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/credit-notes',
             processor: CreateCreditNoteProcessor::class,
             security: 'is_granted("ROLE_USER")',
@@ -181,6 +193,9 @@ final class InvoiceResource
     public const string WRITE = 'invoice:write';
     /** What drafting a credit note takes: its reason, and nothing a revision changes. */
     public const string CREDIT = 'invoice:credit';
+    /** What putting right who received takes: `receivedBy` alone. */
+    public const string RECEIVE = 'invoice:receive';
+    private const array RECEIVER_GROUPS = [self::WRITE, self::RECEIVE];
     /** Nulls are answered: a draft's absent number and a line without a product read alike. */
     public const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
@@ -370,8 +385,9 @@ final class InvoiceResource
     /**
      * Who received the goods the invoice hands over itself (its lines of a product neither taken from a delivery note
      * nor giving a deposit back), as it copied them: `{name, contactId}`, contactId the customer's contact named or null
-     * for a name typed; null while nobody is named. Chosen on the draft and printed on the issued invoice, never changed
-     * once issued. Sent to a save and a preview: `{contactId}` names one of the customer's contacts (GET
+     * for a name typed; null while nobody is named. Chosen on the draft and printed on the issued invoice; once issued,
+     * put right only through POST .../receiver, the print as issued keeping its name. Sent to a save, a preview and
+     * POST .../receiver: `{contactId}` names one of the customer's contacts (GET
      * .../invoice-options/customers/{customerId}/receivers), whose name is copied as it reads now; `{name,
      * addToContacts}` a name typed, added to the customer's contacts when asked; null, nobody. Sent back as read, the
      * receiver is kept as it was copied. Refused naming `receivedBy`: `unknown_choice`, `invalid_text`, `receiver_off`
@@ -389,12 +405,12 @@ final class InvoiceResource
         ],
     ])]
     #[Assert\Collection(fields: [
-        'contactId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
-        'name' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
-        'addToContacts' => new Assert\Optional([new Assert\Type('bool', groups: [self::WRITE])], groups: [self::WRITE]),
-    ], groups: [self::WRITE])]
+        'contactId' => new Assert\Optional([new Assert\Type('string', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+        'name' => new Assert\Optional([new Assert\Type('string', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+        'addToContacts' => new Assert\Optional([new Assert\Type('bool', groups: self::RECEIVER_GROUPS)], groups: self::RECEIVER_GROUPS),
+    ], groups: self::RECEIVER_GROUPS)]
     // count: an object of three named keys, which Assert\Collection holds to them, never a list
-    #[Groups([self::READ, self::WRITE])]
+    #[Groups([self::READ, self::WRITE, self::RECEIVE])]
     public ?array $receivedBy = null;
 
     /**
@@ -784,7 +800,7 @@ final class InvoiceResource
     }
 
     /** Who the request named as receiver; null for nobody. */
-    private function receiverChoice(): ?ReceiverChoice
+    public function receiverChoice(): ?ReceiverChoice
     {
         if (null === $this->receivedBy) {
             return null;

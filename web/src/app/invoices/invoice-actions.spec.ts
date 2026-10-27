@@ -4,7 +4,8 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { provideTranslateService } from '@ngx-translate/core';
+import { Observable, of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthFacade } from '../auth/auth-facade';
 import { RecurringApi } from '../recurring/recurring-api';
@@ -14,10 +15,16 @@ import { onRecord, onRows } from '../shared/actions/record-action';
 import { FileSaver } from '../shared/files/save-file';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { rareOn } from '../shared/list/list-types';
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { ReceiverDialog } from '../shared/receivers/receiver-dialog';
+import {
+  effectToasts,
+  failureToasts,
+  offeredNext,
+  provideQuietFeedback,
+} from '../shared/testing/feedback';
 import { InvoiceActions, type InvoiceActionsOptions } from './invoice-actions';
 import { InvoicesFacade } from './invoices-facade';
-import type { InvoiceRow } from './invoices-types';
+import type { InvoiceLine, InvoiceRow } from './invoices-types';
 
 const base: InvoiceRow = {
   id: 'i1',
@@ -145,6 +152,7 @@ describe('InvoiceActions', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
+        provideTranslateService(),
         provideQuietFeedback(),
         { provide: InvoicesFacade, useValue: facade },
         {
@@ -345,6 +353,160 @@ describe('InvoiceActions', () => {
     await vi.waitFor(() => expect(deletes.remove).toHaveBeenCalled());
     await Promise.resolve();
     expect(gone).not.toHaveBeenCalled();
+  });
+
+  describe('« Corriger qui a reçu… »', () => {
+    const goodsLine: InvoiceLine = {
+      productId: 'p1',
+      description: 'Tour CNC',
+      quantity: '1.000',
+      unitId: 'u1',
+      unitPriceNet: '100.0000',
+      discountRate: null,
+      discountAmount: null,
+      taxComponentIds: [],
+      sourceDeliveryNoteLineId: null,
+      sourceLeft: null,
+      productReference: 'TOUR-1',
+      productName: 'Tour CNC',
+      productTracking: null,
+      lotCode: null,
+      returned: false,
+      deductsInvoiceId: null,
+      section: null,
+      creditedLineId: null,
+      net: '100.000',
+    };
+    const wrong = { name: 'Mauvais 4821', contactId: null };
+    const handed: InvoiceRow = { ...due, lines: [goodsLine], receivedBy: wrong };
+    const corrects = (invoice: InvoiceRow) => onPage(invoice).includes('correct-receiver:rare');
+
+    it('is offered on an issued invoice handing its own goods, to whoever writes invoices, alike on its row', () => {
+      expect(corrects(handed)).toBe(true);
+      expect(onRow(handed)).toEqual(onPage(handed));
+      expect(corrects({ ...handed, receivedBy: null }), 'nobody named yet').toBe(true);
+      expect(corrects({ ...paid, lines: [goodsLine] }), 'paid, the goods still left').toBe(true);
+      expect(corrects({ ...handed, receiverRule: null }), 'a row reads no rule').toBe(true);
+
+      expect(corrects({ ...handed, status: 'draft' }), 'a draft names it in its form').toBe(false);
+      expect(corrects({ ...handed, status: 'cancelled' })).toBe(false);
+      expect(corrects({ ...creditNote, lines: [goodsLine] }), 'a credit note hands nothing').toBe(
+        false,
+      );
+      expect(corrects({ ...handed, deposit: true }), 'nor does a deposit').toBe(false);
+      expect(corrects({ ...handed, lines: [{ ...goodsLine, productId: null }] }), 'services').toBe(
+        false,
+      );
+      expect(
+        corrects({ ...handed, lines: [{ ...goodsLine, sourceDeliveryNoteLineId: 'dl1' }] }),
+        'its notes handed the goods',
+      ).toBe(false);
+      expect(
+        corrects({ ...handed, receiverRule: 'off', receivedBy: null }),
+        'its customer names nobody',
+      ).toBe(false);
+      expect(corrects({ ...handed, receiverRule: 'off' }), 'named, it can be taken away').toBe(
+        true,
+      );
+      granted.delete('invoice.write');
+      expect(corrects(handed), 'without invoice.write').toBe(false);
+    });
+
+    function correctReceiver(answer: unknown = null, changed = vi.fn()) {
+      const receivers = vi.fn().mockResolvedValue([{ contactId: 'ct1', name: 'Sami Trabelsi' }]);
+      const correct = vi.fn().mockResolvedValue(answer);
+      Object.assign(facade, { receivers, correctReceiver: correct });
+      onRecord(actions().declare({ changed }), handed, false)
+        .find((action) => action.id === 'correct-receiver')!
+        .run?.();
+      return { receivers, correct, changed };
+    }
+
+    it('asks in the shared dialog, then says it with « Annuler », which names again whoever was named before', async () => {
+      const sami = { ...handed, receivedBy: { name: 'Sami Trabelsi', contactId: 'ct1' } };
+      dialog.open.mockImplementation((_component, config) => ({
+        afterClosed: () => {
+          return new Observable((subscriber) => {
+            void config.data
+              .save({ contactId: 'ct1', name: null, addToContacts: false })
+              .then(() => subscriber.next(true));
+          });
+        },
+      }));
+      const { receivers, correct, changed } = correctReceiver({ kept: sami });
+
+      await vi.waitFor(() =>
+        expect(effectToasts()).toEqual(['invoices.receiver_corrected:corrigeable']),
+      );
+      const data = dialog.open.mock.calls[0]![1].data;
+      expect(dialog.open.mock.calls[0]![0]).toBe(ReceiverDialog);
+      expect([data.title, data.current, data.required]).toEqual([
+        'invoices.actions.correct_receiver',
+        wrong,
+        false,
+      ]);
+      expect(await data.contacts).toEqual([{ contactId: 'ct1', name: 'Sami Trabelsi' }]);
+      expect(receivers).toHaveBeenCalledWith('c1', 'k1');
+      expect(correct).toHaveBeenCalledWith('c1', 'i1', {
+        contactId: 'ct1',
+        name: null,
+        addToContacts: false,
+      });
+      expect(changed).toHaveBeenCalledWith(sami);
+
+      const undo = offeredNext();
+      expect(undo?.key).toBe('receivers.undo');
+      correct.mockResolvedValue({ kept: handed });
+      undo?.run();
+      await vi.waitFor(() =>
+        expect(correct).toHaveBeenLastCalledWith('c1', 'i1', {
+          contactId: null,
+          name: 'Mauvais 4821',
+          addToContacts: false,
+        }),
+      );
+      await vi.waitFor(() =>
+        expect(effectToasts()).toEqual([
+          'invoices.receiver_corrected:corrigeable',
+          'invoices.receiver_corrected:corrigeable',
+        ]),
+      );
+      expect(changed).toHaveBeenLastCalledWith(handed);
+
+      // Undone in turn, it names again whom the correction named: the same contact.
+      correct.mockResolvedValue({ kept: sami });
+      offeredNext()?.run();
+      await vi.waitFor(() =>
+        expect(correct).toHaveBeenLastCalledWith('c1', 'i1', {
+          contactId: 'ct1',
+          name: null,
+          addToContacts: false,
+        }),
+      );
+    });
+
+    it('says why when « Annuler » is refused, and that the name was not put back', async () => {
+      dialog.open.mockReturnValue({ afterClosed: () => of(true) });
+      const { correct, changed } = correctReceiver();
+      await vi.waitFor(() =>
+        expect(effectToasts()).toEqual(['invoices.receiver_corrected:corrigeable']),
+      );
+      expect(changed).toHaveBeenCalled();
+      correct.mockResolvedValue({
+        refused: [{ field: 'receivedBy', reason: 'receiver_off', params: {} }],
+      });
+      offeredNext()?.run();
+      await vi.waitFor(() => expect(failureToasts()).toEqual(['receivers.undo_refused']));
+    });
+
+    it('says nothing when the dialog is left', async () => {
+      dialog.open.mockReturnValue({ afterClosed: () => of(false) });
+      const { changed } = correctReceiver();
+      await vi.waitFor(() => expect(dialog.open).toHaveBeenCalled());
+      await Promise.resolve();
+      expect(effectToasts()).toEqual([]);
+      expect(changed).not.toHaveBeenCalled();
+    });
   });
 
   it('records a payment from a row, asked in the dialog with what the row still owes, and says the row changed', async () => {

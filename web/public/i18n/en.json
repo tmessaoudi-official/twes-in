@@ -1436,6 +1436,7 @@
     "back": "Back to invoices",
     "saved": "The draft has been saved.",
     "duplicated": "The document was duplicated.",
+    "receiver_corrected": "Who received the goods is corrected.",
     "read_only": "You can view invoices, not change them.",
     "corrects": "See the corrected invoice",
     "credit_note": {
@@ -1697,6 +1698,7 @@
       "issue": "Issue the invoice",
       "issue_credit_note": "Issue the credit note",
       "credit_note": "Create a credit note",
+      "correct_receiver": "Correct who received…",
       "cancel": "Abandon the draft…",
       "duplicate": "Duplicate",
       "cancel_title": "Abandon this draft?",
