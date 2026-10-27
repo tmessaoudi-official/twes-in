@@ -59,6 +59,10 @@ const GIVE_WAY_AT_1280: Record<string, readonly string[]> = {
   '/products': ['kind'],
   '/invoices': ['issueDate'],
   '/stock': ['useBy'],
+  // Who received or answered, of low priority: read on a wide page, and given way on a laptop.
+  '/quotes': ['receivedBy'],
+  '/delivery-notes': ['receivedBy'],
+  '/purchases': ['receivers'],
 };
 
 test('on a laptop a list gives way only its columns of low priority', async ({ page }) => {

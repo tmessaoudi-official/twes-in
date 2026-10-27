@@ -748,7 +748,7 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   (`e2e/icon-font.ts`); a scenario that leaves a page it has just opened waits for it the same way (2026-10-23).
 - A row action is width on every row: a standing one takes a slot (two at most), the first that folds takes « ⋮ »'s. W6's
   three folded movements gave `/stock` its first « ⋮ » and pushed its columns off a laptop; only `list-fit.spec.ts` saw
-  it. Run it after giving a list an action, and fold what is final or occasional (2026-10-25).
+  it. Run it after giving a list an action or a column (« Reçu par » on four lists reddened CI, 2026-10-27), and fold what is final or occasional (2026-10-25).
 - `git commit-tree` never reads `commit.gpgsign`: every `make commit-gated` from 21 to 23 Oct went to master unsigned
   (67, and 9 more on 10 Oct that a recovery rebuilt and moved there by `update-ref`; all re-signed on 2026-10-24). A commit made through plumbing
   passes `-S` itself; check `git log --format=%G?` after one. A gate test exporting `GIT_CONFIG_GLOBAL=/dev/null` cannot

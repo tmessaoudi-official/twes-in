@@ -215,6 +215,8 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       value: (row) => row.receivedBy?.name ?? '',
       shown: (row) => row.receivedBy !== null,
       wraps: true,
+      // A seventh column the widest page cannot hold beside the six above: shown on request, as the total is.
+      defaultHidden: true,
     },
     {
       id: 'total',
