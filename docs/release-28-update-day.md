@@ -8,12 +8,13 @@ release still runs on the new schema (`git diff --stat v2026.10.25.1 <the tag> -
 
 ## 1. Tag (on the developer's machine)
 
-Wait for CI run <RUN> on <SHA> green on every job, `publish` included (`gh run view <RUN>`): the tag names the images that
-job published.
+CI run 40441554218 on 8d01e6dc0f3d122d8351d3b50e9f22acceaa96c8 is green on every job, `publish` included
+(`gh run view 40441554218`): the tag names the three images that job published. A later commit on master changes
+nothing for the shop unless it says so here.
 
 ```sh
 cd /stack/projects/twes-in && git fetch origin
-make release-tag TAG=v2026.10.DD.1 COMMIT=<SHA>   # DD: the day you tag
+make release-tag TAG=v2026.10.DD.1 COMMIT=8d01e6dc0f3d122d8351d3b50e9f22acceaa96c8   # DD: the day you tag
 git verify-tag v2026.10.DD.1                     # « Good signature » from key 0C537690706EB7F5
 git push origin v2026.10.DD.1                    # a pushed tag never moves
 ```
@@ -97,6 +98,8 @@ reached » on 1 with « DNS privé » on a name: repeat with it set to automatic
 - Un nom faux se corrige : « ⋮ » puis « Corriger qui a reçu… » (sur une réception, le bouton « Corriger qui a reçu… »
   sous la réception). Le message qui suit propose « Annuler ». Le bon ou la facture déjà émis gardent le nom imprimé
   d'origine ; la page et la copie à jour disent le nom corrigé. Un devis n'imprime pas qui a répondu.
+- Dans les listes, « Reçu par » est une colonne : celle des factures s'affiche à la demande (« Colonnes »), comme le
+  total ; sur un petit écran, celles des devis, bons et commandes laissent la place aux autres.
 - **Paramètres** : pour chaque document, « Jamais », « Si on le souhaite » (par défaut) ou « Toujours ». Le même réglage
   se fait par groupe de clients et par client, onglet « Valeurs par défaut ».
 
