@@ -211,12 +211,12 @@ previewed first; import it only when the preview says 0 refused.
      price kept before taxes is not worked out again by itself.
    - « À vérifier » on a product or a vendor is the conversion's doubt, said on the record: clear it once checked.
 
-## 8. Release 28 — Wednesday 2026-10-28, the shop's first update
+## 8. Release 28 — Tuesday 2026-10-27, the shop's first update
 
 Every step is on `docs/release-28-update-day.md`, with its exact commands.
 
 - [ ] Tagged once CI's run on the landed commit is green on every job, `publish` included (§ 1), and the tag pushed.
-- [ ] At the shop: `twes update` ended « updated to v2026.10.DD.1 », and the checks of § 4 passed.
+- [ ] At the shop: `twes update` ended « updated to v2026.10.27.1 », and the checks of § 4 passed.
 - [ ] The backup alert's two files sent (§ 5): its fix waits for them, ready on branch `bkp`.
 - [ ] The field test's table filled and sent (§ 6): it decides whether the shop's installation gets a name.
 - [ ] The « Nouveautés » shown to the staff (§ 7).

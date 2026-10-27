@@ -1,4 +1,4 @@
-# Release 28 — update day (Wednesday 2026-10-28)
+# Release 28 — update day (Tuesday 2026-10-27)
 
 `twes X` below means, in PowerShell: `wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes X`.
 
@@ -14,14 +14,14 @@ nothing for the shop unless it says so here.
 
 ```sh
 cd /stack/projects/twes-in && git fetch origin
-make release-tag TAG=v2026.10.DD.1 COMMIT=8d01e6dc0f3d122d8351d3b50e9f22acceaa96c8   # DD: the day you tag
-git verify-tag v2026.10.DD.1                     # « Good signature » from key 0C537690706EB7F5
-git push origin v2026.10.DD.1                    # a pushed tag never moves
+make release-tag TAG=v2026.10.27.1 COMMIT=8d01e6dc0f3d122d8351d3b50e9f22acceaa96c8   # .27: the day you tag
+git verify-tag v2026.10.27.1                     # « Good signature » from key 0C537690706EB7F5
+git push origin v2026.10.27.1                    # a pushed tag never moves
 ```
 
 **When to push.** The shop takes the newest signed tag by itself in its daily window: `twes install` set the policy to
 `auto` unless it was changed since (`twes status` reads « updates: auto HH:MM-HH:MM »). The tag can be made any time; to
-run the update in front of the shop on Wednesday, push it on Wednesday after that window has passed, before leaving.
+run the update in front of the shop, push it and run § 3 at the shop before that window comes round.
 Pushed on Tuesday, the shop updates itself in its next window, and § 3 starts at its first step.
 
 ## 2. Before leaving
@@ -38,7 +38,7 @@ Pushed on Tuesday, the shop updates itself in its next window, and § 3 starts a
    v2026.10.25.1 again » means the window tried the update and took the shop back: nothing is lost, the shop works.
    Send that file and § 5's, and do not run `twes update` by hand.
 2. `twes update`. This update is run by the `twes` the shop has now, `v2026.10.25.1`'s: it says « backed up before
-   the update: … », shows the images downloading, and must end « updated to v2026.10.DD.1 ». It does not number its
+   the update: … », shows the images downloading, and must end « updated to v2026.10.27.1 ». It does not number its
    steps or say how long each usually takes: that comes with this release, from the next update on.
 3. It ends « … is unhealthy (…): starting v2026.10.25.1 again » instead: nothing is lost, the shop works on the
    previous release. Copy the whole output (and § 5's log) and send it; do not retry by hand.
