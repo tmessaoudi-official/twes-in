@@ -32,6 +32,7 @@ import type {
   SubscriptionTerms,
   NewCompany,
   PlatformAccountRow,
+  PlatformSupportRule,
   PlatformCompanyRow,
   PlatformError,
   PlatformNumber,
@@ -119,6 +120,15 @@ export class PlatformApi {
         const value = valueOf(`support.${name}`);
         return typeof value === 'string' ? value : '';
       };
+      // What the API holds each channel to, so its field refuses a wrong value as it is typed, in the API's words.
+      const ruleOf = (name: SupportChannel): PlatformSupportRule => {
+        const row = rows.find((each) => each.key === `support.${name}`);
+        return {
+          pattern: row?.pattern ?? null,
+          patternReason: row?.patternReason ?? null,
+          maxLength: row?.maxLength ?? null,
+        };
+      };
       return {
         signup: {
           enabled: valueOf('signup.enabled') === true,
@@ -130,6 +140,12 @@ export class PlatformApi {
           whatsapp: channel('whatsapp'),
           email: channel('email'),
           status_url: channel('status_url'),
+        },
+        supportRules: {
+          phone: ruleOf('phone'),
+          whatsapp: ruleOf('whatsapp'),
+          email: ruleOf('email'),
+          status_url: ruleOf('status_url'),
         },
         delays: rows
           .filter((row) => row.type === 'int' && row.key !== undefined && !OWN_CARDS.has(row.key))

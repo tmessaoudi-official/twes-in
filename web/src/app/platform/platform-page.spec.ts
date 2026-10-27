@@ -29,6 +29,7 @@ import type {
   PlatformImports,
   PlatformNumber,
   PlatformSupport,
+  PlatformSupportRules,
   ModuleDemandRow,
   PlatformSubscriptionRow,
   FailedMessagesRead,
@@ -65,8 +66,13 @@ class StaticLoader implements TranslateLoader {
           invalid_whatsapp:
             'Un numéro WhatsApp s’écrit au format international (exemple : +216 20 123 456).',
           value_required: 'Cette case doit être remplie.',
+          invalid_phone_digits:
+            'Un téléphone compte de 6 à 15 chiffres (exemple : +216 71 900 868).',
+          invalid_email:
+            'Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn).',
         },
       },
+      form: { errors: { email: 'Adresse e-mail invalide.' } },
       platform: {
         grants: {
           title: 'Accès du support',
@@ -257,6 +263,25 @@ describe('PlatformPage', () => {
     email: '',
     status_url: '',
   });
+  // The rules the API sends with each channel, which the browser checks before the API does.
+  const supportRules = signal<PlatformSupportRules | null>({
+    phone: {
+      pattern: '/^((?=(?:[^0-9]*[0-9]){6,15}[^0-9]*$)\\+?[0-9 ().\\-]+)?$/',
+      patternReason: 'invalid_phone_digits',
+      maxLength: 30,
+    },
+    whatsapp: {
+      pattern: '/^(\\+[1-9][0-9 ]{7,20})?$/',
+      patternReason: 'invalid_whatsapp',
+      maxLength: 30,
+    },
+    email: {
+      pattern: '/^([a-z]+@[a-z]+(?:\\.[a-z]+)+)?$/D',
+      patternReason: 'invalid_email',
+      maxLength: 254,
+    },
+    status_url: { pattern: null, patternReason: null, maxLength: 200 },
+  });
   const delayRows: readonly PlatformNumber[] = [
     {
       key: 'account.deletion_days',
@@ -333,6 +358,7 @@ describe('PlatformPage', () => {
     accounts,
     signup,
     support: support.asReadonly(),
+    supportRules: supportRules.asReadonly(),
     saveSupport: vi.fn(async () => true),
     delays: delays.asReadonly(),
     saveDelays: vi.fn(async () => true),
@@ -395,6 +421,7 @@ describe('PlatformPage', () => {
     offered.set([]);
     companyFacade.load.mockClear();
     companyFacade.switchTo.mockClear();
+    facade.saveSupport.mockClear();
     Object.values(payments)
       .filter((value) => typeof value === 'function' && 'mockReset' in value)
       .forEach((fn) => (fn as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(true));
@@ -847,16 +874,62 @@ describe('PlatformPage', () => {
       refusals: [{ field: 'support.whatsapp', reason: 'invalid_whatsapp', params: {} }],
     });
     fixture.detectChanges();
+    await fixture.whenStable();
 
-    const whatsapp = query<HTMLInputElement>('platform-support-whatsapp')!;
-    expect(query('platform-support-whatsapp-error')?.textContent).toContain('+216 20 123 456');
-    expect(whatsapp.getAttribute('aria-invalid')).toBe('true');
-    expect(query('platform-support-phone-error')).toBeNull();
+    expect(query('field-error-whatsapp')?.textContent).toContain('+216 20 123 456');
+    expect(query('field-error-phone')).toBeNull();
 
+    const whatsapp = query<HTMLInputElement>('field-whatsapp')!;
     whatsapp.value = '+216 20 123 457';
     whatsapp.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    expect(query('platform-support-whatsapp-error')).toBeNull();
+    expect(query('field-error-whatsapp')).toBeNull();
+  });
+
+  // Material's own moment: nothing while a value is typed, the API's sentence once the field is left, then said again
+  // or taken back at every key, until the value is right.
+  it('says a wrong support channel once its field is left, then at every key until it is right', async () => {
+    const { fixture, query } = await render();
+    const phone = query<HTMLInputElement>('field-phone')!;
+    const type = (value: string) => {
+      phone.value = value;
+      phone.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+
+    type('+216 7');
+    expect(query('field-error-phone')).toBeNull();
+    phone.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(query('field-error-phone')?.textContent).toContain('6 à 15 chiffres');
+
+    type('+216 71 900 868');
+    expect(query('field-error-phone')).toBeNull();
+    type('------');
+    expect(query('field-error-phone')?.textContent).toContain('6 à 15 chiffres');
+  });
+
+  // The browser knows the value is wrong: no save, so no password asked for one the API would refuse anyway.
+  it('saves nothing while a support channel is wrong, says every one and puts the person on the first', async () => {
+    const { fixture, query } = await render();
+    const type = (id: string, value: string) => {
+      const input = query<HTMLInputElement>(id)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+    type('field-phone', '------');
+    type('field-email', 'a@b');
+
+    query<HTMLButtonElement>('platform-support-save')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(facade.saveSupport).not.toHaveBeenCalled();
+    expect(query('field-error-phone')?.textContent).toContain('6 à 15 chiffres');
+    // The API's sentence, with its example, before the browser's own word for an e-mail.
+    expect(query('field-error-email')?.textContent).toContain('nom@domaine.extension');
+    expect(document.activeElement).toBe(query('field-phone'));
   });
 
   it("says a refused company's name on the name it was opened with, not on a sheet's owner", async () => {
@@ -907,8 +980,8 @@ describe('PlatformPage', () => {
     const save = query<HTMLButtonElement>('platform-support-save')!;
     expect(save.disabled).toBe(true);
 
-    const whatsapp = query<HTMLInputElement>('platform-support-whatsapp')!;
-    whatsapp.value = ' +216 20 123 456 ';
+    const whatsapp = query<HTMLInputElement>('field-whatsapp')!;
+    whatsapp.value = '+216 20 123 456';
     whatsapp.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     expect(save.disabled).toBe(false);
@@ -930,7 +1003,7 @@ describe('PlatformPage', () => {
       fixture.detectChanges();
     };
 
-    type('platform-support-whatsapp', '+216 20 123 456');
+    type('field-whatsapp', '+216 20 123 456');
     type('platform-delay-company.reopen_days', '0');
     type('platform-demo-most', '20');
     type('platform-import-rows', '1200');
@@ -998,7 +1071,7 @@ describe('PlatformPage', () => {
 
   it('takes the status page as an address, saved as the other channels are', async () => {
     const { fixture, query } = await render();
-    const status = query<HTMLInputElement>('platform-support-status_url')!;
+    const status = query<HTMLInputElement>('field-status_url')!;
     expect(status.type).toBe('url');
 
     status.value = 'https://status.twes.test';

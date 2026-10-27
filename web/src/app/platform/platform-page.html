@@ -340,51 +340,27 @@
             </mat-card-content>
           </mat-card>
           <mat-card appearance="outlined" data-testid="platform-support">
-            <mat-card-header>
-              <mat-card-title>{{ 'platform.support.title' | translate }}</mat-card-title>
-            </mat-card-header>
             <mat-card-content>
-              <!-- Material's own display beats a layout class on mat-card-content: the layout goes on a div inside it. -->
-              <div class="mt-4 flex flex-col gap-3">
-                <p class="max-w-prose text-sm">{{ 'platform.support.intro' | translate }}</p>
-                @if (supportDraft(); as draft) {
-                  @for (channel of supportChannels; track channel) {
-                    <mat-form-field>
-                      <mat-label>{{ 'platform.support.' + channel | translate }}</mat-label>
-                      <input
-                        matInput
-                        [type]="supportInput[channel]"
-                        [value]="draft[channel]"
-                        (input)="typedSupport(channel, $event)"
-                        [attr.aria-invalid]="refusalOf('settings', 'support.' + channel) !== null"
-                        [attr.data-testid]="'platform-support-' + channel"
-                      />
-                      @if (refusalOf('settings', 'support.' + channel); as said) {
-                        <mat-hint
-                          class="text-error"
-                          [attr.data-testid]="'platform-support-' + channel + '-error'"
-                          >{{ said.key | translate: said.params }}</mat-hint
-                        >
-                      } @else {
-                        <mat-hint>{{
-                          'platform.support.' + channel + '_hint' | translate
-                        }}</mat-hint>
-                      }
-                    </mat-form-field>
-                  }
-                }
-                <div>
-                  <button
-                    mat-flat-button
-                    type="button"
-                    [disabled]="!supportChanged() || busy()"
-                    (click)="saveSupport()"
-                    data-testid="platform-support-save"
-                  >
-                    {{ 'platform.support.save' | translate }}
-                  </button>
-                </div>
-              </div>
+              @if (supportGroup(); as group) {
+                <app-descriptor-form
+                  #supportForm
+                  [descriptor]="supportDescriptor()"
+                  [form]="group"
+                  (submitted)="saveSupport($event)"
+                  testId="platform-support-form"
+                >
+                  <div>
+                    <button
+                      mat-flat-button
+                      type="submit"
+                      [disabled]="!supportChanged() || busy()"
+                      data-testid="platform-support-save"
+                    >
+                      {{ 'platform.support.save' | translate }}
+                    </button>
+                  </div>
+                </app-descriptor-form>
+              }
             </mat-card-content>
           </mat-card>
           <mat-card appearance="outlined" data-testid="platform-delays">

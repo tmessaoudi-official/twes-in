@@ -6,10 +6,13 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   linkedSignal,
   OnInit,
   signal,
+  untracked,
+  viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,7 +33,7 @@ import { unsavedChanges } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import { mergeSavedVersion, type FieldConflict } from '../shared/form/form-merge';
-import type { FormValues } from '../shared/form/form-types';
+import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { Select, type SelectOption } from '../shared/form/select';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
@@ -55,12 +58,11 @@ import {
   type PlatformCompanyRow,
   type PlatformTab,
   type PlatformSwitch,
-  type SupportChannel,
   type PlatformNumber,
-  type PlatformSupport,
   type PlatformSubscriptionRow,
 } from './platform-types';
 import { subscriptionForm, subscriptionTerms, subscriptionValues } from './subscription-form';
+import { SUPPORT_CHANNELS, supportForm } from './support-form';
 
 /** What a list keeps in the address besides the tab: switching tabs must not carry one list's words into the next. */
 /** A typed whole number differing from what the platform holds, and within its bounds. */
@@ -330,34 +332,32 @@ export class PlatformPage implements OnInit {
     kind in FAILED_KINDS ? `platform.failed.kinds.${FAILED_KINDS[kind]}` : null;
   protected readonly signup = this.platform.signup;
 
-  protected readonly supportChannels: readonly SupportChannel[] = [
-    'phone',
-    'whatsapp',
-    'email',
-    'status_url',
-  ];
-  /** What each channel's field takes, so a phone keyboard shows the right keys. */
-  protected readonly supportInput: Readonly<Record<SupportChannel, string>> = {
-    phone: 'tel',
-    whatsapp: 'tel',
-    email: 'email',
-    status_url: 'url',
-  };
-  /** The support channels as typed, until saved: what the platform holds again after every load or save. */
-  protected readonly supportDraft = linkedSignal<PlatformSupport | null>(() =>
-    this.platform.support(),
-  );
-  private readonly supportChanges = computed<Partial<PlatformSupport>>(() => {
-    const saved = this.platform.support();
-    const draft = this.supportDraft();
-    if (saved === null || draft === null) return {};
-    return Object.fromEntries(
-      this.supportChannels
-        .filter((channel) => draft[channel] !== saved[channel])
-        .map((channel) => [channel, draft[channel]]),
-    );
+  /**
+   * How a company reaches the operators, as the settings' own form: each channel's field refuses what the API would and
+   * in its words, once left and then at every key (docs/SPEC.md § 7, 2026-10-27 20:57).
+   */
+  private readonly supportRules = computed(() => this.platform.supportRules(), {
+    equal: (a, b) => JSON.stringify(a) === JSON.stringify(b),
   });
-  protected readonly supportChanged = computed(() => Object.keys(this.supportChanges()).length > 0);
+  protected readonly supportDescriptor = computed<FormDescriptor>(() =>
+    supportForm(this.supportRules()),
+  );
+  /** What the platform holds, by content: a reload answering the same values keeps what is typed. */
+  private readonly supportSaved = computed<FormValues | null>(
+    () => {
+      const saved = this.platform.support();
+      return saved === null ? null : { ...saved };
+    },
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
+  protected readonly supportGroup = computed<DescriptorFormGroup | null>(() => {
+    const saved = this.supportSaved();
+    const descriptor = this.supportDescriptor();
+    return saved === null ? null : untracked(() => buildFormGroup(descriptor, saved));
+  });
+  private readonly supportForm = viewChild<DescriptorForm>('supportForm');
+  private readonly supportTyped = unsavedChanges(this.supportGroup, this.supportSaved);
+  protected readonly supportChanged = computed(() => this.supportTyped() > 0);
   protected readonly delays = this.platform.delays;
   /** The delays as typed, by key, until saved; a field never typed in shows what the platform holds. */
   protected readonly delayDraft = linkedSignal<
@@ -445,7 +445,6 @@ export class PlatformPage implements OnInit {
       (delay) => delay.key in delayDraft && !Object.is(delayDraft[delay.key], delay.value),
     ).length;
     return (
-      Object.keys(this.supportChanges()).length +
       delaysTyped +
       numberTyped(this.platform.demo()?.most, this.demoMostDraft()) +
       numberTyped(this.platform.imports()?.rows, this.importRowsDraft()) +
@@ -468,6 +467,18 @@ export class PlatformPage implements OnInit {
       inject(DestroyRef),
     );
     inject(UnsavedChanges).declare(this.cardChanges);
+    // What the platform refused of the support channels, said under each field by the form itself.
+    effect(() => {
+      const held = this.platform.refused();
+      const form = this.supportForm();
+      if (held.at !== 'settings' || form === undefined) return;
+      const refusals = held.refusals.flatMap((refusal) =>
+        refusal.field.startsWith('support.')
+          ? [{ ...refusal, field: refusal.field.slice('support.'.length) }]
+          : [],
+      );
+      if (refusals.length > 0) untracked(() => form.showRefused(refusals));
+    });
     inject(ScreenActions).declare(this.sheetActions);
     // The terms typed in the open panel and not saved, against what the panel last read; counted where it counts.
     unsavedChanges(
@@ -674,12 +685,6 @@ export class PlatformPage implements OnInit {
     this.subscriptionConflicts.set([]);
   }
 
-  protected typedSupport(channel: SupportChannel, event: Event): void {
-    const value = (event.target as HTMLInputElement).value.trim();
-    this.supportDraft.update((draft) => (draft === null ? draft : { ...draft, [channel]: value }));
-    this.platform.forgetRefusal(`support.${channel}`);
-  }
-
   protected typedDelay(key: string, event: Event): void {
     const raw = (event.target as HTMLInputElement).value.trim();
     this.delayDraft.update((draft) => ({ ...draft, [key]: raw === '' ? Number.NaN : Number(raw) }));
@@ -728,8 +733,17 @@ export class PlatformPage implements OnInit {
     }
   }
 
-  protected async saveSupport(): Promise<void> {
-    if (await this.platform.saveSupport(this.supportChanges())) {
+  protected async saveSupport(values: FormValues): Promise<void> {
+    const saved = this.platform.support();
+    if (saved === null) return;
+    const changes = Object.fromEntries(
+      SUPPORT_CHANNELS.flatMap((channel) => {
+        const typed = String(values[channel] ?? '').trim();
+        return typed === saved[channel] ? [] : [[channel, typed]];
+      }),
+    );
+    if (Object.keys(changes).length === 0) return;
+    if (await this.platform.saveSupport(changes)) {
       this.feedback.success('platform.support.saved');
     } else {
       this.savedSince();

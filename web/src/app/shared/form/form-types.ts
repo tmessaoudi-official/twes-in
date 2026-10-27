@@ -4,6 +4,8 @@ export type FieldKind =
   | 'text'
   | 'email'
   | 'tel'
+  /** A web address, typed with the keyboard a phone offers for one. */
+  | 'url'
   | 'number'
   /** An amount, a quantity or a rate as the API writes it ("890.000"), shown and typed the locale's way. */
   | 'decimal'

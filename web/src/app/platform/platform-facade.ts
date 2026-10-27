@@ -26,6 +26,7 @@ import {
   type SubscriptionTerms,
   type PlatformSwitch,
   type PlatformSupport,
+  type PlatformSupportRules,
 } from './platform-types';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
 
@@ -38,6 +39,7 @@ export class PlatformFacade {
   private readonly waitingSignal = signal<readonly PlatformCompanyRow[]>([]);
   private readonly signupSignal = signal<PlatformSignup | null>(null);
   private readonly supportSignal = signal<PlatformSupport | null>(null);
+  private readonly supportRulesSignal = signal<PlatformSupportRules | null>(null);
   private readonly delaysSignal = signal<readonly PlatformNumber[] | null>(null);
   private readonly demoSignal = signal<PlatformDemo | null>(null);
   private readonly importsSignal = signal<PlatformImports | null>(null);
@@ -88,6 +90,7 @@ export class PlatformFacade {
   readonly signup = this.signupSignal.asReadonly();
   /** How companies reach the operators, null until read. */
   readonly support = this.supportSignal.asReadonly();
+  readonly supportRules = this.supportRulesSignal.asReadonly();
   /** The numbers of days the platform sets, null until read. */
   readonly delays = this.delaysSignal.asReadonly();
   /** Whether visitors may try the demo and how many sandboxes may exist at once, null until read. */
@@ -392,6 +395,7 @@ export class PlatformFacade {
   private holdSettings(settings: PlatformSettings): void {
     this.signupSignal.set(settings.signup);
     this.supportSignal.set(settings.support);
+    this.supportRulesSignal.set(settings.supportRules);
     this.delaysSignal.set(settings.delays);
     this.demoSignal.set(settings.demo);
     this.importsSignal.set(settings.imports);

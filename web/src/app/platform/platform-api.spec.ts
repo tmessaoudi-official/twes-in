@@ -317,7 +317,15 @@ describe('PlatformApi', () => {
     http.expectOne('/api/platform/settings').flush([
       { key: 'signup.enabled', type: 'bool', value: true, versions: { platform: 2 } },
       { key: 'signup.approval_required', type: 'bool', value: false, versions: { platform: 1 } },
-      { key: 'support.phone', type: 'text', value: '+216 71 000 000', versions: { platform: 5 } },
+      {
+        key: 'support.phone',
+        type: 'text',
+        value: '+216 71 000 000',
+        versions: { platform: 5 },
+        pattern: '/^(\\+?[0-9 ]{6,30})?$/',
+        patternReason: 'invalid_phone_digits',
+        maxLength: 30,
+      },
       { key: 'support.email', type: 'text', value: '', versions: {} },
       { key: 'support.status_url', type: 'text', value: 'https://status.twes.test', versions: [] },
       {
@@ -399,6 +407,17 @@ describe('PlatformApi', () => {
         whatsapp: '',
         email: '',
         status_url: 'https://status.twes.test',
+      },
+      // Each channel's rule as the API sends it, which the screen checks before saving; none where none is sent.
+      supportRules: {
+        phone: {
+          pattern: '/^(\\+?[0-9 ]{6,30})?$/',
+          patternReason: 'invalid_phone_digits',
+          maxLength: 30,
+        },
+        whatsapp: { pattern: null, patternReason: null, maxLength: null },
+        email: { pattern: null, patternReason: null, maxLength: null },
+        status_url: { pattern: null, patternReason: null, maxLength: null },
       },
       delays: [
         {

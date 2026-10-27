@@ -20,9 +20,15 @@ test('the contact the operators set is offered in the help, a channel left empty
   const before = await readContact(page);
   try {
     await page.goto('/platform');
-    await page.getByTestId('platform-support-phone').fill('+216 71 000 000');
-    await page.getByTestId('platform-support-whatsapp').fill('+216 20 123 456');
-    await page.getByTestId('platform-support-email').fill('');
+    const card = page.getByTestId('platform-support');
+    // A wrong value is said once its field is left, before anything is saved or a password asked.
+    await card.getByTestId('field-phone').fill('------');
+    await card.getByTestId('field-phone').press('Tab');
+    await expect(card.getByTestId('field-error-phone')).toContainText('6');
+    await card.getByTestId('field-phone').fill('+216 71 000 000');
+    await expect(card.getByTestId('field-error-phone')).toHaveCount(0);
+    await card.getByTestId('field-whatsapp').fill('+216 20 123 456');
+    await card.getByTestId('field-email').fill('');
     const saved = page.waitForResponse(
       (response) =>
         // A form's keys are saved together, in one request.

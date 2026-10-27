@@ -250,12 +250,25 @@ function textField(id: string, label: string, row: SettingRow): FormField {
     kind: long ? 'textarea' : 'text',
     required: row.defaultValue !== '',
     ...(long ? { span: 2 as const } : {}),
-    ...(row.maxLength === null ? {} : { maxLength: row.maxLength }),
+    ...settingRules(row),
+  };
+}
+
+/**
+ * What a setting's definition holds a typed value to, as a field's rules: its length, its pattern and the sentence the
+ * API refuses a value outside it with, said before the save asks it. A screen drawing a setting in a form of its own
+ * reads the same rules, so the field refuses what the API would and in its words.
+ */
+export function settingRules(
+  rule: Pick<SettingRow, 'maxLength' | 'pattern' | 'patternReason'>,
+): Pick<FormField, 'maxLength' | 'pattern' | 'patternError'> {
+  const pattern = rule.pattern === null ? undefined : unanchored(rule.pattern);
+  return {
+    ...(rule.maxLength === null ? {} : { maxLength: rule.maxLength }),
     ...(pattern === undefined ? {} : { pattern }),
-    // The sentence the API refuses the value with, said before the save asks it.
-    ...(pattern === undefined || !row.patternReason
+    ...(pattern === undefined || !rule.patternReason
       ? {}
-      : { patternError: `import.rejections.${row.patternReason}` }),
+      : { patternError: `import.rejections.${rule.patternReason}` }),
   };
 }
 

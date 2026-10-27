@@ -91,12 +91,22 @@ export type SupportChannel = 'phone' | 'whatsapp' | 'email' | 'status_url';
 /** Each support channel as the operators set it, empty where they did not. */
 export type PlatformSupport = Readonly<Record<SupportChannel, string>>;
 
+/** What the API checks a support channel against, sent with it so the screen says a wrong value before saving. */
+export interface PlatformSupportRule {
+  readonly pattern: string | null;
+  readonly patternReason: string | null;
+  readonly maxLength: number | null;
+}
+
+export type PlatformSupportRules = Readonly<Record<SupportChannel, PlatformSupportRule>>;
+
 /** The platform's own settings as its overview reads them, with each key's row version, 0 where none is stored. */
 export interface PlatformSettings {
   readonly signup: PlatformSignup;
   /** Whether the installation shows what is coming, marked « Bientôt », until a company or a person chooses. */
   readonly showComing: boolean;
   readonly support: PlatformSupport;
+  readonly supportRules: PlatformSupportRules;
   readonly delays: readonly PlatformNumber[];
   readonly demo: PlatformDemo;
   readonly imports: PlatformImports;

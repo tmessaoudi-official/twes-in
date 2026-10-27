@@ -180,6 +180,25 @@ describe('fieldError', () => {
     expect(errorOf(phone, '1234567A/A/M/000')).toBeNull();
   });
 
+  // The sentence the API refuses the value with names its format and an example; the browser's own word does not.
+  it("says an e-mail field's own format sentence before the browser's word for an address", () => {
+    const address: FormField = {
+      id: 'address',
+      label: 'c.address',
+      kind: 'email',
+      pattern: '[a-z]+@[a-z]+(?:\\.[a-z]+)+',
+      patternError: 'import.rejections.invalid_email',
+    };
+    const control = buildFormGroup({
+      id: 'f',
+      sections: [{ id: 's', title: 's', fields: [address] }],
+    }).controls['address'];
+    control.setValue('a@b..c');
+
+    expect(control.hasError('email')).toBe(true);
+    expect(fieldError(control, address)).toEqual({ key: 'import.rejections.invalid_email' });
+  });
+
   it('accepts only one of the options a select offers', () => {
     expect(errorOf(currency, 'USD')).toEqual({ key: 'form.errors.option' });
     expect(errorOf(currency, 'EUR')).toBeNull();
