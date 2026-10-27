@@ -36,6 +36,24 @@ jobs:
           fetch-depth: 0
       # Everything runs in the project's own containers (docs/SPEC.md § 7): the runner needs Docker and nothing else.
       # The Makefile hands the services the runner's uid and the checkout's path; docs/START.md § 1.
+      # The Windows installer's check image installs PSScriptAnalyzer from PowerShell Gallery, which fails now and then
+      # and held the publish back: it is built once per Dockerfile and kept in the cache, saved as soon as it is built.
+      - id: ps-tools
+        run: echo "image=$(make -s ps-tools-tag)" >> "$GITHUB_OUTPUT"
+      - id: ps-tools-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: var/ps-tools.tar
+          key: ps-tools-${{ hashFiles('infra/powershell/Dockerfile') }}
+      - if: steps.ps-tools-cache.outputs.cache-hit == 'true'
+        run: docker load -i var/ps-tools.tar
+      - if: steps.ps-tools-cache.outputs.cache-hit != 'true'
+        run: make ps-tools-image && docker save -o var/ps-tools.tar "${{ steps.ps-tools.outputs.image }}"
+      - if: steps.ps-tools-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: var/ps-tools.tar
+          key: ps-tools-${{ hashFiles('infra/powershell/Dockerfile') }}
       - run: make gate-licences
       # A dependency with a published vulnerability: the API's Composer packages and the web's production npm packages.
       # A new advisory can red a commit that changed nothing; that is the point, it is read the day it appears.

@@ -35,7 +35,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -54,12 +54,22 @@ tools-image:   ## build the PHP toolchain image (a no-op when nothing under infr
 web-tools-image: ## build the Node + Playwright toolchain image
 	docker build -q --load -f infra/web/tools.Dockerfile -t twes-in-web-tools infra/web >/dev/null
 
-ps-tools-image: ## build the PowerShell toolchain image: the Windows installer's parser and PSScriptAnalyzer
-	docker build -q --load -f infra/powershell/Dockerfile -t twes-in-ps-tools infra/powershell >/dev/null
+# The PowerShell toolchain image, named by its Dockerfile: its build reaches PowerShell Gallery, which fails now and
+# then, so an image already built from the same Dockerfile is kept, here and in CI's cache (.github/workflows/ci.yml).
+PS_TOOLS_IMAGE := twes-in-ps-tools:$(shell sha256sum infra/powershell/Dockerfile | cut -c1-16)
+
+ps-tools-tag:  ## print the PowerShell toolchain image's name, which CI's cache saves
+	@echo $(PS_TOOLS_IMAGE)
+
+ps-tools-image: ## build the PowerShell toolchain image: the Windows installer's parser and PSScriptAnalyzer (a no-op when built from this Dockerfile)
+	@# Inspect fails only on an image not there, which is what it asks; a failed build shows PowerShell's own error.
+	@docker image inspect $(PS_TOOLS_IMAGE) >/dev/null 2>&1 || { mkdir -p var/tmp && \
+	  docker build --progress=plain --load -f infra/powershell/Dockerfile -t $(PS_TOOLS_IMAGE) infra/powershell \
+	    >var/tmp/ps-tools-build.log 2>&1 || { tail -n 60 var/tmp/ps-tools-build.log; exit 1; }; }
 
 gate-powershell: ps-tools-image   ## the Windows installer, scripts/onprem/install.ps1: parsed, PSScriptAnalyzer clean, its .wslconfig editing run
 	@# Read-only and with no network: the test reads the installer and writes only inside the container.
-	docker run --rm --network none -v "$(CURDIR)/scripts:/scripts:ro" twes-in-ps-tools pwsh -NoLogo -NoProfile -File /scripts/tests/install-ps1.test.ps1
+	docker run --rm --network none -v "$(CURDIR)/scripts:/scripts:ro" $(PS_TOOLS_IMAGE) pwsh -NoLogo -NoProfile -File /scripts/tests/install-ps1.test.ps1
 
 up:            ## start the whole stack LIVE: an edit under api/ or web/ shows without a rebuild (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed
 	@# The live volumes mount inside the host's api/ and web/; made here, as this user, or Docker makes them as root.

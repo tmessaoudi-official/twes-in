@@ -316,7 +316,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   systemd's units and the `keep` task; the checkout verified against the fingerprint the installer carries before
   anything from it runs, its `$verify` line run by twes.test.sh, `twes install`, the authority trusted; ASCII only;
   `make gate-powershell`, part of `make gate-licences`, parses it, runs PSScriptAnalyzer and its `.wslconfig` editing in
-  `infra/powershell/`'s image, the .NET SDK's, which is where Microsoft ships PowerShell now). `make onprem-check`
+  `infra/powershell/`'s image, the .NET SDK's, which is where Microsoft ships PowerShell now; built once per Dockerfile,
+  `make ps-tools-tag` its name, and kept in CI's cache, since PowerShell Gallery fails now and then). `make onprem-check`
   (`scripts/onprem/onprem-check.sh`, compose project `twes-onprem-check`, ports 80 and 443, about ten minutes) installs,
   rolls back, restores and refuses an unsigned tag for real; the restore steps are docs/RUNBOOK.md « Restore a shop »,
   releasing to shops « Release to the shops ».
@@ -753,6 +754,9 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   (67, and 9 more on 10 Oct that a recovery rebuilt and moved there by `update-ref`; all re-signed on 2026-10-24). A commit made through plumbing
   passes `-S` itself; check `git log --format=%G?` after one. A gate test exporting `GIT_CONFIG_GLOBAL=/dev/null` cannot
   see it: its fixture sets the repository's own `commit.gpgsign` and a stand-in `gpg.program`.
+- `make up` and `make up-images` run `make seed`, which puts Demo and `codes@` back: on a platform the developer keeps
+  empty for testing, rebuild without them, `env $(make -n up COMPOSE_FILE=compose.yaml | grep 'compose up' | sed 's/ docker
+  compose up.*//; s/^env //') docker compose up -d --build --no-deps --wait api worker demo-worker web` (2026-10-27).
 - A rate limiter is spent by a person's whole path, not by one endpoint: putting the setup confirms on `mfa_verify` let a
   step-up, an enrolment, a recovery-code sign-in, a step-up and one typo exhaust it, and the right code answered 429 (red
   on CI only, 2ccf0bb7). Before giving an endpoint a limiter, list every endpoint already on it and run every e2e walking
