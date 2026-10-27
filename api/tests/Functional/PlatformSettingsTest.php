@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Role;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -43,7 +45,10 @@ final class PlatformSettingsTest extends ApiTestCase
             'legal.mail.provider', 'legal.monitor.provider', 'legal.privacy.email', 'legal.publisher.address', 'legal.publisher.director',
             'legal.publisher.email', 'legal.publisher.name', 'legal.publisher.phone', 'legal.publisher.registration',
             'legal.security.email', 'legal.source.url',
-            'licensing.grace_days', 'licensing.hold_days', 'licensing.unpaid_mode', 'signup.approval_required', 'signup.enabled',
+            'licensing.grace_days', 'licensing.hold_days', 'licensing.unpaid_mode',
+            // A company's setting whose installation default is the operator's (Settings\Application\PresentationSettings).
+            'presentation.show-coming',
+            'signup.approval_required', 'signup.enabled',
             // How a company reaches the operators (Settings\Application\SupportSettings), empty until filled in.
             'support.email', 'support.phone', 'support.status_url', 'support.whatsapp',
         ], $keys);
@@ -166,6 +171,60 @@ final class PlatformSettingsTest extends ApiTestCase
         // A company's setting has no platform value to set from this screen.
         $this->sendJson('PUT', self::PATH.'/presentation.density', ['value' => 'compact']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * « Montrer ce qui arrive » is off until someone turns it on: the operator for the whole installation, a company for
+     * its members, a person for themself, the nearer one winning.
+     */
+    public function testTheOperatorSetsTheInstallationDefaultOfWhatIsComing(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('member@twes.local', 'password-1234', $company, ['company.read'], Role::MEMBER);
+        $this->signedInAsOperator();
+
+        $row = $this->platformRows()['presentation.show-coming'];
+        self::assertFalse($row['value']);
+        self::assertSame(['presentation', ['platform']], [$row['chain'], $row['writableLevels']]);
+
+        $this->sendJson('PUT', self::PATH.'/presentation.show-coming', ['value' => true]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([true, 'platform'], [$this->json()['value'], $this->json()['source']]);
+
+        $this->login('member@twes.local', 'password-1234');
+        self::assertTrue($this->showComingAt($company), 'a member who chose nothing reads the installation default');
+
+        $this->sendJson('PUT', $this->companySetting($company), ['level' => 'user', 'value' => false]);
+        self::assertResponseIsSuccessful();
+        self::assertFalse($this->showComingAt($company), 'their own choice wins');
+
+        // A member never sets the installation's value from a company's screen.
+        $this->sendJson('PUT', $this->companySetting($company), ['level' => 'platform', 'value' => false]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    public function testWhatIsComingIsHiddenUntilSomeoneShowsIt(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('member@twes.local', 'password-1234', $company, ['company.read'], Role::MEMBER);
+        $this->login('member@twes.local', 'password-1234');
+
+        self::assertFalse($this->showComingAt($company));
+    }
+
+    private function companySetting(Company $company): string
+    {
+        return '/api/companies/'.$company->getId()->toRfc4122().'/settings/presentation.show-coming';
+    }
+
+    private function showComingAt(Company $company): bool
+    {
+        $this->getJson('/api/companies/'.$company->getId()->toRfc4122().'/settings?chain=presentation');
+        self::assertResponseIsSuccessful();
+        $value = array_column($this->jsonList(), 'value', 'key')['presentation.show-coming'] ?? null;
+        self::assertIsBool($value);
+
+        return $value;
     }
 
     public function testACompanyOwnerIsNotAnOperator(): void

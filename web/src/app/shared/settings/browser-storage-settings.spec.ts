@@ -59,6 +59,8 @@ describe('BrowserStorageSettings', () => {
   it('answers the declared default when nothing was chosen', () => {
     expect(settings().value(PRESENTATION.scheme)()).toBe('auto');
     expect(settings().value(PRESENTATION.density)()).toBe('comfortable');
+    // What is coming stays hidden until someone shows it, as the API's declaration says.
+    expect(settings().value(PRESENTATION.showComing)()).toBe(false);
   });
 
   it('keeps a choice for the next page load', () => {

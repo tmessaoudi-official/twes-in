@@ -65,7 +65,8 @@ export interface PlatformSignup {
 }
 
 /** A switch the operators turn, the last word being theirs: it is set without a version. */
-export type PlatformSwitch = 'signup.enabled' | 'signup.approval_required' | 'demo.enabled';
+export type PlatformSwitch =
+  'signup.enabled' | 'signup.approval_required' | 'demo.enabled' | 'presentation.show-coming';
 
 /**
  * The demo as the operators set it: whether visitors may try it (on unless switched off), and how many sandboxes may
@@ -93,6 +94,8 @@ export type PlatformSupport = Readonly<Record<SupportChannel, string>>;
 /** The platform's own settings as its overview reads them, with each key's row version, 0 where none is stored. */
 export interface PlatformSettings {
   readonly signup: PlatformSignup;
+  /** Whether the installation shows what is coming, marked « Bientôt », until a company or a person chooses. */
+  readonly showComing: boolean;
   readonly support: PlatformSupport;
   readonly delays: readonly PlatformNumber[];
   readonly demo: PlatformDemo;

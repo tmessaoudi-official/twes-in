@@ -148,6 +148,29 @@ export async function namedAsTheLawAsks(page: Page, csrf: string): Promise<void>
   );
 }
 
+/**
+ * What is coming is hidden until someone shows it. The scenarios about it, and the ones measuring a bar's width with its
+ * « Bientôt » actions in it, are written for a company that shows it: set at the company's level, which a scenario
+ * forgetting its own presentation choices leaves alone, and which « Masquer ce qui arrive » still overrides for a person.
+ */
+export async function showsWhatIsComing(page: Page, csrf: string): Promise<void> {
+  await page.evaluate(async (token) => {
+    const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+    const answered = await fetch(
+      `/api/companies/${me.company.id}/settings/presentation.show-coming`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'csrf-token': token },
+        body: JSON.stringify({ level: 'company', value: true }),
+      },
+    );
+    if (!answered.ok)
+      throw new Error(
+        `showing what is coming answered ${answered.status}: ${await answered.text()}`,
+      );
+  }, csrf);
+}
+
 /** Signs the operator in from the login page, the password and then a code, on a session of its own. */
 export async function signInWithCode(page: Page, email: string = OPERATOR_EMAIL): Promise<void> {
   await page.goto('/login');

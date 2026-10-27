@@ -41,6 +41,7 @@ export class PlatformFacade {
   private readonly delaysSignal = signal<readonly PlatformNumber[] | null>(null);
   private readonly demoSignal = signal<PlatformDemo | null>(null);
   private readonly importsSignal = signal<PlatformImports | null>(null);
+  private readonly showComingSignal = signal<boolean | null>(null);
   /** The version of each platform key's row when read, which a form's save sends back. */
   private versions: Readonly<Record<string, number>> = {};
   private readonly state = requestState(codeOf);
@@ -93,6 +94,8 @@ export class PlatformFacade {
   readonly demo = this.demoSignal.asReadonly();
   /** How many rows one imported file may hold, null until read. */
   readonly imports = this.importsSignal.asReadonly();
+  /** Whether the installation shows what is coming until a company or a person chooses, null until read. */
+  readonly showComing = this.showComingSignal.asReadonly();
   private readonly subscriptionSignal = signal<PlatformSubscriptionRow | null>(null);
   private readonly openedSignal = signal<string | null>(null);
   /** The subscription of the company whose panel is open, null while it is being read or where there is none. */
@@ -301,7 +304,9 @@ export class PlatformFacade {
       await this.proven(() => this.api.setSwitch(key, value));
       const signup = this.signupSignal();
       const demo = this.demoSignal();
-      if (key === 'demo.enabled') {
+      if (key === 'presentation.show-coming') {
+        this.showComingSignal.set(value);
+      } else if (key === 'demo.enabled') {
         if (demo !== null) this.demoSignal.set({ ...demo, enabled: value });
       } else if (signup !== null) {
         this.signupSignal.set(
@@ -390,6 +395,7 @@ export class PlatformFacade {
     this.delaysSignal.set(settings.delays);
     this.demoSignal.set(settings.demo);
     this.importsSignal.set(settings.imports);
+    this.showComingSignal.set(settings.showComing);
     this.versions = settings.versions;
   }
 

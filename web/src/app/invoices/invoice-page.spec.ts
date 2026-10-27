@@ -17,6 +17,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { formatDay, todayIn } from '../shared/i18n/format';
 import { TextsApi } from '../shared/i18n/texts-api';
 import { Session } from '../shared/session/session';
+import { ThemeFacade } from '../shared/theme/theme-facade';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
   PageMemoryStorage,
@@ -1762,7 +1763,8 @@ describe('InvoicePage', () => {
     fixture.destroy();
     invoice.set({ ...issued, status: 'cancelled' });
     await open('i1');
-    q('document-more')!.click();
+    // With what is coming hidden, a cancelled invoice may have nothing to fold into « ⋮ » at all.
+    q('document-more')?.click();
     await settle();
     expect(over('document-menu-factur-x-pdf')).toBeNull();
 
@@ -2463,6 +2465,7 @@ describe('InvoicePage', () => {
   });
 
   it('shows what an invoice will offer once its planned modules ship', async () => {
+    TestBed.inject(ThemeFacade).setShowComing(true);
     invoice.set(issued);
     await open('i1');
     expect(await plannedInMenu()).toEqual([

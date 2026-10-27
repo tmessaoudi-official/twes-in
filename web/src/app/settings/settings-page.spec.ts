@@ -434,6 +434,8 @@ describe('SettingsPage', () => {
   // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5): one card per planned module, in words.
   it('says in words what each planned module will let a company set, with no field to fill in', async () => {
     await open();
+    TestBed.inject(ThemeFacade).setShowComing(true);
+    await settle();
 
     const cards = [...fixture.nativeElement.querySelectorAll('[data-testid^="settings-coming-"]')];
     expect(cards.map((card: Element) => card.getAttribute('data-testid'))).toEqual([

@@ -17,7 +17,6 @@ use App\Settings\Application\InvalidSettingValue;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Application\UnknownSetting;
-use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Infrastructure\ApiPlatform\Output\SettingRefusals;
 use App\Settings\Infrastructure\ApiPlatform\Resource\SettingChangesResource;
@@ -27,7 +26,7 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
  * Stores a platform page's save at the platform level; the operation's security has already required an operator. A
- * key of another chain refuses the whole save, as the single key's PUT refuses it.
+ * key declaring no platform level refuses the whole save, as the single key's PUT refuses it.
  *
  * @implements ProcessorInterface<SettingChangesResource, null>
  */
@@ -41,7 +40,7 @@ final readonly class ChangePlatformSettingsProcessor implements ProcessorInterfa
     {
         $changes = $data->input();
         foreach ($changes as $change) {
-            if (SettingChain::Platform !== $this->catalog->definitionOf($change->key)?->chain) {
+            if (true !== $this->catalog->definitionOf($change->key)?->allows(SettingLevel::Platform)) {
                 throw new NotFoundHttpException(\sprintf('No platform setting is declared as %s.', $change->key));
             }
         }

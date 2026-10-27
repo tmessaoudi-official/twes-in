@@ -12,6 +12,10 @@
       "save": "Enregistrer",
       "saved": "Nombre de démos enregistré."
     },
+    "coming": {
+      "title": "Ce qui arrive",
+      "intro": "Les modules et les actions pas encore construits, marqués « Bientôt » dans les menus et les pages. Masqués tant que personne ne les montre : ce choix vaut pour toute l’installation, et chaque société, puis chaque personne, peut le changer pour elle."
+    },
     "imports": {
       "title": "Imports",
       "intro": "Combien de lignes un fichier importé peut contenir, en-tête non compris. Un fichier est importé d’un bloc, tout ou rien ; un fichier plus long est refusé, et la personne le coupe en plusieurs.",

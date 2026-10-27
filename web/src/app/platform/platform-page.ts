@@ -385,6 +385,7 @@ export class PlatformPage implements OnInit {
     return changes !== null && Object.keys(changes).length > 0;
   });
   protected readonly demo = this.platform.demo;
+  protected readonly showComing = this.platform.showComing;
   private readonly demoMostHeld = computed(() => this.platform.demo()?.most?.value ?? null);
   /** The count as typed until saved, null when untouched: a switch turned meanwhile leaves what is typed alone. */
   protected readonly demoMostDraft = linkedSignal<number | null, number | null>({

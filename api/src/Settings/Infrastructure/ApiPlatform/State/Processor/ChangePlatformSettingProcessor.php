@@ -18,7 +18,6 @@ use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
-use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Infrastructure\ApiPlatform\Output\SettingRefusals;
 use App\Settings\Infrastructure\ApiPlatform\Payload\SettingKey;
@@ -29,8 +28,9 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Stores a platform setting at the platform level; the operation's security has already required an operator. Only the
- * platform chain is reached from here: a company's setting has no platform value this screen may set.
+ * Stores a platform setting at the platform level; the operation's security has already required an operator. Only a
+ * setting declaring the platform level is reached from here: the platform's own, and a company's whose installation
+ * default is the operator's; any other company setting has no platform value this screen may set.
  *
  * @implements ProcessorInterface<SettingResource, SettingResource>
  */
@@ -43,7 +43,7 @@ final readonly class ChangePlatformSettingProcessor implements ProcessorInterfac
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): SettingResource
     {
         $key = SettingKey::of($uriVariables);
-        if (SettingChain::Platform !== $this->catalog->definitionOf($key)?->chain) {
+        if (true !== $this->catalog->definitionOf($key)?->allows(SettingLevel::Platform)) {
             throw new NotFoundHttpException(\sprintf('No platform setting is declared as %s.', $key));
         }
 

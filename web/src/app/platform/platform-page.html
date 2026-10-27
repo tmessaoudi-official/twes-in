@@ -230,6 +230,23 @@
               </div>
             </mat-card-content>
           </mat-card>
+          <mat-card appearance="outlined" data-testid="platform-coming">
+            <mat-card-header>
+              <mat-card-title>{{ 'platform.coming.title' | translate }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="mt-4 flex flex-col items-start gap-3">
+                <p class="max-w-prose text-sm">{{ 'platform.coming.intro' | translate }}</p>
+                <mat-slide-toggle
+                  data-testid="platform-show-coming"
+                  [checked]="showComing() ?? false"
+                  [disabled]="showComing() === null"
+                  (change)="turn('presentation.show-coming', $event.checked)"
+                  >{{ 'settings.presentation.show_coming' | translate }}</mat-slide-toggle
+                >
+              </div>
+            </mat-card-content>
+          </mat-card>
           <mat-card appearance="outlined" data-testid="platform-imports">
             <mat-card-header>
               <mat-card-title>{{ 'platform.imports.title' | translate }}</mat-card-title>

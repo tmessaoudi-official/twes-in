@@ -122,6 +122,7 @@ export class PlatformApi {
           enabled: valueOf('signup.enabled') === true,
           approvalRequired: valueOf('signup.approval_required') !== false,
         },
+        showComing: valueOf('presentation.show-coming') === true,
         support: {
           phone: channel('phone'),
           whatsapp: channel('whatsapp'),

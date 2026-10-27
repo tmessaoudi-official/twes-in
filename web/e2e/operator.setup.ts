@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { test as setup } from '@playwright/test';
-import { inACompany, namedAsTheLawAsks, OPERATOR_SESSION, signInWithCode } from './session';
+import {
+  inACompany,
+  namedAsTheLawAsks,
+  OPERATOR_SESSION,
+  showsWhatIsComing,
+  signInWithCode,
+} from './session';
 
 const CSRF = '0123456789abcdef0123456789abcdef';
 
@@ -11,5 +17,6 @@ setup('the operator signs in with a code once for the whole run', async ({ page 
   await signInWithCode(page);
   await inACompany(page, CSRF);
   await namedAsTheLawAsks(page, CSRF);
+  await showsWhatIsComing(page, CSRF);
   await page.context().storageState({ path: OPERATOR_SESSION });
 });

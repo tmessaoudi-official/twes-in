@@ -18,7 +18,8 @@ use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Infrastructure\ApiPlatform\Resource\SettingResource;
 
 /**
- * The platform chain as its operators see it; the operation's security has already required an operator.
+ * The platform chain as its operators see it, and every company setting whose installation default is theirs; the
+ * operation's security has already required an operator.
  *
  * @implements ProviderInterface<SettingResource>
  */
@@ -34,6 +35,15 @@ final readonly class PlatformSettingCollectionProvider implements ProviderInterf
         $rows = [];
         foreach ($this->resolve->handle(SettingChain::Platform, new SettingContext()) as $setting) {
             $rows[] = SettingResource::of($setting, $setting->definition->allows(SettingLevel::Platform) ? [SettingLevel::Platform->value] : []);
+        }
+        // A company's setting whose installation default is the operator's, read with no company: the platform's value,
+        // else the default.
+        foreach (SettingChain::ofCompanies() as $chain) {
+            foreach ($this->resolve->handle($chain, new SettingContext()) as $setting) {
+                if ($setting->definition->allows(SettingLevel::Platform)) {
+                    $rows[] = SettingResource::of($setting, [SettingLevel::Platform->value]);
+                }
+            }
         }
 
         return $rows;

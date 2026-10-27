@@ -12,6 +12,10 @@
       "save": "Save",
       "saved": "Number of demos saved."
     },
+    "coming": {
+      "title": "What is coming",
+      "intro": "The modules and actions not built yet, marked “Soon” in the menus and pages. Hidden until someone shows them: this choice holds for the whole installation, and each company, then each person, may change it for themselves."
+    },
     "imports": {
       "title": "Imports",
       "intro": "How many rows one imported file may hold, header excluded. A file is imported in one piece, all or nothing; a longer file is refused, and the person splits it into several.",

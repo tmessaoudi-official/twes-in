@@ -18,6 +18,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { ThemeFacade } from '../shared/theme/theme-facade';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
   PageMemoryStorage,
@@ -640,6 +641,7 @@ describe('DeliveryNotePage', () => {
   });
 
   it('shows what a delivery note will offer once its planned modules ship', async () => {
+    TestBed.inject(ThemeFacade).setShowComing(true);
     note.set(draft);
     await open('n1');
     expect(await plannedInMenu()).toEqual([

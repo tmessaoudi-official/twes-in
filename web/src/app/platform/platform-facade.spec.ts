@@ -56,6 +56,7 @@ const stepUp = Object.assign(Object.create(StepUp.prototype) as StepUp, {
 
 const SETTINGS = {
   signup: { enabled: false, approvalRequired: true },
+  showComing: false,
   support: { phone: '+216 71 000 000', whatsapp: '', email: '', status_url: '' },
   delays: [
     { key: 'account.deletion_days', labelKey: 'l.a', value: 7, min: 1, max: 90 },
@@ -285,6 +286,19 @@ describe('PlatformFacade', () => {
 
     expect(api.setSwitch).toHaveBeenCalledWith('demo.enabled', false);
     expect(facade.demo()).toEqual({ ...SETTINGS.demo, enabled: false });
+    expect(facade.signup()).toEqual(SETTINGS.signup);
+  });
+
+  it('shows what is coming for the whole installation once the platform holds it, the rest kept', async () => {
+    await facade.load();
+    expect(facade.showComing()).toBe(false);
+    api.setSwitch.mockResolvedValue(undefined);
+
+    await facade.setSwitch('presentation.show-coming', true);
+
+    expect(api.setSwitch).toHaveBeenCalledWith('presentation.show-coming', true);
+    expect(facade.showComing()).toBe(true);
+    expect(facade.demo()).toEqual(SETTINGS.demo);
     expect(facade.signup()).toEqual(SETTINGS.signup);
   });
 

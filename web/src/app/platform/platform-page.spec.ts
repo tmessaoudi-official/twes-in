@@ -56,6 +56,7 @@ class StaticLoader implements TranslateLoader {
           demo_sandboxes_max: 'Démos au plus en même temps',
           import_max_rows: 'Lignes au plus par fichier importé',
         },
+        presentation: { show_coming: 'Montrer ce qui arrive' },
       },
       import: {
         rejections: {
@@ -294,6 +295,7 @@ describe('PlatformPage', () => {
     },
   };
   const imports = signal<PlatformImports | null>(importsState);
+  const showComing = signal<boolean | null>(false);
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
@@ -338,6 +340,7 @@ describe('PlatformPage', () => {
     saveDemoMost: vi.fn(async () => true),
     imports: imports.asReadonly(),
     saveImportRows: vi.fn(async () => true),
+    showComing: showComing.asReadonly(),
     busy,
     error,
     load: vi.fn(),
@@ -376,6 +379,7 @@ describe('PlatformPage', () => {
     delays.set(delayRows);
     demo.set(demoState);
     imports.set(importsState);
+    showComing.set(false);
     error.set(null);
     refused.set({ at: null, refusals: [] });
     accounts.set([account]);
@@ -751,6 +755,18 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.setSwitch).toHaveBeenCalledWith('demo.enabled', false);
+  });
+
+  it('shows what is coming as the installation holds it, hidden until the operator shows it', async () => {
+    const { fixture, query, switchOf } = await render();
+
+    expect(query('platform-coming')?.textContent).toContain('Montrer ce qui arrive');
+    expect(switchOf('platform-show-coming').getAttribute('aria-checked')).toBe('false');
+
+    switchOf('platform-show-coming').click();
+    await fixture.whenStable();
+
+    expect(facade.setSwitch).toHaveBeenCalledWith('presentation.show-coming', true);
   });
 
   it('saves how many demos may exist at once, within its bounds, and leaves it out of the delays', async () => {

@@ -52,9 +52,9 @@ final readonly class PresentationSettings implements DeclaresSettings
         // that does not offer the size chosen shows its own first too.
         yield new SettingDefinition('presentation.page-size', SettingType::Enum, 'auto', $chain, $shared, 'settings.presentation.page_size', self::MODULE, choices: ['auto', '10', '25', '50', '100', '200']);
         yield new SettingDefinition('presentation.language', SettingType::Enum, $this->languages->default(), $chain, $shared, 'settings.presentation.language', self::MODULE, choices: $this->languages->interface());
-        // « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. The
-        // company may hide them for everyone; a member for themself.
-        yield new SettingDefinition('presentation.show-coming', SettingType::Bool, true, $chain, $shared, 'settings.presentation.show_coming', self::MODULE);
+        // « Montrer ce qui arrive »: the vision's parts not built yet, marked. Hidden until someone shows them: the operator
+        // for the whole installation, a company for its members, a member for themself.
+        yield new SettingDefinition('presentation.show-coming', SettingType::Bool, false, $chain, [SettingLevel::Platform, ...$shared], 'settings.presentation.show_coming', self::MODULE);
         // The beep and the buzz a scan gives when the camera reads a code (docs/SPEC.md § 7, 2026-09-24 12:40 row 13): on until
         // a company, a role or a person turns it off, since a quiet counter and a loud warehouse differ.
         yield new SettingDefinition('presentation.scan-feedback', SettingType::Bool, true, $chain, $shared, 'settings.presentation.scan_feedback', self::MODULE);

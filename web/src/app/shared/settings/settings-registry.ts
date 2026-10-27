@@ -163,8 +163,8 @@ export const PRESENTATION = {
     700,
     parseWholeWithin(200, 5000),
   ),
-  /** « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. */
-  showComing: defineSetting<boolean>('presentation.show-coming', true, parseBool),
+  /** « Montrer ce qui arrive »: the vision's parts not built yet, marked; hidden until someone shows them. */
+  showComing: defineSetting<boolean>('presentation.show-coming', false, parseBool),
   /** The menu sections each person folded (docs/SPEC.md § 7, 2026-09-26 12:05, row 152), as `<menu>.<section>`. */
   foldedSections: defineSetting<readonly string[]>(
     'presentation.folded-sections',

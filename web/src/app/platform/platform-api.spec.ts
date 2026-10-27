@@ -333,6 +333,13 @@ describe('PlatformApi', () => {
       },
       { key: 'demo.enabled', type: 'bool', value: false, versions: { platform: 4 } },
       {
+        key: 'presentation.show-coming',
+        type: 'bool',
+        chain: 'presentation',
+        value: true,
+        versions: { platform: 8 },
+      },
+      {
         key: 'demo.sandboxes_max',
         type: 'int',
         labelKey: 'settings.platform.demo_sandboxes_max',
@@ -356,6 +363,8 @@ describe('PlatformApi', () => {
 
     expect(await settings).toEqual({
       signup: { enabled: true, approvalRequired: false },
+      // What is coming, as the installation shows it until a company or a person chooses.
+      showComing: true,
       // The demo's count is not a delay: it has its own card.
       demo: {
         enabled: false,
@@ -409,6 +418,7 @@ describe('PlatformApi', () => {
         'account.deletion_days': 3,
         'company.reopen_days': 0,
         'demo.enabled': 4,
+        'presentation.show-coming': 8,
         'demo.sandboxes_max': 6,
         'import.max_rows': 7,
       },
