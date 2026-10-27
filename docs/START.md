@@ -988,6 +988,10 @@ under `notify` as under `auto`, and again each time `twes update` asks for it by
 warning; it also means that whoever reads its key, in the edge's Docker volume, could impersonate any site to them, as
 with any local authority (mkcert says the same of its own). Whoever can read a Docker volume here already runs as
 root on this computer; keep the computer's accounts to the shop's own, and the authority is never copied elsewhere.
+Its root lasts ten years and is what a phone trusts; the edge makes its intermediate (a year) and the addresses'
+certificates (30 days, renewed with ten left) again from that root at every start (`infra/onprem/Caddyfile`,
+`compose.onprem.yaml`). Caddy's own twelve hours ended while a shop's computer slept, and it woke on a browser's
+warning until Caddy next checked them.
 
 **What `twes` does.**
 

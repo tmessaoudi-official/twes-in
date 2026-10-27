@@ -137,6 +137,26 @@ jq -e '.services | has("lan") | not' <<<"$config" >/dev/null || problem "develop
 
 caddy="$root/infra/onprem/Caddyfile"
 grep -qE '^https://localhost, https://\{\$LAN_HOST\} \{$' "$caddy" || problem "infra/onprem/Caddyfile does not answer on https://localhost and https://{\$LAN_HOST}"
-grep -qE '^[[:space:]]*tls internal$' "$caddy" || problem "infra/onprem/Caddyfile does not take its certificates from its own authority (tls internal)"
+grep -qE '^[[:space:]]*issuer internal \{$' "$caddy" || problem "infra/onprem/Caddyfile does not take its certificates from its own authority (tls { issuer internal { … } })"
+# Caddy's own lifetimes, twelve hours a leaf and seven days the intermediate, end while a shop's computer sleeps, and it
+# wakes on a browser's warning until Caddy next checks them. A leaf is renewed with a third of its life left.
+leaf=$(sed -n 's/^[[:space:]]*lifetime \([0-9][0-9]*\)d$/\1/p' "$caddy" | head -n 1)
+intermediate=$(sed -n 's/^[[:space:]]*intermediate_lifetime \([0-9][0-9]*\)d$/\1/p' "$caddy" | head -n 1)
+if [[ -z "$leaf" ]]; then
+  problem "infra/onprem/Caddyfile's leaf certificates last twelve hours, Caddy's default: a computer asleep past their end wakes on a browser's warning (issuer internal { lifetime <N>d }, 7 at least)"
+elif ((leaf < 7)); then
+  problem "infra/onprem/Caddyfile's leaf certificates last $leaf days: 7 at least, so a computer asleep for days still wakes on a valid one"
+fi
+if [[ -z "$intermediate" ]]; then
+  problem "infra/onprem/Caddyfile's intermediate lasts seven days, Caddy's default (pki { ca local { intermediate_lifetime <N>d } }, 90 at least and longer than the leaves)"
+elif ((intermediate < 90 || intermediate <= ${leaf:-0})); then
+  problem "infra/onprem/Caddyfile's intermediate lasts $intermediate days: 90 at least and longer than the leaves it signs"
+fi
+# Kept certificates keep the lifetimes they were made with: the intermediate and the leaves are made again from the kept
+# root at every start, which phones trust, so a changed lifetime holds from the next start on.
+start=$(jq -r '[.services.edge.entrypoint // [], .services.edge.command // []] | flatten | join(" ")' <<<"$config")
+[[ "$start" == *"rm -f /data/caddy/pki/authorities/local/intermediate.crt /data/caddy/pki/authorities/local/intermediate.key"* \
+  && "$start" == *"rm -rf /data/caddy/certificates/local && "* && "$start" == *"exec caddy run --config /etc/caddy/Caddyfile"* ]] \
+  || problem "the edge does not make its intermediate and leaves again from the kept root at every start: those an older Caddyfile made keep its lifetimes"
 grep -qE '^[[:space:]]*@root path /root.crt$' "$caddy" || problem "infra/onprem/Caddyfile does not hand out its root certificate at /root.crt"
 finish

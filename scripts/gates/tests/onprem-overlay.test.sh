@@ -62,5 +62,22 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "another service joining the pdf net
 d=$(project); edit "$d/compose.yaml" '/^      - --chromium-disable-javascript$/d'
 out=$(bash "$GATE" --root "$d" 2>&1); check "Gotenberg running JavaScript is named" $? 1 "$out" "gotenberg starts without --chromium-disable-javascript"
 
+# A computer asleep past its edge's certificates wakes on a browser's warning: the leaves outlive many nights, the
+# intermediate many leaves, and both are made again from the kept root at every start.
+d=$(project); edit "$d/infra/onprem/Caddyfile" '/^[[:space:]]*lifetime [0-9]*d$/d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "leaves left at Caddy's twelve hours are named" $? 1 "$out" "leaf certificates last twelve hours"
+
+d=$(project); edit "$d/infra/onprem/Caddyfile" 's/^\([[:space:]]*\)lifetime [0-9]*d$/\1lifetime 2d/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "leaves of two days are named" $? 1 "$out" "leaf certificates last 2 days"
+
+d=$(project); edit "$d/infra/onprem/Caddyfile" '/intermediate_lifetime/d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "an intermediate left at Caddy's seven days is named" $? 1 "$out" "intermediate lasts seven days"
+
+d=$(project); edit "$d/infra/onprem/Caddyfile" 's/intermediate_lifetime [0-9]*d/intermediate_lifetime 20d/'
+out=$(bash "$GATE" --root "$d" 2>&1); check "an intermediate shorter than its leaves is named" $? 1 "$out" "intermediate lasts 20 days"
+
+d=$(project); edit "$d/compose.onprem.yaml" 's|rm -rf /data/caddy/certificates/local && ||'
+out=$(bash "$GATE" --root "$d" 2>&1); check "an edge keeping the leaves an older Caddyfile made is named" $? 1 "$out" "at every start"
+
 echo "onprem-overlay gate: $pass passed, $fail failed"
 ((fail == 0))

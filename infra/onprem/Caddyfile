@@ -29,12 +29,20 @@
 	pki {
 		ca local {
 			name "twes-in (cette installation)"
+			# Seven days by Caddy's default, which a computer may sleep through; the root, which phones trust, lasts ten years.
+			intermediate_lifetime 365d
 		}
 	}
 }
 
 https://localhost, https://{$LAN_HOST} {
-	tls internal
+	tls {
+		issuer internal {
+			# Twelve hours by Caddy's default: a computer asleep past a leaf's end woke on a browser's warning until Caddy next
+			# checked it. Renewed with a third left, a leaf of 30 days outlives any night or weekend asleep.
+			lifetime 30d
+		}
+	}
 	reverse_proxy web:80
 }
 
