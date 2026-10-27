@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { PlatformApi, PlatformRefused } from './platform-api';
 import { RECORD_CHANGED } from '../shared/errors/record-changed';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 describe('PlatformApi', () => {
   let api: PlatformApi;
@@ -42,9 +43,16 @@ describe('PlatformApi', () => {
     subscription: null,
   };
 
+  const opened = vi.fn(() => Promise.resolve());
+
   beforeEach(() => {
+    opened.mockClear();
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TextsParts, useValue: { open: opened } },
+      ],
     });
     api = TestBed.inject(PlatformApi);
     http = TestBed.inject(HttpTestingController);
@@ -499,6 +507,8 @@ describe('PlatformApi', () => {
         },
       ],
     });
+    // Their words live with the settings' refusals, which the platform's own texts do not carry.
+    expect(opened).toHaveBeenCalledWith('settings-refusals');
 
     const unnamed = api.saveSettings([{ key: 'support.phone', value: '1', version: 1 }]);
     http

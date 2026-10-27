@@ -39,8 +39,12 @@ final class ContactRules
         'VN', 'VU', 'WF', 'WS', 'YE', 'YT', 'ZA', 'ZM', 'ZW',
     ];
 
-    /** The WHATWG HTML standard's valid e-mail address, its domain carrying at least one dot. */
-    private const string EMAIL = '/^[a-zA-Z0-9.!#$%&\'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/D';
+    /**
+     * The WHATWG HTML standard's valid e-mail address, its domain carrying at least one dot: the one rule every e-mail
+     * of the application follows, written as a pattern matches it whole.
+     */
+    public const string EMAIL_PATTERN = '[a-zA-Z0-9.!#$%&\'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+';
+    private const string EMAIL = '/^'.self::EMAIL_PATTERN.'$/D';
     /** A phone number as an HTML form's pattern writes it, the whole value matched. */
     public const string PHONE_PATTERN = '\+?[0-9 ().\-]{3,40}';
     private const string PHONE = '/^'.self::PHONE_PATTERN.'$/D';

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   CompanyCompanyReadValidationCreate as CompanyCompanyRead,
@@ -41,6 +41,7 @@ import type {
 } from './platform-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 export class PlatformRefused extends Error {
   /** The fields a 422 named, each with its reason and params: a save refused says each on its own field. */
@@ -56,6 +57,7 @@ export class PlatformRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class PlatformApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   /** One page of the companies the search finds, as Hydra carries it: the rows and the total. */
   companies(search: PlatformCompanySearch): Promise<ListPage<PlatformCompanyRow>> {
@@ -161,11 +163,27 @@ export class PlatformApi {
    * Every key a form changed, stored together or not at all, each with the version its row held when read; one saved
    * since refuses the whole save as `record_changed`.
    */
-  saveSettings(changes: readonly VersionedSettingChange[]): Promise<void> {
-    return this.guard(async () => {
-      const body: PlatformSettingChangesBody = { changes: changes.map(toApiChange) };
-      await firstValueFrom(this.http.put<null>('/api/platform/settings', body));
-    });
+  async saveSettings(changes: readonly VersionedSettingChange[]): Promise<void> {
+    try {
+      await this.guard(async () => {
+        const body: PlatformSettingChangesBody = { changes: changes.map(toApiChange) };
+        await firstValueFrom(this.http.put<null>('/api/platform/settings', body));
+      });
+    } catch (error) {
+      // A setting refused by its shape is said in the settings' refusal texts, which the platform's own do not carry.
+      if (error instanceof PlatformRefused && error.refusals.length > 0)
+        await this.openRefusalTexts();
+      throw error;
+    }
+  }
+
+  /** Texts that could not be fetched leave the field saying « Valeur refusée. », and the next refusal asks again. */
+  private async openRefusalTexts(): Promise<void> {
+    const { SETTING_REFUSAL_TEXTS } = await import('../shared/settings/setting-refusals');
+    await this.injector
+      .get(TextsParts)
+      .open(SETTING_REFUSAL_TEXTS)
+      .catch(() => undefined);
   }
 
   private decide(companyId: string, decision: 'approve' | 'reject'): Promise<PlatformCompanyRow> {

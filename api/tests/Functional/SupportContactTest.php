@@ -67,6 +67,34 @@ final class SupportContactTest extends ApiTestCase
     }
 
     /**
+     * The footer of every page links to the support phone, signed out too: a value of signs alone made a `tel:` link
+     * that called nothing. A phone holds 6 to 15 digits, the most an international number has; the e-mail follows the
+     * one rule every e-mail of the application does.
+     */
+    public function testASupportChannelIsANumberOrAnAddressSomeoneCanReach(): void
+    {
+        $this->signedInAsOperator();
+
+        foreach (['------', '((( )))', '12 34 5', '+216 71 900 868 99999'] as $phone) {
+            $this->sendJson('PUT', '/api/platform/settings/support.phone', ['value' => $phone]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $phone);
+            self::assertSame('invalid_phone_digits', $this->refusalOf('support.phone')[0], $phone);
+        }
+        foreach (['a@b..c', '<x>@y.z', 'é@exemple.tn'] as $email) {
+            $this->sendJson('PUT', '/api/platform/settings/support.email', ['value' => $email]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $email);
+            self::assertSame('invalid_email', $this->refusalOf('support.email')[0], $email);
+        }
+
+        foreach (['support.phone' => ['+216 71 900 868', '71.900.868', '+33 6 12 34 56 78'], 'support.email' => ['support@exemple.tn']] as $key => $values) {
+            foreach ($values as $value) {
+                $this->sendJson('PUT', '/api/platform/settings/'.$key, ['value' => $value]);
+                self::assertResponseIsSuccessful($key.' '.$value);
+            }
+        }
+    }
+
+    /**
      * The monitor's public status page, which the footer of every page links to, signed out too: the public health
      * answer carries it. Only an https address is taken, the one form a status page has.
      */
