@@ -757,6 +757,22 @@ describe('PlatformPage', () => {
     expect(facade.setSwitch).toHaveBeenCalledWith('demo.enabled', false);
   });
 
+  it('opens the overview on the platform’s content, its legal pages and its texts, and no other tab repeats them', async () => {
+    const { query } = await render();
+
+    const content = query('platform-content')!;
+    const panel = content.closest('mat-tab-nav-panel')!;
+    expect(panel.querySelector('[data-testid]')).toBe(content);
+    expect(query('platform-legal-link')!.getAttribute('href')).toBe('/platform/legal');
+    expect(query('platform-texts-link')!.getAttribute('href')).toBe('/platform/texts');
+    expect(panel.querySelectorAll('[data-testid="platform-legal-link"]')).toHaveLength(1);
+    expect(panel.querySelectorAll('[data-testid="platform-texts-link"]')).toHaveLength(1);
+
+    const demand = await render('/?tab=demand');
+    expect(demand.query('platform-legal-link')).toBeNull();
+    expect(demand.query('platform-texts-link')).toBeNull();
+  });
+
   it('shows what is coming as the installation holds it, hidden until the operator shows it', async () => {
     const { fixture, query, switchOf } = await render();
 

@@ -181,6 +181,9 @@
       "companies": "Companies: {{count}}",
       "empty": "No company is waiting for a module yet."
     },
+    "content": {
+      "title": "Platform content"
+    },
     "legal": {
       "title": "Legal pages",
       "intro": "Every page, in every language, as anyone reads it. A new version is published at once and marked a draft until it is validated.",

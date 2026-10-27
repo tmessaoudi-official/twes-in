@@ -75,6 +75,53 @@
     @switch (tab()) {
       @case ('overview') {
         <div class="flex flex-col gap-6">
+          <!-- What every company reads, worded by the operators: first, since nothing else leads to it but the palette. -->
+          <section
+            class="flex flex-col gap-3"
+            aria-labelledby="platform-content-title"
+            data-testid="platform-content"
+          >
+            <h2 id="platform-content-title" class="text-xl font-semibold">
+              {{ 'platform.content.title' | translate }}
+            </h2>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <mat-card appearance="outlined">
+                <mat-card-header>
+                  <mat-icon mat-card-avatar aria-hidden="true">gavel</mat-icon>
+                  <mat-card-title>{{ 'platform.legal.title' | translate }}</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <div class="flex flex-col items-start gap-3 pt-2">
+                    <p class="max-w-prose text-sm">{{ 'platform.legal.intro' | translate }}</p>
+                    <a
+                      mat-flat-button
+                      routerLink="/platform/legal"
+                      data-testid="platform-legal-link"
+                      >{{ 'platform.legal.link' | translate }}</a
+                    >
+                  </div>
+                </mat-card-content>
+              </mat-card>
+              <mat-card appearance="outlined">
+                <mat-card-header>
+                  <mat-icon mat-card-avatar aria-hidden="true">edit_note</mat-icon>
+                  <mat-card-title>{{ 'platform.texts.title' | translate }}</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <div class="flex flex-col items-start gap-3 pt-2">
+                    <p class="max-w-prose text-sm">{{ 'platform.texts.intro' | translate }}</p>
+                    <a
+                      mat-flat-button
+                      routerLink="/platform/texts"
+                      data-testid="platform-texts-link"
+                      >{{ 'platform.texts.link' | translate }}</a
+                    >
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </section>
+
           <!-- « Accès du support »: the companies whose owner lets support read them now, opened read-only from here as
                from the switcher, for an operator who works in no company (docs/SPEC.md § 7). -->
           <mat-card appearance="outlined" data-testid="platform-grants">
@@ -431,36 +478,6 @@
             } @empty {
               <p data-testid="platform-waiting-empty">{{ 'platform.waiting.none' | translate }}</p>
             }
-          </section>
-
-          <section class="flex flex-col gap-3" aria-labelledby="platform-legal-title">
-            <h2 id="platform-legal-title" class="text-xl font-semibold">
-              {{ 'platform.legal.title' | translate }}
-            </h2>
-            <p class="max-w-prose text-sm">{{ 'platform.legal.intro' | translate }}</p>
-            <p>
-              <a
-                mat-stroked-button
-                routerLink="/platform/legal"
-                data-testid="platform-legal-link"
-                >{{ 'platform.legal.link' | translate }}</a
-              >
-            </p>
-          </section>
-
-          <section class="flex flex-col gap-3" aria-labelledby="platform-texts-title">
-            <h2 id="platform-texts-title" class="text-xl font-semibold">
-              {{ 'platform.texts.title' | translate }}
-            </h2>
-            <p class="max-w-prose text-sm">{{ 'platform.texts.intro' | translate }}</p>
-            <p>
-              <a
-                mat-stroked-button
-                routerLink="/platform/texts"
-                data-testid="platform-texts-link"
-                >{{ 'platform.texts.link' | translate }}</a
-              >
-            </p>
           </section>
         </div>
       }
@@ -859,30 +876,6 @@
           } @else {
             <p data-testid="platform-demand-empty">{{ 'platform.demand.empty' | translate }}</p>
           }
-        </section>
-
-        <section class="flex flex-col gap-3" aria-labelledby="platform-legal-title">
-          <h2 id="platform-legal-title" class="text-xl font-semibold">
-            {{ 'platform.legal.title' | translate }}
-          </h2>
-          <p class="max-w-prose text-sm">{{ 'platform.legal.intro' | translate }}</p>
-          <p>
-            <a mat-stroked-button routerLink="/platform/legal" data-testid="platform-legal-link">{{
-              'platform.legal.link' | translate
-            }}</a>
-          </p>
-        </section>
-
-        <section class="flex flex-col gap-3" aria-labelledby="platform-texts-title">
-          <h2 id="platform-texts-title" class="text-xl font-semibold">
-            {{ 'platform.texts.title' | translate }}
-          </h2>
-          <p class="max-w-prose text-sm">{{ 'platform.texts.intro' | translate }}</p>
-          <p>
-            <a mat-stroked-button routerLink="/platform/texts" data-testid="platform-texts-link">{{
-              'platform.texts.link' | translate
-            }}</a>
-          </p>
         </section>
       }
     }

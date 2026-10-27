@@ -615,7 +615,9 @@
       "menu": "Installer l’application",
       "installed": "{{name}} est installé sur cet appareil.",
       "failed": "Le navigateur n’a pas ouvert l’installation : passez par son propre menu."
-    }
+    },
+    "platform_legal": "Pages légales",
+    "platform_texts": "Textes de l’installation"
   },
   "notifications": {
     "bell": "Notifications, {{count}} {count, plural, one {non lue} other {non lues}}",

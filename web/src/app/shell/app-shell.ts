@@ -84,6 +84,7 @@ import {
   guideCommands,
   MODULE_COMMANDS,
   navCommands,
+  type NavigateCommand,
   screenCommands,
 } from './commands';
 import { TOURS } from './tours';
@@ -260,6 +261,34 @@ export class AppShell {
           },
         ],
   );
+  /** The operator's own pages, which no navigation entry names: reachable from anywhere, as every screen is. */
+  private readonly operatorCommands = computed((): readonly NavigateCommand[] =>
+    this.me()?.user.isPlatformOperator === true
+      ? [
+          {
+            key: 'goto-platform',
+            labelKey: 'hello.platform',
+            icon: 'admin_panel_settings',
+            group: 'goto',
+            route: '/platform',
+          },
+          {
+            key: 'goto-platform-legal',
+            labelKey: 'shell.platform_legal',
+            icon: 'gavel',
+            group: 'goto',
+            route: '/platform/legal',
+          },
+          {
+            key: 'goto-platform-texts',
+            labelKey: 'shell.platform_texts',
+            icon: 'edit_note',
+            group: 'goto',
+            route: '/platform/texts',
+          },
+        ]
+      : [],
+  );
   /** The count as the bell writes it: past nine, 9+. */
   protected badge(count: number): string {
     return count > 9 ? '9+' : String(count);
@@ -306,6 +335,7 @@ export class AppShell {
     ]),
     // What is not built yet, after what works, marked, and gone with « Montrer ce qui arrive » (row 150).
     ...(this.theme.showComing() ? plannedCommands(this.me()?.plannedModules) : []),
+    ...this.operatorCommands(),
     ...this.visible(guideCommands(TOURS)),
     ...this.installCommand(),
   ]);

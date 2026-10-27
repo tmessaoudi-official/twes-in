@@ -1721,6 +1721,34 @@ describe('AppShell', () => {
     ]);
   });
 
+  it('offers an operator the platform, its legal pages and its texts in the palette, and nobody else', async () => {
+    me.set({ ...owner, user: { ...owner.user, isPlatformOperator: true } });
+    const { fixture } = await render();
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+    const paletteKeys = () => {
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true }),
+      );
+      const [, config] = open.mock.lastCall as [unknown, { data: { commands: Command[] } }];
+      return config.data.commands;
+    };
+
+    const operator = paletteKeys().filter((command) => command.key.startsWith('goto-platform'));
+    expect(
+      operator.map((command) => [command.key, command.group, 'route' in command && command.route]),
+    ).toEqual([
+      ['goto-platform', 'goto', '/platform'],
+      ['goto-platform-legal', 'goto', '/platform/legal'],
+      ['goto-platform-texts', 'goto', '/platform/texts'],
+    ]);
+
+    me.set(owner);
+    await fixture.whenStable();
+    expect(paletteKeys().filter((command) => command.key.startsWith('goto-platform'))).toEqual([]);
+  });
+
   it('opens the command palette from the search in the top bar', async () => {
     const { click, byTestId } = await render();
     const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({

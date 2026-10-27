@@ -615,7 +615,9 @@
       "menu": "Install the app",
       "installed": "{{name}} is installed on this device.",
       "failed": "The browser did not open its installation: use its own menu."
-    }
+    },
+    "platform_legal": "Legal pages",
+    "platform_texts": "Installation texts"
   },
   "notifications": {
     "bell": "Notifications, {{count}} unread",
