@@ -52,8 +52,11 @@ test('a product shows its gallery, its main photo and its order, each changed wi
     new RegExp(`/photos/${second}/content\\?size=small$`),
   );
 
-  // By the keyboard: the earlier button of the second photo puts it first.
-  await page.getByTestId(`product-photo-earlier-${second}`).focus();
+  // By the keyboard: the earlier button of the second photo puts it first. A press, unlike a click, does not wait for
+  // the button, which stays disabled while the main photo's save is in flight, and is then lost.
+  const earlier = page.getByTestId(`product-photo-earlier-${second}`);
+  await expect(earlier).toBeEnabled();
+  await earlier.focus();
   await page.keyboard.press('Enter');
   await expect(photos.first()).toHaveAttribute('data-testid', `product-photo-${second}`);
 
