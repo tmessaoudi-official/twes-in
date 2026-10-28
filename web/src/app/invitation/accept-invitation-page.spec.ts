@@ -14,6 +14,7 @@ import { InvitationFacade } from './invitation-facade';
 import type { InvitationError, InvitationOffer } from './invitation-types';
 import { provideStillAppearance } from '../shared/testing/appearance';
 import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideKnownPasswordRule } from '../shared/testing/password-rule';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -26,7 +27,8 @@ class StaticLoader implements TranslateLoader {
         join: "Rejoindre l'entreprise",
         display_name: 'Votre nom',
         password: 'Mot de passe',
-        password_hint: '12 caractères',
+        password_hint: '{{min}} caractères',
+        password_too_short: 'Au moins {{min}} caractères.',
         submit: 'Créer mon compte',
         journal:
           'Ce que vous ferez chez {{company}} sera inscrit dans son journal d’activité. Voir',
@@ -65,6 +67,7 @@ describe('AcceptInvitationPage', () => {
     TestBed.configureTestingModule({
       imports: [AcceptInvitationPage],
       providers: [
+        provideKnownPasswordRule(),
         provideRouter([]),
         provideStillAppearance(),
         provideQuietFeedback(),
@@ -94,6 +97,10 @@ describe('AcceptInvitationPage', () => {
     expect(byTestId('invitation-name')).not.toBeNull();
     expect(byTestId('invitation-password')).not.toBeNull();
     expect(byTestId('invitation-join')).toBeNull();
+    // The length is the one the API answers, said before anything is sent.
+    expect(byTestId('invitation-password')?.closest('mat-form-field')?.textContent).toContain(
+      '12 caractères',
+    );
   });
 
   it('asks an address that has an account for nothing, and joins in one click', async () => {

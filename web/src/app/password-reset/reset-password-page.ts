@@ -10,6 +10,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { PasswordResetFacade } from './password-reset-facade';
 import { PasswordToggle } from '../shared/form/password-toggle';
+import { heldToPasswordRule } from '../shared/password/password-rule';
 
 /**
  * The page a reset link opens, logged out: the new password, twice. Two entries that differ never reach the API, since a
@@ -47,10 +48,12 @@ export class ResetPasswordPage {
   protected readonly form = new FormGroup({
     password: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.minLength(12)],
+      validators: [Validators.required],
     }),
     again: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
+  /** The shortest password the API takes, said in the hint and the refusal once read. */
+  protected readonly passwordMin = heldToPasswordRule(this.form.controls.password);
 
   protected async submit(): Promise<void> {
     if (this.form.invalid || this.busy()) {

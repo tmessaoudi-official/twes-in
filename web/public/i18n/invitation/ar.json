@@ -7,8 +7,8 @@
     "display_name": "اسمك",
     "display_name_required": "اسمك إجباري.",
     "password": "اختر كلمة مرور",
-    "password_hint": "12 حرفًا على الأقل.",
-    "password_too_short": "يجب أن تتكوّن كلمة المرور من 12 حرفًا على الأقل.",
+    "password_hint": "{{min}} حرفًا على الأقل.",
+    "password_too_short": "يجب أن تتكوّن كلمة المرور من {{min}} حرفًا على الأقل.",
     "submit": "إنشاء حسابي",
     "errors": {
       "not_usable": "هذا الرابط لم يعد صالحًا. اطلب دعوة جديدة.",

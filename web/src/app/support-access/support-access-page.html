@@ -70,12 +70,19 @@
           rows="3"
           [value]="reason()"
           (input)="typed($event)"
-          [attr.maxlength]="current.reasonMax"
+          [appRefused]="reasonTooLong()"
+          #reasonField
           data-testid="support-access-reason"
         ></textarea>
-        <mat-hint>{{ 'support_access.reason_hint' | translate }}</mat-hint>
+        @if (reasonTooLong()) {
+          <mat-error data-testid="support-access-reason-error">{{
+            'import.rejections.invalid_text' | translate: { max: current.reasonMax }
+          }}</mat-error>
+        } @else {
+          <mat-hint>{{ 'support_access.reason_hint' | translate }}</mat-hint>
+        }
         <mat-hint align="end" data-testid="support-access-reason-count"
-          ><bdi>{{ reason().length }} / {{ current.reasonMax }}</bdi></mat-hint
+          ><bdi>{{ reasonLength() }} / {{ current.reasonMax }}</bdi></mat-hint
         >
       </mat-form-field>
       <button

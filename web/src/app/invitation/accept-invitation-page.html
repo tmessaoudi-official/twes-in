@@ -71,10 +71,17 @@
               data-testid="invitation-password"
             />
             <app-password-toggle matSuffix [field]="invitationPassword" />
-            <mat-hint>{{ 'invitation.password_hint' | translate }}</mat-hint>
+            @if (passwordMin(); as min) {
+              <mat-hint>{{ 'invitation.password_hint' | translate: { min } }}</mat-hint>
+            }
             @if (form.controls.password.touched && form.controls.password.invalid) {
               <mat-error data-testid="invitation-password-error">
-                {{ 'invitation.password_too_short' | translate }}
+                {{
+                  (form.controls.password.hasError('minlength')
+                    ? 'invitation.password_too_short'
+                    : 'form.errors.required'
+                  ) | translate: { min: passwordMin() }
+                }}
               </mat-error>
             }
           </mat-form-field>

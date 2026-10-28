@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Post;
+use App\Identity\Application\Password\NewPasswordPolicy;
 use App\Tenancy\Application\Invitation\InvitationSummary;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\AcceptInvitationProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Provider\InvitationProvider;
@@ -78,7 +79,7 @@ final class InvitationResource
      * judged by the breached-password check, which asks whether this exact password is already known to attackers.
      */
     #[Assert\NotBlank(allowNull: true, groups: ['accept'])]
-    #[Assert\Length(min: 12, max: 4096, groups: ['accept'])]
+    #[Assert\Length(min: NewPasswordPolicy::MIN_LENGTH, max: NewPasswordPolicy::MAX_LENGTH, groups: ['accept'])]
     #[Groups([self::WRITE])]
     public ?string $password = null;
 

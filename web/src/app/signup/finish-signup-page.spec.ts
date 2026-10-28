@@ -14,6 +14,7 @@ import { SignupFacade } from './signup-facade';
 import type { SignupAvailability, SignupCompleted, SignupError } from './signup-types';
 import { provideStillAppearance } from '../shared/testing/appearance';
 import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideKnownPasswordRule } from '../shared/testing/password-rule';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -23,8 +24,8 @@ class StaticLoader implements TranslateLoader {
           title: 'Terminer l’inscription',
           display_name: 'Votre nom',
           password: 'Mot de passe',
-          password_hint: '12 caractères au moins',
-          password_too_short: 'Trop court',
+          password_hint: '{{min}} caractères au moins',
+          password_too_short: 'Trop court : {{min}} au moins',
           company_name: 'Nom de l’entreprise',
           country: 'Pays',
           timezone: 'Fuseau horaire',
@@ -83,6 +84,7 @@ describe('FinishSignupPage', () => {
     await TestBed.configureTestingModule({
       imports: [FinishSignupPage],
       providers: [
+        provideKnownPasswordRule(),
         provideRouter([]),
         { provide: SignupFacade, useValue: facade },
         provideStillAppearance(),
@@ -152,14 +154,19 @@ describe('FinishSignupPage', () => {
 
   it('refuses a short password before asking', async () => {
     const { fixture, query } = await render();
+    fixture.detectChanges();
+    // The length is the one the API answers, said under the field before anything is typed.
+    expect(fixture.nativeElement.textContent).toContain('12 caractères au moins');
 
     type(query<HTMLInputElement>('signup-name')!, 'Nadia');
     type(query<HTMLInputElement>('signup-password')!, 'short');
     type(query<HTMLInputElement>('signup-company')!, 'Nouvelle Société');
     query<HTMLFormElement>('signup-finish-form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(facade.complete).not.toHaveBeenCalled();
+    expect(query('signup-password-error')?.textContent).toContain('Trop court : 12 au moins');
   });
 
   it('says a link that cannot be used cannot, and offers nothing to fill in', async () => {

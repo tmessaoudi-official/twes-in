@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { typedText } from '../shared/form/typed-text';
 import type { BarcodeRole, ProductBarcode } from './products-types';
 
 /** The API's own ceiling on one scan (`BarcodeLine::QUANTITY_MAX`). */
@@ -36,7 +37,7 @@ function checkDigitHolds(code: string): boolean {
  * before asking; the API stays the judge.
  */
 export function barcodeKey(code: string): string {
-  const trimmed = code.trim();
+  const trimmed = typedText(code);
   return claimsGtin(trimmed) && checkDigitHolds(trimmed) ? trimmed.padStart(14, '0') : trimmed;
 }
 
@@ -49,7 +50,7 @@ export function addScanned(
   rows: readonly ProductBarcode[],
   scanned: string,
 ): { rows: ProductBarcode[]; duplicate: number | null } {
-  const code = scanned.trim();
+  const code = typedText(scanned);
   if (code === '') return { rows: [...rows], duplicate: null };
   const key = barcodeKey(code);
   const duplicate = rows.findIndex((row) => barcodeKey(row.code) === key);
@@ -73,8 +74,18 @@ export function withRole(row: ProductBarcode, role: BarcodeRole): ProductBarcode
 }
 
 /** The first thing wrong with a row, in the order the API would say it, or null. */
+/** What the code field itself is wrong about, so that field is the one outlined; the rest is the row's. */
+export const CODE_PROBLEMS: readonly BarcodeProblem[] = [
+  'code_required',
+  'code_shape',
+  'check_digit',
+];
+
+/** What the quantity field is wrong about, so that field is the one outlined. */
+export const QUANTITY_PROBLEMS: readonly BarcodeProblem[] = ['quantity_range', 'pack_many'];
+
 export function rowProblem(row: ProductBarcode): BarcodeProblem | null {
-  const code = row.code.trim();
+  const code = typedText(row.code);
   if (code === '') return 'code_required';
   if (!/^[\x21-\x7E]{1,64}$/.test(code)) return 'code_shape';
   if (claimsGtin(code) && !checkDigitHolds(code)) return 'check_digit';
@@ -93,7 +104,7 @@ export function sameCodes(a: readonly ProductBarcode[], b: readonly ProductBarco
       .map((row) =>
         JSON.stringify([
           barcodeKey(row.code),
-          row.code.trim(),
+          typedText(row.code),
           row.role,
           row.quantity,
           row.supplierId,

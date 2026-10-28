@@ -7,8 +7,8 @@
     "display_name": "Votre nom",
     "display_name_required": "Votre nom est obligatoire.",
     "password": "Choisissez un mot de passe",
-    "password_hint": "Au moins 12 caractères.",
-    "password_too_short": "Le mot de passe doit faire au moins 12 caractères.",
+    "password_hint": "Au moins {{min}} caractères.",
+    "password_too_short": "Le mot de passe doit faire au moins {{min}} caractères.",
     "submit": "Créer mon compte",
     "errors": {
       "not_usable": "Ce lien n’est plus valable. Demandez une nouvelle invitation.",

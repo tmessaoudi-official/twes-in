@@ -60,6 +60,7 @@ final class DemoAccountGuardTest extends ApiTestCase
         'api_auth_mfa_verify',
         'api_auth_password_forgot',
         'api_auth_password_reset',
+        'api_auth_password_rule',
         'api_auth_sessions',
         'api_auth_sessions_end',
         'api_auth_sessions_end_others',

@@ -283,6 +283,11 @@ describe('ProductBarcodesSection', () => {
       'products.barcodes.problems.check_digit',
     );
     expect((q('product-barcodes-save') as HTMLButtonElement).disabled).toBe(true);
+    // The code's own field is outlined, as every refused field is; the quantity, which is right, is not.
+    const outlined = (id: string): boolean | undefined =>
+      q(id)?.closest('mat-form-field')?.classList.contains('mat-form-field-invalid');
+    expect(outlined('product-barcode-code-0')).toBe(true);
+    expect(outlined('product-barcode-quantity-0')).toBe(false);
   });
 
   it('puts the refusal of a code another product holds under its row, naming that product', async () => {

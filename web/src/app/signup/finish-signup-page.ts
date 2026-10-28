@@ -12,6 +12,7 @@ import { LanguageFacade } from '../shared/i18n/language-facade';
 import { SignupFacade } from './signup-facade';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { PasswordToggle } from '../shared/form/password-toggle';
+import { heldToPasswordRule } from '../shared/password/password-rule';
 
 /**
  * The page a signup link opens, logged out: the account, and the company it will own. Finishing starts no session,
@@ -59,7 +60,7 @@ export class FinishSignupPage implements OnInit {
     }),
     password: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.minLength(12)],
+      validators: [Validators.required],
     }),
     companyName: new FormControl('', {
       nonNullable: true,
@@ -72,6 +73,8 @@ export class FinishSignupPage implements OnInit {
       validators: [Validators.required],
     }),
   });
+  /** The shortest password the API takes, said in the hint and the refusal once read. */
+  protected readonly passwordMin = heldToPasswordRule(this.form.controls.password);
 
   async ngOnInit(): Promise<void> {
     this.signup.forget();

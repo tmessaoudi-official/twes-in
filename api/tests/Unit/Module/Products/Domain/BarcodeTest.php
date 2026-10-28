@@ -91,4 +91,43 @@ final class BarcodeTest extends TestCase
         // A misread check digit is not refused while scanning: it simply matches nothing.
         self::assertSame('036000291453', Barcode::keyOf('036000291453'));
     }
+
+    /**
+     * The list the screen is held to as well (web/src/app/products/barcode-vectors.json, read by barcode-rows.spec.ts):
+     * a code the screen takes is one this API takes, and a code it refuses is one this API refuses, so no code is said
+     * wrong only once it was sent, nor said wrong on screen while the API would keep it.
+     *
+     * @return iterable<string, array{string, ?string}>
+     */
+    public static function sharedCodes(): iterable
+    {
+        $vectors = json_decode((string) file_get_contents(\dirname(__DIR__, 6).'/web/src/app/products/barcode-vectors.json'), true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsArray($vectors);
+        $codes = $vectors['codes'] ?? null;
+        self::assertIsArray($codes);
+        self::assertGreaterThanOrEqual(15, \count($codes), 'the shared codes are no longer found');
+        foreach ($codes as $vector) {
+            self::assertIsArray($vector);
+            $code = $vector['code'] ?? null;
+            self::assertIsString($code);
+            $refused = $vector['refused'] ?? null;
+            if (null !== $refused) {
+                self::assertIsString($refused);
+            }
+            yield json_encode($code, \JSON_THROW_ON_ERROR) => [$code, $refused];
+        }
+    }
+
+    #[DataProvider('sharedCodes')]
+    public function testTheScreenAndTheApiTakeAndRefuseTheSameCodes(string $code, ?string $refused): void
+    {
+        try {
+            new Barcode($code);
+            $taken = true;
+        } catch (InvalidProduct) {
+            $taken = false;
+        }
+
+        self::assertSame(null === $refused, $taken);
+    }
 }

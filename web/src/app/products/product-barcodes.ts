@@ -27,8 +27,17 @@ import { PartConflict } from '../shared/form/part-conflict';
 import { Select } from '../shared/form/select';
 import { dirtyCount } from '../shared/form/dirty-count';
 import { refusalParams } from '../shared/form/refusal-words';
+import { RefusedField } from '../shared/form/refused-field';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
-import { addScanned, BARCODE_QUANTITY_MAX, rowProblem, sameCodes, withRole } from './barcode-rows';
+import {
+  addScanned,
+  BARCODE_QUANTITY_MAX,
+  CODE_PROBLEMS,
+  QUANTITY_PROBLEMS,
+  rowProblem,
+  sameCodes,
+  withRole,
+} from './barcode-rows';
 import { ProductBarcodes } from './product-barcodes-facade';
 import { BARCODE_ROLES, type BarcodeRole, type ProductBarcode } from './products-types';
 
@@ -49,6 +58,7 @@ import { BARCODE_ROLES, type BarcodeRole, type ProductBarcode } from './products
     TranslatePipe,
     Label,
     PartConflict,
+    RefusedField,
   ],
   templateUrl: './product-barcodes.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -158,6 +168,16 @@ export class ProductBarcodesSection implements OnInit {
   );
   /** The API's refusal, under the row it named. */
   protected readonly refusal = this.facade.refusal;
+  /** The code field is outlined for what is wrong in it, or for the API's refusal of that row, which names its code. */
+  protected codeRefused(index: number): boolean {
+    const problem = this.problems()[index];
+    return problem === null ? this.refusal()?.index === index : CODE_PROBLEMS.includes(problem);
+  }
+  /** The quantity field is outlined for what is wrong in it. */
+  protected quantityRefused(index: number): boolean {
+    const problem = this.problems()[index];
+    return problem !== null && QUANTITY_PROBLEMS.includes(problem);
+  }
   /** What the refusal's reason says, as every form words it; null for a reason no text words. */
   protected readonly refusalText = computed(() => {
     const reason = this.refusal()?.reason ?? null;

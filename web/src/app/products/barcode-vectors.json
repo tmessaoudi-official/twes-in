@@ -1,0 +1,27 @@
+{
+  "about": "What a product's code is refused for, the one list the screen (barcode-rows.ts, rowProblem) and the API (Barcode) are both held to: null where the code is taken, else the screen's reason. GTIN examples are published ones (GS1, Wikipedia), never this code's own output.",
+  "codes": [
+    { "code": "4006381333931", "refused": null },
+    { "code": "4006381333932", "refused": "check_digit" },
+    { "code": "036000291452", "refused": null },
+    { "code": "036000291453", "refused": "check_digit" },
+    { "code": "0036000291452", "refused": null },
+    { "code": "96385074", "refused": null },
+    { "code": "96385075", "refused": "check_digit" },
+    { "code": "10012345678902", "refused": null },
+    { "code": "10012345678903", "refused": "check_digit" },
+    { "code": "12345678901", "refused": null },
+    { "code": "INT-REF-001", "refused": null },
+    { "code": " 4006381333931​", "refused": null },
+    { "code": " INT-REF-001﻿", "refused": null },
+    { "code": "", "refused": "code_required" },
+    { "code": " ​ ", "refused": "code_required" },
+    { "code": "REF 001", "refused": "code_shape" },
+    { "code": "RÉF-001", "refused": "code_shape" },
+    { "code": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "refused": null },
+    {
+      "code": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "refused": "code_shape"
+    }
+  ]
+}

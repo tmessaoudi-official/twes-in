@@ -7,8 +7,8 @@
     "display_name": "Your name",
     "display_name_required": "Your name is required.",
     "password": "Choose a password",
-    "password_hint": "At least 12 characters.",
-    "password_too_short": "The password must be at least 12 characters.",
+    "password_hint": "At least {{min}} characters.",
+    "password_too_short": "The password must be at least {{min}} characters.",
     "submit": "Create my account",
     "errors": {
       "not_usable": "That link is no longer valid. Ask for a new invitation.",

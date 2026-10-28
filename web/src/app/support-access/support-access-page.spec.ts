@@ -146,7 +146,6 @@ describe('SupportAccessPage', () => {
     const unsaved = TestBed.inject(UnsavedChanges);
 
     const field = q('support-access-reason') as HTMLTextAreaElement;
-    expect(field.getAttribute('maxlength')).toBe('500');
     field.value = said;
     field.dispatchEvent(new Event('input'));
     await settle();
@@ -173,6 +172,33 @@ describe('SupportAccessPage', () => {
     await settle();
 
     expect(api.grant).toHaveBeenCalledExactlyOnceWith('c1', 24, null);
+  });
+
+  // Row 215: the field cut a paste at 500 unsaid, and a reason the API refused was said only after the step-up.
+  it('keeps a reason longer than the API takes whole, says so under it and asks nothing', async () => {
+    await open();
+    const field = q('support-access-reason') as HTMLTextAreaElement;
+    expect(field.hasAttribute('maxlength')).toBe(false);
+
+    field.value = `${'é'.repeat(500)} `;
+    field.dispatchEvent(new Event('input'));
+    await settle();
+    // Five hundred characters with a space at the end are five hundred, as the API counts them.
+    expect(q('support-access-reason-error')).toBeNull();
+
+    field.value = 'é'.repeat(501);
+    field.dispatchEvent(new Event('input'));
+    await settle();
+    expect(q('support-access-reason-error')).not.toBeNull();
+    expect(field.closest('mat-form-field')?.classList.contains('mat-form-field-invalid')).toBe(
+      true,
+    );
+    expect(field.value).toHaveLength(501);
+
+    q('support-access-grant')!.click();
+    await settle();
+    expect(api.grant).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(field);
   });
 
   it('closes an open window when the owner asks', async () => {

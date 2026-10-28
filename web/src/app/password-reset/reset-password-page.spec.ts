@@ -11,6 +11,7 @@ import {
 import { of } from 'rxjs';
 import { provideStillAppearance } from '../shared/testing/appearance';
 import { provideQuietFeedback } from '../shared/testing/feedback';
+import { provideKnownPasswordRule } from '../shared/testing/password-rule';
 import { PasswordResetFacade } from './password-reset-facade';
 import type { PasswordResetError } from './password-reset-types';
 import { ResetPasswordPage } from './reset-password-page';
@@ -19,11 +20,11 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       password_reset: {
-        reset: { done: 'Mot de passe changé.' },
+        reset: { done: 'Mot de passe changé.', password_hint: 'Au moins {{min}} caractères.' },
         errors: {
           mismatch: 'Pas identiques',
           link_not_usable: 'Lien périmé',
-          too_short: 'Trop court',
+          too_short: 'Au moins {{min}} caractères, pas moins.',
         },
       },
     });
@@ -43,6 +44,8 @@ describe('ResetPasswordPage', () => {
     await TestBed.configureTestingModule({
       imports: [ResetPasswordPage],
       providers: [
+        // Fourteen rather than the API's twelve: the page says the number it reads, never one of its own.
+        provideKnownPasswordRule({ minLength: 14, maxLength: 4096 }),
         provideStillAppearance(),
         provideQuietFeedback(),
         provideRouter([]),
@@ -103,13 +106,19 @@ describe('ResetPasswordPage', () => {
     expect(query('reset-mismatch')?.textContent).toContain('Pas identiques');
   });
 
-  it('does not send a password under twelve characters', async () => {
+  it('does not send a password shorter than the API takes, and says the length it read', async () => {
     const { fixture, query } = await render();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Au moins 14 caractères.');
 
-    await submit(fixture, query, 'short', 'short');
+    // Thirteen characters: what the API's own twelve would take, and the rule read refuses.
+    await submit(fixture, query, 'treize lettre', 'treize lettre');
+    fixture.detectChanges();
 
     expect(facade.reset).not.toHaveBeenCalled();
-    expect(fixture.nativeElement.textContent).toContain('Trop court');
+    expect(query('reset-password-error')?.textContent).toContain(
+      'Au moins 14 caractères, pas moins.',
+    );
   });
 
   it('says a link that cannot be used is, and keeps the form with the way to ask again', async () => {

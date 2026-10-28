@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Post;
+use App\Identity\Application\Password\NewPasswordPolicy;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\CompleteSignupProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\RequestSignupProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Provider\SignupAvailabilityProvider;
@@ -94,7 +95,7 @@ final class SignupResource
 
     /** Twelve characters is the floor; the breached-password check judges the rest. */
     #[Assert\NotBlank(groups: [self::COMPLETE])]
-    #[Assert\Length(min: 12, max: 4096, groups: [self::COMPLETE])]
+    #[Assert\Length(min: NewPasswordPolicy::MIN_LENGTH, max: NewPasswordPolicy::MAX_LENGTH, groups: [self::COMPLETE])]
     #[Groups([self::COMPLETE])]
     public string $password = '';
 

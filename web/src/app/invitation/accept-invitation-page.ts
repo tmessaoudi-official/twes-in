@@ -11,6 +11,7 @@ import { LegalLink } from '../shared/legal/legal-link';
 import { InvitationFacade } from './invitation-facade';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { PasswordToggle } from '../shared/form/password-toggle';
+import { heldToPasswordRule } from '../shared/password/password-rule';
 
 /**
  * The page an invitation link opens. It is reached logged out: the link comes from a mail client and, under
@@ -50,9 +51,11 @@ export class AcceptInvitationPage implements OnInit {
     }),
     password: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.minLength(12)],
+      validators: [Validators.required],
     }),
   });
+  /** The shortest password the API takes, said in the hint and the refusal once read. */
+  protected readonly passwordMin = heldToPasswordRule(this.form.controls.password);
 
   async ngOnInit(): Promise<void> {
     this.invitation.forget();

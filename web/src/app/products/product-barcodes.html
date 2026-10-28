@@ -92,6 +92,7 @@
                   autocomplete="off"
                   spellcheck="false"
                   [attr.data-testid]="'product-barcode-code-' + index"
+                  [appRefused]="codeRefused(index)"
                   [value]="row.code"
                   (input)="setCode(index, code.value)"
                   #code
@@ -119,6 +120,7 @@
                   [max]="maxQuantity"
                   step="1"
                   [attr.data-testid]="'product-barcode-quantity-' + index"
+                  [appRefused]="quantityRefused(index)"
                   [disabled]="row.role === 'unit'"
                   [value]="row.quantity"
                   (input)="setQuantity(index, quantity.valueAsNumber)"

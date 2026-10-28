@@ -28,6 +28,7 @@ import { PRESENTATION } from '../shared/settings/settings-registry';
 import { ScanGap } from '../shared/scan/scan-gap';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
+import { provideKnownPasswordRule } from '../shared/testing/password-rule';
 import { NotificationsFacade } from '../notifications/notifications-facade';
 import { AccountPage } from './account-page';
 import { NotificationChoicesApi } from './notification-choices-api';
@@ -180,6 +181,7 @@ describe('AccountPage', () => {
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: NotificationChoicesApi, useValue: notificationChoices },
         { provide: NotificationsFacade, useValue: { refresh: vi.fn() } },
+        provideKnownPasswordRule(),
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(AccountPage);
@@ -390,9 +392,36 @@ describe('AccountPage', () => {
       await submit(root, 'ancien-mot-de-passe', 'nouveau-mot-de-passe', 'autre-mot-de-passe');
 
       expect(auth.changePassword).not.toHaveBeenCalled();
-      expect(byTestId(root, 'account-password-problem')?.textContent).toContain('mismatch');
+      // Said under the second entry, which takes the cursor, as a refused field says it.
+      expect(byTestId(root, 'account-password-again-error')?.textContent).toContain('mismatch');
+      expect(byTestId(root, 'account-password-problem')).toBeNull();
+      expect(document.activeElement).toBe(byTestId(root, 'account-password-again'));
       // What was typed stays, and leaving or reloading the page is held while it is there.
       expect(TestBed.inject(UnsavedChanges).count()).toBe(3);
+    });
+
+    // Row 215: the length the API holds a new password to was said only once the API had refused it.
+    it('says a new password shorter than the API takes under it once left, and sends nothing', async () => {
+      const root = await render('security');
+      const next = byTestId(root, 'account-password-new') as HTMLInputElement;
+
+      fill(root, 'account-password-new', 'mot de pas𝒆');
+      fixture.detectChanges();
+      expect(byTestId(root, 'account-password-new-error')).toBeNull();
+      next.dispatchEvent(new Event('blur'));
+      fixture.detectChanges();
+      expect(byTestId(root, 'account-password-new-error')?.textContent).toContain('too_short');
+      expect(next.closest('mat-form-field')?.classList.contains('mat-form-field-invalid')).toBe(
+        true,
+      );
+
+      await submit(root, 'ancien-mot-de-passe', 'court', 'court');
+      expect(auth.changePassword).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(next);
+
+      fill(root, 'account-password-new', 'mot de passe');
+      fixture.detectChanges();
+      expect(byTestId(root, 'account-password-new-error')).toBeNull();
     });
 
     it('changes it, says so and goes to the sign-in page, since every session ended', async () => {

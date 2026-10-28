@@ -2,6 +2,7 @@
 
 import { addScanned, barcodeKey, rowProblem, sameCodes, withRole } from './barcode-rows';
 import type { ProductBarcode } from './products-types';
+import vectors from './barcode-vectors.json';
 
 const unit = (code: string): ProductBarcode => ({
   role: 'unit',
@@ -11,6 +12,14 @@ const unit = (code: string): ProductBarcode => ({
 });
 
 describe('barcode rows', () => {
+  // Row 215: the codes the API's Barcode takes and refuses, one list both are held to (BarcodeTest reads it too).
+  it.each(vectors.codes)(
+    'says $code is refused for $refused, as the API does',
+    ({ code, refused }) => {
+      expect(rowProblem(unit(code))).toBe(refused);
+    },
+  );
+
   it('keys the spellings of one GTIN alike and anything else as printed', () => {
     // Published examples, never this code's own output: a UPC-A, its EAN-13 spelling and its GTIN-14 spelling.
     expect(barcodeKey('036000291452')).toBe('00036000291452');

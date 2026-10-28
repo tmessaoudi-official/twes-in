@@ -83,10 +83,19 @@
                         autocomplete="new-password"
                         [value]="passwordNew()"
                         (input)="passwordNew.set($any($event.target).value)"
+                        (blur)="passwordNewLeft.set(true)"
+                        [appRefused]="passwordNewLeft() && passwordNewShort()"
                         data-testid="account-password-new"
                       />
                       <app-password-toggle matSuffix [field]="passwordNewField" />
-                      <mat-hint>{{ 'account.password.new_hint' | translate }}</mat-hint>
+                      @if (passwordMin(); as min) {
+                        <mat-hint>{{ 'account.password.new_hint' | translate: { min } }}</mat-hint>
+                      }
+                      @if (passwordNewLeft() && passwordNewShort()) {
+                        <mat-error data-testid="account-password-new-error">{{
+                          'account.password.problems.too_short' | translate: { min: passwordMin() }
+                        }}</mat-error>
+                      }
                     </mat-form-field>
                   </div>
                   <div class="flex min-w-0 flex-col gap-1.5">
@@ -102,9 +111,16 @@
                         autocomplete="new-password"
                         [value]="passwordAgain()"
                         (input)="passwordAgain.set($any($event.target).value)"
+                        (blur)="passwordAgainLeft.set(true)"
+                        [appRefused]="passwordAgainLeft() && passwordAgainDiffers()"
                         data-testid="account-password-again"
                       />
                       <app-password-toggle matSuffix [field]="passwordAgainField" />
+                      @if (passwordAgainLeft() && passwordAgainDiffers()) {
+                        <mat-error data-testid="account-password-again-error">{{
+                          'account.password.problems.mismatch' | translate
+                        }}</mat-error>
+                      }
                     </mat-form-field>
                   </div>
                   @if (passwordProblem(); as problem) {
@@ -113,7 +129,9 @@
                       class="m-0 text-sm text-error"
                       data-testid="account-password-problem"
                     >
-                      {{ 'account.password.problems.' + problem | translate }}
+                      {{
+                        'account.password.problems.' + problem | translate: { min: passwordMin() }
+                      }}
                     </p>
                   }
                   <div>

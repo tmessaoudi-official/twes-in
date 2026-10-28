@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  ElementRef,
   inject,
   input,
   type OnInit,
@@ -60,6 +61,7 @@ import {
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { RefusedField } from '../shared/form/refused-field';
+import { PasswordRule, shorterThanRule } from '../shared/password/password-rule';
 
 /** Why a key typed in Préférences was not kept: the shell's own reasons, or another action has it already. */
 type KeyRefusal = ShellKeyRefusal | 'taken';
@@ -109,8 +111,25 @@ export class AccountPage implements OnInit {
   protected readonly passwordNew = signal('');
   protected readonly passwordAgain = signal('');
   protected readonly passwordBusy = signal(false);
-  /** Why the last attempt did not go through: the API's reason, or the two new entries differing. */
-  protected readonly passwordProblem = signal<PasswordChangeOutcome | 'mismatch' | null>(null);
+  /** Why the last attempt did not go through, as the API answered it. */
+  protected readonly passwordProblem = signal<PasswordChangeOutcome | null>(null);
+  private readonly passwordRule = inject(PasswordRule);
+  /** The shortest new password the API takes, said in the hint and the refusal once read. */
+  protected readonly passwordMin = computed(() => this.passwordRule.lengths()?.minLength ?? null);
+  /** Each new-password field once left (or tried): what is wrong in it is said under it from then on. */
+  protected readonly passwordNewLeft = signal(false);
+  protected readonly passwordAgainLeft = signal(false);
+  /** The new password is shorter than the API takes: said under it, and nothing is sent. */
+  protected readonly passwordNewShort = computed(() =>
+    shorterThanRule(this.passwordNew(), this.passwordMin()),
+  );
+  /** The second entry differs from the first: said under it, and nothing is sent. */
+  protected readonly passwordAgainDiffers = computed(
+    () => this.passwordAgain() !== '' && this.passwordAgain() !== this.passwordNew(),
+  );
+  private readonly passwordNewField = viewChild<ElementRef<HTMLInputElement>>('passwordNewField');
+  private readonly passwordAgainField =
+    viewChild<ElementRef<HTMLInputElement>>('passwordAgainField');
   protected readonly passwordReady = computed(
     () => this.passwordCurrent() !== '' && this.passwordNew() !== '' && this.passwordAgain() !== '',
   );
@@ -243,6 +262,7 @@ export class AccountPage implements OnInit {
 
   constructor() {
     inject(UnsavedChanges).declare(this.passwordTyped);
+    void this.passwordRule.read();
   }
 
   protected toTwoFactor(): void {
@@ -255,12 +275,20 @@ export class AccountPage implements OnInit {
 
   /**
    * Changing the password ends every session, this one too, so the person goes to the sign-in page with the new one.
-   * Two entries that differ never reach the API: a typo would lock the person out of their own account.
+   * Two entries that differ never reach the API, a typo would lock the person out of their own account, nor does a
+   * password shorter than the API takes: each is said under its field, which takes the cursor.
    */
   protected async changePassword(): Promise<void> {
     if (this.passwordBusy() || !this.passwordReady()) return;
-    if (this.passwordNew() !== this.passwordAgain()) {
-      this.passwordProblem.set('mismatch');
+    await this.passwordRule.read();
+    this.passwordNewLeft.set(true);
+    this.passwordAgainLeft.set(true);
+    if (this.passwordNewShort()) {
+      this.passwordNewField()?.nativeElement.focus();
+      return;
+    }
+    if (this.passwordAgainDiffers()) {
+      this.passwordAgainField()?.nativeElement.focus();
       return;
     }
     this.passwordBusy.set(true);

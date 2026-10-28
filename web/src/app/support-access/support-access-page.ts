@@ -5,8 +5,10 @@ import {
   Component,
   computed,
   DestroyRef,
+  ElementRef,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,6 +19,8 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { saidAlready } from '../shared/errors/said-already';
+import { RefusedField } from '../shared/form/refused-field';
+import { typedText } from '../shared/form/typed-text';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
@@ -44,6 +48,7 @@ export const DEFAULT_SUPPORT_HOURS = 24;
     MatIconModule,
     MatInputModule,
     MatRadioModule,
+    RefusedField,
     RouterLink,
     TranslatePipe,
   ],
@@ -66,7 +71,18 @@ export class SupportAccessPage {
   protected readonly reason = signal('');
   protected readonly busy = signal(false);
   /** A reason typed and not yet sent is work a person would lose by leaving. */
-  private readonly reasonTyped = computed(() => (this.reason().trim() === '' ? 0 : 1));
+  private readonly reasonTyped = computed(() => (typedText(this.reason()) === '' ? 0 : 1));
+  /** The reason's length as the API counts it: in characters, without what sits at its ends. */
+  protected readonly reasonLength = computed(() => [...typedText(this.reason())].length);
+  /**
+   * Longer than the API keeps: said under the field, and nothing is sent, so the owner is never asked to prove who
+   * they are for a reason refused afterwards; what was typed or pasted is kept whole to be shortened.
+   */
+  protected readonly reasonTooLong = computed(() => {
+    const max = this.state()?.reasonMax;
+    return max !== undefined && this.reasonLength() > max;
+  });
+  private readonly reasonField = viewChild<ElementRef<HTMLTextAreaElement>>('reasonField');
   /** Moves on when the window ends, which nothing announces: the page then says it is closed. */
   private readonly now = deadlineClock(() => [this.state()?.endsAt ?? null]);
   protected readonly until = computed(() => {
@@ -85,11 +101,16 @@ export class SupportAccessPage {
   protected async grant(): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
+    if (this.reasonTooLong()) {
+      this.reasonField()?.nativeElement.focus();
+      return;
+    }
     this.busy.set(true);
     try {
       // Opening the company to support waits for the owner to prove who is at the screen (docs/SPEC.md § 7).
       const hours = this.hours();
-      const reason = this.reason().trim() === '' ? null : this.reason();
+      const typed = typedText(this.reason());
+      const reason = typed === '' ? null : typed;
       this.state.set(
         await this.stepUp.retrying(
           () => this.api.grant(companyId, hours, reason),
