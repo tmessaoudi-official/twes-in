@@ -54,6 +54,14 @@ describe('a decimal field', () => {
     expect(decimalTyped('')).toBe('');
   });
 
+  // A figure copied from a page or an Arabic keyboard brings a zero-width or direction mark at an end, which
+  // String.trim() keeps: the API's TypedText::trimmed takes it, and so does the screen.
+  it('reads a figure pasted with an invisible mark at an end as the figure', () => {
+    expect(decimalTyped('12,500‎')).toBe('12.500');
+    expect(decimalTyped('​12,5')).toBe('12.5');
+    expect(decimalTyped('‏ 90.25﻿')).toBe('90.25');
+  });
+
   it('leaves what cannot be a decimal for the pattern to refuse', () => {
     expect(decimalTyped('12,5,3')).toBe('12,5,3');
     expect(decimalTyped('1 234,5')).toBe('1 234,5');

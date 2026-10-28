@@ -26,6 +26,7 @@ import { DescriptorForm } from '../shared/form/descriptor-form';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { typedText } from '../shared/form/typed-text';
 import type { PickOption } from '../shared/form/pick-field';
 import {
   buildFormGroup,
@@ -404,10 +405,11 @@ export class StockPage implements OnInit {
       if (form === null) return;
       const subscription = form.valueChanges.pipe(startWith(null)).subscribe(() => {
         const quantity = form.get('quantity')?.value;
-        this.received.set(typeof quantity === 'string' ? quantity.trim() : '');
+        this.received.set(typeof quantity === 'string' ? typedText(quantity) : '');
+        // Read as the save sends it (getRawValue takes each typed end), so the note says what will be recorded.
         const text = (id: string): string => {
           const value = form.get(id)?.value;
-          return typeof value === 'string' ? value : '';
+          return typeof value === 'string' ? typedText(value) : '';
         };
         this.countAt.set({ locationId: text('locationId'), lotCode: text('lotCode') });
       });

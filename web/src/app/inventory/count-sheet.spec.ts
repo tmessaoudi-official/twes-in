@@ -204,6 +204,10 @@ describe('what a count would change', () => {
     });
     // An emptied lot is still the product's own.
     expect(countEffect(glueKept, places, { ...lots, lotCode: ' L-2 ' })?.newLot).toBeNull();
+    // Pasted with an invisible mark at an end, the lot is the one the save sends, as the API keeps it.
+    expect(
+      countEffect(glueKept, places, { ...lots, lotCode: 'L-1​', counted: '‎4' }),
+    ).toMatchObject({ expected: '3.000', difference: '1.000', newLot: null });
     expect(countEffect(glueKept, places, { ...lots, lotCode: 'l-1' })?.newLot).toBe('l-1');
     expect(countEffect(glueKept, places, { ...lots, lotCode: 'L-9' })).toMatchObject({
       expected: '0.000',

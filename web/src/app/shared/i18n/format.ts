@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { typedText } from '../form/typed-text';
+
 /** A decimal as the API writes one: an optional minus, digits, then optional decimals. */
 const DECIMAL = /^-?\d+(?:\.\d+)?$/;
 const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -45,9 +47,12 @@ export function decimalShown(value: string, locale: string, style: NumberStyle =
   return DECIMAL.test(value) ? value.replace('.', numberFormat(locale, style).decimal) : value;
 }
 
-/** What a person typed in a decimal field, as the API reads it: a comma or a point; anything else is left to refuse. */
+/**
+ * What a person typed in a decimal field, as the API reads it: a comma or a point; anything else is left to refuse. The
+ * ends go as `typedText` takes them, the zero-width and direction marks a paste brings included.
+ */
 export function decimalTyped(text: string): string {
-  const trimmed = text.trim();
+  const trimmed = typedText(text);
   return /^-?\d+,\d+$/.test(trimmed) ? trimmed.replace(',', '.') : trimmed;
 }
 

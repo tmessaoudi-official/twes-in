@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { minus } from '../shared/documents/per-unit';
+import { typedText } from '../shared/form/typed-text';
 import { addCount } from '../shared/scan/scan-lines';
 import { QUANTITY_PATTERN } from './inventory-forms';
 import type {
@@ -203,12 +204,12 @@ export function countEffect(
 ): CountEffect | null {
   const place = counting.locationId;
   if (place === '') return null;
-  const lot = counting.tracking === 'none' ? '' : counting.lotCode.trim();
+  const lot = counting.tracking === 'none' ? '' : typedText(counting.lotCode);
   const here = context.places.filter((row) => row.locationId === place);
   const expected = sumQuantities(
     here.filter((row) => lot === '' || row.lotCode === lot).map((row) => row.quantity),
   );
-  const counted = counting.counted.trim();
+  const counted = typedText(counting.counted);
   const difference = QUANTITY.test(counted) ? minus(counted, expected) : null;
 
   const totals = new Map<string, string[]>();
