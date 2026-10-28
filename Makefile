@@ -35,7 +35,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -145,6 +145,9 @@ deploy-check:  ## the deploy check (docs/START.md § 14): a deployment booted fr
 
 onprem-check:  ## the on-premises check (docs/START.md § 16): a shop's installation from a clone of release tags in a local registry, run by scripts/onprem/twes: installed, both doors and a sign-in, a release with a migration more and an unhealthy api rolled back on its schema, then the restore commands taken back to the backup before it; its own compose project (twes-onprem-check) on 80 and 443, removed at the end
 	bash scripts/onprem/onprem-check.sh
+update-rehearsal:  ## the update a shop will take (docs/RUNBOOK.md « Release to the shops »): make update-rehearsal FILES=<the shop's files> [FROM=<release tag>, the newest by default] [TO=<commit>, HEAD by default]; FROM installed by twes update, the files imported, TO published and taken by twes update, and every table, the products list and the migrations read back; its own compose project (twes-update-rehearsal) on 80 and 443, removed at the end
+	@[ -n "$(FILES)" ] || { echo "make update-rehearsal FILES=<directory of 1-vendors.csv … 5-price-history.csv> [FROM=vYYYY.MM.DD.N] [TO=<commit>]" >&2; exit 2; }
+	bash scripts/onprem/update-rehearsal.sh "$(FILES)" $(FROM) $(TO)
 staging-check:  ## the staging check (docs/RUNBOOK.md): the working tree published to a local registry by publish.sh, followed by staging-follow.sh into a staging of its own, every container proved to run its digest with nothing built, then redeployed from the recorded release after its images were removed; its own compose project (twes-staging-check), removed at the end
 	bash scripts/staging/staging-check.sh
 
