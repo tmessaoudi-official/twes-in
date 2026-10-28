@@ -44,6 +44,7 @@ final class SessionEndsSaidTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame([$this->sessionEnded()], $this->saidTo($nadia));
         self::assertSame([], $this->saidTo($operator), 'the operator signed nobody of theirs out');
+        self::assertSame([], $this->sessionsSaidElsewhere($nadia), 'no company and nobody else hears it');
         self::assertSame([$nadia->getId()->toRfc4122()], $this->publisher->disconnected);
     }
 
@@ -83,6 +84,7 @@ final class SessionEndsSaidTest extends ApiTestCase
         $answered = $this->client->getResponse()->headers->get(LiveChangesAnswer::HEADER) ?? '[]';
         self::assertStringNotContainsString('"session"', $answered, 'the tab that asked is not told what it did');
         self::assertSame([$this->sessionEnded('tab-here')], $this->saidTo($nadia));
+        self::assertSame([], $this->sessionsSaidElsewhere($nadia), 'no company and nobody else hears it');
         self::assertSame([], $this->publisher->disconnected);
     }
 
@@ -108,6 +110,17 @@ final class SessionEndsSaidTest extends ApiTestCase
     private function sessionEnded(?string $origin = null): array
     {
         return ['type' => 'changed', 'kind' => 'session', 'id' => null, 'action' => 'session.ended', 'actor' => null, 'origin' => $origin];
+    }
+
+    /** @return list<string> every other channel that heard of this person's sessions: a company's, someone else's */
+    private function sessionsSaidElsewhere(User $user): array
+    {
+        $channel = 'user:'.$user->getId()->toRfc4122();
+
+        return array_values(array_map(
+            static fn (array $push): string => $push['channel'],
+            array_filter($this->publisher->pushed, static fn (array $push): bool => $channel !== $push['channel'] && 'session' === ($push['data']['kind'] ?? null)),
+        ));
     }
 
     /** @return list<array<string, mixed>> what the person's own channel heard of their sessions */

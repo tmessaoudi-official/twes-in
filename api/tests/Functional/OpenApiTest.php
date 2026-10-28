@@ -75,6 +75,49 @@ final class OpenApiTest extends KernelTestCase
         self::assertContains(['type' => 'null'], $company['anyOf'], 'company is required but may be null');
     }
 
+    /**
+     * A field the web reads with a default of its own (`?? true`) would turn quietly wrong if a stale metadata pool left
+     * it out of the document the types are generated from: each read shape of these resources names it.
+     */
+    public function testTheFieldsTheScreensDecideOnAreInEveryReadShape(): void
+    {
+        self::bootKernel();
+        $schemas = static::getContainer()->get(OpenApiFactoryInterface::class)()->getComponents()->getSchemas();
+        self::assertNotNull($schemas);
+        $shapes = json_decode(json_encode($schemas, \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($shapes);
+
+        foreach ([
+            ['PlatformCompany', 'platform_company', 'opened', true],
+            ['PaymentDeclaration', 'payment_declaration', 'periodsMax', true],
+            ['StockMovement', 'stock_movement', 'withoutStock', false],
+        ] as [$resource, $group, $field, $required]) {
+            $found = 0;
+            foreach ($shapes as $name => $shape) {
+                // API Platform writes the group's colon as a dot in a schema's name.
+                if (!\is_string($name) || 1 !== preg_match('/^'.$resource.'(\.jsonld)?-'.$group.'[:.]read$/', $name)) {
+                    continue;
+                }
+                ++$found;
+                self::assertIsArray($shape);
+                // A JSON-LD shape keeps its own fields in an allOf beside Hydra's base.
+                $parts = \is_array($shape['allOf'] ?? null) ? $shape['allOf'] : [$shape];
+                $properties = [];
+                $requires = [];
+                foreach ($parts as $part) {
+                    self::assertIsArray($part);
+                    $properties += \is_array($part['properties'] ?? null) ? $part['properties'] : [];
+                    $requires = [...$requires, ...$this->required($part)];
+                }
+                self::assertArrayHasKey($field, $properties, "$name names $field");
+                if ($required) {
+                    self::assertContains($field, $requires, "$name requires $field");
+                }
+            }
+            self::assertGreaterThan(0, $found, "no read shape of $resource found under $group:read");
+        }
+    }
+
     public function testASettingValueIsAnyJsonValueAndEachLevelNamesItsValue(): void
     {
         self::bootKernel();

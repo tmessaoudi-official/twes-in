@@ -31,10 +31,10 @@ class Company
     /** Closed down by its owner: read, never worked in, until its retention ends and it is removed. */
     public const string STATUS_CLOSED = 'closed';
 
-    /** What a closed company's members may still do: read it, and take its books with them. */
     /** The longest reason an operator may give for a refusal or a suspension, its column's length. */
     public const int SUSPENSION_REASON_MAX = 500;
 
+    /** What a closed company's members may still do: read it, and take its books with them. */
     public const array OPEN_WHILE_CLOSED = ['accounting.export'];
 
     #[ORM\Id]
