@@ -30,7 +30,13 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       invoices: { portfolio: { open: 'Portefeuille chèques et traites' } },
-      watch: { none: 'Rien.' },
+      watch: {
+        none: 'Rien.',
+        elsewhere: {
+          below_zero: 'Tout le stock sous zéro',
+          sold_without_stock: 'Les sorties sans stock',
+        },
+      },
     });
   }
 }
@@ -157,6 +163,10 @@ describe('WatchSubjectPage', () => {
     const count = q('row-action-count-0') ?? q('list-card-next-0');
     expect(count?.getAttribute('href')).toBe('/stock/locations/l1?product=p1');
     expect(q('watch-elsewhere')?.getAttribute('href')).toBe('/stock?negative=yes');
+    // And the sales that took it there, until a count follows them.
+    const sold = q('watch-elsewhere-1');
+    expect(sold?.getAttribute('href')).toBe('/stock/movements?withoutStock=yes');
+    expect(sold?.textContent).toContain('Les sorties sans stock');
   });
 
   it('names the lot to count when the place is short of one lot', async () => {

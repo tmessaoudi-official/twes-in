@@ -49,6 +49,7 @@ final class StockMovementSearchReader
     {
         $filters = new ListFilters($parameters);
         $costToComplete = $filters->choices('costToComplete', ['yes', 'no']);
+        $withoutStock = $filters->choices('withoutStock', ['yes', 'no']);
         $movedOn = $filters->dateRange('movedAt');
         $lot = $parameters['lot'] ?? null;
 
@@ -64,6 +65,7 @@ final class StockMovementSearchReader
             [] === $costToComplete ? null : 'yes' === $costToComplete[0],
             $movedOn->isOpen() ? null : $movedOn,
             $company->getTimezone(),
+            [] === $withoutStock ? null : 'yes' === $withoutStock[0],
         );
     }
 }

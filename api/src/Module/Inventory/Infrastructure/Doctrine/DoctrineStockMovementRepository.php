@@ -57,6 +57,19 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     ];
     private const array SORTED_BY = ['reference' => 'p.reference', 'product' => 'p.name', 'location' => 'l.code', 'quantity' => 'SUM(m.quantity)'];
 
+    /**
+     * « Sortie sans stock » (Decisions Log 2026-10-28 00:13), of a movement `m` whose product is `p`: a sale or a delivery
+     * after which its place held less than nothing, every movement of the product there summed up to it in the order they
+     * moved (the second, then the id), and that no count of the product at that place followed, nor of the product it
+     * was merged into, which counts what it carried. A sale is never blocked, so this is what a count has to settle.
+     */
+    private const string WITHOUT_STOCK = 'm.quantity < 0 AND m.sourceType IN (:soldSources)'
+        .' AND (SELECT SUM(b.quantity) FROM '.StockMovement::class.' b WHERE b.company = m.company AND b.product = m.product'
+        .' AND b.location = m.location AND (b.at < m.at OR (b.at = m.at AND b.id <= m.id))) < 0'
+        .' AND NOT EXISTS (SELECT c.id FROM '.StockMovement::class.' c WHERE c.company = m.company AND c.location = m.location'
+        .' AND (c.product = m.product OR c.product = p.mergedInto) AND c.sourceType = :countSource'
+        .' AND (c.at > m.at OR (c.at = m.at AND c.id > m.id)))';
+
     public function __construct(private EntityManagerInterface $entityManager, private MergedProducts $mergedProducts)
     {
     }
@@ -287,6 +300,9 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         if (null !== $search->costToComplete) {
             $query->andWhere('m.costToComplete = :costToComplete')->setParameter('costToComplete', $search->costToComplete, ParameterType::BOOLEAN);
         }
+        if (null !== $search->withoutStock) {
+            self::soldWithoutStock($query->andWhere($search->withoutStock ? self::WITHOUT_STOCK : 'NOT ('.self::WITHOUT_STOCK.')'));
+        }
         Intervals::moments($query, 'm.at', 'moved', $search->movedOn, $search->timezone);
         $lot = TypedText::trimmed($search->lot ?? '');
         if ('' !== $lot) {
@@ -304,6 +320,41 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         $movements = iterator_to_array($paginator, false);
 
         return new Page($movements, \count($paginator), $page);
+    }
+
+    public function soldWithoutStockAmong(Uuid $companyId, array $movements): array
+    {
+        // Only a sale or a delivery out can be one: a page holding none asks the database nothing more.
+        $sales = array_filter($movements, static fn (StockMovement $each): bool => \in_array($each->getSourceType(), [StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE], true)
+            && str_starts_with($each->getQuantity(), '-'));
+        if ([] === $sales) {
+            return [];
+        }
+        $rows = self::soldWithoutStock($this->entityManager->createQueryBuilder()
+            ->select('m.id')->from(StockMovement::class, 'm')->join('m.product', 'p')
+            ->where('m.company = :company')->setParameter('company', $companyId, 'uuid')
+            ->andWhere('m.id IN (:movements)')->setParameter('movements', self::ids(array_map(static fn (StockMovement $each): Uuid => $each->getId(), array_values($sales))), ArrayParameterType::STRING)
+            ->andWhere(self::WITHOUT_STOCK))
+            ->getQuery()->getScalarResult();
+
+        $found = [];
+        foreach ($rows as $row) {
+            $id = \is_array($row) ? ($row['id'] ?? null) : null;
+            $found[] = match (true) {
+                $id instanceof Uuid => $id->toRfc4122(),
+                \is_string($id) => $id,
+                default => throw new \LogicException('A movement read back without its id.'),
+            };
+        }
+
+        return $found;
+    }
+
+    /** The bindings WITHOUT_STOCK names. */
+    private static function soldWithoutStock(QueryBuilder $query): QueryBuilder
+    {
+        return $query->setParameter('soldSources', [StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE], ArrayParameterType::STRING)
+            ->setParameter('countSource', StockMovement::SOURCE_COUNT);
     }
 
     /**

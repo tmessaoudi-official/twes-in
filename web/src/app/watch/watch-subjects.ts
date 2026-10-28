@@ -9,18 +9,20 @@ import type { WatchRowView } from './watch-view';
  * overview, and the table of what to act on, with the way into each row. Titles and hints are translated under
  * `watch.subjects.<kind>`; the API says which subjects exist, and this says how each looks.
  */
+export interface WatchElsewhere {
+  readonly link: string;
+  readonly label: string;
+  readonly query?: Readonly<Record<string, string>>;
+}
+
 export interface WatchSubjectView {
   readonly icon: IconName;
   readonly list: ListDescriptor<WatchRowView>;
   /**
-   * The screen that holds the whole of what this subject picks from, linked beside its title, narrowed by `query` to
-   * what the subject is about (a list's own filters, as its address names them).
+   * The screens that hold the whole of what this subject picks from, or what led to it, linked under its title, each
+   * narrowed by `query` to what the subject is about (a list's own filters, as its address names them).
    */
-  readonly elsewhere?: {
-    readonly link: string;
-    readonly label: string;
-    readonly query?: Readonly<Record<string, string>>;
-  };
+  readonly elsewhere?: readonly WatchElsewhere[];
   /**
    * The permission an action of the list needs beyond the subject's own, by action id: a reader who may see the
    * subject but not do it is not offered it, since an action that only refuses is no action.
@@ -271,7 +273,7 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       ],
       actions: [OPEN_INVOICE],
     },
-    elsewhere: { link: '/instruments', label: 'invoices.portfolio.open' },
+    elsewhere: [{ link: '/instruments', label: 'invoices.portfolio.open' }],
   },
   'invoices.late_customer': {
     icon: 'schedule',
@@ -310,8 +312,15 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       actions: [COUNT_AT_PLACE, OPEN_PRODUCT],
     },
     actionPermissions: { count: 'stock.write' },
-    // The stock tab's own « Sous zéro », which holds exactly these rows.
-    elsewhere: { link: '/stock', label: 'watch.elsewhere.below_zero', query: { negative: 'yes' } },
+    // The stock tab's own « Sous zéro », which holds exactly these rows, and the sales that took them there.
+    elsewhere: [
+      { link: '/stock', label: 'watch.elsewhere.below_zero', query: { negative: 'yes' } },
+      {
+        link: '/stock/movements',
+        label: 'watch.elsewhere.sold_without_stock',
+        query: { withoutStock: 'yes' },
+      },
+    ],
   },
   'stock.reorder_point': {
     icon: 'inventory_2',
@@ -447,11 +456,9 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       ],
       actions: [OPEN_DELIVERY_NOTE],
     },
-    elsewhere: {
-      link: '/delivery-notes',
-      label: 'watch.elsewhere.drafts',
-      query: { status: 'draft' },
-    },
+    elsewhere: [
+      { link: '/delivery-notes', label: 'watch.elsewhere.drafts', query: { status: 'draft' } },
+    ],
   },
   // An order whose goods are due: received on its page, by whoever receives what the shop buys.
   'purchase_order.to_receive': {
@@ -470,11 +477,13 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       ],
       actions: [RECEIVE_ORDER],
     },
-    elsewhere: {
-      link: '/purchases',
-      label: 'watch.elsewhere.open_orders',
-      query: { status: 'sent,partly_received' },
-    },
+    elsewhere: [
+      {
+        link: '/purchases',
+        label: 'watch.elsewhere.open_orders',
+        query: { status: 'sent,partly_received' },
+      },
+    ],
   },
   // A draft a recurring expense of variable amount made: its amount is checked on the draft, then it is recorded.
   'expenses.amount_to_check': {

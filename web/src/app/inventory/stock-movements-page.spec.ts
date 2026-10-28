@@ -96,6 +96,7 @@ const delivered: StockMovementRow = {
   at: '2026-09-15T09:00:00+00:00',
   costTyped: false,
   costToComplete: false,
+  withoutStock: false,
   attachmentCount: null,
 };
 /** Recorded by someone who could not read costs: valued at the average until a cost reader enters its cost. */
@@ -294,6 +295,7 @@ describe('StockMovementsPage', () => {
       sourceTypes: [],
       reasons: [],
       costToComplete: null,
+      withoutStock: null,
       intervals: {},
       lot: null,
       order: { key: 'movedAt', direction: 'desc' },

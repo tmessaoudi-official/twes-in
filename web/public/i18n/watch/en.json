@@ -150,6 +150,7 @@
     },
     "elsewhere": {
       "below_zero": "All stock below zero",
+      "sold_without_stock": "The sales without stock",
       "drafts": "All drafts",
       "open_orders": "All open orders"
     },

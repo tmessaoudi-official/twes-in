@@ -159,6 +159,7 @@ export function movementSearch(query: ListQuery): StockMovementSearch {
     sourceTypes: STOCK_SOURCE_TYPES.filter((known) => sources.includes(known)),
     reasons: STOCK_LOSS_REASONS.filter((known) => reasons.includes(known)),
     costToComplete: ANSWERS.find((answer) => answer === query.filters['costToComplete']) ?? null,
+    withoutStock: ANSWERS.find((answer) => answer === query.filters['withoutStock']) ?? null,
     intervals: rangeParams(query.filters, MOVEMENT_INTERVALS),
     lot: null,
     order:
@@ -454,6 +455,17 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
       options: ANSWERS.map((answer) => ({
         value: answer,
         label: `inventory.filters.cost_to_complete_${answer}`,
+      })),
+    },
+    {
+      // A sale that took its place below zero and that no count there has followed (Decisions Log 2026-10-28 00:13).
+      id: 'withoutStock',
+      label: 'inventory.filters.without_stock',
+      anyLabel: 'list.filter_any_feminine',
+      value: (row) => (row.withoutStock ? 'yes' : 'no'),
+      options: ANSWERS.map((answer) => ({
+        value: answer,
+        label: `inventory.filters.without_stock_${answer}`,
       })),
     },
   ],

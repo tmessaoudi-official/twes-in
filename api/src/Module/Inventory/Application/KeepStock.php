@@ -523,6 +523,19 @@ final readonly class KeepStock
     }
 
     /**
+     * Which movements of a page took their place below zero with no count there since, « Sorties sans stock »
+     * (Decisions Log 2026-10-28 00:13): each row says it, so a row is filtered on screen as the list filters it.
+     *
+     * @param list<StockMovement> $movements
+     *
+     * @return list<string> their ids
+     */
+    public function soldWithoutStock(Company $company, array $movements): array
+    {
+        return $this->movements->soldWithoutStockAmong($company->getId(), $movements);
+    }
+
+    /**
      * A stock list's location and product category picks, each widened to what sits under it (docs/SPEC.md § 7, row 197).
      * Without the catalogue's categories (a test that builds this use case by hand), a category stands for itself alone.
      */

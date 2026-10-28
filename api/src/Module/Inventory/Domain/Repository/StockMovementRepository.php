@@ -188,6 +188,16 @@ interface StockMovementRepository
      */
     public function searchMovements(Uuid $companyId, StockMovementSearch $search, PageRequest $page): Page;
 
+    /**
+     * Which of these movements are sales or deliveries that left their place below zero with no count there since, the
+     * rows `StockMovementSearch::$withoutStock` keeps: said of each row of a page, read once for the page.
+     *
+     * @param list<StockMovement> $movements
+     *
+     * @return list<string> their ids
+     */
+    public function soldWithoutStockAmong(Uuid $companyId, array $movements): array;
+
     /** How many movements a location has seen. */
     public function countAt(Uuid $locationId): int;
 

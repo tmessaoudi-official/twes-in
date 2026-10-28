@@ -41,6 +41,7 @@ final readonly class StockMovementSearch
      * @param list<StockLossReason>       $reasons        any of them; a movement that is not a loss has none and is left out by any
      * @param bool|null                   $costToComplete true: a receipt whose cost waits to be entered; false: anything else; null: either
      * @param string                      $timezone       the company's, which the days of `movedOn` are counted in
+     * @param bool|null                   $withoutStock   true: a sale or delivery that left its place below zero and no count there followed; false: anything else; null: either
      */
     public function __construct(
         public array $products = [],
@@ -55,6 +56,7 @@ final readonly class StockMovementSearch
         public ?bool $costToComplete = null,
         public ?DateRange $movedOn = null,
         public string $timezone = 'UTC',
+        public ?bool $withoutStock = null,
     ) {
     }
 
@@ -65,6 +67,6 @@ final readonly class StockMovementSearch
      */
     public function withLocations(array $locations): self
     {
-        return new self($this->products, $locations, $this->text, $this->kinds, $this->sourceTypes, $this->order, $this->lot, $this->reasons, $this->costToComplete, $this->movedOn, $this->timezone);
+        return new self($this->products, $locations, $this->text, $this->kinds, $this->sourceTypes, $this->order, $this->lot, $this->reasons, $this->costToComplete, $this->movedOn, $this->timezone, $this->withoutStock);
     }
 }

@@ -123,6 +123,7 @@ function movement(
     at: '2026-09-15T09:00:00+00:00',
     costTyped: false,
     costToComplete: false,
+    withoutStock: false,
     attachmentCount: null,
   };
 }
@@ -803,6 +804,11 @@ describe('movementSearch', () => {
     expect(
       movementSearch({ ...query, filters: { costToComplete: 'maybe' } }).costToComplete,
     ).toBeNull();
+    // « Sorties sans stock »: what a count has not followed, asked of the API as it is named in the address.
+    expect(movementSearch({ ...query, filters: { withoutStock: 'yes' } }).withoutStock).toBe('yes');
+    expect(
+      movementSearch({ ...query, filters: { withoutStock: 'maybe' } }).withoutStock,
+    ).toBeNull();
   });
 
   it('offers the filters ruled for the list', () => {
@@ -813,6 +819,7 @@ describe('movementSearch', () => {
       ['source', true],
       ['reason', true],
       ['costToComplete', false],
+      ['withoutStock', false],
     ]);
     expect(MOVEMENTS_LIST.picks?.map((pick) => pick.id)).toEqual(['product', 'location']);
     expect(MOVEMENTS_LIST.ranges?.map((range) => [range.id, range.kind])).toEqual([

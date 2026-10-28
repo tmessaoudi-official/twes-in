@@ -180,6 +180,8 @@ export interface StockMovementSearch {
   reasons: readonly StockLossReason[];
   /** A receipt whose cost waits to be entered, or every other movement; null asks either. */
   costToComplete: 'yes' | 'no' | null;
+  /** A sale or delivery that left its place below zero with no count there since, or every other one; null asks either. */
+  withoutStock: 'yes' | 'no' | null;
   /** The ends of the day interval, `movedAt.from` and `movedAt.to`, in the company's own calendar: each already valid. */
   intervals: Readonly<Record<string, string>>;
   /** A lot or serial code, matched whole whatever its case: where a recall starts (row 63 slice 10). */
@@ -317,6 +319,11 @@ export interface StockMovementRow {
    * § 7, audit 2026-10-06 C challenge 9).
    */
   costToComplete: boolean;
+  /**
+   * A sale or a delivery that left its place below zero, which no count there has followed: « Sorties sans stock »
+   * (Decisions Log 2026-10-28 00:13).
+   */
+  withoutStock: boolean;
   /** How many files a loss keeps — a photo of what broke, the complaint for a theft; null on any other movement. */
   attachmentCount: number | null;
 }

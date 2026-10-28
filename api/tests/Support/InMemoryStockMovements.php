@@ -367,7 +367,7 @@ final class InMemoryStockMovements implements StockMovementRepository
         $words = mb_strtolower(trim($search->text ?? ''));
         $matching = array_values(array_filter(
             $this->movements,
-            static fn (StockMovement $m) => $m->getCompany()->getId()->equals($companyId)
+            fn (StockMovement $m) => $m->getCompany()->getId()->equals($companyId)
                 && ([] === $search->products || \in_array($m->getProduct()->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->products), true))
                 && ([] === $search->locations || \in_array($m->getLocation()->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->locations), true))
                 && ([] === $search->kinds || \in_array($m->getKind(), $search->kinds, true))
@@ -375,6 +375,7 @@ final class InMemoryStockMovements implements StockMovementRepository
                 && ([] === $search->reasons || \in_array($m->getReason(), $search->reasons, true))
                 && (null === $search->costToComplete || $m->isCostToComplete() === $search->costToComplete)
                 && (null === $search->movedOn || self::movedOn($m->getAt(), $search->movedOn, $search->timezone))
+                && (null === $search->withoutStock || $this->soldWithoutStock($m) === $search->withoutStock)
                 && ('' === trim($search->lot ?? '') || mb_strtolower((string) $m->getLot()?->getCode()) === mb_strtolower(trim((string) $search->lot)))
                 && ('' === $words || str_contains(mb_strtolower(
                     $m->getProduct()->getReference().' '.$m->getProduct()->getDetails()->name.' '.$m->getLocation()->getCode().' '.$m->getLocation()->getName(),
@@ -384,6 +385,38 @@ final class InMemoryStockMovements implements StockMovementRepository
         usort($matching, static fn (StockMovement $a, StockMovement $b) => $b->getAt() <=> $a->getAt());
 
         return new Page(\array_slice($matching, $page->offset(), $page->size), \count($matching), $page);
+    }
+
+    public function soldWithoutStockAmong(Uuid $companyId, array $movements): array
+    {
+        return array_values(array_map(
+            static fn (StockMovement $m): string => $m->getId()->toRfc4122(),
+            array_filter($movements, fn (StockMovement $m): bool => $m->getCompany()->getId()->equals($companyId) && $this->soldWithoutStock($m)),
+        ));
+    }
+
+    /** What the database's WITHOUT_STOCK answers: a sale its place could not cover, and no count there since. */
+    private function soldWithoutStock(StockMovement $sold): bool
+    {
+        if (!\in_array($sold->getSourceType(), [StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE], true) || -1 !== new Number($sold->getQuantity())->compare(0)) {
+            return false;
+        }
+        $samePlace = static fn (StockMovement $m): bool => $m->getCompany()->getId()->equals($sold->getCompany()->getId()) && $m->getLocation()->getId()->equals($sold->getLocation()->getId());
+        $upTo = new Number('0');
+        foreach ($this->movements as $m) {
+            $before = $m->getAt() < $sold->getAt() || ($m->getAt() == $sold->getAt() && strcmp($m->getId()->toRfc4122(), $sold->getId()->toRfc4122()) <= 0);
+            if ($samePlace($m) && $m->getProduct()->getId()->equals($sold->getProduct()->getId()) && $before) {
+                $upTo = $upTo->add($m->getQuantity());
+            }
+        }
+        if (-1 !== $upTo->compare(0)) {
+            return false;
+        }
+        $kept = $sold->getProduct()->getMergedInto()?->getId();
+
+        return !array_any($this->movements, static fn (StockMovement $m): bool => $samePlace($m) && StockMovement::SOURCE_COUNT === $m->getSourceType()
+            && ($m->getProduct()->getId()->equals($sold->getProduct()->getId()) || (null !== $kept && $m->getProduct()->getId()->equals($kept)))
+            && ($m->getAt() > $sold->getAt() || ($m->getAt() == $sold->getAt() && strcmp($m->getId()->toRfc4122(), $sold->getId()->toRfc4122()) > 0)));
     }
 
     public function countAt(Uuid $locationId): int

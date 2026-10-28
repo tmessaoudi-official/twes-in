@@ -149,7 +149,18 @@ test('a sale without stock puts the product « Sous zéro », and counting it th
     await expect(row.locator('[data-column="onHand"]')).toHaveText(`-${SOLD}`);
     expect(await wcagViolations(page)).toEqual([]);
 
+    // The movements say the same sale under « Sorties sans stock », until a count there follows it, linked from here.
+    await expect(page.getByTestId('watch-elsewhere-1')).toHaveAttribute(
+      'href',
+      '/stock/movements?withoutStock=yes',
+    );
+    const sold = (): ReturnType<Page['getByRole']> =>
+      page.getByTestId('stock-movements-table').getByRole('row').filter({ hasText: reference });
+    await page.goto(`/stock/movements?productId=${ids[0]}&withoutStock=yes`);
+    await expect(sold()).toHaveCount(1);
+
     // « Compter » opens count mode at that place, the product's line waiting for what is there.
+    await page.goto('/watch/stock.below_zero?size=100');
     await row.locator('[data-testid^="row-action-count-"]').click();
     await expect(page).toHaveURL(new RegExp(`/stock/locations/${place}\\?product=${ids[0]}`));
     await expect(page.getByTestId('stock-count-0')).toContainText(reference);
@@ -162,6 +173,9 @@ test('a sale without stock puts the product « Sous zéro », and counting it th
     await expect(
       page.getByTestId('watch-table').getByRole('row').filter({ hasText: reference }),
     ).toHaveCount(0);
+    await page.goto(`/stock/movements?productId=${ids[0]}&withoutStock=yes`);
+    await expect(page.getByTestId('stock-movements-empty')).toBeVisible();
+    await expect(sold()).toHaveCount(0);
   } finally {
     if (ids[0] !== undefined && place !== null) await countedAt(page, ids[0], place, '0');
     await forget(page, ids);

@@ -150,6 +150,7 @@
     },
     "elsewhere": {
       "below_zero": "كلّ المخزون تحت الصفر",
+      "sold_without_stock": "المبيعات دون مخزون",
       "drafts": "كلّ المسودات",
       "open_orders": "كلّ الطلبيات الجارية"
     },

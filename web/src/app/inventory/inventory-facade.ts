@@ -279,6 +279,7 @@ export class InventoryFacade {
         sourceTypes: [],
         reasons: [],
         costToComplete: 'yes',
+        withoutStock: null,
         intervals: {},
         lot: null,
         order: null,

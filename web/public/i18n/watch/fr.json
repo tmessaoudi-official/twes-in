@@ -150,6 +150,7 @@
     },
     "elsewhere": {
       "below_zero": "Tout le stock sous zéro",
+      "sold_without_stock": "Les sorties sans stock",
       "drafts": "Tous les brouillons",
       "open_orders": "Toutes les commandes en cours"
     },

@@ -47,10 +47,13 @@ final readonly class StockMovementCollectionProvider implements ProviderInterfac
         $page = $this->stock->searchMovements($company, $search, $this->paging->request($operation, $context));
         // The losses' files counted once for the page, not once per row.
         $counts = $this->attachments->attachmentCounts($company, $page->items);
+        // Which sales of the page left their place short, read once for the page as well.
+        $short = array_flip($this->stock->soldWithoutStock($company, $page->items));
 
-        return $this->paging->paginator($page, static function (StockMovement $movement) use ($counts): StockMovementResource {
+        return $this->paging->paginator($page, static function (StockMovement $movement) use ($counts, $short): StockMovementResource {
             $resource = StockMovementResource::of($movement);
             $resource->attachmentCount = $counts[$movement->getId()->toRfc4122()] ?? $resource->attachmentCount;
+            $resource->withoutStock = isset($short[$movement->getId()->toRfc4122()]);
 
             return $resource;
         });

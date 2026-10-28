@@ -919,6 +919,7 @@ function toMovementParams(search: StockMovementSearch): HttpParams {
   for (const type of search.sourceTypes) params = params.append('sourceType[]', type);
   for (const reason of search.reasons) params = params.append('reason[]', reason);
   if (search.costToComplete !== null) params = params.set('costToComplete', search.costToComplete);
+  if (search.withoutStock !== null) params = params.set('withoutStock', search.withoutStock);
   for (const [key, value] of Object.entries(search.intervals)) {
     params = params.set(apiRangeKey(key), value);
   }
@@ -1068,6 +1069,7 @@ function toMovement(
     at: raw.at ?? '',
     costTyped: raw.costTyped ?? false,
     costToComplete: raw.costToComplete ?? false,
+    withoutStock: raw.withoutStock ?? false,
     attachmentCount: raw.attachmentCount ?? null,
   };
 }

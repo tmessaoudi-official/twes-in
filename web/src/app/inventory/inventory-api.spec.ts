@@ -61,6 +61,7 @@ const received: StockMovementRow = {
   at: '2026-09-15T09:00:00+00:00',
   costTyped: false,
   costToComplete: false,
+  withoutStock: false,
   attachmentCount: null,
 };
 
@@ -436,6 +437,7 @@ describe('InventoryApi', () => {
           sourceTypes: [],
           reasons: [],
           costToComplete: null,
+          withoutStock: null,
           intervals: {},
           lot: ' L-1 ',
           order: null,
@@ -458,6 +460,7 @@ describe('InventoryApi', () => {
       sourceTypes: ['credit_note'],
       reasons: ['broken'],
       costToComplete: 'yes',
+      withoutStock: 'yes',
       intervals: { 'movedAt.from': '2026-10-01' },
       lot: ' L-2408 ',
       order: { key: 'quantity', direction: 'asc' },
@@ -477,7 +480,9 @@ describe('InventoryApi', () => {
       'q',
       'reason[]',
       'sourceType[]',
+      'withoutStock',
     ]);
+    expect(asked.request.params.get('withoutStock')).toBe('yes');
     // Several values of one filter repeat its name; the API ORs them, and ANDs the filters (row 197).
     expect(asked.request.params.getAll('kind[]')).toEqual(['in', 'out']);
     expect(asked.request.params.getAll('locationId[]')).toEqual(['l1', 'l2']);
@@ -498,6 +503,7 @@ describe('InventoryApi', () => {
       sourceTypes: [],
       reasons: [],
       costToComplete: null,
+      withoutStock: null,
       intervals: {},
       lot: null,
       order: null,

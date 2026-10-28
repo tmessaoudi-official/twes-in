@@ -49,6 +49,7 @@ const MOVEMENTS_SEARCH = {
   sourceTypes: [],
   reasons: [],
   costToComplete: null,
+  withoutStock: null,
   intervals: {},
   lot: null,
   order: null,
