@@ -172,8 +172,9 @@ test('a sale without stock puts the product « Sous zéro », and counting it th
     await expect(
       page.getByTestId('watch-table').getByRole('row').filter({ hasText: reference }),
     ).toHaveCount(0);
+    // A list with a filter named that finds nothing says so of the filter, not that there are no movements at all.
     await page.goto(`/stock/movements?productId=${ids[0]}&withoutStock=yes`);
-    await expect(page.getByTestId('stock-movements-empty')).toBeVisible();
+    await expect(page.getByTestId('list-no-match')).toBeVisible();
     await expect(sold()).toHaveCount(0);
   } finally {
     if (ids[0] !== undefined && place !== null) await countedAt(page, ids[0], place, '0');
