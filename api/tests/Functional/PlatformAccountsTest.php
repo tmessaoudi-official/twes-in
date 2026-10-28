@@ -111,6 +111,7 @@ final class PlatformAccountsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         self::assertTrue($this->json()['active']);
+        self::assertSame(['operator_ended_sessions'], $this->securityNotices(), 'the person is told who signed them out');
         $this->resume($theirs);
         $this->getJson('/api/auth/me');
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
@@ -126,6 +127,8 @@ final class PlatformAccountsTest extends ApiTestCase
         $this->postJson($this->pathOf($target, 'deactivate'), []);
         self::assertResponseIsSuccessful();
         self::assertFalse($this->json()['active']);
+        // A deactivated account is still told: the mail goes to its address, which it cannot sign in to change.
+        self::assertSame(['operator_deactivated'], $this->securityNotices());
 
         $this->resume($theirs);
         $this->getJson('/api/auth/me');
@@ -138,6 +141,7 @@ final class PlatformAccountsTest extends ApiTestCase
         $this->postJson($this->pathOf($target, 'reactivate'), []);
         self::assertResponseIsSuccessful();
         self::assertTrue($this->json()['active']);
+        self::assertSame(['operator_reactivated'], $this->securityNotices());
 
         $this->client->getCookieJar()->clear();
         $this->login('nadia@acme.test', self::PASSWORD);

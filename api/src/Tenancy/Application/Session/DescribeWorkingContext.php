@@ -74,6 +74,8 @@ final readonly class DescribeWorkingContext
             $supportAccessUntil,
             $this->closing->of($company),
             $supportAccessReason,
+            Company::STATUS_SUSPENDED === $company->getStatus() && !$company->wasOpened(),
+            $company->getSuspensionReason(),
         );
     }
 

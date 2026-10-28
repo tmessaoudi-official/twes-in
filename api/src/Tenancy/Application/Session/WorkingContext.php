@@ -33,6 +33,10 @@ final readonly class WorkingContext
         public ?ClosedDown $closing = null,
         /** what the owner said is wrong, for the support reading the company through a grant; null for a member */
         public ?string $supportAccessReason = null,
+        /** whether an operator refused the company before it was ever opened, rather than suspended it */
+        public bool $refused = false,
+        /** why an operator refused or suspended it, null when they did not say or while it is open */
+        public ?string $suspensionReason = null,
     ) {
     }
 }

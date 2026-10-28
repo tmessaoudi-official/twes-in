@@ -112,6 +112,10 @@ export interface WorkingCompany {
   logoVersion?: string | null;
   /** A closed company's terms, null while it works. */
   closing?: CompanyClosing | null;
+  /** Suspended without ever having been opened: an operator refused it, which its page says rather than « suspended ». */
+  refused?: boolean;
+  /** What the operator gave as the reason of the refusal or suspension, null when none. */
+  suspensionReason?: string | null;
 }
 
 /** Until when a closed company is kept (a day) and until when its owner may still reopen it (a moment). */

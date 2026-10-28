@@ -1,0 +1,27 @@
+{# The mail an owner receives when an operator refuses or suspends their company: why, if the operator said, and whom to ask. Plain, inline-styled HTML. #}
+<!DOCTYPE html>
+<html lang="{{ app.locale }}" dir="{{ text_direction(app.locale) }}">
+  <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+    <div dir="{{ text_direction(app.locale) }}" lang="{{ app.locale }}">
+      <h1 style="font-size: 20px;">{{ (kind ~ '.heading')|trans({'%company%': companyName}, 'emails') }}</h1>
+      <p>{{ (kind ~ '.intro')|trans({'%company%': companyName, '%product%': productName}, 'emails') }}</p>
+      {% if reason %}
+        <p>{{ 'company_decision.reason'|trans({}, 'emails') }} <bdi dir="auto">{{ reason }}</bdi></p>
+      {% else %}
+        <p>{{ 'company_decision.no_reason'|trans({'%product%': productName}, 'emails') }}</p>
+      {% endif %}
+      <p>{{ (kind ~ '.data')|trans({}, 'emails') }}</p>
+      {% if support is not empty %}
+        <p>{{ 'company_decision.contact'|trans({'%product%': productName}, 'emails') }}</p>
+        <ul>
+          {% for channel, value in support %}
+            <li>{{ ('company_decision.channels.' ~ channel)|trans({}, 'emails') }} <bdi dir="ltr">{{ value }}</bdi></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>{{ 'company_decision.reply'|trans({'%product%': productName}, 'emails') }}</p>
+      {% endif %}
+      <p dir="auto" style="font-size: 12px; color: #888;">{{ productName }}</p>
+    </div>
+  </body>
+</html>

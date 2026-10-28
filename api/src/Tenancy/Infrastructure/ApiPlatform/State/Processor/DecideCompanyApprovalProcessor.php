@@ -25,9 +25,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
- * Approves or rejects the company in the path; the operation's security has already required an operator.
+ * Approves or rejects the company in the path, a refusal with the reason the operator gave; the operation's security
+ * has already required an operator.
  *
- * @implements ProcessorInterface<null, PlatformCompanyResource>
+ * @implements ProcessorInterface<PlatformCompanyResource|null, PlatformCompanyResource>
  */
 final readonly class DecideCompanyApprovalProcessor implements ProcessorInterface
 {
@@ -45,7 +46,7 @@ final readonly class DecideCompanyApprovalProcessor implements ProcessorInterfac
 
         try {
             $company = PlatformCompanyResource::REJECT === $operation->getName()
-                ? $this->decide->reject($companyId, $account->getId())
+                ? $this->decide->reject($companyId, $account->getId(), $data instanceof PlatformCompanyResource ? $data->reason : null)
                 : $this->decide->approve($companyId, $account->getId());
         } catch (CompanyNotFound $notFound) {
             throw new NotFoundHttpException($notFound->getMessage(), $notFound);

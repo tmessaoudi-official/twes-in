@@ -29,6 +29,7 @@ const row: PlatformCompanyRow = {
   createdAt: '2026-09-15T10:00:00+00:00',
   owners: ['nadia@example.test'],
   ownerInvitations: [],
+  opened: false,
   subscription: null,
 };
 
@@ -226,14 +227,14 @@ describe('PlatformFacade', () => {
     expect(facade.waiting()).toEqual([]);
   });
 
-  it('rejects a company and reads the waiting list again', async () => {
+  it('rejects a company with the reason given and reads the waiting list again', async () => {
     await facade.load();
     api.reject.mockResolvedValue({ ...row, status: 'suspended' });
     api.companies.mockResolvedValue({ rows: [], total: 0 });
 
-    expect(await facade.reject('c1')).toBe(true);
+    expect(await facade.reject('c1', 'Matricule introuvable')).toBe(true);
 
-    expect(api.reject).toHaveBeenCalledWith('c1');
+    expect(api.reject).toHaveBeenCalledWith('c1', 'Matricule introuvable');
     expect(facade.waiting()).toEqual([]);
   });
 

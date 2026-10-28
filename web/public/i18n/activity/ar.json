@@ -16,6 +16,7 @@
         "created": "أنشأ الشركة",
         "period_closed": "أقفل فترة",
         "rejected": "رفض الشركة",
+        "restored": "أعاد الوصول إلى الشركة",
         "suspended": "علّق الشركة"
       },
       "customer": {

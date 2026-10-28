@@ -178,6 +178,8 @@ class StaticLoader implements TranslateLoader {
             reject: 'Refuser',
             reject_title: 'Refuser cette entreprise ?',
             suspend: 'Suspendre',
+            suspend_title: 'Suspendre cette entreprise ?',
+            reason: 'Motif (facultatif)',
             keep: 'Ne rien changer',
           },
         },
@@ -252,6 +254,7 @@ const row: PlatformCompanyRow = {
   createdAt: '2026-09-15T10:00:00+00:00',
   owners: ['nadia@example.test'],
   ownerInvitations: [],
+  opened: false,
   subscription: null,
 };
 
@@ -674,8 +677,18 @@ describe('PlatformPage', () => {
     card.querySelector<HTMLButtonElement>('[data-testid="document-action-suspend"]')!.click();
     fixture.detectChanges();
     await fixture.whenStable();
+    // The reason is the operator's to give or not: the mail says it, or that none was given.
+    // The question just answered « keep » may still be closing: the note is the last one drawn, as its button is.
+    const notes = document.querySelectorAll<HTMLTextAreaElement>('[data-testid="confirm-note"]');
+    const note = notes[notes.length - 1];
+    expect(note.maxLength).toBe(500);
+    note.value = 'Matricule introuvable';
+    note.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
     await answer(fixture, 'run');
-    await vi.waitFor(() => expect(facade.reject).toHaveBeenCalledWith('c1'));
+    await vi.waitFor(() =>
+      expect(facade.reject).toHaveBeenCalledWith('c1', 'Matricule introuvable'),
+    );
     await vi.waitFor(() =>
       expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
         expect.objectContaining({ key: 'platform.companies.done.rejected' }),
@@ -702,7 +715,11 @@ describe('PlatformPage', () => {
     TestBed.inject(ScreenActions).actions()[0].run!();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(facade.reject).toHaveBeenCalledWith('c1');
+    expect(document.querySelector('[data-testid="confirm-title"]')?.textContent).toContain(
+      'Suspendre',
+    );
+    await answer(fixture, 'run');
+    await vi.waitFor(() => expect(facade.reject).toHaveBeenCalledWith('c1', null));
     await vi.waitFor(() =>
       expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
         expect.objectContaining({ key: 'platform.companies.done.suspended' }),
@@ -735,7 +752,7 @@ describe('PlatformPage', () => {
   });
 
   it('offers a suspended company its access back, and no second suspension', async () => {
-    companies.set([{ ...row, status: 'suspended' }]);
+    companies.set([{ ...row, status: 'suspended', opened: true }]);
     const { fixture, query } = await render('/?tab=companies&company=c1');
 
     const sheet = query('company-sheet-Nouvelle Société')!;
@@ -761,6 +778,27 @@ describe('PlatformPage', () => {
           key: 'platform.companies.done.restored',
           effect: 'corrigeable',
         }),
+      ]),
+    );
+  });
+
+  it('approves a refused company, never opened, rather than giving it back an access it never had', async () => {
+    companies.set([{ ...row, status: 'suspended', opened: false }]);
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+
+    const approve = query('company-sheet-Nouvelle Société')!.querySelector<HTMLButtonElement>(
+      '[data-testid="document-action-approve"]',
+    )!;
+    expect(approve.textContent).toContain('Approuver');
+    expect(approve.textContent).not.toContain('Rétablir');
+
+    approve.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await answer(fixture, 'run');
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({ key: 'platform.companies.done.approved' }),
       ]),
     );
   });

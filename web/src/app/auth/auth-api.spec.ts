@@ -33,6 +33,8 @@ const owner: Me = {
     },
     logoVersion: 'f1',
     closing: null,
+    refused: false,
+    suspensionReason: null,
   },
   permissions: ['*'],
   mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
@@ -94,6 +96,31 @@ describe('AuthApi', () => {
       retainUntil: '2036-12-31',
       reopenUntil: '2026-11-02T10:00:00+01:00',
     });
+  });
+
+  it('says a company an operator refused, and the reason given, from one suspended without a word', async () => {
+    const refused = api.me();
+    http.expectOne('/api/auth/me').flush({
+      ...owner,
+      company: {
+        ...owner.company,
+        status: 'suspended',
+        refused: true,
+        suspensionReason: 'Matricule introuvable',
+      },
+    });
+    expect((await refused).company).toEqual(
+      expect.objectContaining({ refused: true, suspensionReason: 'Matricule introuvable' }),
+    );
+
+    const suspended = api.me();
+    http.expectOne('/api/auth/me').flush({
+      ...owner,
+      company: { ...owner.company, status: 'suspended', refused: false, suspensionReason: null },
+    });
+    expect((await suspended).company).toEqual(
+      expect.objectContaining({ refused: false, suspensionReason: null }),
+    );
   });
 
   it('reads which countries the demo is open in', async () => {

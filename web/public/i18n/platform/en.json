@@ -64,10 +64,12 @@
         "restore_message": "{{name}} opens to its members again, and its owners are told by mail. “Suspend” closes it again.",
         "reject": "Reject",
         "reject_title": "Reject this company?",
-        "reject_message": "{{name}} stays closed to its members. “Restore access” opens it later.",
+        "reject_message": "{{name}} stays closed to its members, and its owners receive a mail with the reason, if one is given, and the support contact. “Restore access” opens it later.",
         "suspend": "Suspend",
         "suspend_title": "Suspend this company?",
-        "suspend_message": "The members of {{name}} lose access to it, from now on. Its data stays intact, and “Restore access” reopens it.",
+        "suspend_message": "{{name}}’s members lose access right away, and its owners receive a mail with the reason, if one is given, and the support contact. Its data stays intact, and “Restore access” opens it again.",
+        "reason": "Reason (optional)",
+        "reason_hint": "It appears in the mail to the owners and on their sign-in page.",
         "keep": "Change nothing"
       },
       "done": {

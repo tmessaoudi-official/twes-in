@@ -296,8 +296,8 @@ export class PlatformFacade {
     return this.decide(() => this.api.approve(companyId));
   }
 
-  reject(companyId: string): Promise<boolean> {
-    return this.decide(() => this.api.reject(companyId));
+  reject(companyId: string, reason: string | null): Promise<boolean> {
+    return this.decide(() => this.api.reject(companyId, reason));
   }
 
   /** The switch shows the new value only once the platform holds it. */

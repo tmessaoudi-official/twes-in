@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mime\Email as MimeEmail;
@@ -83,16 +85,23 @@ final class CompanyApprovalTest extends ApiTestCase
         self::assertSame(['company.approved'], $this->auditActionsFor($company));
     }
 
-    public function testRejectingSuspendsTheCompanyAndKeepsItClosed(): void
+    public function testRefusingAWaitingCompanyKeepsItClosedAndTellsItsOwnersWhyAndWhomToAsk(): void
     {
+        $this->em()->persist(new Setting(SettingAddress::platform(), 'support.phone', '+216 71 900 868', new \DateTimeImmutable()));
+        $this->em()->flush();
         $company = $this->pendingCompany('Nouvelle Société', 'nadia@example.test');
         $this->signedInAsOperator();
 
-        $this->postJson($this->pathOf($company, 'reject'), []);
+        $this->postJson($this->pathOf($company, 'reject'), ['reason' => "  Matricule introuvable au registre\u{00A0}"]);
 
         self::assertResponseIsSuccessful();
         self::assertSame('suspended', $this->json()['status']);
+        self::assertFalse($this->json()['opened'], 'its operators see it was never opened, so opening it approves it');
         self::assertSame(['company.rejected'], $this->auditActionsFor($company));
+        $mail = $this->lastMailTo('nadia@example.test');
+        self::assertStringContainsString('n’a pas été acceptée', $mail);
+        self::assertStringContainsString('Matricule introuvable au registre</bdi>', $mail, 'the reason as typed, its ends trimmed');
+        self::assertStringContainsString('+216 71 900 868', $mail, 'whom to ask');
 
         $this->getJson(self::WAITING);
         self::assertSame([], $this->jsonList());
@@ -100,9 +109,13 @@ final class CompanyApprovalTest extends ApiTestCase
         $this->login('nadia@example.test', 'password-1234');
         $this->getJson('/api/companies/'.$company->getId()->toRfc4122().'/members');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson('/api/auth/me');
+        $signedIn = $this->arrayAt($this->json(), 'company');
+        self::assertTrue($signedIn['refused'], 'its sign-in says refused, never suspended');
+        self::assertSame('Matricule introuvable au registre', $signedIn['suspensionReason']);
     }
 
-    public function testSuspendingAnOpenCompanyClosesItAndIsRecordedAsASuspension(): void
+    public function testSuspendingAnOpenCompanyClosesItAndTellsItsOwnersEvenWithoutAReason(): void
     {
         $company = $this->createCompany('Acme');
         $this->createUser('nadia@example.test', 'password-1234', $company);
@@ -112,16 +125,45 @@ final class CompanyApprovalTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSame('suspended', $this->json()['status']);
+        self::assertTrue($this->json()['opened']);
         // A company that was open is suspended, not refused: the journal says which.
         self::assertSame(['company.suspended'], $this->auditActionsFor($company));
-        self::assertEmailCount(0);
+        $mail = $this->lastMailTo('nadia@example.test');
+        self::assertStringContainsString('est suspendu', $mail);
+        self::assertStringContainsString('sans en préciser le motif', $mail);
 
         $this->login('nadia@example.test', 'password-1234');
         $this->getJson('/api/companies/'.$company->getId()->toRfc4122().'/members');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson('/api/auth/me');
+        $signedIn = $this->arrayAt($this->json(), 'company');
+        self::assertFalse($signedIn['refused']);
+        self::assertNull($signedIn['suspensionReason']);
     }
 
-    public function testASuspendedCompanyIsOpenedAgainAndItsOwnersAreTold(): void
+    public function testRestoringASuspendedCompanySaysAccessIsBackNeverThatItWasApproved(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('nadia@example.test', 'password-1234', $company);
+        $this->signedInAsOperator();
+        $this->postJson($this->pathOf($company, 'reject'), ['reason' => 'Facture impayée']);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->pathOf($company, 'approve'), []);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('active', $this->json()['status']);
+        $mail = $this->lastMailTo('nadia@example.test');
+        self::assertStringContainsString('rétabli', $mail);
+        self::assertStringNotContainsString('approuvée', $mail);
+        // Two writes inside one second tie on the journal's time: the set, never the order.
+        $actions = $this->auditActionsFor($company);
+        sort($actions);
+        self::assertSame(['company.restored', 'company.suspended'], $actions);
+        self::assertNull($this->em()->getConnection()->fetchOne('SELECT suspension_reason FROM company WHERE id = ?', [$company->getId()->toRfc4122()]), 'a reason leaves with its suspension');
+    }
+
+    public function testARefusedCompanyApprovedLaterIsApprovedForTheFirstTime(): void
     {
         $company = $this->pendingCompany('Nouvelle Société', 'nadia@example.test');
         $this->signedInAsOperator();
@@ -133,10 +175,22 @@ final class CompanyApprovalTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame('active', $this->json()['status']);
         self::assertStringContainsString('Nouvelle Société', $this->lastMailTo('nadia@example.test'));
-        // Two writes inside one second tie on the journal's time: the set, never the order.
+        self::assertStringContainsString('approuvée', $this->lastMailTo('nadia@example.test'));
         $actions = $this->auditActionsFor($company);
         sort($actions);
         self::assertSame(['company.approved', 'company.rejected'], $actions);
+    }
+
+    public function testAReasonPastItsLimitIsRefusedAndNothingChanges(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->signedInAsOperator();
+
+        $this->postJson($this->pathOf($company, 'reject'), ['reason' => str_repeat('a', 501)]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('active', $this->em()->getConnection()->fetchOne('SELECT status FROM company WHERE id = ?', [$company->getId()->toRfc4122()]));
+        self::assertSame([], $this->auditActionsFor($company));
     }
 
     public function testAnUnknownCompanyIsNotFound(): void

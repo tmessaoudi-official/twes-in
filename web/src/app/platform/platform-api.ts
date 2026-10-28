@@ -100,8 +100,9 @@ export class PlatformApi {
     return this.decide(companyId, 'approve');
   }
 
-  reject(companyId: string): Promise<PlatformCompanyRow> {
-    return this.decide(companyId, 'reject');
+  /** Refuses a waiting company or suspends an open one; the reason, when given, is what the owners' mail says. */
+  reject(companyId: string, reason: string | null): Promise<PlatformCompanyRow> {
+    return this.decide(companyId, 'reject', reason === null ? {} : { reason });
   }
 
   /**
@@ -202,13 +203,17 @@ export class PlatformApi {
       .catch(() => undefined);
   }
 
-  private decide(companyId: string, decision: 'approve' | 'reject'): Promise<PlatformCompanyRow> {
+  private decide(
+    companyId: string,
+    decision: 'approve' | 'reject',
+    body: { reason?: string } = {},
+  ): Promise<PlatformCompanyRow> {
     return this.guard(async () =>
       toRow(
         await firstValueFrom(
           this.http.post<PlatformCompanyPlatformCompanyRead>(
             `/api/platform/companies/${encodeURIComponent(companyId)}/${decision}`,
-            {},
+            body,
           ),
         ),
       ),
@@ -405,6 +410,7 @@ function toRow(read: PlatformCompanyPlatformCompanyRead): PlatformCompanyRow {
       expiresAt: invitation.expiresAt,
       expired: invitation.expired,
     })),
+    opened: read.opened ?? true,
     subscription:
       read.subscription === null || read.subscription === undefined
         ? null

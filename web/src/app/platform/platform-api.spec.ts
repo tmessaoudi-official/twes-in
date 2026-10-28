@@ -40,6 +40,7 @@ describe('PlatformApi', () => {
     ownerInvitations: [
       { email: 'late@example.test', expiresAt: '2026-10-01T10:00:00+00:00', expired: true },
     ],
+    opened: false,
     subscription: null,
   };
 
@@ -304,11 +305,18 @@ describe('PlatformApi', () => {
     approve.flush({ ...waiting, status: 'active' });
     expect((await approved).status).toBe('active');
 
-    const rejected = api.reject('c1');
+    const rejected = api.reject('c1', null);
     const reject = http.expectOne('/api/platform/companies/c1/reject');
     expect(reject.request.method).toBe('POST');
+    expect(reject.request.body).toEqual({});
     reject.flush({ ...waiting, status: 'suspended' });
     expect((await rejected).status).toBe('suspended');
+
+    // A reason goes with it when the operator wrote one, which the mail to the owners says.
+    void api.reject('c2', 'Matricule introuvable');
+    const reasoned = http.expectOne('/api/platform/companies/c2/reject');
+    expect(reasoned.request.body).toEqual({ reason: 'Matricule introuvable' });
+    reasoned.flush({ ...waiting, id: 'c2', status: 'suspended' });
   });
 
   it("reads the switches, the support channels, the delays, the demo, the imports and every key's version in one request", async () => {

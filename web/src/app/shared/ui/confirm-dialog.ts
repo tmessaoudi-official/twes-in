@@ -72,6 +72,23 @@ export function sameTyped(typed: string, expected: string): boolean {
           />
         </mat-form-field>
       }
+      @if (data.note; as note) {
+        <mat-form-field class="mt-3 w-full">
+          <mat-label>{{ note.label | translate }}</mat-label>
+          <textarea
+            matInput
+            rows="3"
+            [maxLength]="note.maxLength"
+            [value]="written()"
+            (input)="written.set($any($event.target).value)"
+            data-testid="confirm-note"
+          ></textarea>
+          <mat-hint>{{ note.hint | translate }}</mat-hint>
+          <mat-hint align="end"
+            ><bdi>{{ written().length }} / {{ note.maxLength }}</bdi></mat-hint
+          >
+        </mat-form-field>
+      }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="ref.close(false)" data-testid="confirm-keep">
@@ -82,7 +99,7 @@ export function sameTyped(typed: string, expected: string): boolean {
         type="button"
         [class.twes-danger]="danger"
         [disabled]="!ready()"
-        (click)="ref.close(true)"
+        (click)="confirm()"
         data-testid="confirm-run"
       >
         {{ data.confirmLabel | translate }}
@@ -91,13 +108,15 @@ export function sameTyped(typed: string, expected: string): boolean {
   `,
 })
 export class ConfirmDialog {
-  protected readonly ref = inject<MatDialogRef<ConfirmDialog, boolean>>(MatDialogRef);
+  protected readonly ref = inject<MatDialogRef<ConfirmDialog, boolean | string>>(MatDialogRef);
   protected readonly data = inject<ActionConfirm>(MAT_DIALOG_DATA);
   protected readonly icons = ACTION_KIND_ICONS;
   protected readonly danger = isDanger(this.data.kind);
 
   private readonly translate = inject(TranslateService);
   protected readonly typed = signal('');
+  /** What was written in the note, when the action asks one. */
+  protected readonly written = signal('');
   /** The word to type, in the reader's language, or the name as it is; null when nothing is to be typed. */
   protected readonly expected = signal<string | null>(this.expectedWord());
   protected readonly ready = computed(() => {
@@ -107,7 +126,12 @@ export class ConfirmDialog {
 
   protected confirmTyped(event: Event): void {
     event.preventDefault();
-    if (this.ready()) this.ref.close(true);
+    if (this.ready()) this.confirm();
+  }
+
+  /** Yes, or what was written when the action asks a note: an empty one still says yes. */
+  protected confirm(): void {
+    this.ref.close(this.data.note === undefined ? true : this.written());
   }
 
   private expectedWord(): string | null {

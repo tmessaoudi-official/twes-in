@@ -33,6 +33,8 @@ class StaticLoader implements TranslateLoader {
           title: 'Presque prêt',
           pending: '{{company}} attend l’approbation d’un opérateur.',
           suspended: '{{company}} est suspendue.',
+          refused: '{{company}} n’a pas été acceptée.',
+          reason: 'Motif :',
           locked: '{{company}} est fermée en attendant le règlement.',
           declare_payment: 'Déclarer un règlement',
           ask_owner: 'Seul le propriétaire peut déclarer le règlement.',
@@ -183,6 +185,37 @@ describe('AwaitingApprovalPage', () => {
 
     expect(query('awaiting-suspended')?.textContent).toContain('Nouvelle Société');
     expect(query('awaiting-pending')).toBeNull();
+    expect(query('awaiting-reason')).toBeNull();
+  });
+
+  // The operator's reason, when one was given, and refused rather than suspended for a company never opened.
+  it('gives the reason the operator gave for the suspension', async () => {
+    const suspended = state('suspended');
+    me.set({
+      ...suspended,
+      company: { ...suspended.company!, suspensionReason: 'Facture impayée' },
+    });
+
+    const { query } = await render();
+
+    expect(query('awaiting-suspended')?.textContent).toContain('Nouvelle Société');
+    expect(query('awaiting-reason')?.textContent).toContain('Motif : Facture impayée');
+  });
+
+  it('says a company never opened was refused, never that it is suspended', async () => {
+    const suspended = state('suspended');
+    me.set({
+      ...suspended,
+      company: { ...suspended.company!, refused: true, suspensionReason: 'Matricule introuvable' },
+    });
+
+    const { query } = await render();
+
+    expect(query('awaiting-refused')?.textContent).toContain(
+      'Nouvelle Société n’a pas été acceptée.',
+    );
+    expect(query('awaiting-suspended')).toBeNull();
+    expect(query('awaiting-reason')?.textContent).toContain('Matricule introuvable');
   });
 
   it('says an unpaid company is closed until it is settled, before saying anything about its status', async () => {

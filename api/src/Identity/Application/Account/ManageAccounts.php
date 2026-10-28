@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Identity\Application\Security\SecurityChange;
+use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\AccountSearch;
@@ -35,7 +37,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
     public const string DEACTIVATED = 'account.deactivated';
     public const string REACTIVATED = 'account.reactivated';
 
-    public function __construct(private UserRepository $users, private AuditTrail $audit, private Transactions $transactions, private DemoAccounts $demos)
+    public function __construct(private UserRepository $users, private AuditTrail $audit, private Transactions $transactions, private DemoAccounts $demos, private SecurityNotices $notices)
     {
     }
 
@@ -57,6 +59,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
             $user->rotateSecurityStamp();
             $this->users->save($user);
             $this->record($user, self::SESSIONS_ENDED, $operatorId);
+            $this->notices->tell($user->getId(), SecurityChange::OperatorEndedSessions);
 
             return AccountView::of($user);
         });
@@ -75,6 +78,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
                 $user->rotateSecurityStamp();
                 $this->users->save($user);
                 $this->record($user, self::DEACTIVATED, $operatorId);
+                $this->notices->tell($user->getId(), SecurityChange::OperatorDeactivated);
             }
 
             return AccountView::of($user);
@@ -90,6 +94,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
                 $user->setActive(true);
                 $this->users->save($user);
                 $this->record($user, self::REACTIVATED, $operatorId);
+                $this->notices->tell($user->getId(), SecurityChange::OperatorReactivated);
             }
 
             return AccountView::of($user);

@@ -29,9 +29,20 @@
         </button>
       }
     } @else if (company.status === 'suspended') {
-      <p data-testid="awaiting-suspended">
-        {{ 'auth.awaiting.suspended' | translate: { company: company.name } }}
-      </p>
+      @if (company.refused) {
+        <p data-testid="awaiting-refused">
+          {{ 'auth.awaiting.refused' | translate: { company: company.name } }}
+        </p>
+      } @else {
+        <p data-testid="awaiting-suspended">
+          {{ 'auth.awaiting.suspended' | translate: { company: company.name } }}
+        </p>
+      }
+      @if (company.suspensionReason; as reason) {
+        <p data-testid="awaiting-reason">
+          {{ 'auth.awaiting.reason' | translate }} <bdi dir="auto">{{ reason }}</bdi>
+        </p>
+      }
     } @else {
       <p data-testid="awaiting-pending">
         {{ 'auth.awaiting.pending' | translate: { company: company.name } }}

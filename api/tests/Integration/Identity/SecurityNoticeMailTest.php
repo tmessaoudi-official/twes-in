@@ -51,7 +51,7 @@ final class SecurityNoticeMailTest extends KernelTestCase
         self::assertSame(\count($languages) * \count(SecurityChange::cases()), $written);
     }
 
-    public function testEachChangeHasItsOwnSubjectAndOnlyTheOperatorsResetSaysNoIfItWasNotYou(): void
+    public function testEachChangeHasItsOwnSubjectAndWhatAnOperatorDidNeverAsksIfItWasYou(): void
     {
         self::bootKernel();
         $mailer = static::getContainer()->get(SecurityNoticeMailer::class);
@@ -62,8 +62,9 @@ final class SecurityNoticeMailTest extends KernelTestCase
             $mailer->send(new SecurityNoticeMail('someone@twes.local', 'fr', $change));
             $mail = $this->lastMail();
             $subjects[] = (string) $mail->getSubject();
+            // What an operator did to the account was not the person's doing: no « if it was not you ».
             self::assertSame(
-                SecurityChange::FactorsReplaced !== $change,
+                !\in_array($change, [SecurityChange::FactorsReplaced, SecurityChange::OperatorDeactivated, SecurityChange::OperatorReactivated, SecurityChange::OperatorEndedSessions], true),
                 str_contains((string) $mail->getHtmlBody(), 'Si ce n’est pas vous'),
                 $change->value,
             );

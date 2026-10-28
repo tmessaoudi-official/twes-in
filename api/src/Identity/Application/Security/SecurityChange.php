@@ -27,4 +27,19 @@ enum SecurityChange: string
     case FactorsReplaced = 'factors_replaced';
     /** Wrong passwords or codes locked the account for a while: told once, when the lock is set, with when it ends. */
     case AccountLocked = 'account_locked';
+    /** An operator switched the account off, its sessions ended with it. */
+    case OperatorDeactivated = 'operator_deactivated';
+    /** An operator switched the account on again. */
+    case OperatorReactivated = 'operator_reactivated';
+    /** An operator ended every session of the account. */
+    case OperatorEndedSessions = 'operator_ended_sessions';
+
+    /**
+     * Whether the installation made it rather than someone holding a session: its owner is told what follows, never
+     * asked whether it was them.
+     */
+    public function byTheInstallation(): bool
+    {
+        return \in_array($this, [self::FactorsReplaced, self::OperatorDeactivated, self::OperatorReactivated, self::OperatorEndedSessions], true);
+    }
 }

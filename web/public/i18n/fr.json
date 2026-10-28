@@ -74,6 +74,8 @@
       "title": "Presque prêt",
       "pending": "{{company}} attend l’approbation de l’équipe de la plateforme. Vous recevrez un e-mail dès qu’elle sera approuvée.",
       "suspended": "{{company}} est suspendue. Contactez l’équipe de la plateforme pour en savoir plus.",
+      "refused": "{{company}} n’a pas été acceptée par l’équipe de la plateforme. Contactez-la pour en savoir plus.",
+      "reason": "Motif :",
       "sign_out": "Se déconnecter",
       "locked": "{{company}} est fermée en attendant le règlement de l’abonnement. Contactez-nous pour la rouvrir.",
       "declare_payment": "Déclarer un règlement",

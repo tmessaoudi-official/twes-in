@@ -32,6 +32,9 @@ class Company
     public const string STATUS_CLOSED = 'closed';
 
     /** What a closed company's members may still do: read it, and take its books with them. */
+    /** The longest reason an operator may give for a refusal or a suspension, its column's length. */
+    public const int SUSPENSION_REASON_MAX = 500;
+
     public const array OPEN_WHILE_CLOSED = ['accounting.export'];
 
     #[ORM\Id]
@@ -82,6 +85,17 @@ class Company
     #[ORM\Version]
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
     private int $version = 1;
+
+    /**
+     * When the company was first opened, by an operator's approval or on its own when nobody had to decide; null while
+     * it was never opened. A company suspended without one was refused, and is told so (docs/SPEC.md § 7, 2026-10-27).
+     */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $approvedAt = null;
+
+    /** What the operator gave as the reason of a refusal or a suspension; null when none or while it is open. */
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $suspensionReason = null;
 
     /** When its owner closed the company down; null while it works. Not the accounting period's closedThrough. */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
@@ -164,6 +178,8 @@ class Company
         $this->timezone = $timezone;
         $this->createdAt = $now;
         $this->updatedAt = $now;
+        // Open from the start, as nobody had to decide.
+        $this->approvedAt = $now;
     }
 
     /**
@@ -174,6 +190,7 @@ class Company
     {
         $company = new self($name, $countryCode, $currency, $locale, $timezone, $now);
         $company->status = self::STATUS_PENDING;
+        $company->approvedAt = null;
 
         return $company;
     }
@@ -184,13 +201,39 @@ class Company
     {
         $this->refuseWhenClosedDown();
         $this->changeStatusTo(self::STATUS_ACTIVE, $now);
+        $this->approvedAt ??= $this->updatedAt;
+        $this->suspensionReason = null;
     }
 
-    /** @throws CompanyClosedDown */
-    public function suspend(?\DateTimeImmutable $now = null): void
+    /**
+     * Closes it to its members, an operator's reason kept for them to read: a company never opened is thereby refused.
+     *
+     * @throws CompanyClosedDown
+     */
+    public function suspend(?\DateTimeImmutable $now = null, ?string $reason = null): void
     {
+        if (null !== $reason && mb_strlen($reason) > self::SUSPENSION_REASON_MAX) {
+            throw new \InvalidArgumentException(\sprintf('A reason holds at most %d characters.', self::SUSPENSION_REASON_MAX));
+        }
         $this->refuseWhenClosedDown();
         $this->changeStatusTo(self::STATUS_SUSPENDED, $now);
+        $this->suspensionReason = $reason;
+    }
+
+    /** Whether it was ever opened: its suspension is then a suspension, never a refusal. */
+    public function wasOpened(): bool
+    {
+        return null !== $this->approvedAt;
+    }
+
+    public function getApprovedAt(): ?\DateTimeImmutable
+    {
+        return $this->approvedAt;
+    }
+
+    public function getSuspensionReason(): ?string
+    {
+        return $this->suspensionReason;
     }
 
     /**

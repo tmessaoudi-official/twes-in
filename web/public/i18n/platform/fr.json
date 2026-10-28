@@ -64,10 +64,12 @@
         "restore_message": "{{name}} s’ouvre de nouveau à ses membres, et ses propriétaires en sont prévenus par courrier. « Suspendre » la refermera.",
         "reject": "Refuser",
         "reject_title": "Refuser cette entreprise ?",
-        "reject_message": "{{name}} reste fermée à ses membres. « Rétablir l’accès » l’ouvrira plus tard.",
+        "reject_message": "{{name}} reste fermée à ses membres, et ses propriétaires reçoivent un courrier avec le motif s’il est donné et le contact du support. « Rétablir l’accès » l’ouvrira plus tard.",
         "suspend": "Suspendre",
         "suspend_title": "Suspendre cette entreprise ?",
-        "suspend_message": "Les membres de {{name}} n’y ont plus accès, dès maintenant. Ses données restent intactes, et « Rétablir l’accès » la rouvre.",
+        "suspend_message": "Les membres de {{name}} n’y ont plus accès, dès maintenant, et ses propriétaires reçoivent un courrier avec le motif s’il est donné et le contact du support. Ses données restent intactes, et « Rétablir l’accès » la rouvre.",
+        "reason": "Motif (facultatif)",
+        "reason_hint": "Il figure dans le courrier aux propriétaires et sur leur page de connexion.",
         "keep": "Ne rien changer"
       },
       "done": {

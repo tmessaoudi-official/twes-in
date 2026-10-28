@@ -31,6 +31,30 @@ company_approved:
     heading: '%company% is approved'
     intro: 'The %product% team approved %company%. You and your team can sign in and start now.'
     call_to_action: 'Sign in'
+company_restored:
+    subject: 'Access to %company% is restored on %product%'
+    heading: 'Access to %company% is restored'
+    intro: 'The %product% team restored access to %company%. You and your team can sign in again, and your data is as you left it.'
+    call_to_action: 'Sign in'
+company_suspended:
+    subject: 'Access to %company% is suspended on %product%'
+    heading: 'Access to %company% is suspended'
+    intro: 'The %product% team suspended access to %company%: neither you nor your team can sign in to it for now.'
+    data: 'Your data is kept intact, and you will find it again as soon as access is restored.'
+company_refused:
+    subject: '%company% was not accepted on %product%'
+    heading: '%company% was not accepted'
+    intro: 'The %product% team did not accept the opening of %company%.'
+    data: 'What you entered is kept: if the team changes its decision, you will find it again.'
+company_decision:
+    reason: 'Reason:'
+    no_reason: 'The %product% team decided this without giving a reason.'
+    contact: 'To learn more, contact the %product% team:'
+    reply: 'To learn more, reply to this mail.'
+    channels:
+        phone: 'Phone:'
+        whatsapp: 'WhatsApp:'
+        email: 'E-mail:'
 payment_declared:
     subject: '%company% declared a payment of %amount% %currency%'
     heading: '%company% says it paid'
@@ -150,6 +174,15 @@ security_notice:
     locked_until: 'It stays locked until %moment% (time zone %zone%).'
     unlock: 'To unlock it now, choose a new password with “Forgot password”: the link is sent to this address.'
     locked_not_you: 'If this was not you trying, someone is guessing your password: choose one you use nowhere else, and turn on two-step verification.'
+    operator_deactivated:
+        heading: 'Account deactivated'
+        body: 'The person who runs your installation deactivated your account and ended all your sessions: it can no longer be used to sign in. If you think this is a mistake, contact them.'
+    operator_reactivated:
+        heading: 'Account reactivated'
+        body: 'The person who runs your installation reactivated your account: you can sign in again with your password.'
+    operator_ended_sessions:
+        heading: 'Sessions ended'
+        body: 'The person who runs your installation ended all your sessions: sign in again to continue.'
     passkey: 'Passkey:'
     if_you: 'If this was you, there is nothing to do.'
     not_you: 'If this was not you and you can still sign in, change your password in “My account”, then check “Two-step verification”.'

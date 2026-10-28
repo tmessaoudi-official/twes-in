@@ -37,6 +37,8 @@ class StaticLoader implements TranslateLoader {
         run: 'Émettre',
         keep: 'Garder',
         word: 'SUPPRIMER',
+        reason: 'Motif (facultatif)',
+        reason_hint: 'Il figure dans le courrier envoyé.',
       },
     });
   }
@@ -46,7 +48,11 @@ class StaticLoader implements TranslateLoader {
 describe('ConfirmDialog', () => {
   const close = vi.fn();
 
-  function render(kind: ActionConfirm['kind'], typed?: ActionConfirm['typed']): HTMLElement {
+  function render(
+    kind: ActionConfirm['kind'],
+    typed?: ActionConfirm['typed'],
+    note?: ActionConfirm['note'],
+  ): HTMLElement {
     close.mockReset();
     TestBed.configureTestingModule({
       imports: [ConfirmDialog],
@@ -66,6 +72,7 @@ describe('ConfirmDialog', () => {
             confirmLabel: 'd.run',
             keepLabel: 'd.keep',
             ...(typed === undefined ? {} : { typed }),
+            ...(note === undefined ? {} : { note }),
           } satisfies ActionConfirm,
         },
       ],
@@ -174,6 +181,47 @@ describe('ConfirmDialog', () => {
       const root = render('definitif');
       expect(root.querySelector('[data-testid="confirm-typed"]')).toBeNull();
       expect(run(root)?.disabled).toBe(false);
+    });
+  });
+
+  // A reason the person may give with the action, which the mail it sends says (docs/SPEC.md § 7, 2026-10-27 21:37).
+  describe('a note', () => {
+    const note = { label: 'd.reason', hint: 'd.reason_hint', maxLength: 500 };
+    const field = (root: HTMLElement) =>
+      root.querySelector<HTMLTextAreaElement>('[data-testid="confirm-note"]');
+
+    it('offers a field that may stay empty, says what becomes of it and how much it holds', () => {
+      const root = render('corrigeable', undefined, note);
+      expect(field(root)?.maxLength).toBe(500);
+      expect(root.textContent).toContain('Motif (facultatif)');
+      expect(root.textContent).toContain('Il figure dans le courrier envoyé.');
+      expect(root.textContent).toContain('0 / 500');
+      expect(run(root)?.disabled).toBe(false);
+
+      run(root)?.click();
+      expect(close).toHaveBeenCalledWith('');
+    });
+
+    it('answers with what was written', () => {
+      const root = render('corrigeable', undefined, note);
+      const area = field(root)!;
+      area.value = 'Facture impayée';
+      area.dispatchEvent(new Event('input'));
+      rendered?.detectChanges();
+      expect(root.textContent).toContain('15 / 500');
+
+      run(root)?.click();
+      expect(close).toHaveBeenCalledWith('Facture impayée');
+    });
+
+    it('keeps answering no when the person keeps things as they are', () => {
+      const root = render('corrigeable', undefined, note);
+      root.querySelector<HTMLButtonElement>('[data-testid="confirm-keep"]')?.click();
+      expect(close).toHaveBeenCalledWith(false);
+    });
+
+    it('asks no note when the action does not say so', () => {
+      expect(field(render('corrigeable'))).toBeNull();
     });
   });
 });

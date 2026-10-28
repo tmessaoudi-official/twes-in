@@ -74,6 +74,8 @@
       "title": "Almost there",
       "pending": "{{company}} is waiting for approval by the platform's team. You will receive an email as soon as it is approved.",
       "suspended": "{{company}} is suspended. Contact the platform's team to find out more.",
+      "refused": "{{company}} was not accepted by the platform team. Contact them to learn more.",
+      "reason": "Reason:",
       "sign_out": "Sign out",
       "locked": "{{company}} is closed until its subscription is settled. Contact us to reopen it.",
       "declare_payment": "Declare a payment",

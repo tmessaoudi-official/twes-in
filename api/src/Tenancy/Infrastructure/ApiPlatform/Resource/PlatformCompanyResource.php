@@ -18,9 +18,11 @@ use App\Licensing\Domain\ValueObject\Standing;
 use App\Licensing\Infrastructure\ApiPlatform\Output\SubscriptionSummary;
 use App\Tenancy\Application\Approval\PlatformCompanyView;
 use App\Tenancy\Application\Approval\PlatformOwnerInvitationView;
+use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\DecideCompanyApprovalProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Provider\PlatformCompanyCollectionProvider;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * The companies, as the platform's operators review them, a page at a time (docs/SPEC.md § 7, lists at scale):
@@ -60,10 +62,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
             uriTemplate: '/platform/companies/{companyId}/reject',
             name: self::REJECT,
             status: 200,
-            input: false,
             processor: DecideCompanyApprovalProcessor::class,
             security: 'is_granted("platform.company.approve")',
             normalizationContext: ['groups' => [self::READ]],
+            denormalizationContext: ['groups' => [self::DECIDE]],
         ),
     ],
 )]
@@ -71,8 +73,15 @@ final class PlatformCompanyResource
 {
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
     public const string READ = 'platform_company:read';
+    public const string DECIDE = 'platform_company:decide';
     public const string APPROVE = 'platform_company_approve';
     public const string REJECT = 'platform_company_reject';
+
+    /** Why the operator refuses or suspends it, which its owners are told; none is said when left out or blank. */
+    #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'maxLength' => Company::SUSPENSION_REASON_MAX])]
+    #[Assert\Length(max: Company::SUSPENSION_REASON_MAX)]
+    #[Groups([self::DECIDE])]
+    public ?string $reason = null;
 
     // No identifier: reached only through the uriTemplates above (see CompanyResource).
     #[ApiProperty(identifier: false, writable: false)]
@@ -105,6 +114,11 @@ final class PlatformCompanyResource
     #[Groups([self::READ])]
     public array $ownerInvitations = [];
 
+    /** Whether it was ever opened: a suspended company never opened was refused, and opening it approves it. */
+    #[ApiProperty(writable: false, required: true)]
+    #[Groups([self::READ])]
+    public bool $opened = true;
+
     /** Where the company stands in its subscription; null when licensing does not manage it. */
     #[ApiProperty(writable: false, required: true)]
     #[Groups([self::READ])]
@@ -118,6 +132,7 @@ final class PlatformCompanyResource
         $resource->countryCode = $view->countryCode;
         $resource->status = $view->status;
         $resource->createdAt = $view->createdAt;
+        $resource->opened = $view->opened;
         $resource->owners = $view->owners;
         $resource->ownerInvitations = array_map(static fn (PlatformOwnerInvitationView $invitation): array => ['email' => $invitation->email, 'expiresAt' => $invitation->expiresAt, 'expired' => $invitation->expired], $view->ownerInvitations);
         $resource->subscription = null === $standing ? null : SubscriptionSummary::of($standing);

@@ -46,8 +46,8 @@ final readonly class SymfonySecurityNoticeMailer implements SecurityNoticeMailer
                 ->context([
                     'change' => $change,
                     'passkeyName' => \in_array($mail->change, [SecurityChange::PasskeyAdded, SecurityChange::PasskeyRemoved], true) ? $mail->passkeyName : null,
-                    // Replaced from the server, the person is told what to do next, not asked whether it was them.
-                    'fromServer' => SecurityChange::FactorsReplaced === $mail->change,
+                    // Made by the installation, the person is told what to do next, not asked whether it was them.
+                    'fromServer' => $mail->change->byTheInstallation(),
                     // Locked, the person cannot sign in to check anything: they are told when it ends and how to end it now.
                     'locked' => SecurityChange::AccountLocked === $mail->change,
                     'lockedUntil' => null === $lockEnd ? null : $this->figures->moment($lockEnd->moment, $mail->locale, $lockEnd->dateFormat),

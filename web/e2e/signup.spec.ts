@@ -6,8 +6,9 @@ import { proveIfHeldBack } from './step-up';
 import { axeAtRest } from './axe';
 
 // G1d through the real bundle, nginx, FrankenPHP, PostgreSQL and Mailpit: an operator opens signup, somebody signs up
-// from the login page, their company waits, the operator approves it, and the owner gets in. The operator closes
-// signup again at the end, because one database is shared by the whole suite and signup is closed by default.
+// from the login page, their company waits, the operator refuses it with a reason its owner reads, then approves it,
+// and the owner gets in. The operator closes signup again at the end, because one database is shared by the whole suite
+// and signup is closed by default.
 //
 // Each run creates one account and one company with unique names; neither can be deleted through the API. The
 // per-client signup limit is five requests an hour, which a local rerun loop can reach.
@@ -53,7 +54,7 @@ async function newPage(browser: Browser): Promise<Page> {
   return (await browser.newContext()).newPage();
 }
 
-test('somebody signs up, their company waits, an operator approves it, and the owner gets in', async ({
+test('somebody signs up, their company waits, an operator refuses it with a reason, then approves it, and the owner gets in', async ({
   page,
   browser,
   request,
@@ -106,22 +107,59 @@ test('somebody signs up, their company waits, an operator approves it, and the o
     await visitor.screenshot({ path: `${SHOTS}/signup-3-awaiting.png` });
     await expectAccessible(visitor, 'awaiting approval');
 
-    // The operator sees it waiting and approves it.
+    // The operator sees it waiting and first refuses it, with a reason.
     // The overview lists only the oldest few, so the company is found in the pending list, where its sheet opens.
     await page.goto(`/platform?tab=companies&status=pending&q=${encodeURIComponent(company)}`);
+    const waiting = page.getByTestId(`company-${company}`);
+    await expect(waiting).toContainText(email);
+    await waiting.getByRole('link').first().click();
+    await expect(page.getByTestId(`company-sheet-${company}`)).toContainText(email);
+    await page.screenshot({ path: `${SHOTS}/signup-4-platform.png` });
+    await expectAccessible(page, 'platform');
+    const rejected = page.waitForResponse(
+      (response) => response.url().endsWith('/reject') && response.request().method() === 'POST',
+    );
+    await page
+      .getByTestId(`company-sheet-${company}`)
+      .getByTestId('document-action-suspend')
+      .click();
+    await page.getByTestId('confirm-note').fill('Matricule introuvable au registre');
+    await expectAccessible(page, 'refusal question');
+    await page.getByTestId('confirm-run').click();
+    expect((await proveIfHeldBack(page, OPERATOR_PASSWORD, rejected)).ok()).toBe(true);
+    await expect(waiting).toHaveCount(0);
+
+    // Its owner is told why, by mail and on the page they sign in to, which says refused, never suspended.
+    // Matched by the company's name, whatever language the owner signed up in; the approval is told apart by subject.
+    let refusalSubject = '';
+    const refusal = await mailTo(request, email, (subject) => {
+      if (!subject.includes(company)) return false;
+      refusalSubject = subject;
+      return true;
+    });
+    expect(refusal).toContain('Matricule introuvable au registre');
+    await visitor.reload();
+    await expect(visitor.getByTestId('awaiting-refused')).toContainText(company);
+    await expect(visitor.getByTestId('awaiting-reason')).toContainText(
+      'Matricule introuvable au registre',
+    );
+    await visitor.screenshot({ path: `${SHOTS}/signup-3b-refused.png` });
+    await expectAccessible(visitor, 'refused');
+
+    // The operator approves it after all: refused, never opened, it is approved rather than given its access back.
+    await page.goto(`/platform?tab=companies&status=suspended&q=${encodeURIComponent(company)}`);
     const line = page.getByTestId(`company-${company}`);
     await expect(line).toContainText(email);
     await line.getByRole('link').first().click();
     await expect(page.getByTestId(`company-sheet-${company}`)).toContainText(email);
-    await page.screenshot({ path: `${SHOTS}/signup-4-platform.png` });
-    await expectAccessible(page, 'platform');
     const approved = page.waitForResponse(
       (response) => response.url().endsWith('/approve') && response.request().method() === 'POST',
     );
-    await page
+    const approve = page
       .getByTestId(`company-sheet-${company}`)
-      .getByTestId('document-action-approve')
-      .click();
+      .getByTestId('document-action-approve');
+    await expect(approve).toContainText('Approuver');
+    await approve.click();
     // Approving mails the owners, which its question says before anything is sent.
     await expect(page.getByTestId('confirm-message')).toContainText(company);
     await page.getByTestId('confirm-run').click();
@@ -129,7 +167,11 @@ test('somebody signs up, their company waits, an operator approves it, and the o
     await expect(line).toHaveCount(0);
 
     // The owner is told, and is let in.
-    const approval = await mailTo(request, email, (subject) => subject.includes(company));
+    const approval = await mailTo(
+      request,
+      email,
+      (subject) => subject.includes(company) && subject !== refusalSubject,
+    );
     expect(approval).toContain('/login');
     await visitor.goto('/');
     await expect(visitor).toHaveURL(/\/$/);

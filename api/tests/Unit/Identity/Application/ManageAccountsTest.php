@@ -13,6 +13,7 @@ use App\Identity\Application\Account\AccountNotFound;
 use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\Account\ManageAccounts;
 use App\Identity\Application\Account\OwnAccount;
+use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\AccountSearch;
 use App\Identity\Domain\ValueObject\Email;
@@ -20,6 +21,7 @@ use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryUsers;
+use App\Tests\Support\RecordedSecurityNotices;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -30,6 +32,7 @@ final class ManageAccountsTest extends TestCase
     private InMemoryUsers $users;
     private InMemoryAuditTrail $audit;
     private ManageAccounts $accounts;
+    private RecordedSecurityNotices $notices;
     private User $operator;
     /** @var list<Uuid> */
     private array $demos = [];
@@ -55,7 +58,8 @@ final class ManageAccountsTest extends TestCase
                 return ($this->demos)();
             }
         };
-        $this->accounts = new ManageAccounts($this->users, $this->audit, $transactions, $demos);
+        $this->notices = new RecordedSecurityNotices();
+        $this->accounts = new ManageAccounts($this->users, $this->audit, $transactions, $demos, $this->notices);
         $this->operator = $this->account('op@twes.local', 'Operator');
     }
 
@@ -98,6 +102,8 @@ final class ManageAccountsTest extends TestCase
         self::assertNotSame($stamp, $user->getSecurityStamp());
         self::assertTrue($user->isActive());
         $this->assertAudited([ManageAccounts::SESSIONS_ENDED], $user);
+        self::assertSame([SecurityChange::OperatorEndedSessions], $this->notices->told, 'its owner is told');
+        self::assertTrue($user->getId()->equals($this->notices->userIds[0]));
     }
 
     public function testDeactivatingEndsTheSessionsAndIsAuditedOnce(): void
@@ -112,6 +118,8 @@ final class ManageAccountsTest extends TestCase
         self::assertFalse($user->isActive());
         self::assertNotSame($stamp, $user->getSecurityStamp());
         $this->assertAudited([ManageAccounts::DEACTIVATED], $user);
+        self::assertSame([SecurityChange::OperatorDeactivated], $this->notices->told, 'its owner is told once');
+        self::assertTrue($user->getId()->equals($this->notices->userIds[0]));
     }
 
     public function testAnOperatorCannotDeactivateTheirOwnAccount(): void
@@ -124,6 +132,7 @@ final class ManageAccountsTest extends TestCase
 
         self::assertTrue($this->operator->isActive());
         self::assertSame([], $this->audit->entries);
+        self::assertSame([], $this->notices->told);
     }
 
     public function testReactivatingOpensTheAccountAgainAndIsAuditedOnce(): void
@@ -137,6 +146,7 @@ final class ManageAccountsTest extends TestCase
         self::assertTrue($view->active);
         self::assertTrue($user->isActive());
         $this->assertAudited([ManageAccounts::REACTIVATED], $user);
+        self::assertSame([SecurityChange::OperatorReactivated], $this->notices->told, 'its owner is told once');
     }
 
     public function testAnUnknownAccountIsNotFoundWhateverIsAsked(): void

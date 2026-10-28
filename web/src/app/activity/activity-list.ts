@@ -200,6 +200,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'company.created',
   'company.period_closed',
   'company.rejected',
+  'company.restored',
   'company.suspended',
   'customer.credit_overpaid',
   'data.erased',

@@ -32,6 +32,30 @@ company_approved:
     heading: '%company% est approuvée'
     intro: "L’équipe %product% a approuvé %company%. Vous et votre équipe pouvez vous connecter et commencer."
     call_to_action: 'Se connecter'
+company_restored:
+    subject: 'L’accès à %company% est rétabli sur %product%'
+    heading: 'L’accès à %company% est rétabli'
+    intro: "L’équipe %product% a rétabli l’accès à %company%. Vous et votre équipe pouvez de nouveau vous connecter, et vos données sont telles que vous les avez laissées."
+    call_to_action: 'Se connecter'
+company_suspended:
+    subject: 'L’accès à %company% est suspendu sur %product%'
+    heading: 'L’accès à %company% est suspendu'
+    intro: "L’équipe %product% a suspendu l’accès à %company% : ni vous ni votre équipe ne pouvez vous y connecter pour l’instant."
+    data: 'Vos données sont conservées intactes et vous les retrouverez dès que l’accès sera rétabli.'
+company_refused:
+    subject: '%company% n’a pas été acceptée sur %product%'
+    heading: '%company% n’a pas été acceptée'
+    intro: "L’équipe %product% n’a pas accepté l’ouverture de %company%."
+    data: 'Ce que vous avez saisi est conservé : si l’équipe revient sur sa décision, vous le retrouverez.'
+company_decision:
+    reason: 'Motif :'
+    no_reason: 'L’équipe %product% l’a décidé sans en préciser le motif.'
+    contact: 'Pour en savoir plus, contactez l’équipe %product% :'
+    reply: 'Pour en savoir plus, répondez à ce courrier.'
+    channels:
+        phone: 'Téléphone :'
+        whatsapp: 'WhatsApp :'
+        email: 'E-mail :'
 payment_declared:
     subject: '%company% a déclaré un règlement de %amount% %currency%'
     heading: '%company% déclare avoir payé'
@@ -151,6 +175,15 @@ security_notice:
     factors_replaced:
         heading: 'Facteurs de connexion réinitialisés'
         body: 'La personne qui gère votre installation a retiré les seconds facteurs de votre compte (application d’authentification, codes de secours et, le cas échéant, clés d’accès) et fermé toutes vos sessions. À votre prochaine connexion avec votre mot de passe, vous en configurerez un nouveau.'
+    operator_deactivated:
+        heading: 'Compte désactivé'
+        body: 'La personne qui gère votre installation a désactivé votre compte et fermé toutes vos sessions : il ne permet plus de se connecter. Si vous pensez que c’est une erreur, adressez-vous à elle.'
+    operator_reactivated:
+        heading: 'Compte réactivé'
+        body: 'La personne qui gère votre installation a réactivé votre compte : vous pouvez de nouveau vous connecter avec votre mot de passe.'
+    operator_ended_sessions:
+        heading: 'Sessions fermées'
+        body: 'La personne qui gère votre installation a fermé toutes vos sessions : reconnectez-vous pour continuer.'
     passkey: 'Clé concernée :'
     if_you: 'Si c’est vous, il n’y a rien à faire.'
     not_you: 'Si ce n’est pas vous et que vous pouvez encore vous connecter, changez votre mot de passe dans « Mon compte », puis vérifiez « Vérification en deux étapes ».'

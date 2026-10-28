@@ -20,8 +20,11 @@ use PHPUnit\Framework\TestCase;
  */
 final class MailDirectionTest extends TestCase
 {
-    /** What a person typed, a name in whatever script they wrote it, as opposed to a text the mail's language says. */
-    private const array TYPED = ['companyName', 'productName', 'passkeyName'];
+    /**
+     * What a person typed, in whatever script they wrote it (a name, or the reason an operator gave for closing a
+     * company), as opposed to a text the mail's language says.
+     */
+    private const array TYPED = ['companyName', 'productName', 'passkeyName', 'reason'];
 
     public function testEveryMailSaysItsDirectionOnABlockHoldingAllOfIt(): void
     {

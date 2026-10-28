@@ -31,6 +31,10 @@ final readonly class MeCompany
         #[ApiProperty(required: true)] public ?string $logoVersion = null,
         /** a closed company's terms, null while it works */
         #[ApiProperty(required: true)] public ?MeClosing $closing = null,
+        /** whether an operator refused the company before it was ever opened, rather than suspended it */
+        #[ApiProperty(required: true)] public bool $refused = false,
+        /** why an operator refused or suspended it, null when they did not say or while it is open */
+        #[ApiProperty(required: true)] public ?string $suspensionReason = null,
     ) {
     }
 }

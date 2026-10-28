@@ -24,6 +24,8 @@ final readonly class PlatformCompanyView
         public string $createdAt,
         public array $owners,
         public array $ownerInvitations = [],
+        /** whether it was ever opened: a suspended one that never was is refused, and opening it approves it */
+        public bool $opened = true,
     ) {
     }
 }

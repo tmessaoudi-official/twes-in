@@ -110,6 +110,7 @@ final readonly class PlatformCompanies
             $company->getCreatedAt()->format(\DateTimeInterface::ATOM),
             $owners,
             $ownerInvitations,
+            $company->wasOpened(),
         );
     }
 }

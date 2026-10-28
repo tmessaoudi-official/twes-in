@@ -134,6 +134,18 @@ export interface ActionConfirm {
    * a word, as a translation key so each language types its own, or a name as it is, such as the company's.
    */
   typed?: TypedConfirm;
+  /**
+   * A text the person may add, such as the reason a suspension's mail gives: the dialog then answers with what was
+   * written, empty when nothing was, rather than with true.
+   */
+  note?: ConfirmNote;
+}
+
+/** A free text asked beside the question: its label, what becomes of it, and the most it holds. */
+export interface ConfirmNote {
+  readonly label: string;
+  readonly hint: string;
+  readonly maxLength: number;
 }
 
 export type TypedConfirm = { readonly word: string } | { readonly name: string };

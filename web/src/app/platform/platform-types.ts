@@ -54,6 +54,8 @@ export interface PlatformCompanyRow {
   readonly owners: readonly string[];
   /** The owner invitations nobody used: open, or run out lately, so a lapsed one is sent again. */
   readonly ownerInvitations: readonly PlatformOwnerInvitation[];
+  /** Whether it was ever opened: a suspended company never opened was refused, and opening it approves it. */
+  readonly opened: boolean;
   /** Null when licensing does not manage the company. */
   readonly subscription: SubscriptionStanding | null;
 }

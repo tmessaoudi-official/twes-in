@@ -276,6 +276,8 @@ function toState(me: Me): SignedInState {
             access: toAccess(me.company.access),
             subscription: toSubscription(me.company.subscription),
             logoVersion: me.company.logoVersion ?? null,
+            refused: me.company.refused,
+            suspensionReason: me.company.suspensionReason ?? null,
             closing:
               me.company.closing === null
                 ? null

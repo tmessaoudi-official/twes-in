@@ -24,7 +24,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { map } from 'rxjs';
+import { firstValueFrom, map } from 'rxjs';
 import { refusalParams } from '../shared/form/refusal-words';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SETTING_REFUSAL_TEXTS } from '../shared/settings/setting-refusals';
@@ -46,7 +46,7 @@ import { DocumentActions } from '../shared/ui/document-actions';
 import { onRecord, onRows } from '../shared/actions/record-action';
 import type { ActionConfirm, ActionKind } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
-import { companyActions } from './platform-actions';
+import { companyActions, suspendQuestion } from './platform-actions';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { membershipRoleLabel } from './membership-role';
 import { PlatformFacade } from './platform-facade';
@@ -839,7 +839,7 @@ export class PlatformPage implements OnInit {
 
   /** Opened, the toast names the company with the word its question said; refused, the page says why as before. */
   private async approve(company: PlatformCompanyRow): Promise<void> {
-    const done = company.status === 'suspended' ? 'restored' : 'approved';
+    const done = company.status === 'suspended' && company.opened ? 'restored' : 'approved';
     if (await this.platform.approve(company.id)) {
       this.feedback.effect(
         `platform.companies.done.${done}`,
@@ -850,8 +850,17 @@ export class PlatformPage implements OnInit {
   }
 
   private async suspend(company: PlatformCompanyRow): Promise<void> {
+    const reason = await firstValueFrom(
+      this.dialog
+        .open<ConfirmDialog, ActionConfirm, boolean | string>(ConfirmDialog, {
+          data: suspendQuestion(company),
+          autoFocus: 'dialog',
+        })
+        .afterClosed(),
+    );
+    if (typeof reason !== 'string') return;
     const done = company.status === 'pending' ? 'rejected' : 'suspended';
-    if (await this.platform.reject(company.id)) {
+    if (await this.platform.reject(company.id, reason.trim() === '' ? null : reason)) {
       this.feedback.effect(
         `platform.companies.done.${done}`,
         { name: company.name },

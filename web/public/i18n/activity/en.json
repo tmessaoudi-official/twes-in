@@ -16,6 +16,7 @@
         "created": "created the company",
         "period_closed": "closed a period",
         "rejected": "turned the company down",
+        "restored": "restored the company’s access",
         "suspended": "suspended the company"
       },
       "customer": {
