@@ -118,18 +118,33 @@ final readonly class CustomerPrice
         // A net price counted in ten-thousandths, the scale a price is kept at.
         $total = fn (int $net): Number => Decimal::of($this->counted($company, '1', self::price($net), $taxes)->total);
         $target = Decimal::of($gross);
-
-        // The total never falls as the net price rises, so the net prices coming to the figure are one run.
-        $first = self::first($total, static fn (Number $sum): bool => $sum->compare($target) >= 0);
-        if (0 !== $total($first)->compare($target)) {
-            throw new GrossUnreachable($gross, $this->counted($company, '1', self::price($first - 1), $taxes)->total, $this->counted($company, '1', self::price($first), $taxes)->total);
-        }
-        $last = self::first($total, static fn (Number $sum): bool => $sum->compare($target) > 0) - 1;
         // What a unit's taxes multiply its price by, read on a price large enough for the rounding to vanish.
         $factor = $total(self::LARGE)->div(intdiv(self::LARGE, self::UNIT), Decimal::WORKING_SCALE);
-        $exact = (int) Decimal::format($target->div($factor, Decimal::WORKING_SCALE)->mul(self::UNIT), 0);
+        $exact = max(0, (int) Decimal::format($target->div($factor, Decimal::WORKING_SCALE)->mul(self::UNIT), 0));
 
-        return self::price(max($first, min($last, $exact)));
+        // The total never falls as the net price rises, so the net prices coming to the figure are one run, and the one
+        // nearest the exact quotient is the quotient itself when it comes to the figure, else the first of the run above
+        // it or the last below it. Each is looked for from the quotient outward, a few prices away, rather than over
+        // every price from nothing: a products file counts one per row.
+        $at = $total($exact)->compare($target);
+        if (0 === $at) {
+            return self::price($exact);
+        }
+        if ($at < 0) {
+            $first = self::beside($total, $exact, 1, static fn (Number $sum): bool => $sum->compare($target) >= 0);
+            if (null === $first || 0 !== $total($first)->compare($target)) {
+                throw $this->unreachable($company, $gross, $first ?? 0, $taxes);
+            }
+
+            return self::price($first);
+        }
+        $last = self::beside($total, $exact, -1, static fn (Number $sum): bool => $sum->compare($target) <= 0);
+        if (null === $last || 0 !== $total($last)->compare($target)) {
+            // No net price comes to it: the first above it is the one after the last below, or nothing at all.
+            throw $this->unreachable($company, $gross, null === $last ? 0 : $last + 1, $taxes);
+        }
+
+        return self::price($last);
     }
 
     /**
@@ -164,31 +179,47 @@ final readonly class CustomerPrice
     }
 
     /**
-     * The smallest net price, in ten-thousandths, whose total passes; every larger one passes too, as the total never
-     * falls when the net price rises.
+     * The net price nearest `$from`, which fails, in `$direction` whose total passes: the first above it, or the last
+     * below it, null when none at or above nothing does. Steps double away from it until a price passes, then halve
+     * back to the one beside the last that fails; every price beyond a passing one passes too, the total never falling
+     * as the net price rises.
      *
      * @param \Closure(int): Number  $total
      * @param \Closure(Number): bool $passes
      */
-    private static function first(\Closure $total, \Closure $passes): int
+    private static function beside(\Closure $total, int $from, int $direction, \Closure $passes): ?int
     {
-        if ($passes($total(0))) {
-            return 0;
+        $failing = $from;
+        for ($step = 1;; $step *= 2) {
+            $passing = max(0, $from + $direction * $step);
+            if ($passes($total($passing))) {
+                break;
+            }
+            if (0 === $passing) {
+                return null;
+            }
+            $failing = $passing;
         }
-        [$low, $high] = [0, 1];
-        while (!$passes($total($high))) {
-            [$low, $high] = [$high, $high * 2];
-        }
-        while ($high - $low > 1) {
-            $middle = intdiv($low + $high, 2);
+        while (abs($passing - $failing) > 1) {
+            $middle = intdiv($passing + $failing, 2);
             if ($passes($total($middle))) {
-                $high = $middle;
+                $passing = $middle;
             } else {
-                $low = $middle;
+                $failing = $middle;
             }
         }
 
-        return $high;
+        return $passing;
+    }
+
+    /**
+     * No net price comes to the figure: the totals of the two around it, the last below and the first above.
+     *
+     * @param list<TaxInput> $taxes
+     */
+    private function unreachable(Company $company, string $gross, int $first, array $taxes): GrossUnreachable
+    {
+        return new GrossUnreachable($gross, $this->counted($company, '1', self::price($first - 1), $taxes)->total, $this->counted($company, '1', self::price($first), $taxes)->total);
     }
 
     private static function price(int $tenThousandths): string
