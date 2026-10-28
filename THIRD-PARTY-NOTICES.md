@@ -136,7 +136,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | symfony/mailer | 8.1.7 | MIT | runtime |
 | symfony/maker-bundle | 1.68.0 | MIT | dev |
 | symfony/messenger | 8.1.9 | MIT | runtime |
-| symfony/mime | 8.1.7 | MIT | runtime |
+| symfony/mime | 8.1.10 | MIT | runtime |
 | symfony/monolog-bridge | 8.1.6 | MIT | runtime |
 | symfony/monolog-bundle | 4.1.0 | MIT | runtime |
 | symfony/options-resolver | 8.1.0 | MIT | runtime |
