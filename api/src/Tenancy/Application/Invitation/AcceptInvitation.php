@@ -23,6 +23,7 @@ use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Member\UnknownRole;
+use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
@@ -96,8 +97,12 @@ final readonly class AcceptInvitation implements DeclaresAuditActions
             if (Role::OWNER === $role->getName()) {
                 // Written over whatever was saved since the invitation was read: the row is held, never an earlier read.
                 $company = $this->companies->lockedOfId($company->getId()) ?? throw new InvitationNotUsable('The company of that invitation is gone.');
-                $company->activate($now);
-                $this->companies->save($company);
+                // Opens a company still waiting for its owner, never one an operator refused or suspended since the
+                // invitation went out: that decision stands, and the new owner reads it at sign-in.
+                if (Company::STATUS_PENDING === $company->getStatus()) {
+                    $company->activate($now);
+                    $this->companies->save($company);
+                }
             }
 
             $invitation->accept($now);

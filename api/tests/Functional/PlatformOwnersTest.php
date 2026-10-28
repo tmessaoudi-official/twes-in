@@ -71,6 +71,45 @@ final class PlatformOwnersTest extends ApiTestCase
         );
     }
 
+    /**
+     * Accepting opens a company still waiting, never one an operator closed since the invitation went out: the refusal
+     * or the suspension stands, with its reason, and the new owner reads it at sign-in.
+     */
+    public function testAcceptingAfterTheCompanyWasRefusedOrSuspendedLeavesItClosed(): void
+    {
+        $refused = $this->pendingCompany();
+        $suspended = $this->createCompany('Acme');
+        $this->signedInAsOperator();
+        $this->postJson($this->ownersOf($refused), ['email' => 'nadia@example.test']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $refusedToken = $this->tokenOfTheLastMail();
+        $this->postJson($this->ownersOf($suspended), ['email' => 'karim@example.test']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $suspendedToken = $this->tokenOfTheLastMail();
+        $this->postJson('/api/platform/companies/'.$refused->getId()->toRfc4122().'/reject', ['reason' => 'Matricule introuvable']);
+        self::assertResponseIsSuccessful();
+        $this->postJson('/api/platform/companies/'.$suspended->getId()->toRfc4122().'/reject', ['reason' => 'Facture impayée']);
+        self::assertResponseIsSuccessful();
+        $this->client->getCookieJar()->clear();
+
+        $this->postJson('/api/invitations/'.$refusedToken.'/accept', ['displayName' => 'Nadia', 'password' => self::PASSWORD]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->client->getCookieJar()->clear();
+        $this->postJson('/api/invitations/'.$suspendedToken.'/accept', ['displayName' => 'Karim', 'password' => self::PASSWORD]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        self::assertSame(
+            [
+                ['name' => 'Acme', 'status' => 'suspended', 'suspension_reason' => 'Facture impayée', 'opened' => true],
+                ['name' => 'Globex', 'status' => 'suspended', 'suspension_reason' => 'Matricule introuvable', 'opened' => false],
+            ],
+            $this->em()->getConnection()->fetchAllAssociative(
+                'SELECT name, status, suspension_reason, approved_at IS NOT NULL AS opened FROM company WHERE id IN (?, ?) ORDER BY name',
+                [$refused->getId()->toRfc4122(), $suspended->getId()->toRfc4122()],
+            ),
+        );
+    }
+
     public function testAnAddressThatAlreadyBelongsToTheCompanyIsRefused(): void
     {
         $company = $this->createCompany('Acme');
