@@ -119,6 +119,7 @@ Before each release, the update a shop will take, on that shop's own files: `mak
 its five import files> TO=<the commit to tag>` installs the release out (the newest tag, or `FROM=`) by `twes update`,
 imports the files as the import screen sends them, publishes the commit and takes it by `twes update`, then reads every
 table, the products list and the migrations back (about twenty minutes, on 80 and 443: never beside `make onprem-check`).
+Tried on this machine: v2026.10.27.1 to c162caa3 on the hardware shop's files, nothing lost (2026-10-28).
 
 Each release: steps 1 to 3 of « Promote to production ». Shops then take it by their policy: `auto` inside their daily
 window, `notify` tells their owners, who update with `twes update`; never in the minutes after a start.

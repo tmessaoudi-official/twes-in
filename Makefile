@@ -71,14 +71,14 @@ gate-powershell: ps-tools-image   ## the Windows installer, scripts/onprem/insta
 	@# Read-only and with no network: the test reads the installer and writes only inside the container.
 	docker run --rm --network none -v "$(CURDIR)/scripts:/scripts:ro" $(PS_TOOLS_IMAGE) pwsh -NoLogo -NoProfile -File /scripts/tests/install-ps1.test.ps1
 
-up:            ## start the whole stack LIVE: an edit under api/ or web/ shows without a rebuild (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed
+up:            ## start the whole stack LIVE: an edit under api/ or web/ shows without a rebuild (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed (SEED=0: not, for a platform kept empty)
 	@# The live volumes mount inside the host's api/ and web/; made here, as this user, or Docker makes them as root.
 	mkdir -p api/vendor api/var web/node_modules web/.angular var/tmp var/cache
 	@# Each image is built as the version git says it is (scripts/build-version.sh); the footer shows it. A service mounting
 	@# a file (an entrypoint, a php.ini, the phone door's Caddyfile) is recreated when it changed: a pull or an editor writes
 	@# it anew, which the running container's mount never sees (scripts/deploy/mounts-digest.sh).
 	env $(BUILD_ENV) TWES_MOUNTS_DIGEST=$$(docker compose config | bash scripts/deploy/mounts-digest.sh) docker compose up -d --build --wait
-	$(MAKE) seed
+	$(if $(filter 0,$(SEED)),,$(MAKE) seed)
 	@echo "On this computer: http://localhost:$${WEB_PORT:-8090}"
 	@$(if $(LAN_ORIGIN),echo "From a phone on this network: $(LAN_ORIGIN) (trust once: http://$(LAN_HOST):8095/root.crt)",echo "No network address found: the phone door is off.")
 

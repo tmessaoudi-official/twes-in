@@ -121,27 +121,35 @@ ask() { curl -sS --cacert "$WORK/root.crt" "$@"; }
 csrf=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
 api() { ask --max-time 30 -b "$WORK/jar" -c "$WORK/jar" -H 'Origin: https://localhost' -H "csrf-token: $csrf" "$@"; }
 password=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
+# The password reaches curl from files in the rehearsal's own folder, never on a command line any user can list.
+printf '{"email":"%s","password":"%s"}' "$OPERATOR" "$password" > "$WORK/login-body.json"
+printf '{"password":"%s"}' "$password" > "$WORK/step-up-body.json"
 printf '%s\n' "$password" | dc exec -T api bin/console app:seed --no-interaction --operator-email="$OPERATOR" --operator-password-stdin --company-name='Répétition' >/dev/null \
   || fail "app:seed could not make the operator and the first company"
+# A shop's install switches the demo off, so no visitor's sandbox is built there; without it the update's worker built
+# two whole companies, which a shop never has.
+dc exec -T api bin/console app:demo:switch-off-at-install >/dev/null || fail "the demo could not be switched off as twes install does"
 # An operator acts on a company only once their authenticator is enrolled, and production refuses to seed one: the
 # rehearsal enrols it as an operator does, and answers its code at each sign-in after. A code is taken once in its 30
-# seconds, so each one asked waits for a step of its own. The secret stays in this shell.
+# seconds, so each one asked waits for a step of its own. The secret reaches python through its environment, never its
+# command line.
 secret=''
 last_step=0
 next_code() {
   while (($(date +%s) / 30 == last_step)); do sleep 1; done
   last_step=$(($(date +%s) / 30))
-  code_now=$(python3 -I -c 'import base64, hashlib, hmac, struct, sys, time
-key = base64.b32decode(sys.argv[1].upper() + "=" * (-len(sys.argv[1]) % 8))
+  code_now=$(TOTP_SECRET="$secret" python3 -I -c 'import base64, hashlib, hmac, os, struct, time
+secret = os.environ["TOTP_SECRET"]
+key = base64.b32decode(secret.upper() + "=" * (-len(secret) % 8))
 mac = hmac.new(key, struct.pack(">Q", int(time.time()) // 30), hashlib.sha1).digest()
 at = mac[-1] & 15
-print("%06d" % ((struct.unpack(">I", mac[at:at + 4])[0] & 0x7fffffff) % 1000000))' "$secret")
+print("%06d" % ((struct.unpack(">I", mac[at:at + 4])[0] & 0x7fffffff) % 1000000))')
 }
 signs_in() {
   local code
   rm -f "$WORK/jar"
   code=$(api -o "$WORK/login.json" -w '%{http_code}' -H 'Content-Type: application/json' \
-    --data "{\"email\":\"$OPERATOR\",\"password\":\"$password\"}" https://localhost/api/auth/login)
+    --data @"$WORK/login-body.json" https://localhost/api/auth/login)
   [[ "$code" == 200 ]] || fail "$1: signing in at https://localhost answered $code"
   if jq -e '.mfaRequired == true' "$WORK/login.json" >/dev/null; then
     [[ -n "$secret" ]] || fail "$1: a second factor was asked before the rehearsal enrolled one"
@@ -161,7 +169,7 @@ held_back() { [[ "$1" == 403 ]] && grep -q '"step_up_required"' "$2"; }
 prove() {
   local code
   code=$(api -o "$WORK/step-up.json" -w '%{http_code}' -H 'Content-Type: application/json' \
-    --data "{\"password\":\"$password\"}" https://localhost/api/auth/step-up)
+    --data @"$WORK/step-up-body.json" https://localhost/api/auth/step-up)
   [[ "$code" == 204 ]] || fail "proving who the operator is answered $code: $(head -c 300 "$WORK/step-up.json")"
 }
 signs_in "installed"

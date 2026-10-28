@@ -690,7 +690,9 @@ export BACKUP_S3_ENDPOINT=<the bucket service's host> BACKUP_S3_BUCKET=<bucket> 
        BACKUP_S3_KEY=<access key> BACKUP_S3_SECRET=<secret key> \
        BACKUP_DATABASE_PASSPHRASE=$(openssl rand -base64 36) BACKUP_FILES_PASSPHRASE=$(openssl rand -base64 36)
 # BACKUP_S3_PORT (443) and BACKUP_S3_URI_STYLE (host; path for most services other than AWS) when they differ
-docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml up -d --build --wait
+C='docker compose -f compose.yaml -f compose.prod.yaml -f compose.backup.yaml -f compose.backup-bucket.yaml'
+# A file mounted from the checkout (the secrets shim) reaches its container again after a pull only through this digest.
+TWES_MOUNTS_DIGEST=$($C config | bash scripts/deploy/mounts-digest.sh) $C up -d --build --wait
 ```
 
 **Restoring** runs the layer's `restore` service, which starts only when named. It writes the database's volume, which
@@ -1066,6 +1068,14 @@ deploy it, read it unhealthy and start the first again on the new schema, the op
 signed by `tag-release.sh` with a key made for the check, which the shop pins; a newer tag nobody signed must then be
 refused with the release unchanged and the operator told. It runs as the compose project `twes-onprem-check`, needs
 ports 80 and 443 free, and takes about ten minutes.
+
+**The update rehearsal.** `make update-rehearsal FILES=<directory of a shop's five import files> [FROM=<release tag>]
+[TO=<commit>]` takes, before a tag, the update that shop will take: it installs the release out (the newest tag by
+default) by `twes update` as `twes install` leaves a shop, the demo switched off, imports the files through the import's
+own requests, publishes the commit and takes it by `twes update` with its backup, then counts every table's rows before
+and after, lists the products and reads the migrations. It runs as the compose project `twes-update-rehearsal`, needs
+ports 80 and 443 free (never beside the on-premises check), and takes about twenty minutes; under load the import of a
+few thousand products can outrun its 240 seconds.
 
 What it does not prove: Windows and macOS (it runs on Linux; `make gate-powershell` parses `install.ps1`, runs
 PSScriptAnalyzer over it and its `.wslconfig` editing, and `scripts/tests/wsl-engine.test.sh` runs `wsl-engine.sh` against
