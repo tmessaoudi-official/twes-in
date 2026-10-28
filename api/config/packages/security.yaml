@@ -32,8 +32,8 @@ security:
             # Symfony's default login limiter: max_attempts per account and IP, five times that per IP. Wider than
             # the persisted account lockout (app.auth.lock_after_failures), which is the per-account control.
             login_throttling:
-                max_attempts: 10
-                interval: '15 minutes'
+                max_attempts: '%app.rate_limit.login.limit%'
+                interval: '%app.rate_limit.login.interval%'
             logout:
                 path: api_auth_logout
                 # CSRF for the whole API, login and logout included, is framework.csrf_protection (stateless, header

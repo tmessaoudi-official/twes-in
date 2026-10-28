@@ -15,6 +15,40 @@ parameters:
     # Account lockout: after this many consecutive failures the account is locked for this long.
     app.auth.lock_after_failures: 5
     app.auth.lock_duration: 'PT15M'
+    # The rate limiters' budgets, how many over how long (config/packages/rate_limiter.yaml says what each guards), and
+    # the sign-in throttling's: Symfony's default login limiter, per account and address, five times that per address.
+    app.rate_limit.login.limit: 10
+    app.rate_limit.login.interval: '15 minutes'
+    app.rate_limit.mfa_verify.limit: 5
+    app.rate_limit.mfa_verify.interval: '5 minutes'
+    app.rate_limit.mfa_confirm.limit: 5
+    app.rate_limit.mfa_confirm.interval: '5 minutes'
+    app.rate_limit.signup_client.limit: 5
+    app.rate_limit.signup_client.interval: '1 hour'
+    app.rate_limit.signup_address.limit: 1
+    app.rate_limit.signup_address.interval: '15 minutes'
+    app.rate_limit.signup_complete.limit: 10
+    app.rate_limit.signup_complete.interval: '15 minutes'
+    app.rate_limit.password_reset_client.limit: 5
+    app.rate_limit.password_reset_client.interval: '1 hour'
+    app.rate_limit.password_reset_address.limit: 1
+    app.rate_limit.password_reset_address.interval: '15 minutes'
+    app.rate_limit.password_reset_use.limit: 20
+    app.rate_limit.password_reset_use.interval: '15 minutes'
+    app.rate_limit.invitation_link.limit: 20
+    app.rate_limit.invitation_link.interval: '15 minutes'
+    app.rate_limit.scan_pairing_claim.limit: 10
+    app.rate_limit.scan_pairing_claim.interval: '15 minutes'
+    app.rate_limit.scan_pairing_phone.limit: 240
+    app.rate_limit.scan_pairing_phone.interval: '1 minute'
+    app.rate_limit.scan_pairing_photo.limit: 20
+    app.rate_limit.scan_pairing_photo.interval: '5 minutes'
+    app.rate_limit.notification_mail_stop.limit: 30
+    app.rate_limit.notification_mail_stop.interval: '15 minutes'
+    app.rate_limit.client_errors.limit: 20
+    app.rate_limit.client_errors.interval: '15 minutes'
+    app.rate_limit.demo_entry.limit: 10
+    app.rate_limit.demo_entry.interval: '1 hour'
     # Invitations: how long a mailed link works, and the page it points at. The URL is built from the same
     # origin the SPA is served from, because the link is opened from a mail client with no session.
     app.invitation.valid_for: 'P7D'
@@ -193,6 +227,14 @@ services:
             $secretKey: '%env(FILES_S3_SECRET_KEY)%'
             $pathStyle: '%env(bool:FILES_S3_PATH_STYLE)%'
             $httpClient: '@Symfony\Contracts\HttpClient\HttpClientInterface'
+
+when@dev:
+    parameters:
+        # The browser scenarios run on the development target, every scenario of a CI shard from one address, and each
+        # invitation accepted spends two of the link's budget (read, then accepted): a shard holding eleven of them crossed
+        # twenty within the quarter hour, and a fresh link answered « Trop de tentatives ». The budget guards the table from
+        # one client hammering it, never the link, whose 256 random bits do; production keeps twenty.
+        app.rate_limit.invitation_link.limit: 200
 
 when@test:
     parameters:
