@@ -181,7 +181,7 @@ final class ScaleGeneratorTest extends ApiTestCase
 
     public function testItRefusesADatabaseThatIsNotAScaleOrTestOne(): void
     {
-        foreach (['twes', 'twes_prod', 'production', 'twes_w3', 'twes_test_prod', 'twes_testimonials', 'twes_test_prod_4', 'twes_test_w', 'twes_test_gate4', 'twes_test_4'] as $name) {
+        foreach (['twes', 'twes_prod', 'production', 'twes_w3', 'twes_test_prod', 'twes_testimonials', 'twes_test_prod_4', 'twes_test_w', 'twes_test_nb', 'twes_test_gate4', 'twes_test_4'] as $name) {
             try {
                 ScaleGenerator::refuseUnlessScaleDatabase($name);
                 self::fail("$name must be refused");
@@ -197,6 +197,9 @@ final class ScaleGeneratorTest extends ApiTestCase
         ScaleGenerator::refuseUnlessScaleDatabase('twes_test_w2');
         // Each paratest worker's copy of those: the tree's token, then the worker's number.
         ScaleGenerator::refuseUnlessScaleDatabase('twes_test_w2_7');
+        // A night builder's, the same way.
+        ScaleGenerator::refuseUnlessScaleDatabase('twes_test_nb2');
+        ScaleGenerator::refuseUnlessScaleDatabase('twes_test_nb2_7');
         // The snapshot gate's, in its own worktree (scripts/gate/snapshot-gate.sh), and its workers' copies.
         ScaleGenerator::refuseUnlessScaleDatabase('twes_test_gate');
         ScaleGenerator::refuseUnlessScaleDatabase('twes_test_gate_7');
