@@ -141,6 +141,14 @@ final class PaymentDeclarationResource
     #[Groups([self::DECIDE])]
     public int $periods = 1;
 
+    /**
+     * The most periods a confirmation covers, read with the declaration so the operator's screen says a count past it
+     * under its field, before the proof of who is at the screen is asked rather than after it.
+     */
+    #[ApiProperty(writable: false, required: true)]
+    #[Groups([self::READ])]
+    public int $periodsMax = self::MAX_PERIODS;
+
     public static function of(PaymentDeclaration $declaration): self
     {
         $company = $declaration->getCompany();

@@ -160,6 +160,7 @@ function toWaiting(read: PaymentDeclarationPaymentDeclarationRead): WaitingPayme
     ...toPayment(read),
     companyId: read.companyId ?? '',
     companyName: read.companyName ?? '',
+    periodsMax: read.periodsMax,
   };
 }
 

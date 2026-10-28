@@ -38,6 +38,8 @@ import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-bu
 import { mergeSavedVersion, type FieldConflict } from '../shared/form/form-merge';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { RefusedField } from '../shared/form/refused-field';
+import { typedText } from '../shared/form/typed-text';
+import { companyNameRefusal, ownerEmailRefusal } from './platform-rules';
 import { Select, type SelectOption } from '../shared/form/select';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
@@ -116,14 +118,16 @@ function numberVerdict(
     : { key: 'import.rejections.at_most', params: { max } };
 }
 
-/** A confirmation covers one period at least, as the API holds it. */
-const PERIODS: PlatformNumber = {
-  key: 'payments.periods',
-  labelKey: 'platform.payments.periods',
-  value: 1,
-  min: 1,
-  max: null,
-};
+/** A confirmation covers one period at least, and at most what the API answers with the declaration. */
+function periodsOf(payment: WaitingPayment): PlatformNumber {
+  return {
+    key: 'payments.periods',
+    labelKey: 'platform.payments.periods',
+    value: 1,
+    min: 1,
+    max: payment.periodsMax,
+  };
+}
 
 /** How many of these typed texts hold something. */
 function filled(texts: readonly string[]): number {
@@ -562,8 +566,8 @@ export class PlatformPage implements OnInit {
   }
 
   /** Why the periods typed for a declaration cannot be confirmed, or null while they can (one until something is typed). */
-  protected periodsSaid(declarationId: string): FieldVerdict | null {
-    return numberVerdict(PERIODS, this.periodsFor()[declarationId]);
+  protected periodsSaid(payment: WaitingPayment): FieldVerdict | null {
+    return numberVerdict(periodsOf(payment), this.periodsFor()[payment.id]);
   }
 
   /**
@@ -571,10 +575,8 @@ export class PlatformPage implements OnInit {
    * and the periods; a wrong count is corrected in the company's terms, which is why it says « corrigeable ».
    */
   protected askConfirmPayment(payment: WaitingPayment): void {
-    if (this.periodsSaid(payment.id) !== null) {
-      this.host.nativeElement
-        .querySelector<HTMLInputElement>(`[data-testid="payment-periods-${payment.id}"]`)
-        ?.focus();
+    if (this.periodsSaid(payment) !== null) {
+      this.focus(`payment-periods-${payment.id}`);
       return;
     }
     const periods = this.periodsFor()[payment.id] ?? 1;
@@ -672,9 +674,23 @@ export class PlatformPage implements OnInit {
     }
   }
 
+  /**
+   * Opening asks the operator to prove who is at the screen, and the API asks it before it reads what was sent: a name
+   * or an address the screen knows to be wrong is said under its field first, which takes the cursor, and nothing is
+   * sent.
+   */
   protected async open(): Promise<void> {
-    const email = this.ownerEmail().trim();
-    if (await this.platform.openCompany(this.companyName().trim(), this.companyCountry(), email)) {
+    const name = typedText(this.companyName());
+    const email = typedText(this.ownerEmail());
+    const refused = [companyNameRefusal(name), ownerEmailRefusal(email)].filter(
+      (refusal) => refusal !== null,
+    );
+    if (refused.length > 0) {
+      this.platform.refuse('new-company', refused);
+      this.focus(refused[0]?.field === 'name' ? 'platform-company-name' : 'platform-company-owner');
+      return;
+    }
+    if (await this.platform.openCompany(name, this.companyCountry(), email)) {
       this.feedback.success('platform.companies.invited', { email });
       this.companyName.set('');
       this.ownerEmail.set('');
@@ -682,12 +698,25 @@ export class PlatformPage implements OnInit {
     }
   }
 
-  protected async invite(companyId: string): Promise<void> {
-    const email = (this.ownerEmails()[companyId] ?? '').trim();
-    if (await this.platform.inviteOwner(companyId, email)) {
-      this.feedback.success('platform.companies.invited', { email });
-      this.ownerEmails.update((typed) => ({ ...typed, [companyId]: '' }));
+  /** As opening does: an address the screen knows to be wrong is said under it before any proof is asked. */
+  protected async invite(company: { readonly id: string; readonly name: string }): Promise<void> {
+    const email = typedText(this.ownerEmails()[company.id] ?? '');
+    const refused = ownerEmailRefusal(email);
+    if (refused !== null) {
+      this.platform.refuse(`owner:${company.id}`, [refused]);
+      this.focus(`owner-email-${company.name}`);
+      return;
     }
+    if (await this.platform.inviteOwner(company.id, email)) {
+      this.feedback.success('platform.companies.invited', { email });
+      this.ownerEmails.update((typed) => ({ ...typed, [company.id]: '' }));
+    }
+  }
+
+  /** Puts the cursor in the field a refusal was said under; a company's name may hold any character, so no selector. */
+  private focus(testId: string): void {
+    const fields = this.host.nativeElement.querySelectorAll<HTMLInputElement>('input[data-testid]');
+    [...fields].find((field) => field.dataset['testid'] === testId)?.focus();
   }
 
   /** A field typed in again: what the platform refused it with no longer says what it holds. */

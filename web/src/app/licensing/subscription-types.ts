@@ -25,6 +25,8 @@ export interface PaymentRow {
 export interface WaitingPayment extends PaymentRow {
   readonly companyId: string;
   readonly companyName: string;
+  /** The most billing periods one confirmation covers, as the API holds it. */
+  readonly periodsMax: number;
 }
 
 /** What a company declares: what it paid, how and when. */

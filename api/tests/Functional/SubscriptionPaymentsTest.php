@@ -149,6 +149,8 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         $waiting = $this->jsonList();
         self::assertCount(1, $waiting);
         self::assertSame('Acme', $waiting[0]['companyName']);
+        // The bound the screen says a count past before the operator proves who is there.
+        self::assertSame(60, $waiting[0]['periodsMax']);
 
         $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/confirm', ['periods' => 2, 'note' => 'reçu en espèces']);
         self::assertResponseIsSuccessful();

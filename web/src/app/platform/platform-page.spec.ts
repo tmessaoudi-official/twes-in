@@ -68,6 +68,7 @@ class StaticLoader implements TranslateLoader {
           invalid_whatsapp:
             'Un numéro WhatsApp s’écrit au format international (exemple : +216 20 123 456).',
           value_required: 'Cette case doit être remplie.',
+          invalid_text: 'Texte refusé : {{max}} caractères au plus.',
           invalid_phone_digits:
             'Un téléphone compte de 6 à 15 chiffres (exemple : +216 71 900 868).',
           invalid_email:
@@ -232,6 +233,7 @@ const declared: WaitingPayment = {
   declaredAt: '2026-09-16T10:00:00+00:00',
   decidedAt: null,
   decisionNote: null,
+  periodsMax: 60,
 };
 
 const account: PlatformAccountRow = {
@@ -342,7 +344,8 @@ describe('PlatformPage', () => {
   const refused = signal<PlatformRefusals>({ at: null, refusals: [] });
   const facade = {
     refused: refused.asReadonly(),
-    // A plain function, which the reset of every mock below leaves as it is.
+    // Plain functions, which the reset of every mock below leaves as they are.
+    refuse: (at: string, refusals: PlatformRefusals['refusals']) => refused.set({ at, refusals }),
     forgetRefusal: (field: string) =>
       refused.update((held) => ({
         ...held,
@@ -1347,6 +1350,59 @@ describe('PlatformPage', () => {
     expect(query('standing-Nouvelle Société')?.textContent).toContain('Non géré : accès complet');
   });
 
+  // Row 210: the API asks the operator to prove who is there before it reads what was sent, so a wrong value the
+  // screen knew was refused only after the step-up.
+  it('says a new company with no name and a wrong owner address under their fields, and sends nothing', async () => {
+    const { fixture, query } = await render('/?tab=companies');
+    query<HTMLButtonElement>('platform-company-new')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const owner = query<HTMLInputElement>('platform-company-owner')!;
+    owner.value = '------';
+    owner.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('platform-company-create')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(facade.openCompany).not.toHaveBeenCalled();
+    expect(query('platform-company-name-error')?.textContent?.trim()).toBe(
+      'Cette case doit être remplie.',
+    );
+    expect(query('platform-company-owner-error')?.textContent?.trim()).toBe(
+      'Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn).',
+    );
+    expect(document.activeElement).toBe(query('platform-company-name'));
+
+    // A name past what the API keeps is said with its bound.
+    const name = query<HTMLInputElement>('platform-company-name')!;
+    name.value = 'a'.repeat(161);
+    name.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('platform-company-create')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(query('platform-company-name-error')?.textContent?.trim()).toBe(
+      'Texte refusé : 160 caractères au plus.',
+    );
+    expect(facade.openCompany).not.toHaveBeenCalled();
+  });
+
+  it("says a wrong owner address on a company's sheet under it, and sends nothing", async () => {
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+    const address = query<HTMLInputElement>('owner-email-Nouvelle Société')!;
+    address.value = 'karim@';
+    address.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('invite-owner-Nouvelle Société')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(facade.inviteOwner).not.toHaveBeenCalled();
+    expect(query('owner-email-Nouvelle Société-error')?.textContent?.trim()).toBe(
+      'Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn).',
+    );
+    expect(document.activeElement).toBe(address);
+  });
+
   it('opens the sheet of the company the address names and invites an owner from it', async () => {
     const { fixture, query } = await render('/?tab=companies&company=c1');
 
@@ -1441,12 +1497,15 @@ describe('PlatformPage', () => {
       return query('payment-periods-p1-error')?.textContent?.trim();
     };
 
-    expect(says('0')).toBe('Attendu : 1 ou plus.');
+    expect(says('0')).toBe('Attendu : un nombre entier de 1 à 60.');
     expect(periods.closest('mat-form-field')?.classList.contains('mat-form-field-invalid')).toBe(
       true,
     );
     expect(says('1.5')).toBe('Attendu : un nombre entier.');
     expect(says('')).toBe('Indiquez un nombre.');
+    // Past the most the API covers at once, said here rather than after the proof of who is at the screen.
+    expect(says('61')).toBe('Attendu : un nombre entier de 1 à 60.');
+    expect(periods.getAttribute('max')).toBe('60');
     query<HTMLButtonElement>('payment-confirm-p1')!.click();
     await fixture.whenStable();
     expect(document.querySelector('[data-testid="confirm-message"]')).toBeNull();

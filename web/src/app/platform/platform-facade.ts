@@ -445,6 +445,14 @@ export class PlatformFacade {
       });
   }
 
+  /**
+   * What the screen already knows the platform would refuse, said where it was typed as the platform's own refusal
+   * would be, before any proof of who is at the screen is asked.
+   */
+  refuse(at: string, refusals: readonly FieldRefusal[]): void {
+    this.refusedSignal.set({ at, refusals });
+  }
+
   /** A field typed in again: its refusal no longer says what it holds. */
   forgetRefusal(field: string): void {
     this.refusedSignal.update((held) => ({

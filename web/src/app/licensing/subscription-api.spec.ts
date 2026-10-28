@@ -121,8 +121,9 @@ describe('SubscriptionApi', () => {
     const queue = api.waiting();
     http
       .expectOne({ method: 'GET', url: '/api/platform/payment-declarations' })
-      .flush([{ ...payment, companyId: 'c1', companyName: 'Acme' }]);
+      .flush([{ ...payment, companyId: 'c1', companyName: 'Acme', periodsMax: 60 }]);
     expect((await queue)[0].companyName).toBe('Acme');
+    expect((await queue)[0].periodsMax).toBe(60);
 
     const confirming = api.confirm('p1', 2, 'reçu');
     const confirm = http.expectOne('/api/platform/payment-declarations/p1/confirm');

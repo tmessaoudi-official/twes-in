@@ -622,7 +622,7 @@
                   <button
                     mat-stroked-button
                     type="button"
-                    (click)="invite(company.id)"
+                    (click)="invite(company)"
                     [disabled]="busy()"
                     [attr.data-testid]="'invite-owner-' + company.name"
                   >
@@ -794,10 +794,11 @@
                         step="1"
                         [value]="1"
                         (input)="typedPeriods(payment.id, $event)"
-                        [appRefused]="periodsSaid(payment.id) !== null"
+                        [attr.max]="payment.periodsMax"
+                        [appRefused]="periodsSaid(payment) !== null"
                         [attr.data-testid]="'payment-periods-' + payment.id"
                       />
-                      @if (periodsSaid(payment.id); as said) {
+                      @if (periodsSaid(payment); as said) {
                         <mat-error
                           [attr.data-testid]="'payment-periods-' + payment.id + '-error'"
                           >{{ said.key | translate: said.params }}</mat-error
