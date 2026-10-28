@@ -14,6 +14,7 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
+use App\Module\Inventory\Domain\ValueObject\StockLossReason;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
@@ -133,6 +134,68 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         $this->em()->flush();
         self::assertSame([$gant], $this->listed('yes'), 'on for the product alone');
         self::assertTrue($this->flags('')[$gant]);
+    }
+
+    public function testACountOfTheProductItWasMergedIntoSettlesItsSales(): void
+    {
+        // VIS sold short at the site, then merged into GANT: GANT now counts what VIS carried, so its count there settles
+        // VIS's sale; until then the merge alone settles nothing.
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        $this->places();
+        $sale = $this->moved(StockMovement::delivery($this->product($this->visId), $this->place($this->siteId), '2', Uuid::v7(), $this->at(1)));
+        $this->em()->getConnection()->executeStatement('UPDATE product SET merged_into_id = ?, is_active = false WHERE id = ?', [$this->gantId, $this->visId]);
+        self::assertSame([$sale], $this->listed('yes'), 'merged, still to count');
+
+        $this->moved(StockMovement::count($this->product($this->gantId), $this->place($this->shelfId), '0', '0', null, $this->at(2)));
+        self::assertSame([$sale], $this->listed('yes'), 'a count of the product kept at another place settles nothing here');
+        $this->moved(StockMovement::count($this->product($this->gantId), $this->place($this->siteId), '0', '0', null, $this->at(3)));
+        self::assertSame([], $this->listed('yes'), 'counted under the product kept, at its place');
+    }
+
+    public function testOnlyASaleOrADeliveryIsOne(): void
+    {
+        // A loss and a move out take the site below zero as surely as a sale, but they are the shop's own record of
+        // what left, not a sale nobody could serve: only a delivery or an invoice is one.
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        $this->places();
+        $this->moved(StockMovement::loss($this->product($this->visId), $this->place($this->siteId), '2', StockLossReason::Broken, null, null, $this->at(1)));
+        foreach (StockMovement::move($this->product($this->gantId), $this->place($this->siteId), $this->place($this->shelfId), '1', null, $this->at(2)) as $half) {
+            $this->moved($half);
+        }
+        self::assertSame([], $this->listed('yes'), 'a loss and a move are none');
+
+        $sale = $this->moved(StockMovement::sale($this->product($this->visId), $this->place($this->siteId), '1', Uuid::v7(), $this->at(3)));
+        self::assertSame([$sale], $this->listed('yes'), 'a sale after them is');
+    }
+
+    public function testMovementsOfTheSameSecondAreSummedInTheOrderTheyWereMade(): void
+    {
+        // Several movements often share a second: the order they were made in (their ids) decides what the place held.
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        $this->places();
+        $moment = $this->at(1);
+        $short = $this->moved(StockMovement::delivery($this->product($this->visId), $this->place($this->siteId), '3', Uuid::v7(), $moment));
+        $this->moved(StockMovement::receipt($this->product($this->visId), $this->place($this->siteId), '5', null, $moment));
+        $later = $this->at(2);
+        $this->moved(StockMovement::receipt($this->product($this->gantId), $this->place($this->siteId), '5', null, $later));
+        $covered = $this->moved(StockMovement::delivery($this->product($this->gantId), $this->place($this->siteId), '3', Uuid::v7(), $later));
+
+        self::assertSame([$short], $this->listed('yes'), 'sold before the receipt of its second: short; sold after: covered');
+        self::assertContains($covered, $this->listed('no'));
+    }
+
+    public function testACountOfTheSameSecondSettlesOnlyTheSalesMadeBeforeIt(): void
+    {
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        $this->places();
+        $moment = $this->at(1);
+        $this->moved(StockMovement::delivery($this->product($this->visId), $this->place($this->siteId), '2', Uuid::v7(), $moment));
+        $this->moved(StockMovement::count($this->product($this->visId), $this->place($this->siteId), '0', '0', null, $moment));
+        $later = $this->at(2);
+        $this->moved(StockMovement::count($this->product($this->gantId), $this->place($this->siteId), '0', '0', null, $later));
+        $after = $this->moved(StockMovement::delivery($this->product($this->gantId), $this->place($this->siteId), '1', Uuid::v7(), $later));
+
+        self::assertSame([$after], $this->listed('yes'), 'a count made after a sale of its second settles it; one made before does not');
     }
 
     public function testTheFilterTakesOnlyYesOrNo(): void
