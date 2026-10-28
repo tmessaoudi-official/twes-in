@@ -30,6 +30,12 @@ printf '<button [disabled]="busy()">x</button>\n' > "$d/web/src/app/x/f5.ts"; gi
 out=$(bash "$GATE" --root "$d" 2>&1); check "a button disabled while busy says nothing to change" $? 0 "$out" "OK — 14"
 field "$d/web/src/app/x/f6.html" '  <!-- refusal-said: under the row -->\n'; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a field naming where it is said further on passes" $? 0 "$out" "OK"
+d=$(repo); printf '<mat-form-field>\n  <input\n    matInput\n    [value]="v()"\n    [attr.aria-invalid]="bad()"\n  />\n  <mat-error>x</mat-error>\n</mat-form-field>\n' > "$d/web/src/app/x/g.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "aria-invalid set by hand on a field leaves it grey and is named" $? 1 "$out" "x/g.html:2 refuses a value and leaves its field grey"
+printf '<mat-form-field>\n  <input matInput [value]="v()" />\n  @if (bad()) {\n    <mat-hint\n      class="text-error"\n      >x</mat-hint\n    >\n  }\n</mat-form-field>\n' > "$d/web/src/app/x/g.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a refusal said as a hint in red is named with its line" $? 1 "$out" "x/g.html:4 refuses a value and leaves its field grey"
+printf '<mat-form-field>\n  <input matInput [value]="v()" [appRefused]="bad()" />\n  <mat-error>x</mat-error>\n</mat-form-field>\n' > "$d/web/src/app/x/g.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a field refused through appRefused and mat-error passes" $? 0 "$out" "OK — 14"
 d=$(repo); git -C "$d" rm -qf "$d"/web/src/app/x/f[0-4].html
 out=$(bash "$GATE" --root "$d" 2>&1); check "far fewer ruled files than written reds rather than passing over nothing" $? 1 "$out" "no longer sees"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

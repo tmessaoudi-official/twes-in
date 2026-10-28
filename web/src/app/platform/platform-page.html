@@ -251,13 +251,13 @@
                       [max]="most.max"
                       [value]="demoMostDraft() ?? most.value"
                       (input)="typedDemoMost($event)"
-                      [attr.aria-invalid]="numberSaid(most, demoMostDraft()) !== null"
+                      [appRefused]="numberSaid(most, demoMostDraft()) !== null"
                       data-testid="platform-demo-most"
                     />
                     @if (numberSaid(most, demoMostDraft()); as said) {
-                      <mat-hint class="text-error" data-testid="platform-demo-most-error">{{
+                      <mat-error data-testid="platform-demo-most-error">{{
                         said.key | translate: said.params
-                      }}</mat-hint>
+                      }}</mat-error>
                     } @else if (most.min !== null && most.max !== null) {
                       <mat-hint>{{
                         'platform.demo.bounds' | translate: { min: most.min, max: most.max }
@@ -313,13 +313,13 @@
                       [max]="rows.max"
                       [value]="importRowsDraft() ?? rows.value"
                       (input)="typedImportRows($event)"
-                      [attr.aria-invalid]="numberSaid(rows, importRowsDraft()) !== null"
+                      [appRefused]="numberSaid(rows, importRowsDraft()) !== null"
                       data-testid="platform-import-rows"
                     />
                     @if (numberSaid(rows, importRowsDraft()); as said) {
-                      <mat-hint class="text-error" data-testid="platform-import-rows-error">{{
+                      <mat-error data-testid="platform-import-rows-error">{{
                         said.key | translate: said.params
-                      }}</mat-hint>
+                      }}</mat-error>
                     } @else if (rows.min !== null && rows.max !== null) {
                       <mat-hint>{{
                         'platform.imports.bounds' | translate: { min: rows.min, max: rows.max }
@@ -382,15 +382,13 @@
                       [max]="delay.max"
                       [value]="delayDraft()[delay.key] ?? delay.value"
                       (input)="typedDelay(delay.key, $event)"
-                      [attr.aria-invalid]="numberSaid(delay, delayDraft()[delay.key]) !== null"
+                      [appRefused]="numberSaid(delay, delayDraft()[delay.key]) !== null"
                       [attr.data-testid]="'platform-delay-' + delay.key"
                     />
                     @if (numberSaid(delay, delayDraft()[delay.key]); as said) {
-                      <mat-hint
-                        class="text-error"
-                        [attr.data-testid]="'platform-delay-' + delay.key + '-error'"
-                        >{{ said.key | translate: said.params }}</mat-hint
-                      >
+                      <mat-error [attr.data-testid]="'platform-delay-' + delay.key + '-error'">{{
+                        said.key | translate: said.params
+                      }}</mat-error>
                     } @else if (delay.min !== null && delay.max !== null) {
                       <mat-hint>{{
                         'platform.delays.bounds' | translate: { min: delay.min, max: delay.max }
@@ -482,13 +480,13 @@
                       matInput
                       [value]="companyName()"
                       (input)="companyName.set(typed($event)); forget('name')"
-                      [attr.aria-invalid]="refusalOf('new-company', 'name') !== null"
+                      [appRefused]="refusalOf('new-company', 'name') !== null"
                       data-testid="platform-company-name"
                     />
                     @if (refusalOf('new-company', 'name'); as said) {
-                      <mat-hint class="text-error" data-testid="platform-company-name-error">{{
+                      <mat-error data-testid="platform-company-name-error">{{
                         said.key | translate: said.params
-                      }}</mat-hint>
+                      }}</mat-error>
                     }
                   </mat-form-field>
                   <app-select
@@ -508,13 +506,13 @@
                       type="email"
                       [value]="ownerEmail()"
                       (input)="ownerEmail.set(typed($event)); forget('email')"
-                      [attr.aria-invalid]="refusalOf('new-company', 'email') !== null"
+                      [appRefused]="refusalOf('new-company', 'email') !== null"
                       data-testid="platform-company-owner"
                     />
                     @if (refusalOf('new-company', 'email'); as said) {
-                      <mat-hint class="text-error" data-testid="platform-company-owner-error">{{
+                      <mat-error data-testid="platform-company-owner-error">{{
                         said.key | translate: said.params
-                      }}</mat-hint>
+                      }}</mat-error>
                     }
                   </mat-form-field>
                   <button
@@ -612,15 +610,13 @@
                       type="email"
                       [value]="ownerEmails()[company.id] ?? ''"
                       (input)="typedOwner(company.id, $event)"
-                      [attr.aria-invalid]="refusalOf('owner:' + company.id, 'email') !== null"
+                      [appRefused]="refusalOf('owner:' + company.id, 'email') !== null"
                       [attr.data-testid]="'owner-email-' + company.name"
                     />
                     @if (refusalOf('owner:' + company.id, 'email'); as said) {
-                      <mat-hint
-                        class="text-error"
-                        [attr.data-testid]="'owner-email-' + company.name + '-error'"
-                        >{{ said.key | translate: said.params }}</mat-hint
-                      >
+                      <mat-error [attr.data-testid]="'owner-email-' + company.name + '-error'">{{
+                        said.key | translate: said.params
+                      }}</mat-error>
                     }
                   </mat-form-field>
                   <button
@@ -795,10 +791,18 @@
                         matInput
                         type="number"
                         min="1"
-                        [value]="periodsFor()[payment.id] ?? 1"
+                        step="1"
+                        [value]="1"
                         (input)="typedPeriods(payment.id, $event)"
+                        [appRefused]="periodsSaid(payment.id) !== null"
                         [attr.data-testid]="'payment-periods-' + payment.id"
                       />
+                      @if (periodsSaid(payment.id); as said) {
+                        <mat-error
+                          [attr.data-testid]="'payment-periods-' + payment.id + '-error'"
+                          >{{ said.key | translate: said.params }}</mat-error
+                        >
+                      }
                     </mat-form-field>
                     <button
                       mat-flat-button

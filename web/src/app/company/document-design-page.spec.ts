@@ -399,6 +399,8 @@ describe('DocumentDesignPage', () => {
       await settle();
       expect(settings.save).not.toHaveBeenCalled();
       expect(fixture.nativeElement.querySelector('.mat-form-field-invalid')).not.toBeNull();
+      // And says why under the field, not only by its colour.
+      expect(q('documents-logo-width-error')).not.toBeNull();
     }
 
     width.value = '60';

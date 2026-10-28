@@ -59,6 +59,7 @@ import {
 } from '../shared/settings/settings-registry';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { PasswordToggle } from '../shared/form/password-toggle';
+import { RefusedField } from '../shared/form/refused-field';
 
 /** Why a key typed in Préférences was not kept: the shell's own reasons, or another action has it already. */
 type KeyRefusal = ShellKeyRefusal | 'taken';
@@ -87,6 +88,7 @@ export type AccountTab = (typeof ACCOUNT_TABS)[number];
     Select,
     MatIconModule,
     MatInputModule,
+    RefusedField,
     MatSlideToggleModule,
     MatTabsModule,
     RouterLink,

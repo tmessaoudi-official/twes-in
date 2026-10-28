@@ -298,6 +298,13 @@ export class DocumentDesignPage implements OnInit {
   }
 
   /** A whole number of millimetres inside what the API declares; anything while the bounds are unread waits. */
+  /** What a refused size says: a size is needed, else the whole millimetres the room allows, read from the setting. */
+  protected roomSaid(control: 'logoWidth' | 'logoHeight'): string {
+    return this.form.controls[control].hasError('required')
+      ? 'form.errors.required'
+      : 'import.rejections.whole_number_between';
+  }
+
   private within(value: unknown, side: 'width' | 'height'): ValidationErrors | null {
     const bounds = this.room()?.[side];
     if (value === null || value === '' || bounds === undefined) return null;

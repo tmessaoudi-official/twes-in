@@ -265,13 +265,13 @@
                         [attr.data-testid]="'account-key-' + name"
                         (focus)="$any($event.target).select()"
                         (input)="chooseKey(name, $any($event.target))"
+                        [appRefused]="keyRefusals()[name] !== undefined"
                       />
                       @if (keyRefusals()[name]; as refusal) {
-                        <mat-hint
+                        <mat-error
                           role="alert"
-                          class="text-error"
                           [attr.data-testid]="'account-key-' + name + '-error'"
-                          >{{ 'account.shortcut_refused.' + refusal | translate }}</mat-hint
+                          >{{ 'account.shortcut_refused.' + refusal | translate }}</mat-error
                         >
                       }
                     </mat-form-field>

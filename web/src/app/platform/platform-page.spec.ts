@@ -64,6 +64,7 @@ class StaticLoader implements TranslateLoader {
         rejections: {
           whole_number_between: 'Attendu : un nombre entier de {{min}} à {{max}}.',
           not_a_whole_number: 'Attendu : un nombre entier.',
+          at_least: 'Attendu : {{min}} ou plus.',
           invalid_whatsapp:
             'Un numéro WhatsApp s’écrit au format international (exemple : +216 20 123 456).',
           value_required: 'Cette case doit être remplie.',
@@ -895,6 +896,8 @@ describe('PlatformPage', () => {
     };
     expect(says('')).toBe('Indiquez un nombre.');
     expect(most.getAttribute('aria-invalid')).toBe('true');
+    // Its outline turns red as a form's refused field does, not only the words under it.
+    expect(most.closest('mat-form-field')?.classList.contains('mat-form-field-invalid')).toBe(true);
     expect(says('4.5')).toBe('Attendu : un nombre entier.');
     expect(says('200')).toBe('Attendu : un nombre entier de 3 à 100.');
     expect(query<HTMLButtonElement>('platform-demo-save')!.disabled).toBe(true);
@@ -1425,6 +1428,31 @@ describe('PlatformPage', () => {
         expect.objectContaining({ key: 'platform.payments.confirmed', effect: 'corrigeable' }),
       ]),
     );
+  });
+
+  // A count the API would refuse was put back to one unseen, and the dialog confirmed one period.
+  it('says under the periods why they cannot be confirmed, and confirms nothing until they can', async () => {
+    const { fixture, query } = await render('/?tab=payments');
+    const periods = query<HTMLInputElement>('payment-periods-p1')!;
+    const says = (typed: string): string | undefined => {
+      periods.value = typed;
+      periods.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      return query('payment-periods-p1-error')?.textContent?.trim();
+    };
+
+    expect(says('0')).toBe('Attendu : 1 ou plus.');
+    expect(periods.closest('mat-form-field')?.classList.contains('mat-form-field-invalid')).toBe(
+      true,
+    );
+    expect(says('1.5')).toBe('Attendu : un nombre entier.');
+    expect(says('')).toBe('Indiquez un nombre.');
+    query<HTMLButtonElement>('payment-confirm-p1')!.click();
+    await fixture.whenStable();
+    expect(document.querySelector('[data-testid="confirm-message"]')).toBeNull();
+    expect(document.activeElement).toBe(periods);
+
+    expect(says('3')).toBeUndefined();
   });
 
   it('asks before it rejects a payment, naming the company, without asking for periods', async () => {

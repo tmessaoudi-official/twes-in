@@ -92,6 +92,9 @@
                 data-testid="documents-logo-width"
               />
               <span matTextSuffix>{{ 'documents.millimetres' | translate }}</span>
+              <mat-error data-testid="documents-logo-width-error">{{
+                roomSaid('logoWidth') | translate: room()?.width
+              }}</mat-error>
             </mat-form-field>
             <button
               mat-icon-button
@@ -116,6 +119,9 @@
                 data-testid="documents-logo-height"
               />
               <span matTextSuffix>{{ 'documents.millimetres' | translate }}</span>
+              <mat-error data-testid="documents-logo-height-error">{{
+                roomSaid('logoHeight') | translate: room()?.height
+              }}</mat-error>
             </mat-form-field>
           </div>
           @if (!locked()) {

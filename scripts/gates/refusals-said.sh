@@ -6,15 +6,16 @@
 # or whose button is disabled on a value being wrong (`[disabled]="!valid()"`, `invalid`, `!savable()`, `!…Ready()`)
 # says the problem beside it: a `<mat-error>` in its field (shown once the field is left or a save is tried, the first
 # wrong field focused: shared/form/reveal-invalid.ts), a line of its own just after the field (`role="alert"`,
-# `text-error`), or `refusal-said: <where>` when it is said further on; or the file is listed below with its reason. Usage: refusals-said.sh [--root DIR]
+# `text-error`), or `refusal-said: <where>` when it is said further on; or the file is listed below with its reason. A field
+# the screen refuses without a form control is refused as a form's field is, its outline red: `[appRefused]` on the
+# input and a `<mat-error>` (shared/form/refused-field.ts); `aria-invalid` set by hand, or a hint in red, left the
+# platform's fields grey under their refusal. Usage: refusals-said.sh [--root DIR]
 set -uo pipefail
 export LC_ALL=C
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 declare -A exempt=(
-  # Edited by two other writers in the same round; their fields are said once that work is integrated.
-  [web/src/app/platform/platform-page.html]="the platform cards' limits, said by the platform page's own round"
-  [web/src/app/company/document-design-page.html]="the logo's width and height, said with the settings engine's round"
+  # None today: a file listed here as [path]="why" is passed over, its reason said in the gate's answer.
 )
 mapfile -t files < <(cd "$root" && git ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 status=0
@@ -26,7 +27,7 @@ for file in "${files[@]}"; do
   # A button disabled on a value being wrong is answered anywhere in its file (a dialog says it under the field).
   # shellcheck disable=SC2016 # the Perl program is single-quoted on purpose
   report=$(perl -0777 -ne '
-    my ($ruled, @unsaid) = (0);
+    my ($ruled, @unsaid, @grey) = (0);
     my $said = qr/<mat-error|role="alert"|text-error|refusal-said: \S/;
     my $anywhere = $_ =~ $said;
     while (/<(?:input|textarea)\b[^>]*\bmatInput\b[^>]*>/g) {
@@ -38,18 +39,28 @@ for file in "${files[@]}"; do
       my $beside = substr($rest, 0, ($close < 0 ? 0 : $close) + 400);
       push @unsaid, 1 + (substr($_, 0, $start) =~ tr/\n//) unless $beside =~ $said;
     }
+    # A field the screen refuses without a form control turns red as a form field does: appRefused, never aria-invalid
+    # set by hand (the outline stayed grey) nor the refusal said as a hint in red.
+    while (/<(?:input|textarea)\b[^>]*\bmatInput\b[^>]*\[attr\.aria-invalid\][^>]*>|<mat-hint\b[^>]*\btext-error\b/g) {
+      $ruled++;
+      push @grey, 1 + (substr($_, 0, $-[0]) =~ tr/\n//);
+    }
     while (/\[disabled\]="[^"]*(?:!valid\(\)|\binvalid\b|!savable\(|![a-z][A-Za-z]*Ready\(\))[^"]*"/g) {
       my $at = pos;
       $ruled++;
       push @unsaid, 1 + (substr($_, 0, $at) =~ tr/\n//) unless $anywhere;
     }
-    print join(" ", $ruled, @unsaid);
+    print join(";", $ruled, join(" ", @unsaid), join(" ", @grey));
   ' "$path")
-  read -r found unsaid <<<"$report"
+  IFS=';' read -r found unsaid grey <<<"$report"
   ((found == 0)) && continue
   ruled=$((ruled + 1))
   for line in $unsaid; do
     printf 'refusals-said: FAIL — %s:%d refuses a value without a word: say it under the field with <mat-error> (revealInvalid on save), or on a line of its own beside it\n' "$file" "$line"
+    status=1
+  done
+  for line in $grey; do
+    printf 'refusals-said: FAIL — %s:%d refuses a value and leaves its field grey: mark the input [appRefused] and say it in <mat-error> (shared/form/refused-field.ts), never aria-invalid by hand nor a hint in red\n' "$file" "$line"
     status=1
   done
 done

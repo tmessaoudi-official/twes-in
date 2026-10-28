@@ -6,6 +6,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  ElementRef,
   effect,
   inject,
   linkedSignal,
@@ -36,6 +37,7 @@ import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import { mergeSavedVersion, type FieldConflict } from '../shared/form/form-merge';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
+import { RefusedField } from '../shared/form/refused-field';
 import { Select, type SelectOption } from '../shared/form/select';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
@@ -114,6 +116,15 @@ function numberVerdict(
     : { key: 'import.rejections.at_most', params: { max } };
 }
 
+/** A confirmation covers one period at least, as the API holds it. */
+const PERIODS: PlatformNumber = {
+  key: 'payments.periods',
+  labelKey: 'platform.payments.periods',
+  value: 1,
+  min: 1,
+  max: null,
+};
+
 /** How many of these typed texts hold something. */
 function filled(texts: readonly string[]): number {
   return texts.filter((text) => text.trim() !== '').length;
@@ -165,6 +176,7 @@ import { PLATFORM_KINDS } from './platform-kinds';
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
+    RefusedField,
     MatSlideToggleModule,
     MatTabsModule,
     SelectedTabInView,
@@ -340,6 +352,7 @@ export class PlatformPage implements OnInit {
   );
   /** How many periods each waiting payment is taken to cover, by declaration; one unless the operator says otherwise. */
   protected readonly periodsFor = signal<Readonly<Record<string, number>>>({});
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly waiting = this.platform.waiting;
   protected readonly failed = this.platform.failed;
@@ -541,9 +554,16 @@ export class PlatformPage implements OnInit {
     };
   }
 
+  /** What was typed is kept as typed, so a wrong count is said under its field, never put back to one unseen. */
   protected typedPeriods(declarationId: string, event: Event): void {
-    const periods = Number.parseInt(this.typed(event), 10);
-    this.periodsFor.update((held) => ({ ...held, [declarationId]: periods > 0 ? periods : 1 }));
+    const typed = this.typed(event).trim();
+    const periods = typed === '' ? Number.NaN : Number(typed);
+    this.periodsFor.update((held) => ({ ...held, [declarationId]: periods }));
+  }
+
+  /** Why the periods typed for a declaration cannot be confirmed, or null while they can (one until something is typed). */
+  protected periodsSaid(declarationId: string): FieldVerdict | null {
+    return numberVerdict(PERIODS, this.periodsFor()[declarationId]);
   }
 
   /**
@@ -551,6 +571,12 @@ export class PlatformPage implements OnInit {
    * and the periods; a wrong count is corrected in the company's terms, which is why it says « corrigeable ».
    */
   protected askConfirmPayment(payment: WaitingPayment): void {
+    if (this.periodsSaid(payment.id) !== null) {
+      this.host.nativeElement
+        .querySelector<HTMLInputElement>(`[data-testid="payment-periods-${payment.id}"]`)
+        ?.focus();
+      return;
+    }
     const periods = this.periodsFor()[payment.id] ?? 1;
     this.ask(
       {
