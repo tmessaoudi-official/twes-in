@@ -34,6 +34,8 @@ final class LateFeeSettingsTest extends TestCase
         yield 'nothing written, nothing charged' => ['', 1, '300', 3, null];
         yield 'not tiers at all' => ['five', 1, '300', 3, null];
         yield 'six tiers are too many' => ['1; 2; 3; 4; 5; 6', 1, '300', 3, null];
+        yield 'as copied from the hint, its spaces no-break ones' => ["5\u{202F};\u{202F}10\u{202F};\u{202F}2\u{00A0}%", 3, '300', 3, '6.000'];
+        yield 'digits other than 0 to 9 are no amount' => ["\u{0665}", 1, '300', 3, null];
     }
 
     #[DataProvider('fees')]

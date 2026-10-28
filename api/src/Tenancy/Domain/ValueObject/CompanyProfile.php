@@ -112,7 +112,7 @@ final readonly class CompanyProfile
 
     private static function code(?string $value): ?string
     {
-        $value = strtoupper((string) preg_replace('/\s+/', '', (string) $value));
+        $value = strtoupper((string) preg_replace('/\s+/u', '', (string) $value));
 
         return '' === $value ? null : $value;
     }

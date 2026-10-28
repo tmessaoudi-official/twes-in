@@ -43,6 +43,7 @@ import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedba
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CompanyFacade } from '../company/company-facade';
 import type { CompanyOption } from '../company/company-types';
+import { apiPattern } from '../shared/testing/hint-examples';
 import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
@@ -273,12 +274,12 @@ describe('PlatformPage', () => {
   // The rules the API sends with each channel, which the browser checks before the API does.
   const supportRules = signal<PlatformSupportRules | null>({
     phone: {
-      pattern: '/^((?=(?:[^0-9]*[0-9]){6,15}[^0-9]*$)\\+?[0-9 ().\\-]+)?$/',
+      pattern: apiPattern('support_phone'),
       patternReason: 'invalid_phone_digits',
       maxLength: 30,
     },
     whatsapp: {
-      pattern: '/^(\\+[1-9][0-9 ]{7,20})?$/',
+      pattern: apiPattern('whatsapp'),
       patternReason: 'invalid_whatsapp',
       maxLength: 30,
     },

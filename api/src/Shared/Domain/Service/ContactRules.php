@@ -45,9 +45,16 @@ final class ContactRules
      */
     public const string EMAIL_PATTERN = '[a-zA-Z0-9.!#$%&\'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+';
     private const string EMAIL = '/^'.self::EMAIL_PATTERN.'$/D';
+    /**
+     * Every space a value may carry between its groups, the keyboard's and Unicode's others (`\p{Zs}`): a figure copied
+     * from a hint, a refusal or a printed document keeps its groups apart with a no-break one. Written out as the
+     * characters themselves, to sit inside a character class, so a browser's pattern, handed it as is and compiled with
+     * no flag, reads it as PCRE does under `/u`.
+     */
+    public const string SPACES = " \u{00A0}\u{1680}\u{2000}-\u{200A}\u{202F}\u{205F}\u{3000}";
     /** A phone number as an HTML form's pattern writes it, the whole value matched. */
-    public const string PHONE_PATTERN = '\+?[0-9 ().\-]{3,40}';
-    private const string PHONE = '/^'.self::PHONE_PATTERN.'$/D';
+    public const string PHONE_PATTERN = '\+?[0-9'.self::SPACES.'().\-]{3,40}';
+    private const string PHONE = '/^'.self::PHONE_PATTERN.'$/uD';
     /**
      * A web page's address: http or https, optional credentials, a host with at least one dot (an address of numbers
      * alone is no host), an optional port, path, query and fragment.
@@ -84,7 +91,7 @@ final class ContactRules
 
     public static function bic(string $value): ?Refusal
     {
-        return 1 === preg_match(self::BIC, strtoupper(str_replace(' ', '', $value)), $parts) && null === self::country($parts[1])
+        return 1 === preg_match(self::BIC, strtoupper(self::unspaced($value)), $parts) && null === self::country($parts[1])
             ? null
             : new Refusal('invalid_bic', 'Not a BIC (ISO 9362).');
     }
@@ -96,7 +103,7 @@ final class ContactRules
      */
     public static function account(string $value): string
     {
-        $account = strtoupper(str_replace(' ', '', $value));
+        $account = strtoupper(self::unspaced($value));
         $digits = (string) preg_replace('/[\s.\-]/u', '', $value);
 
         return 1 === preg_match('/^\d{20}$/D', $digits) ? 'TN59'.$digits : $account;
@@ -105,7 +112,7 @@ final class ContactRules
     /** The shape and checksum the standard gives every IBAN; a country's own length is the form's to add. */
     public static function iban(string $value): ?Refusal
     {
-        $iban = strtoupper(str_replace(' ', '', $value));
+        $iban = strtoupper(self::unspaced($value));
         if (1 !== preg_match(self::IBAN, $iban, $parts) || null !== self::country($parts[1]) || 1 !== self::mod97(substr($iban, 4).substr($iban, 0, 4))) {
             return new Refusal('invalid_iban', 'Not an IBAN (ISO 13616).');
         }
@@ -116,6 +123,12 @@ final class ContactRules
     public static function text(string $value, int $max): ?Refusal
     {
         return mb_strlen($value) > $max ? new Refusal('invalid_text', \sprintf('At most %d characters.', $max), ['max' => $max]) : null;
+    }
+
+    /** A bank code without the spaces between its groups, whichever space was copied. */
+    private static function unspaced(string $value): string
+    {
+        return (string) preg_replace('/\s+/u', '', $value);
     }
 
     /** The remainder by 97 of the number the letters and digits spell, each letter as 10 to 35. */

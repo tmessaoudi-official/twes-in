@@ -3,6 +3,7 @@
 import type { FormGroup } from '@angular/forms';
 import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { hintExamples } from '../shared/testing/hint-examples';
 import {
   ADDRESS_PARTS,
   CONTACT_FORM,
@@ -79,6 +80,20 @@ const carthage: CustomerRow = {
 };
 
 describe('customer forms', () => {
+  // The phone's refusal offers an example a person copies back, its groups kept apart by no-break spaces, and in
+  // Arabic a direction mark before it: a customer's phone and a contact's take it as copied.
+  it('takes every example the phone refusal offers, as copied', () => {
+    const phones = [customerForm(options, groups), CONTACT_FORM].map(
+      (form) => buildFormGroup(form).controls['phone']!,
+    );
+    for (const control of phones) {
+      for (const example of hintExamples('phone')) {
+        control.setValue(example);
+        expect(control.errors, example).toBeNull();
+      }
+    }
+  });
+
   it('lists customers by number with their name, group and whether they are active', () => {
     expect(CUSTOMERS_LIST.columns.map((column) => column.id)).toEqual([
       'number',

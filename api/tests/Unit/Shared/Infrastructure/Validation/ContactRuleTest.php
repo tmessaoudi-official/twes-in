@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Shared\Infrastructure\Validation;
 
 use ApiPlatform\Metadata\ApiProperty;
+use App\Shared\Domain\Service\ContactRules;
 use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Shared\Infrastructure\Validation\ContactRuleSchema;
 use PHPUnit\Framework\TestCase;
@@ -46,7 +47,7 @@ final class ContactRuleTest extends TestCase
 
         self::assertSame(['format' => 'email', 'maxLength' => 254], $schema->create(new ContactRule(ContactRule::EMAIL), $property));
         self::assertSame(['format' => 'uri', 'maxLength' => 200], $schema->create(new ContactRule(ContactRule::WEBSITE), $property));
-        self::assertSame(['pattern' => '^(\+?[0-9 ().\-]{3,40})$'], $schema->create(new ContactRule(ContactRule::PHONE), $property));
+        self::assertSame(['pattern' => '^('.ContactRules::PHONE_PATTERN.')$'], $schema->create(new ContactRule(ContactRule::PHONE), $property));
         self::assertSame(['pattern' => '^[A-Z]{2}$'], $schema->create(new ContactRule(ContactRule::COUNTRY), $property));
         self::assertTrue($schema->supports(new ContactRule(ContactRule::BIC), $property));
         self::assertFalse($schema->supports(new Assert\Email(), $property));

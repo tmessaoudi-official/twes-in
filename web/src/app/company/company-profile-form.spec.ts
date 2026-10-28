@@ -3,6 +3,7 @@
 import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import { dirtyCount } from '../shared/form/dirty-count';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { hintExamples } from '../shared/testing/hint-examples';
 import { profileChanges, profileForm, profileValues } from './company-profile-form';
 import type { CompanyProfile } from './company-types';
 
@@ -83,6 +84,24 @@ describe('the débits option', () => {
 });
 
 describe('profileForm', () => {
+  // A refusal's example is what a person copies back, its groups kept apart by no-break spaces (« +216 71 900 868 »,
+  // « TN59 1000 6035 … »), and in Arabic a direction mark before it: the field takes it as copied.
+  it('takes every example the phone and IBAN refusals offer, as copied', () => {
+    const form = buildFormGroup(profileForm(profile), profileValues(profile));
+    for (const [id, kind] of [
+      ['phone', 'phone'],
+      ['iban', 'iban'],
+    ] as const) {
+      const control = form.controls[id]!;
+      for (const example of hintExamples(kind)) {
+        control.setValue(example);
+        expect(control.errors, `${id} ${example}`).toBeNull();
+      }
+    }
+    form.controls['bic']!.setValue('BIAT\u202fTN\u202fTT');
+    expect(form.controls['bic']!.errors).toBeNull();
+  });
+
   // docs/SPEC.md § 7, 2026-10-22 18:09: a bare RIB is the IBAN TN59 spells before it, so the field lets one through.
   it('takes an IBAN or a bare RIB in the IBAN field, and nothing else', () => {
     const iban = buildFormGroup(profileForm(profile), profileValues(profile)).controls['iban']!;

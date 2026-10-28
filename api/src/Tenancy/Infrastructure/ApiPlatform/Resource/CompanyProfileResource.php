@@ -126,7 +126,7 @@ final class CompanyProfileResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;
 
-    #[Assert\Regex(pattern: '/^\+?[0-9 ().\-]{3,40}$/', groups: [self::WRITE], payload: ['reason' => 'invalid_phone'])]
+    #[ContactRule(ContactRule::PHONE, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $phone = null;
 

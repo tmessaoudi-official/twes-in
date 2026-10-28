@@ -41,6 +41,11 @@ final class CompanyProfileTest extends TestCase
 
         self::assertSame('TN5910006035183598478831', $profile->iban);
         self::assertSame('BIATTNTT', $profile->bic);
+
+        // As copied from a printed RIB or a hint, its groups kept apart by a no-break space.
+        $copied = new CompanyProfile(iban: "TN59\u{202F}1000\u{202F}6035\u{202F}1835\u{202F}9847\u{202F}8831", bic: "BIAT\u{00A0}TN\u{00A0}TT");
+        self::assertSame('TN5910006035183598478831', $copied->iban);
+        self::assertSame('BIATTNTT', $copied->bic);
     }
 
     public function testIdentifiersAreKeptInKeyOrderSoTheSameProfileComparesEqual(): void

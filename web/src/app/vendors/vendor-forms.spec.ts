@@ -4,6 +4,7 @@ import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import { VENDORS_LIST, vendorForm, vendorInput, vendorSearch, vendorValues } from './vendor-forms';
 import type { VendorOptions, VendorRow } from './vendors-types';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { hintExamples } from '../shared/testing/hint-examples';
 
 const options: VendorOptions = {
   countryCode: 'TN',
@@ -181,13 +182,37 @@ describe('vendor forms', () => {
   // The BIC as a RIB prints it, its groups apart: the API drops the spaces before its own check.
   it('takes a BIC written with its groups apart', () => {
     const bic = buildFormGroup(vendorForm(options), vendorValues(null, options)).controls['bic']!;
-    for (const taken of ['BIATTNTT', 'BIAT TN TT', 'biat tn tt', 'BNORFRPPBDX', 'BNOR FR PP BDX']) {
+    for (const taken of [
+      'BIATTNTT',
+      'BIAT TN TT',
+      'biat tn tt',
+      'BNORFRPPBDX',
+      'BNOR FR PP BDX',
+      'BIAT\u202fTN\u202fTT',
+      'BNOR\u00a0FR\u00a0PP\u00a0BDX',
+    ]) {
       bic.setValue(taken);
       expect(bic.errors, taken).toBeNull();
     }
     for (const refused of ['BIAT', 'BIATTNTT1', 'BIAT  TN TT', 'BIAT TN TT 1']) {
       bic.setValue(refused);
       expect(bic.errors?.['pattern'] ?? bic.errors?.['maxlength'], refused).toBeTruthy();
+    }
+  });
+
+  // A refusal's example is what a person copies back, its groups kept apart by no-break spaces, and in Arabic a
+  // direction mark before it: the field takes it as copied.
+  it('takes every example the phone and IBAN refusals offer, as copied', () => {
+    const form = buildFormGroup(vendorForm(options), vendorValues(null, options));
+    for (const [id, kind] of [
+      ['phone', 'phone'],
+      ['iban', 'iban'],
+    ] as const) {
+      const control = form.controls[id]!;
+      for (const example of hintExamples(kind)) {
+        control.setValue(example);
+        expect(control.errors, `${id} ${example}`).toBeNull();
+      }
     }
   });
 

@@ -27,8 +27,11 @@ final readonly class LateFeeSettings implements DeclaresSettings
 {
     public const string ENABLED = 'late_fees.enabled';
     public const string TIERS = 'late_fees.tiers';
-    /** Up to five tiers, each empty, an amount or a share: « 5 ; 10,5 ; 2 % ». */
-    public const string TIERS_PATTERN = '/^\s*(\d{1,9}([.,]\d{1,3})?\s*%?)?(\s*;\s*(\d{1,9}([.,]\d{1,3})?\s*%?)?){0,4}\s*$/';
+    /**
+     * Up to five tiers, each empty, an amount or a share: « 5 ; 10,5 ; 2 % », its spaces any Unicode space (`/u`), as
+     * the hint's own example writes them; its digits 0 to 9 alone, which `\d` under `/u` would not be.
+     */
+    public const string TIERS_PATTERN = '/^\s*([0-9]{1,9}([.,][0-9]{1,3})?\s*%?)?(\s*;\s*([0-9]{1,9}([.,][0-9]{1,3})?\s*%?)?){0,4}\s*$/u';
     /** The module's key, as InvoicesModule declares it. */
     private const string MODULE = 'invoices';
 

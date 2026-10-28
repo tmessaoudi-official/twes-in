@@ -7,6 +7,8 @@ import {
   settingsForm,
   settingsValues,
 } from './setting-forms';
+import { buildFormGroup } from '../form/form-builder';
+import { apiPattern, hintExamples } from '../testing/hint-examples';
 import type { SettingRow } from './settings-types';
 
 function row(
@@ -94,6 +96,28 @@ describe('settings at a level', () => {
       ['document__late_rate', 'decimal'],
       ['document__late_fee', 'decimal'],
     ]);
+  });
+
+  // The hint's own example, copied with its no-break spaces, passes the pattern the API sends (« 5 ; 10 ; 2 % »).
+  it('takes the late fee example its hint and its refusal offer, as copied', () => {
+    const tiers = row({
+      key: 'late_fees.tiers',
+      chain: 'parties',
+      type: 'text',
+      defaultValue: '',
+      value: '',
+      pattern: apiPattern('late_fee_tiers'),
+      patternReason: 'invalid_late_fee_tiers',
+    });
+    const control = buildFormGroup(settingsForm([tiers], customer)).controls['late_fees__tiers']!;
+    const examples = hintExamples('late_fee_tiers');
+    expect(examples).toContain('5\u202f; 10\u202f; 2\u00a0%');
+    for (const example of examples) {
+      control.setValue(example);
+      expect(control.errors, example).toBeNull();
+    }
+    control.setValue('\u0665');
+    expect(control.errors?.['pattern'], 'digits other than 0 to 9').toBeTruthy();
   });
 
   it('renders the settings that level may hold, in the chains asked for', () => {

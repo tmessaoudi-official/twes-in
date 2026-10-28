@@ -35,9 +35,9 @@ final readonly class SupportSettings implements DeclaresSettings
      * Every page links to the phone, signed out too: it holds 6 to 15 digits, the most an international number has, so
      * signs alone (`------`) never make a link that calls nothing. Read the same way by the browser, which is handed it.
      */
-    private const string PHONE_PATTERN = '/^((?=(?:[^0-9]*[0-9]){6,15}[^0-9]*$)\+?[0-9 ().\-]+)?$/';
+    private const string PHONE_PATTERN = '/^((?=(?:[^0-9]*[0-9]){6,15}[^0-9]*$)\+?[0-9'.ContactRules::SPACES.'().\-]+)?$/u';
     /** WhatsApp opens a chat only from the number in its international form, the country's code first. */
-    private const string WHATSAPP_PATTERN = '/^(\+[1-9][0-9 ]{7,20})?$/';
+    private const string WHATSAPP_PATTERN = '/^(\+[1-9][0-9'.ContactRules::SPACES.']{7,20})?$/u';
     /** The one rule every e-mail of the application follows. */
     private const string EMAIL_PATTERN = '/^('.ContactRules::EMAIL_PATTERN.')?$/D';
     /** An https address only: the link is opened by people who are not signed in, from every page. */

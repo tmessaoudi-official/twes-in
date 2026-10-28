@@ -23,6 +23,7 @@ use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\RemoveContac
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\ReviseContactProcessor;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\ContactCollectionProvider;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ContactRule;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -86,7 +87,7 @@ final class ContactResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;
 
-    #[Assert\Regex(pattern: '/^\+?[0-9 ().\-]{3,40}$/', groups: [self::WRITE], payload: ['reason' => 'invalid_phone'])]
+    #[ContactRule(ContactRule::PHONE, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $phone = null;
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { CHECK_NOTE_MAX } from '../shared/check/check-note';
+import { BIC_PATTERN, IBAN_PATTERN, PHONE_PATTERN } from '../shared/form/contact-patterns';
 import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import type {
   FieldValue,
@@ -200,7 +201,7 @@ export function vendorForm(
           label: `${FIELDS}.phone`,
           kind: 'tel',
           maxLength: 40,
-          pattern: '\\+?[0-9 ().\\-]{3,40}',
+          pattern: PHONE_PATTERN,
           patternError: 'import.rejections.invalid_phone',
         },
         {
@@ -245,8 +246,7 @@ export function vendorForm(
           label: `${FIELDS}.iban`,
           kind: 'text',
           maxLength: 42,
-          // An IBAN, or a bare Tunisian RIB (20 digits, its groups apart or not), which the API keeps as TN59 + RIB.
-          pattern: '(?:[A-Za-z]{2}[0-9]{2}[A-Za-z0-9 ]{8,38}|[0-9](?:[ .\\-]?[0-9]){19})',
+          pattern: IBAN_PATTERN,
           span: 2,
           hint: 'vendors.form.iban_hint',
         },
@@ -255,8 +255,7 @@ export function vendorForm(
           label: `${FIELDS}.bic`,
           kind: 'text',
           maxLength: 14,
-          // The groups apart or not, as a RIB prints it: the API drops the spaces before its own check.
-          pattern: '[A-Za-z]{4} ?[A-Za-z]{2} ?[A-Za-z0-9]{2}( ?[A-Za-z0-9]{3})?',
+          pattern: BIC_PATTERN,
           patternError: 'import.rejections.invalid_bic',
         },
         {

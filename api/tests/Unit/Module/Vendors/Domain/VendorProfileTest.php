@@ -27,6 +27,10 @@ final class VendorProfileTest extends TestCase
         self::assertSame('STBKTNTT', $profile->bic);
         self::assertNull($profile->notes);
         self::assertNull((new VendorProfile('Sotumag', iban: ' ', bic: ''))->iban);
+        // As copied from a printed RIB or a hint, its groups kept apart by a no-break space.
+        $copied = new VendorProfile('Sotumag', iban: "TN59\u{202F}1000\u{202F}6035\u{202F}1835\u{202F}9847\u{202F}8831", bic: "STBK\u{00A0}TN\u{00A0}TT");
+        self::assertSame('TN5910006035183598478831', $copied->iban);
+        self::assertSame('STBKTNTT', $copied->bic);
     }
 
     public function testPaymentTermsRunFromZeroToAYear(): void

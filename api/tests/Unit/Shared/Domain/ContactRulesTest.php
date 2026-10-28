@@ -35,7 +35,7 @@ final class ContactRulesTest extends TestCase
         foreach (['https://exemple.tn', 'http://www.exemple.com/chemin?x=1', 'https://exemple', 'ftp://exemple.tn', 'javascript:alert(1)', 'mailto:a@b.tn', 'exemple.tn', 'https://', 'https://sous.exemple.co.uk:8443/a', 'https://exemple.t', 'https://ex ample.tn', 'https://192.168.0.1', 'https://user:pass@exemple.tn', 'https://ex_ample.tn', 'https://exemple.tn.', 'https://123.456', 'https://exemple.tn/chemin avec espace', 'https://xn--exmple-cva.tn', 'https://exémple.tn', 'HTTPS://EXEMPLE.TN'] as $value) {
             yield "website $value" => ['website', $value, $url];
         }
-        $phone = new Assert\Regex(pattern: '/^\+?[0-9 ().\-]{3,40}$/');
+        $phone = new Assert\Regex(pattern: '/^'.ContactRules::PHONE_PATTERN.'$/u');
         foreach (['+216 71 000 000', '(71) 123-456', '12', 'abc', '+33.1.23.45.67.89', '++216', "71000000\n"] as $value) {
             yield "phone $value" => ['phone', $value, $phone];
         }
@@ -89,6 +89,27 @@ final class ContactRulesTest extends TestCase
         foreach ([['TN59 1000 6035 1835 9847 8831', 'TN5910006035183598478831'], ['fr1420041010050500013m02606', 'FR1420041010050500013M02606'], ['1000603518359847883', '1000603518359847883'], ['100060351835984788311', '100060351835984788311']] as [$written, $kept]) {
             self::assertSame($kept, ContactRules::account($written), "$written is not a bare RIB");
         }
+    }
+
+    /**
+     * A figure copied from a hint, a refusal or a printed document keeps its groups apart with a no-break space (U+00A0,
+     * U+202F), which the rule reads as the space it is: kept between a phone's groups, dropped from a bank code.
+     */
+    public function testASpaceOtherThanTheKeyboardsBetweenGroupsReadsAsASpace(): void
+    {
+        foreach (["+216\u{202F}71\u{202F}900\u{202F}868", "+216\u{00A0}71 900 868", "(71)\u{2009}123-456", "+33\u{3000}1 23 45 67 89"] as $phone) {
+            self::assertNull(ContactRules::phone($phone), $phone);
+        }
+        self::assertSame('invalid_phone', ContactRules::phone("+216\u{200B}71")?->reason, 'a zero-width mark is no space');
+
+        foreach (["TN59\u{202F}1000\u{202F}6035\u{202F}1835\u{202F}9847\u{202F}8831", "tn59\u{00A0}1000 6035 1835 9847 8831"] as $iban) {
+            self::assertSame('TN5910006035183598478831', ContactRules::account($iban), $iban);
+            self::assertNull(ContactRules::iban($iban), $iban);
+        }
+        self::assertSame('TN5910006035183598478831', ContactRules::account("10\u{202F}006\u{202F}035\u{202F}1835984788\u{202F}31"), 'a bare RIB the same');
+
+        self::assertNull(ContactRules::bic("BIAT\u{202F}TN\u{202F}TT"));
+        self::assertNull(ContactRules::bic("BNOR\u{00A0}FR\u{00A0}PP\u{00A0}BDX"));
     }
 
     public function testATextIsHeldToItsLengthInCharactersNotBytes(): void

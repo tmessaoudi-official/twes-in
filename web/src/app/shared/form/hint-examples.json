@@ -1,0 +1,25 @@
+{
+  "examples": {
+    "import.rejections.invalid_phone": "phone",
+    "import.rejections.invalid_iban": "iban",
+    "platform.support.phone_hint": "support_phone",
+    "import.rejections.invalid_phone_digits": "support_phone",
+    "platform.support.whatsapp_hint": "whatsapp",
+    "import.rejections.invalid_whatsapp": "whatsapp",
+    "settings.late_fees.tiers_hint": "late_fee_tiers",
+    "import.rejections.invalid_late_fee_tiers": "late_fee_tiers"
+  },
+  "notExamples": {
+    "auth.scene.invoice_amount": "the sign-in page's drawing of an invoice, typed into no field",
+    "settings.choices.presentation.number-format.space-comma": "how a number format writes a figure, a choice and not a value to type",
+    "products.barcodes.problems.quantity_range": "the bounds of a quantity, which a person types as a number",
+    "import.rejections.invalid_pack_quantity": "the bounds of a pack's quantity, which a person types as a number",
+    "import.products.pack_quantity_note": "the bounds of a pack's quantity, which a person types as a number",
+    "purchases.lines.errors.description": "a length, not a value"
+  },
+  "apiPatterns": {
+    "support_phone": "/^((?=(?:[^0-9]*[0-9]){6,15}[^0-9]*$)\\+?[0-9 \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000().\\-]+)?$/u",
+    "whatsapp": "/^(\\+[1-9][0-9 \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]{7,20})?$/u",
+    "late_fee_tiers": "/^\\s*([0-9]{1,9}([.,][0-9]{1,3})?\\s*%?)?(\\s*;\\s*([0-9]{1,9}([.,][0-9]{1,3})?\\s*%?)?){0,4}\\s*$/u"
+  }
+}

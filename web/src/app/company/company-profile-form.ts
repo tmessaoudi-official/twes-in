@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { BIC_PATTERN, IBAN_PATTERN, PHONE_PATTERN } from '../shared/form/contact-patterns';
 import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import type { FormDescriptor, FormField, FormSection, FormValues } from '../shared/form/form-types';
 import type { CompanyProfile, CompanyProfileChanges } from './company-types';
@@ -129,7 +130,7 @@ export function profileForm(profile: CompanyProfile): FormDescriptor {
           label: label('phone'),
           kind: 'tel',
           maxLength: 40,
-          pattern: '\\+?[0-9 ().\\-]{3,40}',
+          pattern: PHONE_PATTERN,
           patternError: 'import.rejections.invalid_phone',
           autocomplete: 'tel',
         },
@@ -150,16 +151,14 @@ export function profileForm(profile: CompanyProfile): FormDescriptor {
           kind: 'text',
           maxLength: 42,
           hint: 'company.profile.hints.iban',
-          // An IBAN, or a bare Tunisian RIB (20 digits, its groups apart or not), which the API keeps as TN59 + RIB.
-          pattern: '(?:[A-Za-z]{2}[0-9]{2}[A-Za-z0-9 ]{8,38}|[0-9](?:[ .\\-]?[0-9]){19})',
+          pattern: IBAN_PATTERN,
         },
         {
           id: 'bic',
           label: label('bic'),
           kind: 'text',
           maxLength: 14,
-          // The groups apart or not, as a RIB prints it: the API drops the spaces before its own check.
-          pattern: '[A-Za-z]{4} ?[A-Za-z]{2} ?[A-Za-z0-9]{2}( ?[A-Za-z0-9]{3})?',
+          pattern: BIC_PATTERN,
           patternError: 'import.rejections.invalid_bic',
         },
       ]),

@@ -3,6 +3,7 @@
 import type { FormGroup } from '@angular/forms';
 import type { Subscription } from 'rxjs';
 import { CHECK_NOTE_MAX } from '../shared/check/check-note';
+import { PHONE_PATTERN } from '../shared/form/contact-patterns';
 import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import {
   customFieldInput,
@@ -40,7 +41,6 @@ import {
 const FIELDS = 'customers.fields';
 /** A registration number's field, where a refusal of it is said too. */
 const IDENTIFIER_PREFIX = IDENTIFIER_FIELD_PREFIX;
-const PHONE_PATTERN = '\\+?[0-9 ().\\-]{3,40}';
 
 /** A customer as the list shows it: with the name of its group rather than the group's id. */
 export type CustomerListRow = CustomerRow & { groupName: string | null };
