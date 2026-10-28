@@ -86,6 +86,7 @@
       "inactive": "معطّل",
       "operator": "مشغّل المنصّة",
       "end_sessions": "إنهاء الجلسات",
+      "end_other_sessions": "إنهاء الجلسات الأخرى",
       "deactivate": "تعطيل",
       "reactivate": "إعادة التفعيل",
       "states": {

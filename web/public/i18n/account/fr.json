@@ -11,7 +11,11 @@
       "ended": "{{device}} est déconnecté.",
       "others_ended": "Autres appareils déconnectés : {{count}}.",
       "failed": "La session n’a pas pu être terminée.",
-      "unreachable": "La liste des appareils n’a pas pu être lue."
+      "unreachable": "La liste des appareils n’a pas pu être lue.",
+      "end_others_title": "Déconnecter tous les autres appareils ?",
+      "end_others_message": "Chaque session de ce compte prend fin, sauf celle-ci : ces appareils devront se reconnecter. Si quelqu’un d’autre utilise ce compte, changez aussi son mot de passe : lui seul l’empêche de revenir.",
+      "keep": "Ne rien changer",
+      "change_password": "Changer le mot de passe"
     },
     "password": {
       "title": "Mot de passe",

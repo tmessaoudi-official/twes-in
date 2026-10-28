@@ -36,6 +36,7 @@ import type {
 } from './platform-types';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { EndOtherSessions } from '../account/end-other-sessions';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
@@ -324,6 +325,7 @@ describe('PlatformPage', () => {
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
+  const endOthers = { run: vi.fn(() => Promise.resolve(1)) };
   const companies = signal<readonly PlatformCompanyRow[]>([row]);
   const subscription = signal<PlatformSubscriptionRow | null>(null);
   const waitingPayments = signal<readonly WaitingPayment[]>([declared]);
@@ -409,6 +411,8 @@ describe('PlatformPage', () => {
     error.set(null);
     refused.set({ at: null, refusals: [] });
     accounts.set([account]);
+    endOthers.run.mockClear();
+    facade.actOnAccount.mockClear();
     companies.set([row]);
     waitingPayments.set([declared]);
     demand.set([]);
@@ -442,6 +446,7 @@ describe('PlatformPage', () => {
           useValue: { me: () => ({ user: { id: 'op1' }, company: null }), refresh: vi.fn() },
         },
         { provide: Session, useExisting: AuthFacade },
+        { provide: EndOtherSessions, useValue: endOthers },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         provideTranslateService({
@@ -1191,6 +1196,41 @@ describe('PlatformPage', () => {
     await answer(fixture, 'run');
     await vi.waitFor(() => expect(facade.actOnAccount).toHaveBeenCalled());
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
+  });
+
+  // The API refuses an operator's deactivating their own account, and ending their own sessions here would sign this
+  // tab out too: their row offers the others ended, as « Mon compte » does, and nothing else.
+  it("offers one's own row the other sessions ended, never a deactivation or this tab's own end", async () => {
+    accounts.set([
+      { ...account, id: 'op1', email: 'op@twes.local', displayName: 'Opératrice' },
+      account,
+    ]);
+    const { fixture } = await render('/?tab=accounts');
+
+    // One action left on one's own row: it stands on the row, and no « ⋮ » holds anything else.
+    const offered = (rowId: string, id: string) =>
+      document.querySelector(
+        `[data-testid="row-menu-${id}-${rowId}"], [data-testid="row-action-${id}-${rowId}"]`,
+      ) !== null;
+    expect(document.querySelector('[data-testid="row-more-op1"]')).toBeNull();
+    expect(offered('op1', 'end-other-sessions')).toBe(true);
+    expect(offered('op1', 'end-sessions')).toBe(false);
+    expect(offered('op1', 'deactivate')).toBe(false);
+
+    (
+      document.querySelector('[data-testid="row-action-end-other-sessions-op1"]') as HTMLElement
+    ).click();
+    await fixture.whenStable();
+    expect(endOthers.run).toHaveBeenCalledOnce();
+    expect(facade.actOnAccount).not.toHaveBeenCalled();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+
+    (document.querySelector('[data-testid="row-more-u1"]') as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(offered('u1', 'end-other-sessions')).toBe(false);
+    expect(offered('u1', 'end-sessions')).toBe(true);
+    expect(offered('u1', 'deactivate')).toBe(true);
   });
 
   it('only reactivates a deactivated account, which has no session left to end, at once', async () => {

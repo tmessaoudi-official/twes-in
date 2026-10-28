@@ -11,6 +11,7 @@ import { effectToasts, provideQuietFeedback } from '../shared/testing/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { provideStillAppearance } from '../shared/testing/appearance';
 import { type ConnectedDevice, ConnectedDevicesApi } from './connected-devices-api';
+import { EndOtherSessions } from './end-other-sessions';
 import { ConnectedDevices } from './connected-devices';
 
 class StaticLoader implements TranslateLoader {
@@ -42,17 +43,20 @@ const row = (id: string, current: boolean, device = FIREFOX): ConnectedDevice =>
 
 describe('ConnectedDevices', () => {
   const api = { list: vi.fn(), end: vi.fn(), endOthers: vi.fn() };
+  const endOthers = { run: vi.fn() };
 
   beforeEach(async () => {
     api.list.mockReset().mockResolvedValue([row('a', true), row('b', false, 'curl/8')]);
     api.end.mockReset().mockResolvedValue(undefined);
     api.endOthers.mockReset().mockResolvedValue(1);
+    endOthers.run.mockReset().mockResolvedValue(1);
     await TestBed.configureTestingModule({
       imports: [ConnectedDevices],
       providers: [
         provideStillAppearance(),
         provideQuietFeedback(),
         { provide: ConnectedDevicesApi, useValue: api },
+        { provide: EndOtherSessions, useValue: endOthers },
         { provide: FormatFacade, useValue: { moment: (value: string) => value } },
         provideTranslateService({
           lang: 'fr',
@@ -93,12 +97,14 @@ describe('ConnectedDevices', () => {
     expect(effectToasts()).toEqual(['account.devices.ended:corrigeable']);
   });
 
-  it('ends every other session at once, and offers it only when there is another', async () => {
+  it('ends every other session through the shared step, reads the list again, and offers it only when there is another', async () => {
     const { fixture, query } = await render();
 
     query<HTMLButtonElement>('devices-end-others')!.click();
     await fixture.whenStable();
-    expect(api.endOthers).toHaveBeenCalledOnce();
+    // The same step as on an operator's own row, which asks first and offers a new password.
+    expect(endOthers.run).toHaveBeenCalledOnce();
+    expect(api.list).toHaveBeenCalledTimes(2);
 
     api.list.mockResolvedValue([row('a', true)]);
     const again = await render();

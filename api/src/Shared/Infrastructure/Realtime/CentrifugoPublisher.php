@@ -24,6 +24,12 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 #[WithMonologChannel('realtime')]
 final readonly class CentrifugoPublisher implements RealtimePublisher
 {
+    /**
+     * The code a connection is closed with when its person's sessions ended: centrifuge-js reconnects on none of 4500
+     * to 4999, and the web reads this one as « ask whether this session still stands ».
+     */
+    public const int SESSION_ENDED = 4501;
+
     public function __construct(
         private HttpClientInterface $httpClient,
         private LoggerInterface $logger,
@@ -57,6 +63,29 @@ final readonly class CentrifugoPublisher implements RealtimePublisher
 
         if (isset($body['error'])) {
             $this->warn($channel, json_encode($body['error'], \JSON_UNESCAPED_SLASHES) ?: 'unreadable error');
+        }
+    }
+
+    public function disconnect(string $user): void
+    {
+        if (!$this->enabled) {
+            return;
+        }
+
+        try {
+            $body = $this->httpClient->request('POST', rtrim($this->apiUrl, '/').'/disconnect', [
+                'headers' => ['X-API-Key' => $this->apiKey],
+                'json' => ['user' => $user, 'disconnect' => ['code' => self::SESSION_ENDED, 'reason' => 'session ended']],
+                'timeout' => $this->timeoutSeconds,
+            ])->toArray();
+        } catch (ExceptionInterface $e) {
+            $this->warn('disconnect '.$user, $e->getMessage());
+
+            return;
+        }
+
+        if (isset($body['error'])) {
+            $this->warn('disconnect '.$user, json_encode($body['error'], \JSON_UNESCAPED_SLASHES) ?: 'unreadable error');
         }
     }
 

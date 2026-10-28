@@ -52,6 +52,28 @@ final class CentrifugoPublisherTest extends TestCase
         self::assertSame([], $this->logger->records);
     }
 
+    /** The close a web screen reads as « ask whether my session still stands », and never reconnects after. */
+    public function testItClosesEveryConnectionOfAPersonForGood(): void
+    {
+        $response = new MockResponse('{"result":{}}');
+
+        $this->publisher(new MockHttpClient($response))->disconnect('0198f0c4-8a3e-7b2c-9d1e-2f3a4b5c6d7e');
+
+        self::assertSame(self::URL.'/disconnect', $response->getRequestUrl());
+        $options = $response->getRequestOptions();
+        self::assertIsArray($options['headers']);
+        self::assertContains('X-API-Key: '.self::KEY, $options['headers']);
+        self::assertIsString($options['body']);
+        self::assertSame(
+            ['user' => '0198f0c4-8a3e-7b2c-9d1e-2f3a4b5c6d7e', 'disconnect' => ['code' => 4501, 'reason' => 'session ended']],
+            json_decode($options['body'], true, 8, \JSON_THROW_ON_ERROR),
+        );
+        self::assertSame([], $this->logger->records);
+
+        $this->publisher(new MockHttpClient(new MockResponse('', ['error' => 'Connection refused'])))->disconnect('x');
+        self::assertCount(1, $this->logger->records, 'a close that fails is logged, never thrown');
+    }
+
     public function testAnUnreachableServerIsLoggedAndNotThrown(): void
     {
         $this->publisher(new MockHttpClient(new MockResponse('', ['error' => 'Connection refused'])))->push('user:x', []);

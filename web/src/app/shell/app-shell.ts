@@ -502,6 +502,9 @@ export class AppShell {
       },
       inject(DestroyRef),
     );
+    // A session of the person ended somewhere (an operator, another device, a new password): this tab asks whether its
+    // own still stands, and goes to sign in at once if not, rather than at its next click.
+    inject(LiveChanges).reloadOn(['session'], () => this.auth.checkSession(), inject(DestroyRef));
     // A company suspended, closed or locked while one of its screens is open: the guard runs only on a navigation, so
     // every request would answer a refusal until the next one. The shell goes to the page that says why at once; a
     // form with unsaved changes still asks first.

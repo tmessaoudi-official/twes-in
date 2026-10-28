@@ -204,6 +204,18 @@ describe('RequestActivity', () => {
     expect(activity().sessionExpired()).toBe(false);
   });
 
+  // The API said a session of the person ended, and this tab's own was refused when asked: the same way out as an
+  // expiry noticed on any request, but not once the person has signed themselves out.
+  it('takes a session the API says was ended for an expiry, while someone is signed in', () => {
+    activity().sessionEnded();
+    expect(activity().sessionExpired()).toBe(true);
+    activity().acknowledgeExpiry();
+
+    me.set(null);
+    activity().sessionEnded();
+    expect(activity().sessionExpired()).toBe(false);
+  });
+
   it('takes a refusal that arrives once nobody is signed in for the sign-out it follows, not for a session that ended', () => {
     me.set(null);
 

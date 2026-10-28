@@ -33,10 +33,11 @@ describe('NotificationsFacade', () => {
     url: string;
     getToken: () => Promise<string>;
     onPublication: (data: unknown) => void;
+    onClosed: ((code: number) => void) | undefined;
     disconnect: ReturnType<typeof vi.fn>;
   }[] = [];
-  const connector: RealtimeConnector = (url, getToken, onPublication) => {
-    const connection = { url, getToken, onPublication, disconnect: vi.fn() };
+  const connector: RealtimeConnector = (url, getToken, onPublication, onClosed) => {
+    const connection = { url, getToken, onPublication, onClosed, disconnect: vi.fn() };
     opened.push(connection);
     return connection;
   };
@@ -115,6 +116,20 @@ describe('NotificationsFacade', () => {
 
     expect(api.list).toHaveBeenCalledOnce();
     expect(live.receive).not.toHaveBeenCalled();
+  });
+
+  // Every session of the person ended: the server closes the connection for good, and the screens ask whether this
+  // tab's session still stands, as they do when they hear it said; any other close says nothing.
+  it('hands the screens a session ended when the server closes the connection for that reason', () => {
+    facade.connect();
+
+    opened[0].onClosed?.(3000);
+    expect(live.receive).not.toHaveBeenCalled();
+
+    opened[0].onClosed?.(4501);
+    expect(live.receive).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'changed', kind: 'session', action: 'session.ended' }),
+    );
   });
 
   it('hands a change to data to the screens instead of reading the centre again', () => {

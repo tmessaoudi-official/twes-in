@@ -86,6 +86,7 @@
       "inactive": "Deactivated",
       "operator": "Operator",
       "end_sessions": "End sessions",
+      "end_other_sessions": "End the other sessions",
       "deactivate": "Deactivate",
       "reactivate": "Reactivate",
       "states": {

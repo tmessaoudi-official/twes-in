@@ -13,7 +13,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * That something changed, never what it now holds: a screen that hears it reads the record again through the API,
- * under its own permissions (docs/SPEC.md § 7, 2026-09-17). The kind is the audit trail's entity type.
+ * under its own permissions (docs/SPEC.md § 7, 2026-09-17). The kind is the audit trail's entity type. A change to what
+ * is a person's own, whoever made it (their sessions, ended by an operator), names that person: it is said to them.
  */
 final readonly class LiveChange
 {
@@ -23,6 +24,7 @@ final readonly class LiveChange
         public string $action,
         public ?Uuid $actorUserId,
         public ?Uuid $companyId,
+        public ?Uuid $forUserId = null,
     ) {
     }
 }

@@ -16,6 +16,9 @@ final class RecordingRealtimePublisher implements RealtimePublisher
     /** @var list<array{channel: string, data: array<string, mixed>}> */
     public array $pushed = [];
 
+    /** @var list<string> the people whose connections were closed, in order */
+    public array $disconnected = [];
+
     /** Runs at the moment of the push, so a test can look at what had already been written by then. */
     public ?\Closure $onPush = null;
 
@@ -31,5 +34,10 @@ final class RecordingRealtimePublisher implements RealtimePublisher
             ($this->onPush)();
         }
         $this->pushed[] = ['channel' => $channel, 'data' => $data];
+    }
+
+    public function disconnect(string $user): void
+    {
+        $this->disconnected[] = $user;
     }
 }

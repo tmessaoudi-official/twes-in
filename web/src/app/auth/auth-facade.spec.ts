@@ -3,6 +3,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { RequestActivity } from '../shared/feedback/request-activity';
 import { sessionSignal } from '../shared/session/session-data';
 import { refusedByTheDemo } from '../shared/testing/said-answers';
 import { AuthApi, AuthRefused } from './auth-api';
@@ -65,6 +66,7 @@ describe('AuthFacade', () => {
   };
   const client = { supported: vi.fn(), create: vi.fn(), get: vi.fn() };
   const unsaved = { confirmLeaveBeforeNavigating: vi.fn() };
+  const activity = { sessionEnded: vi.fn() };
   let facade: AuthFacade;
 
   beforeEach(() => {
@@ -75,9 +77,31 @@ describe('AuthFacade', () => {
         { provide: AuthApi, useValue: api },
         { provide: PasskeyClient, useValue: client },
         { provide: UnsavedChanges, useValue: unsaved },
+        { provide: RequestActivity, useValue: activity },
       ],
     });
+    activity.sessionEnded.mockReset();
     facade = TestBed.inject(AuthFacade);
+  });
+
+  // Told that a session of the person ended somewhere: this tab asks whether its own still stands. One ended here goes
+  // to the sign-in page at once, as one that expired does; one still standing carries on, and a network failure says
+  // nothing either way.
+  it('sends the person to sign in when their session was ended elsewhere, and only then', async () => {
+    api.me.mockResolvedValue(owner);
+    await facade.load();
+
+    await facade.checkSession();
+    expect(activity.sessionEnded).not.toHaveBeenCalled();
+    expect(facade.status()).toBe('authenticated');
+
+    api.me.mockRejectedValue(new AuthRefused('network'));
+    await facade.checkSession();
+    expect(activity.sessionEnded).not.toHaveBeenCalled();
+
+    api.me.mockRejectedValue(new AuthRefused('authentication_required'));
+    await facade.checkSession();
+    expect(activity.sessionEnded).toHaveBeenCalledOnce();
   });
 
   it('starts unknown, and load() resolves to authenticated when the API knows the session', async () => {

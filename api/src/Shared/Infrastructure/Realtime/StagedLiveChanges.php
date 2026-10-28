@@ -22,7 +22,8 @@ use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * Holds what a unit of work changed until DoctrineTransactions commits its outermost level, then pushes each change
- * once to the company's channel, or to the actor's own when it belongs to no company. The depth is counted here rather
+ * once to the company's channel, to the person's own when it is theirs, or to the actor's own when it belongs to no
+ * company. The depth is counted here rather
  * than read from the connection, whose transaction the test bundle keeps open around every test. The tab that made
  * the request names itself in an `X-Tab` header, echoed as `origin`, so it can tell its own change from another's.
  * Past ten changes of one kind and action by one person, as a file's import makes, they are said once as a bulk change
@@ -61,7 +62,7 @@ final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetIn
         if (0 === $this->depth) {
             return;
         }
-        $key = implode('|', [$change->companyId?->toRfc4122(), $change->actorUserId?->toRfc4122(), $change->kind, $change->id?->toRfc4122(), $change->action]);
+        $key = implode('|', [$change->companyId?->toRfc4122(), $change->forUserId?->toRfc4122(), $change->actorUserId?->toRfc4122(), $change->kind, $change->id?->toRfc4122(), $change->action]);
         $this->staged[$key] ??= $change;
     }
 
@@ -123,7 +124,7 @@ final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetIn
 
     private function groupOf(LiveChange $change): string
     {
-        return implode('|', [$change->companyId?->toRfc4122(), $change->actorUserId?->toRfc4122(), $change->kind, $change->action]);
+        return implode('|', [$change->companyId?->toRfc4122(), $change->forUserId?->toRfc4122(), $change->actorUserId?->toRfc4122(), $change->kind, $change->action]);
     }
 
     /**
@@ -134,6 +135,7 @@ final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetIn
     {
         $channel = match (true) {
             null !== $change->companyId => 'company:'.$change->companyId->toRfc4122(),
+            null !== $change->forUserId => 'user:'.$change->forUserId->toRfc4122(),
             null !== $change->actorUserId => 'user:'.$change->actorUserId->toRfc4122(),
             default => null,
         };
@@ -162,7 +164,8 @@ final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetIn
             'origin' => $origin,
             ...(null === $count ? [] : ['bulk' => true, 'count' => $count]),
         ]);
-        if (null !== $origin) {
+        // What is said to a person about what is theirs is for their other screens: the tab that asked already knows.
+        if (null !== $origin && null === $change->forUserId) {
             $this->said[] = $said;
         }
     }

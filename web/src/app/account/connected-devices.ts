@@ -14,6 +14,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { type ConnectedDevice, ConnectedDevicesApi } from './connected-devices-api';
 import { deviceLabel } from './device-label';
+import { EndOtherSessions } from './end-other-sessions';
 
 /**
  * « Appareils connectés »: where the account is signed in, and the means to end a session left open somewhere else.
@@ -29,6 +30,7 @@ import { deviceLabel } from './device-label';
 export class ConnectedDevices implements OnInit {
   private readonly api = inject(ConnectedDevicesApi);
   private readonly feedback = inject(Feedback);
+  private readonly endOtherSessions = inject(EndOtherSessions);
   protected readonly format = inject(FormatFacade);
 
   protected readonly devices = signal<ConnectedDevice[] | null>(null);
@@ -58,10 +60,14 @@ export class ConnectedDevices implements OnInit {
   }
 
   protected async endOthers(): Promise<void> {
-    await this.run(async () => {
-      const ended = await this.api.endOthers();
-      this.feedback.effect('account.devices.others_ended', { count: ended }, 'corrigeable');
-    });
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      await this.endOtherSessions.run();
+    } finally {
+      this.busy.set(false);
+    }
+    await this.load();
   }
 
   private async run(act: () => Promise<void>): Promise<void> {

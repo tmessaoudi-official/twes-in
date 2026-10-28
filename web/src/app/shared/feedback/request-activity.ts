@@ -166,6 +166,14 @@ export class RequestActivity {
     return this.injector.get(Session, null)?.me() !== null;
   }
 
+  /**
+   * A session of the person ended elsewhere (an operator, another device) and this tab's own was refused when asked
+   * (`/api/auth/me`, whose 401 is otherwise nobody signed in yet): the same way out as an expiry any request notices.
+   */
+  sessionEnded(): void {
+    if (this.signedIn()) this.sessionExpiredSignal.set(true);
+  }
+
   /** The shell has sent the person back to sign in. */
   acknowledgeExpiry(): void {
     this.sessionExpiredSignal.set(false);

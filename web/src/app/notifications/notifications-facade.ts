@@ -3,7 +3,11 @@
 import { DOCUMENT } from '@angular/common';
 import { inject, Injectable } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
-import { REALTIME_CONNECTOR, type RealtimeConnection } from '../shared/realtime/realtime-connector';
+import {
+  REALTIME_CONNECTOR,
+  SESSION_ENDED_CLOSE,
+  type RealtimeConnection,
+} from '../shared/realtime/realtime-connector';
 import { PhonePairing } from '../shared/scan/phone-pairing';
 import { NotificationsApi } from './notifications-api';
 import type { InboxEntry } from './notifications-types';
@@ -74,6 +78,10 @@ export class NotificationsFacade {
           void this.refresh();
         }
       },
+      (code) => {
+        // Every session of the person ended: said as the API says it, should the message itself have been lost.
+        if (code === SESSION_ENDED_CLOSE) this.live.receive(SESSION_ENDED);
+      },
     );
   }
 
@@ -100,6 +108,15 @@ export class NotificationsFacade {
     await this.refresh();
   }
 }
+
+const SESSION_ENDED = {
+  type: 'changed',
+  kind: 'session',
+  id: null,
+  action: 'session.ended',
+  actor: null,
+  origin: null,
+};
 
 function isChange(data: unknown): boolean {
   return (

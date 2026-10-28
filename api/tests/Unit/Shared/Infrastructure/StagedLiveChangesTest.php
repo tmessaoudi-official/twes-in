@@ -179,6 +179,25 @@ final class StagedLiveChangesTest extends TestCase
         self::assertSame(['user:'.$this->nadia->getId()->toRfc4122()], array_column($this->publisher->pushed, 'channel'));
     }
 
+    /**
+     * What is a person's own reaches that person, not whoever changed it (an operator ending their sessions), and the
+     * tab that asked keeps nothing of it for its answer: it is for the person's other screens.
+     */
+    public function testWhatIsAPersonsOwnReachesTheirChannelAndIsNotAnsweredToTheTabThatAsked(): void
+    {
+        $operator = Uuid::v7();
+        $request = new Request();
+        $request->headers->set('X-Tab', 'tab-op');
+        $this->requests->push($request);
+        $this->changes->begin();
+        $this->changes->stage(new LiveChange('session', null, 'session.ended', $operator, null, forUserId: $this->nadia->getId()));
+        $this->changes->stage(new LiveChange('session', null, 'session.ended', $operator, null, forUserId: $this->nadia->getId()));
+        $this->changes->commit();
+
+        self::assertSame(['user:'.$this->nadia->getId()->toRfc4122()], array_column($this->publisher->pushed, 'channel'));
+        self::assertSame([], $this->changes->saidHere());
+    }
+
     public function testTheTabThatMadeTheChangeIsNamedSoItCanIgnoreItsOwnEchoAndAnUnreadableTabIsNot(): void
     {
         foreach (['0f8c2b1e-tab-7' => '0f8c2b1e-tab-7', str_repeat('a', 65) => null, 'tab id; drop' => null] as $header => $origin) {

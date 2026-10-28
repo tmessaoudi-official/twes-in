@@ -17,4 +17,10 @@ interface RealtimePublisher
 {
     /** @param array<string, mixed> $data */
     public function push(string $channel, array $data): void;
+
+    /**
+     * Closes every connection of the person for good: a screen whose connection is closed so asks again whether it is
+     * still signed in, and hears nothing more meanwhile. Best-effort, as a push is.
+     */
+    public function disconnect(string $user): void;
 }

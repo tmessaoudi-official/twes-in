@@ -29,6 +29,8 @@ import { refusalParams } from '../shared/form/refusal-words';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SETTING_REFUSAL_TEXTS } from '../shared/settings/setting-refusals';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { Session } from '../shared/session/session';
+import { EndOtherSessions } from '../account/end-other-sessions';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
@@ -189,6 +191,8 @@ export class PlatformPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly route = inject(ActivatedRoute);
   private readonly translate = inject(TranslateService);
+  private readonly session = inject(Session);
+  private readonly endOtherSessions = inject(EndOtherSessions);
   private readonly texts = inject(TextsParts);
   private readonly workingCompanies = inject(CompanyFacade);
   private readonly router = inject(Router);
@@ -258,6 +262,7 @@ export class PlatformPage implements OnInit {
    * An account's actions, declared on its list as a member's are on the company's (one canon of actions): reactivating
    * is a button, what ends access sits behind « ⋮ » and asks first, naming the person.
    */
+  private readonly ownId = computed(() => this.session.me()?.user.id ?? null);
   protected readonly accountsList = computed<ListDescriptor<PlatformAccountRow>>(() => ({
     ...ACCOUNTS_LIST,
     actions: [
@@ -270,12 +275,22 @@ export class PlatformPage implements OnInit {
         run: (row) => void this.act(row, 'reactivate'),
       },
       {
+        // One's own account: every session but this tab, as « Mon compte » ends them, since ending this one too keeps
+        // nobody out that a new password does not.
+        id: 'end-other-sessions',
+        label: 'platform.accounts.end_other_sessions',
+        icon: 'logout',
+        shown: (row) => row.id === this.ownId(),
+        disabled: () => this.busy(),
+        run: () => void this.endOtherSessions.run(),
+      },
+      {
         // Nothing brings a session back: whoever was signed in signs in again.
         id: 'end-sessions',
         label: 'platform.accounts.end_sessions',
         icon: 'logout',
         destructive: true,
-        shown: (row) => row.active,
+        shown: (row) => row.active && row.id !== this.ownId(),
         disabled: () => this.busy(),
         run: (row) => void this.act(row, 'end-sessions'),
         confirm: (row) => ({
@@ -293,7 +308,8 @@ export class PlatformPage implements OnInit {
         label: 'platform.accounts.deactivate',
         icon: 'block',
         rare: true,
-        shown: (row) => row.active,
+        // The API refuses one's own (`own_account`): it is never offered.
+        shown: (row) => row.active && row.id !== this.ownId(),
         disabled: () => this.busy(),
         run: (row) => void this.act(row, 'deactivate'),
         confirm: (row) => ({

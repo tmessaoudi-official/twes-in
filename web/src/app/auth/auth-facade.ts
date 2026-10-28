@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, Injector, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { RequestActivity } from '../shared/feedback/request-activity';
 import { Session } from '../shared/session/session';
 import { SessionData } from '../shared/session/session-data';
 import { CustomerScreenHold } from '../shared/customer-view/customer-screen-hold';
@@ -39,6 +40,8 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
   private readonly unsaved = inject(UnsavedChanges);
   /** Told every session this holds, so what the facades kept for the last one is forgotten with it. */
   private readonly session = inject(SessionData);
+  /** Read only when a session ends: the request activity needs the toasts, which the session itself never does. */
+  private readonly injector = inject(Injector);
   private readonly stateSignal = signal<SignedInState | null>(null);
   private readonly statusSignal = signal<AuthStatus>('unknown');
 
@@ -96,6 +99,19 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
       this.signedIn(await this.api.me());
     } catch {
       // Kept as it was.
+    }
+  }
+
+  /**
+   * Asked when the API says a session of the person ended somewhere: one ended here goes to the sign-in page at once,
+   * as an expired one does, rather than at the next click; one still standing carries on, its state read again.
+   */
+  async checkSession(): Promise<void> {
+    try {
+      this.signedIn(await this.api.me());
+    } catch (error) {
+      if (error instanceof AuthRefused && error.code === 'authentication_required')
+        this.injector.get(RequestActivity).sessionEnded();
     }
   }
 
