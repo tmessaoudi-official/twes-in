@@ -32,6 +32,8 @@ Pushed on Tuesday, the shop updates itself in its next window, and § 3 starts a
 
 ## 3. At the shop: the update (about 10 minutes)
 
+0. First § 5's two commands: the update recreates the backup service, and its logs go with the old container (taken
+   after it on the day, the file held only the new container's start).
 1. `twes status`: note the version it runs and « backups to: ». Already on the new tag (the window took it): go to § 4.
    Still on `v2026.10.25.1` although the tag was pushed before the window: read the end of `.twes-in/state/twes.log`
    (`wsl -d Ubuntu --cd ~ -- tail -n 30 .twes-in/state/twes.log`). A line « … is unhealthy (…): starting

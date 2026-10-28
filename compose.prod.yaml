@@ -98,7 +98,10 @@ services:
     secrets: [postgres_password]
   # Its two realtime keys, under the names its own configuration reads, through the shim mounted from the checkout.
   centrifugo:
-    labels: *secrets-digest
+    # And the digest of the shim it mounts from the checkout (scripts/deploy/mounts-digest.sh): a new one recreates it.
+    labels:
+      <<: *secrets-digest
+      twes.mounts-digest: "${TWES_MOUNTS_DIGEST:-}"
     restart: unless-stopped
     entrypoint: [sh, /twes-secrets, centrifugo]
     volumes:

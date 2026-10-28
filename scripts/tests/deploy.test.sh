@@ -15,7 +15,7 @@ DIGEST=$(printf 'a%.0s' {1..64})
 repo() {
   local d; d=$(mktemp -d)
   mkdir -p "$d/scripts/deploy" "$d/api" "$d/web"
-  cp "$HERE/deploy/deploy.sh" "$d/scripts/deploy/"; cp "$HERE/build-version.sh" "$d/scripts/"
+  cp "$HERE/deploy/deploy.sh" "$HERE/deploy/mounts-digest.sh" "$d/scripts/deploy/"; cp "$HERE/build-version.sh" "$d/scripts/"
   echo a > "$d/api/a.php"; echo w > "$d/web/w.ts"
   git -C "$d" init -q && git -C "$d" add -A && git -C "$d" commit -qm release
   git -C "$d" tag v2026.10.12.1
@@ -30,13 +30,19 @@ case "$1" in
   compose)
     # The merged configuration deploy.sh reads the secrets from: those SECRETS names, each from its variable.
     if [[ " $* " == *" config"* ]]; then
-      echo "services: {}"; [[ -z "${SECRETS:-}" ]] || echo "secrets:"
+      # And the paths MOUNTS names, bind-mounted by one service, in the long syntax compose writes them out in.
+      if [[ -z "${MOUNTS:-}" ]]; then echo "services: {}"; else
+        printf 'services:\n  edge:\n    volumes:\n'
+        for path in $MOUNTS; do printf '      - type: bind\n        source: %s\n        target: /mounted\n        read_only: true\n        bind: {}\n' "$path"; done
+        printf '      - type: volume\n        source: edge-data\n        target: /data\n'
+      fi
+      [[ -z "${SECRETS:-}" ]] || echo "secrets:"
       for name in ${SECRETS:-}; do printf '  %s:\n    environment: %s\n' "${name,,}" "$name"; done
       exit 0
     fi
     printf '%s\n' "API_BUILD_VERSION=${API_BUILD_VERSION:-}" "TWES_API_IMAGE=${TWES_API_IMAGE:-}" \
       "TWES_WEB_IMAGE=${TWES_WEB_IMAGE:-}" "TWES_DATABASE_IMAGE=${TWES_DATABASE_IMAGE:-}" \
-      "TWES_SECRETS_DIGEST=${TWES_SECRETS_DIGEST:-}" "$@" > "$TMPDIR/docker.args"
+      "TWES_SECRETS_DIGEST=${TWES_SECRETS_DIGEST:-}" "TWES_MOUNTS_DIGEST=${TWES_MOUNTS_DIGEST:-}" "$@" > "$TMPDIR/docker.args"
     exit "${COMPOSE_EXIT:-0}" ;;
 esac
 EOF
@@ -105,6 +111,22 @@ check "  the same while nothing is rotated, so nothing is recreated for nothing"
 d=$(repo); e=$(envfile $'MAILER_DSN=smtp://u:p@relay:587\nMONITOR_TOKEN=rotated\n')
 out=$(SECRETS="MAILER_DSN MONITOR_TOKEN" run "$d" --build "$e"); [[ "$(digest_of)" =~ ^[0-9a-f]{64}$ && "$(digest_of)" != "$first" ]]
 check "  another once one secret is rotated" $? 0 "$(digest_of) $first" ""
+
+# Compose keeps a container whose configuration is unchanged, and its mount keeps the file it started with: the digest
+# of the files the services mount, a label of each, is what makes an update's new Caddyfile reach the edge.
+mounts_of() { called | grep -o 'TWES_MOUNTS_DIGEST=[^ ]*' | cut -d= -f2; }
+m=$(mktemp -d); printf 'old\n' > "$m/Caddyfile"; mkdir "$m/source"; printf 'a\n' > "$m/source/a.php"
+d=$(repo); e=$(envfile)
+out=$(MOUNTS="$m/Caddyfile $m/source" run "$d" --build "$e"); first=$(mounts_of)
+[[ "$first" =~ ^[0-9a-f]{64}$ ]]; check "compose is handed the digest of the files the services mount" $? 0 "$first $out" ""
+out=$(MOUNTS="$m/Caddyfile $m/source" run "$d" --build "$e"); [[ "$(mounts_of)" == "$first" ]]
+check "  the same while no mounted file changed, so nothing is recreated for nothing" $? 0 "$(mounts_of) $first" ""
+printf 'b\n' > "$m/source/a.php"
+out=$(MOUNTS="$m/Caddyfile $m/source" run "$d" --build "$e"); [[ "$(mounts_of)" == "$first" ]]
+check "  the same when only a mounted directory's content changed, which its mount sees by itself" $? 0 "$(mounts_of) $first" ""
+printf 'new\n' > "$m/Caddyfile.next"; mv "$m/Caddyfile.next" "$m/Caddyfile"
+out=$(MOUNTS="$m/Caddyfile $m/source" run "$d" --build "$e"); [[ "$(mounts_of)" =~ ^[0-9a-f]{64}$ && "$(mounts_of)" != "$first" ]]
+check "  another once a mounted file is written anew, as a checkout writes it" $? 0 "$(mounts_of) $first" ""
 
 out=$(run "$d" "$e"); check "a way of deploying must be named" $? 2 "$out" "Usage"
 out=$(run "$d" --build); check "the values file must be named" $? 2 "$out" "Usage"

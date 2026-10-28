@@ -24,10 +24,22 @@
 	# A phone connecting to an IP address sends no server name; this is the one it means.
 	default_sni {$LAN_HOST}
 	auto_https disable_redirects
+	# The shop's edge's lifetimes (infra/onprem/Caddyfile): Caddy's own seven days, which a laptop may sleep through.
+	pki {
+		ca local {
+			intermediate_lifetime 365d
+		}
+	}
 }
 
 https://{$LAN_HOST}:8443 {
-	tls internal
+	tls {
+		issuer internal {
+			# Twelve hours by Caddy's default: a laptop woken from sleep showed the phone a certificate warning until Caddy
+			# next checked it. Renewed with a third left, a leaf of 30 days outlives any night or weekend asleep.
+			lifetime 30d
+		}
+	}
 	reverse_proxy web:80
 }
 

@@ -2,7 +2,8 @@
 # The monitor (docs/START.md § 15), on a small machine of its own: what watches an instance must not fall with it. Gatus
 # reads the instance every minute, takes the backups' heartbeats, alerts by mail and Telegram and shows the public status
 # page; GlitchTip receives the instance's errors. Run with the values file scripts/monitor/new-monitor.sh starts:
-#   docker compose --env-file /etc/twes-monitor/monitor.env -f infra/monitor/compose.yaml up -d --wait
+#   m='docker compose --env-file /etc/twes-monitor/monitor.env -f infra/monitor/compose.yaml'
+#   TWES_MOUNTS_DIGEST=$($m config | bash scripts/deploy/mounts-digest.sh) $m up -d --wait
 # Every value is required, and only the edge publishes a port: Docker's published ports pass by the host's firewall.
 # scripts/gates/monitor-config.sh holds each of those promises.
 name: twes-monitor
@@ -13,10 +14,17 @@ x-logging: &logging
     max-size: 10m
     max-file: "5"
 
+# The digest of the files a service mounts from the checkout, handed by the start above: Compose keeps a container whose
+# configuration did not change, and its mount keeps the file it started with, so a pulled Caddyfile or gatus.yaml would
+# never be read (scripts/gates/secrets-overlay.sh holds every such service to it).
+x-mounts-digest: &mounts-digest
+  twes.mounts-digest: "${TWES_MOUNTS_DIGEST:-}"
+
 services:
   edge:
     logging: *logging
     restart: unless-stopped
+    labels: *mounts-digest
     image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
     environment:
       STATUS_HOST: "${STATUS_HOST:?set STATUS_HOST, the name the status page answers on}"
@@ -40,6 +48,7 @@ services:
   gatus:
     logging: *logging
     restart: unless-stopped
+    labels: *mounts-digest
     image: twinproduction/gatus:v5.37.0
     # gatus.yaml names these as ${…}; Gatus fills them in when it reads the file.
     environment:

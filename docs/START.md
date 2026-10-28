@@ -846,11 +846,16 @@ file; `STATUS_HOST` and `ERRORS_HOST`; `EDGE_TLS`; the alerts' mail relay (`ALER
 an account other than the instance's, so alerts still leave when the instance's relay is the trouble; and the Telegram
 bot (`TELEGRAM_TOKEN` from @BotFather, `TELEGRAM_CHAT_ID`). Every one is required.
 
-**Starting it**, from a checkout on the monitor's machine:
+**Starting it**, from a checkout on the monitor's machine, and again after each `git pull`:
 
 ```sh
-docker compose --env-file /etc/twes-monitor/monitor.env -f infra/monitor/compose.yaml up -d --wait
+M="docker compose --env-file /etc/twes-monitor/monitor.env -f infra/monitor/compose.yaml"
+TWES_MOUNTS_DIGEST=$($M config | bash scripts/deploy/mounts-digest.sh) $M up -d --wait
 ```
+
+The digest is of the files the edge and Gatus mount from the checkout (the Caddyfile, `gatus.yaml`): a pull writes them
+anew, which a running container's mount never sees, and Compose recreates a service only when its configuration
+changed, so the digest, a label of each, is what makes a new one read.
 
 **The operator's account and the instance's DSN**, once. The password is read from standard input and handed to the
 container through the environment (`-e` with a name and no value), so it stays out of the shell's history and the

@@ -1,8 +1,16 @@
 # Live development, what `make up` runs on top of compose.yaml (docs/START.md § 1): the source is mounted from the host
 # and an edit shows without a rebuild or a restart. The API's workers restart when a watched file changes; the web tier
 # is the Angular dev server, which rebuilds and reloads the page. CI and `make up-images` run compose.yaml alone.
+
+# The digest of the files a service mounts one by one (an entrypoint, a php.ini), which `make up` hands compose: a file
+# replaced by a checkout or an editor is a new file the container's mount never sees, so a changed one must recreate it
+# (scripts/gates/secrets-overlay.sh holds every such service to it). A mounted directory sees its changes by itself.
+x-mounts-digest: &mounts-digest
+  twes.mounts-digest: "${TWES_MOUNTS_DIGEST:-}"
+
 services:
   api:
+    labels: *mounts-digest
     entrypoint: ["live-entrypoint"]
     command: ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--adapter", "caddyfile"]
     environment:
@@ -30,6 +38,7 @@ services:
   # The migrations come from the mounted source too, so a new one runs at the next `make up`. This starts before the
   # api, so it installs the dependencies the shared vendor volume holds.
   migrate:
+    labels: *mounts-digest
     entrypoint: ["live-entrypoint"]
     command: ["twes-migrate"]
     volumes:
@@ -46,6 +55,7 @@ services:
     extends:
       file: compose.yaml
       service: migrate
+    labels: *mounts-digest
     entrypoint: ["twes-migrate-watch"]
     command: []
     restart: unless-stopped
@@ -65,6 +75,7 @@ services:
   # steps every minute (convergence, a cache clear the api shares), about one and a half cores for nothing. The
   # migrate service and the api have installed the dependencies by the time this starts, and a stop reaches the consumer.
   worker:
+    labels: *mounts-digest
     command:
       - sh
       - -c
@@ -78,6 +89,7 @@ services:
       - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
   # The demo builds' consumer, the same way.
   demo-worker:
+    labels: *mounts-digest
     command:
       - sh
       - -c

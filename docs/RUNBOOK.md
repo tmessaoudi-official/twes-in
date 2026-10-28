@@ -19,7 +19,7 @@ Bring-up, the values and the first deployment are in `docs/START.md` § 13–15;
 |---|---|---|
 | Production | the four deployment files with `compose.release.yaml`: the images CI published, by digest | `deploy.sh --release`, by hand, on a release tag |
 | Staging | the same files, with its own values (`DEPLOY_ENV=staging`), its own bucket and keys | `staging-follow.sh`, every five minutes, from the registry |
-| Monitor | `infra/monitor/compose.yaml`, on a machine of its own | by hand, `git pull` then `up -d --wait` |
+| Monitor | `infra/monitor/compose.yaml`, on a machine of its own | by hand, `git pull` then START § 15's start, which hands the mounted files' digest |
 
 CI builds the three images (api, web, database) once per green master commit and pushes them to GHCR as
 `twes-in-<part>:sha-<commit>`, then moves `:master` forward (`scripts/release/publish.sh`, the `publish` job, on while the
@@ -118,6 +118,10 @@ Once, before the first release:
 Each release: steps 1 to 3 of « Promote to production ». Shops then take it by their policy: `auto` inside their daily
 window, `notify` tells their owners, who update with `twes update`; never in the minutes after a start.
 
+A container's logs are the container's: an update recreates every service whose image or configuration changed, and
+`… logs` then reads only the new one's start. A page or a person asking a shop for a service's logs asks for them
+before `twes update` (the release 28 day's backup log held the new container's first minute alone).
+
 **A shop refused a release.** The mail and the operators' notification say « Mise à jour refusée »: the newest tag did
 not verify against the key that shop pinned. Nothing changed there. Check the tag with `git verify-tag v<…>`; a tag you
 did not make means someone could push to the repository: rotate the token or key that let them, delete the tag
@@ -172,7 +176,8 @@ scripts. On the shop's computer, in the checkout, `…` standing for `bash scrip
 
 1. `bash scripts/onprem/twes status`: the backups' lines, each step's last outcome and the schedule's own,
    `due-age <seconds> ran` or `due-age <seconds> running <step>`.
-2. `… logs --since 4h backup`: what each step said, a failure with its reason, « stopped after its time limit ».
+2. `… logs --since 4h backup`: what each step said, a failure with its reason, « stopped after its time limit ». Read
+   it before any `twes update`, which recreates the backup service and its logs with it.
 3. `tail -n 40 <the values' folder>/state/twes.log`: the ticks' own account.
 
 Then read which it was:
@@ -256,6 +261,9 @@ procedure is done), then redeploy (`deploy.sh --release` at the running tag, or 
 Redeploy through `deploy.sh`, never a bare `docker compose up`: Compose keeps a running container whose secret's value
 alone changed, reading the old one, and `deploy.sh` hands it the digest of the values (`TWES_SECRETS_DIGEST`), a label of
 every service that mounts a secret, so a rotation recreates them (postgres and the backup among them, a few seconds down).
+It hands the same for the files a service mounts from the checkout (`TWES_MOUNTS_DIGEST`, `scripts/deploy/mounts-digest.sh`):
+an update that changes a Caddyfile or the secrets' shim recreates the edge or centrifugo, which a bare `up` would leave
+reading the old file.
 
 | Value | What changing it does | Procedure | Tried |
 |---|---|---|---|

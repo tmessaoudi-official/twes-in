@@ -42,6 +42,9 @@ services:
   edge:
     logging: *logging
     restart: unless-stopped
+    # The digest of the Caddyfile it mounts, which deploy.sh hands compose: an update changing it recreates the edge.
+    labels:
+      twes.mounts-digest: "${TWES_MOUNTS_DIGEST:-}"
     image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
     environment:
       TWES_HOST: "${TWES_HOST:?set TWES_HOST, the name this instance answers on}"

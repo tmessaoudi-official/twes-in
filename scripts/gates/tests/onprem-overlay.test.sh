@@ -11,8 +11,8 @@ check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo 
 # The shop's files as they are in the tree, each case changing one thing in its own copy.
 project() {
   local d f; d=$(mktemp -d)
-  mkdir -p "$d/infra/onprem"
-  for f in compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-local.yaml compose.backup-offsite.yaml compose.onprem.yaml infra/onprem/Caddyfile; do
+  mkdir -p "$d/infra/onprem" "$d/infra/lan"
+  for f in compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-local.yaml compose.backup-offsite.yaml compose.onprem.yaml infra/onprem/Caddyfile infra/lan/Caddyfile; do
     cp "$ROOT/$f" "$d/$f"
   done
   echo "$d"
@@ -78,6 +78,14 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "an intermediate shorter than its le
 
 d=$(project); edit "$d/compose.onprem.yaml" 's|rm -rf /data/caddy/certificates/local && ||'
 out=$(bash "$GATE" --root "$d" 2>&1); check "an edge keeping the leaves an older Caddyfile made is named" $? 1 "$out" "at every start"
+
+# Development's phone door is the same kind of Caddy on a laptop, which sleeps too.
+d=$(project); edit "$d/infra/lan/Caddyfile" '/^[[:space:]]*lifetime [0-9]*d$/d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a phone door's leaves left at twelve hours are named" $? 1 "$out" "infra/lan/Caddyfile's leaf certificates last twelve hours"
+d=$(project); edit "$d/infra/lan/Caddyfile" '/intermediate_lifetime/d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a phone door's intermediate left at seven days is named" $? 1 "$out" "infra/lan/Caddyfile's intermediate lasts seven days"
+d=$(project); edit "$d/compose.yaml" '/^  lan:$/,/^    environment:$/{s|rm -rf /data/caddy/certificates/local && ||}'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a phone door keeping its old leaves is named" $? 1 "$out" "development's phone door (lan) does not make its intermediate"
 
 echo "onprem-overlay gate: $pass passed, $fail failed"
 ((fail == 0))

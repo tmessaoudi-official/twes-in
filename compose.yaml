@@ -11,6 +11,7 @@ x-logging: &logging
 services:
   postgres:
     logging: *logging
+    restart: unless-stopped
     image: postgres:18.6-trixie
     environment:
       POSTGRES_DB: twes
@@ -29,6 +30,8 @@ services:
 
   api:
     logging: *logging
+    # Back after a fault, as in production: a worker that died of one in development stayed down until a make up.
+    restart: unless-stopped
     # The default network, and Gotenberg's, which only the api and the workers join.
     networks: [default, pdf]
     build: &api-build
@@ -81,6 +84,7 @@ services:
   # statement they are tricked into running reaches rows only, never the journal's past, the schema or the server.
   migrate:
     logging: *logging
+    restart: "no"  # a job: it migrates, grants and exits
     build: *api-build
     command: ["twes-migrate"]
     environment:
@@ -139,6 +143,7 @@ services:
   # and a phone paired to a tab as a scanner (docs/SPEC.md § 7, 2026-09-23 09:45).
   centrifugo:
     logging: *logging
+    restart: unless-stopped
     image: centrifugo/centrifugo:v6.10.1@sha256:dc233a5bc45392c3717d9c5254b5c89c67e1871335c3ce55538429b9bf25b88b
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
@@ -154,6 +159,7 @@ services:
 
   web:
     logging: *logging
+    restart: unless-stopped
     build:
       context: .
       dockerfile: infra/web/Dockerfile
@@ -179,6 +185,17 @@ services:
     logging: *logging
     image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
     profiles: [lan]
+    restart: unless-stopped
+    # The digest of the files it mounts, which `make up` hands compose: a changed Caddyfile recreates it.
+    labels:
+      twes.mounts-digest: "${TWES_MOUNTS_DIGEST:-}"
+    # As the shop's edge starts: the intermediate and the leaves made again from the kept root, so they carry the
+    # Caddyfile's lifetimes from the start after it changes; the root stays, and a phone that trusts it keeps trusting.
+    entrypoint: [sh, -c]
+    command:
+      - >-
+        rm -f /data/caddy/pki/authorities/local/intermediate.crt /data/caddy/pki/authorities/local/intermediate.key
+        && rm -rf /data/caddy/certificates/local && exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     environment:
       LAN_HOST: "${LAN_HOST:-localhost}"
     volumes:
@@ -193,6 +210,7 @@ services:
   # Renders PDFs from HTML (docs/SPEC.md § 2 PDF). Only the api calls it; the host port serves a host-side api process.
   gotenberg:
     logging: *logging
+    restart: unless-stopped
     image: gotenberg/gotenberg:8.38.1@sha256:aa552cc115db488e0f0bcb07446aac13071ad51505b642c84bb894500907b42b
     # Its Chromium renders HTML written from what people typed, so one escaping mistake would hand it markup: shut in,
     # that markup can do nothing. No JavaScript; no URL but its own working files (the logo is a data URI, which is no
@@ -221,6 +239,7 @@ services:
 
   mailpit:
     logging: *logging
+    restart: unless-stopped
     image: axllent/mailpit:v1.31.6
     ports:
       - "127.0.0.1:${MAILPIT_UI_PORT:-8092}:8025"
@@ -237,6 +256,7 @@ services:
   # outside it, and without that directory every gate asking git which files are tracked or ignored fails there.
   tools:
     logging: *logging
+    restart: "no"  # a command run, which exits
     profiles: [tools]
     build:
       context: .
@@ -269,6 +289,7 @@ services:
   # The web tier's toolchain: Node and Playwright's Chromium (infra/web/tools.Dockerfile). Same properties as `tools`.
   web-tools:
     logging: *logging
+    restart: "no"  # a command run, which exits
     profiles: [tools]
     # Built by `make web-tools-image` (docker build, not compose: see the Makefile for why).
     image: twes-in-web-tools

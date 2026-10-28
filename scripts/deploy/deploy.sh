@@ -95,7 +95,12 @@ if [[ "$creates" == yes ]]; then
   # an unchanged one recreates nothing. The values never leave this shell; the digest of all of them together, random
   # keys among them, gives none of them away.
   TWES_SECRETS_DIGEST=$(printf '%s' "$said" | sha256sum | cut -d' ' -f1)
-  export TWES_SECRETS_DIGEST
+  # The same for the files a service mounts from the checkout: an update writes them anew, the running container's mount
+  # keeps the old ones and Compose keeps the container, so every such service carries their digest as a label
+  # (scripts/gates/secrets-overlay.sh): a changed Caddyfile or shim recreates what mounts it, and an unchanged one nothing.
+  TWES_MOUNTS_DIGEST=$(bash "$root/scripts/deploy/mounts-digest.sh" <<<"$merged") \
+    || refuse "cannot read the files this installation mounts: $TWES_MOUNTS_DIGEST"
+  export TWES_SECRETS_DIGEST TWES_MOUNTS_DIGEST
 fi
 
 staging_values=no

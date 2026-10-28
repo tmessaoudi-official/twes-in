@@ -18,6 +18,9 @@
 #   rotation   every service mounting a secret carries the label twes.secrets-digest, the digest of the values that
 #              scripts/deploy/deploy.sh hands compose: Compose keeps a running container whose secret's value alone
 #              changed, so without it a rotated key never reaches the container
+#   mounts     every service mounting a file from the checkout carries the label twes.mounts-digest, the digest of those
+#              files that deploy.sh, `make up` and the monitor's start hand compose: a checkout writes the file anew, the
+#              mount keeps the old one, and Compose keeps the container (a server's, a shop's, development's, the monitor's)
 # Usage: secrets-overlay.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -135,6 +138,41 @@ for installation in production drill server shop shop-offsite; do
     | "\(.key) mounts the owner'"'"'s password: only postgres and migrate may"' <<<"$config")
 done
 
+# mounts: every file a service mounts from the checkout reaches its running container after an update. A checkout
+# writes such a file anew; the container's mount keeps the one it started with, and Compose, finding the configuration
+# unchanged, keeps the container: an edge served the previous Caddyfile, centrifugo the previous shim. Every service
+# mounting a file carries the label twes.mounts-digest: ${TWES_MOUNTS_DIGEST:-}, the digest scripts/deploy/mounts-digest.sh
+# makes of those files, which deploy.sh, `make up` and the monitor's start hand Compose. A directory's mount sees what
+# changes inside it and needs none. Read without interpolation, every profile on, from every installation that mounts
+# files: a server, a shop, development live and from the images, and the monitor. PostgreSQL runs
+# /docker-entrypoint-initdb.d only on an empty volume, so a later init.sql changes nothing and is left out.
+MOUNTS_LABEL='${TWES_MOUNTS_DIGEST:-}'
+declare -A mounting=(
+  [server]="compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-bucket.yaml compose.deploy.yaml compose.release.yaml"
+  [shop]="compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-local.yaml compose.backup-offsite.yaml compose.onprem.yaml compose.release.yaml"
+  [development]="compose.yaml compose.live.yaml"
+  [images]="compose.yaml"
+  [monitor]="infra/monitor/compose.yaml"
+)
+mounted=0
+for installation in server shop development images monitor; do
+  args=()
+  for layer in ${mounting[$installation]}; do
+    [[ -f "$root/$layer" ]] || { problem "$installation: found no $layer"; continue 2; }
+    args+=(-f "$layer")
+  done
+  config=$(cd "$root" && env -i PATH="$PATH" HOME="$HOME" docker compose "${args[@]}" --profile '*' config --no-interpolate --format json 2>&1) \
+    || { problem "$installation: docker compose config failed: $config"; continue; }
+  while IFS=$'\t' read -r service source target label; do
+    [[ -n "$service" && -f "$source" && "$target" != /docker-entrypoint-initdb.d/* ]] || continue
+    mounted=$((mounted + 1))
+    [[ "$label" == "$MOUNTS_LABEL" ]] \
+      || problem "$installation: $service mounts ${source#"$root"/} without the label twes.mounts-digest: $MOUNTS_LABEL: an update would leave it the old file"
+  done < <(jq -r '.services | to_entries[] | .key as $service | ((.value.labels // {})["twes.mounts-digest"] // "") as $label
+    | (.value.volumes // [])[] | select(.type == "bind") | [$service, .source, .target, $label] | @tsv' <<<"$config")
+done
+((mounted > 0)) || problem "found no file mounted from the checkout in any installation: the mounts check would pass over nothing"
+
 # Read from the files themselves, so the Compose that runs this gate cannot hide it by honouring the tag.
 while IFS= read -r line; do [[ -n "$line" ]] && problem "$line"; done < <(cd "$root" && python3 -I - compose*.yaml <<'PY'
 import re, sys
@@ -161,4 +199,4 @@ if ((${#problems[@]})); then
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi
-printf 'secrets-overlay: OK — %d installations hand their %d secrets as compose secrets, each read, none in an environment\n' "$checked" "${#secrets[@]}"
+printf 'secrets-overlay: OK — %d installations hand their %d secrets as compose secrets, each read, none in an environment; %d file mounts carry twes.mounts-digest\n' "$checked" "${#secrets[@]}" "$mounted"

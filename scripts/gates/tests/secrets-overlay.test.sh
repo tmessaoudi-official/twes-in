@@ -12,6 +12,8 @@ check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo 
 project() {
   local d; d=$(mktemp -d)
   cp "$ROOT"/compose*.yaml "$d/"
+  # And what they mount, which the mounts check reads as files.
+  cp -r "$ROOT/infra" "$d/"
   echo "$d"
 }
 edit() { sed -i "$2" "$1"; }
@@ -31,8 +33,9 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "a tag on the anchored line itself i
 d=$(project); python3 -I - "$d/compose.prod.yaml" <<'PY'
 import sys
 p = sys.argv[1]; s = open(p).read()
-i = s.index('\n  centrifugo:\n'); j = s.index('    labels: *secrets-digest\n', i)
-open(p, 'w').write(s[:j] + s[j + len('    labels: *secrets-digest\n'):])
+line = '      <<: *secrets-digest\n'
+i = s.index('\n  centrifugo:\n'); j = s.index(line, i)
+open(p, 'w').write(s[:j] + s[j + len(line):])
 PY
 out=$(bash "$GATE" --root "$d" 2>&1); check "a service mounting a secret without the digest label is named" $? 1 "$out" "production: centrifugo mounts a secret without the label twes.secrets-digest"
 
@@ -73,6 +76,19 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "an api without its mail relay is na
 
 d=$(project); edit "$d/compose.prod.yaml" 's/^\(    secrets: \[app_secret, .*\), postgres_password\]$/\1]/'
 out=$(bash "$GATE" --root "$d" 2>&1); check "migrations without the owner's password are named" $? 1 "$out" "migrate does not mount the secret postgres_password"
+
+# A checkout writes a mounted file anew and the container's mount keeps the old one: only a changed label recreates it.
+check "every file mount is counted" 0 0 "$(bash "$GATE" --root "$(project)" 2>&1)" "file mounts carry twes.mounts-digest"
+d=$(project); edit "$d/compose.onprem.yaml" '/^    # The digest of the Caddyfile it mounts/,/^      twes.mounts-digest: /d'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a shop's edge mounting its Caddyfile without the digest is named" $? 1 "$out" "shop: edge mounts infra/onprem/Caddyfile without the label twes.mounts-digest"
+d=$(project); edit "$d/compose.prod.yaml" 's|^      twes.mounts-digest: "${TWES_MOUNTS_DIGEST:-}"$|      twes.mounts-digest: "fixed"|'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a label that is not the digest handed is named" $? 1 "$out" "server: centrifugo mounts infra/postgres/twes-secrets without the label"
+d=$(project); edit "$d/compose.live.yaml" '0,/^    labels: \*mounts-digest$/{/^    labels: \*mounts-digest$/d}'
+out=$(bash "$GATE" --root "$d" 2>&1); check "development's live api mounting its entrypoint without the digest is named" $? 1 "$out" "development: api mounts infra/api/live-entrypoint.sh without the label"
+d=$(project); edit "$d/infra/monitor/compose.yaml" 's|^    labels: \*mounts-digest$||'
+out=$(bash "$GATE" --root "$d" 2>&1); check "the monitor's gatus mounting its configuration without the digest is named" $? 1 "$out" "monitor: gatus mounts infra/monitor/gatus.yaml without the label"
+d=$(project); rm -r "$d/infra"
+out=$(bash "$GATE" --root "$d" 2>&1); check "a tree whose mounted files are all missing reads as nothing checked" $? 1 "$out" "found no file mounted from the checkout"
 
 d=$(project); rm "$d/compose.onprem.yaml"
 out=$(bash "$GATE" --root "$d" 2>&1); check "an installation whose file is missing fails" $? 1 "$out" "shop: found no compose.onprem.yaml"
