@@ -127,6 +127,17 @@ describe('SignupPage', () => {
     expect(query('signup-form')).toBeNull();
   });
 
+  // An address pasted with an invisible mark at an end is the address, as the API reads it.
+  it('takes an address pasted with invisible marks at its ends', async () => {
+    const { fixture, query } = await render();
+
+    type(query<HTMLInputElement>('signup-email')!, '‎new@example.test﻿');
+    query<HTMLFormElement>('signup-form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(facade.request).toHaveBeenCalledWith('new@example.test', 'en');
+  });
+
   it('refuses a malformed address before asking', async () => {
     const { fixture, query } = await render();
 

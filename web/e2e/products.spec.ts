@@ -221,7 +221,7 @@ test('a product is given its codes by scanning them, and a code finds it', async
     await expect(page.getByTestId('product-barcode-code-1')).toHaveValue(pack);
     await expect(page.getByTestId('product-barcode-quantity-1')).toHaveValue('12');
 
-    // Another product cannot take the carton's code: the refusal names who holds it, under the row.
+    // Another product cannot take the carton's code: the refusal names who holds it, under its code.
     await page.goto(`/products/${ids[1]}`);
     await page.getByRole('tab', { name: 'Codes-barres' }).click();
     await page.getByTestId('product-barcode-scan').fill(pack);

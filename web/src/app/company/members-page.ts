@@ -33,6 +33,7 @@ import type { RoleRow } from './roles-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { MemberRoleDialog, type MemberRoleChoice } from './member-role-dialog';
 import { type Actor, mayGrant, mayRemove } from './role-bounds';
+import { onTypedText, typedText } from '../shared/form/typed-text';
 
 /** The members list as configuration: its columns, what a person may hide, and its page sizes. */
 export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
@@ -257,7 +258,7 @@ export class MembersPage implements OnInit {
   protected readonly form = new FormGroup({
     email: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.email],
+      validators: [onTypedText(Validators.required), onTypedText(Validators.email)],
     }),
     role: new FormControl<string>('member', { nonNullable: true }),
   });
@@ -266,7 +267,7 @@ export class MembersPage implements OnInit {
   });
   /** The invitation already waiting for the address typed, which sending replaces. */
   protected readonly replaces = computed(() => {
-    const typed = this.typedEmail().trim().toLowerCase();
+    const typed = typedText(this.typedEmail()).toLowerCase();
     return (
       this.rows().find((row) => row.status !== 'joined' && row.email.toLowerCase() === typed) ??
       null
@@ -294,7 +295,7 @@ export class MembersPage implements OnInit {
       return;
     }
     const { email, role } = this.form.getRawValue();
-    const row = await this.members.add(companyId, email, role);
+    const row = await this.members.add(companyId, typedText(email), role);
     if (row !== null) {
       this.form.reset({ email: '', role: 'member' });
       // Every address is invited, one with an account included: nobody is a member until they accept.

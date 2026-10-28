@@ -43,4 +43,14 @@ describe('the platform rules said before the step-up', () => {
     });
     expect(ownerEmailRefusal('compta@exemple.tn')).toBeNull();
   });
+
+  // A direction mark or a zero-width space pasted at an end is nothing anyone can see or fix.
+  it("judges an owner's address without the invisible marks at its ends", () => {
+    expect(ownerEmailRefusal('\u200fcompta@exemple.tn\u200b')).toBeNull();
+    expect(ownerEmailRefusal('\u200b\u200e')).toEqual({
+      field: 'email',
+      reason: 'value_required',
+      params: {},
+    });
+  });
 });

@@ -9,7 +9,7 @@ import {
   Validators,
 } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from './form-types';
-import { typedText } from './typed-text';
+import { onTypedText, typedText } from './typed-text';
 
 /**
  * A form as a pure function of its descriptor: one control per declared field with the validators the field
@@ -67,14 +67,6 @@ const TYPED_KINDS: ReadonlySet<FormField['kind']> = new Set([
 
 const typesText = (field: FormField): boolean =>
   TYPED_KINDS.has(field.kind) && field.readOnly !== true;
-
-/** A rule judging what was typed without its ends, as the API judges it (`TypedText::trimmed`). */
-function onTypedText(validator: ValidatorFn): ValidatorFn {
-  return (control) =>
-    typeof control.value === 'string'
-      ? validator({ value: typedText(control.value) } as AbstractControl)
-      : validator(control);
-}
 
 /**
  * A typed field's control keeps what the person typed, so a space before the next word is not eaten as it is typed,

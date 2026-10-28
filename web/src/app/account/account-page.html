@@ -64,10 +64,16 @@
                         type="password"
                         autocomplete="current-password"
                         [value]="passwordCurrent()"
-                        (input)="passwordCurrent.set($any($event.target).value)"
+                        (input)="typedPassword('current', $any($event.target).value)"
+                        [appRefused]="passwordProblemAt() === 'current'"
                         data-testid="account-password-current"
                       />
                       <app-password-toggle matSuffix [field]="passwordCurrentField" />
+                      @if (passwordProblemAt() === 'current') {
+                        <mat-error data-testid="account-password-current-error">{{
+                          'account.password.problems.current_password' | translate
+                        }}</mat-error>
+                      }
                     </mat-form-field>
                   </div>
                   <div class="flex min-w-0 flex-col gap-1.5">
@@ -82,9 +88,11 @@
                         type="password"
                         autocomplete="new-password"
                         [value]="passwordNew()"
-                        (input)="passwordNew.set($any($event.target).value)"
+                        (input)="typedPassword('new', $any($event.target).value)"
                         (blur)="passwordNewLeft.set(true)"
-                        [appRefused]="passwordNewLeft() && passwordNewShort()"
+                        [appRefused]="
+                          (passwordNewLeft() && passwordNewShort()) || passwordProblemAt() === 'new'
+                        "
                         data-testid="account-password-new"
                       />
                       <app-password-toggle matSuffix [field]="passwordNewField" />
@@ -94,6 +102,11 @@
                       @if (passwordNewLeft() && passwordNewShort()) {
                         <mat-error data-testid="account-password-new-error">{{
                           'account.password.problems.too_short' | translate: { min: passwordMin() }
+                        }}</mat-error>
+                      } @else if (passwordProblemAt() === 'new') {
+                        <mat-error data-testid="account-password-new-error">{{
+                          'account.password.problems.' + passwordProblem()
+                            | translate: { min: passwordMin() }
                         }}</mat-error>
                       }
                     </mat-form-field>
@@ -110,20 +123,26 @@
                         type="password"
                         autocomplete="new-password"
                         [value]="passwordAgain()"
-                        (input)="passwordAgain.set($any($event.target).value)"
+                        (input)="typedPassword('again', $any($event.target).value)"
                         (blur)="passwordAgainLeft.set(true)"
-                        [appRefused]="passwordAgainLeft() && passwordAgainDiffers()"
+                        [appRefused]="
+                          (passwordAgainLeft() && passwordAgainDiffers()) ||
+                          passwordProblemAt() === 'again'
+                        "
                         data-testid="account-password-again"
                       />
                       <app-password-toggle matSuffix [field]="passwordAgainField" />
-                      @if (passwordAgainLeft() && passwordAgainDiffers()) {
+                      @if (
+                        (passwordAgainLeft() && passwordAgainDiffers()) ||
+                        passwordProblemAt() === 'again'
+                      ) {
                         <mat-error data-testid="account-password-again-error">{{
                           'account.password.problems.mismatch' | translate
                         }}</mat-error>
                       }
                     </mat-form-field>
                   </div>
-                  @if (passwordProblem(); as problem) {
+                  @if (passwordProblemUnplaced(); as problem) {
                     <p
                       role="alert"
                       class="m-0 text-sm text-error"

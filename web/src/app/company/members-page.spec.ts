@@ -250,6 +250,20 @@ describe('MembersPage', () => {
     expect(members.add).toHaveBeenCalledWith('c1', 'joiner@example.test', 'admin');
   });
 
+  // An address pasted with an invisible mark at an end is the address, as the API reads it.
+  it('sends an address pasted with invisible marks at its ends without them', async () => {
+    const component = fixture.componentInstance as unknown as {
+      form: { setValue: (v: { email: string; role: string }) => void; valid: boolean };
+      add: () => Promise<void>;
+    };
+    component.form.setValue({ email: '‏joiner@example.test​', role: 'admin' });
+    expect(component.form.valid).toBe(true);
+
+    await component.add();
+
+    expect(members.add).toHaveBeenCalledWith('c1', 'joiner@example.test', 'admin');
+  });
+
   it('counts an invitation being typed, holding the page until it goes', async () => {
     const unsaved = TestBed.inject(UnsavedChanges);
     const component = fixture.componentInstance as unknown as {

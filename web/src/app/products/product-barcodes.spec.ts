@@ -288,6 +288,50 @@ describe('ProductBarcodesSection', () => {
       q(id)?.closest('mat-form-field')?.classList.contains('mat-form-field-invalid');
     expect(outlined('product-barcode-code-0')).toBe(true);
     expect(outlined('product-barcode-quantity-0')).toBe(false);
+    // Said under the field it concerns, not under the whole row.
+    expect(q('product-barcode-problem-0')?.closest('mat-form-field')).toBe(
+      q('product-barcode-code-0')?.closest('mat-form-field'),
+    );
+    expect(q('product-barcode-code-0')?.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('says a quantity out of its range under the quantity, which alone is outlined', async () => {
+    await open([]);
+    await scan('X-1');
+    const quantity = q('product-barcode-quantity-0') as HTMLInputElement;
+    quantity.value = '0';
+    quantity.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(q('product-barcode-problem-0')?.textContent).toContain(
+      'products.barcodes.problems.quantity_range',
+    );
+    expect(q('product-barcode-problem-0')?.closest('mat-form-field')).toBe(
+      quantity.closest('mat-form-field'),
+    );
+    expect(quantity.getAttribute('aria-invalid')).toBe('true');
+    expect(q('product-barcode-code-0')?.getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('says the API refusal of a quantity under the quantity it names', async () => {
+    await open([]);
+    await scan('X-1');
+    refusal.set({
+      code: 'invalid',
+      index: 0,
+      field: 'quantity',
+      heldBy: null,
+      reason: null,
+      params: {},
+    });
+    fixture.detectChanges();
+
+    const quantity = q('product-barcode-quantity-0') as HTMLInputElement;
+    expect(q('product-barcode-problem-0')?.closest('mat-form-field')).toBe(
+      quantity.closest('mat-form-field'),
+    );
+    expect(quantity.getAttribute('aria-invalid')).toBe('true');
+    expect(q('product-barcode-code-0')?.getAttribute('aria-invalid')).toBe('false');
   });
 
   it('puts the refusal of a code another product holds under its row, naming that product', async () => {

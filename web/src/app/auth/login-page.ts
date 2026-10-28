@@ -17,6 +17,7 @@ import { PasskeyClient } from './passkey-client';
 import { SignedOutLayout } from './signed-out-layout';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { returnAddress } from '../shared/session/return-to';
+import { onTypedText, typedText } from '../shared/form/typed-text';
 
 @Component({
   selector: 'app-login-page',
@@ -41,7 +42,7 @@ export class LoginPage {
   protected readonly form = new FormGroup({
     email: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.email],
+      validators: [onTypedText(Validators.required), onTypedText(Validators.email)],
     }),
     password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
@@ -103,7 +104,8 @@ export class LoginPage {
     }
     this.submitting.set(true);
     this.error.set(null);
-    const outcome = await this.auth.login(this.form.getRawValue());
+    const typed = this.form.getRawValue();
+    const outcome = await this.auth.login({ ...typed, email: typedText(typed.email) });
     this.submitting.set(false);
     if (outcome.status === 'signed_in') {
       await this.router.navigateByUrl(returnAddress(this.returnTo()) ?? '/');

@@ -297,6 +297,21 @@ describe('LoginPage', () => {
     expect(query('login-error')).toBeNull();
   });
 
+  // An address pasted with an invisible mark at an end is the address, as the API reads it.
+  it('signs in with an address pasted with invisible marks at its ends', async () => {
+    const { fixture, http, query } = await render();
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    type(query<HTMLInputElement>('email')!, '‎owner@example.test​');
+    type(query<HTMLInputElement>('password')!, 'pw');
+    query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    const request = http.expectOne({ method: 'POST', url: '/api/auth/login' });
+    expect(request.request.body).toEqual({ email: 'owner@example.test', password: 'pw' });
+    request.flush(me);
+    await settle(fixture);
+  });
+
   it.each([
     ['/invoices/i1?tab=lines', '/invoices/i1?tab=lines'],
     ['//evil.example', '/'],

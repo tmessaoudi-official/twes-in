@@ -2,6 +2,7 @@
 
 import { FormControl, Validators } from '@angular/forms';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * What the API holds a new company's name (`CompanyResource`) and an owner's address (`PlatformOwnerInvitationResource`)
@@ -23,14 +24,17 @@ export function companyNameRefusal(name: string): FieldRefusal | null {
 
 /**
  * Why an owner's address would be refused, as the API words it; null when it would be taken. Its shape is the shared
- * form's e-mail check, the one every other address field of the screens is held to.
+ * form's e-mail check, the one every other address field of the screens is held to, on the address without the
+ * invisible marks a paste leaves at its ends, as the API reads it.
  */
 export function ownerEmailRefusal(email: string): FieldRefusal | null {
-  if (email === '') return refusal('email', 'value_required');
-  if (email.length > OWNER_EMAIL_MAX) {
+  const typed = typedText(email);
+  if (typed === '') return refusal('email', 'value_required');
+  if (typed.length > OWNER_EMAIL_MAX) {
     return refusal('email', 'invalid_text', { max: OWNER_EMAIL_MAX });
   }
-  if (Validators.email(new FormControl(email)) !== null) return refusal('email', 'invalid_email');
+  // typed-email: judged on typedText(email), taken above
+  if (Validators.email(new FormControl(typed)) !== null) return refusal('email', 'invalid_email');
   return null;
 }
 

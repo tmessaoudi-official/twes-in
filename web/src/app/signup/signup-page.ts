@@ -10,6 +10,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { SignupFacade } from './signup-facade';
 import { SignedOutLayout } from '../auth/signed-out-layout';
+import { onTypedText, typedText } from '../shared/form/typed-text';
 
 /**
  * The first step of signup: an address, and a mailed link. What the page says afterwards is the same whether or not the
@@ -41,7 +42,7 @@ export class SignupPage implements OnInit {
   protected readonly form = new FormGroup({
     email: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.email],
+      validators: [onTypedText(Validators.required), onTypedText(Validators.email)],
     }),
   });
 
@@ -56,6 +57,6 @@ export class SignupPage implements OnInit {
       return;
     }
     // The mail is written in the language the person is reading this page in.
-    await this.signup.request(this.form.controls.email.value.trim(), this.language.current());
+    await this.signup.request(typedText(this.form.controls.email.value), this.language.current());
   }
 }

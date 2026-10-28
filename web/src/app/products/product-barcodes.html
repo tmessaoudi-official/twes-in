@@ -92,11 +92,16 @@
                   autocomplete="off"
                   spellcheck="false"
                   [attr.data-testid]="'product-barcode-code-' + index"
-                  [appRefused]="codeRefused(index)"
+                  [appRefused]="problemAt(index) === 'code'"
                   [value]="row.code"
                   (input)="setCode(index, code.value)"
                   #code
                 />
+                @if (problemAt(index) === 'code') {
+                  <mat-error [attr.data-testid]="'product-barcode-problem-' + index">
+                    <ng-container *ngTemplateOutlet="said; context: { $implicit: index }" />
+                  </mat-error>
+                }
               </mat-form-field>
               <div class="flex min-w-40 flex-1 flex-col gap-1.5">
                 <app-select
@@ -120,13 +125,17 @@
                   [max]="maxQuantity"
                   step="1"
                   [attr.data-testid]="'product-barcode-quantity-' + index"
-                  [appRefused]="quantityRefused(index)"
+                  [appRefused]="problemAt(index) === 'quantity'"
                   [disabled]="row.role === 'unit'"
                   [value]="row.quantity"
                   (input)="setQuantity(index, quantity.valueAsNumber)"
                   #quantity
                 />
-                <!-- refusal-said: under the row, as the row's problem (product-barcode-problem-*) -->
+                @if (problemAt(index) === 'quantity') {
+                  <mat-error [attr.data-testid]="'product-barcode-problem-' + index">
+                    <ng-container *ngTemplateOutlet="said; context: { $implicit: index }" />
+                  </mat-error>
+                }
               </mat-form-field>
               @if (row.role === 'supplier') {
                 <div class="flex min-w-56 flex-[2] flex-col gap-1.5">
@@ -153,25 +162,13 @@
                 <mat-icon>delete</mat-icon>
               </button>
             </div>
-            @if (problems()[index]; as problem) {
-              <p class="text-sm text-error" [attr.data-testid]="'product-barcode-problem-' + index">
-                {{ 'products.barcodes.problems.' + problem | translate }}
-              </p>
-            } @else if (refusal()?.index === index) {
+            @if (problemAt(index) === 'row') {
               <p
                 class="text-sm text-error"
-                role="alert"
+                [attr.role]="problems()[index] === null ? 'alert' : null"
                 [attr.data-testid]="'product-barcode-problem-' + index"
               >
-                @if (refusal()?.code === 'barcode_taken') {
-                  {{
-                    'products.barcodes.taken' | translate: { reference: refusal()?.heldBy ?? '' }
-                  }}
-                } @else if (refusalText(); as said) {
-                  {{ said.key | translate: said.params }}
-                } @else {
-                  {{ 'products.barcodes.refused' | translate }}
-                }
+                <ng-container *ngTemplateOutlet="said; context: { $implicit: index }" />
               </p>
             }
           </li>
@@ -197,3 +194,16 @@
     </div>
   }
 </section>
+
+<!-- What is wrong with a row, said where problemAt places it. -->
+<ng-template #said let-index>
+  @if (problems()[index]; as problem) {
+    {{ 'products.barcodes.problems.' + problem | translate }}
+  } @else if (refusal()?.code === 'barcode_taken') {
+    {{ 'products.barcodes.taken' | translate: { reference: refusal()?.heldBy ?? '' } }}
+  } @else if (refusalText(); as text) {
+    {{ text.key | translate: text.params }}
+  } @else {
+    {{ 'products.barcodes.refused' | translate }}
+  }
+</ng-template>

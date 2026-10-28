@@ -15,6 +15,7 @@ import {
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { FormsModule } from '@angular/forms';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -59,6 +60,7 @@ import { BARCODE_ROLES, type BarcodeRole, type ProductBarcode } from './products
     Label,
     PartConflict,
     RefusedField,
+    NgTemplateOutlet,
   ],
   templateUrl: './product-barcodes.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -168,15 +170,21 @@ export class ProductBarcodesSection implements OnInit {
   );
   /** The API's refusal, under the row it named. */
   protected readonly refusal = this.facade.refusal;
-  /** The code field is outlined for what is wrong in it, or for the API's refusal of that row, which names its code. */
-  protected codeRefused(index: number): boolean {
+  /**
+   * Where a row's problem is said and outlined: under the field it concerns, the code or the quantity, or under the
+   * row for one no field there holds (a supplier's code naming no supplier, the role or supplier the API refused). The
+   * row's own rule first, then the API's refusal of that row, which names its field (none naming the code).
+   */
+  protected problemAt(index: number): 'code' | 'quantity' | 'row' | null {
     const problem = this.problems()[index];
-    return problem === null ? this.refusal()?.index === index : CODE_PROBLEMS.includes(problem);
-  }
-  /** The quantity field is outlined for what is wrong in it. */
-  protected quantityRefused(index: number): boolean {
-    const problem = this.problems()[index];
-    return problem !== null && QUANTITY_PROBLEMS.includes(problem);
+    if (problem !== null) {
+      if (CODE_PROBLEMS.includes(problem)) return 'code';
+      return QUANTITY_PROBLEMS.includes(problem) ? 'quantity' : 'row';
+    }
+    const refused = this.refusal();
+    if (refused === null || refused.index !== index) return null;
+    if (refused.field === 'quantity') return 'quantity';
+    return refused.field === null || refused.field === 'code' ? 'code' : 'row';
   }
   /** What the refusal's reason says, as every form words it; null for a reason no text words. */
   protected readonly refusalText = computed(() => {

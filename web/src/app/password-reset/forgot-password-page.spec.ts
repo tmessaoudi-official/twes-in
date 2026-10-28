@@ -82,6 +82,18 @@ describe('ForgotPasswordPage', () => {
     expect(query('forgot-form')).toBeNull();
   });
 
+  // An address pasted with an invisible mark at an end (an Arabic keyboard's direction mark) is the address, as the API
+  // reads it: never « adresse invalide » with nothing visible to fix.
+  it('takes an address pasted with invisible marks at its ends', async () => {
+    const { fixture, query } = await render();
+
+    type(query<HTMLInputElement>('forgot-email')!, '‏someone@example.test​');
+    query<HTMLButtonElement>('forgot-submit')!.click();
+    await fixture.whenStable();
+
+    expect(facade.request).toHaveBeenCalledWith('someone@example.test', 'en');
+  });
+
   it('does not ask for an address that is not one', async () => {
     const { fixture, query } = await render();
 

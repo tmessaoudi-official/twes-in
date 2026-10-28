@@ -168,6 +168,7 @@
       "title": "Règlements à confirmer",
       "none": "Aucun règlement en attente.",
       "periods": "Périodes couvertes",
+      "periods_bounds": "De {{min}} à {{max}} périodes",
       "confirm": "Confirmer",
       "reject": "Refuser",
       "confirmed": "Le règlement a été confirmé.",

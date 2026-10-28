@@ -87,6 +87,7 @@ class StaticLoader implements TranslateLoader {
         numbers: { empty: 'Indiquez un nombre.' },
         demo: { title: 'Démo', bounds: 'De {{min}} à {{max}} démos', save: 'Enregistrer' },
         imports: { title: 'Imports', bounds: 'De {{min}} à {{max}} lignes', save: 'Enregistrer' },
+        delays: { bounds: 'De {{min}} à {{max}} jours' },
         failed: {
           title: 'Messages non partis',
           total: 'Non partis : {{count}}',
@@ -190,6 +191,7 @@ class StaticLoader implements TranslateLoader {
           title: 'Règlements à confirmer',
           none: 'Aucun règlement en attente.',
           periods: 'Périodes couvertes',
+          periods_bounds: 'De {{min}} à {{max}} périodes',
           confirm: 'Confirmer',
           reject: 'Refuser',
           confirmed: 'Le règlement a été confirmé.',
@@ -903,6 +905,7 @@ describe('PlatformPage', () => {
     // Its outline turns red as a form's refused field does, not only the words under it.
     expect(most.closest('mat-form-field')?.classList.contains('mat-form-field-invalid')).toBe(true);
     expect(says('4.5')).toBe('Attendu : un nombre entier.');
+    expect(says('4,5')).toBe('Attendu : un nombre entier.');
     expect(says('200')).toBe('Attendu : un nombre entier de 3 à 100.');
     expect(query<HTMLButtonElement>('platform-demo-save')!.disabled).toBe(true);
     expect(says('20')).toBeUndefined();
@@ -1088,10 +1091,14 @@ describe('PlatformPage', () => {
     const { query } = await render();
     const deletion = query<HTMLInputElement>('platform-delay-account.deletion_days')!;
 
-    expect(deletion.type).toBe('number');
+    // A text field with the digits' keyboard: a number field would hand « 1,5 » over as empty. Its bounds are said
+    // under it before they are crossed.
+    expect(deletion.type).toBe('text');
+    expect(deletion.inputMode).toBe('numeric');
     expect(deletion.value).toBe('7');
-    expect(deletion.min).toBe('1');
-    expect(deletion.max).toBe('90');
+    expect(deletion.closest('mat-form-field')?.querySelector('mat-hint')?.textContent?.trim()).toBe(
+      'De 1 à 90 jours',
+    );
     expect(query('platform-delays')?.textContent).toContain(
       'Jours avant d’effacer un compte supprimé',
     );
@@ -1498,15 +1505,21 @@ describe('PlatformPage', () => {
       return query('payment-periods-p1-error')?.textContent?.trim();
     };
 
+    // Its bounds are said before they are crossed, under the field, as every bounded number's are.
+    expect(periods.closest('mat-form-field')?.querySelector('mat-hint')?.textContent?.trim()).toBe(
+      'De 1 à 60 périodes',
+    );
     expect(says('0')).toBe('Attendu : un nombre entier de 1 à 60.');
     expect(periods.closest('mat-form-field')?.classList.contains('mat-form-field-invalid')).toBe(
       true,
     );
     expect(says('1.5')).toBe('Attendu : un nombre entier.');
+    // Written with a French comma, it is what it is, a number not whole, never an empty field.
+    expect(says('1,5')).toBe('Attendu : un nombre entier.');
+    expect(says('‎2')).toBeUndefined();
     expect(says('')).toBe('Indiquez un nombre.');
     // Past the most the API covers at once, said here rather than after the proof of who is at the screen.
     expect(says('61')).toBe('Attendu : un nombre entier de 1 à 60.');
-    expect(periods.getAttribute('max')).toBe('60');
     query<HTMLButtonElement>('payment-confirm-p1')!.click();
     await fixture.whenStable();
     expect(document.querySelector('[data-testid="confirm-message"]')).toBeNull();

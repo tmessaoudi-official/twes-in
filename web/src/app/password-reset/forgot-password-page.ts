@@ -10,6 +10,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { PasswordResetFacade } from './password-reset-facade';
+import { onTypedText, typedText } from '../shared/form/typed-text';
 
 /**
  * The first step of getting back into an account: an address, and a mailed link. What the page says afterwards is the
@@ -44,7 +45,7 @@ export class ForgotPasswordPage {
   protected readonly form = new FormGroup({
     email: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, Validators.email],
+      validators: [onTypedText(Validators.required), onTypedText(Validators.email)],
     }),
   });
 
@@ -54,6 +55,6 @@ export class ForgotPasswordPage {
       return;
     }
     // The mail is written in the language the person is reading this page in.
-    await this.reset.request(this.form.controls.email.value.trim(), this.language.current());
+    await this.reset.request(typedText(this.form.controls.email.value), this.language.current());
   }
 }

@@ -71,6 +71,19 @@ export const ACCOUNT_TABS = ['security', 'preferences', 'device', 'notifications
 export type AccountTab = (typeof ACCOUNT_TABS)[number];
 
 /**
+ * The field a refusal of a new password concerns, said and outlined there; one missing is at no field's fault. Two
+ * passwords that differ are the screen's own refusal, said under the second before anything is sent.
+ */
+const PASSWORD_PROBLEM_FIELDS: Readonly<
+  Partial<Record<PasswordChangeOutcome, 'current' | 'new' | 'again'>>
+> = {
+  current_password: 'current',
+  too_short: 'new',
+  unchanged: 'new',
+  breached: 'new',
+};
+
+/**
  * « Mon compte » (docs/SPEC.md § 7, 2026-09-25 17:22; the round-6 account boards): the person's own account, apart
  * from any company. Sécurité leads to the two-step check; Préférences holds the display choices, « Montrer ce qui
  * arrive », « Société à l'ouverture » and the keyboard shortcuts; « Cet appareil » what belongs to the device in hand,
@@ -130,6 +143,17 @@ export class AccountPage implements OnInit {
   private readonly passwordNewField = viewChild<ElementRef<HTMLInputElement>>('passwordNewField');
   private readonly passwordAgainField =
     viewChild<ElementRef<HTMLInputElement>>('passwordAgainField');
+  private readonly passwordCurrentField =
+    viewChild<ElementRef<HTMLInputElement>>('passwordCurrentField');
+  /** The field the API's last refusal concerns, said under it and outlined; null for one no field is at fault for. */
+  protected readonly passwordProblemAt = computed(() => {
+    const problem = this.passwordProblem();
+    return problem === null ? null : (PASSWORD_PROBLEM_FIELDS[problem] ?? null);
+  });
+  /** A refusal no field is at fault for (too many tries, no answer), said under the form. */
+  protected readonly passwordProblemUnplaced = computed(() =>
+    this.passwordProblemAt() === null ? this.passwordProblem() : null,
+  );
   protected readonly passwordReady = computed(
     () => this.passwordCurrent() !== '' && this.passwordNew() !== '' && this.passwordAgain() !== '',
   );
@@ -304,6 +328,26 @@ export class AccountPage implements OnInit {
       return;
     }
     this.passwordProblem.set(outcome);
+    const at = this.passwordProblemAt();
+    if (at !== null) {
+      const fields = {
+        current: this.passwordCurrentField,
+        new: this.passwordNewField,
+        again: this.passwordAgainField,
+      };
+      fields[at]()?.nativeElement.focus();
+    }
+  }
+
+  /** What is typed in a password field; a refusal of the API it concerns no longer holds once it changes. */
+  protected typedPassword(field: 'current' | 'new' | 'again', value: string): void {
+    const typed = {
+      current: this.passwordCurrent,
+      new: this.passwordNew,
+      again: this.passwordAgain,
+    };
+    typed[field].set(value);
+    if (this.passwordProblemAt() === field) this.passwordProblem.set(null);
   }
 
   protected openTab(index: number): void {

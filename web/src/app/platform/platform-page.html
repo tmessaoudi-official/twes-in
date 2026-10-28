@@ -244,11 +244,8 @@
                     <mat-label>{{ most.labelKey | translate }}</mat-label>
                     <input
                       matInput
-                      type="number"
+                      type="text"
                       inputmode="numeric"
-                      step="1"
-                      [min]="most.min"
-                      [max]="most.max"
                       [value]="demoMostDraft() ?? most.value"
                       (input)="typedDemoMost($event)"
                       [appRefused]="numberSaid(most, demoMostDraft()) !== null"
@@ -306,11 +303,8 @@
                     <mat-label>{{ rows.labelKey | translate }}</mat-label>
                     <input
                       matInput
-                      type="number"
+                      type="text"
                       inputmode="numeric"
-                      step="1"
-                      [min]="rows.min"
-                      [max]="rows.max"
                       [value]="importRowsDraft() ?? rows.value"
                       (input)="typedImportRows($event)"
                       [appRefused]="numberSaid(rows, importRowsDraft()) !== null"
@@ -375,11 +369,8 @@
                     <mat-label>{{ delay.labelKey | translate }}</mat-label>
                     <input
                       matInput
-                      type="number"
+                      type="text"
                       inputmode="numeric"
-                      step="1"
-                      [min]="delay.min"
-                      [max]="delay.max"
                       [value]="delayDraft()[delay.key] ?? delay.value"
                       (input)="typedDelay(delay.key, $event)"
                       [appRefused]="numberSaid(delay, delayDraft()[delay.key]) !== null"
@@ -789,12 +780,10 @@
                       <mat-label>{{ 'platform.payments.periods' | translate }}</mat-label>
                       <input
                         matInput
-                        type="number"
-                        min="1"
-                        step="1"
+                        type="text"
+                        inputmode="numeric"
                         [value]="1"
                         (input)="typedPeriods(payment.id, $event)"
-                        [attr.max]="payment.periodsMax"
                         [appRefused]="periodsSaid(payment) !== null"
                         [attr.data-testid]="'payment-periods-' + payment.id"
                       />
@@ -803,6 +792,11 @@
                           [attr.data-testid]="'payment-periods-' + payment.id + '-error'"
                           >{{ said.key | translate: said.params }}</mat-error
                         >
+                      } @else {
+                        <mat-hint>{{
+                          'platform.payments.periods_bounds'
+                            | translate: { min: 1, max: payment.periodsMax }
+                        }}</mat-hint>
                       }
                     </mat-form-field>
                     <button

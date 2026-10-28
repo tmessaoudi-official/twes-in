@@ -168,6 +168,7 @@
       "title": "Payments to confirm",
       "none": "No payment is waiting.",
       "periods": "Periods covered",
+      "periods_bounds": "From {{min}} to {{max}} periods",
       "confirm": "Confirm",
       "reject": "Reject",
       "confirmed": "The payment was confirmed.",

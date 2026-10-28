@@ -450,8 +450,57 @@ describe('AccountPage', () => {
 
       await submit(root, 'faux', 'nouveau-mot-de-passe', 'nouveau-mot-de-passe');
 
-      expect(byTestId(root, 'account-password-problem')?.textContent).toContain('current_password');
+      // Said under the field it concerns, which is outlined and takes the cursor, as every refused field is.
+      const current = byTestId(root, 'account-password-current') as HTMLInputElement;
+      expect(byTestId(root, 'account-password-current-error')?.textContent).toContain(
+        'current_password',
+      );
+      expect(current.closest('mat-form-field')?.classList.contains('mat-form-field-invalid')).toBe(
+        true,
+      );
+      expect(current.getAttribute('aria-invalid')).toBe('true');
+      expect(document.activeElement).toBe(current);
+      expect(byTestId(root, 'account-password-problem')).toBeNull();
       expect(navigate).not.toHaveBeenCalled();
+
+      // Typed again, the field is no longer refused: the API has not judged the new value.
+      fill(root, 'account-password-current', 'vrai');
+      fixture.detectChanges();
+      expect(byTestId(root, 'account-password-current-error')).toBeNull();
+    });
+
+    it.each([
+      ['breached', 'account-password-new'],
+      ['unchanged', 'account-password-new'],
+      ['too_short', 'account-password-new'],
+    ] as const)(
+      'says the refusal « %s » under the new password, which it concerns',
+      async (outcome, field) => {
+        auth.changePassword.mockResolvedValue(outcome);
+        const root = await render('security');
+
+        await submit(root, 'ancien-mot-de-passe', 'nouveau-mot-de-passe', 'nouveau-mot-de-passe');
+
+        expect(byTestId(root, `${field}-error`)?.textContent).toContain(outcome);
+        expect(
+          byTestId(root, field)
+            ?.closest('mat-form-field')
+            ?.classList.contains('mat-form-field-invalid'),
+        ).toBe(true);
+        expect(document.activeElement).toBe(byTestId(root, field));
+        expect(byTestId(root, 'account-password-problem')).toBeNull();
+      },
+    );
+
+    it('says a refusal no field is at fault for under the form', async () => {
+      auth.changePassword.mockResolvedValue('too_many');
+      const root = await render('security');
+
+      await submit(root, 'ancien-mot-de-passe', 'nouveau-mot-de-passe', 'nouveau-mot-de-passe');
+
+      expect(byTestId(root, 'account-password-problem')?.textContent).toContain('too_many');
+      expect(byTestId(root, 'account-password-current-error')).toBeNull();
+      expect(byTestId(root, 'account-password-new-error')).toBeNull();
     });
   });
 
