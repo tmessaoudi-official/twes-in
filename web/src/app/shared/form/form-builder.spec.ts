@@ -6,6 +6,7 @@ import {
   fieldError,
   InvalidFormField,
   UnknownFormSection,
+  valuesAsTyped,
   withCustomFields,
 } from './form-builder';
 import type { FieldValue, FormDescriptor, FormField } from './form-types';
@@ -202,6 +203,69 @@ describe('fieldError', () => {
   it('accepts only one of the options a select offers', () => {
     expect(errorOf(currency, 'USD')).toEqual({ key: 'form.errors.option' });
     expect(errorOf(currency, 'EUR')).toBeNull();
+  });
+
+  // A paste from a page or a spreadsheet brings spaces and invisible marks at its ends, which nobody meant.
+  it('judges what was typed without the spaces and invisible marks at its ends', () => {
+    expect(errorOf(vat, ' 1234567A/A/M/000​ ')).toBeNull();
+    expect(errorOf(email, ' contact@exemple.tn‎')).toBeNull();
+    expect(errorOf(name, ' x ')).toEqual({ key: 'form.errors.min_length', params: { min: 2 } });
+    expect(errorOf(name, `${'x'.repeat(80)}  `)).toBeNull();
+    expect(errorOf(name, '​​')).toEqual({ key: 'form.errors.required' });
+    // What stands between the ends is still judged.
+    expect(errorOf(vat, ' 1234567A /A/M/000 ')).toEqual({ key: 'form.errors.pattern' });
+  });
+});
+
+describe('the values a form hands on', () => {
+  const code: FormField = { id: 'code', label: 'c.code', kind: 'text', readOnly: true };
+  const notes: FormField = { id: 'notes', label: 'c.notes', kind: 'textarea' };
+  const phone: FormField = { id: 'phone', label: 'c.phone', kind: 'tel' };
+  const site: FormField = { id: 'site', label: 'c.site', kind: 'url' };
+  const form: FormDescriptor = {
+    id: 'f',
+    sections: [
+      { id: 's', title: 's', fields: [name, email, vat, code, notes, phone, site, terms] },
+    ],
+  };
+
+  it('are what was typed without its ends, whichever way a screen reads them, while the field shows it as typed', () => {
+    const group = buildFormGroup(form, {
+      name: ' Acme ',
+      email: '​contact@exemple.tn ',
+      vat: ' 1234567A/A/M/000',
+      notes: '\nPayable à 30 jours.\n',
+      phone: ' +216 71 900 868 ',
+      site: ' https://exemple.tn﻿',
+      terms: 30,
+    });
+
+    expect(group.getRawValue()).toEqual({
+      name: 'Acme',
+      email: 'contact@exemple.tn',
+      vat: '1234567A/A/M/000',
+      code: '',
+      notes: 'Payable à 30 jours.',
+      phone: '+216 71 900 868',
+      site: 'https://exemple.tn',
+      terms: 30,
+    });
+    expect(group.controls['name'].getRawValue()).toBe('Acme');
+    // Trimming as it is typed would eat the space before the next word.
+    expect(group.controls['name'].value).toBe(' Acme ');
+  });
+
+  it('are kept as typed, ends included, for a form rebuilt over the one being typed in', () => {
+    const group = buildFormGroup(form, { name: 'Rue ' });
+    group.controls['code'].disable();
+
+    expect(valuesAsTyped(group)).toEqual(
+      expect.objectContaining({ name: 'Rue ', code: '', terms: 30 }),
+    );
+  });
+
+  it('keep a read-only value as it stands', () => {
+    expect(buildFormGroup(form, { code: ' FA-0001 ' }).getRawValue()['code']).toBe(' FA-0001 ');
   });
 });
 

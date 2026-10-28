@@ -362,9 +362,9 @@ describe('CompanyProfilePage', () => {
       profileSignal.set({ ...profile, legalName: 'DEMO TUNISIE SA' });
       return true;
     });
-    // The bar saves only what has changed, so there has to be a change to save.
+    // The bar saves only what has changed, so there has to be a change to save: a space at its end is none.
     const legalName = q('field-legalName') as HTMLInputElement;
-    legalName.value = 'Demo Tunisie SA ';
+    legalName.value = 'Demo Tunisie S.A.';
     legalName.dispatchEvent(new Event('input'));
     await settle();
     q('record-save')!.click();

@@ -9,6 +9,7 @@ import {
   Validators,
 } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from './form-types';
+import { typedText } from './typed-text';
 
 /**
  * A form as a pure function of its descriptor: one control per declared field with the validators the field
@@ -52,8 +53,43 @@ export type DescriptorFormGroup = FormGroup<Record<string, FormControl<FieldValu
 const isBlank = (value: unknown): boolean =>
   value === null ||
   value === undefined ||
-  (typeof value === 'string' && value.trim() === '') ||
+  (typeof value === 'string' && typedText(value) === '') ||
   (Array.isArray(value) && value.length === 0);
+
+/** The fields a person types a text into, whose ends a paste fills with spaces and invisible marks nobody meant. */
+const TYPED_KINDS: ReadonlySet<FormField['kind']> = new Set([
+  'text',
+  'email',
+  'tel',
+  'url',
+  'textarea',
+]);
+
+const typesText = (field: FormField): boolean =>
+  TYPED_KINDS.has(field.kind) && field.readOnly !== true;
+
+/** A rule judging what was typed without its ends, as the API judges it (`TypedText::trimmed`). */
+function onTypedText(validator: ValidatorFn): ValidatorFn {
+  return (control) =>
+    typeof control.value === 'string'
+      ? validator({ value: typedText(control.value) } as AbstractControl)
+      : validator(control);
+}
+
+/**
+ * A typed field's control keeps what the person typed, so a space before the next word is not eaten as it is typed,
+ * and hands on what was typed without its ends: every screen reads a form through `getRawValue()`, from its own submit
+ * or from the bar beside its title, so this is the one place a save is given the value the API keeps.
+ */
+function typedTextControl(start: FieldValue, validators: ValidatorFn[]): FormControl<FieldValue> {
+  const control = new FormControl<FieldValue>(start, { validators });
+  const asTyped = control.getRawValue.bind(control);
+  control.getRawValue = () => {
+    const value = asTyped();
+    return typeof value === 'string' ? typedText(value) : value;
+  };
+  return control;
+}
 
 /** Unlike Validators.required, a value made only of spaces is missing too. */
 const requiredValue: ValidatorFn = (control) =>
@@ -75,12 +111,13 @@ function validatorsFor(field: FormField): ValidatorFn[] {
   // A required checkbox is one that must be ticked; requiredTrue reports the same `required` error.
   if (field.required)
     validators.push(field.kind === 'checkbox' ? Validators.requiredTrue : requiredValue);
-  if (field.kind === 'email') validators.push(Validators.email);
+  const typed = typesText(field) ? onTypedText : (validator: ValidatorFn) => validator;
+  if (field.kind === 'email') validators.push(typed(Validators.email));
   if (field.kind === 'select' || field.kind === 'multiselect') validators.push(oneOf(field));
   // A string pattern is anchored at both ends by Validators.pattern, so it matches the whole value.
-  if (field.pattern !== undefined) validators.push(Validators.pattern(field.pattern));
-  if (field.minLength !== undefined) validators.push(Validators.minLength(field.minLength));
-  if (field.maxLength !== undefined) validators.push(Validators.maxLength(field.maxLength));
+  if (field.pattern !== undefined) validators.push(typed(Validators.pattern(field.pattern)));
+  if (field.minLength !== undefined) validators.push(typed(Validators.minLength(field.minLength)));
+  if (field.maxLength !== undefined) validators.push(typed(Validators.maxLength(field.maxLength)));
   if (field.min !== undefined) validators.push(Validators.min(field.min));
   if (field.max !== undefined) validators.push(Validators.max(field.max));
   return validators;
@@ -110,9 +147,9 @@ export function buildFormGroup(
       const start = Object.hasOwn(initial, field.id)
         ? initial[field.id]
         : (field.defaultValue ?? emptyValue(field));
-      controls[field.id] = new FormControl<FieldValue>(start, {
-        validators: validatorsFor(field),
-      });
+      controls[field.id] = typesText(field)
+        ? typedTextControl(start, validatorsFor(field))
+        : new FormControl<FieldValue>(start, { validators: validatorsFor(field) });
     }
   }
   for (const field of descriptor.sections.flatMap((section) => section.fields)) {
@@ -126,6 +163,16 @@ export function buildFormGroup(
     }
   }
   return new FormGroup(controls);
+}
+
+/**
+ * Each control's value as the person typed it, ends included: what a form rebuilt over the one being typed in starts
+ * from, so a space typed before the next word survives the rebuild. A save reads `getRawValue()` instead.
+ */
+export function valuesAsTyped(form: DescriptorFormGroup): FormValues {
+  return Object.fromEntries(
+    Object.entries(form.controls).map(([id, control]) => [id, control.value]),
+  );
 }
 
 /** The one message a person sees under a field, most fundamental problem first; null when the value is valid. */

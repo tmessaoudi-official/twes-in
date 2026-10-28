@@ -19,7 +19,11 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { editorActions } from '../shared/form/editor-actions';
 import { RecordBar } from '../shared/form/record-bar';
-import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import {
+  buildFormGroup,
+  valuesAsTyped,
+  type DescriptorFormGroup,
+} from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
@@ -130,7 +134,7 @@ export class ExpenseCategoriesPage implements OnInit {
       if (editing === null) return null;
       const typed =
         previous?.value && previous.source.editing === editing
-          ? previous.value.getRawValue()
+          ? valuesAsTyped(previous.value)
           : null;
       return buildFormGroup(
         descriptor,

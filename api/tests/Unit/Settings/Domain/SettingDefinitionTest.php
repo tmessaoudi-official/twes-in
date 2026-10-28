@@ -87,6 +87,30 @@ final class SettingDefinitionTest extends TestCase
         self::assertNull(self::of(SettingType::Json, null)->refusal([]));
     }
 
+    /**
+     * A value pasted from a page or a spreadsheet brings spaces, no-break spaces and invisible marks at its ends, which
+     * nobody sees and nobody meant: what a person typed is judged and kept without them, as everywhere else.
+     */
+    public function testWhatSitsAtTheEndsOfATypedValueIsNeitherJudgedNorKept(): void
+    {
+        $code = self::of(SettingType::Text, 'C62', maxLength: 3, pattern: '/^[A-Z0-9]{3}$/');
+        self::assertNull($code->refusal("\u{00A0}KGM\u{200B}"));
+        self::assertSame('KGM', $code->normalize(" KGM\u{200E}\n"));
+
+        $colour = self::of(SettingType::Colour, '#1f6feb');
+        self::assertNull($colour->refusal(' #A0B1C2 '));
+        self::assertSame('#a0b1c2', $colour->normalize(' #A0B1C2 '));
+
+        $rate = self::of(SettingType::Decimal, '0.000', min: '0', max: '100');
+        self::assertNull($rate->refusal(" 19.500\u{FEFF}"));
+        self::assertSame('19.500', $rate->normalize(" 19.500\u{FEFF}"));
+        self::assertSame('-12.345', self::of(SettingType::Money, '0.000')->normalize("\t-12.345 "));
+
+        // What stands between the ends is still judged, and a choice is picked, never typed.
+        self::assertNotNull($code->refusal(' K GM '));
+        self::assertNotNull(self::of(SettingType::Enum, 'light', choices: ['light', 'dark'])->refusal(' dark'));
+    }
+
     public function testAColourIsKeptInLowerCase(): void
     {
         self::assertSame('#a0b1c2', self::of(SettingType::Colour, '#1f6feb')->normalize('#A0B1C2'));

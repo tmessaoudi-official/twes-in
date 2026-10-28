@@ -21,7 +21,11 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { editorActions } from '../shared/form/editor-actions';
 import { RecordBar } from '../shared/form/record-bar';
-import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import {
+  buildFormGroup,
+  valuesAsTyped,
+  type DescriptorFormGroup,
+} from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { DataList, DataListSelection } from '../shared/list/data-list';
 import { ArticleDefaults } from './article-defaults';
@@ -137,7 +141,7 @@ export class ProductCategoriesPage implements OnInit {
       if (editing === null) return null;
       const typed =
         previous?.value && previous.source.editing === editing
-          ? previous.value.getRawValue()
+          ? valuesAsTyped(previous.value)
           : null;
       return buildFormGroup(
         descriptor,

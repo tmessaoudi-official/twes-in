@@ -22,7 +22,11 @@ import { Feedback } from '../shared/feedback/feedback';
 import { RefusalLine } from '../shared/documents/refusal-line';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { RefusalFigures } from '../shared/form/refusal-figures';
-import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import {
+  buildFormGroup,
+  valuesAsTyped,
+  type DescriptorFormGroup,
+} from '../shared/form/form-builder';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import type { FormValues } from '../shared/form/form-types';
 import type { PickOption } from '../shared/form/pick-field';
@@ -132,7 +136,7 @@ export class PlaceMovement implements OnInit {
     computation: ({ asked, descriptor }, previous) => {
       if (descriptor === null) return null;
       const typed =
-        previous?.value && previous.source.asked === asked ? previous.value.getRawValue() : null;
+        previous?.value && previous.source.asked === asked ? valuesAsTyped(previous.value) : null;
       return buildFormGroup(descriptor, typed ?? untracked(() => this.startingValues(asked)));
     },
   });

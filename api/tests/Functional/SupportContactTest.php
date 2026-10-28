@@ -94,6 +94,22 @@ final class SupportContactTest extends ApiTestCase
         }
     }
 
+    /** A number pasted from a web page brings its invisible ends along: it is taken and kept without them. */
+    public function testAChannelPastedWithSpacesAtItsEndsIsKeptWithoutThem(): void
+    {
+        $this->signedInAsOperator();
+
+        $this->sendJson('PUT', '/api/platform/settings/support.phone', ['value' => "\u{00A0}+216 71 900 868\u{200B} "]);
+        self::assertResponseIsSuccessful();
+        self::assertSame('+216 71 900 868', $this->json()['value']);
+
+        // A page saving several keys at once goes through the same judge.
+        $this->sendJson('PUT', '/api/platform/settings', ['changes' => [['key' => 'support.email', 'value' => " support@exemple.tn\u{200B}", 'version' => 0]]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->getJson('/api/platform/settings');
+        self::assertSame('support@exemple.tn', array_column($this->jsonList(), null, 'key')['support.email']['value']);
+    }
+
     /**
      * The monitor's public status page, which the footer of every page links to, signed out too: the public health
      * answer carries it. Only an https address is taken, the one form a status page has.

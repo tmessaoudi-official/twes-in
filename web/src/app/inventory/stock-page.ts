@@ -27,7 +27,11 @@ import { RefusalFigures } from '../shared/form/refusal-figures';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import type { PickOption } from '../shared/form/pick-field';
-import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import {
+  buildFormGroup,
+  valuesAsTyped,
+  type DescriptorFormGroup,
+} from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
@@ -315,7 +319,7 @@ export class StockPage implements OnInit {
       if (operation === null || descriptor === null) return null;
       const typed =
         previous?.value && previous.source.operation === operation
-          ? previous.value.getRawValue()
+          ? valuesAsTyped(previous.value)
           : null;
       const group = buildFormGroup(
         descriptor,

@@ -24,7 +24,11 @@ import { DescriptorForm } from '../shared/form/descriptor-form';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { editorActions } from '../shared/form/editor-actions';
 import { RecordBar } from '../shared/form/record-bar';
-import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import {
+  buildFormGroup,
+  valuesAsTyped,
+  type DescriptorFormGroup,
+} from '../shared/form/form-builder';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
@@ -170,7 +174,7 @@ export class StockLocationsPage implements OnInit {
       if (editing === null || descriptor === null) return null;
       const typed =
         previous?.value && previous.source.editing === editing
-          ? previous.value.getRawValue()
+          ? valuesAsTyped(previous.value)
           : null;
       return buildFormGroup(
         descriptor,

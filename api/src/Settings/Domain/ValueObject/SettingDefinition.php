@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Settings\Domain\ValueObject;
 
+use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Refusal;
 use BcMath\Number;
 
@@ -101,6 +102,8 @@ final readonly class SettingDefinition
      */
     public function refusal(mixed $value): ?Refusal
     {
+        $value = $this->typed($value);
+
         return match ($this->type) {
             SettingType::Bool => \is_bool($value) ? null : self::notYesOrNo(),
             SettingType::Int => $this->intRefusal($value),
@@ -131,10 +134,26 @@ final readonly class SettingDefinition
         };
     }
 
-    /** The one spelling a value is stored in: a colour in lower case. */
+    /** The one spelling a value is stored in: what was typed without its ends, a colour in lower case. */
     public function normalize(mixed $value): mixed
     {
+        $value = $this->typed($value);
+
         return SettingType::Colour === $this->type && \is_string($value) ? strtolower($value) : $value;
+    }
+
+    /**
+     * A value a person types (a text, a colour, a number written as text) without the spaces and invisible marks a
+     * paste brings at its ends, which nobody sees and nobody meant; a choice is picked from a list, never typed.
+     */
+    private function typed(mixed $value): mixed
+    {
+        $typed = match ($this->type) {
+            SettingType::Text, SettingType::Colour, SettingType::Decimal, SettingType::Money => true,
+            default => false,
+        };
+
+        return $typed && \is_string($value) ? TypedText::trimmed($value) : $value;
     }
 
     private function intRefusal(mixed $value): ?Refusal

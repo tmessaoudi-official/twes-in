@@ -31,7 +31,11 @@ import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
-import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import {
+  buildFormGroup,
+  valuesAsTyped,
+  type DescriptorFormGroup,
+} from '../shared/form/form-builder';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
@@ -822,7 +826,7 @@ export class StockMapPage implements OnInit {
       if (editing === null || descriptor === null) return null;
       const typed =
         previous?.value && previous.source.editing === editing
-          ? previous.value.getRawValue()
+          ? valuesAsTyped(previous.value)
           : null;
 
       return buildFormGroup(descriptor, typed ?? untracked(() => this.drawingValuesOf(editing)));
@@ -858,7 +862,7 @@ export class StockMapPage implements OnInit {
       if (editing === null || descriptor === null) return null;
       const typed =
         previous?.value && previous.source.editing === editing
-          ? previous.value.getRawValue()
+          ? valuesAsTyped(previous.value)
           : null;
 
       return buildFormGroup(
@@ -2582,7 +2586,7 @@ export class StockMapPage implements OnInit {
       if (editing === null || descriptor === null) return null;
       const typed =
         previous?.value && previous.source.editing === editing
-          ? previous.value.getRawValue()
+          ? valuesAsTyped(previous.value)
           : null;
 
       return buildFormGroup(
