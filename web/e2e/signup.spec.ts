@@ -147,9 +147,11 @@ test('somebody signs up, their company waits, an operator refuses it with a reas
     await expectAccessible(visitor, 'refused');
 
     // The operator approves it after all: refused, never opened, it is approved rather than given its access back.
-    await page.goto(`/platform?tab=companies&status=suspended&q=${encodeURIComponent(company)}`);
+    // It is found and named as refused, apart from the companies whose access was taken away.
+    await page.goto(`/platform?tab=companies&status=refused&q=${encodeURIComponent(company)}`);
     const line = page.getByTestId(`company-${company}`);
     await expect(line).toContainText(email);
+    await expect(line.locator('[data-column="status"]')).toHaveText('Refusée');
     await line.getByRole('link').first().click();
     await expect(page.getByTestId(`company-sheet-${company}`)).toContainText(email);
     const approved = page.waitForResponse(

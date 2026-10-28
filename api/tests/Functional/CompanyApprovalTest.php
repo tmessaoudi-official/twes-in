@@ -102,6 +102,8 @@ final class CompanyApprovalTest extends ApiTestCase
         self::assertStringContainsString('n’a pas été acceptée', $mail);
         self::assertStringContainsString('Matricule introuvable au registre</bdi>', $mail, 'the reason as typed, its ends trimmed');
         self::assertStringContainsString('+216 71 900 868', $mail, 'whom to ask');
+        // A number split between two lines on a phone's narrow screen is misread or miscopied: it is kept whole.
+        self::assertStringContainsString('<bdi dir="ltr" style="white-space: nowrap;">+216 71 900 868</bdi>', $mail, 'the number kept on one line');
 
         $this->getJson(self::WAITING);
         self::assertSame([], $this->jsonList());

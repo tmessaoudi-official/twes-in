@@ -47,7 +47,9 @@
       "statuses": {
         "pending": "Waiting",
         "active": "Active",
-        "suspended": "Suspended"
+        "suspended": "Suspended",
+        "refused": "Refused",
+        "closed": "Closed"
       },
       "new": "New company",
       "close": "Close",

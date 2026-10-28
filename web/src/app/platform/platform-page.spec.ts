@@ -172,7 +172,13 @@ class StaticLoader implements TranslateLoader {
           owner_invitation_expired:
             'L’invitation de propriétaire envoyée à {{email}} a expiré le {{day}} : invitez de nouveau.',
           countries: { TN: 'Tunisie', FR: 'France' },
-          statuses: { pending: 'En attente', active: 'Active', suspended: 'Suspendue' },
+          statuses: {
+            pending: 'En attente',
+            active: 'Active',
+            suspended: 'Suspendue',
+            refused: 'Refusée',
+            closed: 'Fermée',
+          },
           actions: {
             approve: 'Approuver',
             approve_title: 'Approuver cette entreprise ?',
@@ -1422,6 +1428,25 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.inviteOwner).toHaveBeenCalledWith('c1', 'karim@example.test');
+  });
+
+  // A company suspended before it was ever opened was refused, which its row and its sheet say; one its owners closed
+  // down is named so too, never by a raw key.
+  it('names a refused company and a closed one as such, in the list and on the sheet', async () => {
+    companies.set([
+      { ...row, status: 'suspended', opened: false },
+      { ...row, id: 'c2', name: 'Ancienne', status: 'suspended', opened: true },
+      { ...row, id: 'c3', name: 'Fermée SA', status: 'closed', opened: true },
+    ]);
+    const { query } = await render('/?tab=companies&company=c1');
+    const status = (name: string) =>
+      query(`company-${name}`)?.querySelector('[data-column="status"]')?.textContent?.trim();
+
+    expect(status('Nouvelle Société')).toBe('Refusée');
+    expect(status('Ancienne')).toBe('Suspendue');
+    expect(status('Fermée SA')).toBe('Fermée');
+    expect(query('company-sheet-Nouvelle Société')?.textContent).toContain('Refusée');
+    expect(query('company-sheet-Nouvelle Société')?.textContent).not.toContain('Suspendue');
   });
 
   it('shows no sheet where the address names no company', async () => {

@@ -47,7 +47,9 @@
       "statuses": {
         "pending": "في الانتظار",
         "active": "نشطة",
-        "suspended": "معلّقة"
+        "suspended": "معلّقة",
+        "refused": "مرفوضة",
+        "closed": "مغلقة"
       },
       "new": "شركة جديدة",
       "close": "إغلاق",

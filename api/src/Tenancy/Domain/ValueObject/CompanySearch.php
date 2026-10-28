@@ -17,11 +17,15 @@ use Symfony\Component\Uid\Uuid;
  * whatever their case and accents, the statuses and countries that narrow it — the values of one OR'd, the two AND'd
  * — and the order, always ending on the name so a page never shifts. The companies
  * left out are never found, nor counted: the demo's sandboxes, which are no operator's concern.
+ *
+ * « refused » is asked as a status of its own though it is stored suspended: a company suspended before it was ever
+ * opened was refused, and « suspended » then finds only those whose access was taken away.
  */
 final readonly class CompanySearch
 {
     public const array SORTS = ['status', 'countryCode', 'createdAt', 'name'];
-    public const array STATUSES = [Company::STATUS_PENDING, Company::STATUS_ACTIVE, Company::STATUS_SUSPENDED, Company::STATUS_CLOSED];
+    public const string REFUSED = 'refused';
+    public const array STATUSES = [Company::STATUS_PENDING, Company::STATUS_ACTIVE, Company::STATUS_SUSPENDED, self::REFUSED, Company::STATUS_CLOSED];
 
     /**
      * @param list<string>                $statuses     any of STATUSES

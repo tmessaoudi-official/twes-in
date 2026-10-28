@@ -101,7 +101,22 @@ final readonly class DoctrineCompanyRepository implements CompanyRepository
                 ->setParameter('text', SearchText::escapeLike($words))->setParameter('owner', Role::OWNER);
         }
         if ([] !== $search->statuses) {
-            $query->andWhere('c.status IN (:statuses)')->setParameter('statuses', $search->statuses, ArrayParameterType::STRING);
+            // A suspended company never opened was refused: each of the two is asked apart.
+            $stored = array_values(array_diff($search->statuses, [Company::STATUS_SUSPENDED, CompanySearch::REFUSED]));
+            $opened = array_values(array_filter([
+                \in_array(Company::STATUS_SUSPENDED, $search->statuses, true) ? 'c.approvedAt IS NOT NULL' : null,
+                \in_array(CompanySearch::REFUSED, $search->statuses, true) ? 'c.approvedAt IS NULL' : null,
+            ]));
+            $either = [];
+            if ([] !== $stored) {
+                $either[] = 'c.status IN (:statuses)';
+                $query->setParameter('statuses', $stored, ArrayParameterType::STRING);
+            }
+            if ([] !== $opened) {
+                $either[] = \sprintf('(c.status = :suspended AND (%s))', implode(' OR ', $opened));
+                $query->setParameter('suspended', Company::STATUS_SUSPENDED);
+            }
+            $query->andWhere(implode(' OR ', $either));
         }
         if ([] !== $search->countryCodes) {
             $query->andWhere('c.countryCode IN (:countries)')->setParameter('countries', $search->countryCodes, ArrayParameterType::STRING);

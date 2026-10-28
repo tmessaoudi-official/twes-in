@@ -34,6 +34,23 @@ describe('the platform lists', () => {
     });
   });
 
+  // A refused company is stored suspended; the operator tells it from one whose access was taken away, and finds the
+  // companies their owners closed down.
+  it('offers and asks for a refused company and a closed one apart from a suspended one', () => {
+    const status = COMPANIES_LIST.filters?.find((filter) => filter.id === 'status');
+    expect(status?.options.map((option) => option.value)).toEqual([
+      'pending',
+      'active',
+      'suspended',
+      'refused',
+      'closed',
+    ]);
+    expect(companySearch(query({ filters: { status: 'refused,closed' } })).statuses).toEqual([
+      'refused',
+      'closed',
+    ]);
+  });
+
   it('ignores a status, a country or a column the API does not know', () => {
     expect(
       companySearch(

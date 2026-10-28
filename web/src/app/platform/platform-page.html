@@ -530,7 +530,7 @@
                     </h3>
                     <span class="text-sm text-on-surface-variant">
                       {{ 'platform.companies.countries.' + company.countryCode | translate }} ·
-                      {{ 'platform.companies.statuses.' + company.status | translate }}
+                      {{ 'platform.companies.statuses.' + statusShown(company) | translate }}
                     </span>
                     <span class="text-sm">
                       @if (company.owners.length > 0) {
@@ -685,8 +685,8 @@
               {{ 'platform.companies.countries.' + row.countryCode | translate }}
             </ng-template>
             <ng-template appDataListCell="status" let-row>
-              <app-status-badge [tone]="tone(row.status)">
-                {{ 'platform.companies.statuses.' + row.status | translate }}
+              <app-status-badge [tone]="tone(row)">
+                {{ 'platform.companies.statuses.' + statusShown(row) | translate }}
               </app-status-badge>
             </ng-template>
             <ng-template appDataListCell="subscription" let-row>

@@ -56,7 +56,9 @@ final class InMemoryCompanies implements CompanyRepository
     /** Narrows on the name only: the owners' addresses live in memberships, which this fake does not hold. */
     public function search(CompanySearch $search, PageRequest $page): Page
     {
-        $found = array_values(array_filter($this->companies, static fn (Company $company): bool => ([] === $search->statuses || \in_array($company->getStatus(), $search->statuses, true))
+        // As the repository asks it: a suspended company never opened is « refused », and « suspended » leaves it out.
+        $statusOf = static fn (Company $company): string => Company::STATUS_SUSPENDED === $company->getStatus() && !$company->wasOpened() ? CompanySearch::REFUSED : $company->getStatus();
+        $found = array_values(array_filter($this->companies, static fn (Company $company): bool => ([] === $search->statuses || \in_array($statusOf($company), $search->statuses, true))
             && ([] === $search->countryCodes || \in_array($company->getCountryCode(), $search->countryCodes, true))
             && (null === $search->text || '' === trim($search->text) || str_contains(mb_strtolower($company->getName()), mb_strtolower(trim($search->text))))
             && !\in_array($company->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->leftOut), true)));

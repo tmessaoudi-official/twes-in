@@ -165,8 +165,14 @@ export interface PlatformCompanySearch {
   } | null;
 }
 
-export const COMPANY_STATUSES = ['pending', 'active', 'suspended'] as const;
+/** What the list shows and filters by: « refused » is a company stored suspended that was never opened. */
+export const COMPANY_STATUSES = ['pending', 'active', 'suspended', 'refused', 'closed'] as const;
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
+
+/** A company's status as the operator reads it: suspended before it was ever opened, it was refused. */
+export function companyStatusShown(company: PlatformCompanyRow): string {
+  return company.status === 'suspended' && !company.opened ? 'refused' : company.status;
+}
 
 /** What the API is asked for one page of the accounts list. */
 export interface PlatformAccountSearch {

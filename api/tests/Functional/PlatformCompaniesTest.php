@@ -108,6 +108,36 @@ final class PlatformCompaniesTest extends ApiTestCase
         }
     }
 
+    /**
+     * A company refused before it was ever opened is stored suspended, but it is not one whose access was taken away:
+     * « refused » finds it alone, and « suspended » leaves it out, so the operator can tell the two apart.
+     */
+    public function testARefusedCompanyIsFoundAsRefusedAndNotAsSuspended(): void
+    {
+        $this->company('Alpha', country: 'TN');
+        $this->company('Bravo', country: 'TN', status: 'suspended');
+        $this->company('Charlie', country: 'TN', status: 'refused');
+        $this->company('Delta', country: 'FR', status: 'refused');
+        $this->company('Echo', country: 'TN', status: 'pending');
+        $this->signedInAsOperator();
+
+        foreach ([
+            'status=refused' => ['Charlie', 'Delta'],
+            'status=suspended' => ['Bravo'],
+            'status[]=suspended&status[]=refused' => ['Bravo', 'Charlie', 'Delta'],
+            'status[]=refused&status[]=pending' => ['Charlie', 'Delta', 'Echo'],
+            'status=refused&countryCode=FR' => ['Delta'],
+        ] as $query => $names) {
+            $this->getJson(self::PATH.'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($names, array_column($this->jsonList(), 'name'), $query);
+            self::assertSame(\count($names), $this->jsonPage()['totalItems'], $query);
+        }
+
+        $this->getJson(self::PATH.'?status=refused');
+        self::assertSame([['suspended', false], ['suspended', false]], array_map(static fn (array $row): array => [$row['status'], $row['opened']], $this->jsonList()), 'a refused row is still the stored status, never opened');
+    }
+
     public function testARowCarriesItsOwnersAndAnUnknownStatusOrOrderIsRefused(): void
     {
         $company = $this->company('Alpha', owner: 'karim@nord.example');
@@ -168,8 +198,9 @@ final class PlatformCompaniesTest extends ApiTestCase
 
     private function company(string $name, string $country = 'TN', string $status = 'active', ?string $owner = null): Company
     {
-        $company = 'pending' === $status ? Company::pending($name, $country, 'TND', 'fr', 'Africa/Tunis') : new Company($name, $country, 'TND', 'fr', 'Africa/Tunis');
-        if ('suspended' === $status) {
+        // A refused company is one suspended while it still waited, never opened.
+        $company = \in_array($status, ['pending', 'refused'], true) ? Company::pending($name, $country, 'TND', 'fr', 'Africa/Tunis') : new Company($name, $country, 'TND', 'fr', 'Africa/Tunis');
+        if (\in_array($status, ['suspended', 'refused'], true)) {
             $company->suspend();
         }
         $this->em()->persist($company);

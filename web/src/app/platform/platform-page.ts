@@ -58,6 +58,7 @@ import { PlatformFacade } from './platform-facade';
 import { ACCOUNTS_LIST, accountSearch, COMPANIES_LIST, companySearch } from './platform-forms';
 import {
   COMPANY_COUNTRIES,
+  companyStatusShown,
   PLATFORM_TABS,
   type AccountAction,
   type PlatformAccountRow,
@@ -151,6 +152,8 @@ const COMPANY_TONES: Readonly<Record<string, StatusTone>> = {
   pending: 'warning',
   active: 'success',
   suspended: 'neutral',
+  refused: 'neutral',
+  closed: 'neutral',
 };
 
 /** What the toast after each account action is said under. */
@@ -658,9 +661,12 @@ export class PlatformPage implements OnInit {
     };
   }
 
-  protected tone(status: string): StatusTone {
-    return COMPANY_TONES[status] ?? 'neutral';
+  protected tone(company: PlatformCompanyRow): StatusTone {
+    return COMPANY_TONES[companyStatusShown(company)] ?? 'neutral';
   }
+
+  /** The status as the operator reads it, a company refused before it opened included. */
+  protected readonly statusShown = companyStatusShown;
 
   protected onCompaniesQuery(query: ListQuery): void {
     void this.platform.loadCompanies(companySearch(query));

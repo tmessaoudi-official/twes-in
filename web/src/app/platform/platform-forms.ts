@@ -5,6 +5,7 @@ import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   COMPANY_COUNTRIES,
   COMPANY_STATUSES,
+  companyStatusShown,
   type PlatformAccountRow,
   type PlatformAccountSearch,
   type PlatformCompanyRow,
@@ -57,7 +58,7 @@ export const COMPANIES_LIST: ListDescriptor<PlatformCompanyRow> = {
       id: 'status',
       priority: 'high',
       label: `${COMPANY_FIELDS}.status`,
-      value: (row) => row.status,
+      value: (row) => companyStatusShown(row),
       sortable: true,
       width: 140,
     },
@@ -84,7 +85,7 @@ export const COMPANIES_LIST: ListDescriptor<PlatformCompanyRow> = {
       id: 'status',
       label: `${COMPANY_FIELDS}.status`,
       multiple: true,
-      value: (row) => row.status,
+      value: (row) => companyStatusShown(row),
       options: COMPANY_STATUSES.map((status) => ({
         value: status,
         label: `platform.companies.statuses.${status}`,
