@@ -20,8 +20,9 @@ use App\Tenancy\Domain\Repository\MembershipRepository;
  * What a shop's installation script (scripts/onprem/twes) tells about the installation it runs: a release out goes to
  * each company's owners, who decide when it is applied, but never to a demo sandbox's, a visitor who decides nothing
  * here; a new network address, which every phone that saved the old one must open instead, goes to those owners and
- * to the operators; an update that failed or was rolled back, a health check that fails and backups that failed or stopped go to
- * the platform's operators, who mend them. The script also mails its own alerts, since the application may be what is
+ * to the operators; an update that failed or was rolled back, a health check that fails, backups that failed or stopped and,
+ * under WSL, a Linux clock off Windows' by more than a minute, which would date invoices and journals wrong, go to the
+ * platform's operators, who mend them. The script also mails its own alerts, since the application may be what is
  * down; here they reach the bell once it answers.
  *
  * The line comes from a script on the same machine, but it is still checked whole: each kind takes the parameters it
@@ -37,6 +38,7 @@ final readonly class TellInstallation
     public const string BACKUP_FAILED = 'installation.backup_failed';
     public const string BACKUP_STOPPED = 'installation.backup_stopped';
     public const string ADDRESS_MOVED = 'installation.address_moved';
+    public const string CLOCK_OFF = 'installation.clock_off';
 
     /** Each kind's parameters, true when required. */
     private const array PARAMETERS = [
@@ -48,6 +50,7 @@ final readonly class TellInstallation
         self::BACKUP_FAILED => ['step' => true, 'version' => false],
         self::BACKUP_STOPPED => ['step' => true],
         self::ADDRESS_MOVED => ['from' => true, 'to' => true],
+        self::CLOCK_OFF => ['seconds' => true],
     ];
 
     /** A release tag, a backup label, a step, the names of failing checks or an HTTP code: letters, digits and a few marks. */

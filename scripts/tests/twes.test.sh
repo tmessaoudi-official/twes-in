@@ -91,7 +91,8 @@ case "$url" in
 esac
 EOF
 printf '#!/usr/bin/env bash\n[[ -z "${NO_ROUTE:-}" ]] || { echo "RTNETLINK answers: Network is unreachable" >&2; exit 2; }\necho "1.1.1.1 via 192.168.1.1 dev eth0 src ${ADDRESS:-192.168.1.20} uid 1000"\n' > "$TMPDIR/bin/ip"
-printf '#!/usr/bin/env bash\nprintf "%%s\\r\\n" "${ADDRESS:-192.168.1.30}"\n' > "$TMPDIR/bin/powershell.exe"
+# powershell.exe: Windows' address, or asked its clock, Windows' time in seconds (WINDOWS_NOW, else the case's own).
+printf '#!/usr/bin/env bash\ncase "$*" in\n  *UtcNow*) [[ -n "${WINDOWS_NOW+set}" ]] || WINDOWS_NOW=$TWES_NOW; printf "%%s\\r\\n" "$WINDOWS_NOW" ;;\n  *) printf "%%s\\r\\n" "${ADDRESS:-192.168.1.30}" ;;\nesac\n' > "$TMPDIR/bin/powershell.exe"
 # docker: its daemon answers info once DOCKER_LATE tries have been made, never when it is "never"; asked its system, it
 # names DOCKER_OS, Docker Engine's Ubuntu by default.
 cat > "$TMPDIR/bin/docker" <<'EOF'
@@ -541,6 +542,27 @@ check "  and the owners and operators told the address phones now open" 0 0 "$(t
 d=$(installed)
 out=$(NO_ROUTE=1 twes "$d" tick); check "no network at all: started again on this computer alone" $? 0 "$(deployed)" "LAN_HOST=127.0.0.1 --again"
 [[ "$(told)" != *address_moved* ]]; check "  and no phone told to open an address none can reach" $? 0 "$(told)" ""
+# Under WSL, Linux's clock may lag Windows' after a waking, and the application dates invoices and journals with it.
+wsl() { PLATFORM=wsl ADDRESS=192.168.1.20 twes "$@"; }
+d=$(installed)
+out=$(WINDOWS_NOW=$((NOON - 95)) wsl "$d" tick); check "under WSL, Linux's clock 95 s ahead of Windows': the operators told" $? 0 "$(told)" "installation.clock_off seconds=95"
+check "  said in its log" 0 0 "$(cat "$d/etc/state/twes.log")" "Linux's clock is 95 s off Windows'"
+[[ -z "$(mailed)" ]]; check "  told in the application only, as a moved address is" $? 0 "$(mailed)" ""
+out=$(AT=$((NOON + 900)) WINDOWS_NOW=$((NOON + 900 - 120)) wsl "$d" tick); [[ "$(told)" != *clock_off* ]]; check "  once per episode, not every quarter hour" $? 0 "$(told)" ""
+out=$(AT=$((NOON + 1800)) WINDOWS_NOW=$((NOON + 1800 + 30)) wsl "$d" tick); [[ "$(told)" != *clock_off* ]]; check "  within a minute again: nobody told" $? 0 "$(told)" ""
+out=$(AT=$((NOON + 2700)) WINDOWS_NOW=$((NOON + 2700 + 61)) wsl "$d" tick); check "  then off anew, behind this time: told again" $? 0 "$(told)" "installation.clock_off seconds=61"
+d=$(installed)
+out=$(WINDOWS_NOW=$((NOON + 60)) wsl "$d" tick); [[ "$(told)" != *clock_off* ]]; check "a minute exactly is not off" $? 0 "$(told)" ""
+out=$(AT=$((NOON + 900)) WINDOWS_NOW=$((NOON + 900)) wsl "$d" tick); [[ "$(told)" != *clock_off* && "$(cat "$d/etc/state/twes.log")" != *"clock is"* ]]; check "  nor the same time" $? 0 "$(told)" ""
+d=$(installed); echo $((NOON - 300)) > "$d/etc/state/started-at"
+out=$(WINDOWS_NOW=$((NOON + 600)) wsl "$d" tick); [[ "$(told)" != *clock_off* ]]; check "within ten minutes of a start or a waking: left to settle" $? 0 "$(told)" ""
+check "  and said" 0 0 "$out" "within ten minutes of a start or a waking: read again at the next tick"
+d=$(installed)
+out=$(WINDOWS_NOW=garbled wsl "$d" tick); [[ "$(told)" != *clock_off* ]]; check "Windows' clock unreadable: nobody told" $? 0 "$(told)" ""
+check "  said once" 0 0 "$out" "Windows' clock could not be read"
+out=$(AT=$((NOON + 900)) WINDOWS_NOW=garbled wsl "$d" tick); [[ "$out" != *"clock could not"* ]]; check "  not every quarter hour" $? 0 "$out" ""
+d=$(installed)
+out=$(WINDOWS_NOW=$((NOON + 600)) twes "$d" tick); [[ "$(told)" != *clock_off* && "$out" != *clock* ]]; check "on Linux, no Windows clock is read" $? 0 "$out$(told)" ""
 d=$(installed)
 out=$(ALL_BAD=1 twes "$d" tick); check "unhealthy: the developer told" $? 0 "$(subject)" "ne va pas bien (queue)"
 check "  and the operators" 0 0 "$(told)" "installation.unhealthy check=queue"

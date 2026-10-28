@@ -670,6 +670,7 @@
       "installation_backup_failed": "The backup “{{step}}” failed.",
       "installation_backup_stopped": "The backups no longer run.",
       "installation_address_moved": "This computer’s network address changed: phones now open https://{{to}} (it was {{from}}). A phone that saved the old one must open the new one.",
+      "installation_clock_off": "Linux’s clock (WSL) on this computer is {{seconds}} s off Windows’: invoices and everything recorded are dated with it. Stopping WSL (wsl --shutdown in PowerShell) sets it right when it starts again.",
       "signup_awaiting_approval": "{{company}} ({{email}}) signed up and waits for your approval."
     },
     "kinds": {
@@ -707,6 +708,7 @@
       "installation_backup_failed": "Backup failed",
       "installation_backup_stopped": "Backups stopped",
       "installation_address_moved": "New address for phones",
+      "installation_clock_off": "Linux clock off",
       "signup_awaiting_approval": "Company waiting for approval"
     }
   },

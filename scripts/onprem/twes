@@ -805,6 +805,39 @@ offsite_untold() {
     "Les sauvegardes sont $where, et aucune copie ne quitte cet ordinateur : un ordinateur volé, brûlé ou chiffré par un rançongiciel les perd toutes avec les factures. Donnez les valeurs d'un bucket (BACKUP_S3_*) dans $values, puis lancez twes offsite on : le dossier y sera copié toutes les heures. Ce courrier revient chaque jour tant qu'aucune copie ne part."
 }
 
+# Under WSL, Linux's clock may lag Windows' after a waking, and the application dates invoices and everything it records
+# with it (every WSL distribution, Docker Desktop's included, shares one clock). Off by more than a minute, the operators
+# are told, once per episode, a start or a waking left its ten minutes to settle first. Nothing is read elsewhere.
+clock_off() { # when the computer has been awake since
+  local ps before windows after off
+  [[ "$(platform)" == wsl ]] || return 0
+  before=$(now)
+  # A powershell.exe that fails (Windows' interop switched off) answers nothing, which is said below as unread.
+  windows='no powershell.exe'
+  if ps=$(windows_powershell); then
+    windows=$("$ps" -NoProfile -NonInteractive -Command '[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()' | tr -d '\r') || windows=''
+  fi
+  after=$(now)
+  if [[ ! "$windows" =~ ^[0-9]+$ ]]; then
+    [[ -f "$state/clock-unread" ]] || say "Windows' clock could not be read (${windows:-it answered nothing}): Linux's is not checked"
+    touch "$state/clock-unread"
+    return 0
+  fi
+  rm -f "$state/clock-unread"
+  # powershell.exe takes a moment to start: Linux's time is read on either side of it.
+  off=$(((before + after) / 2 - windows))
+  off=${off#-}
+  if ((off <= 60)); then rm -f "$state/clock-off"; return 0; fi
+  [[ ! -f "$state/clock-off" ]] || return 0
+  if (($(now) - $1 < 600)); then
+    say "Linux's clock is $off s off Windows' within ten minutes of a start or a waking: read again at the next tick"
+    return 0
+  fi
+  echo "$off" > "$state/clock-off"
+  say "Linux's clock is $off s off Windows': the operators are told"
+  tell installation.clock_off "seconds=$off"
+}
+
 tick() {
   local address failing line step t policy window newest current day outcomes why last awake
   exec 8> "$state/update.lock"
@@ -833,6 +866,7 @@ tick() {
   fi
   deliver_held
   send_held_mails
+  clock_off "$awake"
 
   # Unhealthy, the installation is started again once, as a container Docker left stopped comes back with compose up;
   # still unhealthy, the developer and the operators are told. Once per episode: a start that does not mend it is not

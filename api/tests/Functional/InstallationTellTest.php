@@ -65,6 +65,7 @@ final class InstallationTellTest extends ApiTestCase
             ['installation.backup_failed', ['version=v2026.10.21.1', 'step=before-update']],
             ['installation.backup_stopped', ['step=due']],
             ['installation.update_refused', ['version=v2026.10.22.1']],
+            ['installation.clock_off', ['seconds=95']],
         ];
         foreach ($cases as [$kind, $parameters]) {
             $tester = $this->tell($kind, ...$parameters);
@@ -97,6 +98,8 @@ final class InstallationTellTest extends ApiTestCase
             ['installation.unhealthy', 'check='.str_repeat('a', 121)],
             ['installation.backup_stopped', 'step=due', 'step=copy'],
             ['installation.update_refused'],
+            ['installation.clock_off'],
+            ['installation.clock_off', 'seconds=95', 'from=192.168.1.20'],
         ] as $line) {
             $tester = $this->tell(...$line);
             self::assertSame(Command::INVALID, $tester->getStatusCode(), implode(' ', $line).' '.$tester->getDisplay());
@@ -142,7 +145,7 @@ final class InstallationTellTest extends ApiTestCase
         self::assertSame(NotificationAudience::Company, $moved->audience);
         self::assertSame(Role::OWNER, $moved->role);
         self::assertFalse($moved->mailed);
-        foreach (['rolled_back', 'update_failed', 'update_refused', 'unhealthy', 'backup_failed', 'backup_stopped'] as $name) {
+        foreach (['rolled_back', 'update_failed', 'update_refused', 'unhealthy', 'backup_failed', 'backup_stopped', 'clock_off'] as $name) {
             $kind = $kinds->get('installation.'.$name);
             self::assertNotNull($kind, $name);
             self::assertSame(NotificationAudience::Platform, $kind->audience, $name);
