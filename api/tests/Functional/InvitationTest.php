@@ -141,6 +141,43 @@ final class InvitationTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
     }
 
+    /**
+     * The link's budget is its parameter's, counted per client address: the address the edge forwards for a client
+     * behind it, never one a client on the open network claims, so a second shop behind the same edge keeps its own
+     * budget and a client past its budget cannot escape it by naming another. Past it, « Too many attempts. », which the
+     * screen reads by its status as « Trop de tentatives ».
+     */
+    public function testTheLinksBudgetIsItsParameterCountedPerClientAddress(): void
+    {
+        $budget = static::getContainer()->getParameter('app.rate_limit.invitation_link.limit');
+        $this->client->setServerParameter('REMOTE_ADDR', '10.0.0.5');
+        $this->client->setServerParameter('HTTP_X_FORWARDED_FOR', '41.226.10.9');
+        for ($i = 0; $i < $budget; ++$i) {
+            $this->getJson('/api/invitations/'.str_repeat('a', 64));
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "read $i of $budget");
+        }
+
+        $this->getJson('/api/invitations/'.str_repeat('a', 64));
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertSame('Too many attempts.', $this->json()['detail'] ?? null);
+
+        // Another client behind the same edge has a budget of its own.
+        $this->client->setServerParameter('HTTP_X_FORWARDED_FOR', '41.226.10.10');
+        $this->getJson('/api/invitations/'.str_repeat('a', 64));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'its own budget');
+
+        // A client on the open network spends its own address's budget, whatever address it names.
+        $this->client->setServerParameter('REMOTE_ADDR', '41.226.20.7');
+        for ($i = 0; $i < $budget; ++$i) {
+            $this->client->setServerParameter('HTTP_X_FORWARDED_FOR', '41.226.30.'.(1 + $i));
+            $this->getJson('/api/invitations/'.str_repeat('a', 64));
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "open-network read $i of $budget");
+        }
+        $this->client->setServerParameter('HTTP_X_FORWARDED_FOR', '41.226.30.250');
+        $this->getJson('/api/invitations/'.str_repeat('a', 64));
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS, 'a forwarded address from the open network is not believed');
+    }
+
     public function testAcceptingSpendsTheSameBudgetAndIsRefusedBeforeTheLinkIsRead(): void
     {
         $token = $this->inviteAndReadTheToken();
