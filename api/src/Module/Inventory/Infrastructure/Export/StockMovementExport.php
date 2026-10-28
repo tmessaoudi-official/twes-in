@@ -22,8 +22,9 @@ use App\Tenancy\Domain\Model\Company;
 
 /**
  * The stock movements list as a file (docs/SPEC.md § 7, row 60): one row per movement, under the product, location,
- * words, kind, source, lot and order the screen shows. The list never shows what a receipt cost, so the file has no
- * cost column for anyone, whatever they may read elsewhere.
+ * words, kind, source, lot and order the screen shows, and what the screen marks on a row: a receipt whose cost waits
+ * to be entered, a sale that left its place below zero with no count since (« Sortie sans stock »). The list never
+ * shows what a receipt cost, so the file has no cost column for anyone, whatever they may read elsewhere.
  */
 final readonly class StockMovementExport implements DeclaresExport
 {
@@ -50,7 +51,7 @@ final readonly class StockMovementExport implements DeclaresExport
 
     public function columns(Company $company): array
     {
-        return ['date', 'product_reference', 'product', 'location_code', 'location', 'kind', 'quantity', 'unit_code', 'source', 'lot_code', 'lot_expires_on', 'reason', 'note'];
+        return ['date', 'product_reference', 'product', 'location_code', 'location', 'kind', 'quantity', 'unit_code', 'source', 'lot_code', 'lot_expires_on', 'reason', 'note', 'cost_to_complete', 'without_stock'];
     }
 
     public function rows(Company $company, ExportQuery $query): iterable
@@ -59,8 +60,10 @@ final readonly class StockMovementExport implements DeclaresExport
 
         for ($page = 1;; ++$page) {
             $answer = $this->stock->searchMovements($company, $search, new PageRequest($page, self::BATCH));
+            // What the list marks on a row is a column of its file, read once for the page as the list reads it.
+            $short = array_flip($this->stock->soldWithoutStock($company, $answer->items));
             foreach ($answer->items as $movement) {
-                yield self::row($movement);
+                yield self::row($movement, isset($short[$movement->getId()->toRfc4122()]));
             }
             if ($page * self::BATCH >= $answer->total || [] === $answer->items) {
                 return;
@@ -69,7 +72,7 @@ final readonly class StockMovementExport implements DeclaresExport
     }
 
     /** @return list<string> */
-    private static function row(StockMovement $movement): array
+    private static function row(StockMovement $movement, bool $withoutStock): array
     {
         $product = $movement->getProduct();
         $location = $movement->getLocation();
@@ -88,6 +91,8 @@ final readonly class StockMovementExport implements DeclaresExport
             $movement->getLot()?->getExpiresOn()?->format('Y-m-d') ?? '',
             $movement->getReason()->value ?? '',
             $movement->getNote() ?? '',
+            $movement->isCostToComplete() ? 'yes' : 'no',
+            $withoutStock ? 'yes' : 'no',
         ];
     }
 }

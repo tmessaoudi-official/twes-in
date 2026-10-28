@@ -90,6 +90,13 @@
             >{{ 'inventory.receipt_cost.to_complete' | translate }}</span
           >
         }
+        @if (row.withoutStock) {
+          <span
+            class="block text-sm text-on-surface-variant"
+            data-testid="movement-without-stock"
+            >{{ 'inventory.sold_without_stock.mark' | translate }}</span
+          >
+        }
       </ng-template>
     </app-data-list>
   </section>

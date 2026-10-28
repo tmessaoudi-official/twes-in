@@ -45,7 +45,7 @@
         }
       </h1>
       <p class="text-sm text-on-surface-variant">
-        {{ 'watch.subjects.' + kind() + '.hint' | translate }}
+        {{ hint() | translate }}
       </p>
       @if (current.elsewhere; as ways) {
         <div class="flex flex-wrap gap-x-6 gap-y-1">

@@ -683,6 +683,9 @@ final class InventoryTest extends ApiTestCase
         $this->getJson($toComplete);
         self::assertResponseIsSuccessful();
         self::assertSame([$receiptId, $splitId], array_column($this->jsonList(), 'subjectId'), 'only the receipts nobody could cost, a split one too, oldest first');
+        $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($unit);
+        self::assertSame([$unit->getName(), $unit->getName()], array_map(static fn (array $row): mixed => \is_array($row['params'] ?? null) ? ($row['params']['unit'] ?? null) : null, $this->jsonList()), 'its quantity says its unit');
         $complete($receiptId, '12x');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         $complete($receiptId, '1200');

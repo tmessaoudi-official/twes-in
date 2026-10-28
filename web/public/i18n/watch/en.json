@@ -18,7 +18,8 @@
       "stock": {
         "below_zero": {
           "title": "Below zero",
-          "hint": "Products whose stock is below zero at a location: a sale took more than the stock recorded. Count what is really there to set the stock right."
+          "hint": "Products whose stock is below zero at a location: a sale took more than the stock recorded. Count what is really there to set the stock right.",
+          "hint_reader": "Products whose stock is below zero at a location: a sale took more than the stock recorded. A count sets it right; it falls to someone who may change the stock."
         },
         "reorder_point": {
           "title": "To reorder",

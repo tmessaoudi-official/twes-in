@@ -101,7 +101,7 @@ final class StockExportTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $header = $this->header($lines);
-        self::assertSame(['date', 'product_reference', 'product', 'location_code', 'location', 'kind', 'quantity', 'unit_code', 'source', 'lot_code', 'lot_expires_on', 'reason', 'note'], $header);
+        self::assertSame(['date', 'product_reference', 'product', 'location_code', 'location', 'kind', 'quantity', 'unit_code', 'source', 'lot_code', 'lot_expires_on', 'reason', 'note', 'cost_to_complete', 'without_stock'], $header);
         self::assertCount(3, $lines, 'the header and the two receipts');
         $rows = array_column(array_map(static fn (string $line): array => array_combine($header, str_getcsv($line, escape: '')), \array_slice($lines, 1)), null, 'product_reference');
         self::assertSame(['Portable', 'in', '10.000'], [$rows['ART-001']['product'], $rows['ART-001']['kind'], $rows['ART-001']['quantity']]);

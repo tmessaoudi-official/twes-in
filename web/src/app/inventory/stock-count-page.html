@@ -13,6 +13,12 @@
       }
     }
 
+    @if (askedGone()) {
+      <p class="m-0 max-w-prose" data-testid="stock-count-asked-gone">
+        {{ 'count_sheet.asked_gone' | translate }}
+      </p>
+    }
+
     <div class="flex flex-wrap items-start gap-3">
       <div class="flex min-w-64 flex-col gap-1.5">
         <app-select

@@ -98,6 +98,21 @@ export function movementAddress(
   };
 }
 
+/**
+ * The address of the count sheet of a place, opened on a product (and its lot) as its first line: what « Compter »
+ * opens wherever a product's level at a place is shown, the watch's « Sous zéro » and the stock tab's rows alike.
+ */
+export function countAddress(
+  productId: string,
+  locationId: string,
+  lotCode: string | null = null,
+): { path: string[]; query: Record<string, string> } {
+  return {
+    path: ['/stock/locations', locationId],
+    query: { product: productId, ...(lotCode === null || lotCode === '' ? {} : { lot: lotCode }) },
+  };
+}
+
 /** Why goods were written off: the API's list, in the order the form offers them. */
 export const STOCK_LOSS_REASONS = [
   'lost',

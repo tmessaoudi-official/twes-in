@@ -90,8 +90,11 @@ export function watchRowView(
   for (const name of ['previousMargin', 'margin'] as const) {
     if (name in params) cells[name] = `${figures.decimal(text(params, name))} %`;
   }
+  // A quantity with its unit, which the API names as the screens do: « -3 kg » is not « -3 » pieces.
+  const unit = text(params, 'unit');
   for (const name of ['quantity', 'onHand', 'point'] as const) {
-    if (name in params) cells[name] = figures.amount(plainQuantity(text(params, name)), null);
+    if (name in params)
+      cells[name] = `${figures.amount(plainQuantity(text(params, name)), null)} ${unit}`.trim();
   }
   if ('expiresOn' in params) cells['expiresOn'] = figures.day(text(params, 'expiresOn'));
   if ('receivedOn' in params) cells['receivedOn'] = figures.day(text(params, 'receivedOn'));

@@ -421,6 +421,48 @@ describe('StockMovementsPage', () => {
     expect(q('row-action-enter-cost-m2')).toBeNull();
   });
 
+  // A sale without stock is marked on its row, filtered or not, and leads to the count that settles it.
+  it('marks a sale without stock on its row and offers the place’s count sheet to a stock writer', async () => {
+    shown.set([{ ...delivered, withoutStock: true }, uncosted]);
+    await settle();
+
+    expect(
+      q('stock-movement-m1')?.querySelector('[data-testid="movement-without-stock"]'),
+    ).not.toBeNull();
+    expect(
+      q('stock-movement-m2')?.querySelector('[data-testid="movement-without-stock"]'),
+    ).toBeNull();
+    const entry = async (testId: string): Promise<string | null | undefined> => {
+      const standing = q(testId.replace('row-menu-', 'row-action-'));
+      if (standing !== null) return standing.getAttribute('href');
+      q('row-more-m1')?.click();
+      await settle();
+      return document.body
+        .querySelector(`.cdk-overlay-container [data-testid="${testId}"]`)
+        ?.getAttribute('href');
+    };
+    expect(await entry('row-menu-count-without-stock-m1')).toBe(
+      '/stock/locations/l1?product=p1&lot=L-2408',
+    );
+  });
+
+  it('offers no count to whoever may not change the stock, and still marks the sale', async () => {
+    writesStock.set(false);
+    shown.set([{ ...delivered, withoutStock: true }]);
+    await settle();
+
+    expect(q('movement-without-stock')).not.toBeNull();
+    expect(q('row-action-count-without-stock-m1')).toBeNull();
+    // Nor folded in the row's « ⋮ », where a writer finds it.
+    q('row-more-m1')?.click();
+    await settle();
+    expect(
+      document.body.querySelector(
+        '.cdk-overlay-container [data-testid="row-menu-count-without-stock-m1"]',
+      ),
+    ).toBeNull();
+  });
+
   it('offers what the list shows as a CSV or an Excel file', async () => {
     await settle();
 

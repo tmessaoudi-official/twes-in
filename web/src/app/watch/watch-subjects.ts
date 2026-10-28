@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { countAddress } from '../inventory/inventory-types';
 import type { IconName } from '../shared/icons/icons';
 import type { ListColumn, ListDescriptor, RowAction } from '../shared/list/list-types';
 import type { WatchRowView } from './watch-view';
@@ -25,7 +26,8 @@ export interface WatchSubjectView {
   readonly elsewhere?: readonly WatchElsewhere[];
   /**
    * The permission an action of the list needs beyond the subject's own, by action id: a reader who may see the
-   * subject but not do it is not offered it, since an action that only refuses is no action.
+   * subject but not do it is not offered it, since an action that only refuses is no action. Such a subject has a
+   * `hint_reader` text beside its `hint`, which {@link hintKey} shows that reader.
    */
   readonly actionPermissions?: Readonly<Record<string, string>>;
 }
@@ -42,6 +44,15 @@ export function permittedList(
     return permission === undefined || may(permission);
   });
   return kept.length === actions.length ? view.list : { ...view.list, actions: kept };
+}
+
+/**
+ * The hint a reader is shown under a subject's title: its own, or, for a reader who may not do an action the subject
+ * asks for (`actionPermissions`), its `hint_reader`, which says who does it rather than telling them to.
+ */
+export function hintKey(kind: string, may: (permission: string) => boolean): string {
+  const needs = Object.values(subjectView(kind)?.actionPermissions ?? {});
+  return `watch.subjects.${kind}.${needs.every(may) ? 'hint' : 'hint_reader'}`;
 }
 
 const COLUMNS = 'watch.columns';
@@ -118,16 +129,23 @@ const OPEN_PRODUCT: RowAction<WatchRowView> = {
  * Count mode at the place that went below zero, with a line for the product (and its lot) waiting for what is really
  * there: recording it sets the place to what was found, and the row leaves the subject.
  */
+/** The place's count sheet on the row's product and lot, the one « Compter » the stock tab's rows open too. */
+function countAt(view: WatchRowView): ReturnType<typeof countAddress> {
+  const lot = view.row.params['lot'];
+  return countAddress(
+    view.row.subjectId ?? '',
+    String(view.row.params['locationId'] ?? ''),
+    lot === undefined ? null : String(lot),
+  );
+}
+
 const COUNT_AT_PLACE: RowAction<WatchRowView> = {
   id: 'count',
   label: 'watch.actions.count',
   labelParams: (view) => ({ name: String(view.cells['product'] ?? '') }),
   icon: 'checklist',
-  link: (view) => ['/stock/locations', String(view.row.params['locationId'] ?? '')],
-  linkQuery: (view) => ({
-    product: view.row.subjectId ?? '',
-    ...('lot' in view.row.params ? { lot: String(view.row.params['lot']) } : {}),
-  }),
+  link: (view) => countAt(view).path,
+  linkQuery: (view) => countAt(view).query,
   next: () => true,
   shown: (view) => view.row.subjectId !== null && view.row.params['locationId'] !== undefined,
 };

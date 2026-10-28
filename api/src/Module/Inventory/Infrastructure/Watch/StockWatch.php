@@ -41,6 +41,8 @@ final readonly class StockWatch implements DeclaresWatch
     public const string RUNNING_OUT = 'stock.running_out';
     public const string LOT_EXPIRING = 'stock.lot_expiring';
     public const string LOT_EXPIRED = 'stock.lot_expired';
+    /** The unit a row's quantity is in, as the screens name it, of the product `p`: a quantity is said with its unit. */
+    private const string UNIT = '(SELECT u.name FROM unit u WHERE u.id = p.unit_id) AS unit';
     /** The pace is read over the last this many days. */
     private const int PACE_DAYS = 30;
 
@@ -126,7 +128,7 @@ final readonly class StockWatch implements DeclaresWatch
     private function belowZero(Company $company): array
     {
         return [
-            'SELECT p.id, p.name, p.reference, e.name AS establishment, l.id AS location_id, l.code AS location_code, l.name AS location, lt.code AS lot, SUM(m.quantity)::numeric(14, 3) AS on_hand
+            'SELECT p.id, p.name, p.reference, e.name AS establishment, l.id AS location_id, l.code AS location_code, l.name AS location, lt.code AS lot, SUM(m.quantity)::numeric(14, 3) AS on_hand, '.self::UNIT.'
                FROM stock_movement m
                JOIN product p ON p.id = m.product_id
                JOIN stock_location l ON l.id = m.location_id
@@ -144,6 +146,7 @@ final readonly class StockWatch implements DeclaresWatch
                 'location' => self::text($row['location_code']).' — '.self::text($row['location']),
                 'locationId' => self::text($row['location_id']),
                 'onHand' => self::text($row['on_hand']),
+                'unit' => self::text($row['unit']),
             ] + (null === $row['lot'] ? [] : ['lot' => self::text($row['lot'])])),
         ];
     }
@@ -152,7 +155,7 @@ final readonly class StockWatch implements DeclaresWatch
     private function atReorderPoint(Company $company): array
     {
         return [
-            'SELECT p.id, p.name, p.reference, e.name AS establishment, COALESCE(SUM(m.quantity), 0)::numeric(14, 3) AS on_hand, rp.quantity AS point, rp.establishment_id
+            'SELECT p.id, p.name, p.reference, e.name AS establishment, COALESCE(SUM(m.quantity), 0)::numeric(14, 3) AS on_hand, rp.quantity AS point, rp.establishment_id, '.self::UNIT.'
                FROM product_reorder_point rp
                JOIN product p ON p.id = rp.product_id
                JOIN establishment e ON e.id = rp.establishment_id
@@ -169,6 +172,7 @@ final readonly class StockWatch implements DeclaresWatch
                 'establishment' => self::text($row['establishment']),
                 'onHand' => self::text($row['on_hand']),
                 'point' => self::text($row['point']),
+                'unit' => self::text($row['unit']),
             ]),
         ];
     }
@@ -194,7 +198,7 @@ final readonly class StockWatch implements DeclaresWatch
                    WHERE m.company_id = :company AND m.kind = :out AND m.source_type NOT IN (:move, :merge, :import_undo, :import_redo) AND m.at >= :since
                    GROUP BY '.KeptRecords::id('mp').'
              )
-             SELECT p.id, p.name, p.reference, h.on_hand::numeric(14, 3) AS on_hand, FLOOR(h.on_hand * :window / pace.gone)::int AS days_left, h.on_hand * :window / pace.gone AS ratio
+             SELECT p.id, p.name, p.reference, h.on_hand::numeric(14, 3) AS on_hand, FLOOR(h.on_hand * :window / pace.gone)::int AS days_left, h.on_hand * :window / pace.gone AS ratio, '.self::UNIT.'
                FROM pace JOIN hand h ON h.product_id = pace.product_id JOIN product p ON p.id = pace.product_id
               WHERE p.is_active AND pace.gone > 0 AND h.on_hand > 0 AND h.on_hand * :window < pace.gone * :lead',
             [
@@ -214,6 +218,7 @@ final readonly class StockWatch implements DeclaresWatch
                 'product' => self::text($row['name']),
                 'reference' => self::text($row['reference']),
                 'onHand' => self::text($row['on_hand']),
+                'unit' => self::text($row['unit']),
                 'days' => (int) self::text($row['days_left']),
             ]),
         ];
@@ -233,7 +238,7 @@ final readonly class StockWatch implements DeclaresWatch
         $expired = self::LOT_EXPIRED === $kind;
 
         return [
-            'SELECT p.id, p.name, p.reference, lt.code, lt.expires_on, SUM(m.quantity)::numeric(14, 3) AS quantity
+            'SELECT p.id, p.name, p.reference, lt.code, lt.expires_on, SUM(m.quantity)::numeric(14, 3) AS quantity, '.self::UNIT.'
                FROM stock_lot lt
                JOIN product p ON p.id = lt.product_id
                JOIN stock_movement m ON m.lot_id = lt.id
@@ -255,6 +260,7 @@ final readonly class StockWatch implements DeclaresWatch
                     'lot' => self::text($row['code']),
                     'expiresOn' => $expiresOn->format('Y-m-d'),
                     'quantity' => self::text($row['quantity']),
+                    'unit' => self::text($row['unit']),
                     'days' => (int) $today->diff($expiresOn)->format('%r%a'),
                 ]);
             },

@@ -2664,7 +2664,10 @@
       "expired_no": "Non périmé",
       "without_stock": "Sorties sans stock",
       "without_stock_yes": "Sorties sans stock",
-      "without_stock_no": "Couvertes par le stock"
+      "without_stock_no": "Autres mouvements"
+    },
+    "sold_without_stock": {
+      "mark": "Sortie sans stock : à compter"
     }
   },
   "vendors": {

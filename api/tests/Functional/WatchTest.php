@@ -128,16 +128,16 @@ final class WatchTest extends ApiTestCase
             ['invoices.unsold_products', $this->products['SCIE'], ['product' => 'Scie égoïne', 'reference' => 'SCIE', 'days' => 120]],
         ], $this->rows('invoices.unsold_products'));
         self::assertSame([
-            ['stock.reorder_point', $this->products['VIS'], ['product' => 'Vis 6x40', 'reference' => 'VIS', 'establishment' => 'Quincaillerie', 'onHand' => '5.000', 'point' => '5.000']],
+            ['stock.reorder_point', $this->products['VIS'], ['product' => 'Vis 6x40', 'reference' => 'VIS', 'establishment' => 'Quincaillerie', 'onHand' => '5.000', 'point' => '5.000', 'unit' => 'Unité']],
         ], $this->rows('stock.reorder_point'));
         self::assertSame([
-            ['stock.running_out', $this->products['GANT'], ['product' => 'Gants', 'reference' => 'GANT', 'onHand' => '1.000', 'days' => 3]],
+            ['stock.running_out', $this->products['GANT'], ['product' => 'Gants', 'reference' => 'GANT', 'onHand' => '1.000', 'unit' => 'Unité', 'days' => 3]],
         ], $this->rows('stock.running_out'));
         self::assertSame([
-            ['stock.lot_expired', $this->products['COLLE'], ['product' => 'Colle forte', 'reference' => 'COLLE', 'lot' => 'L-OLD', 'expiresOn' => new \DateTimeImmutable($this->today)->modify('-1 days')->format('Y-m-d'), 'quantity' => '2.000', 'days' => -1]],
+            ['stock.lot_expired', $this->products['COLLE'], ['product' => 'Colle forte', 'reference' => 'COLLE', 'lot' => 'L-OLD', 'expiresOn' => new \DateTimeImmutable($this->today)->modify('-1 days')->format('Y-m-d'), 'quantity' => '2.000', 'unit' => 'Unité', 'days' => -1]],
         ], $this->rows('stock.lot_expired'));
         self::assertSame([
-            ['stock.lot_expiring', $this->products['COLLE'], ['product' => 'Colle forte', 'reference' => 'COLLE', 'lot' => 'L-SOON', 'expiresOn' => new \DateTimeImmutable($this->today)->modify('+10 days')->format('Y-m-d'), 'quantity' => '3.000', 'days' => 10]],
+            ['stock.lot_expiring', $this->products['COLLE'], ['product' => 'Colle forte', 'reference' => 'COLLE', 'lot' => 'L-SOON', 'expiresOn' => new \DateTimeImmutable($this->today)->modify('+10 days')->format('Y-m-d'), 'quantity' => '3.000', 'unit' => 'Unité', 'days' => 10]],
         ], $this->rows('stock.lot_expiring'));
 
         // Dealt with: the invoice paid, VIS restocked above its point. Both leave by themselves.
@@ -169,10 +169,10 @@ final class WatchTest extends ApiTestCase
         }
 
         self::assertSame([
-            ['stock.reorder_point', $this->products['VIS'], ['product' => 'Vis 6x40', 'reference' => 'VIS', 'establishment' => 'Quincaillerie', 'onHand' => '4.000', 'point' => '10.000']],
+            ['stock.reorder_point', $this->products['VIS'], ['product' => 'Vis 6x40', 'reference' => 'VIS', 'establishment' => 'Quincaillerie', 'onHand' => '4.000', 'point' => '10.000', 'unit' => 'Unité']],
         ], $this->rows('stock.reorder_point'));
         self::assertSame([
-            ['stock.running_out', $this->products['GANT'], ['product' => 'Gants', 'reference' => 'GANT', 'onHand' => '1.000', 'days' => 3]],
+            ['stock.running_out', $this->products['GANT'], ['product' => 'Gants', 'reference' => 'GANT', 'onHand' => '1.000', 'unit' => 'Unité', 'days' => 3]],
         ], $this->rows('stock.running_out'));
     }
 
@@ -199,8 +199,8 @@ final class WatchTest extends ApiTestCase
         self::assertSame([['stock.below_zero', 2]], $this->subjects(), 'no reorder point anywhere, and still watched');
         $place = $site->getCode().' — '.$site->getName();
         self::assertSame([
-            ['stock.below_zero', $this->products['VIS'], ['product' => 'Vis 6x40', 'reference' => 'VIS', 'establishment' => 'Quincaillerie', 'location' => $place, 'locationId' => $site->getId()->toRfc4122(), 'onHand' => '-3.000']],
-            ['stock.below_zero', $this->products['GANT'], ['product' => 'Gants', 'reference' => 'GANT', 'establishment' => 'Quincaillerie', 'location' => $place, 'locationId' => $site->getId()->toRfc4122(), 'onHand' => '-1.000']],
+            ['stock.below_zero', $this->products['VIS'], ['product' => 'Vis 6x40', 'reference' => 'VIS', 'establishment' => 'Quincaillerie', 'location' => $place, 'locationId' => $site->getId()->toRfc4122(), 'onHand' => '-3.000', 'unit' => 'Unité']],
+            ['stock.below_zero', $this->products['GANT'], ['product' => 'Gants', 'reference' => 'GANT', 'establishment' => 'Quincaillerie', 'location' => $place, 'locationId' => $site->getId()->toRfc4122(), 'onHand' => '-1.000', 'unit' => 'Unité']],
         ], $this->rows('stock.below_zero'), 'the most short first, each at its own place');
 
         // Counted: what is really there is what is on hand, and the place leaves the list by itself.
@@ -245,6 +245,24 @@ final class WatchTest extends ApiTestCase
         $connection->executeStatement("UPDATE setting SET value = 'false' WHERE level = 'company' AND level_id = ? AND key = 'article.stock_tracking'", [$this->company->getId()->toRfc4122()]);
         $connection->executeStatement("UPDATE setting SET value = 'true' WHERE level = 'product' AND level_id = ? AND key = 'article.stock_tracking'", [$this->company->getId()->toRfc4122().'/'.$this->products['VIS']]);
         self::assertSame(['VIS'], $this->belowZero(), 'kept again, it is listed again');
+    }
+
+    public function testTheStockTabsBelowZeroHoldsTheSubjectsRows(): void
+    {
+        // The subject links the stock tab's « Sous zéro » as holding the same rows: one subject, one answer. A level of a
+        // product whose stock is no longer kept leaves both together, and the tab's « no » takes it, so yes and no still
+        // split the whole list.
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        $this->receive('COLLE', '2');
+        foreach (['VIS', 'GANT', 'SCIE'] as $reference) {
+            $this->deliver($reference, '1');
+        }
+        $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->products['VIS'])), 'article.stock_tracking', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+
+        self::assertSame(['GANT', 'SCIE'], $this->belowZero());
+        self::assertSame(['GANT', 'SCIE'], $this->stockTab('yes'), 'the tab holds the subject\'s rows');
+        self::assertSame(['COLLE', 'VIS'], $this->stockTab('no'), 'and the rest');
     }
 
     public function testAChequeOrTraiteFallenDueIsASubjectUntilItIsCashedOrComesBackUnpaid(): void
@@ -464,6 +482,17 @@ final class WatchTest extends ApiTestCase
     private function belowZero(): array
     {
         return array_map(static fn (array $row): mixed => \is_array($row[2]) ? $row[2]['reference'] ?? null : null, $this->rows('stock.below_zero'));
+    }
+
+    /** @return list<string> the references the stock tab's « Sous zéro » answers, `yes` or `no`, sorted */
+    private function stockTab(string $answer): array
+    {
+        $this->getJson($this->company().'/stock-levels?negative='.$answer);
+        self::assertResponseIsSuccessful();
+        $references = array_map(fn (array $row): string => $this->stringAt($row, 'productReference'), $this->jsonList());
+        sort($references);
+
+        return $references;
     }
 
     private function issuedInvoice(string $reference): string

@@ -50,7 +50,7 @@ import {
   type StockMovementListRow,
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
-import type { StockMovementSearch } from './inventory-types';
+import { countAddress, type StockMovementSearch } from './inventory-types';
 import { ReceiptCostDialog, type ReceiptCostDialogData } from './receipt-cost-dialog';
 import { LossFilesDialog, type LossFilesDialogData } from './loss-files-dialog';
 
@@ -116,9 +116,28 @@ export class StockMovementsPage {
     run: (row) => this.openLossFiles(row),
     shown: (row) => row.sourceType === 'loss',
   };
+  /**
+   * A sale that left its place below zero is settled by a count there: the place's count sheet, the one « Compter » the
+   * watch's « Sous zéro » and the stock tab open, offered to whoever may change the stock.
+   */
+  private readonly countWithoutStockAction: RowAction<StockMovementListRow> = {
+    id: 'count-without-stock',
+    label: 'inventory.stock.count_here',
+    labelParams: (row) => ({ name: row.productLabel }),
+    icon: 'checklist',
+    link: (row) => countAddress(row.productId, row.locationId, row.lotCode).path,
+    linkQuery: (row) => countAddress(row.productId, row.locationId, row.lotCode).query,
+    rare: true,
+    shown: (row) => row.withoutStock && this.auth.hasPermission('stock.write'),
+  };
   protected readonly list: ListDescriptor<StockMovementListRow> = {
     ...MOVEMENTS_LIST,
-    actions: [...(MOVEMENTS_LIST.actions ?? []), this.enterCostAction, this.lossFilesAction],
+    actions: [
+      ...(MOVEMENTS_LIST.actions ?? []),
+      this.enterCostAction,
+      this.lossFilesAction,
+      this.countWithoutStockAction,
+    ],
   };
   protected readonly rows = computed(() =>
     movementListRows(this.facade.movements(), this.facade.locations()),

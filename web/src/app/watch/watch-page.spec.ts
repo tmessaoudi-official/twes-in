@@ -26,6 +26,11 @@ class StaticLoader implements TranslateLoader {
         subjects: {
           'invoices.late_customer': { title: 'Clients en retard', hint: 'Relancez-les.' },
           'stock.lot_expired': { title: 'Lots périmés', hint: 'À sortir du stock.' },
+          'stock.below_zero': {
+            title: 'Sous zéro',
+            hint: 'Comptez ce qui s’y trouve.',
+            hint_reader: 'Un comptage le remet juste ; il revient à qui peut modifier le stock.',
+          },
         },
       },
     });
@@ -37,6 +42,7 @@ const summary: WatchSummary = {
   subjects: [
     { kind: 'invoices.late_customer', count: 212 },
     { kind: 'stock.lot_expired', count: 9 },
+    { kind: 'stock.below_zero', count: 0 },
     { kind: 'future.kind', count: 4216 },
   ],
 };
@@ -47,6 +53,7 @@ describe('WatchPage', () => {
   const failed = signal<WatchError | null>(null);
   const facade = { summary: current.asReadonly(), error: failed.asReadonly(), load: vi.fn() };
   const live = { reloadOn: vi.fn() };
+  let may: (permission: string) => boolean = () => true;
   let fixture: ComponentFixture<WatchPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -64,6 +71,7 @@ describe('WatchPage', () => {
     failed.set(null);
     facade.load.mockReset().mockResolvedValue(undefined);
     live.reloadOn.mockReset();
+    may = () => true;
     TestBed.configureTestingModule({
       imports: [WatchPage],
       providers: [
@@ -75,7 +83,13 @@ describe('WatchPage', () => {
         }),
         { provide: WatchFacade, useValue: facade },
         { provide: LiveChanges, useValue: live },
-        { provide: AuthFacade, useValue: { me: () => ({ company: { id: 'k1' } }) } },
+        {
+          provide: AuthFacade,
+          useValue: {
+            me: () => ({ company: { id: 'k1' } }),
+            hasPermission: (permission: string) => may(permission),
+          },
+        },
       ],
     });
   });
@@ -111,8 +125,26 @@ describe('WatchPage', () => {
 
     expect(q('watch-subject-future.kind')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('[data-testid="watch-subjects"] li').length).toBe(
-      2,
+      3,
     );
+  });
+
+  // The hint asks to count only a reader who may; another is told who does it.
+  it('tells a reader who may count to count', async () => {
+    await open();
+
+    expect(q('watch-subject-stock.below_zero')?.textContent).toContain(
+      'Comptez ce qui s’y trouve.',
+    );
+  });
+
+  it('tells a reader who may not count who does, rather than to count', async () => {
+    may = (permission) => permission !== 'stock.write';
+    await open();
+
+    const card = q('watch-subject-stock.below_zero')?.textContent ?? '';
+    expect(card).toContain('il revient à qui peut modifier le stock');
+    expect(card).not.toContain('Comptez');
   });
 
   it('says there is nothing to watch when nothing is', async () => {

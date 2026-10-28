@@ -39,17 +39,23 @@ test('a product is counted from its own page and from its row of stock, the form
     await page.getByTestId('stock-movement-cancel').click();
     await expect(page).not.toHaveURL(/operation=/);
 
-    // The list kept the product the address named: its row at the place the piece was received offers the count.
+    // The list kept the product the address named: its row at the place the piece was received offers the count, on
+    // that place's count sheet with the product's line waiting, as « À surveiller › Sous zéro » opens it.
     const row = page.locator(`[data-testid^="stock-${reference}-"]`).first();
     await expect(row).toBeVisible();
     await row.locator('[data-testid^="row-more-"]').click();
     await rowMenuItem(page, 'count_here').click();
-    await expect(page).toHaveURL(/operation=count/);
-    await expect(page.getByTestId('field-productId')).toHaveValue(new RegExp(reference));
-    await expect(page).toHaveURL(/location=[0-9a-f-]{36}/);
-    // Nothing was recorded by opening it: leaving it puts the list back as it was.
-    await page.getByTestId('stock-movement-cancel').click();
-    await expect(page).not.toHaveURL(/operation=/);
+    await expect(page).toHaveURL(
+      new RegExp(`/stock/locations/[0-9a-f-]{36}\\?product=${productId}$`),
+    );
+    await expect(page.getByTestId('stock-count-0')).toContainText(reference);
+    expect(await wcagViolations(page)).toEqual([]);
+    // Nothing was recorded by opening it: the line waiting is no unsaved work, and the stock tab shows the one piece.
+    await page.getByTestId('stock-tab').click();
+    await page.getByTestId('list-filter').fill(reference);
+    await expect(
+      page.getByRole('row').filter({ hasText: reference }).locator('[data-column="quantity"]'),
+    ).toHaveText('1');
   } finally {
     await forget(page, [productId]);
   }

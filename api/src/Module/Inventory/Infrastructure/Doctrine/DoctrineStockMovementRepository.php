@@ -59,6 +59,9 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     ];
     private const array SORTED_BY = ['reference' => 'p.reference', 'product' => 'p.name', 'location' => 'l.code', 'quantity' => 'SUM(m.quantity)'];
 
+    /** Whether stock is kept of the product `p`, the company's word bound as `companyKeepsStock` ({@see StockKept}). */
+    private const string KEPT = 'STOCK_KEPT(p.kind, IDENTITY(p.company), IDENTITY(p.category), p.id, :companyKeepsStock) = true';
+
     /**
      * « Sortie sans stock » (Decisions Log 2026-10-28 00:13), of a movement `m` whose product is `p`: a sale or a delivery
      * after which its place held less than nothing, every movement of the product there summed up to it in the order they
@@ -66,7 +69,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
      * was merged into, which counts what it carried. A sale is never blocked, so this is what a count has to settle; of
      * a product whose stock is no longer kept, a count is refused, so its sales are none.
      */
-    private const string WITHOUT_STOCK = 'm.quantity < 0 AND m.sourceType IN (:soldSources) AND STOCK_KEPT(p.kind, IDENTITY(p.company), IDENTITY(p.category), p.id, :companyKeepsStock) = true'
+    private const string WITHOUT_STOCK = 'm.quantity < 0 AND m.sourceType IN (:soldSources) AND '.self::KEPT
         .' AND (SELECT SUM(b.quantity) FROM '.StockMovement::class.' b WHERE b.company = m.company AND b.product = m.product'
         .' AND b.location = m.location AND (b.at < m.at OR (b.at = m.at AND b.id <= m.id))) < 0'
         .' AND NOT EXISTS (SELECT c.id FROM '.StockMovement::class.' c WHERE c.company = m.company AND c.location = m.location'
@@ -356,11 +359,17 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     /** The bindings WITHOUT_STOCK names, the company's own word on keeping stock among them. */
     private function soldWithoutStock(QueryBuilder $query, Uuid $companyId): QueryBuilder
     {
-        $company = $this->entityManager->find(Company::class, $companyId) ?? throw new \LogicException('The movements of a company that is not there.');
-
         return $query->setParameter('soldSources', [StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE], ArrayParameterType::STRING)
             ->setParameter('countSource', StockMovement::SOURCE_COUNT)
-            ->setParameter('companyKeepsStock', StockKept::byCompany($this->settings, $company), ParameterType::BOOLEAN);
+            ->setParameter('companyKeepsStock', $this->companyKeepsStock($companyId), ParameterType::BOOLEAN);
+    }
+
+    /** What the company says of keeping stock, before a category or a product says otherwise: KEPT's bound word. */
+    private function companyKeepsStock(Uuid $companyId): bool
+    {
+        $company = $this->entityManager->find(Company::class, $companyId) ?? throw new \LogicException('The stock of a company that is not there.');
+
+        return StockKept::byCompany($this->settings, $company);
     }
 
     /**
@@ -577,7 +586,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->select('p.id AS product', 'l.id AS location', 'lt.id AS lot', 'lt.code AS lotCode', 'lt.expiresOn AS lotExpiresOn', 'lt.releasedAt AS lotReleasedAt', 'SUM(m.quantity) AS quantity')
             ->groupBy('p.id')->addGroupBy('l.id')->addGroupBy('lt.id')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
-        self::onTheSum($rows, $search);
+        $this->onTheSum($rows, $search, $companyId);
         foreach ($search->order as $sort => $direction) {
             $rows->addOrderBy(self::SORTED_BY[$sort] ?? throw new \InvalidArgumentException("This list is not sorted by $sort."), $direction);
         }
@@ -588,9 +597,9 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         // number: PostgreSQL cannot count a pair of uuids as one value, and a paginator counting an aggregate counts
         // the movements instead. So the pairs are asked for and counted — one small row each, and they are the same
         // set this list used to hand back whole.
-        $total = \count(self::onTheSum($this->levelsQuery($companyId, $search)
+        $total = \count($this->onTheSum($this->levelsQuery($companyId, $search)
             ->select('p.id AS product', 'l.id AS location', 'lt.id AS lot')
-            ->groupBy('p.id')->addGroupBy('l.id')->addGroupBy('lt.id'), $search)
+            ->groupBy('p.id')->addGroupBy('l.id')->addGroupBy('lt.id'), $search, $companyId)
             ->getQuery()->getArrayResult());
 
         $levels = [];
@@ -683,11 +692,17 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $query;
     }
 
-    /** What narrows a level by its sum: a condition on the grouped rows, so it follows the grouping. */
-    private static function onTheSum(QueryBuilder $query, StockLevelSearch $search): QueryBuilder
+    /**
+     * What narrows a level by its sum: a condition on the grouped rows, so it follows the grouping. « Sous zéro » is the
+     * watch's subject of the same name, which links here as holding the same rows: a level below zero of a product whose
+     * stock is kept, since a count of any other is refused; « no » is every other level, so the two split the list.
+     */
+    private function onTheSum(QueryBuilder $query, StockLevelSearch $search, Uuid $companyId): QueryBuilder
     {
         if (null !== $search->negative) {
-            $query->having($search->negative ? 'SUM(m.quantity) < 0' : 'SUM(m.quantity) >= 0');
+            $belowZero = 'SUM(m.quantity) < 0 AND '.self::KEPT;
+            $query->having($search->negative ? $belowZero : 'NOT ('.$belowZero.')')
+                ->setParameter('companyKeepsStock', $this->companyKeepsStock($companyId), ParameterType::BOOLEAN);
         }
 
         return $query;

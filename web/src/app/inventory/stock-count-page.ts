@@ -95,6 +95,8 @@ export class StockCountPage implements OnInit {
   readonly lot = input<string>();
   /** The line the address asked for, which is no unsaved work until something is typed on it. */
   private readonly asked = signal<CountLine | null>(null);
+  /** The product the address named is no longer there, so its line cannot open: said rather than an empty sheet. */
+  protected readonly askedGone = signal(false);
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
@@ -190,16 +192,29 @@ export class StockCountPage implements OnInit {
     await this.openAsked(companyId);
   }
 
-  /** The product the address named, at the place it named, as the sheet's first line; nothing for one not found. */
+  /**
+   * The product the address named, at the place it named, as a line of the sheet, after what was scanned while it was
+   * read; a product no longer there (deleted, merged away since the link was drawn) is said, never an empty sheet.
+   */
   private async openAsked(companyId: string): Promise<void> {
     const productId = this.product();
     const locationId = this.location();
     if (!productId || !locationId || !this.mayWrite()) return;
     const [product] = await this.facade.pickProducts(companyId, { ids: [productId] });
-    if (product === undefined || product.id !== productId || this.lines().length > 0) return;
+    if (product === undefined || product.id !== productId) {
+      this.askedGone.set(true);
+      return;
+    }
     const line = askedLine(product, this.lot() ?? '', locationId);
+    const there = this.lines().some(
+      (each) =>
+        each.productId === line.productId &&
+        each.locationId === line.locationId &&
+        each.lotCode === line.lotCode,
+    );
+    if (there) return;
     this.asked.set(line);
-    this.lines.set([line]);
+    this.lines.update((lines) => [line, ...lines]);
   }
 
   private readonly read = new Set<string>();

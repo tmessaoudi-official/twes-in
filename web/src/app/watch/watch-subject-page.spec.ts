@@ -32,6 +32,14 @@ class StaticLoader implements TranslateLoader {
       invoices: { portfolio: { open: 'Portefeuille chèques et traites' } },
       watch: {
         none: 'Rien.',
+        subjects: {
+          stock: {
+            below_zero: {
+              hint: 'Comptez ce qui s’y trouve.',
+              hint_reader: 'Il revient à qui peut modifier le stock.',
+            },
+          },
+        },
         elsewhere: {
           below_zero: 'Tout le stock sous zéro',
           sold_without_stock: 'Les sorties sans stock',
@@ -162,6 +170,7 @@ describe('WatchSubjectPage', () => {
 
     const count = q('row-action-count-0') ?? q('list-card-next-0');
     expect(count?.getAttribute('href')).toBe('/stock/locations/l1?product=p1');
+    expect(fixture.nativeElement.textContent).toContain('Comptez ce qui s’y trouve.');
     expect(q('watch-elsewhere')?.getAttribute('href')).toBe('/stock?negative=yes');
     // And the sales that took it there, until a count follows them.
     const sold = q('watch-elsewhere-1');
@@ -182,6 +191,10 @@ describe('WatchSubjectPage', () => {
     expect(q('row-action-count-0')).toBeNull();
     expect(q('list-card-next-0')).toBeNull();
     expect(q('row-action-open-product-0')).not.toBeNull();
+    // Nor told to count: the hint says who does.
+    const page = fixture.nativeElement.textContent as string;
+    expect(page).toContain('Il revient à qui peut modifier le stock.');
+    expect(page).not.toContain('Comptez');
   });
 
   it('offers no way elsewhere on a subject that has none', async () => {

@@ -364,7 +364,7 @@ describe('StockCountPage', () => {
     );
   });
 
-  it('names the lot asked for a tracked product, and asks nothing of a product this company does not have', async () => {
+  it('names the lot asked for a tracked product, and says a product no longer there rather than open blank', async () => {
     fixture = TestBed.createComponent(StockCountPage);
     fixture.componentRef.setInput('location', rack.id);
     fixture.componentRef.setInput('product', 'p3');
@@ -372,13 +372,16 @@ describe('StockCountPage', () => {
     await settle();
     await settle();
     expect((q('stock-count-0-lot') as HTMLInputElement).value).toBe('L-7');
+    expect(q('stock-count-asked-gone')).toBeNull();
 
+    // Deleted or merged away since the link was drawn: said, the sheet left open to scan.
     fixture = TestBed.createComponent(StockCountPage);
     fixture.componentRef.setInput('location', rack.id);
     fixture.componentRef.setInput('product', 'p9');
     await settle();
     await settle();
     expect(q('stock-count-empty')).not.toBeNull();
+    expect(q('stock-count-asked-gone')?.textContent).toContain('count_sheet.asked_gone');
   });
 
   it('asks a lot of a tracked product whose label named none, and records every line as a count', async () => {

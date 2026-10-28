@@ -18,7 +18,8 @@
       "stock": {
         "below_zero": {
           "title": "Sous zéro",
-          "hint": "Des produits dont le stock est en dessous de zéro à un emplacement : une vente a pris plus que le stock enregistré. Comptez ce qui s’y trouve vraiment pour remettre le stock juste."
+          "hint": "Des produits dont le stock est en dessous de zéro à un emplacement : une vente a pris plus que le stock enregistré. Comptez ce qui s’y trouve vraiment pour remettre le stock juste.",
+          "hint_reader": "Des produits dont le stock est en dessous de zéro à un emplacement : une vente a pris plus que le stock enregistré. Un comptage le remet juste ; il revient à quelqu’un qui peut modifier le stock."
         },
         "reorder_point": {
           "title": "À réapprovisionner",

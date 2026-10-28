@@ -10,5 +10,8 @@
     "stray": "Rien de cet article n’est enregistré à cet emplacement, qui n’est pas sa place : l’enregistrer ajoute ce qui est compté ici sans rien retirer ailleurs.",
     "home": "Sa place :",
     "new_lot": "Nouveau lot : {{lot}} sera ouvert à l’enregistrement."
+  },
+  "count_sheet": {
+    "asked_gone": "Le produit à compter n’existe plus : il a été supprimé ou fusionné depuis. Scannez ou saisissez le code de ce qui se trouve ici."
   }
 }

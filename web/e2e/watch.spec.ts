@@ -62,8 +62,9 @@ test('a product at its reorder point shows on « À surveiller », counted on th
     const row = page.getByTestId('watch-table').getByRole('row').filter({ hasText: reference });
     await expect(row).toHaveCount(1);
     // Read by column, so the figure checked is the point's and on hand's, not a digit of the reference (audit C2-3).
-    await expect(row.locator('[data-column="point"]')).toHaveText('1');
-    await expect(row.locator('[data-column="onHand"]')).toHaveText('0');
+    // Each in what the product is counted in.
+    await expect(row.locator('[data-column="point"]')).toHaveText(/^1 \S+$/);
+    await expect(row.locator('[data-column="onHand"]')).toHaveText(/^0 \S+$/);
     expect(await wcagViolations(page)).toEqual([]);
 
     await row.getByRole('link').first().click();

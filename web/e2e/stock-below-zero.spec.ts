@@ -144,7 +144,8 @@ test('a sale without stock puts the product « Sous zéro », and counting it th
 
     const row = page.getByTestId('watch-table').getByRole('row').filter({ hasText: reference });
     await expect(row).toHaveCount(1);
-    await expect(row.locator('[data-column="onHand"]')).toHaveText(`-${SOLD}`);
+    // The quantity in what the product is counted in.
+    await expect(row.locator('[data-column="onHand"]')).toHaveText(new RegExp(`^-${SOLD} \\S+$`));
     expect(await wcagViolations(page)).toEqual([]);
 
     // The movements say the same sale under « Sorties sans stock », until a count there follows it, linked from here.

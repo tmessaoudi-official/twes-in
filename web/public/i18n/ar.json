@@ -2664,7 +2664,10 @@
       "expired_no": "غير منتهي الصلاحية",
       "without_stock": "مبيعات دون مخزون",
       "without_stock_yes": "مبيعات دون مخزون",
-      "without_stock_no": "يغطيها المخزون"
+      "without_stock_no": "حركات أخرى"
+    },
+    "sold_without_stock": {
+      "mark": "خروج دون مخزون: للعدّ"
     }
   },
   "vendors": {

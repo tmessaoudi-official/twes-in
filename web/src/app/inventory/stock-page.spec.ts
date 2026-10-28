@@ -381,9 +381,8 @@ describe('StockPage', () => {
         ?.getAttribute('href');
     q('row-more-p1:l1')!.click();
     await settle();
-    expect(entry('row-menu-count_here-p1:l1')).toBe(
-      '/stock?operation=count&product=p1&location=l1',
-    );
+    // A count is the place's count sheet, as « À surveiller › Sous zéro » opens it: one « Compter ».
+    expect(entry('row-menu-count_here-p1:l1')).toBe('/stock/locations/l1?product=p1');
     expect(entry('row-menu-move_here-p1:l1')).toBe('/stock?operation=move&product=p1&location=l1');
     expect(entry('row-menu-loss_here-p1:l1')).toBe('/stock?operation=loss&product=p1&location=l1');
     document.body.querySelectorAll('.cdk-overlay-backdrop').forEach((backdrop) => {

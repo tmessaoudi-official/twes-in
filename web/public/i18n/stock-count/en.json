@@ -10,5 +10,8 @@
     "stray": "Nothing of this article is recorded at this location, which is not its place: recording adds what is counted here and takes nothing away elsewhere.",
     "home": "Its place:",
     "new_lot": "New lot: {{lot}} will be opened when recorded."
+  },
+  "count_sheet": {
+    "asked_gone": "The product to count no longer exists: it was deleted or merged since. Scan or type the code of what is here."
   }
 }

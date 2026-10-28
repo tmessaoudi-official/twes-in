@@ -198,6 +198,30 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         self::assertSame([$after], $this->listed('yes'), 'a count made after a sale of its second settles it; one made before does not');
     }
 
+    public function testTheFileMarksEachSaleWithoutStockAsTheListDoes(): void
+    {
+        // What the list says of a row, its file says in a column of its own.
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        $this->places();
+        $this->moved(StockMovement::receipt($this->product($this->visId), $this->place($this->siteId), '2', null, $this->at(1)));
+        $short = $this->moved(StockMovement::delivery($this->product($this->visId), $this->place($this->siteId), '5', Uuid::v7(), $this->at(2)));
+        $this->stepUp('password-1234');
+
+        $this->client->request('GET', $this->company().'/exports/stock-movements.csv');
+        self::assertResponseIsSuccessful();
+        $lines = array_values(array_filter(explode("\n", $this->client->getInternalResponse()->getContent()), static fn (string $line): bool => '' !== trim($line)));
+        $header = array_map(strval(...), str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"), escape: ''));
+        $marked = [];
+        foreach (\array_slice($lines, 1) as $line) {
+            $row = array_combine($header, str_getcsv($line, escape: ''));
+            $marked[$row['kind'].' '.$row['quantity']] = [$row['without_stock'], $row['cost_to_complete']];
+        }
+
+        ksort($marked);
+        self::assertSame(['in 2.000' => ['no', 'no'], 'out -5.000' => ['yes', 'no']], $marked);
+        self::assertSame([$short], $this->listed('yes'), 'the list says the same of it');
+    }
+
     public function testTheFilterTakesOnlyYesOrNo(): void
     {
         $this->signedIn(['company.read', 'stock.read']);

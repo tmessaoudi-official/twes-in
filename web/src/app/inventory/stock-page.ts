@@ -69,7 +69,7 @@ import type {
   StockVendorOption,
   StockSearch,
 } from './inventory-types';
-import { isStockOperation, movementAddress } from './inventory-types';
+import { countAddress, isStockOperation, movementAddress } from './inventory-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { ProductScans } from '../products/product-scans';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
@@ -120,9 +120,21 @@ export class StockPage implements OnInit {
       },
       // What is done to a product at a place, offered on the row that shows it there; with a movement open its form
       // is where that is done, so these wait until it is closed rather than replace what is typed in it.
+      // A count of the product at its place is the place's count sheet, as « À surveiller › Sous zéro » opens it: one
+      // « Compter » for one act, wherever a product's level at a place is shown.
+      {
+        id: 'count_here',
+        label: 'inventory.stock.count_here',
+        labelParams: (row: StockListRow) => ({ name: row.productName }),
+        icon: 'checklist',
+        link: (row: StockListRow) => countAddress(row.productId, row.locationId, row.lotCode).path,
+        linkQuery: (row: StockListRow) =>
+          countAddress(row.productId, row.locationId, row.lotCode).query,
+        rare: true,
+        shown: () => this.mayWrite() && this.operation() === null,
+      },
       ...(
         [
-          ['count', 'inventory.stock.count_here', 'checklist'],
           ['move', 'inventory.stock.move_from_here', 'swap_horiz'],
           ['loss', 'inventory.stock.loss_here', 'output'],
         ] as const

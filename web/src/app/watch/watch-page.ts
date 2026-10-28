@@ -15,7 +15,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
-import { subjectView } from './watch-subjects';
+import { hintKey, subjectView } from './watch-subjects';
 import { withSessionKinds } from '../shared/session/session-kinds';
 import { WATCHED_KINDS } from './watch-types';
 
@@ -44,7 +44,14 @@ export class WatchPage implements OnInit {
       const view = subjectView(subject.kind);
       return view === undefined
         ? []
-        : [{ kind: subject.kind, count: subject.count, icon: view.icon }];
+        : [
+            {
+              kind: subject.kind,
+              count: subject.count,
+              icon: view.icon,
+              hint: hintKey(subject.kind, (permission) => this.auth.hasPermission(permission)),
+            },
+          ];
     }),
   );
 

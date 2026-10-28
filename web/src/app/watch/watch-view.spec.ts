@@ -126,6 +126,34 @@ describe('watchRowView', () => {
     expect(view.cells['days']).toBe(-2);
   });
 
+  // A quantity is said in its unit, below zero as anywhere.
+  it('writes a quantity below zero with the unit the product is counted in', () => {
+    const view = watchRowView(
+      {
+        kind: 'stock.below_zero',
+        subjectId: 'p1',
+        params: { product: 'Câble', onHand: '-2.500', unit: 'mètre' },
+      },
+      0,
+      figures,
+    );
+
+    expect(String(view.cells['onHand']).replace(/\s/g, ' ')).toBe('-2,5 mètre');
+    // The unit says what the quantity is in; it is no cell of its own.
+    expect(view.cells['unit']).toBeUndefined();
+
+    const point = watchRowView(
+      {
+        kind: 'stock.reorder_point',
+        subjectId: 'p1',
+        params: { product: 'Vis', onHand: '4.000', point: '10.000', unit: 'Unité' },
+      },
+      0,
+      figures,
+    );
+    expect([point.cells['onHand'], point.cells['point']]).toEqual(['4 Unité', '10 Unité']);
+  });
+
   it('writes an unsent invitation with its address, its role as the members page names it and its days', () => {
     const say = (key: string): string => (key === 'roles.member' ? 'membre' : key);
     const shipped = watchRowView(
@@ -194,6 +222,7 @@ describe('watchRowView', () => {
           product: 'Portable',
           reference: 'ART-1',
           quantity: '10.000',
+          unit: 'Unité',
           location: 'Réserve',
           receivedOn: '2026-10-06',
         },
@@ -205,7 +234,7 @@ describe('watchRowView', () => {
     expect(view.cells).toEqual({
       product: 'Portable',
       reference: 'ART-1',
-      quantity: '10',
+      quantity: '10 Unité',
       location: 'Réserve',
       receivedOn: '06/10/2026',
     });

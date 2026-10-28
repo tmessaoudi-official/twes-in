@@ -2664,7 +2664,10 @@
       "expired_no": "Not past its use-by day",
       "without_stock": "Sold without stock",
       "without_stock_yes": "Sold without stock",
-      "without_stock_no": "Covered by the stock"
+      "without_stock_no": "Other movements"
+    },
+    "sold_without_stock": {
+      "mark": "Sold without stock: to count"
     }
   },
   "vendors": {
