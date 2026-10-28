@@ -80,12 +80,10 @@ async function soldWithoutStock(page: Page, productId: string, number: string): 
         ],
       })) as { id: string };
       await send('POST', `${base}/delivery-notes/${note.id}/validate`, null);
-      const moved = (await (
-        await fetch(`${base}/stock-movements?productId[]=${id}`, {
-          headers: { Accept: 'application/json' },
-        })
-      ).json()) as { locationId: string }[] | { member: { locationId: string }[] };
-      const [first] = Array.isArray(moved) ? moved : moved.member;
+      // The list answers JSON-LD alone: asked for plain JSON it refuses, and its refusal holds no rows.
+      const listed = await fetch(`${base}/stock-movements?productId[]=${id}`);
+      if (!listed.ok) throw new Error(`the movements list answered ${listed.status}`);
+      const [first] = ((await listed.json()) as { member: { locationId: string }[] }).member;
       if (!first) throw new Error('the note moved no stock');
       return first.locationId;
     },
