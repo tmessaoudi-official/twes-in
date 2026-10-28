@@ -16,6 +16,10 @@
         }
       },
       "stock": {
+        "below_zero": {
+          "title": "Sous zéro",
+          "hint": "Des produits dont le stock est en dessous de zéro à un emplacement : une vente a pris plus que le stock enregistré. Comptez ce qui s’y trouve vraiment pour remettre le stock juste."
+        },
         "reorder_point": {
           "title": "À réapprovisionner",
           "hint": "Des produits dont le stock est au seuil de réapprovisionnement, ou en dessous."
@@ -141,9 +145,11 @@
       "open_customer": "Ouvrir {{name}}",
       "open_document": "Ouvrir {{name}}",
       "open_note": "Ouvrir le bon de {{name}}",
-      "open_order": "Ouvrir {{name}}"
+      "open_order": "Ouvrir {{name}}",
+      "count": "Compter {{name}}"
     },
     "elsewhere": {
+      "below_zero": "Tout le stock sous zéro",
       "drafts": "Tous les brouillons",
       "open_orders": "Toutes les commandes en cours"
     },

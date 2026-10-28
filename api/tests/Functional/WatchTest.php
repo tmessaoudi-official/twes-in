@@ -175,6 +175,45 @@ final class WatchTest extends ApiTestCase
         ], $this->rows('stock.running_out'));
     }
 
+    public function testAProductBelowZeroAtAPlaceIsWatchedWithOrWithoutAReorderPointUntilItIsCounted(): void
+    {
+        // A sale is never blocked (2026-10-21 18:24), so a place goes below zero; the subject reads every product there,
+        // not only those with a reorder point (2026-10-28 00:13). VIS sold 3 with none received, GANT switched off at -1,
+        // SCIE received 5 and sold 2, so it stays off the list; a second place's +5 does not hide VIS's -3.
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        $site = $this->location();
+        $shelf = StockLocation::create($site->getEstablishment(), $site, StockLocationKind::Rack, 'E2', 'Étagère 2', new \DateTimeImmutable());
+        $this->em()->persist($shelf);
+        $this->em()->flush();
+        $this->postJson($this->company().'/stock-movements', ['operation' => 'receive', 'productId' => $this->products['VIS'], 'locationId' => $shelf->getId()->toRfc4122(), 'quantity' => '5']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        $this->deliver('VIS', '3');
+        $this->deliver('GANT', '1');
+        $this->receive('SCIE', '5');
+        $this->deliver('SCIE', '2');
+        $this->em()->getConnection()->executeStatement('UPDATE product SET is_active = false WHERE id = ?', [$this->products['GANT']]);
+
+        $this->getJson($this->watch());
+        self::assertResponseIsSuccessful();
+        self::assertSame([['stock.below_zero', 2]], $this->subjects(), 'no reorder point anywhere, and still watched');
+        $place = $site->getCode().' — '.$site->getName();
+        self::assertSame([
+            ['stock.below_zero', $this->products['VIS'], ['product' => 'Vis 6x40', 'reference' => 'VIS', 'establishment' => 'Quincaillerie', 'location' => $place, 'locationId' => $site->getId()->toRfc4122(), 'onHand' => '-3.000']],
+            ['stock.below_zero', $this->products['GANT'], ['product' => 'Gants', 'reference' => 'GANT', 'establishment' => 'Quincaillerie', 'location' => $place, 'locationId' => $site->getId()->toRfc4122(), 'onHand' => '-1.000']],
+        ], $this->rows('stock.below_zero'), 'the most short first, each at its own place');
+
+        // Counted: what is really there is what is on hand, and the place leaves the list by itself.
+        $this->postJson($this->company().'/stock-movements', ['operation' => 'count', 'productId' => $this->products['VIS'], 'locationId' => $site->getId()->toRfc4122(), 'quantity' => '2']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        self::assertSame(['GANT'], array_map(static fn (array $row): mixed => \is_array($row[2]) ? $row[2]['reference'] : null, $this->rows('stock.below_zero')));
+
+        // A role without the stock is shown none of it.
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->signedIn(['company.read', 'product.read'], 'clerk@twes.local', 'clerk');
+        $this->getJson($this->watch().'/stock.below_zero');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testAChequeOrTraiteFallenDueIsASubjectUntilItIsCashedOrComesBackUnpaid(): void
     {
         $this->signedIn(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'product.read']);
@@ -291,7 +330,7 @@ final class WatchTest extends ApiTestCase
 
         $this->getJson($this->watch());
         self::assertResponseIsSuccessful();
-        self::assertSame(['stock.lot_expiring'], array_column($this->subjects(), 0), '40 days late is under 60; 120 days unsold is under 180; 3 days of gloves is over 2; a lot in 60 days is within 90');
+        self::assertSame(['stock.below_zero', 'stock.lot_expiring'], array_column($this->subjects(), 0), '40 days late is under 60; 120 days unsold is under 180; 3 days of gloves is over 2; a lot in 60 days is within 90; VIS invoiced with none in stock is below zero, which no threshold softens');
     }
 
     public function testEachSubjectIsShownToWhoMayReadItWhileItsModuleIsOn(): void
@@ -305,8 +344,8 @@ final class WatchTest extends ApiTestCase
 
         $this->signedIn(['company.read', 'stock.read'], 'keeper@twes.local', 'keeper');
         $this->getJson($this->watch());
-        self::assertSame(['stock.lot_expiring'], array_column($this->subjects(), 0), 'no invoice.read: no late customer');
-        self::assertSame(1, $this->countBesideTheCheck(), 'and none in the count');
+        self::assertSame(['stock.below_zero', 'stock.lot_expiring'], array_column($this->subjects(), 0), 'no invoice.read: no late customer; VIS invoiced with none in stock is below zero');
+        self::assertSame(2, $this->countBesideTheCheck(), 'and none in the count');
         $this->getJson($this->watch().'/invoices.late_customer');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a subject the role may not read is not there, whoever asks by name');
         $this->getJson($this->watch().'/stock.lot_expiring');

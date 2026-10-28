@@ -338,6 +338,49 @@ describe('StockCountPage', () => {
     expect(q('stock-count-location')?.textContent).toContain('R1');
   });
 
+  it('opens on the product and place « Sous zéro » asked to count, its line waiting for what is there', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
+    fixture = TestBed.createComponent(StockCountPage);
+    fixture.componentRef.setInput('location', rack.id);
+    fixture.componentRef.setInput('product', 'p1');
+    // The product is read after the locations: one more turn for its answer.
+    await settle();
+    await settle();
+
+    expect(q('stock-count-location')?.textContent).toContain('R1');
+    expect(q('stock-count-0')?.textContent).toContain('Vis 6x40');
+    expect((q('stock-count-0-counted') as HTMLInputElement).value).toBe('');
+    expect(q('stock-count-1')).toBeNull();
+    expect(unsaved.count()).toBe(0);
+
+    type('stock-count-0-counted', '4');
+    await settle();
+    expect(unsaved.count()).toBe(1);
+    q('stock-count-record')!.click();
+    await settle();
+    expect(facade.record).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ productId: 'p1', locationId: rack.id, quantity: '4' }),
+    );
+  });
+
+  it('names the lot asked for a tracked product, and asks nothing of a product this company does not have', async () => {
+    fixture = TestBed.createComponent(StockCountPage);
+    fixture.componentRef.setInput('location', rack.id);
+    fixture.componentRef.setInput('product', 'p3');
+    fixture.componentRef.setInput('lot', 'L-7');
+    await settle();
+    await settle();
+    expect((q('stock-count-0-lot') as HTMLInputElement).value).toBe('L-7');
+
+    fixture = TestBed.createComponent(StockCountPage);
+    fixture.componentRef.setInput('location', rack.id);
+    fixture.componentRef.setInput('product', 'p9');
+    await settle();
+    await settle();
+    expect(q('stock-count-empty')).not.toBeNull();
+  });
+
   it('asks a lot of a tracked product whose label named none, and records every line as a count', async () => {
     scans.named.mockResolvedValue(scanOf('p1'));
     await scanned('3017620422003');

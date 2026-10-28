@@ -21,6 +21,25 @@ export interface WatchSubjectView {
     readonly label: string;
     readonly query?: Readonly<Record<string, string>>;
   };
+  /**
+   * The permission an action of the list needs beyond the subject's own, by action id: a reader who may see the
+   * subject but not do it is not offered it, since an action that only refuses is no action.
+   */
+  readonly actionPermissions?: Readonly<Record<string, string>>;
+}
+
+/** The list a reader is offered: the subject's, less each action whose permission the reader lacks. */
+export function permittedList(
+  view: WatchSubjectView,
+  may: (permission: string) => boolean,
+): ListDescriptor<WatchRowView> {
+  const needs = view.actionPermissions ?? {};
+  const actions = view.list.actions ?? [];
+  const kept = actions.filter((action) => {
+    const permission = needs[action.id];
+    return permission === undefined || may(permission);
+  });
+  return kept.length === actions.length ? view.list : { ...view.list, actions: kept };
 }
 
 const COLUMNS = 'watch.columns';
@@ -91,6 +110,24 @@ const OPEN_PRODUCT: RowAction<WatchRowView> = {
   icon: 'inventory_2',
   link: (view) => ['/products', view.row.subjectId],
   shown: (view) => view.row.subjectId !== null,
+};
+
+/**
+ * Count mode at the place that went below zero, with a line for the product (and its lot) waiting for what is really
+ * there: recording it sets the place to what was found, and the row leaves the subject.
+ */
+const COUNT_AT_PLACE: RowAction<WatchRowView> = {
+  id: 'count',
+  label: 'watch.actions.count',
+  labelParams: (view) => ({ name: String(view.cells['product'] ?? '') }),
+  icon: 'checklist',
+  link: (view) => ['/stock/locations', String(view.row.params['locationId'] ?? '')],
+  linkQuery: (view) => ({
+    product: view.row.subjectId ?? '',
+    ...('lot' in view.row.params ? { lot: String(view.row.params['lot']) } : {}),
+  }),
+  next: () => true,
+  shown: (view) => view.row.subjectId !== null && view.row.params['locationId'] !== undefined,
 };
 
 /** The draft itself, where its amount is checked against the bill and the expense recorded. */
@@ -259,6 +296,22 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
     list: productList('unsold-products', [
       daysColumn('unsold_days', 'unsold_days', (days) => days),
     ]),
+  },
+  // A place a sale took below zero, reorder point or not: counted there, it leaves by itself.
+  'stock.below_zero': {
+    icon: 'arrow_downward',
+    list: {
+      ...productList('below-zero', [
+        cell('lot', { width: 140 }),
+        cell('establishment'),
+        cell('location'),
+        cell('onHand', { align: 'end', width: 130, priority: 'high' }),
+      ]),
+      actions: [COUNT_AT_PLACE, OPEN_PRODUCT],
+    },
+    actionPermissions: { count: 'stock.write' },
+    // The stock tab's own « Sous zéro », which holds exactly these rows.
+    elsewhere: { link: '/stock', label: 'watch.elsewhere.below_zero', query: { negative: 'yes' } },
   },
   'stock.reorder_point': {
     icon: 'inventory_2',

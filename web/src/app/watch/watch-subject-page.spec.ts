@@ -24,7 +24,7 @@ import {
 } from '../shared/settings/settings-facade';
 import { WatchFacade } from './watch-facade';
 import { WatchSubjectPage } from './watch-subject-page';
-import type { WatchSummary } from './watch-types';
+import type { WatchRow, WatchSummary } from './watch-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -49,7 +49,11 @@ describe('WatchSubjectPage', () => {
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
-  async function open(kind: string): Promise<void> {
+  async function open(
+    kind: string,
+    rows: readonly WatchRow[] = [],
+    may: (permission: string) => boolean = () => true,
+  ): Promise<void> {
     TestBed.configureTestingModule({
       imports: [WatchSubjectPage],
       providers: [
@@ -77,7 +81,10 @@ describe('WatchSubjectPage', () => {
           provide: WatchFacade,
           useValue: {
             summary: signal(summary).asReadonly(),
-            rows: signal({ status: 'ready', page: { rows: [], total: 0 } }).asReadonly(),
+            rows: signal({
+              status: 'ready',
+              page: { rows, total: rows.length },
+            }).asReadonly(),
             load: vi.fn().mockResolvedValue(undefined),
             loadRows: vi.fn().mockResolvedValue(undefined),
           },
@@ -86,7 +93,7 @@ describe('WatchSubjectPage', () => {
           provide: AuthFacade,
           useValue: {
             me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
-            hasPermission: () => true,
+            hasPermission: may,
           },
         },
         { provide: Session, useExisting: AuthFacade },
@@ -128,6 +135,43 @@ describe('WatchSubjectPage', () => {
 
     const reloadOn = vi.mocked(TestBed.inject(LiveChanges).reloadOn);
     expect(reloadOn.mock.calls[0]![0]).toEqual(expect.arrayContaining([...SESSION_KINDS]));
+  });
+
+  // Decisions Log 2026-10-28 00:13: every product below zero at a place, with « Compter » beside it.
+  const belowZero: WatchRow = {
+    kind: 'stock.below_zero',
+    subjectId: 'p1',
+    params: {
+      product: 'Vis 6x40',
+      reference: 'VIS',
+      establishment: 'Quincaillerie',
+      location: '000 — Siège',
+      locationId: 'l1',
+      onHand: '-3.000',
+    },
+  };
+
+  it('counts a product below zero at the place it went short, and leads to the stock tab’s own « Sous zéro »', async () => {
+    await open('stock.below_zero', [belowZero]);
+
+    const count = q('row-action-count-0') ?? q('list-card-next-0');
+    expect(count?.getAttribute('href')).toBe('/stock/locations/l1?product=p1');
+    expect(q('watch-elsewhere')?.getAttribute('href')).toBe('/stock?negative=yes');
+  });
+
+  it('names the lot to count when the place is short of one lot', async () => {
+    await open('stock.below_zero', [{ ...belowZero, params: { ...belowZero.params, lot: 'L-7' } }]);
+
+    const count = q('row-action-count-0') ?? q('list-card-next-0');
+    expect(count?.getAttribute('href')).toBe('/stock/locations/l1?product=p1&lot=L-7');
+  });
+
+  it('offers no count to a reader who may see the stock but not write it', async () => {
+    await open('stock.below_zero', [belowZero], (permission) => permission !== 'stock.write');
+
+    expect(q('row-action-count-0')).toBeNull();
+    expect(q('list-card-next-0')).toBeNull();
+    expect(q('row-action-open-product-0')).not.toBeNull();
   });
 
   it('offers no way elsewhere on a subject that has none', async () => {

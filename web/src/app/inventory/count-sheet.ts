@@ -73,6 +73,27 @@ export function countLine(
   return { lines: [...lines, line], index: lines.length, before: lines };
 }
 
+/**
+ * A line a screen asked to count, « Sous zéro » on « À surveiller »: the product (and its lot) at that place, its count
+ * left empty for what is really there.
+ */
+export function askedLine(
+  product: StockProductOption,
+  lotCode: string,
+  locationId: string,
+): CountLine {
+  return {
+    productId: product.id,
+    reference: product.reference,
+    name: product.name,
+    unitDecimals: product.unitDecimals,
+    tracking: product.tracking,
+    lotCode,
+    counted: '',
+    locationId,
+  };
+}
+
 /** The address a location's label carries (slice 8b): `…/stock/locations/<id>`. */
 const LOCATION_ADDRESS =
   /\/stock\/locations\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;

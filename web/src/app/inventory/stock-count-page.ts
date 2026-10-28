@@ -37,6 +37,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { CountEffectNote } from './count-effect-note';
 import type { CountContext } from './inventory-types';
 import {
+  askedLine,
   type CountLine,
   countEffect,
   countGroups,
@@ -88,6 +89,12 @@ export class StockCountPage implements OnInit {
 
   /** The location a label's address named (`/stock/locations/:location`), counted from the start. */
   readonly location = input<string>();
+  /** A product another screen asked to count there (`?product=`), « Sous zéro »: its line opens the sheet. */
+  readonly product = input<string>();
+  /** The lot of that product the place is short of (`?lot=`). */
+  readonly lot = input<string>();
+  /** The line the address asked for, which is no unsaved work until something is typed on it. */
+  private readonly asked = signal<CountLine | null>(null);
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
@@ -146,7 +153,10 @@ export class StockCountPage implements OnInit {
 
   constructor() {
     // What is counted and not yet recorded is unsaved work: leaving the page would lose it.
-    inject(UnsavedChanges).declare(computed(() => this.lines().length));
+    // The line an address asked for is not, until something is typed on it.
+    inject(UnsavedChanges).declare(
+      computed(() => this.lines().filter((line) => line !== this.asked()).length),
+    );
     this.bus.handle((scan) => this.scanned(scan));
     effect(() => {
       const locations = this.facade.locations();
@@ -177,16 +187,29 @@ export class StockCountPage implements OnInit {
       this.destroyRef,
     );
     await this.facade.loadStockContext(companyId);
+    await this.openAsked(companyId);
   }
 
-  private readonly asked = new Set<string>();
+  /** The product the address named, at the place it named, as the sheet's first line; nothing for one not found. */
+  private async openAsked(companyId: string): Promise<void> {
+    const productId = this.product();
+    const locationId = this.location();
+    if (!productId || !locationId || !this.mayWrite()) return;
+    const [product] = await this.facade.pickProducts(companyId, { ids: [productId] });
+    if (product === undefined || product.id !== productId || this.lines().length > 0) return;
+    const line = askedLine(product, this.lot() ?? '', locationId);
+    this.asked.set(line);
+    this.lines.set([line]);
+  }
+
+  private readonly read = new Set<string>();
 
   private async readContexts(productIds: readonly string[]): Promise<void> {
     const companyId = this.company()?.id;
     // Each product is asked once until its answer is in, so a second scan of it asks nothing more.
-    const asking = productIds.filter((id) => !this.asked.has(id) || this.contexts().has(id));
+    const asking = productIds.filter((id) => !this.read.has(id) || this.contexts().has(id));
     if (!companyId || asking.length === 0) return;
-    for (const id of asking) this.asked.add(id);
+    for (const id of asking) this.read.add(id);
     const read = await this.facade.countContexts(companyId, asking);
     this.contexts.update((contexts) => {
       const next = new Map(contexts);

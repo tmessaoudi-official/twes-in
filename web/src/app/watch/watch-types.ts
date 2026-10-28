@@ -48,6 +48,7 @@ export const WATCHED_KINDS = [
   'payment_instrument',
   'customer',
   'stock',
+  'stock_location',
   'delivery_note',
   'purchase_order',
   'product',

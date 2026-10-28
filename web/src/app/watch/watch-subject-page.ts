@@ -19,7 +19,7 @@ import { DataList } from '../shared/list/data-list';
 import type { ListQuery } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
-import { subjectView } from './watch-subjects';
+import { permittedList, subjectView } from './watch-subjects';
 import { withSessionKinds } from '../shared/session/session-kinds';
 import { WATCHED_KINDS } from './watch-types';
 import { watchRowView } from './watch-view';
@@ -52,7 +52,13 @@ export class WatchSubjectPage implements OnInit {
       initialValue: '',
     },
   );
-  protected readonly view = computed(() => subjectView(this.kind()));
+  /** The subject as this reader is offered it: an action of its table they may not do is not drawn. */
+  protected readonly view = computed(() => {
+    const view = subjectView(this.kind());
+    return view === undefined
+      ? undefined
+      : { ...view, list: permittedList(view, (permission) => this.auth.hasPermission(permission)) };
+  });
   protected readonly summary = this.facade.summary;
   protected readonly state = this.facade.rows;
   /** This subject's count as the summary says it, or null while the summary is unread or the subject has left it. */

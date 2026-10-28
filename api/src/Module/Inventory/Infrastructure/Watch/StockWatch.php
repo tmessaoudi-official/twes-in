@@ -26,7 +26,8 @@ use App\Watch\Application\WatchItem;
 use Doctrine\DBAL\Connection;
 
 /**
- * What the stock puts on « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10): a product at or under its reorder
+ * What the stock puts on « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10): a product below zero at a place, which a
+ * sale without stock leaves and a count settles, a product at or under its reorder
  * point in an establishment, one whose stock at the last 30 days' pace lasts fewer days than it takes to restock, and a
  * dated lot still on hand that expires within the threshold, and one that has expired and nobody released. On-hand is the sum of the
  * movements, as everywhere in the stock; for the reorder point and the days left it leaves out the locations in quarantine, whose
@@ -34,6 +35,7 @@ use Doctrine\DBAL\Connection;
  */
 final readonly class StockWatch implements DeclaresWatch
 {
+    public const string BELOW_ZERO = 'stock.below_zero';
     public const string REORDER_POINT = 'stock.reorder_point';
     public const string RUNNING_OUT = 'stock.running_out';
     public const string LOT_EXPIRING = 'stock.lot_expiring';
@@ -62,12 +64,12 @@ final readonly class StockWatch implements DeclaresWatch
 
     public function kinds(): array
     {
-        return [self::REORDER_POINT, self::RUNNING_OUT, self::LOT_EXPIRED, self::LOT_EXPIRING];
+        return [self::BELOW_ZERO, self::REORDER_POINT, self::RUNNING_OUT, self::LOT_EXPIRED, self::LOT_EXPIRING];
     }
 
     public function changedBy(): array
     {
-        return ['stock', 'product', 'product_reorder_point', 'setting', 'delivery_note', 'invoice', 'purchase_order'];
+        return ['stock', 'stock_location', 'product', 'product_reorder_point', 'setting', 'delivery_note', 'invoice', 'purchase_order'];
     }
 
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
@@ -101,12 +103,47 @@ final readonly class StockWatch implements DeclaresWatch
     private function source(string $kind, Company $company, \DateTimeImmutable $today): array
     {
         return match ($kind) {
+            self::BELOW_ZERO => $this->belowZero($company),
             self::REORDER_POINT => $this->atReorderPoint($company),
             self::RUNNING_OUT => $this->runningOut($company, $today),
             self::LOT_EXPIRED => $this->lots($company, $today, self::LOT_EXPIRED),
             self::LOT_EXPIRING => $this->lots($company, $today, self::LOT_EXPIRING),
             default => throw new \LogicException(\sprintf('The stock watch has no %s.', $kind)),
         };
+    }
+
+    /**
+     * What a sale took below zero, reorder point or not (Decisions Log 2026-10-28 00:13): a sale is never blocked, so a
+     * place short of what left it is how a missing count shows. The rows are the stock tab's own « Sous zéro », its level
+     * per product, place and lot below zero, so the two never disagree; a product switched off is kept, its stock being
+     * as wrong as any other's. A place is what « Compter » counts, which is why the row names it and not only its
+     * establishment.
+     *
+     * @return array{string, array<string, mixed>, string, \Closure(array<string, mixed>): WatchItem}
+     */
+    private function belowZero(Company $company): array
+    {
+        return [
+            'SELECT p.id, p.name, p.reference, e.name AS establishment, l.id AS location_id, l.code AS location_code, l.name AS location, lt.code AS lot, SUM(m.quantity)::numeric(14, 3) AS on_hand
+               FROM stock_movement m
+               JOIN product p ON p.id = m.product_id
+               JOIN stock_location l ON l.id = m.location_id
+               JOIN establishment e ON e.id = l.establishment_id
+               LEFT JOIN stock_lot lt ON lt.id = m.lot_id
+              WHERE m.company_id = :company
+              GROUP BY p.id, p.name, p.reference, e.name, l.id, l.code, l.name, lt.id, lt.code
+             HAVING SUM(m.quantity) < 0',
+            ['company' => $company->getId()->toRfc4122()],
+            'on_hand, p.reference, l.code, p.id, l.id, lt.id NULLS FIRST',
+            static fn (array $row): WatchItem => new WatchItem(self::BELOW_ZERO, self::text($row['id']), [
+                'product' => self::text($row['name']),
+                'reference' => self::text($row['reference']),
+                'establishment' => self::text($row['establishment']),
+                'location' => self::text($row['location_code']).' — '.self::text($row['location']),
+                'locationId' => self::text($row['location_id']),
+                'onHand' => self::text($row['on_hand']),
+            ] + (null === $row['lot'] ? [] : ['lot' => self::text($row['lot'])])),
+        ];
     }
 
     /** @return array{string, array<string, mixed>, string, \Closure(array<string, mixed>): WatchItem} */

@@ -16,6 +16,10 @@
         }
       },
       "stock": {
+        "below_zero": {
+          "title": "Below zero",
+          "hint": "Products whose stock is below zero at a location: a sale took more than the stock recorded. Count what is really there to set the stock right."
+        },
         "reorder_point": {
           "title": "To reorder",
           "hint": "Products whose stock is at its reorder point, or under it."
@@ -141,9 +145,11 @@
       "open_customer": "Open {{name}}",
       "open_document": "Open {{name}}",
       "open_note": "Open {{name}}'s note",
-      "open_order": "Open {{name}}"
+      "open_order": "Open {{name}}",
+      "count": "Count {{name}}"
     },
     "elsewhere": {
+      "below_zero": "All stock below zero",
       "drafts": "All drafts",
       "open_orders": "All open orders"
     },
