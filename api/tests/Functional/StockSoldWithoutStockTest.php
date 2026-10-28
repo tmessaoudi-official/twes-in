@@ -15,6 +15,7 @@ use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Settings\Domain\Model\Setting;
@@ -94,6 +95,46 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         self::assertSame([$again, $gant], $this->listed('yes'));
     }
 
+    public function testASaleOfAProductWhoseStockIsNoLongerKeptIsNoneToCount(): void
+    {
+        // A count of a product whose stock is not kept is refused (`not_stocked`), so its short sale, listed, would stay
+        // for ever: off for the product, for its category, for the company, or turned into a service, it is no longer one.
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        $this->places();
+        $vis = $this->moved(StockMovement::delivery($this->product($this->visId), $this->place($this->siteId), '2', Uuid::v7(), $this->at(1)));
+        $gant = $this->moved(StockMovement::sale($this->product($this->gantId), $this->place($this->siteId), '1', Uuid::v7(), $this->at(2)));
+        self::assertSame([$gant, $vis], $this->listed('yes'), 'both, while stock is kept of them');
+
+        $connection = $this->em()->getConnection();
+        $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->visId)), 'article.stock_tracking', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        self::assertSame([$gant], $this->listed('yes'), 'off for the product');
+        self::assertContains($vis, $this->listed('no'));
+        self::assertFalse($this->flags('')[$vis], 'and its row says so');
+
+        $connection->executeStatement("UPDATE product SET kind = 'service' WHERE id = ?", [$this->gantId]);
+        self::assertSame([], $this->listed('yes'), 'turned into a service');
+        $connection->executeStatement("UPDATE product SET kind = 'goods' WHERE id = ?", [$this->gantId]);
+        self::assertSame([$gant], $this->listed('yes'), 'goods again');
+
+        $tools = ProductCategory::create($this->managed(), 'Outillage', null, new \DateTimeImmutable());
+        $this->em()->persist($tools);
+        $this->em()->flush();
+        $this->em()->persist(new Setting(SettingAddress::productCategory($this->managed(), $tools->getId()), 'article.stock_tracking', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $connection->executeStatement('UPDATE product SET category_id = ? WHERE id = ?', [$tools->getId()->toRfc4122(), $this->gantId]);
+        self::assertSame([], $this->listed('yes'), 'off for its category');
+        $connection->executeStatement('UPDATE product SET category_id = NULL WHERE id = ?', [$this->gantId]);
+
+        // Off for the company, on for the product: kept, so listed; the other product's own « off » still wins.
+        $connection->executeStatement("UPDATE setting SET value = 'false' WHERE level = 'company' AND level_id = ? AND key = 'article.stock_tracking'", [$this->company->getId()->toRfc4122()]);
+        self::assertSame([], $this->listed('yes'), 'off for the company');
+        $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->gantId)), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->flush();
+        self::assertSame([$gant], $this->listed('yes'), 'on for the product alone');
+        self::assertTrue($this->flags('')[$gant]);
+    }
+
     public function testTheFilterTakesOnlyYesOrNo(): void
     {
         $this->signedIn(['company.read', 'stock.read']);
@@ -122,6 +163,14 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         self::assertInstanceOf(Product::class, $product);
 
         return $product;
+    }
+
+    private function managed(): Company
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+
+        return $company;
     }
 
     private function place(string $id): StockLocation

@@ -50,7 +50,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 'sourceType[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => StockMovementSearchReader::SOURCES]], description: 'Several kinds of document, OR\'d; a single `sourceType=receipt` still works.', constraints: []),
                 'reason[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['lost', 'broken', 'expired', 'stolen', 'internal_use', 'sample']]], description: 'Several reasons goods were written off, OR\'d; a movement that is not a loss has none.', constraints: []),
                 'costToComplete' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['yes', 'no']], description: '`yes`: a receipt whose cost waits to be entered by someone who sees costs; `no`: every other movement.'),
-                'withoutStock' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['yes', 'no']], description: '`yes`: a sale or delivery that left its place below zero, with no count of the product there since; `no`: every other movement.'),
+                'withoutStock' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['yes', 'no']], description: '`yes`: a sale or delivery of a product whose stock is kept that left its place below zero, with no count of the product there since; `no`: every other movement.'),
                 'movedAt[from]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Moved on or after this day, in the company\'s own calendar.'),
                 'movedAt[to]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Moved on or before this day, in the company\'s own calendar.'),
                 'order[movedAt]' => new QueryParameter(schema: self::DIRECTION),
@@ -263,8 +263,9 @@ final class StockMovementResource
     public bool $costToComplete = false;
 
     /**
-     * A sale or a delivery that left its place below zero, which no count there has followed since: « Sorties sans
-     * stock » (Decisions Log 2026-10-28 00:13). Said by the list, which reads it once for its page; false elsewhere.
+     * A sale or a delivery of a product whose stock is kept that left its place below zero, which no count there has
+     * followed since: « Sorties sans stock » (Decisions Log 2026-10-28 00:13). Said by the list, which reads it once for
+     * its page; false elsewhere.
      */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]

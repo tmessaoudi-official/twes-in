@@ -73,6 +73,10 @@ final readonly class KeepStock
     ) {
     }
 
+    /**
+     * Whether stock is kept of the product. A list the database counts reads the same answer through
+     * `Infrastructure/Doctrine/StockKept`, which `StockKeptTest` holds equal to this: change one, change both.
+     */
     public function tracked(Product $product): bool
     {
         if (ProductKind::Goods !== $product->getDetails()->kind) {

@@ -34,8 +34,9 @@ use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
  * That window is the honest part: it is `SCANNED` goods, not the catalogue, so a company whose matching goods are
  * overwhelmingly untracked can be offered fewer than `PickProducts::SHOWN` — the answer is then "these, among the
  * first few hundred that match", never "these are all there are". Typing more words narrows it, which is what a
- * person does anyway. Making it exact would mean either the setting in SQL or reading every product, and reading
- * every product is precisely what this endpoint exists to stop.
+ * person does anyway. Making it exact would mean the setting in SQL, as `Doctrine/StockKept` now reads it for the lists
+ * the database must count, or reading every product, which is precisely what this endpoint exists to stop; a picker
+ * window was left as it is.
  *
  * @implements ProviderInterface<StockProductPickResource>
  */

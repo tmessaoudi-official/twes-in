@@ -14,6 +14,7 @@ use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Module\Inventory\Domain\ValueObject\StockMovementKind;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Module\Inventory\Infrastructure\Doctrine\StockKept;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
@@ -115,9 +116,10 @@ final readonly class StockWatch implements DeclaresWatch
     /**
      * What a sale took below zero, reorder point or not (Decisions Log 2026-10-28 00:13): a sale is never blocked, so a
      * place short of what left it is how a missing count shows. The rows are the stock tab's own « Sous zéro », its level
-     * per product, place and lot below zero, so the two never disagree; a product switched off is kept, its stock being
-     * as wrong as any other's. A place is what « Compter » counts, which is why the row names it and not only its
-     * establishment.
+     * per product, place and lot below zero, of the products whose stock is kept: a count of any other is refused, so
+     * its row could never leave the list, while the stock tab still shows its level as it was left. A product switched
+     * off is kept, its stock being as wrong as any other's. A place is what « Compter » counts, which is why the row
+     * names it and not only its establishment.
      *
      * @return array{string, array<string, mixed>, string, \Closure(array<string, mixed>): WatchItem}
      */
@@ -130,10 +132,10 @@ final readonly class StockWatch implements DeclaresWatch
                JOIN stock_location l ON l.id = m.location_id
                JOIN establishment e ON e.id = l.establishment_id
                LEFT JOIN stock_lot lt ON lt.id = m.lot_id
-              WHERE m.company_id = :company
+              WHERE m.company_id = :company AND '.StockKept::sql('p.kind', 'p.company_id', 'p.category_id', 'p.id', ':company_keeps').'
               GROUP BY p.id, p.name, p.reference, e.name, l.id, l.code, l.name, lt.id, lt.code
              HAVING SUM(m.quantity) < 0',
-            ['company' => $company->getId()->toRfc4122()],
+            ['company' => $company->getId()->toRfc4122(), 'company_keeps' => StockKept::byCompany($this->settings, $company) ? 'true' : 'false'],
             'on_hand, p.reference, l.code, p.id, l.id, lt.id NULLS FIRST',
             static fn (array $row): WatchItem => new WatchItem(self::BELOW_ZERO, self::text($row['id']), [
                 'product' => self::text($row['name']),

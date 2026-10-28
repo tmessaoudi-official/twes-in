@@ -18,6 +18,7 @@ use App\Module\Inventory\Domain\Model\StockLocation;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Module\Products\Domain\Model\Product;
+use App\Module\Products\Domain\Model\ProductCategory;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
@@ -212,6 +213,38 @@ final class WatchTest extends ApiTestCase
         $this->signedIn(['company.read', 'product.read'], 'clerk@twes.local', 'clerk');
         $this->getJson($this->watch().'/stock.below_zero');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testAProductWhoseStockIsNoLongerKeptLeavesWhatIsBelowZero(): void
+    {
+        // Four products sold short, then stock no longer kept of three: tracking off for the product, for its category,
+        // or the product turned into a service. A count of them is refused (`not_stocked`), so listed they would stay
+        // for ever: the subject reads only what the stock screens call stocked.
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        foreach (['VIS', 'GANT', 'COLLE', 'SCIE'] as $reference) {
+            $this->deliver($reference, '1');
+        }
+        self::assertSame(['COLLE', 'GANT', 'SCIE', 'VIS'], $this->belowZero(), 'all four, while stock is kept of them');
+
+        $now = new \DateTimeImmutable();
+        $this->em()->persist(new Setting(SettingAddress::product($this->managed(), Uuid::fromString($this->products['VIS'])), 'article.stock_tracking', false, $now));
+        $gloves = ProductCategory::create($this->managed(), 'Protection', null, $now);
+        $this->em()->persist($gloves);
+        $this->em()->flush();
+        $this->em()->persist(new Setting(SettingAddress::productCategory($this->managed(), $gloves->getId()), 'article.stock_tracking', false, $now));
+        $this->em()->flush();
+        $connection = $this->em()->getConnection();
+        $connection->executeStatement('UPDATE product SET category_id = ? WHERE id = ?', [$gloves->getId()->toRfc4122(), $this->products['GANT']]);
+        $connection->executeStatement("UPDATE product SET kind = 'service' WHERE id = ?", [$this->products['COLLE']]);
+
+        self::assertSame(['SCIE'], $this->belowZero(), 'off for the product, for its category, or a service: no longer stocked');
+        $this->getJson($this->watch());
+        self::assertSame([['stock.below_zero', 1]], $this->subjects(), 'and counted as listed');
+
+        // Off for the company, on for one product: that product's stock is kept, and only it is listed.
+        $connection->executeStatement("UPDATE setting SET value = 'false' WHERE level = 'company' AND level_id = ? AND key = 'article.stock_tracking'", [$this->company->getId()->toRfc4122()]);
+        $connection->executeStatement("UPDATE setting SET value = 'true' WHERE level = 'product' AND level_id = ? AND key = 'article.stock_tracking'", [$this->company->getId()->toRfc4122().'/'.$this->products['VIS']]);
+        self::assertSame(['VIS'], $this->belowZero(), 'kept again, it is listed again');
     }
 
     public function testAChequeOrTraiteFallenDueIsASubjectUntilItIsCashedOrComesBackUnpaid(): void
@@ -425,6 +458,12 @@ final class WatchTest extends ApiTestCase
         self::assertResponseIsSuccessful();
 
         return array_map(static fn (array $row): array => [$row['kind'] ?? null, $row['subjectId'] ?? null, $row['params'] ?? null], $this->jsonList());
+    }
+
+    /** @return list<mixed> the references below zero, as the subject orders them */
+    private function belowZero(): array
+    {
+        return array_map(static fn (array $row): mixed => \is_array($row[2]) ? $row[2]['reference'] ?? null : null, $this->rows('stock.below_zero'));
     }
 
     private function issuedInvoice(string $reference): string

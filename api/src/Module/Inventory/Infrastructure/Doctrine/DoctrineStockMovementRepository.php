@@ -25,6 +25,7 @@ use App\Module\Inventory\Domain\ValueObject\StockMovementSearch;
 use App\Module\Inventory\Domain\ValueObject\StockValue;
 use App\Module\Inventory\Domain\ValueObject\TypedCost;
 use App\Module\Products\Domain\Model\Product;
+use App\Settings\Application\ReadSetting;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
@@ -32,6 +33,7 @@ use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Shared\Infrastructure\Doctrine\SearchText;
+use App\Tenancy\Domain\Model\Company;
 use BcMath\Number;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\ParameterType;
@@ -61,16 +63,17 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
      * « Sortie sans stock » (Decisions Log 2026-10-28 00:13), of a movement `m` whose product is `p`: a sale or a delivery
      * after which its place held less than nothing, every movement of the product there summed up to it in the order they
      * moved (the second, then the id), and that no count of the product at that place followed, nor of the product it
-     * was merged into, which counts what it carried. A sale is never blocked, so this is what a count has to settle.
+     * was merged into, which counts what it carried. A sale is never blocked, so this is what a count has to settle; of
+     * a product whose stock is no longer kept, a count is refused, so its sales are none.
      */
-    private const string WITHOUT_STOCK = 'm.quantity < 0 AND m.sourceType IN (:soldSources)'
+    private const string WITHOUT_STOCK = 'm.quantity < 0 AND m.sourceType IN (:soldSources) AND STOCK_KEPT(p.kind, IDENTITY(p.company), IDENTITY(p.category), p.id, :companyKeepsStock) = true'
         .' AND (SELECT SUM(b.quantity) FROM '.StockMovement::class.' b WHERE b.company = m.company AND b.product = m.product'
         .' AND b.location = m.location AND (b.at < m.at OR (b.at = m.at AND b.id <= m.id))) < 0'
         .' AND NOT EXISTS (SELECT c.id FROM '.StockMovement::class.' c WHERE c.company = m.company AND c.location = m.location'
         .' AND (c.product = m.product OR c.product = p.mergedInto) AND c.sourceType = :countSource'
         .' AND (c.at > m.at OR (c.at = m.at AND c.id > m.id)))';
 
-    public function __construct(private EntityManagerInterface $entityManager, private MergedProducts $mergedProducts)
+    public function __construct(private EntityManagerInterface $entityManager, private MergedProducts $mergedProducts, private ReadSetting $settings)
     {
     }
 
@@ -301,7 +304,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             $query->andWhere('m.costToComplete = :costToComplete')->setParameter('costToComplete', $search->costToComplete, ParameterType::BOOLEAN);
         }
         if (null !== $search->withoutStock) {
-            self::soldWithoutStock($query->andWhere($search->withoutStock ? self::WITHOUT_STOCK : 'NOT ('.self::WITHOUT_STOCK.')'));
+            $this->soldWithoutStock($query->andWhere($search->withoutStock ? self::WITHOUT_STOCK : 'NOT ('.self::WITHOUT_STOCK.')'), $companyId);
         }
         Intervals::moments($query, 'm.at', 'moved', $search->movedOn, $search->timezone);
         $lot = TypedText::trimmed($search->lot ?? '');
@@ -330,11 +333,11 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         if ([] === $sales) {
             return [];
         }
-        $rows = self::soldWithoutStock($this->entityManager->createQueryBuilder()
+        $rows = $this->soldWithoutStock($this->entityManager->createQueryBuilder()
             ->select('m.id')->from(StockMovement::class, 'm')->join('m.product', 'p')
             ->where('m.company = :company')->setParameter('company', $companyId, 'uuid')
             ->andWhere('m.id IN (:movements)')->setParameter('movements', self::ids(array_map(static fn (StockMovement $each): Uuid => $each->getId(), array_values($sales))), ArrayParameterType::STRING)
-            ->andWhere(self::WITHOUT_STOCK))
+            ->andWhere(self::WITHOUT_STOCK), $companyId)
             ->getQuery()->getScalarResult();
 
         $found = [];
@@ -350,11 +353,14 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $found;
     }
 
-    /** The bindings WITHOUT_STOCK names. */
-    private static function soldWithoutStock(QueryBuilder $query): QueryBuilder
+    /** The bindings WITHOUT_STOCK names, the company's own word on keeping stock among them. */
+    private function soldWithoutStock(QueryBuilder $query, Uuid $companyId): QueryBuilder
     {
+        $company = $this->entityManager->find(Company::class, $companyId) ?? throw new \LogicException('The movements of a company that is not there.');
+
         return $query->setParameter('soldSources', [StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE], ArrayParameterType::STRING)
-            ->setParameter('countSource', StockMovement::SOURCE_COUNT);
+            ->setParameter('countSource', StockMovement::SOURCE_COUNT)
+            ->setParameter('companyKeepsStock', StockKept::byCompany($this->settings, $company), ParameterType::BOOLEAN);
     }
 
     /**

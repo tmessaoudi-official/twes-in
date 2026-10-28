@@ -45,6 +45,8 @@ doctrine:
                 SEARCH_TEXT: App\Shared\Infrastructure\Doctrine\SearchText
                 JSON_VALUES: App\Shared\Infrastructure\Doctrine\JsonValues
                 JSON_HAS_KEY: App\Shared\Infrastructure\Doctrine\JsonHasKey
+                # Whether stock is kept of a product, as KeepStock::tracked says it, for a list the database counts.
+                STOCK_KEPT: App\Module\Inventory\Infrastructure\Doctrine\StockKept
         filters:
             # docs/SPEC.md § 3 Tenancy: off until CompanyGuard acts for a company, lifted when the request ends.
             company:
