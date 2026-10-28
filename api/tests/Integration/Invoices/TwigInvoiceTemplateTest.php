@@ -89,7 +89,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
                 $html = $this->html(new DocumentDesign($layout, $accent), $keys, $parameters);
 
                 self::assertStringContainsString('<body class="layout-'.$layout->value.'">', $html);
-                self::assertStringContainsString('<div class="watermark">BROUILLON</div>', $html, $layout->value);
+                self::assertStringContainsString('<div class="watermark" style="font-size: '.new DocumentWatermark()->wordSizePtFor('BROUILLON').'pt">BROUILLON</div>', $html, $layout->value);
                 self::assertStringContainsString('--accent: '.$accent.';', $html);
                 foreach ($keys as $key) {
                     $text = $translator->trans($key, array_combine(
@@ -121,11 +121,11 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
 
                     self::assertStringContainsString('font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, '.$look->opacity().'); letter-spacing: .1em; }', $html, $label);
                     if (1 === $copies) {
-                        self::assertStringContainsString('<div class="watermark">BROUILLON</div>', $html, $label);
+                        self::assertStringContainsString('<div class="watermark" style="font-size: '.$look->wordSizePtFor('BROUILLON').'pt">BROUILLON</div>', $html, $label);
                         self::assertStringNotContainsString('watermark-many', $html, $label);
                         continue;
                     }
-                    self::assertStringContainsString('<div class="watermark watermark-many watermark-'.$spread->value.'">'.str_repeat('<span>BROUILLON</span>', $copies).'</div>', $html, $label);
+                    self::assertStringContainsString('<div class="watermark watermark-many watermark-'.$spread->value.'" style="font-size: '.$look->wordSizePtFor('BROUILLON').'pt">'.str_repeat('<span>BROUILLON</span>', $copies).'</div>', $html, $label);
                     self::assertStringContainsString('.watermark-many { font-size: '.$look->wordSizePt().'pt; }', $html, $label);
                     [$columns, $rows] = $look->grid();
                     if (WatermarkSpread::Spread === $spread) {
@@ -202,9 +202,9 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
     {
         self::bootKernel();
 
-        self::assertStringContainsString('<div class="watermark">ANNULÉE</div>', $this->html(new DocumentDesign(), [], [], watermark: InvoicePage::CANCELLED));
-        self::assertStringContainsString('<div class="watermark">CANCELLED</div>', $this->html(new DocumentDesign(), [], [], watermark: InvoicePage::CANCELLED, language: 'en'));
-        self::assertStringContainsString('<div class="watermark">ملغاة</div>', $this->html(new DocumentDesign(), [], [], watermark: InvoicePage::CANCELLED, language: 'ar'));
+        self::assertStringContainsString('<div class="watermark" style="font-size: '.new DocumentWatermark()->wordSizePtFor('ANNULÉE').'pt">ANNULÉE</div>', $this->html(new DocumentDesign(), [], [], watermark: InvoicePage::CANCELLED));
+        self::assertStringContainsString('<div class="watermark" style="font-size: '.new DocumentWatermark()->wordSizePtFor('CANCELLED').'pt">CANCELLED</div>', $this->html(new DocumentDesign(), [], [], watermark: InvoicePage::CANCELLED, language: 'en'));
+        self::assertStringContainsString('<div class="watermark" style="font-size: '.new DocumentWatermark()->wordSizePtFor('ملغاة').'pt">ملغاة</div>', $this->html(new DocumentDesign(), [], [], watermark: InvoicePage::CANCELLED, language: 'ar'));
     }
 
     /**

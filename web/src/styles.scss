@@ -526,6 +526,17 @@ textarea {
   unicode-bidi: plaintext;
 }
 
+// So a field's unit or sign keeps a space from its value in either direction: Material gives a text suffix or prefix no
+// room of its own, and a value read its own way starts at its first letter's side, which in an Arabic screen is the
+// suffix's (« Unité10 » in the receive dialog). On the suffix's inline start and the prefix's inline end, so the space
+// sits between the two whichever way the screen reads.
+.mat-mdc-form-field .mat-mdc-form-field-text-suffix {
+  padding-inline-start: 0.5em;
+}
+.mat-mdc-form-field .mat-mdc-form-field-text-prefix {
+  padding-inline-end: 0.5em;
+}
+
 // Material Symbols (Apache-2.0, the `material-symbols` package): outlined, regular weight, unfilled. The font is the
 // package's, cut to the icons src/app/shared/icons/icons.ts declares (scripts/subset-icons.mjs, run before a build);
 // the rules are the package's outlined.css, which is no longer loaded. `block`: a name never shows as letters while

@@ -300,3 +300,39 @@ test('a person reading Arabic prints the company documents in their own language
     await removed(page, 'customer', customer);
   }
 });
+
+// A field's unit sits beside its value with a space between them whichever way the screen reads: Material gives a text
+// suffix no room of its own, and a value read its own way starts on the suffix's side in Arabic, so the receive
+// dialog read « Unité10 ». Measured on the logo's width and its « mm », on a phone, in Arabic and in French.
+test('a unit beside a typed value keeps its space in Arabic and in French', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const spaceBeside = async (): Promise<{ facing: number; overlap: boolean }> => {
+    const input = page.getByTestId('documents-logo-width');
+    await expect(input).toBeVisible();
+    return input.evaluate((field) => {
+      const suffix = field
+        .closest('.mat-mdc-form-field')
+        ?.querySelector<HTMLElement>('.mat-mdc-form-field-text-suffix');
+      if (!suffix) throw new Error('the logo width has no unit beside it');
+      const rtl = getComputedStyle(suffix).direction === 'rtl';
+      const style = getComputedStyle(suffix);
+      const [a, b] = [field.getBoundingClientRect(), suffix.getBoundingClientRect()];
+      return {
+        facing: Number.parseFloat(rtl ? style.paddingRight : style.paddingLeft),
+        overlap: a.left < b.right - 0.5 && b.left < a.right - 0.5,
+      };
+    });
+  };
+  await page.goto('/company/documents');
+  expect(await spaceBeside(), 'in French').toEqual({ facing: expect.any(Number), overlap: false });
+  expect((await spaceBeside()).facing, 'in French').toBeGreaterThanOrEqual(4);
+
+  await chooseArabic(page);
+  await page.goto('/company/documents');
+  await page.screenshot({ path: testInfo.outputPath('unit-rtl.png'), fullPage: false });
+  const arabic = await spaceBeside();
+  expect(arabic.overlap, 'in Arabic').toBe(false);
+  expect(arabic.facing, 'in Arabic').toBeGreaterThanOrEqual(4);
+});

@@ -89,26 +89,53 @@ final class DocumentWatermarkTest extends TestCase
      */
     public function testNoCopyRunsIntoAnotherWhateverTheLanguage(): void
     {
-        $letters = $this->longestWord();
-        self::assertGreaterThanOrEqual(9, $letters, 'the words were read');
+        $words = $this->words();
+        self::assertGreaterThanOrEqual(9, max([0, ...array_map(mb_strlen(...), $words)]), 'the words were read');
+        // A company's own wording (« Textes ») is measured the same way, however long.
+        $words[] = 'DOCUMENT NON CONTRACTUEL';
         [$cos, $sin] = [cos(deg2rad(30)), sin(deg2rad(30))];
 
-        foreach (DocumentWatermark::COPIES as $copies) {
-            $size = new DocumentWatermark(WatermarkIntensity::Normal, $copies)->wordSizePt() * self::POINT_MM;
-            [$word, $line] = [$letters * self::LETTER_EM * $size, self::LINE_EM * $size];
+        foreach ($words as $text) {
+            foreach (DocumentWatermark::COPIES as $copies) {
+                foreach (WatermarkSpread::cases() as $spread) {
+                    $look = new DocumentWatermark(WatermarkIntensity::Normal, $copies, $spread);
+                    $size = $look->wordSizePtFor($text) * self::POINT_MM;
+                    [$word, $line] = [mb_strlen($text) * self::LETTER_EM * $size, self::LINE_EM * $size];
+                    $label = "« $text » $copies {$spread->value}";
+                    self::assertLessThanOrEqual($look->wordSizePt(), $look->wordSizePtFor($text), "$label: never larger than its count's size");
 
-            // A single copy is the look documents always printed in, whatever the spread: it has no cell of its own.
-            if ($copies > 1) {
-                [$columns, $rows] = new DocumentWatermark(WatermarkIntensity::Normal, $copies, WatermarkSpread::Spread)->grid();
-                self::assertLessThanOrEqual(self::PAGE_WIDTH_MM / $columns, $word * $cos + $line * $sin, "$copies spread: across its cell");
-                self::assertLessThanOrEqual(self::PAGE_HEIGHT_MM / $rows, $word * $sin + $line * $cos, "$copies spread: down its cell");
+                    // Each copy, turned as it prints, stays across and down its page, or its own cell when spread.
+                    [$columns, $rows] = WatermarkSpread::Spread === $spread ? $look->grid() : [1, 1];
+                    self::assertLessThanOrEqual(self::PAGE_WIDTH_MM / $columns, $word * $cos + $line * $sin, "$label: across");
+                    self::assertLessThanOrEqual(self::PAGE_HEIGHT_MM / $rows, $word * $sin + $line * $cos, "$label: down");
+
+                    // Grouped, the copies are lines of one block turned on the diagonal: as wide as the word, as high as the lines.
+                    $block = $copies * DocumentWatermark::GROUPED_LINE_HEIGHT * $size;
+                    self::assertGreaterThan($line, DocumentWatermark::GROUPED_LINE_HEIGHT * $size, 'grouped lines leave room between them');
+                    self::assertLessThanOrEqual(hypot(self::PAGE_WIDTH_MM, self::PAGE_HEIGHT_MM), hypot($word, $block), "$label: on the page");
+                }
             }
-
-            // Grouped, the copies are lines of one block turned on the diagonal: as wide as the word, as high as the lines.
-            $block = $copies * DocumentWatermark::GROUPED_LINE_HEIGHT * $size;
-            self::assertGreaterThan($line, DocumentWatermark::GROUPED_LINE_HEIGHT * $size, 'grouped lines leave room between them');
-            self::assertLessThanOrEqual(hypot(self::PAGE_WIDTH_MM, self::PAGE_HEIGHT_MM), hypot($word, $block), "$copies grouped: on the page");
         }
+    }
+
+    /** A short word keeps the size documents always printed it in; « DUPLICATA », which ran off the page, prints smaller. */
+    public function testOnlyAWordTooLongForThePageShrinks(): void
+    {
+        $once = new DocumentWatermark();
+
+        self::assertSame(96, $once->wordSizePtFor('COPIE'));
+        self::assertSame(96, $once->wordSizePtFor('نظير'));
+        self::assertLessThan(96, $once->wordSizePtFor('DUPLICATA'));
+        self::assertLessThan($once->wordSizePtFor('DUPLICATA'), $once->wordSizePtFor('DOCUMENT NON CONTRACTUEL'));
+        self::assertSame(22, new DocumentWatermark(WatermarkIntensity::Normal, 12, WatermarkSpread::Spread)->wordSizePtFor('COPIE'));
+    }
+
+    /** The page the value object fits the word to is the page the renderer prints on. */
+    public function testItFitsTheWordToThePageTheTestsMeasure(): void
+    {
+        self::assertEqualsWithDelta(self::PAGE_WIDTH_MM / self::POINT_MM, DocumentWatermark::PAGE_WIDTH_PT, 0.001);
+        self::assertEqualsWithDelta(self::PAGE_HEIGHT_MM / self::POINT_MM, DocumentWatermark::PAGE_HEIGHT_PT, 0.001);
+        self::assertSame([self::LETTER_EM, self::LINE_EM, 30], [DocumentWatermark::LETTER_EM, DocumentWatermark::LINE_EM, DocumentWatermark::TURN_DEGREES]);
     }
 
     public function testWhatADocumentKeptIsReadBackAndAnOlderOneReadsAsTheLookItPrintedIn(): void
@@ -122,20 +149,24 @@ final class DocumentWatermarkTest extends TestCase
         self::assertEquals(new DocumentWatermark(), DocumentDesign::fromArray(['watermark' => ['intensity' => 'loud', 'copies' => 5, 'spread' => 7]])->watermark);
     }
 
-    /** The most letters any state is printed in, in any language a document prints. */
-    private function longestWord(): int
+    /**
+     * Every state's word in every language a document prints.
+     *
+     * @return list<string>
+     */
+    private function words(): array
     {
-        $longest = 0;
+        $words = [];
         foreach (glob(\dirname(__DIR__, 4).'/translations/pdf.*.yaml') ?: [] as $file) {
             $texts = Yaml::parseFile($file);
             self::assertIsArray($texts);
             self::assertIsArray($texts['watermark'] ?? null, $file);
             foreach ($texts['watermark'] as $word) {
                 self::assertIsString($word);
-                $longest = max($longest, mb_strlen($word));
+                $words[] = $word;
             }
         }
 
-        return $longest;
+        return $words;
     }
 }

@@ -648,11 +648,11 @@ final class InvoicesTest extends ApiTestCase
         $this->client->request('GET', $preview.'?watermarkIntensity=marked&watermarkCopies=6&watermarkSpread=spread');
         $tried = (string) $this->client->getResponse()->getContent();
         self::assertStringContainsString('color: rgba(207, 34, 46, .22);', $tried);
-        self::assertStringContainsString('<div class="watermark watermark-many watermark-spread">'.str_repeat('<span>APERÇU</span>', 6).'</div>', $tried);
+        self::assertStringContainsString('<div class="watermark watermark-many watermark-spread" style="font-size: 32pt">'.str_repeat('<span>APERÇU</span>', 6).'</div>', $tried);
         $this->sendJson('PUT', $this->companyPath().'/settings/document.watermark_copies', ['level' => 'company', 'value' => '3']);
         self::assertResponseIsSuccessful();
         $this->client->request('GET', $preview);
-        self::assertStringContainsString('<div class="watermark watermark-many watermark-grouped">'.str_repeat('<span>APERÇU</span>', 3).'</div>', (string) $this->client->getResponse()->getContent());
+        self::assertStringContainsString('<div class="watermark watermark-many watermark-grouped" style="font-size: 48pt">'.str_repeat('<span>APERÇU</span>', 3).'</div>', (string) $this->client->getResponse()->getContent());
 
         foreach (['?layout=fancy', '?accent=red', '?accent=%231f6feb;}body{display:none', '?logoWidth=9', '?logoWidth=106', '?logoHeight=71', '?logoWidth=4.5', '?logoHeight=big', '?logoProportions=maybe', '?watermarkIntensity=loud', '?watermarkCopies=2', '?watermarkCopies=three', '?watermarkSpread=everywhere'] as $refused) {
             $this->client->request('GET', $preview.$refused);

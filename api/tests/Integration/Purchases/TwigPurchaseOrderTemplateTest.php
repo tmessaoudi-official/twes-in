@@ -19,6 +19,7 @@ use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderHeader;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderLineDetails;
 use App\Module\Purchases\Domain\ValueObject\VendorSnapshot;
+use App\Shared\Domain\ValueObject\DocumentWatermark;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
@@ -93,8 +94,8 @@ final class TwigPurchaseOrderTemplateTest extends KernelTestCase
     /** The Arabic title, « طلبية », is feminine, and the stamp across it agrees. */
     public function testACancelledOrderIsStampedInAgreementWithItsArabicTitle(): void
     {
-        self::assertStringContainsString('<div class="watermark">ملغاة</div>', $this->html(PurchaseOrderPage::CANCELLED, 'ar'));
-        self::assertStringContainsString('<div class="watermark">ANNULÉ</div>', $this->html(PurchaseOrderPage::CANCELLED, 'fr'));
+        self::assertStringContainsString('<div class="watermark" style="font-size: '.new DocumentWatermark()->wordSizePtFor('ملغاة').'pt">ملغاة</div>', $this->html(PurchaseOrderPage::CANCELLED, 'ar'));
+        self::assertStringContainsString('<div class="watermark" style="font-size: '.new DocumentWatermark()->wordSizePtFor('ANNULÉ').'pt">ANNULÉ</div>', $this->html(PurchaseOrderPage::CANCELLED, 'fr'));
     }
 
     public function testInArabicThePageReadsRightToLeftAndEachTypedValueReadsItsOwnWay(): void

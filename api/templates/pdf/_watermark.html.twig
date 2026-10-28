@@ -1,8 +1,10 @@
 {#- A document's state across its pages, in the look the company gave it (DocumentWatermark): one copy is the markup
-    documents always printed; several are one word each, sized and placed by _document.css.twig, which no layout may
-    touch. `text` is the word, already in the document's language; `look` is a DocumentWatermark. -#}
+    documents always printed; several are one word each, placed by _document.css.twig, which no layout may touch. The
+    size is the word's own (DocumentWatermark::wordSizePtFor), so a long one stays on the page in every language.
+    `text` is the word, already in the document's language; `look` is a DocumentWatermark. -#}
+{%- set size = 'font-size: ' ~ look.wordSizePtFor(text) ~ 'pt' -%}
 {%- if look.copies == 1 -%}
-<div class="watermark">{{ text }}</div>
+<div class="watermark" style="{{ size }}">{{ text }}</div>
 {%- else -%}
-<div class="watermark watermark-many {{ 'watermark-' ~ look.spread.value }}">{% for copy in 1..look.copies %}<span>{{ text }}</span>{% endfor %}</div>
+<div class="watermark watermark-many {{ 'watermark-' ~ look.spread.value }}" style="{{ size }}">{% for copy in 1..look.copies %}<span>{{ text }}</span>{% endfor %}</div>
 {%- endif -%}
