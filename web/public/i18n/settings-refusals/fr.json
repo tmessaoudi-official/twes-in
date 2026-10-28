@@ -13,8 +13,8 @@
       "invalid_reminder_stages": "Jusqu’à cinq nombres de jours de retard, de trois chiffres au plus, séparés par des virgules (exemple : 7, 15, 30).",
       "invalid_reference_format": "Lettres sans accent, chiffres et . _ / - autour d’un seul {SEQ} ou {SEQ:n}, n de 1 à 12 (exemple : ART-{SEQ:5}).",
       "invalid_unit_code": "Un code d’unité compte 2 ou 3 lettres majuscules ou chiffres (exemple : C62 pour la pièce, KGM pour le kilogramme).",
-      "invalid_whatsapp": "Un numéro WhatsApp s’écrit au format international : + puis l’indicatif du pays et le numéro, en chiffres et espaces seulement (exemple : +216 20 123 456).",
-      "invalid_phone_digits": "Un téléphone compte de 6 à 15 chiffres, avec + devant l’indicatif du pays s’il en a un (exemple : +216 71 900 868).",
+      "invalid_whatsapp": "Un numéro WhatsApp s’écrit au format international : + puis l’indicatif du pays et le numéro, en chiffres et espaces seulement (exemple : +216 20 123 456).",
+      "invalid_phone_digits": "Un téléphone compte de 6 à 15 chiffres, avec + devant l’indicatif du pays s’il en a un (exemple : +216 71 900 868).",
       "invalid_status_url": "L’adresse de la page d’état commence par https:// puis le nom du site (exemple : https://status.exemple.tn)."
     }
   }

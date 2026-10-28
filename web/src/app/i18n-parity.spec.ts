@@ -275,16 +275,23 @@ describe('translation files', () => {
   });
 
   // In a line read right to left a sign before a figure is a neutral character, sent to the figure's right
-  // (« 850,050+ ») unless a left-to-right mark stands before it, as the language's own number format writes it; and a
-  // plain space between digits splits a figure in two, whose halves then swap places, where a narrow no-break space
-  // keeps it whole.
-  it('keeps a figure whole and its sign on its left in a language read right to left', () => {
+  // (« 850,050+ ») unless a left-to-right mark stands before it, as the language's own number format writes it.
+  it('keeps a sign on the left of its figure in a language read right to left', () => {
     const loose = WRITTEN.filter((lang) => directionOf(lang) === 'rtl').flatMap((lang) =>
       entriesOf(load(lang))
-        .filter(
-          ([, text]) =>
-            /(?:^|\s)[+−-](?=\d|\{\{)/.test(text.replace(/\S[+−-]/g, '')) || /\d \d/.test(text),
-        )
+        .filter(([, text]) => /(?:^|\s)[+−-](?=\d|\{\{)/.test(text.replace(/\S[+−-]/g, '')))
+        .map(([key]) => `${lang}:${key}`),
+    );
+    expect(loose).toEqual([]);
+  });
+
+  // A plain space between two digits is a place a line may break, so « +216 20 123 456 » ended one line of a refusal on
+  // « +216 » and began the next on the number (1280 px); right to left, its halves also swap places. A figure's groups
+  // are held together by a narrow no-break space, in every language.
+  it('keeps a figure whole in every language', () => {
+    const loose = WRITTEN.flatMap((lang) =>
+      entriesOf(load(lang))
+        .filter(([, text]) => /\d \d/.test(text))
         .map(([key]) => `${lang}:${key}`),
     );
     expect(loose).toEqual([]);

@@ -13,8 +13,8 @@
       "invalid_reminder_stages": "Up to five numbers of days late, three digits at most each, separated by commas (example: 7, 15, 30).",
       "invalid_reference_format": "Unaccented letters, digits and . _ / - around exactly one {SEQ} or {SEQ:n}, n from 1 to 12 (example: ART-{SEQ:5}).",
       "invalid_unit_code": "A unit code has 2 or 3 capital letters or digits (example: C62 for a piece, KGM for a kilogram).",
-      "invalid_whatsapp": "A WhatsApp number is written in international form: + then the country code and the number, in digits and spaces only (example: +216 20 123 456).",
-      "invalid_phone_digits": "A phone number holds 6 to 15 digits, with + before the country code if it has one (example: +216 71 900 868).",
+      "invalid_whatsapp": "A WhatsApp number is written in international form: + then the country code and the number, in digits and spaces only (example: +216 20 123 456).",
+      "invalid_phone_digits": "A phone number holds 6 to 15 digits, with + before the country code if it has one (example: +216 71 900 868).",
       "invalid_status_url": "The status page's address starts with https:// then the site's name (example: https://status.example.com)."
     }
   }
