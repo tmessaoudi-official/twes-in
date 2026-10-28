@@ -686,7 +686,7 @@ describe('PlatformPage', () => {
     // The question just answered « keep » may still be closing: the note is the last one drawn, as its button is.
     const notes = document.querySelectorAll<HTMLTextAreaElement>('[data-testid="confirm-note"]');
     const note = notes[notes.length - 1];
-    expect(note.maxLength).toBe(500);
+    expect(note.closest('mat-form-field')?.textContent).toContain('0 / 500');
     note.value = 'Matricule introuvable';
     note.dispatchEvent(new Event('input'));
     fixture.detectChanges();

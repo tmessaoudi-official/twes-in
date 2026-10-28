@@ -67,6 +67,8 @@
         </a>
       }
     </section>
+  } @else if (asksContact()) {
+    <p data-testid="awaiting-no-contact">{{ 'auth.awaiting.no_contact' | translate }}</p>
   }
 
   @if (elsewhere().length > 0) {

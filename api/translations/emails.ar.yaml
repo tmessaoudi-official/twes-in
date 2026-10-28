@@ -52,7 +52,7 @@ company_decision:
     reason: 'السبب:'
     no_reason: 'اتخذ فريق %product% هذا القرار دون ذكر السبب.'
     contact: 'لمعرفة المزيد، تواصل مع فريق %product%:'
-    reply: 'لمعرفة المزيد، ردّ على هذه الرسالة.'
+    no_channel: 'لم يحدّد فريق %product% بعدُ طريقة للتواصل معه، ولا يمكن الردّ على هذه الرسالة.'
     channels:
         phone: 'الهاتف:'
         whatsapp: 'واتساب:'

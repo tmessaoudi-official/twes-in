@@ -74,13 +74,14 @@
           #reasonField
           data-testid="support-access-reason"
         ></textarea>
+        <!-- Material shows a field's errors in place of its hints, so the count goes with the error. -->
         @if (reasonTooLong()) {
-          <mat-error data-testid="support-access-reason-error">{{
-            'import.rejections.invalid_text' | translate: { max: current.reasonMax }
-          }}</mat-error>
-        } @else {
-          <mat-hint>{{ 'support_access.reason_hint' | translate }}</mat-hint>
+          <mat-error data-testid="support-access-reason-error"
+            >{{ 'form.errors.max_length' | translate: { max: current.reasonMax } }}
+            <bdi>{{ reasonLength() }} / {{ current.reasonMax }}</bdi></mat-error
+          >
         }
+        <mat-hint>{{ 'support_access.reason_hint' | translate }}</mat-hint>
         <mat-hint align="end" data-testid="support-access-reason-count"
           ><bdi>{{ reasonLength() }} / {{ current.reasonMax }}</bdi></mat-hint
         >

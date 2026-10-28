@@ -50,7 +50,7 @@ company_decision:
     reason: 'Reason:'
     no_reason: 'The %product% team decided this without giving a reason.'
     contact: 'To learn more, contact the %product% team:'
-    reply: 'To learn more, reply to this mail.'
+    no_channel: 'The %product% team has not said yet how to reach it, and this mail cannot be answered.'
     channels:
         phone: 'Phone:'
         whatsapp: 'WhatsApp:'

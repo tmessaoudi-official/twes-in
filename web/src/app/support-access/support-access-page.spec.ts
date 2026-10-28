@@ -190,6 +190,8 @@ describe('SupportAccessPage', () => {
     field.dispatchEvent(new Event('input'));
     await settle();
     expect(q('support-access-reason-error')).not.toBeNull();
+    // Material shows the error in place of the hints: the count the person must cut to goes with it.
+    expect(q('support-access-reason-error')?.textContent).toContain('501 / 500');
     expect(field.closest('mat-form-field')?.classList.contains('mat-form-field-invalid')).toBe(
       true,
     );

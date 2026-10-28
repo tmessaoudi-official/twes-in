@@ -40,6 +40,7 @@ class StaticLoader implements TranslateLoader {
           ask_owner: 'Seul le propriétaire peut déclarer le règlement.',
           elsewhere: 'Vos autres entreprises',
           sign_out: 'Se déconnecter',
+          no_contact: 'L’équipe de la plateforme n’a pas encore indiqué comment la joindre.',
         },
       },
       account: { title: 'Mon compte' },
@@ -302,12 +303,30 @@ describe('AwaitingApprovalPage', () => {
     },
   );
 
-  it('names no way to reach the platform when none was given', async () => {
-    me.set({ ...state('suspended'), support: { phone: null, whatsapp: null, email: null } });
+  it.each(['suspended', 'locked'])(
+    'says the platform named no way to reach it, rather than only asking to contact it (%s)',
+    async (held) => {
+      // « Contactez l’équipe » with nothing under it left the owner looking for a way that does not exist.
+      me.set({
+        ...(held === 'locked' ? state('active', 'locked') : state(held)),
+        support: { phone: null, whatsapp: null, email: null },
+      });
+
+      const { query } = await render();
+
+      expect(query('awaiting-contact')).toBeNull();
+      expect(query('awaiting-no-contact')?.textContent).toContain(
+        'n’a pas encore indiqué comment la joindre',
+      );
+    },
+  );
+
+  it('says nothing of a way to reach the platform to a company only waiting for approval', async () => {
+    me.set({ ...state('pending'), support: { phone: null, whatsapp: null, email: null } });
 
     const { query } = await render();
 
-    expect(query('awaiting-contact')).toBeNull();
+    expect(query('awaiting-no-contact')).toBeNull();
   });
 
   it('offers the person’s other companies, and moves the session to the one chosen', async () => {

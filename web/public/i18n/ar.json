@@ -85,7 +85,8 @@
       "closed_kept": "تُحفظ وثائقها حتى {{day}}.",
       "reopen_until": "يمكنك إعادة فتحها حتى {{moment}}.",
       "reopen": "إعادة فتح الشركة",
-      "reopen_ask_owner": "يمكن لمالكها إعادة فتحها حتى {{moment}}."
+      "reopen_ask_owner": "يمكن لمالكها إعادة فتحها حتى {{moment}}.",
+      "no_contact": "لم يحدّد فريق المنصّة بعدُ طريقة للتواصل معه."
     },
     "scene": {
       "invoice_number": "ف-2026-0142",
@@ -619,7 +620,7 @@
       "failed": "لم يفتح المتصفح التثبيت: استعمل قائمته الخاصة."
     },
     "platform_legal": "الصفحات القانونية",
-    "platform_texts": "نصوص المنصّة"
+    "platform_texts": "نصوص التثبيت"
   },
   "notifications": {
     "bell": "الإشعارات، {count, plural, zero {لا شيء غير مقروء} one {واحد غير مقروء} two {اثنان غير مقروءين} few {{{count}} غير مقروءة} many {{{count}} غير مقروء} other {{{count}} غير مقروء}}",

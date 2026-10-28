@@ -78,9 +78,14 @@ final readonly class SymfonyCompanyApprovalMailer implements CompanyApprovalMail
 
     private function closed(string $kind, CompanyDecisionMail $mail): void
     {
+        $support = $this->support();
+        $message = (new TemplatedEmail())->from($this->sender);
+        // The sender is nobody's inbox: a reply goes where the operators read their mail, when they named one.
+        if (isset($support['email'])) {
+            $message->replyTo($support['email']);
+        }
         $this->mailer->send(
-            (new TemplatedEmail())
-                ->from($this->sender)
+            $message
                 ->to($mail->to)
                 ->subject($this->translator->trans($kind.'.subject', ['%company%' => $mail->companyName, '%product%' => $this->productName], 'emails', $mail->locale))
                 ->htmlTemplate('email/company_closed_by_operator.html.twig')
@@ -90,7 +95,7 @@ final readonly class SymfonyCompanyApprovalMailer implements CompanyApprovalMail
                     'companyName' => $mail->companyName,
                     'reason' => $mail->reason,
                     'productName' => $this->productName,
-                    'support' => $this->support(),
+                    'support' => $support,
                 ]),
         );
     }

@@ -51,7 +51,7 @@ company_decision:
     reason: 'Motif :'
     no_reason: 'L’équipe %product% l’a décidé sans en préciser le motif.'
     contact: 'Pour en savoir plus, contactez l’équipe %product% :'
-    reply: 'Pour en savoir plus, répondez à ce courrier.'
+    no_channel: 'L’équipe %product% n’a pas encore indiqué comment la joindre, et ce courrier ne peut pas recevoir de réponse.'
     channels:
         phone: 'Téléphone :'
         whatsapp: 'WhatsApp :'

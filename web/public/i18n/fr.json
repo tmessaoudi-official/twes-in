@@ -85,7 +85,8 @@
       "closed_kept": "Ses documents sont conservés jusqu’au {{day}}.",
       "reopen_until": "Vous pouvez la rouvrir jusqu’au {{moment}}.",
       "reopen": "Rouvrir l’entreprise",
-      "reopen_ask_owner": "Son propriétaire peut la rouvrir jusqu’au {{moment}}."
+      "reopen_ask_owner": "Son propriétaire peut la rouvrir jusqu’au {{moment}}.",
+      "no_contact": "L’équipe de la plateforme n’a pas encore indiqué comment la joindre."
     },
     "scene": {
       "invoice_number": "FA-2026-0142",

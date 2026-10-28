@@ -19,7 +19,7 @@
           {% endfor %}
         </ul>
       {% else %}
-        <p>{{ 'company_decision.reply'|trans({'%product%': productName}, 'emails') }}</p>
+        <p>{{ 'company_decision.no_channel'|trans({'%product%': productName}, 'emails') }}</p>
       {% endif %}
       <p dir="auto" style="font-size: 12px; color: #888;">{{ productName }}</p>
     </div>

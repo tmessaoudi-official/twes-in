@@ -64,7 +64,7 @@
         "restore_message": "{{name}} opens to its members again, and its owners are told by mail. “Suspend” closes it again.",
         "reject": "Reject",
         "reject_title": "Reject this company?",
-        "reject_message": "{{name}} stays closed to its members, and its owners receive a mail with the reason, if one is given, and the support contact. “Restore access” opens it later.",
+        "reject_message": "{{name}} stays closed to its members, and its owners receive a mail with the reason, if one is given, and the support contact. “Approve” opens it later.",
         "suspend": "Suspend",
         "suspend_title": "Suspend this company?",
         "suspend_message": "{{name}}’s members lose access right away, and its owners receive a mail with the reason, if one is given, and the support contact. Its data stays intact, and “Restore access” opens it again.",
@@ -88,7 +88,7 @@
       "inactive": "Deactivated",
       "operator": "Operator",
       "end_sessions": "End sessions",
-      "end_other_sessions": "End the other sessions",
+      "end_other_sessions": "Sign out of all the other devices",
       "deactivate": "Deactivate",
       "reactivate": "Reactivate",
       "states": {

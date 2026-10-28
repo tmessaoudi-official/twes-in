@@ -115,6 +115,53 @@ final class CompanyApprovalTest extends ApiTestCase
         self::assertSame('Matricule introuvable au registre', $signedIn['suspensionReason']);
     }
 
+    /** A reply to the closing mail reaches the support address the platform names, never the sender nobody reads. */
+    public function testAReplyToTheClosingMailReachesTheSupportAddress(): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::platform(), 'support.email', 'aide@twes.test', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $company = $this->pendingCompany('Nouvelle Société', 'nadia@example.test');
+        $this->signedInAsOperator();
+
+        $this->postJson($this->pathOf($company, 'reject'), []);
+
+        self::assertResponseIsSuccessful();
+        $message = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $message);
+        self::assertSame(['aide@twes.test'], array_map(static fn ($address) => $address->getAddress(), $message->getReplyTo()));
+    }
+
+    /** With no way to reach the operators set, the mail says so instead of asking for a reply nobody reads. */
+    public function testWithNoSupportChannelTheClosingMailSaysThereIsNoneYet(): void
+    {
+        $company = $this->pendingCompany('Nouvelle Société', 'nadia@example.test');
+        $this->signedInAsOperator();
+
+        $this->postJson($this->pathOf($company, 'reject'), []);
+
+        self::assertResponseIsSuccessful();
+        $message = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $message);
+        self::assertSame([], $message->getReplyTo());
+        $mail = (string) $message->getHtmlBody();
+        self::assertStringContainsString('n’a pas encore indiqué comment la joindre', $mail);
+        self::assertStringNotContainsString('répondez', $mail);
+    }
+
+    /** An operator's reason is written as text: markup typed in it reaches the owners' mail as characters, never as a link. */
+    public function testAReasonTypedWithMarkupReachesTheMailAsText(): void
+    {
+        $company = $this->pendingCompany('Nouvelle Société', 'nadia@example.test');
+        $this->signedInAsOperator();
+
+        $this->postJson($this->pathOf($company, 'reject'), ['reason' => 'Voir <a href="https://evil.test">ici</a>']);
+
+        self::assertResponseIsSuccessful();
+        $mail = $this->lastMailTo('nadia@example.test');
+        self::assertStringContainsString('Voir &lt;a href=&quot;https://evil.test&quot;&gt;ici&lt;/a&gt;</bdi>', $mail);
+        self::assertStringNotContainsString('<a href="https://evil.test"', $mail);
+    }
+
     public function testSuspendingAnOpenCompanyClosesItAndTellsItsOwnersEvenWithoutAReason(): void
     {
         $company = $this->createCompany('Acme');

@@ -43,6 +43,11 @@ export class AwaitingApprovalPage {
     return company?.status === 'active' && company.role === 'owner';
   });
   protected readonly channels = computed(() => supportChannels(this.auth.me()?.support));
+  /** A suspended or locked company is told to contact the operators; with no way named, it is told that instead. */
+  protected readonly asksContact = computed(() => {
+    const company = this.company();
+    return company !== null && (company.status === 'suspended' || company.access === 'locked');
+  });
   protected readonly closingDown = signal(false);
   protected readonly elsewhere = computed(() => {
     const current = this.company()?.id;

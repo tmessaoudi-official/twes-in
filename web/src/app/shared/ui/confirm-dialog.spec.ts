@@ -40,6 +40,7 @@ class StaticLoader implements TranslateLoader {
         reason: 'Motif (facultatif)',
         reason_hint: 'Il figure dans le courrier envoyé.',
       },
+      form: { errors: { max_length: 'Au plus {{max}} caractères.' } },
     });
   }
 }
@@ -192,7 +193,6 @@ describe('ConfirmDialog', () => {
 
     it('offers a field that may stay empty, says what becomes of it and how much it holds', () => {
       const root = render('corrigeable', undefined, note);
-      expect(field(root)?.maxLength).toBe(500);
       expect(root.textContent).toContain('Motif (facultatif)');
       expect(root.textContent).toContain('Il figure dans le courrier envoyé.');
       expect(root.textContent).toContain('0 / 500');
@@ -212,6 +212,23 @@ describe('ConfirmDialog', () => {
 
       run(root)?.click();
       expect(close).toHaveBeenCalledWith('Facture impayée');
+    });
+
+    // A longer paste was cut at 500 by the field itself, with nothing said but the counter at its end.
+    it('keeps a note pasted past its limit whole and says it is too long, rather than cutting it', () => {
+      const root = render('corrigeable', undefined, note);
+      const area = field(root)!;
+      expect(area.hasAttribute('maxlength')).toBe(false);
+      area.value = 'x'.repeat(612);
+      area.dispatchEvent(new Event('input'));
+      rendered?.detectChanges();
+
+      expect(area.value.length).toBe(612);
+      expect(root.textContent).toContain('612 / 500');
+      expect(root.querySelector('[data-testid="confirm-note-too-long"]')?.textContent).toContain(
+        'Au plus 500 caractères.',
+      );
+      expect(run(root)?.disabled).toBe(true);
     });
 
     it('keeps answering no when the person keeps things as they are', () => {

@@ -85,7 +85,8 @@
       "closed_kept": "Its documents are kept until {{day}}.",
       "reopen_until": "You can reopen it until {{moment}}.",
       "reopen": "Reopen the company",
-      "reopen_ask_owner": "Its owner can reopen it until {{moment}}."
+      "reopen_ask_owner": "Its owner can reopen it until {{moment}}.",
+      "no_contact": "The platform team has not said yet how to reach it."
     },
     "scene": {
       "invoice_number": "INV-2026-0142",

@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ACTION_KIND_ICONS, isDanger, type ActionConfirm } from '../actions/screen-action';
+import { RefusedField } from '../form/refused-field';
 
 /**
  * A typed word compared as a person means it: case, the spaces around and between words, the composition of an
@@ -39,6 +40,7 @@ export function sameTyped(typed: string, expected: string): boolean {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    RefusedField,
     TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -78,11 +80,18 @@ export function sameTyped(typed: string, expected: string): boolean {
           <textarea
             matInput
             rows="3"
-            [maxLength]="note.maxLength"
+            [appRefused]="tooLong()"
             [value]="written()"
             (input)="written.set($any($event.target).value)"
             data-testid="confirm-note"
           ></textarea>
+          <!-- Material shows a field's errors in place of its hints, so the count goes with the error. -->
+          @if (tooLong()) {
+            <mat-error data-testid="confirm-note-too-long"
+              >{{ 'form.errors.max_length' | translate: { max: note.maxLength } }}
+              <bdi>{{ written().length }} / {{ note.maxLength }}</bdi></mat-error
+            >
+          }
           <mat-hint>{{ note.hint | translate }}</mat-hint>
           <mat-hint align="end"
             ><bdi>{{ written().length }} / {{ note.maxLength }}</bdi></mat-hint
@@ -119,9 +128,14 @@ export class ConfirmDialog {
   protected readonly written = signal('');
   /** The word to type, in the reader's language, or the name as it is; null when nothing is to be typed. */
   protected readonly expected = signal<string | null>(this.expectedWord());
+  /** A note past what it holds is kept whole and refused in words, never cut by the field where nobody sees it. */
+  protected readonly tooLong = computed(() => {
+    const note = this.data.note;
+    return note !== undefined && this.written().length > note.maxLength;
+  });
   protected readonly ready = computed(() => {
     const expected = this.expected();
-    return expected === null || sameTyped(this.typed(), expected);
+    return !this.tooLong() && (expected === null || sameTyped(this.typed(), expected));
   });
 
   protected confirmTyped(event: Event): void {
