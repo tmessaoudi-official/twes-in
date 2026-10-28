@@ -761,3 +761,11 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   step-up, an enrolment, a recovery-code sign-in, a step-up and one typo exhaust it, and the right code answered 429 (red
   on CI only, 2ccf0bb7). Before giving an endpoint a limiter, list every endpoint already on it and run every e2e walking
   more than one of them (`git grep` the limiter's name over `api/src`, the routes over `web/e2e`) (2026-10-25).
+- `make check` runs the specs of the files named, not the tests that read a whole directory or contract: a mail template
+  is read by `MailDirectionTest`, a resource's shape by `OpenApiTest`, a French text by `i18n-parity.spec.ts`. Before
+  gating, also run every test that `git grep -l`s the changed directory or resource name; drop 2 went red three times on
+  them (2026-10-28), an hour a cycle under load 20 (the API suite took 37 to 52 minutes).
+- `flock` serves its waiters in no order: the main session's gate waited 76 minutes behind builder runs. While
+  `/tmp/twes-in-gate.main-first` exists builders start no locked run; they run `make check` and the tests importing
+  their files (at most 3 workers), and the full gate runs once per integrated batch. Before handing a builder a row,
+  read `git log master..<branch>` of every builder: rows 199, 200 and 213 were built twice the same day.
