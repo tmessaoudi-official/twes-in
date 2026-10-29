@@ -428,12 +428,15 @@
       "no_company": "Choisissez une entreprise pour gérer la connexion de ses membres.",
       "mfa_required": "Exiger la vérification en deux étapes",
       "mfa_required_hint": "Chaque membre se connecte avec son mot de passe et un code d’une application d’authentification. Les membres qui n’en ont pas, vous compris, l’activent avant de pouvoir continuer.",
+      "passkey_entry": "Entrer avec une clé d’accès",
+      "passkey_entry_hint": "Les membres qui travaillent dans plusieurs entreprises entrent dans celle-ci avec une clé d’accès au lieu de leur mot de passe, si la connexion par clé d’accès est ouverte.",
       "saved": "Le réglage de sécurité a été enregistré.",
       "errors": {
         "network": "Impossible de joindre le serveur. Réessayez.",
         "not_found": "Cette entreprise est introuvable.",
         "invalid": "La modification a été refusée.",
-        "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement."
+        "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement.",
+        "record_changed": "Ce réglage a changé entre-temps : la page le montre tel qu’il est, réessayez."
       }
     },
     "closing": {

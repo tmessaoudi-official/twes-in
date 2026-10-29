@@ -428,12 +428,15 @@
       "no_company": "Choose a company to manage how its members sign in.",
       "mfa_required": "Require two-step verification",
       "mfa_required_hint": "Every member signs in with a code from an authenticator app as well as their password. Members without one, you included, set it up before they can continue.",
+      "passkey_entry": "Enter with a passkey",
+      "passkey_entry_hint": "Members who work in several companies enter this one with a passkey instead of their password, where signing in with a passkey is open.",
       "saved": "The security setting was saved.",
       "errors": {
         "network": "The server could not be reached. Try again.",
         "not_found": "This company could not be found.",
         "invalid": "The change was refused.",
-        "step_up_required": "Nothing changed: confirm it is you to make this change."
+        "step_up_required": "Nothing changed: confirm it is you to make this change.",
+        "record_changed": "This setting changed meanwhile: the page shows it as it is now, try again."
       }
     },
     "closing": {

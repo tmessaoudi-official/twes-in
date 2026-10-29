@@ -13,7 +13,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import type { CompanySecurity, CompanySecurityError } from './company-security-api';
-import { CompanySecurityFacade } from './company-security-facade';
+import { CompanySecurityFacade, type PasskeyEntry } from './company-security-facade';
 import { CompanySecurityPage } from './company-security-page';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
@@ -35,6 +35,8 @@ class StaticLoader implements TranslateLoader {
 describe('CompanySecurityPage', () => {
   const security = signal<CompanySecurity | null>(null);
   const error = signal<CompanySecurityError | null>(null);
+  const passkeyEntry = signal<PasskeyEntry | null>(null);
+  const passkeysAllowed = signal(true);
   const facade = {
     security: security.asReadonly(),
     busy: signal(false).asReadonly(),
@@ -42,9 +44,15 @@ describe('CompanySecurityPage', () => {
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     requireSecondFactor: vi.fn(),
+    passkeyEntry: passkeyEntry.asReadonly(),
+    takePasskeys: vi.fn(),
   };
   const auth = {
-    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
+    me: () => ({
+      user: { id: 'u1' },
+      company: { id: 'c1', name: 'Acme' },
+      mfa: { passkeySignInAllowed: passkeysAllowed() },
+    }),
     needsEnrolment: vi.fn(),
   };
   let fixture: ComponentFixture<CompanySecurityPage>;
@@ -71,9 +79,12 @@ describe('CompanySecurityPage', () => {
 
   beforeEach(() => {
     security.set({ mfaRequired: false, writable: true });
+    passkeyEntry.set({ on: true, version: 2, writable: true });
+    passkeysAllowed.set(true);
     error.set(null);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.requireSecondFactor.mockReset().mockResolvedValue(true);
+    facade.takePasskeys.mockReset().mockResolvedValue(true);
     auth.needsEnrolment.mockReset().mockReturnValue(false);
     TestBed.configureTestingModule({
       imports: [CompanySecurityPage],
@@ -99,6 +110,34 @@ describe('CompanySecurityPage', () => {
     expect(facade.load).toHaveBeenCalledWith('c1');
     expect(theSwitch().getAttribute('aria-checked')).toBe('false');
     expect(theSwitch().disabled).toBe(false);
+  });
+
+  it('offers the passkey entry while the installation lets anyone sign in with a passkey, and saves its change', async () => {
+    await open();
+    const toggle = q('security-passkey-entry-toggle')!.querySelector(
+      'button[role="switch"]',
+    ) as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+
+    toggle.click();
+    await settle();
+
+    expect(facade.takePasskeys).toHaveBeenCalledExactlyOnceWith('c1', false);
+    expect(successToasts()).toContain('company.security.saved');
+  });
+
+  it('says nothing of the passkey entry while the installation keeps passkeys off, or to whom may not change it', async () => {
+    passkeysAllowed.set(false);
+    await open();
+    expect(q('security-passkey-entry')).toBeNull();
+
+    passkeysAllowed.set(true);
+    passkeyEntry.set({ on: false, version: 0, writable: false });
+    await open();
+    const toggle = q('security-passkey-entry-toggle')!.querySelector(
+      'button[role="switch"]',
+    ) as HTMLButtonElement;
+    expect(toggle.disabled).toBe(true);
   });
 
   it('shows the switch but lets nobody without the permission change it', async () => {

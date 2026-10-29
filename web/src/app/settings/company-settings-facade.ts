@@ -50,7 +50,8 @@ export class CompanySettings {
     const chains = await Promise.all(
       COMPANY_CHAINS.map((chain) => this.api.chain(companyId, chain)),
     );
-    this.rowsSignal.set(chains.flat());
+    // A company's sign-in settings are set on its security page, the one place they are said.
+    this.rowsSignal.set(chains.flat().filter((row) => !row.key.startsWith('identity.')));
   }
 
   private async write(companyId: string, call: () => Promise<unknown>): Promise<boolean> {

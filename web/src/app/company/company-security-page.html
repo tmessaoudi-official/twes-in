@@ -35,5 +35,33 @@
         ></mat-slide-toggle>
       </div>
     }
+
+    <!-- Offered while the installation lets anyone sign in with a passkey: the company then says whether it lets its
+         members enter with one instead of the password. -->
+    @if (passkeyEntry(); as entry) {
+      @if (passkeysOffered()) {
+        <div
+          class="flex flex-wrap items-center justify-between gap-4 py-2"
+          data-testid="security-passkey-entry"
+        >
+          <div class="flex max-w-prose flex-col gap-1">
+            <span class="font-medium" id="security-passkey-entry-label">
+              {{ 'company.security.passkey_entry' | translate }}
+            </span>
+            <span class="text-sm" id="security-passkey-entry-hint">
+              {{ 'company.security.passkey_entry_hint' | translate }}
+            </span>
+          </div>
+          <mat-slide-toggle
+            [checked]="entry.on"
+            [disabled]="!entry.writable || busy()"
+            aria-labelledby="security-passkey-entry-label"
+            aria-describedby="security-passkey-entry-hint"
+            (change)="togglePasskeys($event)"
+            data-testid="security-passkey-entry-toggle"
+          ></mat-slide-toggle>
+        </div>
+      }
+    }
   }
 </section>

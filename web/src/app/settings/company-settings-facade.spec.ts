@@ -60,6 +60,19 @@ describe('CompanySettings', () => {
     expect(facade.error()).toBeNull();
   });
 
+  it('leaves the company’s sign-in settings to its security page, the one place they are said', async () => {
+    api.chain.mockImplementation(async (_companyId: string, chain: SettingChain) =>
+      chain === 'presentation'
+        ? [rowOf(chain), { key: 'identity.passkey_entry', chain } as SettingRow]
+        : [rowOf(chain)],
+    );
+
+    await facade.load('c1');
+
+    expect(facade.rows().map((setting) => setting.key)).not.toContain('identity.passkey_entry');
+    expect(facade.rows().map((setting) => setting.key)).toContain('presentation.one');
+  });
+
   it('makes what it wrote take effect at once, without a refresh of the browser', async () => {
     // These ARE the application's own values — the accent, the density, the language. A live change never comes
     // back to the tab that caused it, so this tab must read the chain again itself (developer, 2026-09-20).

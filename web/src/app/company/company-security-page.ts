@@ -35,6 +35,11 @@ export class CompanySecurityPage implements OnInit {
   private readonly router = inject(Router);
 
   protected readonly security = this.facade.security;
+  protected readonly passkeyEntry = this.facade.passkeyEntry;
+  /** The installation lets anyone sign in with a passkey: only then has the company a say in it. */
+  protected readonly passkeysOffered = computed(
+    () => this.auth.me()?.mfa.passkeySignInAllowed === true,
+  );
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
@@ -42,7 +47,12 @@ export class CompanySecurityPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
-      this.live.reloadOn(['company'], () => this.facade.load(companyId), this.destroyRef);
+      // The company's settings hear `setting`: a passkey entry another owner changed is read again.
+      this.live.reloadOn(
+        ['company', 'setting'],
+        () => this.facade.load(companyId),
+        this.destroyRef,
+      );
       await this.facade.load(companyId);
     }
   }
@@ -59,5 +69,14 @@ export class CompanySecurityPage implements OnInit {
       return;
     }
     this.feedback.success('company.security.saved');
+  }
+
+  protected async togglePasskeys(change: MatSlideToggleChange): Promise<void> {
+    const companyId = this.company()?.id;
+    // The switch says what is so until the change is saved; the saved value then moves it.
+    change.source.checked = this.passkeyEntry()?.on ?? false;
+    if (!companyId || this.busy()) return;
+    if (await this.facade.takePasskeys(companyId, change.checked))
+      this.feedback.success('company.security.saved');
   }
 }

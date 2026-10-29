@@ -17,7 +17,13 @@ export interface CompanySecurity {
 }
 
 /** Why the API refused, as the page translates it. */
-export type CompanySecurityError = 'network' | 'not_found' | 'invalid' | 'step_up_required';
+export type CompanySecurityError =
+  | 'network'
+  | 'not_found'
+  | 'invalid'
+  | 'step_up_required'
+  // Another person saved the company's setting since this page read it.
+  | 'record_changed';
 
 /** Thrown when the API refuses; carries the code the page translates. */
 export class CompanySecurityRefused extends Error {
