@@ -266,16 +266,14 @@
                         ></textarea>
                       }
                       @case ('number') {
-                        <!-- A static type="number" is what gives the control a number rather than a string. -->
+                        <!-- A whole number in a text field: appCount hands the control a number, and says one not whole. -->
                         <input
                           matInput
+                          appCount
                           [id]="controlId(field)"
-                          type="number"
-                          inputmode="decimal"
+                          type="text"
                           [formControlName]="field.id"
                           [required]="field.required ?? false"
-                          [attr.min]="field.min ?? null"
-                          [attr.max]="field.max ?? null"
                           [attr.data-testid]="'field-' + field.id"
                         />
                       }

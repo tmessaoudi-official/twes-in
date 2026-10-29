@@ -33,6 +33,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { ColourField } from '../shared/form/colour-field';
+import { CountInput } from '../shared/form/count-input';
 import { RecordBar } from '../shared/form/record-bar';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { LiveChanges } from '../shared/realtime/live-changes';
@@ -63,6 +64,7 @@ export const PREVIEW_DELAY_MS = 300;
   selector: 'app-document-design-page',
   imports: [
     ReactiveFormsModule,
+    CountInput,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,

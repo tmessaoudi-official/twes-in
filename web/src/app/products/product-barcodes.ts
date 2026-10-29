@@ -24,6 +24,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
+import { typedCount } from '../shared/form/count-input';
 import { PartConflict } from '../shared/form/part-conflict';
 import { Select } from '../shared/form/select';
 import { dirtyCount } from '../shared/form/dirty-count';
@@ -32,7 +33,6 @@ import { RefusedField } from '../shared/form/refused-field';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import {
   addScanned,
-  BARCODE_QUANTITY_MAX,
   CODE_PROBLEMS,
   QUANTITY_PROBLEMS,
   rowProblem,
@@ -88,7 +88,6 @@ export class ProductBarcodesSection implements OnInit {
 
   protected readonly busy = this.facade.busy;
   protected readonly suppliers = this.facade.suppliers;
-  protected readonly maxQuantity = BARCODE_QUANTITY_MAX;
   /** What the scan field holds, not yet a row: « Ajouter » and « Enregistrer » both take it. */
   protected readonly pending = signal('');
   /** The row a scan found already listed, pointed at instead of added twice. */
@@ -248,6 +247,9 @@ export class ProductBarcodesSection implements OnInit {
   protected setRole(index: number, role: BarcodeRole): void {
     this.edit(index, (row) => withRole(row, role));
   }
+
+  /** A pack's quantity as typed in a text field: « 1,5 » is one and a half, said as out of range rather than lost. */
+  protected readonly typedCount = typedCount;
 
   protected setQuantity(index: number, quantity: number): void {
     this.edit(index, (row) => ({ ...row, quantity: Number.isNaN(quantity) ? 0 : quantity }));

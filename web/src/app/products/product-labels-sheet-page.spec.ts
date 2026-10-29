@@ -146,7 +146,9 @@ describe('ProductLabelsSheetPage', () => {
     ['150', 'form.errors.max'],
     ['0', 'form.errors.min'],
     ['', 'form.errors.required'],
-    ['2.5', 'form.errors.pattern'],
+    // A text field with the numeric keyboard (row 242): « 1,5 » reaches the form as one and a half, said not whole.
+    ['2.5', 'import.rejections.not_a_whole_number'],
+    ['1,5', 'import.rejections.not_a_whole_number'],
   ])('keeps « %s » in the field, says why under it and prints nothing', async (typed, said) => {
     await open(['p1', 'p2']);
     const copies = q('product-labels-copies') as HTMLInputElement;
@@ -160,7 +162,7 @@ describe('ProductLabelsSheetPage', () => {
     expect(copies.value).toBe(typed);
     // The sheet keeps the last count it could print until the field holds another.
     expect(all('product-label')).toHaveLength(6);
-    expect(copies.getAttribute('max')).toBe('100');
+    expect(copies.type).toBe('text');
 
     q('product-labels-print')!.click();
     fixture.detectChanges();

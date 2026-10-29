@@ -39,7 +39,7 @@ import { mergeSavedVersion, type FieldConflict } from '../shared/form/form-merge
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { RefusedField } from '../shared/form/refused-field';
 import { typedText } from '../shared/form/typed-text';
-import { decimalTyped } from '../shared/i18n/format';
+import { typedCount } from '../shared/form/count-input';
 import { companyNameRefusal, ownerEmailRefusal } from './platform-rules';
 import { Select, type SelectOption } from '../shared/form/select';
 import { DataList, DataListCell } from '../shared/list/data-list';
@@ -84,17 +84,6 @@ function numberReady(held: PlatformNumber | null | undefined, typed: number | nu
     (held.min === null || typed >= held.min) &&
     (held.max === null || typed <= held.max)
   );
-}
-
-/**
- * A count as typed in a text field: empty is NaN, said as emptied; a number written with a comma or a point is that
- * number, « 1,5 » one and a half, which is not whole; anything else is no number at all, Infinity, never whole either.
- * The invisible marks a keyboard or a paste leaves at its ends are not part of it.
- */
-function typedCount(raw: string): number {
-  const typed = decimalTyped(raw);
-  if (typed === '') return Number.NaN;
-  return /^-?\d+(\.\d+)?$/.test(typed) ? Number(typed) : Number.POSITIVE_INFINITY;
 }
 
 /** One unsaved change where something other than the held number is typed, a field emptied or out of bounds included. */

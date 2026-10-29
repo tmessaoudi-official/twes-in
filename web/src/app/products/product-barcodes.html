@@ -120,15 +120,14 @@
                 <mat-label>{{ 'products.barcodes.quantity' | translate }}</mat-label>
                 <input
                   matInput
-                  type="number"
-                  min="1"
-                  [max]="maxQuantity"
-                  step="1"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="off"
                   [attr.data-testid]="'product-barcode-quantity-' + index"
                   [appRefused]="problemAt(index) === 'quantity'"
                   [disabled]="row.role === 'unit'"
                   [value]="row.quantity"
-                  (input)="setQuantity(index, quantity.valueAsNumber)"
+                  (input)="setQuantity(index, typedCount(quantity.value))"
                   #quantity
                 />
                 @if (problemAt(index) === 'quantity') {

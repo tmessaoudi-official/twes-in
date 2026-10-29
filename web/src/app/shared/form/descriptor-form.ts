@@ -23,6 +23,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { type Subscription, take } from 'rxjs';
 import { FormatFacade } from '../i18n/format-facade';
 import { Label } from '../a11y/label';
+import { CountInput } from './count-input';
 import { DecimalInput } from './decimal-input';
 import { ColourField } from './colour-field';
 import { DayCalendarButton } from './day-calendar-button';
@@ -70,6 +71,7 @@ export interface PickSource {
     MatIconModule,
     Label,
     TranslatePipe,
+    CountInput,
     DecimalInput,
     DayInput,
     DayCalendarButton,

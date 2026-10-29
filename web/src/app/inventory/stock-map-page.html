@@ -1854,9 +1854,9 @@
                         {{ 'inventory.plan.repeat_count' | translate }}
                         <input
                           class="rounded-lg border border-outline-variant p-2 tabular-nums"
-                          type="number"
-                          min="1"
-                          [attr.max]="REPEAT_LIMIT"
+                          type="text"
+                          inputmode="numeric"
+                          autocomplete="off"
                           [value]="repeatCount()"
                           (input)="setRepeatCount($event)"
                           data-testid="stock-repeat-count"
@@ -1911,7 +1911,9 @@
                       person who thought they were only drawing would find sixteen new racks in every picker.
                     -->
                     <p role="status" class="text-sm" data-testid="stock-repeat-summary">
-                      @if (repeatOffFloor()) {
+                      @if (repeatCountSaid(); as said) {
+                        {{ said.key | translate: said.params }}
+                      } @else if (repeatOffFloor()) {
                         {{ 'inventory.plan.repeat_off_floor' | translate }}
                       } @else if (repeatReady()) {
                         {{

@@ -28,6 +28,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { typedCount } from '../shared/form/count-input';
+import type { FieldError } from '../shared/form/form-builder';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
@@ -1838,11 +1840,28 @@ export class StockMapPage implements OnInit {
     const gap = this.repeatGap();
     if (shape === undefined || gap === null || !this.repeating()) return [];
 
-    return repeatedFrom(shape.rect, this.repeatCount(), gap, this.repeatWay());
+    return repeatedFrom(shape.rect, this.repeatTimes(), gap, this.repeatWay());
+  });
+
+  /** How many copies the count typed asks for: a whole number from one to the limit, else none. */
+  private readonly repeatTimes = computed(() => {
+    const count = this.repeatCount();
+    return Number.isInteger(count) && count >= 1 && count <= this.REPEAT_LIMIT ? count : 0;
+  });
+
+  /** What the count typed is refused for, said in the summary; null while it is empty or fits. */
+  protected readonly repeatCountSaid = computed((): FieldError | null => {
+    const count = this.repeatCount();
+    if (Number.isNaN(count)) return null;
+    if (!Number.isInteger(count)) return { key: 'import.rejections.not_a_whole_number' };
+    if (count < 1) return { key: 'form.errors.min', params: { min: 1 } };
+    if (count > this.REPEAT_LIMIT)
+      return { key: 'form.errors.max', params: { max: this.REPEAT_LIMIT } };
+    return null;
   });
 
   /** What the copies will be called, listed before anything is made. */
-  protected readonly repeatCodes = computed(() => nextCodes(this.repeatCode(), this.repeatCount()));
+  protected readonly repeatCodes = computed(() => nextCodes(this.repeatCode(), this.repeatTimes()));
 
   /**
    * Whether the repeat can be made at all — "une copie qui sortirait du sol est refusée AVANT, pas après" (the
@@ -1855,17 +1874,17 @@ export class StockMapPage implements OnInit {
 
   protected readonly repeatReady = computed(
     () =>
-      this.repeatCount() >= 1 &&
-      this.repeatCount() <= this.REPEAT_LIMIT &&
-      this.repeatPreview().length === this.repeatCount() &&
-      this.repeatCodes().length === this.repeatCount() &&
+      this.repeatTimes() > 0 &&
+      this.repeatPreview().length === this.repeatTimes() &&
+      this.repeatCodes().length === this.repeatTimes() &&
       !this.repeatOffFloor() &&
       this.repeatGap() !== null,
   );
 
   /** The three boxes write into signals, so the preview follows what is typed rather than what was last saved. */
   protected setRepeatCount(event: Event): void {
-    this.repeatCount.set(Math.trunc(metres((event.target as HTMLInputElement).value)));
+    // Typed in a text field: « 1,5 » is one and a half, refused as not whole rather than read as one or as nothing.
+    this.repeatCount.set(typedCount((event.target as HTMLInputElement).value));
   }
 
   protected setRepeatSpacing(event: Event): void {

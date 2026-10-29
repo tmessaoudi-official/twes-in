@@ -191,6 +191,7 @@ export function fieldError(control: AbstractControl, field: FormField): FieldErr
   if (errors['minlength'])
     return { key: 'form.errors.min_length', params: { min: field.minLength! } };
   if (errors['maxlength']) return lengthSaidOf(control);
+  if (errors['wholeNumber']) return { key: 'import.rejections.not_a_whole_number' };
   if (errors['min']) return { key: 'form.errors.min', params: { min: field.min! } };
   if (errors['max']) return { key: 'form.errors.max', params: { max: field.max! } };
   return null;

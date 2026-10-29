@@ -2,16 +2,11 @@
 
 import { ChangeDetectionStrategy, Component, ElementRef, inject, model } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  type AbstractControl,
-  FormControl,
-  ReactiveFormsModule,
-  type ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
+import { CountInput } from '../shared/form/count-input';
 import { revealInvalid } from '../shared/form/reveal-invalid';
 import { MOST_LABEL_COPIES } from './product-label';
 
@@ -23,21 +18,23 @@ import { MOST_LABEL_COPIES } from './product-label';
  */
 @Component({
   selector: 'app-label-copies',
-  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, TranslatePipe],
+  imports: [ReactiveFormsModule, CountInput, MatFormFieldModule, MatInputModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-form-field class="w-32">
       <mat-label>{{ 'products.labels.copies' | translate }}</mat-label>
       <input
         matInput
-        type="number"
-        min="1"
-        [max]="most"
-        step="1"
+        appCount
+        type="text"
         data-testid="product-labels-copies"
         [formControl]="field"
       />
-      @if (field.hasError('required')) {
+      @if (field.hasError('wholeNumber')) {
+        <mat-error data-testid="product-labels-copies-error">{{
+          'import.rejections.not_a_whole_number' | translate
+        }}</mat-error>
+      } @else if (field.hasError('required')) {
         <mat-error data-testid="product-labels-copies-error">{{
           'form.errors.required' | translate
         }}</mat-error>
@@ -48,10 +45,6 @@ import { MOST_LABEL_COPIES } from './product-label';
       } @else if (field.hasError('max')) {
         <mat-error data-testid="product-labels-copies-error">{{
           'form.errors.max' | translate: { max: most }
-        }}</mat-error>
-      } @else if (field.hasError('whole')) {
-        <mat-error data-testid="product-labels-copies-error">{{
-          'form.errors.pattern' | translate
         }}</mat-error>
       }
     </mat-form-field>
@@ -66,7 +59,6 @@ export class LabelCopies {
     Validators.required,
     Validators.min(1),
     Validators.max(MOST_LABEL_COPIES),
-    whole,
   ]);
 
   constructor() {
@@ -79,9 +71,4 @@ export class LabelCopies {
   reveal(): boolean {
     return revealInvalid(this.field, this.host);
   }
-}
-
-function whole(control: AbstractControl): ValidationErrors | null {
-  const value: unknown = control.value;
-  return value === null || Number.isInteger(value) ? null : { whole: true };
 }

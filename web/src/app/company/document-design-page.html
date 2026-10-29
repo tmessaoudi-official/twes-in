@@ -83,12 +83,9 @@
               <mat-label>{{ 'documents.logo_width' | translate }}</mat-label>
               <input
                 matInput
-                type="number"
-                inputmode="numeric"
-                step="1"
+                appCount
+                type="text"
                 formControlName="logoWidth"
-                [min]="room()?.width?.min ?? null"
-                [max]="room()?.width?.max ?? null"
                 data-testid="documents-logo-width"
               />
               <span matTextSuffix>{{ 'documents.millimetres' | translate }}</span>
@@ -110,12 +107,9 @@
               <mat-label>{{ 'documents.logo_height' | translate }}</mat-label>
               <input
                 matInput
-                type="number"
-                inputmode="numeric"
-                step="1"
+                appCount
+                type="text"
                 formControlName="logoHeight"
-                [min]="room()?.height?.min ?? null"
-                [max]="room()?.height?.max ?? null"
                 data-testid="documents-logo-height"
               />
               <span matTextSuffix>{{ 'documents.millimetres' | translate }}</span>
