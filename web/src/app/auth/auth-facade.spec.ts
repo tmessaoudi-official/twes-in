@@ -34,7 +34,15 @@ const owner: SignedInState = {
   },
   permissions: ['*'],
   modules: ['customers'],
-  mfa: { enrolled: true, required: false, totp: true, passkeys: 0, recoveryCodes: 10 },
+  mfa: {
+    enrolled: true,
+    required: false,
+    totp: true,
+    passkeys: 0,
+    recoveryCodes: 10,
+    passkeySignIn: false,
+    passkeySignInAllowed: false,
+  },
 };
 
 describe('AuthFacade', () => {
@@ -59,6 +67,7 @@ describe('AuthFacade', () => {
     listPasskeys: vi.fn(),
     removePasskey: vi.fn(),
     removeAuthenticator: vi.fn(),
+    switchPasskeySignIn: vi.fn(),
     passkeyLoginOptions: vi.fn(),
     finishPasskeyLogin: vi.fn(),
     lockCustomerScreen: vi.fn(),
@@ -265,14 +274,30 @@ describe('AuthFacade', () => {
     expect(facade.needsEnrolment()).toBe(false);
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: false, required: true, totp: false, passkeys: 0, recoveryCodes: 0 },
+      mfa: {
+        enrolled: false,
+        required: true,
+        totp: false,
+        passkeys: 0,
+        recoveryCodes: 0,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
     });
     await facade.load();
     expect(facade.needsEnrolment()).toBe(true);
 
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
+      mfa: {
+        enrolled: false,
+        required: false,
+        totp: false,
+        passkeys: 0,
+        recoveryCodes: 0,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
     });
     await facade.load();
     expect(facade.needsEnrolment()).toBe(false);
@@ -281,7 +306,15 @@ describe('AuthFacade', () => {
   it('confirming an enrolment hands back the recovery codes and marks the account enrolled', async () => {
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: false, required: true, totp: false, passkeys: 0, recoveryCodes: 0 },
+      mfa: {
+        enrolled: false,
+        required: true,
+        totp: false,
+        passkeys: 0,
+        recoveryCodes: 0,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
     });
     await facade.load();
     const enrolment = { secret: 'JBSWY3DPEHPK3PXP', provisioningUri: 'otpauth://totp/x' };
@@ -344,7 +377,15 @@ describe('AuthFacade', () => {
   it('counts the codes each new set leaves, by an authenticator code or by a passkey', async () => {
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: true, required: false, totp: true, passkeys: 1, recoveryCodes: 2 },
+      mfa: {
+        enrolled: true,
+        required: false,
+        totp: true,
+        passkeys: 1,
+        recoveryCodes: 2,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
     });
     await facade.load();
 
@@ -493,7 +534,15 @@ describe('AuthFacade', () => {
   it('adds a passkey the browser creates against the API options, and counts it as a factor', async () => {
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: false, required: true, totp: false, passkeys: 0, recoveryCodes: 0 },
+      mfa: {
+        enrolled: false,
+        required: true,
+        totp: false,
+        passkeys: 0,
+        recoveryCodes: 0,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
     });
     await facade.load();
     api.passkeyRegistrationOptions.mockResolvedValue({ challenge: 'abc' });
@@ -514,6 +563,8 @@ describe('AuthFacade', () => {
       passkeys: 1,
       // The first factor issued the account's codes, which the warning counts at once.
       recoveryCodes: 1,
+      passkeySignIn: false,
+      passkeySignInAllowed: false,
     });
     expect(facade.needsEnrolment()).toBe(false);
   });
@@ -545,7 +596,15 @@ describe('AuthFacade', () => {
   it('removes a passkey and stops counting it, or says why it stays', async () => {
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: true, required: false, totp: false, passkeys: 1, recoveryCodes: 10 },
+      mfa: {
+        enrolled: true,
+        required: false,
+        totp: false,
+        passkeys: 1,
+        recoveryCodes: 10,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
     });
     await facade.load();
     api.removePasskey.mockRejectedValueOnce(new AuthRefused('mfa_last_factor'));
@@ -560,13 +619,54 @@ describe('AuthFacade', () => {
       totp: false,
       passkeys: 0,
       recoveryCodes: 10,
+      passkeySignIn: false,
+      passkeySignInAllowed: false,
     });
+  });
+
+  it('switches the sign-in with a passkey alone and keeps it, or says why it did not', async () => {
+    api.me.mockResolvedValue({
+      ...owner,
+      mfa: {
+        enrolled: true,
+        required: false,
+        totp: true,
+        passkeys: 1,
+        recoveryCodes: 10,
+        passkeySignIn: false,
+        passkeySignInAllowed: true,
+      },
+    });
+    await facade.load();
+    api.switchPasskeySignIn.mockRejectedValueOnce(new AuthRefused('step_up_required'));
+    expect(await facade.switchPasskeySignIn(true)).toEqual({
+      ok: false,
+      error: 'step_up_required',
+    });
+    expect(facade.me()?.mfa.passkeySignIn).toBe(false);
+
+    api.switchPasskeySignIn.mockResolvedValue(undefined);
+    expect(await facade.switchPasskeySignIn(true)).toEqual({ ok: true });
+    expect(api.switchPasskeySignIn).toHaveBeenLastCalledWith(true);
+    expect(facade.me()?.mfa.passkeySignIn).toBe(true);
+
+    expect(await facade.switchPasskeySignIn(false)).toEqual({ ok: true });
+    expect(api.switchPasskeySignIn).toHaveBeenLastCalledWith(false);
+    expect(facade.me()?.mfa.passkeySignIn).toBe(false);
   });
 
   it('removes the authenticator and stops counting it, or says why it stays', async () => {
     api.me.mockResolvedValue({
       ...owner,
-      mfa: { enrolled: true, required: false, totp: true, passkeys: 1, recoveryCodes: 10 },
+      mfa: {
+        enrolled: true,
+        required: false,
+        totp: true,
+        passkeys: 1,
+        recoveryCodes: 10,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
     });
     await facade.load();
     api.removeAuthenticator.mockRejectedValueOnce(new AuthRefused('mfa_authenticator_required'));
@@ -584,6 +684,8 @@ describe('AuthFacade', () => {
       totp: false,
       passkeys: 1,
       recoveryCodes: 10,
+      passkeySignIn: false,
+      passkeySignInAllowed: false,
     });
   });
 

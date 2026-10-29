@@ -47,7 +47,24 @@
       "replace_intro": "Scannez ce code avec la nouvelle application. L’ancienne continue de fonctionner jusqu’à ce que vous confirmiez avec un code de la nouvelle ; vos codes de secours seront alors remplacés et vos autres sessions fermées.",
       "replace_code": "Code de la nouvelle application",
       "replace_confirm": "Utiliser la nouvelle application",
-      "replace_cancel": "Garder l’application actuelle"
+      "replace_cancel": "Garder l’application actuelle",
+      "passkey_sign_in": {
+        "title": "Connexion par clé d’accès seule",
+        "intro": "Votre clé d’accès suffit alors pour vous connecter, sans mot de passe ni code. Le mot de passe suivi d’un code reste possible.",
+        "on": "Activée pour ce compte.",
+        "off": "Désactivée pour ce compte.",
+        "on_action": "Activer",
+        "off_action": "Désactiver",
+        "on_done": "Connexion par clé d’accès seule activée.",
+        "off_done": "Connexion par clé d’accès seule désactivée.",
+        "needs": "Il faut d’abord une application d’authentification et une clé d’accès sur ce compte.",
+        "idle": "Elle ne sert pas pour l’instant : il y faut une application d’authentification, une clé d’accès et l’accord de cette installation.",
+        "refused": {
+          "passkey_sign_in_off": "Cette installation ne permet pas la connexion par clé d’accès seule.",
+          "passkey_sign_in_needs_authenticator": "Ajoutez d’abord une application d’authentification.",
+          "passkey_sign_in_needs_passkey": "Ajoutez d’abord une clé d’accès que le navigateur propose de lui-même : celles de ce compte ne le font pas."
+        }
+      }
     }
   }
 }

@@ -96,7 +96,15 @@ function state(
     },
     permissions,
     modules: [],
-    mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
+    mfa: {
+      enrolled: false,
+      required: false,
+      totp: false,
+      passkeys: 0,
+      recoveryCodes: 0,
+      passkeySignIn: false,
+      passkeySignInAllowed: false,
+    },
   };
 }
 

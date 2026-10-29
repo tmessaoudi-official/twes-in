@@ -22,6 +22,7 @@ import type {
   LoginOutcome,
   PasskeyAdded,
   PasskeyRemoved,
+  PasskeySignInSwitched,
   PasskeysOutcome,
   PasswordChangeOutcome,
   SignedInState,
@@ -365,6 +366,19 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
           mfa: { ...state.mfa, passkeys, enrolled: state.mfa.totp || passkeys > 0 },
         };
       });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: shownOf(error) };
+    }
+  }
+
+  /** The account's own choice to sign in with a passkey alone; the session holds it once the API kept it. */
+  async switchPasskeySignIn(enabled: boolean): Promise<PasskeySignInSwitched> {
+    try {
+      await this.api.switchPasskeySignIn(enabled);
+      this.stateSignal.update((state) =>
+        state === null ? state : { ...state, mfa: { ...state.mfa, passkeySignIn: enabled } },
+      );
       return { ok: true };
     } catch (error) {
       return { ok: false, error: shownOf(error) };

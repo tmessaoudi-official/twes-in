@@ -208,6 +208,11 @@ export class AuthApi {
     await send(this.http.delete(`/api/auth/mfa/passkeys/${encodeURIComponent(id)}`));
   }
 
+  /** Lets the account sign in with a passkey alone, or stops it; switching it on waits for a fresh proof. */
+  async switchPasskeySignIn(enabled: boolean): Promise<void> {
+    await send(this.http.put('/api/auth/mfa/passkey-sign-in', { enabled }));
+  }
+
   /** Forgets the authenticator app; another may then be enrolled. */
   async removeAuthenticator(): Promise<void> {
     await send(this.http.delete('/api/auth/mfa/authenticator'));
@@ -306,6 +311,8 @@ function toState(me: Me): SignedInState {
       totp: me.mfa.totp,
       passkeys: me.mfa.passkeys,
       recoveryCodes: me.mfa.recoveryCodes,
+      passkeySignIn: me.mfa.passkeySignIn,
+      passkeySignInAllowed: me.mfa.passkeySignInAllowed,
     },
   };
 }

@@ -47,7 +47,24 @@
       "replace_intro": "Scan this code with the new app. The old one keeps working until you confirm with a code from the new one; your recovery codes are then replaced and your other sessions signed out.",
       "replace_code": "Code from the new app",
       "replace_confirm": "Use the new app",
-      "replace_cancel": "Keep the current app"
+      "replace_cancel": "Keep the current app",
+      "passkey_sign_in": {
+        "title": "Sign-in with a passkey alone",
+        "intro": "Your passkey is then enough to sign in, with no password and no code. The password followed by a code still works.",
+        "on": "On for this account.",
+        "off": "Off for this account.",
+        "on_action": "Switch on",
+        "off_action": "Switch off",
+        "on_done": "Sign-in with a passkey alone switched on.",
+        "off_done": "Sign-in with a passkey alone switched off.",
+        "needs": "It first takes an authenticator app and a passkey on this account.",
+        "idle": "It is not in use for now: it takes an authenticator app, a passkey and this installation's consent.",
+        "refused": {
+          "passkey_sign_in_off": "This installation does not allow sign-in with a passkey alone.",
+          "passkey_sign_in_needs_authenticator": "Add an authenticator app first.",
+          "passkey_sign_in_needs_passkey": "Add a passkey the browser offers on its own first: this account's do not."
+        }
+      }
     }
   }
 }

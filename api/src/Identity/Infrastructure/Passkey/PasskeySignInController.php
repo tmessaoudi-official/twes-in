@@ -50,6 +50,10 @@ final readonly class PasskeySignInController
     #[Route('/api/auth/passkey-sign-in/options', name: 'api_auth_passkey_sign_in_options', methods: ['POST'])]
     public function options(): Response
     {
+        // The sign-in page offers a passkey only once it has options, so while the installation keeps it off it offers none.
+        if (!$this->switch->allowedHere()) {
+            return new JsonResponse(['error' => PasskeySignInRefused::OFF], Response::HTTP_NOT_FOUND);
+        }
         $options = $this->signIn->options();
         $this->challenges->remember(self::SIGN_IN, null, $options);
 

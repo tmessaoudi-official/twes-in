@@ -27,6 +27,7 @@ import { StepUp } from '../shared/step-up/step-up';
 import { SignedOutLayout } from './signed-out-layout';
 import { MfaLockout } from './mfa-lockout';
 import { lengthSaidOf } from '../shared/form/length-said';
+import { Feedback } from '../shared/feedback/feedback';
 
 /**
  * Two-step verification for the signed-in account: an authenticator app, passkeys, and the recovery codes behind both.
@@ -57,6 +58,7 @@ export class TwoFactorPage {
   private readonly stepUp = inject(StepUp);
   private readonly dialog = inject(MatDialog);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly feedback = inject(Feedback);
 
   /**
    * The account must carry a second factor: an operator's, or a member's of any company requiring one. Read live, so a
@@ -94,6 +96,18 @@ export class TwoFactorPage {
     code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
   protected readonly submitting = signal(false);
+  /**
+   * The sign-in with a passkey alone, offered where the installation allows it, and shown to an account that has it on
+   * wherever it is, so it can always be switched off. It takes the authenticator beside a passkey, which the API checks.
+   */
+  protected readonly passkeySignIn = computed(() => {
+    const status = this.mfa();
+    if (status === null || (!status.passkeySignInAllowed && !status.passkeySignIn)) return null;
+    const ready = status.totp && status.passkeys > 0;
+
+    return { on: status.passkeySignIn, ready, works: ready && status.passkeySignInAllowed };
+  });
+  protected readonly signInError = signal<LoginError | null>(null);
   protected readonly form = new FormGroup({
     code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
@@ -196,6 +210,33 @@ export class TwoFactorPage {
     if (outcome.recoveryCodes.length > 0) {
       this.recoveryCodes.set(outcome.recoveryCodes);
     }
+  }
+
+  /** Switched on, a fresh proof of who is at the screen comes first; the outcome is a toast, the state its line. */
+  protected async switchPasskeySignIn(enabled: boolean): Promise<void> {
+    if (this.submitting()) {
+      return;
+    }
+    this.submitting.set(true);
+    this.signInError.set(null);
+    const outcome = await this.proven(() => this.auth.switchPasskeySignIn(enabled));
+    this.submitting.set(false);
+    if (outcome.ok) {
+      this.feedback.success(
+        enabled
+          ? 'auth.two_factor.passkey_sign_in.on_done'
+          : 'auth.two_factor.passkey_sign_in.off_done',
+      );
+    } else if (outcome.error !== 'step_up_required') {
+      this.signInError.set(outcome.error);
+    }
+  }
+
+  /** The switch's own refusals are worded beside it; any other is the sign-in's. */
+  protected signInErrorKey(code: LoginError): string {
+    return code.startsWith('passkey_sign_in_')
+      ? `auth.two_factor.passkey_sign_in.refused.${code}`
+      : `auth.errors.${code}`;
   }
 
   /** A phone lost or replaced: its authenticator goes, and another is set up as the first was. */

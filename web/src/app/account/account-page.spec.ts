@@ -147,7 +147,15 @@ describe('AccountPage', () => {
     pinAtSignIn: vi.fn(),
   };
   const me = signal<{ mfa: MfaStatus; user: { demo: boolean } }>({
-    mfa: { enrolled: true, required: false, totp: true, passkeys: 0, recoveryCodes: 10 },
+    mfa: {
+      enrolled: true,
+      required: false,
+      totp: true,
+      passkeys: 0,
+      recoveryCodes: 10,
+      passkeySignIn: false,
+      passkeySignInAllowed: false,
+    },
     user: { demo: false },
   });
   const modules = signal<readonly string[]>(['scanning']);
@@ -238,7 +246,15 @@ describe('AccountPage', () => {
     showComing.set(true);
     companies.set([acme, globex]);
     me.set({
-      mfa: { enrolled: true, required: false, totp: true, passkeys: 0, recoveryCodes: 10 },
+      mfa: {
+        enrolled: true,
+        required: false,
+        totp: true,
+        passkeys: 0,
+        recoveryCodes: 10,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
       user: { demo: false },
     });
     for (const fn of [
@@ -292,7 +308,15 @@ describe('AccountPage', () => {
     expect(byTestId(root, 'account-two-factor-manage')?.getAttribute('href')).toBe('/two-factor');
 
     me.set({
-      mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
+      mfa: {
+        enrolled: false,
+        required: false,
+        totp: false,
+        passkeys: 0,
+        recoveryCodes: 0,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
       user: { demo: false },
     });
     fixture.detectChanges();
@@ -302,7 +326,15 @@ describe('AccountPage', () => {
   // One lost phone away from a locked account: Sécurité says so in words, and its action leads to the two-step page.
   it('warns an account its authenticator alone holds, and its action opens the two-step page', async () => {
     me.set({
-      mfa: { enrolled: true, required: true, totp: true, passkeys: 0, recoveryCodes: 3 },
+      mfa: {
+        enrolled: true,
+        required: true,
+        totp: true,
+        passkeys: 0,
+        recoveryCodes: 3,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
       user: { demo: false },
     });
     const root = await render('security');
@@ -314,7 +346,15 @@ describe('AccountPage', () => {
     expect(navigate).toHaveBeenCalledWith('/two-factor');
 
     me.set({
-      mfa: { enrolled: true, required: true, totp: true, passkeys: 1, recoveryCodes: 10 },
+      mfa: {
+        enrolled: true,
+        required: true,
+        totp: true,
+        passkeys: 1,
+        recoveryCodes: 10,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
       user: { demo: false },
     });
     fixture.detectChanges();
@@ -323,7 +363,15 @@ describe('AccountPage', () => {
 
   it('offers a demo visitor no password, second factor nor deletion of the account, which the API refuses', async () => {
     me.set({
-      mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
+      mfa: {
+        enrolled: false,
+        required: false,
+        totp: false,
+        passkeys: 0,
+        recoveryCodes: 0,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      },
       user: { demo: true },
     });
     const root = await render('security');

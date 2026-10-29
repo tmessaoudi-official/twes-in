@@ -39,6 +39,11 @@ export type LoginError =
   | 'step_up_required'
   // The wrong answer to a proof that spent the session's budget: the API signed it out.
   | 'step_up_exhausted'
+  // The sign-in with a passkey alone refused: the installation does not allow it, or the account lacks the
+  // authenticator or a passkey the browser can offer on its own.
+  | 'passkey_sign_in_off'
+  | 'passkey_sign_in_needs_authenticator'
+  | 'passkey_sign_in_needs_passkey'
   // The browser produced no passkey: cancelled, timed out, or no authenticator to answer. Never sent by the API.
   | 'passkey_cancelled'
   // The browser refused because this device already holds a passkey for the account. Never sent by the API.
@@ -134,6 +139,10 @@ export interface MfaStatus {
   passkeys: number;
   /** the recovery codes not spent yet: the screens ask for new ones before the last goes */
   recoveryCodes: number;
+  /** the account signs in with a passkey alone, which it switched on itself */
+  passkeySignIn: boolean;
+  /** the installation lets an account switch that on */
+  passkeySignInAllowed: boolean;
 }
 
 export interface SignedInState {
@@ -228,3 +237,5 @@ export type PasskeyAdded =
 export type PasskeyRemoved = { ok: true } | { ok: false; error: LoginError | null };
 
 export type AuthenticatorRemoved = { ok: true } | { ok: false; error: LoginError | null };
+
+export type PasskeySignInSwitched = { ok: true } | { ok: false; error: LoginError | null };

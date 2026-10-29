@@ -128,7 +128,15 @@ const owner: SignedInState = {
   },
   permissions: ['*'],
   modules: ['customers'],
-  mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
+  mfa: {
+    enrolled: false,
+    required: false,
+    totp: false,
+    passkeys: 0,
+    recoveryCodes: 0,
+    passkeySignIn: false,
+    passkeySignInAllowed: false,
+  },
   // The API's catalogue (row 150): the menu's planned modules come from here, never from a list of the web's own.
   plannedModules: [
     { key: 'register', planned: 'v1' },

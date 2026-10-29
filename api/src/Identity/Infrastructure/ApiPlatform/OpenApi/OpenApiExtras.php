@@ -17,6 +17,7 @@ use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
+use App\Identity\Application\Login\PasskeySignInRefused;
 use App\Identity\Infrastructure\ApiPlatform\Resource\Me;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
@@ -57,7 +58,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             'properties' => [
                 'error' => [
                     'type' => 'string',
-                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required', 'mfa_already_enrolled', 'invalid_passkey', 'mfa_last_factor', 'mfa_authenticator_required', 'passkey_not_found', 'demo_off', 'demo_busy', 'unknown_country', 'demo_refused'],
+                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required', 'mfa_already_enrolled', 'invalid_passkey', 'mfa_last_factor', 'mfa_authenticator_required', 'passkey_not_found', 'demo_off', 'demo_busy', 'unknown_country', 'demo_refused', PasskeySignInRefused::OFF, PasskeySignInRefused::NEEDS_AUTHENTICATOR, PasskeySignInRefused::NEEDS_PASSKEY],
                 ],
             ],
         ]);
@@ -393,6 +394,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             tags: ['Auth'],
             responses: [
                 '200' => $jsonOf('PublicKeyCredentialOptionsJson', 'Request options naming no passkey: the device offers its own'),
+                '404' => $errorResponse('The installation keeps the sign-in with a passkey alone off (passkey_sign_in_off)'),
             ],
             summary: 'Begin a sign-in with a passkey alone',
         )));

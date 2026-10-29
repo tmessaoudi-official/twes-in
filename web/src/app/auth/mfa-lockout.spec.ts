@@ -23,6 +23,8 @@ const mfa = (status: Partial<MfaStatus>): MfaStatus => ({
   totp: true,
   passkeys: 0,
   recoveryCodes: 10,
+  passkeySignIn: false,
+  passkeySignInAllowed: false,
   ...status,
 });
 
@@ -47,18 +49,56 @@ class Host {
 describe('lockoutRisk', () => {
   it.each([
     ['an authenticator and no passkey', mfa({}), true],
-    ['one passkey and no code', mfa({ totp: false, passkeys: 1, recoveryCodes: 0 }), true],
+    [
+      'one passkey and no code',
+      mfa({
+        totp: false,
+        passkeys: 1,
+        recoveryCodes: 0,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      }),
+      true,
+    ],
     // One factor however many codes back it, as an authenticator alone: the ruling pushes a second factor then.
-    ['one passkey and its codes', mfa({ totp: false, passkeys: 1, recoveryCodes: 10 }), true],
+    [
+      'one passkey and its codes',
+      mfa({
+        totp: false,
+        passkeys: 1,
+        recoveryCodes: 10,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      }),
+      true,
+    ],
     ['an authenticator and a passkey', mfa({ passkeys: 1 }), false],
-    ['two passkeys and no code', mfa({ totp: false, passkeys: 2, recoveryCodes: 0 }), false],
+    [
+      'two passkeys and no code',
+      mfa({
+        totp: false,
+        passkeys: 2,
+        recoveryCodes: 0,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      }),
+      false,
+    ],
   ])('says whether %s hangs on one device', (_name, status, single) => {
     expect(lockoutRisk(status)?.singleDevice ?? false).toBe(single);
   });
 
   it('warns once three codes or fewer are left, and not before', () => {
-    expect(lockoutRisk(mfa({ passkeys: 1, recoveryCodes: 4 }))).toBeNull();
-    expect(lockoutRisk(mfa({ passkeys: 1, recoveryCodes: 3 }))).toEqual({
+    expect(
+      lockoutRisk(
+        mfa({ passkeys: 1, recoveryCodes: 4, passkeySignIn: false, passkeySignInAllowed: false }),
+      ),
+    ).toBeNull();
+    expect(
+      lockoutRisk(
+        mfa({ passkeys: 1, recoveryCodes: 3, passkeySignIn: false, passkeySignInAllowed: false }),
+      ),
+    ).toEqual({
       singleDevice: false,
       codesLeft: 3,
       required: false,
@@ -66,7 +106,17 @@ describe('lockoutRisk', () => {
   });
 
   it('says nothing to an account with no factor yet', () => {
-    expect(lockoutRisk(mfa({ enrolled: false, totp: false, recoveryCodes: 0 }))).toBeNull();
+    expect(
+      lockoutRisk(
+        mfa({
+          enrolled: false,
+          totp: false,
+          recoveryCodes: 0,
+          passkeySignIn: false,
+          passkeySignInAllowed: false,
+        }),
+      ),
+    ).toBeNull();
   });
 });
 
@@ -97,7 +147,9 @@ describe('MfaLockout', () => {
   }
 
   it('says in words that one device holds the account, with both ways to make it safer', async () => {
-    const { fixture, q } = await render(mfa({ recoveryCodes: 8 }));
+    const { fixture, q } = await render(
+      mfa({ recoveryCodes: 8, passkeySignIn: false, passkeySignInAllowed: false }),
+    );
 
     expect(q('mfa-lockout-said')?.textContent).toContain('mfa_lockout.single_device');
     expect(q('mfa-lockout-required')).toBeNull();
@@ -125,7 +177,16 @@ describe('MfaLockout', () => {
   });
 
   it('offers no passkey, and no codes needing one, where this browser cannot use one', async () => {
-    const { q } = await render(mfa({ totp: false, passkeys: 1, recoveryCodes: 0 }), false);
+    const { q } = await render(
+      mfa({
+        totp: false,
+        passkeys: 1,
+        recoveryCodes: 0,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      }),
+      false,
+    );
 
     expect(q('mfa-lockout-said')?.textContent).toContain('mfa_lockout.single_device');
     expect(q('mfa-lockout-add-passkey')).toBeNull();
@@ -133,7 +194,11 @@ describe('MfaLockout', () => {
   });
 
   it('says where a passkey is added when this address cannot use one, and offers none here', async () => {
-    const { q } = await render(mfa({ recoveryCodes: 8 }), false, 'https://localhost');
+    const { q } = await render(
+      mfa({ recoveryCodes: 8, passkeySignIn: false, passkeySignInAllowed: false }),
+      false,
+      'https://localhost',
+    );
 
     expect(q('mfa-lockout-said')?.textContent).toContain('mfa_lockout.single_device_elsewhere');
     expect(q('mfa-lockout-add-passkey')).toBeNull();
@@ -141,7 +206,9 @@ describe('MfaLockout', () => {
   });
 
   it('shows nothing to an account that holds several ways in', async () => {
-    const { q } = await render(mfa({ passkeys: 2, recoveryCodes: 10 }));
+    const { q } = await render(
+      mfa({ passkeys: 2, recoveryCodes: 10, passkeySignIn: false, passkeySignInAllowed: false }),
+    );
 
     expect(q('mfa-lockout')).toBeNull();
   });

@@ -379,6 +379,59 @@
             {{ 'auth.two_factor.passkeys_unsupported' | translate }}
           </p>
         }
+        @if (passkeySignIn(); as signIn) {
+          <div class="flex flex-col items-start gap-2" data-testid="two-factor-passkey-sign-in">
+            <h3 class="font-medium">{{ 'auth.two_factor.passkey_sign_in.title' | translate }}</h3>
+            <p class="text-sm">{{ 'auth.two_factor.passkey_sign_in.intro' | translate }}</p>
+            <p data-testid="two-factor-passkey-sign-in-state">
+              {{
+                (signIn.on
+                  ? 'auth.two_factor.passkey_sign_in.on'
+                  : 'auth.two_factor.passkey_sign_in.off'
+                ) | translate
+              }}
+            </p>
+            @if (signIn.on) {
+              @if (!signIn.works) {
+                <p class="text-sm" data-testid="two-factor-passkey-sign-in-idle">
+                  {{ 'auth.two_factor.passkey_sign_in.idle' | translate }}
+                </p>
+              }
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="submitting()"
+                (click)="switchPasskeySignIn(false)"
+                data-testid="two-factor-passkey-sign-in-off"
+              >
+                {{ 'auth.two_factor.passkey_sign_in.off_action' | translate }}
+              </button>
+            } @else if (signIn.ready) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="submitting()"
+                (click)="switchPasskeySignIn(true)"
+                data-testid="two-factor-passkey-sign-in-on"
+              >
+                {{ 'auth.two_factor.passkey_sign_in.on_action' | translate }}
+              </button>
+            } @else {
+              <p class="text-sm" data-testid="two-factor-passkey-sign-in-needs">
+                {{ 'auth.two_factor.passkey_sign_in.needs' | translate }}
+              </p>
+            }
+            @if (signInError(); as code) {
+              <p
+                role="alert"
+                class="twes-auth-error"
+                data-testid="two-factor-passkey-sign-in-error"
+              >
+                {{ signInErrorKey(code) | translate }}
+              </p>
+            }
+          </div>
+        }
       </section>
 
       @if (enrolled()) {

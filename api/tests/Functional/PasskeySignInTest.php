@@ -97,6 +97,12 @@ final class PasskeySignInTest extends ApiTestCase
         $this->sendJson('PUT', self::SWITCH, ['enabled' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame('passkey_sign_in_off', $this->json()['error'] ?? null);
+
+        // The sign-in page asks for options before offering a passkey: none while it is off, for anyone.
+        $this->client->getCookieJar()->clear();
+        $this->postJson(self::OPTIONS, null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame('passkey_sign_in_off', $this->json()['error'] ?? null);
     }
 
     public function testSwitchingItOffAsksNoProofAndTellsItsOwnerOnce(): void
@@ -172,10 +178,12 @@ final class PasskeySignInTest extends ApiTestCase
 
             return $known->assert($test->signInOptions(), withUserHandle: true);
         }];
+        // Switched off between the options and the passkey: the page that asked may still be open.
         yield 'the installation keeps it off' => [static function (self $test, FakeAuthenticator $known): array {
+            $options = $test->signInOptions();
             static::getContainer()->get(ChangeSettings::class)->change(new SettingContext(), PasskeySignInSettings::ALLOWED, SettingLevel::Platform, false, null);
 
-            return $known->assert($test->signInOptions(), withUserHandle: true);
+            return $known->assert($options, withUserHandle: true);
         }];
         yield 'its owner removed the authenticator app' => [static function (self $test, FakeAuthenticator $known): array {
             $test->em()->getConnection()->executeStatement('UPDATE "user" SET totp_secret = NULL, totp_confirmed_at = NULL WHERE email = ?', [self::EMAIL]);

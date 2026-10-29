@@ -35,7 +35,15 @@ describe('CompanyClosing', () => {
     },
     permissions: ['*'],
     modules: [],
-    mfa: { enrolled: true, required: false, totp: true, passkeys: 0, recoveryCodes: 10 },
+    mfa: {
+      enrolled: true,
+      required: false,
+      totp: true,
+      passkeys: 0,
+      recoveryCodes: 10,
+      passkeySignIn: false,
+      passkeySignInAllowed: false,
+    },
   });
 
   beforeEach(async () => {

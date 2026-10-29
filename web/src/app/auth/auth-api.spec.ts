@@ -238,7 +238,15 @@ describe('AuthApi', () => {
     const pending = api.me();
     http.expectOne('/api/auth/me').flush({
       ...owner,
-      mfa: { enrolled: true, required: true, totp: false, passkeys: 2, recoveryCodes: 10 },
+      mfa: {
+        enrolled: true,
+        required: true,
+        totp: false,
+        passkeys: 2,
+        recoveryCodes: 10,
+        passkeySignIn: true,
+        passkeySignInAllowed: true,
+      },
     });
     expect((await pending).mfa).toEqual({
       enrolled: true,
@@ -246,7 +254,33 @@ describe('AuthApi', () => {
       totp: false,
       passkeys: 2,
       recoveryCodes: 10,
+      passkeySignIn: true,
+      passkeySignInAllowed: true,
     });
+  });
+
+  it('switches the sign-in with a passkey alone, and names the refusal', async () => {
+    const on = api.switchPasskeySignIn(true);
+    const put = http.expectOne('/api/auth/mfa/passkey-sign-in');
+    expect(put.request.method).toBe('PUT');
+    expect(put.request.body).toEqual({ enabled: true });
+    put.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(on).resolves.toBeUndefined();
+
+    const refused = api.switchPasskeySignIn(true);
+    http
+      .expectOne('/api/auth/mfa/passkey-sign-in')
+      .flush(
+        { error: 'passkey_sign_in_needs_authenticator' },
+        { status: 422, statusText: 'Unprocessable Content' },
+      );
+    await expect(refused).rejects.toEqual(new AuthRefused('passkey_sign_in_needs_authenticator'));
+
+    const off = api.switchPasskeySignIn(false);
+    const second = http.expectOne('/api/auth/mfa/passkey-sign-in');
+    expect(second.request.body).toEqual({ enabled: false });
+    second.flush(null, { status: 204, statusText: 'No Content' });
+    await off;
   });
 
   it('answers second_factor when the password was right but a code is still owed', async () => {
