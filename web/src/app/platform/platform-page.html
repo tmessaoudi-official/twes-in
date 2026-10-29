@@ -726,6 +726,12 @@
                 @if (row.platformOperator) {
                   <span class="text-sm">{{ 'platform.accounts.operator' | translate }}</span>
                 }
+                @if (row.passwordLockedUntil) {
+                  <span class="text-sm" [attr.data-testid]="'account-lock-' + row.id">{{
+                    'platform.accounts.password_locked_until'
+                      | translate: { moment: (row.passwordLockedUntil | moment) }
+                  }}</span>
+                }
               </span>
             </ng-template>
             <ng-template appDataListCell="companies" let-row>

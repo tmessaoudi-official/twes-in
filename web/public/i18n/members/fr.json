@@ -43,6 +43,9 @@
     "change_role_title": "Changer le rôle de {{name}}",
     "change_role_hint": "Ce que {{name}} peut faire dans l’entreprise change dès que vous validez.",
     "change_role_confirm": "Changer",
-    "role_changed": "{{name}} est maintenant {{role}}."
+    "role_changed": "{{name}} est maintenant {{role}}.",
+    "password_locked_until": "Mot de passe verrouillé jusqu’au {{moment}}",
+    "unlock": "Déverrouiller le mot de passe",
+    "unlocked": "Le mot de passe de {{name}} est déverrouillé."
   }
 }

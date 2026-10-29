@@ -43,6 +43,9 @@
     "change_role_title": "Change {{name}}’s role",
     "change_role_hint": "What {{name}} may do in the company changes as soon as you confirm.",
     "change_role_confirm": "Change",
-    "role_changed": "{{name}} is now {{role}}."
+    "role_changed": "{{name}} is now {{role}}.",
+    "password_locked_until": "Password locked until {{moment}}",
+    "unlock": "Unlock the password",
+    "unlocked": "{{name}}’s password is unlocked."
   }
 }

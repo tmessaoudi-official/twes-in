@@ -10,7 +10,7 @@ import { sessionSignal } from '../shared/session/session-data';
 
 /**
  * The member list of one company, and what an administrator does to it: invite, withdraw an invitation, change a
- * role, remove.
+ * role, remove, lift the lock on a member's password.
  */
 @Injectable({ providedIn: 'root' })
 export class MembersFacade {
@@ -44,6 +44,11 @@ export class MembersFacade {
       (await this.mutate(companyId, () => this.api.changeMemberRole(companyId, userId, role))) !==
       null
     );
+  }
+
+  /** The lock on a member's password lifted, the owner's alone. */
+  async unlock(companyId: string, userId: string): Promise<boolean> {
+    return (await this.mutate(companyId, () => this.api.unlockMember(companyId, userId))) !== null;
   }
 
   async remove(companyId: string, userId: string): Promise<boolean> {

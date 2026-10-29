@@ -139,6 +139,8 @@ export interface PlatformAccountRow {
   readonly createdAt: string;
   /** The companies the account belongs to, with its role in each; empty where the platform did not read them. */
   readonly companies: readonly PlatformAccountCompany[];
+  /** Until when wrong guesses keep its password locked, or null when it is not. */
+  readonly passwordLockedUntil: string | null;
 }
 
 /** One company an account belongs to. */
@@ -191,8 +193,11 @@ export interface PlatformAccountSearch {
 export const PLATFORM_TABS = ['overview', 'companies', 'accounts', 'payments', 'demand'] as const;
 export type PlatformTab = (typeof PLATFORM_TABS)[number];
 
-/** What an operator does about an account: every action ends its sessions except reactivating it. */
-export type AccountAction = 'end-sessions' | 'deactivate' | 'reactivate';
+/**
+ * What an operator does about an account: every action ends its sessions except reactivating it and lifting the lock on
+ * an owner's password.
+ */
+export type AccountAction = 'end-sessions' | 'deactivate' | 'reactivate' | 'unlock';
 
 /**
  * What a company is opened with; the currency and time zone follow its country. Its language is left to the API,
@@ -221,6 +226,8 @@ export type CompanyCountry = keyof typeof COMPANY_COUNTRIES;
 export type PlatformError =
   | 'not_found'
   | 'own_account'
+  /** The lock on the password of an account owning no company, which the platform does not lift. */
+  | 'not_an_owner'
   | 'name_taken'
   | 'already_member'
   | 'step_up_required'

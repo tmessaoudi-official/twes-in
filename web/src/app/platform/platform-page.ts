@@ -150,6 +150,7 @@ const ACCOUNT_DONE: Readonly<Record<AccountAction, string>> = {
   'end-sessions': 'ended',
   deactivate: 'deactivated',
   reactivate: 'reactivated',
+  unlock: 'unlocked',
 };
 
 /** The kinds of message the screens name; another is shown by its class name, as the worker's own commands show it. */
@@ -293,6 +294,18 @@ export class PlatformPage implements OnInit {
         shown: (row) => !row.active,
         disabled: () => this.busy(),
         run: (row) => void this.act(row, 'reactivate'),
+      },
+      {
+        // An owner's lock is the platform's to lift; a member's is their owner's, from the company's members.
+        id: 'unlock',
+        label: 'platform.accounts.unlock',
+        icon: 'lock_open',
+        rare: true,
+        shown: (row) =>
+          row.passwordLockedUntil !== null &&
+          row.companies.some((membership) => membership.role === 'owner'),
+        disabled: () => this.busy(),
+        run: (row) => void this.act(row, 'unlock'),
       },
       {
         // One's own account: every session but this tab, as « Mon compte » ends them, since ending this one too keeps

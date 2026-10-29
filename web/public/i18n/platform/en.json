@@ -93,6 +93,8 @@
       "end_other_sessions": "Sign out of all the other devices",
       "deactivate": "Deactivate",
       "reactivate": "Reactivate",
+      "unlock": "Unlock the password",
+      "password_locked_until": "Password locked until {{moment}}",
       "states": {
         "active": "Active",
         "inactive": "Deactivated",
@@ -106,7 +108,8 @@
       "done": {
         "ended": "{{name}}’s sessions have ended.",
         "deactivated": "{{name}}’s account is deactivated.",
-        "reactivated": "{{name}}’s account is reactivated."
+        "reactivated": "{{name}}’s account is reactivated.",
+        "unlocked": "{{name}}’s password is unlocked."
       },
       "roles": {
         "operator": "Operators",
@@ -117,6 +120,7 @@
       "not_found": "That company no longer exists.",
       "refused": "The platform refused that.",
       "own_account": "You cannot deactivate your own account.",
+      "not_an_owner": "This account no longer owns a company: its password unlocks by itself at the time shown, or through the link it was sent.",
       "network": "The server could not be reached.",
       "name_taken": "A company already has that name.",
       "already_member": "That address already belongs to this company.",

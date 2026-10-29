@@ -93,6 +93,8 @@
       "end_other_sessions": "Déconnecter tous les autres appareils",
       "deactivate": "Désactiver",
       "reactivate": "Réactiver",
+      "unlock": "Déverrouiller le mot de passe",
+      "password_locked_until": "Mot de passe verrouillé jusqu’au {{moment}}",
       "states": {
         "active": "Actifs",
         "inactive": "Désactivés",
@@ -106,7 +108,8 @@
       "done": {
         "ended": "Les sessions de {{name}} ont pris fin.",
         "deactivated": "Le compte de {{name}} est désactivé.",
-        "reactivated": "Le compte de {{name}} est réactivé."
+        "reactivated": "Le compte de {{name}} est réactivé.",
+        "unlocked": "Le mot de passe de {{name}} est déverrouillé."
       },
       "roles": {
         "operator": "Opérateurs",
@@ -117,6 +120,7 @@
       "not_found": "Cette entreprise n’existe plus.",
       "refused": "La plateforme a refusé.",
       "own_account": "Vous ne pouvez pas désactiver votre propre compte.",
+      "not_an_owner": "Ce compte ne possède plus aucune entreprise : son mot de passe se déverrouille de lui-même à l’heure dite, ou par le lien envoyé.",
       "network": "Le serveur est injoignable.",
       "name_taken": "Une entreprise porte déjà ce nom.",
       "already_member": "Cette adresse appartient déjà à cette entreprise.",

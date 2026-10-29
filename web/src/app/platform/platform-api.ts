@@ -234,15 +234,18 @@ export class PlatformApi {
   }
 
   actOnAccount(userId: string, action: AccountAction): Promise<PlatformAccountRow> {
-    return this.guard(async () =>
-      toAccount(
-        await firstValueFrom(
-          this.http.post<PlatformAccountPlatformAccountRead>(
-            `/api/platform/accounts/${encodeURIComponent(userId)}/${action}`,
-            {},
+    return this.guard(
+      async () =>
+        toAccount(
+          await firstValueFrom(
+            this.http.post<PlatformAccountPlatformAccountRead>(
+              `/api/platform/accounts/${encodeURIComponent(userId)}/${action}`,
+              {},
+            ),
           ),
         ),
-      ),
+      // Only an owner's lock is the platform's: an account that owns no company any more is refused.
+      action === 'unlock' ? 'not_an_owner' : 'own_account',
     );
   }
 
@@ -460,6 +463,7 @@ function toAccount(read: PlatformAccountPlatformAccountRead): PlatformAccountRow
       name: company.name ?? '',
       role: company.role ?? '',
     })),
+    passwordLockedUntil: read.passwordLockedUntil ?? null,
   };
 }
 

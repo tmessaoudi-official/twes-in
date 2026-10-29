@@ -19,6 +19,7 @@ describe('PlatformApi', () => {
     platformOperator: false,
     createdAt: '2026-09-15T10:00:00+00:00',
     companies: [{ id: 'c1', name: 'Acme', role: 'owner' }],
+    passwordLockedUntil: null,
   };
 
   const search = {
@@ -228,6 +229,40 @@ describe('PlatformApi', () => {
       .flush({}, { status: 409, statusText: 'Conflict' });
 
     await expect(done).rejects.toMatchObject({ code: 'own_account' });
+  });
+
+  it("reads until when an account's password is locked, and lifts it, the lock gone from the answer", async () => {
+    const found = api.accounts({
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      active: null,
+      platformOperator: null,
+      order: null,
+    });
+    http
+      .expectOne((candidate) => candidate.url === '/api/platform/accounts')
+      .flush({
+        member: [{ ...account, passwordLockedUntil: '2026-10-29T10:15:00+00:00' }],
+        totalItems: 1,
+      });
+    expect((await found).rows[0]?.passwordLockedUntil).toBe('2026-10-29T10:15:00+00:00');
+
+    const done = api.actOnAccount('u1', 'unlock');
+    const request = http.expectOne('/api/platform/accounts/u1/unlock');
+    expect(request.request.method).toBe('POST');
+    request.flush({ ...account, passwordLockedUntil: null });
+    expect((await done).passwordLockedUntil).toBeNull();
+  });
+
+  it('names the refusal to lift the lock of an account that owns no company', async () => {
+    const done = api.actOnAccount('u1', 'unlock');
+
+    http
+      .expectOne('/api/platform/accounts/u1/unlock')
+      .flush({}, { status: 409, statusText: 'Conflict' });
+
+    await expect(done).rejects.toMatchObject({ code: 'not_an_owner' });
   });
 
   it('lists a page of companies, whatever their status, with the total the platform counts', async () => {

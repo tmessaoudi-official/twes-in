@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { DayPipe } from '../shared/i18n/format-pipes';
+import { DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -115,6 +115,7 @@ export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow
     DataListCell,
     CapitalizePipe,
     DayPipe,
+    MomentPipe,
   ],
   templateUrl: './members-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -187,6 +188,20 @@ export class MembersPage implements OnInit {
         }),
       },
       {
+        // A member's password locked by wrong guesses: the owner lets them back in, without the wait or the mailed link.
+        id: 'unlock',
+        rare: true,
+        label: 'members.unlock',
+        icon: 'lock_open',
+        run: (row) => void this.unlock(row),
+        disabled: () => this.busy(),
+        shown: (row) =>
+          this.isOwner() &&
+          row.status === 'joined' &&
+          row.passwordLockedUntil !== null &&
+          row.userId !== this.auth.me()?.user.id,
+      },
+      {
         id: 'resend',
         // Occasional: behind « ⋮ », so the list keeps the width it had.
         rare: true,
@@ -232,6 +247,8 @@ export class MembersPage implements OnInit {
   protected readonly error = this.members.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('user.write'));
+  /** Lifting a member's password lock is the owner's alone, whatever a custom role grants, as the API holds it. */
+  protected readonly isOwner = computed(() => this.auth.me()?.company?.role === 'owner');
   protected readonly mayReadActivity = computed(() => this.auth.hasPermission('audit.read'));
   /** The person acting, as the API's role bounds read them: their role here and what it grants, unnarrowed. */
   private readonly actor = computed<Actor>(() => {
@@ -303,6 +320,13 @@ export class MembersPage implements OnInit {
       this.form.reset({ email: '', role: 'member' });
       // Every address is invited, one with an account included: nobody is a member until they accept.
       this.feedback.success('members.invited');
+    }
+  }
+
+  protected async unlock(row: MemberRow): Promise<void> {
+    const companyId = this.company()?.id;
+    if (companyId && (await this.members.unlock(companyId, row.userId))) {
+      this.feedback.success('members.unlocked', { name: row.displayName });
     }
   }
 

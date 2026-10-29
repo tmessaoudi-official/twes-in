@@ -42,6 +42,8 @@ export interface MemberRow {
   readonly invitationId: string | null;
   /** Until when an invitation's link can be used; null on a member's row. */
   readonly expiresAt: string | null;
+  /** Until when wrong guesses keep the member's password locked, which the company's owner may lift; null otherwise. */
+  readonly passwordLockedUntil: string | null;
 }
 
 /**

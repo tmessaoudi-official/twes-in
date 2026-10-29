@@ -43,6 +43,9 @@
     "change_role_title": "تغيير دور {{name}}",
     "change_role_hint": "ما يمكن لـ{{name}} القيام به في الشركة يتغيّر بمجرد التأكيد.",
     "change_role_confirm": "تغيير",
-    "role_changed": "أصبح {{name}} الآن {{role}}."
+    "role_changed": "أصبح {{name}} الآن {{role}}.",
+    "password_locked_until": "كلمة المرور مقفلة حتى {{moment}}",
+    "unlock": "فتح قفل كلمة المرور",
+    "unlocked": "فُتح قفل كلمة مرور {{name}}."
   }
 }

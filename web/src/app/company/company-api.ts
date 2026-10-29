@@ -127,6 +127,20 @@ export class CompanyApi {
     );
   }
 
+  /** The lock wrong guesses set on a member's password, lifted by the company's owner; answers their row. */
+  async unlockMember(companyId: string, userId: string): Promise<MemberRow> {
+    return this.guard(async () =>
+      toRow(
+        await firstValueFrom(
+          this.http.post<MemberMemberRead>(
+            `/api/companies/${encodeURIComponent(companyId)}/members/${encodeURIComponent(userId)}/unlock`,
+            {},
+          ),
+        ),
+      ),
+    );
+  }
+
   async removeMember(companyId: string, userId: string): Promise<boolean> {
     return this.guard(async () => {
       await firstValueFrom(
@@ -478,6 +492,7 @@ function toRow(row: MemberMemberRead): MemberRow {
     status: row.status ?? 'joined',
     invitationId: row.invitationId ?? null,
     expiresAt: row.expiresAt ?? null,
+    passwordLockedUntil: row.passwordLockedUntil ?? null,
   };
 }
 

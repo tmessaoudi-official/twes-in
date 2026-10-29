@@ -148,6 +148,8 @@ class StaticLoader implements TranslateLoader {
           end_sessions: 'Terminer les sessions',
           deactivate: 'Désactiver',
           reactivate: 'Réactiver',
+          unlock: 'Déverrouiller le mot de passe',
+          password_locked_until: 'Mot de passe verrouillé jusqu’au {{moment}}',
           keep: 'Ne rien changer',
           end_sessions_title: 'Terminer les sessions ?',
           end_sessions_message: '{{name}} est déconnecté sur chacun de ses appareils.',
@@ -256,6 +258,7 @@ const account: PlatformAccountRow = {
     { id: 'c1', name: 'Acme', role: 'owner' },
     { id: 'c2', name: 'Globex', role: 'Comptable' },
   ],
+  passwordLockedUntil: null,
 };
 
 const row: PlatformCompanyRow = {
@@ -1306,6 +1309,52 @@ describe('PlatformPage', () => {
         expect.objectContaining({ key: 'platform.accounts.done.reactivated', kind: 'success' }),
       ]),
     );
+  });
+
+  it("says until when an owner's password is locked and lifts it from « ⋮ », saying it was", async () => {
+    accounts.set([{ ...account, passwordLockedUntil: '2026-10-29T10:15:00+00:00' }]);
+    const { fixture, query } = await render('/?tab=accounts');
+
+    expect(query('account-lock-u1')!.textContent).toContain('Mot de passe verrouillé jusqu’au');
+    // Occasional: it waits behind « ⋮ » rather than taking a slot on the row.
+    expect(query('row-action-unlock-u1')).toBeNull();
+    await fromRowMenu(fixture, 'u1', 'unlock');
+    await vi.waitFor(() => expect(facade.actOnAccount).toHaveBeenCalledWith('u1', 'unlock'));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({
+          key: 'platform.accounts.done.unlocked',
+          params: { name: 'Nadia' },
+          kind: 'success',
+        }),
+      ]),
+    );
+  });
+
+  // A member's lock is their owner's to lift, from the company's members: the platform offers only an owner's.
+  it('offers no unlock for an account owning no company, nor for one whose password is not locked', async () => {
+    accounts.set([
+      {
+        ...account,
+        passwordLockedUntil: '2026-10-29T10:15:00+00:00',
+        companies: [{ id: 'c2', name: 'Globex', role: 'Comptable' }],
+      },
+      { ...account, id: 'u2', email: 'sami@acme.test', displayName: 'Sami' },
+    ]);
+    const { fixture, query } = await render('/?tab=accounts');
+
+    expect(query('account-lock-u1')).not.toBeNull();
+    expect(query('account-lock-u2')).toBeNull();
+    for (const id of ['u1', 'u2']) {
+      (document.querySelector(`[data-testid="row-more-${id}"]`) as HTMLElement).click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(document.querySelector(`[data-testid="row-menu-unlock-${id}"]`)).toBeNull();
+      expect(document.querySelector(`[data-testid="row-action-unlock-${id}"]`)).toBeNull();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
   });
 
   it('opens a company from its name, country and first owner, and says the invitation went out', async () => {

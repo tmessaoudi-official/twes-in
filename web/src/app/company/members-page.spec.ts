@@ -48,6 +48,9 @@ class StaticLoader implements TranslateLoader {
         expired_on: 'Invitation expirée le {{day}} sans avoir servi : renvoyez-la',
         replaces: 'Une invitation attend déjà {{email}}.',
         resend: 'Renvoyer l’invitation',
+        password_locked_until: 'Mot de passe verrouillé jusqu’au {{moment}}',
+        unlock: 'Déverrouiller le mot de passe',
+        unlocked: 'Le mot de passe de {{name}} est déverrouillé.',
         change_role: 'Changer le rôle',
         change_role_title: 'Changer le rôle de {{name}}',
         change_role_confirm: 'Changer',
@@ -72,6 +75,7 @@ const owner: MemberRow = {
   status: 'joined',
   invitationId: null,
   expiresAt: null,
+  passwordLockedUntil: null,
 };
 
 const invited: MemberRow = {
@@ -83,6 +87,7 @@ const invited: MemberRow = {
   status: 'invited',
   invitationId: 'i1',
   expiresAt: '2026-11-02T10:00:00+00:00',
+  passwordLockedUntil: null,
 };
 
 describe('MembersPage', () => {
@@ -105,6 +110,7 @@ describe('MembersPage', () => {
     remove: vi.fn(),
     withdraw: vi.fn(),
     changeRole: vi.fn(async () => true),
+    unlock: vi.fn(async () => true),
   };
   const auth = {
     me: () => ({
@@ -151,6 +157,7 @@ describe('MembersPage', () => {
     members.add.mockReset().mockResolvedValue(owner);
     members.remove.mockReset().mockResolvedValue(true);
     members.withdraw.mockReset().mockResolvedValue(true);
+    members.unlock.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
     companyRoles.set([
       role('owner', true),
@@ -391,6 +398,51 @@ describe('MembersPage', () => {
     await vi.waitFor(() =>
       expect(members.add).toHaveBeenCalledWith('c1', 'invited@example.test', 'member'),
     );
+  });
+
+  // Row 241: a clerk who locked their password by mistyping it is let back in by the owner, not after fifteen minutes.
+  const locked: MemberRow = {
+    ...owner,
+    userId: 'u2',
+    email: 'clerk@example.test',
+    displayName: 'Clerk',
+    role: 'member',
+    passwordLockedUntil: '2026-10-29T10:15:00+00:00',
+  };
+
+  it('says whose password is locked, and the owner lifts it, saying so', async () => {
+    rows.set([owner, locked]);
+    fixture.detectChanges();
+
+    expect(text('member-lock-u2')).toContain('Mot de passe verrouillé jusqu’au');
+    expect(fixture.nativeElement.querySelector('[data-testid="member-lock-u1"]')).toBeNull();
+    (await menuEntry('u2', 'unlock'))!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    await vi.waitFor(() => expect(members.unlock).toHaveBeenCalledWith('c1', 'u2'));
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        expect.objectContaining({ key: 'members.unlocked', params: { name: 'Clerk' } }),
+      ]),
+    );
+  });
+
+  it('offers lifting a lock to the owner alone, and only while it holds', async () => {
+    rows.set([
+      owner,
+      locked,
+      { ...locked, userId: 'u3', email: 'free@example.test', passwordLockedUntil: null },
+    ]);
+    fixture.detectChanges();
+    expect(await menuEntry('u3', 'unlock')).toBeNull();
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    actor.set({ role: 'admin', permissions: ['user.read', 'user.write'] });
+    fixture.detectChanges();
+    expect(await menuEntry('u2', 'unlock')).toBeNull();
   });
 
   it('sends an invitation again at the same role, saying the old link stopped', async () => {

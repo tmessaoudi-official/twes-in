@@ -19,6 +19,7 @@ const account: PlatformAccountRow = {
   platformOperator: false,
   createdAt: '2026-09-15T10:00:00+00:00',
   companies: [{ id: 'c1', name: 'Acme', role: 'owner' }],
+  passwordLockedUntil: null,
 };
 
 const row: PlatformCompanyRow = {
