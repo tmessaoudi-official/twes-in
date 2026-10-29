@@ -23,6 +23,7 @@ use App\ModuleRegistry\Application\ModuleStates;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Settings\Application\SupportSettings;
+use App\Shared\Application\PhoneNumbers;
 use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
@@ -53,6 +54,7 @@ final readonly class MeFactory
         private ReadSetting $settings,
         private DemoAccounts $demoAccounts,
         private RecoveryCodeRepository $recoveryCodes,
+        private PhoneNumbers $phones,
     ) {
     }
 
@@ -81,6 +83,9 @@ final readonly class MeFactory
             return \is_string($value) && '' !== TypedText::trimmed($value) ? TypedText::trimmed($value) : null;
         };
 
-        return new MeSupport($channel(SupportSettings::PHONE), $channel(SupportSettings::WHATSAPP), $channel(SupportSettings::EMAIL));
+        // The phone is kept as E.164 and shown grouped as its country writes it; the link dials its digits.
+        $phone = $channel(SupportSettings::PHONE);
+
+        return new MeSupport(null === $phone ? null : $this->phones->grouped($phone), $channel(SupportSettings::WHATSAPP), $channel(SupportSettings::EMAIL));
     }
 }

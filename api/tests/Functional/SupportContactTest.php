@@ -39,7 +39,7 @@ final class SupportContactTest extends ApiTestCase
 
         $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
         $this->login('owner@example.test', self::PASSWORD);
-        $expected = ['phone' => '+21671000000', 'whatsapp' => '+216 20 123 456', 'email' => null];
+        $expected = ['phone' => '+216 71 000 000', 'whatsapp' => '+216 20 123 456', 'email' => null];
         self::assertSame($expected, $this->json()['support'], 'the login answer');
 
         $this->client->request('GET', '/api/auth/me');
