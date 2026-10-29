@@ -184,6 +184,8 @@ final readonly class ManagePayments implements DeclaresAuditActions
                 [
                     'company' => $company->getName(),
                     'confirmed' => $confirmed,
+                    // Which answer, as a word the bell picks its sentence by: confirmed, or refused and another may be declared.
+                    'decision' => $confirmed ? 'confirmed' : 'refused',
                     'amount' => $declaration->getAmount(),
                     'currency' => $declaration->getCurrency(),
                     'scale' => $this->scales->of($declaration->getCurrency()),

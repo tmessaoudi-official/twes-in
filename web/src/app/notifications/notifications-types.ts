@@ -71,6 +71,18 @@ export function notificationKey(type: string): string {
     : 'notifications.types.unknown';
 }
 
+/**
+ * The sentence an entry says: its type's own, or the one its record's variant picks from the payload
+ * ("subscription.payment_decided" with `decision: "refused"` → "…subscription_payment_decided_refused").
+ */
+export function sentenceKey(entry: InboxEntry, record: NotificationRecord): string {
+  const base = notificationKey(entry.type);
+  const value = record.variant === undefined ? undefined : entry.payload[record.variant.field];
+  return typeof value === 'string' && record.variant?.values.includes(value) === true
+    ? `${base}_${value}`
+    : base;
+}
+
 /** The kind's name where a person chooses how it is told: "stock.low" → "notifications.kinds.stock_low". */
 export function notificationKindKey(type: string): string {
   return (KNOWN_NOTIFICATION_TYPES as readonly string[]).includes(type)
@@ -90,6 +102,11 @@ export interface NotificationRecord {
   readonly quantities?: readonly string[];
   /** the payload's field naming the unit the quantities are counted in, written after each: « -3 kg » is not « -3 » pieces */
   readonly unit?: string;
+  /**
+   * A payload field whose value picks the sentence among the type's own (`<key>_<value>`), such as which answer a
+   * payment had; a notice without it, or with a value not listed, says the type's general sentence
+   */
+  readonly variant?: { readonly field: string; readonly values: readonly string[] };
   /** the payload's moments, sent as the company's `YYYY-MM-DD HH:mm`, which the words write in the screen's order of a day */
   readonly moments?: readonly string[];
 }
@@ -219,6 +236,7 @@ const RECORDS = new Map<string, NotificationRecord>([
       route: '/company/subscription',
       permission: 'subscription.read',
       amounts: ['amount'],
+      variant: { field: 'decision', values: ['confirmed', 'refused'] },
     },
   ],
   // A module the company asked « Me prévenir » for has arrived: switched on from the modules page.

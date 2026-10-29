@@ -288,6 +288,12 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         $rejected = self::getMailerMessage();
         self::assertInstanceOf(MimeEmail::class, $rejected);
         self::assertStringContainsString('Payment of 1,234.50 EUR not confirmed', (string) $rejected->getHtmlBody());
+        // The subject names the company, among several an owner may have, and a refusal says what to do next.
+        self::assertSame('Your payment for Acme could not be confirmed', $rejected->getSubject());
+        self::assertStringContainsString('You may declare another payment.', (string) $rejected->getHtmlBody());
+        $decided = json_decode(\is_string($raw = $this->em()->getConnection()->fetchOne('SELECT payload FROM inbox_item WHERE type = ?', ['subscription.payment_decided'])) ? $raw : '', true);
+        self::assertIsArray($decided);
+        self::assertSame('refused', $decided['decision'] ?? null, 'the bell says which answer it was');
         foreach (['subscription.payment_declared', 'subscription.payment_decided'] as $type) {
             $raw = $this->em()->getConnection()->fetchOne('SELECT payload FROM inbox_item WHERE type = ?', [$type]);
             self::assertIsString($raw, $type);
@@ -315,6 +321,10 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         self::assertInstanceOf(MimeEmail::class, $confirmed);
         self::assertSame('owner@twes.local', $confirmed->getTo()[0]->getAddress());
         self::assertStringContainsString('Payment of 1,234.50 EUR confirmed', (string) $confirmed->getHtmlBody());
+        self::assertSame('Your payment for Acme has been confirmed', $confirmed->getSubject());
+        $decided = json_decode(\is_string($raw = $this->em()->getConnection()->fetchOne('SELECT payload FROM inbox_item WHERE type = ?', ['subscription.payment_decided'])) ? $raw : '', true);
+        self::assertIsArray($decided);
+        self::assertSame('confirmed', $decided['decision'] ?? null);
     }
 
     public function testEachPaymentMailWritesItsDayAndAmountAsItsOwnReaderChose(): void

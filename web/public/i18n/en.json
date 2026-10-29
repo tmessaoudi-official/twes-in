@@ -649,6 +649,8 @@
       "unknown": "New notification.",
       "subscription_payment_declared": "{{company}} declared a payment of {{amount}} {{currency}}.",
       "subscription_payment_decided": "Your payment of {{amount}} {{currency}} was answered.",
+      "subscription_payment_decided_confirmed": "Your payment of {{amount}} {{currency}} for {{company}} is confirmed.",
+      "subscription_payment_decided_refused": "Your payment of {{amount}} {{currency}} for {{company}} could not be confirmed. You may declare another.",
       "module_arrived": "« {{label}} » has arrived: you can switch it on for {{company}} in Modules.",
       "data_check_failed": "The check “{{label}}” found {{count}} {count, plural, one {problem} other {problems}} in the data of {{company}}.",
       "support_access_granted": "{{by}} opened {{company}} to the platform’s support, read-only, until {{until}}.",

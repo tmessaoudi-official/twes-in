@@ -649,6 +649,8 @@
       "unknown": "Nouvelle notification.",
       "subscription_payment_declared": "{{company}} a déclaré un règlement de {{amount}} {{currency}}.",
       "subscription_payment_decided": "Votre règlement de {{amount}} {{currency}} a reçu une réponse.",
+      "subscription_payment_decided_confirmed": "Votre règlement de {{amount}} {{currency}} pour {{company}} est confirmé.",
+      "subscription_payment_decided_refused": "Votre règlement de {{amount}} {{currency}} pour {{company}} n’a pas pu être confirmé. Vous pouvez en déclarer un autre.",
       "module_arrived": "« {{label}} » est arrivé : vous pouvez l’activer pour {{company}} dans Modules.",
       "data_check_failed": "Le contrôle « {{label}} » a trouvé {{count}} {count, plural, one {anomalie} other {anomalies}} dans les données de {{company}}.",
       "support_access_granted": "{{by}} a ouvert {{company}} au support de la plateforme, en lecture seule, jusqu’au {{until}}.",

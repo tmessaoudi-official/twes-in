@@ -70,11 +70,11 @@ payment_declared:
     call_to_action: 'Ouvrir la page plateforme'
     sign_in_first: "La décision se prend connecté : ce lien ouvre la page, il ne confirme rien par lui-même."
 payment_decided:
-    confirmed_subject: 'Votre règlement a été confirmé'
-    rejected_subject: "Votre règlement n’a pas pu être confirmé"
+    confirmed_subject: 'Votre règlement pour %company% a été confirmé'
+    rejected_subject: "Votre règlement pour %company% n’a pas pu être confirmé"
     confirmed_heading: 'Règlement de %amount% %currency% confirmé'
     rejected_heading: 'Règlement de %amount% %currency% non confirmé'
-    rejected_intro: "Nous n’avons pas pu confirmer le règlement déclaré pour %company%."
+    rejected_intro: "Nous n’avons pas pu confirmer le règlement déclaré pour %company%. Vous pouvez déclarer un autre règlement."
     paid_through: '%company% est réglée jusqu’au %date%.'
     note: 'Note : %note%'
     call_to_action: 'Ouvrir %product%'

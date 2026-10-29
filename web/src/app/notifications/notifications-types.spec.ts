@@ -20,10 +20,20 @@ describe('notificationKey', () => {
 describe('KNOWN_NOTIFICATION_TYPES', () => {
   // A kind the API tells and the words say, but the bell does not know, reads « Nouvelle notification » instead.
   it('holds every kind the words say, in both languages', () => {
-    const known = KNOWN_NOTIFICATION_TYPES.map((type) => type.replaceAll('.', '_'));
+    // A type's own sentence, and one per answer its record's variant picks (a payment confirmed or refused).
+    const known = KNOWN_NOTIFICATION_TYPES.flatMap((type) => {
+      const key = type.replaceAll('.', '_');
+      const variant = notificationRecord(type).variant;
+      return [key, ...(variant?.values ?? []).map((value) => `${key}_${value}`)];
+    });
     for (const words of [fr, en]) {
-      for (const key of Object.keys(words.notifications.types).filter((key) => key !== 'unknown')) {
+      const said = Object.keys(words.notifications.types).filter((key) => key !== 'unknown');
+      for (const key of said) {
         expect(known, key).toContain(key);
+      }
+      // and the reverse: every sentence a variant picks is written, or the bell would say its key
+      for (const key of known) {
+        expect(said, key).toContain(key);
       }
     }
   });

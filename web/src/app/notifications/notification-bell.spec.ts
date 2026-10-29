@@ -45,6 +45,9 @@ class StaticLoader implements TranslateLoader {
           invoice_credit_limit_passed: '{{customer}} doit {{owed}} {{currency}} pour {{limit}}',
           stock_low: '{{product}} est tombé à {{on_hand}}, seuil {{point}}',
           support_access_granted: 'Support ouvert jusqu’au {{until}}',
+          subscription_payment_decided: 'Votre règlement a reçu une réponse',
+          subscription_payment_decided_confirmed: 'Règlement confirmé pour {{company}}',
+          subscription_payment_decided_refused: 'Règlement non confirmé pour {{company}}',
         },
       },
       modules: { quotes: 'Devis et commandes' },
@@ -474,6 +477,37 @@ describe('NotificationBell', () => {
   // The API sends a quantity at its column's three decimals with the unit it is counted in, and a moment as the company's
   // day and hour: the bell writes the quantity without the zeros that say nothing and with its unit, the day in the
   // screen's order, and anything else as it came (an older notice with no unit says the number alone).
+  // The answer to a declared payment says which it was; an older notice, which names none, keeps the general sentence.
+  it('says whether a declared payment was confirmed or refused', async () => {
+    const decided = (id: string, decision?: string) => ({
+      ...unreadEntry,
+      id,
+      type: 'subscription.payment_decided',
+      payload: {
+        company: 'Acme',
+        amount: '10.000',
+        currency: 'TND',
+        scale: 3,
+        ...(decision === undefined ? {} : { decision }),
+      },
+    });
+    items.set([
+      decided('p1', 'confirmed'),
+      decided('p2', 'refused'),
+      decided('p3'),
+      decided('p4', 'unheard_of'),
+    ]);
+    const fixture = render();
+    await open(fixture);
+
+    expect(all('notification-text').map((item) => text(item))).toEqual([
+      'Règlement confirmé pour Acme',
+      'Règlement non confirmé pour Acme',
+      'Votre règlement a reçu une réponse',
+      'Votre règlement a reçu une réponse',
+    ]);
+  });
+
   it('writes the quantities and moments it says as the screen writes them', async () => {
     items.set([
       {

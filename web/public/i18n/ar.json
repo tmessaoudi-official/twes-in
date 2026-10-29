@@ -649,6 +649,8 @@
       "unknown": "إشعار جديد.",
       "subscription_payment_declared": "صرّحت {{company}} بدفع مبلغ {{amount}} {{currency}}.",
       "subscription_payment_decided": "تلقّى دفعك بمبلغ {{amount}} {{currency}} ردًّا.",
+      "subscription_payment_decided_confirmed": "تمّ تأكيد دفعك بمبلغ {{amount}} {{currency}} لـ {{company}}.",
+      "subscription_payment_decided_refused": "تعذّر تأكيد دفعك بمبلغ {{amount}} {{currency}} لـ {{company}}. يمكنك التصريح بدفعة أخرى.",
       "module_arrived": "وصلت « {{label}} »: يمكنك تفعيلها لفائدة {{company}} في الوحدات.",
       "data_check_failed": "وجد الفحص « {{label}} » {count, plural, zero {لا اختلال} one {اختلالًا واحدًا} two {اختلالين} few {{{count}} اختلالات} many {{{count}} اختلالًا} other {{{count}} اختلال}} في بيانات {{company}}.",
       "support_access_granted": "فتح {{by}} {{company}} لدعم المنصّة، للقراءة فقط، إلى غاية {{until}}.",

@@ -20,9 +20,9 @@ import { groupByDay, relativeTime } from './notification-days';
 import { NotificationsFacade } from './notifications-facade';
 import {
   type InboxEntry,
-  notificationKey,
   notificationRecord,
   type NotificationRecord,
+  sentenceKey,
 } from './notifications-types';
 import { Label } from '../shared/a11y/label';
 
@@ -81,7 +81,7 @@ export class NotificationPanel {
         return {
           entry,
           icon: record.icon,
-          textKey: notificationKey(entry.type),
+          textKey: sentenceKey(entry, record),
           params: this.params(entry, record),
           route: allowed ? record.route : null,
           ago: relativeTime(entry.createdAt, now, locale),
