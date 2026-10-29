@@ -172,3 +172,51 @@ test('a new logo shows at once at the head of the rail, without reloading the pa
     }
   }
 });
+
+// One phone field everywhere (row 252): the company's country is picked beside the number, another is found by its name,
+// the number is saved in international form, and it reads back into its country and its local part after a reload.
+test('a phone is typed beside its country, found by name, and reads back into the two', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const original = await currentProfile(page);
+  try {
+    await page.goto('/company/profile');
+    await page.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
+    const country = page.getByTestId('field-phone-country');
+    // The seeded company is Tunisian: a number with no « + » is read as Tunisia's.
+    await expect(country).toContainText('+216');
+
+    await country.click();
+    await page.getByTestId('field-phone-country-search').fill('France');
+    await page.getByTestId('field-phone-country-FR').click();
+    await expect(country).toContainText('+33');
+    await page.getByTestId('field-phone').fill('06 12 34');
+    await page.getByTestId('field-phone').press('Tab');
+    await expect(page.getByTestId('field-error-phone')).toContainText('+33 ');
+    await page.getByTestId('field-phone').fill('06 12 34 56 78');
+    await expect(page.getByTestId('field-error-phone')).toHaveCount(0);
+    await page.getByTestId('record-save').click();
+    await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
+    await expect(toast(page)).toContainText('Le profil a été enregistré.');
+    expect((await currentProfile(page))['phone']).toBe('+33612345678');
+
+    await page.reload();
+    await expect(page.getByTestId('field-phone-country')).toContainText('+33');
+    await expect(page.getByTestId('field-phone')).toHaveValue('06 12 34 56 78');
+    const axe = await (
+      await axeAtRest(page)
+    )
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    expect(axe.violations.map((violation) => violation.id)).toEqual([]);
+  } finally {
+    if (
+      original['identifiers'] !== null &&
+      Object.keys(original['identifiers'] as object).length > 0
+    ) {
+      await putProfile(page, original);
+    }
+  }
+});

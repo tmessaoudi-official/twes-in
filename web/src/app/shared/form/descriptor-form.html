@@ -212,6 +212,17 @@
                       {{ error.key | translate: error.params }}
                     </span>
                   }
+                } @else if (field.kind === 'tel') {
+                  <app-phone-field
+                    [formControlName]="field.id"
+                    [country]="phoneCountry()"
+                    [inputId]="controlId(field)"
+                    [testId]="'field-' + field.id"
+                    [required]="field.required ?? false"
+                    [error]="errorText(field)"
+                    [errorTestId]="'field-error-' + field.id"
+                    [hint]="field.hint ? (field.hint | translate: field.hintParams) : ''"
+                  />
                 } @else if (field.kind === 'colour') {
                   <app-colour-field
                     [inputId]="controlId(field)"

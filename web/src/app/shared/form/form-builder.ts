@@ -12,6 +12,7 @@ import type { FieldValue, FormDescriptor, FormField, FormValues } from './form-t
 import { onTypedText, typedText } from './typed-text';
 import { emailRule } from './email-rule';
 import { lengthSaidOf } from './length-said';
+import { phoneRefusal } from './phone-numbers';
 
 /**
  * A form as a pure function of its descriptor: one control per declared field with the validators the field
@@ -117,6 +118,12 @@ function onceChanged(rule: ValidatorFn, start: FieldValue): ValidatorFn {
 /** The kinds whose rule the API applies once changed: an address and a phone (`onceChanged: true` in api/src). */
 const KEPT_KINDS: ReadonlySet<FormField['kind']> = new Set(['email', 'tel']);
 
+/** A phone of the length its country's numbers have, as the API's `TypedPhones` refuses it; empty is no phone. */
+const phoneRule: ValidatorFn = (control) => {
+  const refused = typeof control.value === 'string' ? phoneRefusal(control.value) : null;
+  return refused === null ? null : { phone: refused };
+};
+
 function validatorsFor(field: FormField, start: FieldValue): ValidatorFn[] {
   const validators: ValidatorFn[] = [];
   // A required checkbox is one that must be ticked; requiredTrue reports the same `required` error.
@@ -127,6 +134,7 @@ function validatorsFor(field: FormField, start: FieldValue): ValidatorFn[] {
     ? (rule: ValidatorFn) => onceChanged(typed(rule), start)
     : typed;
   if (field.kind === 'email') validators.push(shaped(emailRule));
+  if (field.kind === 'tel') validators.push(shaped(phoneRule));
   if (field.kind === 'select' || field.kind === 'multiselect') validators.push(oneOf(field));
   // A string pattern is anchored at both ends by Validators.pattern, so it matches the whole value.
   if (field.pattern !== undefined) validators.push(shaped(Validators.pattern(field.pattern)));
@@ -196,6 +204,8 @@ export function fieldError(control: AbstractControl, field: FormField): FieldErr
   // What the API refused outranks the form's own rules: it is what the last save was told.
   if (errors['refused']) return errors['refused'] as FieldError;
   if (errors['required']) return { key: 'form.errors.required' };
+  // A phone's length is said with an example of its own country, which the field's general sentence cannot give.
+  if (errors['phone']) return errors['phone'] as FieldError;
   // The field's own sentence names the format and an example, which the browser's word for an address does not.
   if (errors['pattern'] && field.patternError) return { key: field.patternError };
   if (errors['email']) return { key: 'form.errors.email' };

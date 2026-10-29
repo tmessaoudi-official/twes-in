@@ -156,6 +156,24 @@ describe('a value kept from before the rule', () => {
     expect(control.hasError('pattern')).toBe(true);
   });
 
+  // The one phone rule (row 252): a number of the wrong length for its country is refused with that country's example,
+  // above the field's pattern, and a number kept from before the rule still saves while it stands.
+  it('refuses a phone of the wrong length for its country with an example, and keeps the held one', () => {
+    const fresh = buildFormGroup(keptForm, { phone: '' }).controls['phone'];
+    fresh.setValue('+216 71 234');
+    expect(fieldError(fresh, kept)).toEqual({
+      key: 'import.rejections.phone_length',
+      params: { example: expect.stringMatching(/^\+216 /) as unknown as string },
+    });
+    fresh.setValue('+216 71 234 567');
+    expect(fresh.valid).toBe(true);
+
+    const held = buildFormGroup(keptForm, { phone: '+216 71 234' }).controls['phone'];
+    expect(held.valid).toBe(true);
+    held.setValue('+216 71 235');
+    expect(held.hasError('phone')).toBe(true);
+  });
+
   it('keeps nothing for an empty start, nor for a rule the API judges on every write', () => {
     const empty = buildFormGroup(keptForm, { email: '' }).controls['email'];
     empty.setValue('compta@exemple');

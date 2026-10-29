@@ -44,6 +44,7 @@ declare -A exempt=(
   [web/src/app/shared/form/colour-field.ts]="a field of a form, counted by the page that owns the form"
   [web/src/app/shared/form/descriptor-form.ts]="draws a form a page counts"
   [web/src/app/shared/form/file-drop.ts]="a field of a form, counted by the page that owns the form"
+  [web/src/app/shared/form/phone-field.ts]="a field of a form, counted by the page that owns the form"
   [web/src/app/shared/form/pick-field.ts]="a field of a form, counted by the page that owns the form"
   [web/src/app/shared/form/select.ts]="a field of a form, counted by the page that owns the form"
   [web/src/app/shared/receivers/receiver-field.ts]="a field of a form, counted by the page or dialog that owns the form"

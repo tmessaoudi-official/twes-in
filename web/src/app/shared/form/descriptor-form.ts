@@ -4,6 +4,7 @@ import {
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   ElementRef,
   inject,
@@ -26,6 +27,9 @@ import { Label } from '../a11y/label';
 import { CountInput } from './count-input';
 import { DecimalInput } from './decimal-input';
 import { ColourField } from './colour-field';
+import { PLATFORM_PHONE_COUNTRY } from './phone-country';
+import { PhoneField } from './phone-field';
+import { Session } from '../session/session';
 import { DayCalendarButton } from './day-calendar-button';
 import { DayInput } from './day-input';
 import { emailTypo } from './email-rule';
@@ -76,6 +80,7 @@ export interface PickSource {
     DayInput,
     DayCalendarButton,
     ColourField,
+    PhoneField,
     PickField,
     Select,
   ],
@@ -126,6 +131,17 @@ export class DescriptorForm {
   readonly notes = input<Readonly<Record<string, string>>>({});
   /** The section whose fields end with what the screen projects as `formTrail`, such as « Ajouter une langue ». */
   readonly trailIn = input<string | null>(null);
+  /**
+   * The country a phone field reads a number with no « + » by: by default the company's open in the session, else the
+   * platform's; the platform's own forms name the platform's, whatever company the operator has open.
+   */
+  readonly phoneCountryOf = input<string | null>(null);
+
+  private readonly session = inject(Session, { optional: true });
+  private readonly platformCountry = inject(PLATFORM_PHONE_COUNTRY);
+  protected readonly phoneCountry = computed(
+    () => this.phoneCountryOf() ?? this.session?.me()?.company?.countryCode ?? this.platformCountry,
+  );
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the messages. */
   private readonly revision = signal(0);
@@ -236,6 +252,20 @@ export class DescriptorForm {
     this.revision();
     const control = this.form().controls[field.id];
     return control?.touched ? fieldError(control, field) : null;
+  }
+
+  /** A field's message in the screen's words, for a field that draws its own error: empty while it has none. */
+  protected errorText(field: FormField): string {
+    const error = this.errorFor(field);
+    if (error === null) return '';
+    const translate = this.injector.get(TranslateService);
+    return [
+      translate.instant(error.key, error.params) as string,
+      error.hint === undefined ? '' : (translate.instant(error.hint) as string),
+      error.count ?? '',
+    ]
+      .filter((part) => part !== '')
+      .join(' ');
   }
 
   /** For an e-mail field, the address a slip of a key most likely meant: offered under it, never written into it. */

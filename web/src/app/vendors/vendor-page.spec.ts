@@ -383,7 +383,7 @@ describe('VendorPage', () => {
     });
     facade.clearError.mockImplementationOnce(() => error.set(null));
     facade.loadVendor.mockImplementationOnce(async () =>
-      vendor.set({ ...sotumag, version: 2, phone: '71 000 000' }),
+      vendor.set({ ...sotumag, version: 2, phone: '+21671000000' }),
     );
 
     type('field-email', 'compta@sotumag.tn');
@@ -405,7 +405,7 @@ describe('VendorPage', () => {
     expect(facade.reviseVendor).toHaveBeenLastCalledWith(
       'c1',
       'v1',
-      expect.objectContaining({ email: 'compta@sotumag.tn', phone: '71 000 000' }),
+      expect.objectContaining({ email: 'compta@sotumag.tn', phone: '+21671000000' }),
       2,
     );
   });

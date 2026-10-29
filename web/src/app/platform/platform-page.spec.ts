@@ -70,6 +70,10 @@ class StaticLoader implements TranslateLoader {
             'Un numéro WhatsApp s’écrit au format international (exemple : +216 20 123 456).',
           value_required: 'Cette case doit être remplie.',
           invalid_text: 'Texte refusé : {{max}} caractères au plus.',
+          phone_length:
+            'Ce numéro n’a pas le nombre de chiffres d’un téléphone de son pays (exemple : {{example}}).',
+          invalid_phone:
+            'Un téléphone s’écrit en chiffres, avec + devant l’indicatif (exemple : +216 71 900 868).',
           invalid_phone_digits:
             'Un téléphone compte de 6 à 15 chiffres (exemple : +216 71 900 868).',
           invalid_email:
@@ -963,12 +967,13 @@ describe('PlatformPage', () => {
     expect(query('field-error-phone')).toBeNull();
     phone.dispatchEvent(new Event('blur'));
     fixture.detectChanges();
-    expect(query('field-error-phone')?.textContent).toContain('6 à 15 chiffres');
+    // A length its country's numbers do not have is said with an example of that country.
+    expect(query('field-error-phone')?.textContent).toContain('exemple : +216 ');
 
     type('+216 71 900 868');
     expect(query('field-error-phone')).toBeNull();
     type('------');
-    expect(query('field-error-phone')?.textContent).toContain('6 à 15 chiffres');
+    expect(query('field-error-phone')?.textContent).toContain('s’écrit en chiffres');
   });
 
   // The browser knows the value is wrong: no save, so no password asked for one the API would refuse anyway.
@@ -988,7 +993,7 @@ describe('PlatformPage', () => {
     fixture.detectChanges();
 
     expect(facade.saveSupport).not.toHaveBeenCalled();
-    expect(query('field-error-phone')?.textContent).toContain('6 à 15 chiffres');
+    expect(query('field-error-phone')?.textContent).toContain('s’écrit en chiffres');
     // The API's sentence, with its example, before the browser's own word for an e-mail.
     expect(query('field-error-email')?.textContent).toContain('nom@domaine.extension');
     expect(document.activeElement).toBe(query('field-phone'));

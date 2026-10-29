@@ -919,7 +919,7 @@ describe('CustomerPage', () => {
     });
     facade.clearError.mockImplementationOnce(() => error.set(null));
     facade.loadCustomer.mockImplementationOnce(async () =>
-      customer.set({ ...carthage, version: 2, phone: '71 000 000' }),
+      customer.set({ ...carthage, version: 2, phone: '+21671000000' }),
     );
 
     type('field-email', 'compta@carthage.tn');
@@ -941,7 +941,7 @@ describe('CustomerPage', () => {
     expect(facade.reviseCustomer).toHaveBeenLastCalledWith(
       'c1',
       'k1',
-      expect.objectContaining({ email: 'compta@carthage.tn', phone: '71 000 000' }),
+      expect.objectContaining({ email: 'compta@carthage.tn', phone: '+21671000000' }),
       2,
     );
   });

@@ -826,6 +826,7 @@
       "colour": "Enter a colour written as #rrggbb, such as #1f6feb."
     },
     "email_typo": "Did you mean:",
+    "phone": { "country": "Country code" },
     "leave": {
       "title": "Leave without saving?",
       "message": "Your changes will be lost.",
