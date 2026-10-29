@@ -25,6 +25,10 @@ final readonly class MeMfa
         #[ApiProperty(required: true)] public int $passkeys = 0,
         /** The unspent recovery codes: the screen asks for new ones before the last goes. */
         #[ApiProperty(required: true)] public int $recoveryCodes = 0,
+        /** Whether its owner lets a passkey alone sign the account in. */
+        #[ApiProperty(required: true)] public bool $passkeySignIn = false,
+        /** Whether the installation lets anyone do so: the switch is offered only then. */
+        #[ApiProperty(required: true)] public bool $passkeySignInAllowed = false,
     ) {
     }
 }

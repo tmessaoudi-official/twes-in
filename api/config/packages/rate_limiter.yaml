@@ -13,6 +13,13 @@ framework:
         # Setting up an app, or moving to a new one, checks a code against a secret just handed to this session: as
         # few guesses as at sign-in, on a budget of its own, so a mistyped first code never holds back the sign-in or the
         # proof of who is there.
+        # A sign-in with a passkey alone names no account until the passkey is proved, so its tries are counted per client:
+        # as many as the password sign-in allows one address across all its accounts, so an office behind one address is
+        # not held back, while a script guessing at credentials is.
+        passkey_sign_in:
+            policy: 'fixed_window'
+            limit: '%app.rate_limit.passkey_sign_in.limit%'
+            interval: '%app.rate_limit.passkey_sign_in.interval%'
         mfa_confirm:
             policy: 'fixed_window'
             limit: '%app.rate_limit.mfa_confirm.limit%'

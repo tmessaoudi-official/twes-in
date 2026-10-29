@@ -47,6 +47,7 @@ final readonly class DemoAccountGuard
         'api_auth_mfa_passkeys_options',
         'api_auth_mfa_passkeys_register',
         'api_auth_mfa_passkeys_remove',
+        'api_auth_mfa_passkey_sign_in',
         'api_auth_mfa_recovery_codes',
         'api_auth_mfa_recovery_codes_passkey',
         'api_auth_mfa_recovery_codes_passkey_options',

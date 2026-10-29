@@ -38,6 +38,8 @@ final class PlatformSettingsTest extends ApiTestCase
             'company.reopen_days',
             // Whether visitors may try the demo, and how many sandboxes may exist at once (Demo\Application\DemoSettings).
             'demo.enabled', 'demo.sandboxes_max',
+            // Whether anyone may sign in with a passkey alone (Identity\Application\Login\PasskeySignInSettings).
+            'identity.passkey_sign_in',
             // The rows one imported file may hold (ImportExport\Application\ImportSettings).
             'import.max_rows',
             // The publisher's and host's identity the legal pages name (Legal\Application\LegalSettings), empty until filled in.

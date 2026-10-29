@@ -66,13 +66,13 @@ final readonly class Me
      * @param Standing|null         $standing       where the working company stands in its subscription, null when licensing does not manage it
      * @param list<MePlannedModule> $plannedModules the modules not built yet, whoever is signed in
      */
-    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0, ?Standing $standing = null, array $plannedModules = [], ?string $customerScreenCompanyId = null, MeSupport $support = new MeSupport(), bool $demo = false, int $recoveryCodes = 0): self
+    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0, ?Standing $standing = null, array $plannedModules = [], ?string $customerScreenCompanyId = null, MeSupport $support = new MeSupport(), bool $demo = false, int $recoveryCodes = 0, bool $passkeySignInAllowed = false): self
     {
         return new self(
             new MeUser($user->getId()->toRfc4122(), $demo ? DemoAccounts::SHOWN_AS : $user->getEmail()->value, $user->getDisplayName(), $user->getLocale(), $user->isPlatformOperator(), $demo),
             null === $context ? null : new MeCompany($context->companyId, $context->name, $context->countryCode, $context->currency, $context->locale, $context->timezone, $context->status, $context->role, (null === $standing ? Access::Full : $standing->access)->value, null === $standing ? null : MeSubscription::of($standing), $context->logoVersion, null === $context->closing ? null : MeClosing::of($context->closing), $context->refused, $context->suspensionReason),
             null === $context ? [] : $context->permissions,
-            new MeMfa($user->hasTotp() || $passkeys > 0, $mfaRequired, $user->hasTotp(), $passkeys, $recoveryCodes),
+            new MeMfa($user->hasTotp() || $passkeys > 0, $mfaRequired, $user->hasTotp(), $passkeys, $recoveryCodes, $user->signsInWithPasskey(), $passkeySignInAllowed),
             $modules,
             $plannedModules,
             $customerScreenCompanyId,

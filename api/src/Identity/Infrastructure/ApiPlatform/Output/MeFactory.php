@@ -11,6 +11,7 @@ namespace App\Identity\Infrastructure\ApiPlatform\Output;
 
 use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\CustomerScreen\CustomerScreenLock;
+use App\Identity\Application\Login\PasskeySignInSettings;
 use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Identity\Domain\Repository\RecoveryCodeRepository;
 use App\Identity\Domain\Repository\UserRepository;
@@ -72,7 +73,7 @@ final readonly class MeFactory
             array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => null !== $manifest->planned),
         ));
 
-        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user));
+        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED));
     }
 
     private function support(): MeSupport

@@ -160,7 +160,7 @@ final readonly class WebauthnPasskeyCeremonies implements PasskeyCeremonies
         return null === $raw ? null : self::encode($raw);
     }
 
-    public function verifyAssertion(string $optionsJson, string $credentialJson, string $recordJson, string $userHandle): string
+    public function verifyAssertion(string $optionsJson, string $credentialJson, string $recordJson, ?string $userHandle): string
     {
         $this->credentialIdOf($credentialJson) ?? throw new PasskeyRefused();
 

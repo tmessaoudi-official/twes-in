@@ -60,6 +60,9 @@ security:
         - { path: ^/api/auth/mfa/verify$, roles: PUBLIC_ACCESS }
         # The same half of a login, paid with a passkey instead of a code.
         - { path: ^/api/auth/mfa/passkey-login(/options)?$, roles: PUBLIC_ACCESS }
+        # A sign-in with a passkey alone: no session exists yet, and the passkey found on the device is the whole proof
+        # (its user verification standing for the second step); budgeted per client, the account being unknown until then.
+        - { path: ^/api/auth/passkey-sign-in(/options)?$, roles: PUBLIC_ACCESS }
         # Public signup: asked for from the sign-in page and finished from a mailed link, both with no session by design.
         # Closed until an operator opens it (signup.enabled), rate limited, and answered the same whatever the address.
         - { path: ^/api/signup, roles: PUBLIC_ACCESS }

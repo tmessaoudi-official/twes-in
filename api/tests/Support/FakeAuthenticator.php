@@ -30,6 +30,9 @@ final class FakeAuthenticator
 
     private \OpenSSLAsymmetricKey $key;
 
+    /** The account's handle the registration named, base64url, which a discoverable passkey answers with. */
+    private ?string $userHandle = null;
+
     public function __construct(
         private readonly string $origin = 'http://localhost:8090',
         private readonly string $rpId = 'localhost',
@@ -55,6 +58,8 @@ final class FakeAuthenticator
     public function register(array $options, int $flags = self::USER_PRESENT | self::USER_VERIFIED, int $signCount = 0, ?string $challenge = null, ?string $origin = null, ?bool $residentKey = null): array
     {
         $clientData = $this->clientData('webauthn.create', $challenge ?? self::challengeOf($options), $origin);
+        $user = $options['user'] ?? null;
+        $this->userHandle = \is_array($user) && \is_string($user['id'] ?? null) ? $user['id'] : null;
         $authData = hash('sha256', $this->rpId, true).\chr(($flags | self::ATTESTED_DATA) & 0xFF).pack('N', $signCount)
             .str_repeat("\0", 16).pack('n', \strlen($this->credentialId)).$this->credentialId.$this->coseKey();
         $attestation = MapObject::create()
@@ -81,7 +86,7 @@ final class FakeAuthenticator
      *
      * @return array<string, mixed>
      */
-    public function assert(array $options, int $flags = self::USER_PRESENT | self::USER_VERIFIED, int $signCount = 0, ?string $challenge = null, ?string $origin = null): array
+    public function assert(array $options, int $flags = self::USER_PRESENT | self::USER_VERIFIED, int $signCount = 0, ?string $challenge = null, ?string $origin = null, bool $withUserHandle = false, ?string $userHandle = null): array
     {
         $clientData = $this->clientData('webauthn.get', $challenge ?? self::challengeOf($options), $origin);
         $authData = hash('sha256', $this->rpId, true).\chr($flags & 0xFF).pack('N', $signCount);
@@ -98,6 +103,8 @@ final class FakeAuthenticator
                 'clientDataJSON' => self::base64Url($clientData),
                 'authenticatorData' => self::base64Url($authData),
                 'signature' => self::base64Url($signature),
+                // A passkey found on the device without an address says whose it is, as the registration named it.
+                ...($withUserHandle ? ['userHandle' => $userHandle ?? $this->userHandle] : []),
             ],
         ];
     }

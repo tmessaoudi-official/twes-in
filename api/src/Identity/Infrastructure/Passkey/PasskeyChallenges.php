@@ -15,7 +15,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * The options of the one passkey ceremony under way in this session, kept server-side so the browser cannot choose the
- * challenge it answers. Taking them removes them whether or not what follows verifies: every challenge answers once.
+ * challenge it answers. Taking them removes them whether or not what follows verifies: every challenge answers once. A
+ * sign-in with a passkey alone has no account yet: its options are kept for nobody, and only that ceremony takes them.
  */
 final readonly class PasskeyChallenges
 {
@@ -28,18 +29,18 @@ final readonly class PasskeyChallenges
     ) {
     }
 
-    public function remember(string $purpose, Uuid $userId, string $optionsJson, ?\DateTimeImmutable $now = null): void
+    public function remember(string $purpose, ?Uuid $userId, string $optionsJson, ?\DateTimeImmutable $now = null): void
     {
         $this->requestStack->getSession()->set(self::KEY, [
             'purpose' => $purpose,
-            'user' => $userId->toRfc4122(),
+            'user' => $userId?->toRfc4122(),
             'options' => $optionsJson,
             'until' => ($now ?? new \DateTimeImmutable())->add(new \DateInterval($this->ttl))->getTimestamp(),
         ]);
     }
 
     /** @return string|null the options, or null when there are none for this purpose and account, or they expired */
-    public function take(string $purpose, Uuid $userId, ?\DateTimeImmutable $now = null): ?string
+    public function take(string $purpose, ?Uuid $userId, ?\DateTimeImmutable $now = null): ?string
     {
         $session = $this->requestStack->getSession();
         $ceremony = $session->get(self::KEY);
@@ -47,7 +48,7 @@ final readonly class PasskeyChallenges
 
         if (!\is_array($ceremony)
             || $purpose !== ($ceremony['purpose'] ?? null)
-            || $userId->toRfc4122() !== ($ceremony['user'] ?? null)
+            || $userId?->toRfc4122() !== ($ceremony['user'] ?? null)
             || !\is_int($ceremony['until'] ?? null)
             || ($now ?? new \DateTimeImmutable())->getTimestamp() > $ceremony['until']
             || !\is_string($ceremony['options'] ?? null)

@@ -951,7 +951,8 @@
       "import_max_rows": "Most rows in one imported file",
       "company_reopen_days": "Days a closed company can be reopened",
       "licensing_grace_days": "Days of grace after a subscription ends",
-      "licensing_hold_days": "Days of access while a payment is confirmed"
+      "licensing_hold_days": "Days of access while a payment is confirmed",
+      "passkey_sign_in": "Sign-in with a passkey alone"
     },
     "intro": "The company's defaults. A customer, a product or a document may still say otherwise.",
     "no_company": "Choose a company first.",

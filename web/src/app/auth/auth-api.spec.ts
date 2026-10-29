@@ -37,7 +37,15 @@ const owner: Me = {
     suspensionReason: null,
   },
   permissions: ['*'],
-  mfa: { enrolled: false, required: false, totp: false, passkeys: 0, recoveryCodes: 0 },
+  mfa: {
+    enrolled: false,
+    required: false,
+    totp: false,
+    passkeys: 0,
+    recoveryCodes: 0,
+    passkeySignIn: false,
+    passkeySignInAllowed: true,
+  },
   modules: ['customers'],
   plannedModules: [
     { key: 'quotes', planned: 'v1' },

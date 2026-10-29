@@ -951,7 +951,8 @@
       "import_max_rows": "Lignes au plus par fichier importé",
       "company_reopen_days": "Jours pour rouvrir une entreprise fermée",
       "licensing_grace_days": "Jours de grâce après la fin d’un abonnement",
-      "licensing_hold_days": "Jours d’accès pour un paiement à confirmer"
+      "licensing_hold_days": "Jours d’accès pour un paiement à confirmer",
+      "passkey_sign_in": "Connexion par clé d’accès seule"
     },
     "intro": "Les valeurs par défaut de la société. Un client, un produit ou un document peut encore en décider autrement.",
     "no_company": "Choisissez d’abord une société.",

@@ -180,6 +180,8 @@ final class SubmissionStancesTest extends KernelTestCase
         '/auth/mfa/recovery-codes/passkey' => self::SESSION,
         '/auth/mfa/recovery-codes/passkey/options' => self::SESSION,
         '/auth/mfa/verify' => self::SESSION,
+        '/auth/passkey-sign-in' => self::SESSION,
+        '/auth/passkey-sign-in/options' => self::SESSION,
         '/auth/password/forgot' => self::SESSION,
         '/auth/password/reset' => self::SESSION,
         '/auth/step-up' => self::SESSION,

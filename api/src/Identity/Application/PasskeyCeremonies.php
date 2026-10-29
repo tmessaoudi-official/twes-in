@@ -40,9 +40,12 @@ interface PasskeyCeremonies
     public function credentialIdOf(string $credentialJson): ?string;
 
     /**
+     * @param string|null $userHandle the account the ceremony was begun for, or null when the device found the passkey
+     *                                itself: the assertion must then name the record's own account
+     *
      * @return string the credential record after this use, carrying its new signature counter
      *
      * @throws PasskeyRefused when the assertion does not verify against the record and these options
      */
-    public function verifyAssertion(string $optionsJson, string $credentialJson, string $recordJson, string $userHandle): string;
+    public function verifyAssertion(string $optionsJson, string $credentialJson, string $recordJson, ?string $userHandle): string;
 }

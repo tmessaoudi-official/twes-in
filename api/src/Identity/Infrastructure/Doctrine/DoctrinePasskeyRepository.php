@@ -39,7 +39,12 @@ final readonly class DoctrinePasskeyRepository implements PasskeyRepository
 
     public function existsWithCredentialId(string $credentialId): bool
     {
-        return null !== $this->entityManager->getRepository(Passkey::class)->findOneBy(['credentialId' => $credentialId]);
+        return null !== $this->ofCredentialId($credentialId);
+    }
+
+    public function ofCredentialId(string $credentialId): ?Passkey
+    {
+        return $this->entityManager->getRepository(Passkey::class)->findOneBy(['credentialId' => $credentialId]);
     }
 
     public function countFor(User $user): int

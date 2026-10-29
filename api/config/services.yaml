@@ -21,6 +21,8 @@ parameters:
     app.rate_limit.login.interval: '15 minutes'
     app.rate_limit.mfa_verify.limit: 5
     app.rate_limit.mfa_verify.interval: '5 minutes'
+    app.rate_limit.passkey_sign_in.limit: 50
+    app.rate_limit.passkey_sign_in.interval: '15 minutes'
     app.rate_limit.mfa_confirm.limit: 5
     app.rate_limit.mfa_confirm.interval: '5 minutes'
     app.rate_limit.signup_client.limit: 5

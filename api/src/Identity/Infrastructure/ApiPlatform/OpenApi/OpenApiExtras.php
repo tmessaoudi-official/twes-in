@@ -141,6 +141,13 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                 'code' => ['type' => 'string', 'description' => 'A six-digit code, or a recovery code.'],
             ],
         ]);
+        $schemas['PasskeySignInSwitch'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['enabled'],
+            'properties' => [
+                'enabled' => ['type' => 'boolean', 'description' => 'Whether a passkey alone may sign this account in'],
+            ],
+        ]);
         $schemas['StepUpPassword'] = new \ArrayObject([
             'type' => 'object',
             'required' => ['password'],
@@ -336,6 +343,19 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             summary: 'Remove a passkey',
             parameters: [new Parameter('id', 'path', 'The passkey', true, schema: ['type' => 'string', 'format' => 'uuid'])],
         )));
+        $openApi->getPaths()->addPath('/api/auth/mfa/passkey-sign-in', new PathItem(put: new Operation(
+            operationId: 'switchPasskeySignIn',
+            tags: ['Auth'],
+            responses: [
+                '204' => new Response('Switched, or already so'),
+                '400' => $errorResponse('No yes or no given (enabled_required)'),
+                '401' => $errorResponse('Not signed in'),
+                '403' => $errorResponse('Switching on without a fresh proof of who is at the screen (step_up_required)'),
+                '422' => $errorResponse('Cannot be switched on here: off at this installation (passkey_sign_in_off), no authenticator app (passkey_sign_in_needs_authenticator), or no passkey that lives on its device (passkey_sign_in_needs_passkey)'),
+            ],
+            summary: 'Let a passkey alone sign the account in, or stop it',
+            requestBody: new RequestBody('On or off', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/PasskeySignInSwitch']))]), true),
+        )));
         $openApi->getPaths()->addPath('/api/auth/mfa/authenticator', new PathItem(delete: new Operation(
             operationId: 'removeAuthenticator',
             tags: ['Auth'],
@@ -366,6 +386,25 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                 '429' => $errorResponse('Too many attempts'),
             ],
             summary: 'Finish a login that owes a second factor with a passkey',
+            requestBody: $bodyOf('PasskeyAssertion', 'The assertion'),
+        )));
+        $openApi->getPaths()->addPath('/api/auth/passkey-sign-in/options', new PathItem(post: new Operation(
+            operationId: 'passkeySignInOptions',
+            tags: ['Auth'],
+            responses: [
+                '200' => $jsonOf('PublicKeyCredentialOptionsJson', 'Request options naming no passkey: the device offers its own'),
+            ],
+            summary: 'Begin a sign-in with a passkey alone',
+        )));
+        $openApi->getPaths()->addPath('/api/auth/passkey-sign-in', new PathItem(post: new Operation(
+            operationId: 'signInWithPasskey',
+            tags: ['Auth'],
+            responses: [
+                '200' => new Response('Signed in; the session cookie is set', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/'.$me]))])),
+                '401' => $errorResponse('The same for every refusal (invalid_passkey), or a deactivated account once the passkey is proved (account_disabled)'),
+                '429' => $errorResponse('Too many attempts from this client'),
+            ],
+            summary: 'Sign in with a passkey alone, where its owner let it',
             requestBody: $bodyOf('PasskeyAssertion', 'The assertion'),
         )));
         $openApi->getPaths()->addPath('/api/auth/mfa/recovery-codes/passkey/options', new PathItem(post: new Operation(

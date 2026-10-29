@@ -177,6 +177,12 @@ security_notice:
     passkey_removed:
         heading: 'Passkey removed'
         body: 'A passkey was removed from your account: it no longer signs you in.'
+    passkey_sign_in_on:
+        heading: 'Passkey sign-in switched on'
+        body: 'A passkey alone can now open your account: the authenticator app stays your way back.'
+    passkey_sign_in_off:
+        heading: 'Passkey sign-in switched off'
+        body: 'A passkey alone can no longer open your account: signing in asks for the password again.'
     password_changed:
         heading: 'Password changed'
         body: 'Your account’s password was changed.'

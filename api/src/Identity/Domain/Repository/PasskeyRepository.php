@@ -26,6 +26,9 @@ interface PasskeyRepository
     /** Across every account: an authenticator creates one credential id per registration, so a repeat is a replay. */
     public function existsWithCredentialId(string $credentialId): bool;
 
+    /** Across every account, for a passkey the device found itself: whose it is comes from the passkey, never from the screen. */
+    public function ofCredentialId(string $credentialId): ?Passkey;
+
     public function countFor(User $user): int;
 
     public function save(Passkey $passkey): void;

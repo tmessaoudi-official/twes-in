@@ -77,6 +77,11 @@ final class SupportDoubles
                 return false;
             }
 
+            public function ofCredentialId(string $credentialId): ?Passkey
+            {
+                return null;
+            }
+
             public function countFor(User $user): int
             {
                 return 0;

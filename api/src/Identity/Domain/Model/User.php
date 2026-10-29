@@ -87,6 +87,13 @@ class User
     private ?string $totpReplacementSecret = null;
 
     /**
+     * Whether its owner lets a passkey alone sign this account in. Off until they switch it on, and only beside the
+     * authenticator app, which stays the way back; signing in this way still needs that, so this is a yes, not a key.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $passkeySignIn = false;
+
+    /**
      * Rotated to force every session of this user out (admin-forced logout, password change): the security
      * token carries the stamp it was created with, and a mismatch on refresh means the token is stale.
      */
@@ -425,6 +432,17 @@ class User
     public function hasTotp(): bool
     {
         return null !== $this->totpSecret && null !== $this->totpConfirmedAt;
+    }
+
+    public function signsInWithPasskey(): bool
+    {
+        return $this->passkeySignIn;
+    }
+
+    public function allowPasskeySignIn(bool $allowed, \DateTimeImmutable $now): void
+    {
+        $this->passkeySignIn = $allowed;
+        $this->touch($now);
     }
 
     public function getTotpSecret(): ?string

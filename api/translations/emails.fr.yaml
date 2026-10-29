@@ -178,6 +178,12 @@ security_notice:
     passkey_removed:
         heading: 'Clé d’accès retirée'
         body: 'Une clé d’accès a été retirée de votre compte : elle ne permet plus de vous connecter.'
+    passkey_sign_in_on:
+        heading: 'Connexion par clé d’accès activée'
+        body: 'Une clé d’accès seule peut maintenant ouvrir votre compte : l’application d’authentification reste votre recours.'
+    passkey_sign_in_off:
+        heading: 'Connexion par clé d’accès désactivée'
+        body: 'Une clé d’accès seule ne peut plus ouvrir votre compte : la connexion demande de nouveau le mot de passe.'
     password_changed:
         heading: 'Mot de passe changé'
         body: 'Le mot de passe de votre compte a été changé.'

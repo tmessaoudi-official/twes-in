@@ -51,13 +51,14 @@ final class OpenApiTest extends KernelTestCase
         self::assertNotNull($paths->getPath('/api/signup/{token}')?->getGet());
         self::assertNotNull($paths->getPath('/api/signup/{token}/complete')?->getPost());
         self::assertNotNull($paths->getPath('/api/auth/mfa/recovery-codes/passkey')?->getPost());
+        self::assertNotNull($paths->getPath('/api/auth/mfa/passkey-sign-in')?->getPut());
         self::assertNotNull($paths->getPath('/api/companies/{companyId}/customer-screen/lock')?->getPost());
         self::assertNotNull($paths->getPath('/api/auth/customer-screen')?->getDelete());
 
         self::assertSame(['user', 'company', 'permissions', 'mfa', 'modules', 'plannedModules', 'customerScreenCompanyId', 'support', 'supportAccessUntil', 'supportAccessReason'], $this->required($schemas['Me']));
         self::assertSame(['phone', 'whatsapp', 'email'], $this->required($schemas['MeSupport']));
         self::assertSame(['key', 'planned'], $this->required($schemas['MePlannedModule']));
-        self::assertSame(['enrolled', 'required', 'totp', 'passkeys', 'recoveryCodes'], $this->required($schemas['MeMfa']));
+        self::assertSame(['enrolled', 'required', 'totp', 'passkeys', 'recoveryCodes', 'passkeySignIn', 'passkeySignInAllowed'], $this->required($schemas['MeMfa']));
         self::assertSame(['id', 'email', 'displayName', 'locale', 'isPlatformOperator', 'demo'], $this->required($schemas['MeUser']));
         self::assertSame(['id', 'name', 'countryCode', 'currency', 'locale', 'timezone', 'status', 'role', 'access', 'subscription', 'logoVersion', 'closing', 'refused', 'suspensionReason'], $this->required($schemas['MeCompany']));
         self::assertSame(['retainUntil', 'reopenUntil'], $this->required($schemas['MeClosing']));

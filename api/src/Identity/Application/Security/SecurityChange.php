@@ -21,6 +21,9 @@ enum SecurityChange: string
     case AuthenticatorRemoved = 'authenticator_removed';
     case PasskeyAdded = 'passkey_added';
     case PasskeyRemoved = 'passkey_removed';
+    /** Its owner let a passkey alone sign the account in, or stopped it. */
+    case PasskeySignInOn = 'passkey_sign_in_on';
+    case PasskeySignInOff = 'passkey_sign_in_off';
     case PasswordChanged = 'password_changed';
     case PasswordReset = 'password_reset';
     case RecoveryCodesRenewed = 'recovery_codes_renewed';
