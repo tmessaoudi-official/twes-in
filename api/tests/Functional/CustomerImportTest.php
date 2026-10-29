@@ -305,6 +305,26 @@ final class CustomerImportTest extends ApiTestCase
         self::assertSame("Téléphone du fichier\u{a0}: «\u{a0}le standard\u{a0}», mis de côté\u{a0}: ce n’est pas un numéro de téléphone.\nMatricule fiscal du fichier\u{a0}: «\u{a0}pas-un-matricule\u{a0}», mis de côté\u{a0}: sa forme ne correspond pas (exemple\u{a0}: 1234567A/B/M/000).", $customer->getCheckMark()->note);
     }
 
+    /**
+     * A file's phones are read as the form reads them (row 207): by the customer's country, kept as E.164; one of the
+     * wrong length is set aside with its country's example; one outside the numbers handed out marks the customer.
+     */
+    public function testAFilesPhonesAreReadByTheCustomersCountry(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import("number,name,phone,billing_country_code\nCLI-0040,Atelier Ben Ali,71 900 868,\nCLI-0041,Atelier Mercier,01 23 45 67 89,FR\nCLI-0042,Atelier Court,71 900,\nCLI-0043,Atelier Hors Plan,11 111 111,\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([2, 3, 4, 5], $this->arrayAt($this->json(), 'created'));
+        self::assertSame([
+            ['line' => 4, 'column' => 'phone', 'code' => 'set_aside', 'params' => ['value' => '71 900', 'reason' => 'phone_length', 'example' => '+216 30 010 123', 'callingCode' => '+216']],
+        ], $this->json()['notes']);
+        self::assertSame(['+21671900868', '+33123456789', null, '+21611111111'], array_map(fn (string $number): ?string => $this->customer($number)->getProfile()->phone, ['CLI-0040', 'CLI-0041', 'CLI-0042', 'CLI-0043']));
+        self::assertStringContainsString('(exemple', (string) $this->customer('CLI-0042')->getCheckMark()->note);
+        self::assertTrue($this->customer('CLI-0043')->getCheckMark()->marked, 'a number outside the plan is « À vérifier »');
+    }
+
     /** A customer stored before a rule is held to it when a file writes it again, under the column the rule names. */
     public function testAFileUpdatingACustomerStoredBeforeARuleIsRefusedOnTheCellItBreaks(): void
     {
