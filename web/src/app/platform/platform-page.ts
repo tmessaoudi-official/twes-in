@@ -30,7 +30,7 @@ import { refusalParams } from '../shared/form/refusal-words';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SETTING_REFUSAL_TEXTS } from '../shared/settings/setting-refusals';
 import { DescriptorForm, type FieldAction } from '../shared/form/descriptor-form';
-import { PLATFORM_PHONE_COUNTRY } from '../shared/form/phone-country';
+import { phoneCountries } from '../shared/form/phone-numbers';
 import { Session } from '../shared/session/session';
 import { EndOtherSessions } from '../account/end-other-sessions';
 import { unsavedChanges } from '../shared/form/dirty-count';
@@ -408,7 +408,7 @@ export class PlatformPage implements OnInit {
   });
   private readonly supportForm = viewChild<DescriptorForm>('supportForm');
   /** The support's numbers are the platform's, read by its country whatever company the operator has open. */
-  protected readonly platformPhoneCountry = inject(PLATFORM_PHONE_COUNTRY);
+  protected readonly platformPhoneCountry = computed(() => this.platform.country()?.value ?? '');
   /** WhatsApp is often the phone's own number: one press copies it, and the field stays the operator's to change. */
   protected readonly supportActions: Readonly<Record<string, FieldAction>> = {
     whatsapp: {
@@ -476,6 +476,32 @@ export class PlatformPage implements OnInit {
   protected readonly importRowsReady = computed(() =>
     numberReady(this.platform.imports()?.rows, this.importRowsDraft()),
   );
+  protected readonly country = this.platform.country;
+  private readonly countryHeld = computed(() => this.platform.country()?.value ?? null);
+  /** The country picked until saved, null when untouched. */
+  protected readonly countryDraft = linkedSignal<string | null, string | null>({
+    source: this.countryHeld,
+    computation: () => null,
+  });
+  /** A country picked that differs from the platform's. */
+  protected readonly countryReady = computed(() => {
+    const picked = this.countryDraft();
+    return picked !== null && picked !== this.countryHeld();
+  });
+  private readonly screenLanguage = toSignal(this.translate.onLangChange, { initialValue: null });
+  /** The countries the platform may be set to, the presets' own, each by its flag and its name in the screen's language. */
+  protected readonly countryChoices = computed<SelectOption[]>(() => {
+    this.screenLanguage();
+    const choices = new Set(this.platform.country()?.choices ?? []);
+    const screen = this.translate.getCurrentLang() ?? this.translate.getFallbackLang() ?? '';
+    return phoneCountries(screen)
+      .filter((each) => choices.has(each.code))
+      .map((each) => ({
+        value: each.code,
+        label: `${each.flag} ${each.name}`,
+        testId: `platform-country-select-${each.code}`,
+      }));
+  });
   protected readonly busy = this.platform.busy;
   protected readonly error = this.platform.error;
   protected readonly accounts = this.platform.accounts;
@@ -516,6 +542,7 @@ export class PlatformPage implements OnInit {
       delaysTyped +
       numberTyped(this.platform.demo()?.most, this.demoMostDraft()) +
       numberTyped(this.platform.imports()?.rows, this.importRowsDraft()) +
+      (this.countryReady() ? 1 : 0) +
       (this.creating() ? filled([this.companyName(), this.ownerEmail()]) : 0) +
       filled(Object.values(this.ownerEmails()))
     );
@@ -826,6 +853,16 @@ export class PlatformPage implements OnInit {
     if (!this.importRowsReady() || typed === null) return;
     if (await this.platform.saveImportRows(typed)) {
       this.feedback.success('platform.imports.saved');
+    } else {
+      this.savedSince();
+    }
+  }
+
+  protected async saveCountry(): Promise<void> {
+    const picked = this.countryDraft();
+    if (!this.countryReady() || picked === null) return;
+    if (await this.platform.saveCountry(picked)) {
+      this.feedback.success('platform.country.saved');
     } else {
       this.savedSince();
     }

@@ -418,10 +418,19 @@ describe('PlatformApi', () => {
         max: 5000,
         versions: { platform: 7 },
       },
+      {
+        key: 'platform.country',
+        type: 'enum',
+        value: 'FR',
+        choices: ['FR', 'TN'],
+        versions: { platform: 9 },
+      },
     ]);
 
     expect(await settings).toEqual({
       signup: { enabled: true, approvalRequired: false },
+      // The platform's own country, which its phone fields start on, among the presets' countries.
+      country: { key: 'platform.country', value: 'FR', choices: ['FR', 'TN'] },
       // What is coming, as the installation shows it until a company or a person chooses.
       showComing: true,
       // The demo's count is not a delay: it has its own card.
@@ -491,6 +500,7 @@ describe('PlatformApi', () => {
         'presentation.show-coming': 8,
         'demo.sandboxes_max': 6,
         'import.max_rows': 7,
+        'platform.country': 9,
       },
     });
   });
@@ -502,6 +512,7 @@ describe('PlatformApi', () => {
 
     expect((await settings).demo).toEqual({ enabled: true, most: null });
     expect((await settings).imports).toEqual({ rows: null });
+    expect((await settings).country).toBeNull();
   });
 
   it('sets one switch at the platform level, the demo among them', async () => {

@@ -17,6 +17,7 @@ import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import { TextsParts } from '../shared/i18n/texts-part';
 import type { LegalPage } from '../shared/legal/legal-pages';
 import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-legal-types';
+import { PLATFORM_COUNTRY } from './platform-types';
 
 /** The identity's fields the API refused, each named by its placeholder, with the reason the screens translate. */
 export class LegalIdentityRefused extends Error {
@@ -87,7 +88,9 @@ export class PlatformLegalApi {
     );
     const values: Record<string, string> = {};
     const versions: Record<string, number> = {};
+    let country: string | null = null;
     for (const row of rows) {
+      if (row.key === PLATFORM_COUNTRY && typeof row.value === 'string') country = row.value;
       const key = row.key ?? '';
       if (key.startsWith(IDENTITY_PREFIX)) {
         const placeholder = key.slice(IDENTITY_PREFIX.length);
@@ -95,7 +98,7 @@ export class PlatformLegalApi {
         versions[placeholder] = row.versions?.['platform'] ?? 0;
       }
     }
-    return { values, versions };
+    return { values, versions, country };
   }
 
   /**

@@ -315,13 +315,18 @@
       "save": "Save the delays",
       "saved": "Delays saved."
     },
+    "country": {
+      "title": "Platform country",
+      "intro": "The country the platform is run from: the phones of the support and of the legal pages start on its code.",
+      "label": "Country",
+      "save": "Save",
+      "saved": "Platform country saved."
+    },
     "support": {
       "title": "Support contact",
       "intro": "What every screen’s help offers everyone signed in under “Contact us”. A channel left empty is not shown.",
       "phone": "Phone",
-      "phone_hint": "For example +216 71 000 000",
       "whatsapp": "WhatsApp",
-      "whatsapp_hint": "The number in international form, country code first: +216 20 123 456",
       "same_as_phone": "Same number as the phone",
       "email": "Email address",
       "email_hint": "For example support@example.tn",

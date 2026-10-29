@@ -25,6 +25,7 @@ export class PlatformLegalFacade {
   private readonly state = requestState<true>(() => true);
   private readonly identitySignal = sessionSignal<Readonly<Record<string, string>>>({});
   private readonly identityRefusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
+  private readonly countrySignal = sessionSignal<string | null>(null);
   private opened: { page: LegalPage; language: LegalLanguage } | null = null;
   /** The version of each placeholder's row when read, which a save sends back. */
   private identityVersions: Readonly<Record<string, number>> = {};
@@ -37,6 +38,8 @@ export class PlatformLegalFacade {
   readonly identity = this.identitySignal.asReadonly();
   /** What the API refused in the last save of the identity, each field by its placeholder; none once one is kept. */
   readonly identityRefusals = this.identityRefusalsSignal.asReadonly();
+  /** The platform's own country, which the identity's phones start on; null until read. */
+  readonly country = this.countrySignal.asReadonly();
   /** Whether the last read or write did not reach the API. */
   readonly failed = computed(() => this.state.error() !== null);
 
@@ -124,6 +127,7 @@ export class PlatformLegalFacade {
 
   private holdIdentity(identity: LegalIdentity): void {
     this.identitySignal.set(identity.values);
+    this.countrySignal.set(identity.country);
     this.identityVersions = identity.versions;
   }
 

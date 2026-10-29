@@ -87,6 +87,19 @@ export interface PlatformImports {
   readonly rows: PlatformNumber | null;
 }
 
+/**
+ * The platform's own country, which its operators set and the phones of its support and legal pages start on
+ * (`PlatformCountrySettings` in the API): one of the countries a fiscal preset is written for.
+ */
+/** The key of the platform's own country, which the platform page and the legal page both read. */
+export const PLATFORM_COUNTRY = 'platform.country';
+
+export interface PlatformCountry {
+  readonly key: string;
+  readonly value: string;
+  readonly choices: readonly string[];
+}
+
 /** A way companies reach the platform's operators, which the help panel offers (`SupportSettings` in the API). */
 export type SupportChannel = 'phone' | 'whatsapp' | 'email' | 'status_url';
 
@@ -112,6 +125,8 @@ export interface PlatformSettings {
   readonly delays: readonly PlatformNumber[];
   readonly demo: PlatformDemo;
   readonly imports: PlatformImports;
+  /** Null where the API declares no such setting. */
+  readonly country: PlatformCountry | null;
   readonly versions: Readonly<Record<string, number>>;
 }
 

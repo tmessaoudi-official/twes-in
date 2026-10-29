@@ -19,7 +19,6 @@ import { Feedback } from '../shared/feedback/feedback';
 import { emailTaken } from '../shared/form/email-rule';
 import type { FieldError } from '../shared/form/form-builder';
 import type { FieldRefusal } from '../shared/form/field-refusals';
-import { PLATFORM_PHONE_COUNTRY } from '../shared/form/phone-country';
 import { PhoneField } from '../shared/form/phone-field';
 import { phoneRefusal } from '../shared/form/phone-numbers';
 import { refusedError } from '../shared/form/refusal-words';
@@ -77,8 +76,11 @@ export class PlatformLegalPage implements OnInit {
   protected readonly facade = inject(PlatformLegalFacade);
   private readonly feedback = inject(Feedback);
   private readonly translate = inject(TranslateService);
-  /** The country a phone of the publisher or the host is read by: the platform's, as no company is open here. */
-  protected readonly phoneCountry = inject(PLATFORM_PHONE_COUNTRY);
+  /**
+   * The country a phone of the publisher or the host is read by: the platform's own, which its operators set, whatever
+   * company is open; none until it is read.
+   */
+  protected readonly phoneCountry = computed(() => this.facade.country() ?? '');
   protected readonly pages = LEGAL_PAGES;
   protected readonly names = LEGAL_LANGUAGE_NAMES;
   protected readonly directionOf = directionOf;

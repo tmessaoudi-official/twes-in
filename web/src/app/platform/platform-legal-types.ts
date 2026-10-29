@@ -30,4 +30,6 @@ export interface LegalVersionRow {
 export interface LegalIdentity {
   readonly values: Readonly<Record<string, string>>;
   readonly versions: Readonly<Record<string, number>>;
+  /** The platform's own country, which the identity's phones start on; null where the API declares none. */
+  readonly country: string | null;
 }

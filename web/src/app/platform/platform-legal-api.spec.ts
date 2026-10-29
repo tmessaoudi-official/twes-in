@@ -28,11 +28,14 @@ describe('PlatformLegalApi', () => {
       { key: 'signup.enabled', value: true, versions: { platform: 9 } },
       { key: 'legal.publisher.name', value: 'twes SAS', versions: { platform: 2 } },
       { key: 'legal.host.name', value: '', versions: [] },
+      { key: 'platform.country', value: 'FR', choices: ['FR', 'TN'], versions: [] },
     ]);
     const read = await identity;
     expect(read).toEqual({
       values: { 'publisher.name': 'twes SAS', 'host.name': '' },
       versions: { 'publisher.name': 2, 'host.name': 0 },
+      // The platform's own country, which its phone fields start on.
+      country: 'FR',
     });
     expect(Object.keys(read.values)).toEqual(['publisher.name', 'host.name']);
   });

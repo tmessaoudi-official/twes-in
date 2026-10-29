@@ -17,6 +17,7 @@ import {
   type PlatformCompanySearch,
   type PlatformCompanyRow,
   type PlatformDemo,
+  type PlatformCountry,
   type PlatformImports,
   type PlatformError,
   type PlatformNumber,
@@ -43,6 +44,7 @@ export class PlatformFacade {
   private readonly delaysSignal = signal<readonly PlatformNumber[] | null>(null);
   private readonly demoSignal = signal<PlatformDemo | null>(null);
   private readonly importsSignal = signal<PlatformImports | null>(null);
+  private readonly countrySignal = signal<PlatformCountry | null>(null);
   private readonly showComingSignal = signal<boolean | null>(null);
   /** The version of each platform key's row when read, which a form's save sends back. */
   private versions: Readonly<Record<string, number>> = {};
@@ -97,6 +99,8 @@ export class PlatformFacade {
   readonly demo = this.demoSignal.asReadonly();
   /** How many rows one imported file may hold, null until read. */
   readonly imports = this.importsSignal.asReadonly();
+  /** The platform's own country and those it may be set to, null until read or where the API declares none. */
+  readonly country = this.countrySignal.asReadonly();
   /** Whether the installation shows what is coming until a company or a person chooses, null until read. */
   readonly showComing = this.showComingSignal.asReadonly();
   private readonly subscriptionSignal = signal<PlatformSubscriptionRow | null>(null);
@@ -354,6 +358,13 @@ export class PlatformFacade {
     return this.saveSettings([{ key, value: rows }]);
   }
 
+  /** Saves the platform's country, with the version read, and shows what the platform then holds. */
+  async saveCountry(country: string): Promise<boolean> {
+    const key = this.countrySignal()?.key;
+    if (key === undefined) return false;
+    return this.saveSettings([{ key, value: country }]);
+  }
+
   clearError(): void {
     this.state.clearError();
   }
@@ -399,6 +410,7 @@ export class PlatformFacade {
     this.delaysSignal.set(settings.delays);
     this.demoSignal.set(settings.demo);
     this.importsSignal.set(settings.imports);
+    this.countrySignal.set(settings.country);
     this.showComingSignal.set(settings.showComing);
     this.versions = settings.versions;
   }

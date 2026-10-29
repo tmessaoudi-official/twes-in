@@ -58,7 +58,7 @@ final class HintExamplesTest extends TestCase
         }
 
         self::assertSame([], array_values(array_diff($named, array_keys($found))), 'a name in hint-examples.json no text shows any more');
-        self::assertGreaterThanOrEqual(14, \count($found), 'fewer texts found than were named on 2026-10-28: the texts moved');
+        self::assertGreaterThanOrEqual(12, \count($found), 'fewer texts found than were named on 2026-10-29: the texts moved');
     }
 
     /** The patterns the web's specs run the examples through are the ones the API sends with each setting. */

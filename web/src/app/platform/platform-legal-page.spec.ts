@@ -119,6 +119,7 @@ describe('PlatformLegalPage', () => {
     failed: ReturnType<typeof signal<boolean>>;
     identity: ReturnType<typeof signal<Readonly<Record<string, string>>>>;
     identityRefusals: ReturnType<typeof signal<readonly FieldRefusal[]>>;
+    country: ReturnType<typeof signal<string | null>>;
     load: ReturnType<typeof vi.fn>;
     saveIdentity: ReturnType<typeof vi.fn>;
     open: ReturnType<typeof vi.fn>;
@@ -176,6 +177,7 @@ describe('PlatformLegalPage', () => {
         'host.name': '',
       }),
       identityRefusals: signal<readonly FieldRefusal[]>([]),
+      country: signal<string | null>('TN'),
       load: vi.fn(async () => undefined),
       saveIdentity: vi.fn(async () => 'saved'),
       open: vi.fn(async (page: string, language: string) => {
@@ -504,6 +506,19 @@ describe('PlatformLegalPage', () => {
     expect(q('legal-identity-publisher.phone-country')!.textContent).toContain('+33');
     expect((q('legal-identity-publisher.phone') as HTMLInputElement).value).toBe('06 12 34 56 78');
     expect(q('legal-identity-save')!.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('starts a phone on the country the platform is set to, never a fixed one', async () => {
+    facade.country.set('FR');
+    await render();
+    expect(q('legal-identity-publisher.phone-country')!.textContent).toContain('+33');
+    const phone = q('legal-identity-publisher.phone') as HTMLInputElement;
+    phone.value = '01 23 45 67 89';
+    phone.dispatchEvent(new Event('input'));
+    await settle();
+    q('legal-identity-save')!.click();
+    await settle();
+    expect(facade.saveIdentity).toHaveBeenCalledWith({ 'publisher.phone': '+33 1 23 45 67 89' });
   });
 
   it('leaves a phone kept from before the rule as it is, refusing it only once typed again', async () => {

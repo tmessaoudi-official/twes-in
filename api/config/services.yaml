@@ -132,6 +132,9 @@ parameters:
     # Mail the API sends itself.
     app.mail.sender: '%env(MAILER_SENDER)%'
     app.product_name: 'twes-in'
+    # The platform's own country until an operator picks another under « Gérer la plateforme » (platform.country): one a
+    # fiscal preset is written for (api/config/fiscal), which the phones of the platform's support and legal pages start on.
+    app.platform.country: 'TN'
     # The breached-password check reaches Have I Been Pwned over the network. Off in tests, which must never
     # depend on an external service (docs/SPEC.md § 7, 2026-09-09).
     app.password.breach_check_enabled: true

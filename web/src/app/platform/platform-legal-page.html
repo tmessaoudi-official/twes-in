@@ -30,7 +30,7 @@
             <app-phone-field
               [ngModel]="identityDraft()[placeholder] ?? ''"
               (ngModelChange)="typedPhone(placeholder, $event)"
-              [country]="phoneCountry"
+              [country]="phoneCountry()"
               [inputId]="'legal-identity-' + placeholder + '-input'"
               [testId]="'legal-identity-' + placeholder"
               [error]="phoneError(placeholder)"

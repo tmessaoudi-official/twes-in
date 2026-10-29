@@ -27,7 +27,6 @@ import { Label } from '../a11y/label';
 import { CountInput } from './count-input';
 import { DecimalInput } from './decimal-input';
 import { ColourField } from './colour-field';
-import { PLATFORM_PHONE_COUNTRY } from './phone-country';
 import { PhoneField } from './phone-field';
 import { Session } from '../session/session';
 import { DayCalendarButton } from './day-calendar-button';
@@ -140,8 +139,8 @@ export class DescriptorForm {
   /** The section whose fields end with what the screen projects as `formTrail`, such as « Ajouter une langue ». */
   readonly trailIn = input<string | null>(null);
   /**
-   * The country a phone field reads a number with no « + » by: by default the company's open in the session, else the
-   * platform's; the platform's own forms name the platform's, whatever company the operator has open.
+   * The country a phone field reads a number with no « + » by: by default the company's open in the session, else none;
+   * the platform's own forms name the country its operators set it to, whatever company the operator has open.
    */
   readonly phoneCountryOf = input<string | null>(null);
   /**
@@ -151,9 +150,8 @@ export class DescriptorForm {
   readonly fieldActions = input<Readonly<Record<string, FieldAction>>>({});
 
   private readonly session = inject(Session, { optional: true });
-  private readonly platformCountry = inject(PLATFORM_PHONE_COUNTRY);
   protected readonly phoneCountry = computed(
-    () => this.phoneCountryOf() ?? this.session?.me()?.company?.countryCode ?? this.platformCountry,
+    () => this.phoneCountryOf() ?? this.session?.me()?.company?.countryCode ?? '',
   );
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the messages. */

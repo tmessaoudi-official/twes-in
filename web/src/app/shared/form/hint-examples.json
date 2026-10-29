@@ -3,9 +3,7 @@
     "import.rejections.invalid_phone": "phone",
     "import.rejections.phone_country": "phone",
     "import.rejections.invalid_iban": "iban",
-    "platform.support.phone_hint": "support_phone",
     "import.rejections.invalid_phone_digits": "support_phone",
-    "platform.support.whatsapp_hint": "whatsapp",
     "import.rejections.invalid_whatsapp": "whatsapp",
     "settings.late_fees.tiers_hint": "late_fee_tiers",
     "import.rejections.invalid_late_fee_tiers": "late_fee_tiers"

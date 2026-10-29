@@ -48,6 +48,8 @@ final class PlatformSettingsTest extends ApiTestCase
             'legal.publisher.email', 'legal.publisher.name', 'legal.publisher.phone', 'legal.publisher.registration',
             'legal.security.email', 'legal.source.url',
             'licensing.grace_days', 'licensing.hold_days', 'licensing.unpaid_mode',
+            // The platform's own country, which its phone fields start on (Fiscal\Application\Preset\PlatformCountrySettings).
+            'platform.country',
             // A company's setting whose installation default is the operator's (Settings\Application\PresentationSettings).
             'presentation.show-coming',
             'signup.approval_required', 'signup.enabled',
@@ -69,6 +71,26 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertSame('platform', $rows[0]['chain']);
         self::assertSame('bool', $rows[0]['type']);
         self::assertSame(['platform'], $rows[0]['writableLevels']);
+    }
+
+    /**
+     * The platform's country starts on the installation's own (`app.platform.country`) and is one of the countries a
+     * fiscal preset is written for: the phones of the platform's support and legal pages are read by it.
+     */
+    public function testThePlatformsCountryIsOneOfThePresetsCountries(): void
+    {
+        $this->signedInAsOperator();
+
+        $row = $this->platformRows()['platform.country'];
+        self::assertSame(['TN', 'enum', ['FR', 'TN'], ['platform']], [$row['value'], $row['type'], $row['choices'] ?? null, $row['writableLevels']]);
+
+        $this->sendJson('PUT', self::PATH.'/platform.country', ['value' => 'DZ']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('TN', $this->platformRows()['platform.country']['value']);
+
+        $this->sendJson('PUT', self::PATH.'/platform.country', ['value' => 'FR']);
+        self::assertResponseIsSuccessful();
+        self::assertSame('FR', $this->platformRows()['platform.country']['value']);
     }
 
     /** At least one row, and no more than one request was measured to bear. */

@@ -21,6 +21,7 @@ describe('PlatformLegalFacade', () => {
     identity: vi.fn(async () => ({
       values: { 'publisher.name': 'twes' },
       versions: { 'publisher.name': 2 },
+      country: 'FR' as string | null,
     })),
     saveIdentity: vi.fn(),
     versions: vi.fn(async () => []),
@@ -73,6 +74,7 @@ describe('PlatformLegalFacade', () => {
     api.identity.mockResolvedValueOnce({
       values: { 'publisher.name': 'twes SARL' },
       versions: { 'publisher.name': 3 },
+      country: 'TN',
     });
 
     expect(await facade.saveIdentity({ 'publisher.name': 'Autre' })).toBe('saved_since');
@@ -81,6 +83,8 @@ describe('PlatformLegalFacade', () => {
       { placeholder: 'publisher.name', value: 'Autre', version: 2 },
     ]);
     expect(facade.identity()).toEqual({ 'publisher.name': 'twes SARL' });
+    // The platform's country is read with it, which the identity's phones start on.
+    expect(facade.country()).toBe('TN');
 
     api.saveIdentity.mockResolvedValueOnce('saved');
     expect(await facade.saveIdentity({ 'publisher.name': 'Autre' })).toBe('saved');

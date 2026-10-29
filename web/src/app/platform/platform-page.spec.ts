@@ -23,6 +23,7 @@ import { PlatformPage } from './platform-page';
 import type {
   PlatformAccountRow,
   PlatformCompanyRow,
+  PlatformCountry,
   PlatformError,
   PlatformSignup,
   PlatformDemo,
@@ -344,6 +345,12 @@ describe('PlatformPage', () => {
     },
   };
   const imports = signal<PlatformImports | null>(importsState);
+  const countryState: PlatformCountry = {
+    key: 'platform.country',
+    value: 'TN',
+    choices: ['FR', 'TN'],
+  };
+  const country = signal<PlatformCountry | null>(countryState);
   const showComing = signal<boolean | null>(false);
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
@@ -392,6 +399,8 @@ describe('PlatformPage', () => {
     saveDemoMost: vi.fn(async () => true),
     imports: imports.asReadonly(),
     saveImportRows: vi.fn(async () => true),
+    country: country.asReadonly(),
+    saveCountry: vi.fn(async () => true),
     showComing: showComing.asReadonly(),
     busy,
     error,
@@ -431,6 +440,7 @@ describe('PlatformPage', () => {
     delays.set(delayRows);
     demo.set(demoState);
     imports.set(importsState);
+    country.set(countryState);
     showComing.set(false);
     error.set(null);
     refused.set({ at: null, refusals: [] });
@@ -1063,6 +1073,7 @@ describe('PlatformPage', () => {
   // One phone field everywhere (row 252): the support's numbers are the platform's, read by its country whatever company
   // the operator has open, and WhatsApp takes the phone's number in one press, still the operator's to change.
   it("offers WhatsApp the phone's number in one press, under the platform's country whatever company is open", async () => {
+    // The platform set to Tunisia, the operator's open company French: the support's numbers follow the platform.
     TestBed.overrideProvider(AuthFacade, {
       useValue: {
         me: () => ({
@@ -1096,6 +1107,48 @@ describe('PlatformPage', () => {
       phone: '+216 71 900 868',
       whatsapp: '+216 20 123 456',
     });
+  });
+
+  it("reads the support's numbers by the country the platform is set to, never a fixed one", async () => {
+    country.set({ ...countryState, value: 'FR' });
+    TestBed.overrideProvider(AuthFacade, {
+      useValue: {
+        me: () => ({
+          user: { id: 'op1' },
+          company: { id: 'c9', countryCode: 'TN', currency: 'TND' },
+        }),
+        refresh: vi.fn(),
+      },
+    });
+    const { query } = await render();
+    expect(query('field-phone-country')!.textContent).toContain('+33');
+    expect(query('field-whatsapp-country')!.textContent).toContain('+33');
+  });
+
+  // The developer's ruling of 2026-10-29: the platform's country is set under « Gérer la plateforme », among the
+  // countries a fiscal preset is written for, each named in the screen's language.
+  it("sets the platform's country among the presets' countries, held while unsaved, and says it was saved", async () => {
+    const { fixture, query } = await render();
+    const select = query('platform-country-select')!;
+    expect(select.textContent).toContain('Tunisie');
+    expect(query<HTMLButtonElement>('platform-country-save')!.disabled).toBe(true);
+
+    select.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.querySelector('[data-testid="platform-country-select-DZ"]')).toBeNull();
+    document.querySelector<HTMLElement>('[data-testid="platform-country-select-FR"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(1);
+
+    query<HTMLButtonElement>('platform-country-save')!.click();
+    await fixture.whenStable();
+    expect(facade.saveCountry).toHaveBeenCalledWith('FR');
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
+      expect.objectContaining({ key: 'platform.country.saved' }),
+    );
   });
 
   it('counts what is typed in every card and not saved, holding the page until the platform holds it', async () => {

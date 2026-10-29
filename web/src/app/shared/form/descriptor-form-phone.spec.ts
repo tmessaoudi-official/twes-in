@@ -13,7 +13,6 @@ import { Session, type SessionState } from '../session/session';
 import { DescriptorForm } from './descriptor-form';
 import { buildFormGroup } from './form-builder';
 import type { FormDescriptor } from './form-types';
-import { PLATFORM_PHONE_COUNTRY } from './phone-country';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -227,15 +226,16 @@ describe('DescriptorForm with a phone field', () => {
   });
 
   describe("on the platform's own forms", () => {
-    beforeEach(() => configure([{ provide: PLATFORM_PHONE_COUNTRY, useValue: 'MA' }]));
+    beforeEach(() => configure([]));
 
-    it("starts on the platform's country with no company open, or on the one the form names", async () => {
+    // No country is written in the code: with no company open the form names the platform's own, set by its operators.
+    it('starts on the country the form names, and on none when it names none and no company is open', async () => {
       await open('');
-      expect(picked()).toContain('+212');
+      expect(picked()).not.toContain('+');
 
       fixture.destroy();
-      await open('', 'TN');
-      expect(picked()).toContain('+216');
+      await open('', 'MA');
+      expect(picked()).toContain('+212');
     });
   });
 });

@@ -333,6 +333,36 @@
               </div>
             </mat-card-content>
           </mat-card>
+          @if (country(); as held) {
+            <mat-card appearance="outlined" data-testid="platform-country">
+              <mat-card-header>
+                <mat-card-title>{{ 'platform.country.title' | translate }}</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="mt-4 flex flex-col items-start gap-3">
+                  <p class="max-w-prose text-sm">{{ 'platform.country.intro' | translate }}</p>
+                  <app-select
+                    [label]="'platform.country.label' | translate"
+                    [labelInside]="true"
+                    [options]="countryChoices()"
+                    [ngModel]="countryDraft() ?? held.value"
+                    (ngModelChange)="countryDraft.set($event)"
+                    [ngModelOptions]="{ standalone: true }"
+                    testId="platform-country-select"
+                  />
+                  <button
+                    mat-flat-button
+                    type="button"
+                    [disabled]="!countryReady() || busy()"
+                    (click)="saveCountry()"
+                    data-testid="platform-country-save"
+                  >
+                    {{ 'platform.country.save' | translate }}
+                  </button>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          }
           <mat-card appearance="outlined" data-testid="platform-support">
             <mat-card-content>
               @if (supportGroup(); as group) {
@@ -340,7 +370,7 @@
                   #supportForm
                   [descriptor]="supportDescriptor()"
                   [form]="group"
-                  [phoneCountryOf]="platformPhoneCountry"
+                  [phoneCountryOf]="platformPhoneCountry()"
                   [fieldActions]="supportActions"
                   (submitted)="saveSupport($event)"
                   testId="platform-support-form"

@@ -34,12 +34,14 @@ import type {
   PlatformAccountRow,
   PlatformSupportRule,
   PlatformCompanyRow,
+  PlatformCountry,
   PlatformError,
   PlatformNumber,
   PlatformSettings,
   PlatformSwitch,
   SupportChannel,
 } from './platform-types';
+import { PLATFORM_COUNTRY } from './platform-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import { TextsParts } from '../shared/i18n/texts-part';
@@ -162,6 +164,7 @@ export class PlatformApi {
             rows.find((row) => row.key === IMPORT_ROWS),
           ),
         },
+        country: platformCountry(rows),
         versions: platformVersions(rows),
       };
     });
@@ -386,6 +389,12 @@ const DEMO_MOST = 'demo.sandboxes_max';
 /** How many rows one imported file may hold: a card of its own too. */
 const IMPORT_ROWS = 'import.max_rows';
 const OWN_CARDS: ReadonlySet<string> = new Set([DEMO_MOST, IMPORT_ROWS]);
+/** The platform's country and the countries it may be set to, or null where the API declares no such setting. */
+function platformCountry(rows: readonly SettingSettingRead[]): PlatformCountry | null {
+  const row = rows.find((each) => each.key === PLATFORM_COUNTRY);
+  if (row === undefined || typeof row.value !== 'string') return null;
+  return { key: PLATFORM_COUNTRY, value: row.value, choices: row.choices ?? [] };
+}
 
 function toNumber(row: SettingSettingRead): PlatformNumber {
   return {
