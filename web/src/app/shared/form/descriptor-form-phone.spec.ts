@@ -172,6 +172,40 @@ describe('DescriptorForm with a phone field', () => {
       expect(byTestId('field-error-phone')).toBeNull();
     });
 
+    // Grouped as typed (ruled 2026-10-29), in the country's own style, the caret kept after the digit just typed.
+    it('groups the digits as they are typed, the caret after the digit it followed', async () => {
+      const host = await open('');
+      const field = byTestId('field-phone') as HTMLInputElement;
+
+      field.value = '06123';
+      field.setSelectionRange(5, 5);
+      field.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: '3' }));
+      await settle();
+      expect(field.value).toBe('06 12 3');
+      expect(field.selectionStart).toBe(7);
+
+      field.value = '06 172 3';
+      field.setSelectionRange(5, 5);
+      field.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: '7' }));
+      await settle();
+      expect(field.value).toBe('06 17 23');
+      expect(field.selectionStart).toBe(5);
+      expect(host.form.dirty).toBe(true);
+    });
+
+    it('groups a pasted number the same', async () => {
+      const host = await open('');
+      const field = byTestId('field-phone') as HTMLInputElement;
+
+      field.value = '06.12.34.56.78';
+      field.setSelectionRange(14, 14);
+      field.dispatchEvent(new InputEvent('input', { inputType: 'insertFromPaste' }));
+      await settle();
+      expect(field.value).toBe('06 12 34 56 78');
+      expect(field.selectionStart).toBe(14);
+      expect(host.form.controls['phone'].value).toBe('+33 6 12 34 56 78');
+    });
+
     it('refuses a number of the wrong length for its country, with an example of that country', async () => {
       const host = await open('');
 

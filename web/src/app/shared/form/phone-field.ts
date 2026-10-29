@@ -22,7 +22,14 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { phoneCountries, phoneExample, phoneValue, readPhone, samePhone } from './phone-numbers';
+import {
+  phoneCountries,
+  phoneEdited,
+  phoneExample,
+  phoneValue,
+  readPhone,
+  samePhone,
+} from './phone-numbers';
 import { RefusedField } from './refused-field';
 import { Select, type SelectOption } from './select';
 
@@ -33,7 +40,8 @@ let nextId = 0;
  * screen's language or its calling code, and the form handed the number in international form (« +216 71 234 567 »).
  * A kept number is read back into its country and local part when it parses, and shown as it was saved when it does not
  * (a number kept from before the rule), the form's value left as it was until the person changes it. The same number
- * typed again hands back the value the form opened on, so it counts as no change.
+ * typed again hands back the value the form opened on, so it counts as no change. What is typed or pasted is grouped as
+ * the country picked writes its numbers, the caret kept after the digit it followed.
  */
 @Component({
   selector: 'app-phone-field',
@@ -165,8 +173,21 @@ export class PhoneField implements ControlValueAccessor {
       });
   }
 
+  /** What was typed or pasted, grouped as the country picked writes it, the caret kept after the digit it followed. */
   protected typed(event: Event): void {
-    this.local.set((event.target as HTMLInputElement).value);
+    const field = event.target as HTMLInputElement;
+    const edited = phoneEdited(
+      this.countryControl.value,
+      this.local(),
+      field.value,
+      field.selectionStart ?? field.value.length,
+      event instanceof InputEvent ? event.inputType : 'insertText',
+    );
+    if (edited.text !== field.value) {
+      field.value = edited.text;
+      field.setSelectionRange(edited.caret, edited.caret);
+    }
+    this.local.set(edited.text);
     this.emit();
   }
 

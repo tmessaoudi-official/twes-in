@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { phoneCountries, phoneRefusal, phoneValue, readPhone, samePhone } from './phone-numbers';
+import {
+  phoneCountries,
+  phoneEdited,
+  phoneRefusal,
+  phoneValue,
+  readPhone,
+  samePhone,
+} from './phone-numbers';
 
 /**
  * The one phone rule of the screens: a country beside the local number, written out in international form, read back
@@ -56,6 +63,55 @@ describe('phone numbers', () => {
     expect(phoneRefusal('+216 ------')?.key).toBe('import.rejections.invalid_phone');
     expect(phoneRefusal('+216 71 234 567')).toBeNull();
     expect(phoneRefusal('')).toBeNull();
+  });
+
+  // Grouped as typed (ruled 2026-10-29): the digits in the country's own groups, the caret after the same digit it
+  // followed, a paste the same; what holds a letter is left as typed, so the field can say what is wrong with it.
+  it('groups the digits as the country writes them while they are typed, the caret after the same digit', () => {
+    expect(phoneEdited('TN', '', '71234567', 8, 'insertText')).toEqual({
+      text: '71 234 567',
+      caret: 10,
+    });
+    expect(phoneEdited('FR', '06 12', '06 123', 6, 'insertText')).toEqual({
+      text: '06 12 3',
+      caret: 7,
+    });
+    // A digit typed in the middle: the caret stays after it, however the groups moved.
+    expect(phoneEdited('FR', '06 12 34 56', '06 172 34 56', 5, 'insertText')).toEqual({
+      text: '06 17 23 45 6',
+      caret: 5,
+    });
+    expect(phoneEdited('TN', '', '+33612345678', 12, 'insertText')).toEqual({
+      text: '+33 6 12 34 56 78',
+      caret: 17,
+    });
+  });
+
+  it('groups a paste the same, whatever signs it carried between its digits', () => {
+    expect(phoneEdited('TN', '', '(71) 234-567', 12, 'insertFromPaste')).toEqual({
+      text: '71 234 567',
+      caret: 10,
+    });
+    expect(phoneEdited('TN', '', '71 234 567', 10, 'insertFromPaste').text).toBe('71 234 567');
+  });
+
+  it('takes the digit before a space deleted, rather than putting the space back under the caret', () => {
+    expect(phoneEdited('FR', '06 12 34', '0612 34', 2, 'deleteContentBackward')).toEqual({
+      text: '01 23 4',
+      caret: 1,
+    });
+    expect(phoneEdited('FR', '06 12 34', '06 1234', 5, 'deleteContentForward')).toEqual({
+      text: '06 12 4',
+      caret: 5,
+    });
+  });
+
+  it('leaves what holds a letter as typed', () => {
+    expect(phoneEdited('TN', '71 900 868', '71 900 868 p', 12, 'insertText')).toEqual({
+      text: '71 900 868 p',
+      caret: 12,
+    });
+    expect(phoneEdited('TN', '', 'abc', 3, 'insertText')).toEqual({ text: 'abc', caret: 3 });
   });
 
   it('tells the same number written two ways', () => {

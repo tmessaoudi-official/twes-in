@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
+  AsYouType,
   type CountryCode,
   getCountries,
   getCountryCallingCode,
@@ -68,6 +69,56 @@ export function phoneValue(country: string, local: string): string {
   return parsed !== undefined
     ? parsed.formatInternational()
     : `+${getCountryCallingCode(country)} ${typed}`;
+}
+
+/** What the local box holds after an edit, and where its caret stands. */
+export interface PhoneEdit {
+  readonly text: string;
+  readonly caret: number;
+}
+
+/** What a person types into a phone: digits, a leading « + », the signs between groups, spaces and invisible marks. */
+const AS_TYPED = /^[+0-9 ().\-/\p{Z}\p{Cf}]*$/u;
+
+/** The signs that make the number: its digits and its « + »; the rest is how it is grouped. */
+const significant = (text: string): string => text.replace(/[^+0-9]/g, '');
+
+/** Where the caret stands after the given count of the number's own signs. */
+function caretAfter(text: string, count: number): number {
+  if (count === 0) return 0;
+  let seen = 0;
+  for (let at = 0; at < text.length; at++) {
+    if (/[+0-9]/.test(text[at]!) && ++seen === count) return at + 1;
+  }
+  return text.length;
+}
+
+/**
+ * The local box after an edit (ruled 2026-10-29): the digits grouped as the country picked writes them (libphonenumber's
+ * AsYouType), a paste the same, and the caret after the same digit it followed. A space deleted takes the digit beside
+ * it, or the grouping would put the space back under the caret at once. What holds anything else, a letter, is left as
+ * typed, so the field says what is wrong with it rather than dropping it.
+ */
+export function phoneEdited(
+  country: string,
+  previous: string,
+  typed: string,
+  caret: number,
+  inputType: string,
+): PhoneEdit {
+  if (!AS_TYPED.test(typed) || !/[0-9]/.test(typed)) return { text: typed, caret };
+  let signs = significant(typed);
+  let before = significant(typed.slice(0, caret)).length;
+  if (inputType.startsWith('delete') && typed !== previous && signs === significant(previous)) {
+    if (inputType === 'deleteContentForward') {
+      signs = signs.slice(0, before) + signs.slice(before + 1);
+    } else if (before > 0) {
+      signs = signs.slice(0, before - 1) + signs.slice(before);
+      before -= 1;
+    }
+  }
+  const text = new AsYouType(isCountry(country) ? country : undefined).input(signs);
+  return { text, caret: caretAfter(text, before) };
 }
 
 /** The country a calling code is read as: the default one where it shares the code, else the code's main country. */
