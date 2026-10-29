@@ -318,6 +318,15 @@
       "save": "Save",
       "saved": "Platform country saved."
     },
+    "phones": {
+      "title": "Numbers outside the known ranges",
+      "intro": "A number of the right length that its country does not hand out: refuse it as it is typed, with an example of that country, or keep it and mark it “To check”. The screens, the imports and the API follow this choice.",
+      "label": "Number outside the ranges",
+      "refuse": "Refuse",
+      "keep": "Keep and mark “To check”",
+      "save": "Save",
+      "saved": "Choice for numbers outside the ranges saved."
+    },
     "support": {
       "title": "Support contact",
       "intro": "What every screen’s help offers everyone signed in under “Contact us”. A channel left empty is not shown.",

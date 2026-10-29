@@ -56,7 +56,7 @@ final class CreateCompanyTest extends TestCase
         $provision = new ProvisionCompany($presets, $this->components, $this->units, new \App\Tests\Support\InMemoryEstablishments(), new \App\Tests\Support\InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock);
         $this->settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(ShippedLanguages::catalogue())]);
-        $change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), new InMemoryAuditTrail($transactions), $clock, $transactions, new RecordingDomainEvents(), new \App\Shared\Application\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator())));
+        $change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), new InMemoryAuditTrail($transactions), $clock, $transactions, new RecordingDomainEvents(), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()));
         $this->create = new CreateCompany($this->companies, $presets, $provision, $change, ShippedLanguages::catalogue(), $this->audit, $clock, $transactions);
     }
 

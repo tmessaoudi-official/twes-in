@@ -337,6 +337,7 @@ function toState(me: Me): SignedInState {
       planned: module.planned,
     })),
     customerScreenCompanyId: me.customerScreenCompanyId,
+    phonesOutsideRanges: me.phonesOutsideRanges,
     supportAccessUntil: me.supportAccessUntil,
     supportAccessReason: me.supportAccessReason,
     companyProof:

@@ -14,6 +14,7 @@ set_aside:
         invalid_email: 'it is not an e-mail address'
         invalid_barcode: 'its check digit does not match'
         phone_length: 'it does not have the number of digits of a phone in its country'
+        phone_outside_ranges: 'its country hands out no such number'
         phone_country: 'with no country, a phone starts with + and its country code'
 column:
     email: 'E-mail address'

@@ -18,6 +18,9 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Settings\Application\PhoneSettings;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
@@ -218,6 +221,14 @@ final class CustomersTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame(['Carthage Conseil SA', '71 900'], [$this->json()['name'], $this->json()['phone']]);
 
+        // Outside the numbers handed out: refused by default, the platform's « Refuser » (ruled 2026-10-29).
+        $this->sendJson('PUT', $this->path($id), [...$this->customer(['phone' => '+216 11 111 111', 'toCheck' => false]), 'version' => 3]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'phone', 'reason' => 'phone_outside_ranges', 'params' => ['example' => '+216 30 010 123', 'callingCode' => '+216']]], $this->refusals());
+
+        // Kept and marked « À vérifier » where the platform's operators chose « Garder et marquer ».
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->flush();
         $this->sendJson('PUT', $this->path($id), [...$this->customer(['phone' => '+216 11 111 111', 'toCheck' => false]), 'version' => 3]);
         self::assertResponseIsSuccessful();
         self::assertSame(['+216 11111111', true], [$this->json()['phone'], $this->json()['toCheck']], 'the length of a number, outside the ones handed out');

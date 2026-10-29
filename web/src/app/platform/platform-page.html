@@ -363,6 +363,37 @@
               </mat-card-content>
             </mat-card>
           }
+          @if (phones(); as held) {
+            <mat-card appearance="outlined" data-testid="platform-phones">
+              <mat-card-header>
+                <mat-card-title>{{ 'platform.phones.title' | translate }}</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="mt-4 flex flex-col items-start gap-3">
+                  <p class="max-w-prose text-sm">{{ 'platform.phones.intro' | translate }}</p>
+                  <app-select
+                    [label]="'platform.phones.label' | translate"
+                    [labelInside]="true"
+                    [options]="phonesChoices"
+                    [translateLabels]="true"
+                    [ngModel]="phonesDraft() ?? held.value"
+                    (ngModelChange)="phonesDraft.set($event)"
+                    [ngModelOptions]="{ standalone: true }"
+                    testId="platform-phones-select"
+                  />
+                  <button
+                    mat-flat-button
+                    type="button"
+                    [disabled]="!phonesReady() || busy()"
+                    (click)="savePhones()"
+                    data-testid="platform-phones-save"
+                  >
+                    {{ 'platform.phones.save' | translate }}
+                  </button>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          }
           <mat-card appearance="outlined" data-testid="platform-support">
             <mat-card-content>
               @if (supportGroup(); as group) {

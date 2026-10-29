@@ -17,7 +17,7 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\ContactDetails;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
-use App\Shared\Application\TypedPhones;
+use App\Shared\Application\Phones\TypedPhones;
 use App\Shared\Infrastructure\Intl\LibPhoneNumbers;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
@@ -42,7 +42,7 @@ final class ManageContactsTest extends TestCase
         $this->customers = new InMemoryCustomers();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManageContacts(new InMemoryContacts(), $this->customers, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions(), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())));
+        $this->manage = new ManageContacts(new InMemoryContacts(), $this->customers, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions(), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->customer = $this->customerOf($this->company, 'CLI-0001');
     }

@@ -50,6 +50,8 @@ final class PlatformSettingsTest extends ApiTestCase
             'licensing.grace_days', 'licensing.hold_days', 'licensing.unpaid_mode',
             // The platform's own country, which its phone fields start on (Fiscal\Application\Preset\PlatformCountrySettings).
             'platform.country',
+            // A phone outside the ranges its country hands out, refused or kept and marked (Settings\Application\PhoneSettings).
+            'platform.phones.outside_ranges',
             // A company's setting whose installation default is the operator's (Settings\Application\PresentationSettings).
             'presentation.show-coming',
             'signup.approval_required', 'signup.enabled',
@@ -91,6 +93,25 @@ final class PlatformSettingsTest extends ApiTestCase
         $this->sendJson('PUT', self::PATH.'/platform.country', ['value' => 'FR']);
         self::assertResponseIsSuccessful();
         self::assertSame('FR', $this->platformRows()['platform.country']['value']);
+    }
+
+    /**
+     * The policy for a phone outside the ranges its country hands out (ruled 2026-10-29): « Refuser » by default, or
+     * « Garder et marquer À vérifier »; the signed-in state carries it, so the screens judge a phone as the API does.
+     */
+    public function testThePolicyForAPhoneOutsideTheRangesIsTheScreensToo(): void
+    {
+        $this->signedInAsOperator();
+
+        $row = $this->platformRows()['platform.phones.outside_ranges'];
+        self::assertSame(['refuse', 'enum', ['refuse', 'keep'], ['platform']], [$row['value'], $row['type'], $row['choices'] ?? null, $row['writableLevels']]);
+        $this->getJson('/api/auth/me');
+        self::assertSame('refuse', $this->json()['phonesOutsideRanges']);
+
+        $this->sendJson('PUT', self::PATH.'/platform.phones.outside_ranges', ['value' => 'keep']);
+        self::assertResponseIsSuccessful();
+        $this->getJson('/api/auth/me');
+        self::assertSame('keep', $this->json()['phonesOutsideRanges']);
     }
 
     /** At least one row, and no more than one request was measured to bear. */

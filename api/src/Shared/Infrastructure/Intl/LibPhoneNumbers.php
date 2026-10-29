@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Intl;
 
-use App\Shared\Application\PhoneNumbers;
+use App\Shared\Application\Phones\PhoneNumbers;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\PhoneVerdict;
 use libphonenumber\NumberParseException;

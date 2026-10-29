@@ -18,6 +18,7 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { PluralCompiler } from '../shared/i18n/plural-compiler';
 import type { LegalLanguage } from '../shared/legal/legal-api';
 import { LEGAL_PAGES, type LegalPage } from '../shared/legal/legal-pages';
+import { Session, type SessionState } from '../shared/session/session';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 import { PlatformLegalFacade } from './platform-legal-facade';
 import { PlatformLegalPage } from './platform-legal-page';
@@ -34,6 +35,8 @@ class StaticLoader implements TranslateLoader {
           phone_length:
             'Ce numéro n’a pas le nombre de chiffres d’un téléphone de son pays (exemple\u00a0: {{example}}).',
           invalid_value: 'Valeur refusée.',
+          phone_outside_ranges:
+            'Son pays ne donne pas de numéro comme celui-ci\u00a0: vérifiez-le (exemple\u00a0: {{example}}).',
         },
       },
       legal: { pages: { mentions: 'Mentions légales', cookies: 'Cookies', security: 'Sécurité' } },
@@ -128,7 +131,7 @@ describe('PlatformLegalPage', () => {
   };
   let histories: Record<string, LegalVersionRow[]>;
 
-  async function render(lang = 'fr'): Promise<void> {
+  async function render(lang = 'fr', session?: SessionState): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [PlatformLegalPage],
       providers: [
@@ -148,6 +151,18 @@ describe('PlatformLegalPage', () => {
             moment: (value: string) => formatMoment(value, 'fr', 'Europe/Paris'),
           },
         },
+        ...(session === undefined
+          ? []
+          : [
+              {
+                provide: Session,
+                useValue: {
+                  me: signal(session),
+                  hasPermission: () => true,
+                  hasModule: () => true,
+                },
+              },
+            ]),
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(PlatformLegalPage);
@@ -520,6 +535,35 @@ describe('PlatformLegalPage', () => {
     await settle();
     expect(facade.saveIdentity).toHaveBeenCalledWith({ 'publisher.phone': '+33 1 23 45 67 89' });
   });
+
+  it.each([
+    ['refuses', undefined, true],
+    ['keeps', 'keep' as const, false],
+  ])(
+    '%s a phone outside the ranges its country hands out as the platform says, as the API does',
+    async (_, policy, refused) => {
+      await render(
+        'fr',
+        policy === undefined
+          ? undefined
+          : { user: { id: 'u1' }, company: null, phonesOutsideRanges: policy },
+      );
+      const phone = q('legal-identity-publisher.phone') as HTMLInputElement;
+      phone.value = '80 123 456';
+      phone.dispatchEvent(new Event('input'));
+      await settle();
+      q('legal-identity-save')!.click();
+      await settle();
+      const error = q('legal-identity-publisher.phone-error');
+      if (refused) {
+        expect(error?.textContent).toContain('Son pays ne donne pas de numéro comme celui-ci');
+        expect(facade.saveIdentity).not.toHaveBeenCalled();
+      } else {
+        expect(error).toBeNull();
+        expect(facade.saveIdentity).toHaveBeenCalledWith({ 'publisher.phone': '+216 80 123 456' });
+      }
+    },
+  );
 
   it('leaves a phone kept from before the rule as it is, refusing it only once typed again', async () => {
     facade.identity.set({ 'publisher.phone': '71.900.868 poste 12', 'host.name': '' });

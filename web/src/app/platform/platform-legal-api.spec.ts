@@ -83,6 +83,8 @@ describe('PlatformLegalApi', () => {
       { field: 'publisher.email', reason: 'invalid_email', params: {} },
     ]);
     expect(open).toHaveBeenCalledWith('settings-refusals');
+    // A phone's refusals are said in the form refusals' words, where every phone field reads them.
+    expect(open).toHaveBeenCalledWith('form-refusals');
   });
 
   it('writes a new version and validates the latest at the page and language path', async () => {

@@ -1,6 +1,7 @@
 {
   "import": {
     "rejections": {
+      "phone_outside_ranges": "Son pays ne donne pas de numéro comme celui-ci : vérifiez-le (exemple : {{example}}). Avec + devant, l’indicatif choisit le pays.",
       "establishment_code": "Ce code ne s’écrit pas ainsi : il prend la forme de {{example}}.",
       "code_kept": "Des documents numérotés portent ce code : il ne change plus.",
       "default_kept": "L’entreprise garde toujours un établissement par défaut : faites plutôt d’un autre le défaut.",

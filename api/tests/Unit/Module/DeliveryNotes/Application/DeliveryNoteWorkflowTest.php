@@ -46,9 +46,9 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\Phones\TypedPhones;
 use App\Shared\Application\Receivers\ChooseReceiver;
 use App\Shared\Application\Receivers\ReceiverChoice;
-use App\Shared\Application\TypedPhones;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Shared\Domain\ValueObject\Receiver;
 use App\Shared\Infrastructure\Intl\LibPhoneNumbers;
@@ -116,7 +116,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new DeliveryNoteSettings(), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents(), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())));
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents(), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()));
         $this->workflow = new DeliveryNoteWorkflow(
             $this->notes,
             new RepositoryInvoicedLines($this->invoices),
@@ -249,7 +249,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
 
     public function testANumberAnotherEstablishmentOfTheCompanyAlreadyGaveIsRefusedWithTheWayOut(): void
     {
-        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions(), $phones = new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())), new \App\Shared\Application\StoredContacts($phones))
+        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions(), $phones = new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), new \App\Shared\Application\StoredContacts($phones))
             ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);
         // A new site gets its code into the format it copies; someone revising it back out is what this refusal still guards.
         foreach ($this->series->series as $series) {

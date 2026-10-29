@@ -31,7 +31,7 @@ import { TextsParts } from '../shared/i18n/texts-part';
 import { SETTING_REFUSAL_TEXTS } from '../shared/settings/setting-refusals';
 import { DescriptorForm, type FieldAction } from '../shared/form/descriptor-form';
 import { countriesNamed, countryName } from '../shared/i18n/country-names';
-import { Session } from '../shared/session/session';
+import { type PhonesOutsideRanges, Session } from '../shared/session/session';
 import { EndOtherSessions } from '../account/end-other-sessions';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
@@ -500,6 +500,29 @@ export class PlatformPage implements OnInit {
       testId: `platform-country-select-${code}`,
     })),
   );
+  protected readonly phones = this.platform.phones;
+  private readonly phonesHeld = computed(() => this.platform.phones()?.value ?? null);
+  /** The policy picked until saved, null when untouched. */
+  protected readonly phonesDraft = linkedSignal<
+    PhonesOutsideRanges | null,
+    PhonesOutsideRanges | null
+  >({
+    source: this.phonesHeld,
+    computation: () => null,
+  });
+  /** A policy picked that differs from the platform's. */
+  protected readonly phonesReady = computed(() => {
+    const picked = this.phonesDraft();
+    return picked !== null && picked !== this.phonesHeld();
+  });
+  /** The two policies the ruling names, refusing first, as the API declares them. */
+  protected readonly phonesChoices: readonly SelectOption[] = (['refuse', 'keep'] as const).map(
+    (policy) => ({
+      value: policy,
+      label: `platform.phones.${policy}`,
+      testId: `platform-phones-select-${policy}`,
+    }),
+  );
   protected readonly busy = this.platform.busy;
   protected readonly error = this.platform.error;
   protected readonly accounts = this.platform.accounts;
@@ -553,6 +576,7 @@ export class PlatformPage implements OnInit {
       numberTyped(this.platform.demo()?.most, this.demoMostDraft()) +
       numberTyped(this.platform.imports()?.rows, this.importRowsDraft()) +
       (this.countryReady() ? 1 : 0) +
+      (this.phonesReady() ? 1 : 0) +
       (this.creating() ? filled([this.companyName(), this.ownerEmail()]) : 0) +
       filled(Object.values(this.ownerEmails()))
     );
@@ -869,6 +893,16 @@ export class PlatformPage implements OnInit {
     if (!this.countryReady() || picked === null) return;
     if (await this.platform.saveCountry(picked)) {
       this.feedback.success('platform.country.saved');
+    } else {
+      this.savedSince();
+    }
+  }
+
+  protected async savePhones(): Promise<void> {
+    const picked = this.phonesDraft();
+    if (!this.phonesReady() || picked === null) return;
+    if (await this.platform.savePhones(picked)) {
+      this.feedback.success('platform.phones.saved');
     } else {
       this.savedSince();
     }

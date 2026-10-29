@@ -56,6 +56,7 @@ const owner: Me = {
   supportAccessReason: null,
   companyProof: null,
   support: { phone: null, whatsapp: null, email: null },
+  phonesOutsideRanges: 'refuse',
 };
 
 describe('AuthApi', () => {
@@ -182,6 +183,15 @@ describe('AuthApi', () => {
     http.expectOne('/api/auth/me').flush({ ...owner, customerScreenCompanyId: 'c1' });
 
     expect((await pending).customerScreenCompanyId).toBe('c1');
+  });
+
+  // The developer's ruling of 2026-10-29: every phone field reads the platform's policy for a number outside the
+  // ranges from the session, as the API applies it.
+  it("carries the platform's policy for a phone outside the ranges its country hands out", async () => {
+    const pending = api.me();
+    http.expectOne('/api/auth/me').flush({ ...owner, phonesOutsideRanges: 'keep' });
+
+    expect((await pending).phonesOutsideRanges).toBe('keep');
   });
 
   it('holds the sign-in on a customer screen and lets go of it, saying why it was kept', async () => {

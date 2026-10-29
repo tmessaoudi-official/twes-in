@@ -202,6 +202,7 @@ final readonly class SettingDefinition
     {
         return [
             new Refusal('phone_length', 'too many or too few digits for its country', ['example' => '+216 30 010 123', 'callingCode' => '+216']),
+            new Refusal('phone_outside_ranges', 'not a number its country hands out', ['example' => '+216 30 010 123', 'callingCode' => '+216']),
             new Refusal('phone_country', 'a phone with no country to read it by starts with + and its country code'),
             new Refusal('invalid_phone', 'expected a phone number'),
         ];

@@ -1,6 +1,7 @@
 {
   "import": {
     "rejections": {
+      "phone_outside_ranges": "Its country hands out no number like this one: check it (example: {{example}}). With + in front, the country code chooses the country.",
       "establishment_code": "This code is not written that way: it takes the shape of {{example}}.",
       "code_kept": "Numbered documents carry this code: it no longer changes.",
       "default_kept": "The company always keeps one default establishment: make another one the default instead.",

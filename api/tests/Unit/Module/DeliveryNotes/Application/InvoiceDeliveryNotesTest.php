@@ -40,7 +40,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
 use App\Module\Invoices\Infrastructure\DeliveryNotes\ManagedInvoiceDrafts;
 use App\Module\Invoices\Infrastructure\DeliveryNotes\RepositoryInvoicedLines;
 use App\Shared\Application\ListLimits;
-use App\Shared\Application\TypedPhones;
+use App\Shared\Application\Phones\TypedPhones;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Shared\Infrastructure\Intl\LibPhoneNumbers;
@@ -148,7 +148,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
     {
         $mine = $this->note('BL-2026-00001');
         $otherCustomers = $this->note('BL-2026-00002', customer: $this->customer($this->company, 'CLI-0002'));
-        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions(), $phones = new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())), new \App\Shared\Application\StoredContacts($phones))
+        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions(), $phones = new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), new \App\Shared\Application\StoredContacts($phones))
             ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);
         $fromTheBranch = $this->note('BL-2026-00003', establishment: $branch);
         $theirs = $this->note('BL-2026-00001', company: $this->globex);
@@ -202,7 +202,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $delivered = $this->note('BL-2026-00002');
         $delivered->deliver($this->clock->now(), $this->clock->now(), ReceiverRule::Optional);
         $otherCustomers = $this->note('BL-2026-00003', customer: $this->customer($this->company, 'CLI-0002'));
-        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions(), $phones = new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())), new \App\Shared\Application\StoredContacts($phones))
+        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions(), $phones = new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), new \App\Shared\Application\StoredContacts($phones))
             ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);
         $fromTheBranch = $this->note('BL-2026-00004', establishment: $branch);
         $theirs = $this->note('BL-2026-00001', company: $this->globex);

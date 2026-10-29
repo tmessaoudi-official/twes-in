@@ -91,6 +91,7 @@ const me: Me = {
   supportAccessReason: null,
   companyProof: null,
   support: { phone: null, whatsapp: null, email: null },
+  phonesOutsideRanges: 'refuse',
 };
 
 const OPTIONS = '/api/auth/passkey-sign-in/options';

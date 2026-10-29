@@ -180,9 +180,10 @@ final class DataCheckTest extends ApiTestCase
 
             return $fields;
         }, $by);
-        // The company's phone is valid, its address is not; the customer's phone is one the plan reads to check, kept.
+        // The company's phone is valid, its address is not; the customer's phone lies outside the ranges handed out, which
+        // the platform refuses by default (« Refuser », ruled 2026-10-29), so today's rule finds it too.
         self::assertSame([
-            'customers.contact_rules' => ['contact phone', 'customer email'],
+            'customers.contact_rules' => ['contact phone', 'customer email', 'customer phone'],
             'tenancy.contact_rules' => ['company email', 'establishment phone'],
             'vendors.contact_rules' => ['vendor email'],
         ], $by);

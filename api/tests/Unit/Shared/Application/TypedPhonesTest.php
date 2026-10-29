@@ -9,8 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Application;
 
-use App\Shared\Application\TypedPhones;
+use App\Shared\Application\Phones\TypedPhones;
 use App\Shared\Infrastructure\Intl\LibPhoneNumbers;
+use App\Tests\Support\FixedPhonePolicy;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Translation\IdentityTranslator;
 
@@ -48,17 +49,28 @@ final class TypedPhonesTest extends TestCase
         self::assertSame('phone_length', self::phones()->kept('71 901', '71 900', 'TN')->refusal?->reason);
     }
 
-    public function testANumberOutsideTheRangesHandedOutIsKeptWithADoubtSaidOnce(): void
+    /** The platform's policy « Refuser », its default (ruled 2026-10-29): refused as typed, with the country's example. */
+    public function testANumberOutsideTheRangesHandedOutIsRefusedWithTheCountrysExampleByDefault(): void
     {
-        $kept = self::phones()->kept('+216 11 111 111', null, 'TN');
+        $refusal = self::phones()->kept('+216 11 111 111', null, 'FR')->refusal;
+
+        self::assertSame(['phone_outside_ranges', ['example' => '+216 30 010 123', 'callingCode' => '+216']], [$refusal?->reason, $refusal?->params]);
+        $held = self::phones()->kept('+216 11 111 111', '+21611111111', 'TN');
+        self::assertSame(['+21611111111', null, null], [$held->phone, $held->refusal, $held->doubt], 'what the record holds, written another way, is not refused');
+    }
+
+    /** The platform's policy « Garder et marquer À vérifier »: kept, its doubt said once. */
+    public function testANumberOutsideTheRangesHandedOutIsKeptWithADoubtSaidOnceWhereThePlatformKeepsThem(): void
+    {
+        $kept = self::phones(keep: true)->kept('+216 11 111 111', null, 'TN');
         self::assertSame(['+21611111111', null, 'doubt.phone'], [$kept->phone, $kept->refusal, $kept->doubt]);
 
-        $again = self::phones()->kept('+216 11 111 111', '+21611111111', 'TN');
+        $again = self::phones(keep: true)->kept('+216 11 111 111', '+21611111111', 'TN');
         self::assertSame(['+21611111111', null], [$again->phone, $again->doubt], 'the same number written another way is no new doubt');
     }
 
-    private static function phones(): TypedPhones
+    private static function phones(bool $keep = false): TypedPhones
     {
-        return new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()));
+        return new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new FixedPhonePolicy($keep));
     }
 }

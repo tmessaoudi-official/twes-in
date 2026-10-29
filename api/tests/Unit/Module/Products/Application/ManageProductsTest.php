@@ -93,7 +93,7 @@ final class ManageProductsTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new ProductReferenceSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->changeSettings = new ChangeSettings($catalog, $settings, $resolve, $this->audit, $clock, $transactions, new RecordingDomainEvents(), new \App\Shared\Application\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator())));
+        $this->changeSettings = new ChangeSettings($catalog, $settings, $resolve, $this->audit, $clock, $transactions, new RecordingDomainEvents(), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()));
         $this->costHistory = new InMemoryProductCostChanges();
         $products = new InMemoryProducts();
         $this->references = new ProductReferences(new InMemoryProductReferenceSequences(), $products, $this->categories, new ReadSetting($resolve), $transactions);

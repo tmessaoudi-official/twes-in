@@ -89,7 +89,7 @@ final class QuoteWorkflowTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(ShippedLanguages::catalogue()), new QuoteSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new \App\Tests\Support\RecordingDomainEvents(), new \App\Shared\Application\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator())));
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new \App\Tests\Support\RecordingDomainEvents(), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()));
         $this->workflow = new QuoteWorkflow(
             $this->quotes = new InMemoryQuotes(),
             new AllocateNumber($series, $transactions, $this->clock),

@@ -21,6 +21,7 @@ import type { FieldError } from '../shared/form/form-builder';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { PhoneField } from '../shared/form/phone-field';
 import { phoneRefusal } from '../shared/form/phone-numbers';
+import { Session } from '../shared/session/session';
 import { refusedError } from '../shared/form/refusal-words';
 import { Select, type SelectOption } from '../shared/form/select';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
@@ -76,6 +77,11 @@ export class PlatformLegalPage implements OnInit {
   protected readonly facade = inject(PlatformLegalFacade);
   private readonly feedback = inject(Feedback);
   private readonly translate = inject(TranslateService);
+  private readonly session = inject(Session, { optional: true });
+  /** The platform's policy for a phone outside its country's ranges, read as the API reads it; « refuse » unless said. */
+  private readonly phonesOutsideRanges = computed(
+    () => this.session?.me()?.phonesOutsideRanges ?? 'refuse',
+  );
   /**
    * The country a phone of the publisher or the host is read by: the platform's own, which its operators set, whatever
    * company is open; none until it is read.
@@ -196,7 +202,9 @@ export class PlatformLegalPage implements OnInit {
           refused.set(placeholder, { field: placeholder, reason: 'invalid_email', params: {} });
         }
         // A phone kept from before the rule is left as it is until it is typed again, as every form leaves it.
-        const phone = this.phoneField(placeholder) ? phoneRefusal(value) : null;
+        const phone = this.phoneField(placeholder)
+          ? phoneRefusal(value, this.phonesOutsideRanges())
+          : null;
         if (phone !== null && value !== this.facade.identity()[placeholder]) {
           refused.set(placeholder, {
             field: placeholder,

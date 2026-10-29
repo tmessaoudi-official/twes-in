@@ -26,6 +26,7 @@ use App\Identity\Infrastructure\ApiPlatform\Output\MeUser;
 use App\Identity\Infrastructure\ApiPlatform\State\Provider\MeProvider;
 use App\Licensing\Domain\ValueObject\Access;
 use App\Licensing\Domain\ValueObject\Standing;
+use App\Settings\Application\PhoneSettings;
 use App\Tenancy\Application\Session\WorkingContext;
 
 /**
@@ -62,6 +63,11 @@ final readonly class Me
         #[ApiProperty(required: true)] public ?string $supportAccessReason = null,
         /** What the working company asks before this sign-in acts in it, null once it has proved itself there. */
         #[ApiProperty(required: true)] public ?MeCompanyProof $companyProof = null,
+        /**
+         * The platform's policy for a phone outside the ranges its country hands out, « refuse » or « keep »: the phone
+         * fields judge a number as the API will (Settings\Application\PhoneSettings).
+         */
+        #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => [PhoneSettings::REFUSE, PhoneSettings::KEEP]])] public string $phonesOutsideRanges = PhoneSettings::REFUSE,
     ) {
     }
 
@@ -70,7 +76,7 @@ final readonly class Me
      * @param Standing|null         $standing       where the working company stands in its subscription, null when licensing does not manage it
      * @param list<MePlannedModule> $plannedModules the modules not built yet, whoever is signed in
      */
-    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0, ?Standing $standing = null, array $plannedModules = [], ?string $customerScreenCompanyId = null, MeSupport $support = new MeSupport(), bool $demo = false, int $recoveryCodes = 0, bool $passkeySignInAllowed = false, ?EntryProof $companyProof = null): self
+    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0, ?Standing $standing = null, array $plannedModules = [], ?string $customerScreenCompanyId = null, MeSupport $support = new MeSupport(), bool $demo = false, int $recoveryCodes = 0, bool $passkeySignInAllowed = false, ?EntryProof $companyProof = null, string $phonesOutsideRanges = PhoneSettings::REFUSE): self
     {
         return new self(
             new MeUser($user->getId()->toRfc4122(), $demo ? DemoAccounts::SHOWN_AS : $user->getEmail()->value, $user->getDisplayName(), $user->getLocale(), $user->isPlatformOperator(), $demo),
@@ -84,6 +90,7 @@ final readonly class Me
             $context?->supportAccessUntil?->format(\DateTimeInterface::ATOM),
             $context?->supportAccessReason,
             null === $companyProof ? null : MeCompanyProof::of($companyProof),
+            $phonesOutsideRanges,
         );
     }
 }

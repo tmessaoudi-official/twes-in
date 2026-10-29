@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Twig;
 
-use App\Shared\Application\PhoneNumbers;
+use App\Shared\Application\Phones\PhoneNumbers;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 

@@ -28,6 +28,7 @@ final class SetAside
         'invalid_bic',
         'invalid_phone',
         'phone_length',
+        'phone_outside_ranges',
         'phone_country',
         'invalid_email',
         'invalid_barcode',

@@ -14,7 +14,15 @@ export interface SessionState {
   readonly plannedModules?: readonly { readonly key: string; readonly planned: string }[];
   /** The company whose customer screen holds the sign-in, null when none does. */
   readonly customerScreenCompanyId?: string | null;
+  /**
+   * The platform's policy for a phone outside the ranges its country hands out, which the API applies too: « refuse »,
+   * the API's default and what an absent value means, or « keep » and mark it to check.
+   */
+  readonly phonesOutsideRanges?: PhonesOutsideRanges;
 }
+
+/** The platform's policy for a phone of the right length outside the ranges its country hands out. */
+export type PhonesOutsideRanges = 'refuse' | 'keep';
 
 /**
  * The port shared code reads the session through, so shared/ depends on no feature (docs/SPEC.md § 7, 2026-09-16).

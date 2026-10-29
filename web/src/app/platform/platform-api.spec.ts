@@ -420,12 +420,22 @@ describe('PlatformApi', () => {
         choices: ['FR', 'TN'],
         versions: { platform: 9 },
       },
+      {
+        key: 'platform.phones.outside_ranges',
+        type: 'enum',
+        value: 'keep',
+        default: 'refuse',
+        choices: ['refuse', 'keep'],
+        versions: { platform: 10 },
+      },
     ]);
 
     expect(await settings).toEqual({
       signup: { enabled: true, approvalRequired: false },
       // The platform's own country, which its phone fields start on, among the presets' countries.
       country: { key: 'platform.country', value: 'FR', choices: ['FR', 'TN'] },
+      // What becomes of a phone outside the ranges its country hands out: refused, or kept and marked to check.
+      phones: { key: 'platform.phones.outside_ranges', value: 'keep' },
       // What is coming, as the installation shows it until a company or a person chooses.
       showComing: true,
       // The demo's count is not a delay: it has its own card.
@@ -496,6 +506,7 @@ describe('PlatformApi', () => {
         'demo.sandboxes_max': 6,
         'import.max_rows': 7,
         'platform.country': 9,
+        'platform.phones.outside_ranges': 10,
       },
     });
   });
@@ -508,6 +519,26 @@ describe('PlatformApi', () => {
     expect((await settings).demo).toEqual({ enabled: true, most: null });
     expect((await settings).imports).toEqual({ rows: null });
     expect((await settings).country).toBeNull();
+    expect((await settings).phones).toBeNull();
+  });
+
+  it('reads the policy for a phone outside the ranges as its default while the platform has set none', async () => {
+    const settings = api.settings();
+
+    http.expectOne('/api/platform/settings').flush([
+      {
+        key: 'platform.phones.outside_ranges',
+        type: 'enum',
+        value: null,
+        default: 'refuse',
+        choices: ['refuse', 'keep'],
+      },
+    ]);
+
+    expect((await settings).phones).toEqual({
+      key: 'platform.phones.outside_ranges',
+      value: 'refuse',
+    });
   });
 
   it('sets one switch at the platform level, the demo among them', async () => {
@@ -575,8 +606,10 @@ describe('PlatformApi', () => {
         },
       ],
     });
-    // Their words live with the settings' refusals, which the platform's own texts do not carry.
+    // Their words live with the settings' refusals, which the platform's own texts do not carry; a phone's with the
+    // form refusals, where every phone field reads them.
     expect(opened).toHaveBeenCalledWith('settings-refusals');
+    expect(opened).toHaveBeenCalledWith('form-refusals');
 
     const unnamed = api.saveSettings([{ key: 'support.phone', value: '1', version: 1 }]);
     http

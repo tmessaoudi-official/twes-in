@@ -24,6 +24,7 @@ import type {
   PlatformAccountRow,
   PlatformCompanyRow,
   PlatformCountry,
+  PlatformPhones,
   PlatformError,
   PlatformSignup,
   PlatformDemo,
@@ -350,6 +351,8 @@ describe('PlatformPage', () => {
     choices: ['FR', 'TN'],
   };
   const country = signal<PlatformCountry | null>(countryState);
+  const phonesState: PlatformPhones = { key: 'platform.phones.outside_ranges', value: 'refuse' };
+  const phones = signal<PlatformPhones | null>(phonesState);
   const showComing = signal<boolean | null>(false);
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
@@ -400,6 +403,8 @@ describe('PlatformPage', () => {
     saveImportRows: vi.fn(async () => true),
     country: country.asReadonly(),
     saveCountry: vi.fn(async () => true),
+    phones: phones.asReadonly(),
+    savePhones: vi.fn(async () => true),
     showComing: showComing.asReadonly(),
     busy,
     error,
@@ -440,6 +445,7 @@ describe('PlatformPage', () => {
     demo.set(demoState);
     imports.set(importsState);
     country.set(countryState);
+    phones.set(phonesState);
     showComing.set(false);
     error.set(null);
     refused.set({ at: null, refusals: [] });
@@ -1153,6 +1159,37 @@ describe('PlatformPage', () => {
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
       expect.objectContaining({ key: 'platform.country.saved' }),
     );
+  });
+
+  // The developer's ruling of 2026-10-29: what becomes of a phone outside the ranges its country hands out is the
+  // platform's one choice, « Refuser » by default or « Garder et marquer À vérifier ».
+  it('sets the policy for a phone outside the ranges, held while unsaved, and says it was saved', async () => {
+    const { fixture, query } = await render();
+    const select = query('platform-phones-select')!;
+    expect(select.textContent).toContain('platform.phones.refuse');
+    expect(query<HTMLButtonElement>('platform-phones-save')!.disabled).toBe(true);
+
+    select.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    document.querySelector<HTMLElement>('[data-testid="platform-phones-select-keep"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(TestBed.inject(UnsavedChanges).count()).toBe(1);
+
+    query<HTMLButtonElement>('platform-phones-save')!.click();
+    await fixture.whenStable();
+    expect(facade.savePhones).toHaveBeenCalledWith('keep');
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
+      expect.objectContaining({ key: 'platform.phones.saved' }),
+    );
+  });
+
+  it('draws no policy card where the API declares no such setting', async () => {
+    phones.set(null);
+    const { query } = await render();
+    expect(query('platform-phones')).toBeNull();
   });
 
   it('counts what is typed in every card and not saved, holding the page until the platform holds it', async () => {

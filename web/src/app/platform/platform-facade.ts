@@ -19,6 +19,7 @@ import {
   type PlatformImports,
   type PlatformError,
   type PlatformNumber,
+  type PlatformPhones,
   type PlatformSettings,
   type PlatformSignup,
   type PlatformSubscriptionRow,
@@ -28,6 +29,7 @@ import {
   type PlatformSupportRules,
 } from './platform-types';
 import { LatestRequest, requestState } from '../shared/feedback/request-state';
+import type { PhonesOutsideRanges } from '../shared/session/session';
 
 /** What an operator runs the platform with: who may sign up, the companies (those waiting for a decision first), and accounts. */
 @Injectable({ providedIn: 'root' })
@@ -43,6 +45,7 @@ export class PlatformFacade {
   private readonly demoSignal = signal<PlatformDemo | null>(null);
   private readonly importsSignal = signal<PlatformImports | null>(null);
   private readonly countrySignal = signal<PlatformCountry | null>(null);
+  private readonly phonesSignal = signal<PlatformPhones | null>(null);
   private readonly showComingSignal = signal<boolean | null>(null);
   /** The version of each platform key's row when read, which a form's save sends back. */
   private versions: Readonly<Record<string, number>> = {};
@@ -99,6 +102,8 @@ export class PlatformFacade {
   readonly imports = this.importsSignal.asReadonly();
   /** The platform's own country and those it may be set to, null until read or where the API declares none. */
   readonly country = this.countrySignal.asReadonly();
+  /** What becomes of a phone outside the ranges its country hands out, null until read or where the API declares none. */
+  readonly phones = this.phonesSignal.asReadonly();
   /** Whether the installation shows what is coming until a company or a person chooses, null until read. */
   readonly showComing = this.showComingSignal.asReadonly();
   private readonly subscriptionSignal = signal<PlatformSubscriptionRow | null>(null);
@@ -358,6 +363,18 @@ export class PlatformFacade {
     return this.saveSettings([{ key, value: country }]);
   }
 
+  /**
+   * Saves what becomes of a phone outside the ranges its country hands out, with the version read; the signed-in state
+   * is read again, since this tab's own phone fields read the policy from it and a live change never comes back here.
+   */
+  async savePhones(policy: PhonesOutsideRanges): Promise<boolean> {
+    const key = this.phonesSignal()?.key;
+    if (key === undefined) return false;
+    const saved = await this.saveSettings([{ key, value: policy }]);
+    if (saved) await this.auth.refresh();
+    return saved;
+  }
+
   clearError(): void {
     this.state.clearError();
   }
@@ -404,6 +421,7 @@ export class PlatformFacade {
     this.demoSignal.set(settings.demo);
     this.importsSignal.set(settings.imports);
     this.countrySignal.set(settings.country);
+    this.phonesSignal.set(settings.phones);
     this.showComingSignal.set(settings.showComing);
     this.versions = settings.versions;
   }

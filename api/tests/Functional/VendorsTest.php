@@ -14,6 +14,9 @@ use App\Module\Expenses\Domain\Model\ExpenseCategory;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\ModuleRegistry\Domain\Model\ModuleState;
+use App\Settings\Application\PhoneSettings;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
@@ -151,6 +154,14 @@ final class VendorsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame(['Sotumag SA', '01 23 45'], [$this->json()['name'], $this->json()['phone']]);
 
+        // Outside the numbers handed out: refused by default (« Refuser », ruled 2026-10-29), read by the vendor's country.
+        $this->sendJson('PUT', $this->path($id), [...$this->vendor(['countryCode' => 'TN', 'iban' => null, 'bic' => null, 'phone' => '11 111 111']), 'version' => 2]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'phone', 'reason' => 'phone_outside_ranges', 'params' => ['example' => '+216 30 010 123', 'callingCode' => '+216']]], $this->refusals());
+
+        // Kept and the vendor marked where the platform's operators chose « Garder et marquer À vérifier ».
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->flush();
         $this->sendJson('PUT', $this->path($id), [...$this->vendor(['countryCode' => 'TN', 'iban' => null, 'bic' => null, 'phone' => '11 111 111']), 'version' => 2]);
         self::assertResponseIsSuccessful();
         self::assertSame(['+216 11111111', true], [$this->json()['phone'], $this->json()['toCheck']]);

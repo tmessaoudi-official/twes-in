@@ -118,9 +118,12 @@ function onceChanged(rule: ValidatorFn, start: FieldValue): ValidatorFn {
 /** The kinds whose rule the API applies once changed: an address and a phone (`onceChanged: true` in api/src). */
 const KEPT_KINDS: ReadonlySet<FormField['kind']> = new Set(['email', 'tel']);
 
-/** A phone of the length its country's numbers have, as the API's `TypedPhones` refuses it; empty is no phone. */
+/**
+ * A phone refused as the API's `TypedPhones` refuses it, for its length or its shape; empty is no phone. One outside the
+ * ranges its country hands out is the field's to refuse (`PhoneField`), which reads the platform's policy from the session.
+ */
 const phoneRule: ValidatorFn = (control) => {
-  const refused = typeof control.value === 'string' ? phoneRefusal(control.value) : null;
+  const refused = typeof control.value === 'string' ? phoneRefusal(control.value, 'keep') : null;
   return refused === null ? null : { phone: refused };
 };
 

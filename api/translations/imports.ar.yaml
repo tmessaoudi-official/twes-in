@@ -14,6 +14,7 @@ set_aside:
         invalid_email: 'ليس عنوان بريد إلكتروني'
         invalid_barcode: 'رقم التحقّق فيه لا يطابق'
         phone_length: 'عدد أرقامه لا يطابق رقم هاتف في بلده'
+        phone_outside_ranges: 'بلده لا يمنح أرقامًا كهذه'
         phone_country: 'دون بلد، يبدأ رقم الهاتف بـ + ورمز البلد'
 column:
     email: 'البريد الإلكتروني'

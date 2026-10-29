@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { AuthFacade } from '../auth/auth-facade';
 import { StepUp } from '../shared/step-up/step-up';
 import { PlatformApi, PlatformRefused } from './platform-api';
 import { PlatformFacade } from './platform-facade';
@@ -71,6 +72,7 @@ const SETTINGS = {
   imports: {
     rows: { key: 'import.max_rows', labelKey: 'l.i', value: 5000, min: 1, max: 5000 },
   },
+  phones: { key: 'platform.phones.outside_ranges', value: 'refuse' as 'refuse' | 'keep' },
   versions: {
     'support.phone': 4,
     'support.whatsapp': 0,
@@ -81,6 +83,7 @@ const SETTINGS = {
     'demo.enabled': 0,
     'demo.sandboxes_max': 2,
     'import.max_rows': 3,
+    'platform.phones.outside_ranges': 5,
   },
 };
 
@@ -331,6 +334,27 @@ describe('PlatformFacade', () => {
       [[{ key: 'import.max_rows', value: 1200, version: 3 }]],
     ]);
     expect(facade.imports()?.rows?.value).toBe(1200);
+  });
+
+  // The developer's ruling of 2026-10-29: one platform setting says what becomes of a phone outside the ranges its
+  // country hands out, which the API and every phone field read, this operator's own included at once.
+  it('saves the policy for a phone outside the ranges with the version read, then reads the session again', async () => {
+    await facade.load();
+    expect(facade.phones()).toEqual(SETTINGS.phones);
+    api.saveSettings.mockResolvedValue(undefined);
+    api.settings.mockResolvedValueOnce({
+      ...SETTINGS,
+      phones: { ...SETTINGS.phones, value: 'keep' },
+    });
+    const refresh = vi.spyOn(TestBed.inject(AuthFacade), 'refresh').mockResolvedValue(undefined);
+
+    expect(await facade.savePhones('keep')).toBe(true);
+
+    expect(api.saveSettings.mock.calls).toEqual([
+      [[{ key: 'platform.phones.outside_ranges', value: 'keep', version: 5 }]],
+    ]);
+    expect(facade.phones()?.value).toBe('keep');
+    expect(refresh).toHaveBeenCalled();
   });
 
   it('saves the support channels changed, and only those, together, then shows what the platform holds', async () => {

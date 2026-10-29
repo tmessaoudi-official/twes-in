@@ -8,24 +8,32 @@ import {
   effect,
   forwardRef,
   inject,
+  Injector,
   input,
   signal,
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
+  type AbstractControl,
   type ControlValueAccessor,
   FormControl,
+  NG_VALIDATORS,
   NG_VALUE_ACCESSOR,
   ReactiveFormsModule,
+  type ValidationErrors,
+  type Validator,
 } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { Session } from '../session/session';
+import { FORM_REFUSAL_TEXTS } from './form-refusal-texts';
 import {
   phoneCountries,
   phoneEdited,
   phoneExample,
+  phoneRefusal,
   phoneValue,
   readPhone,
   samePhone,
@@ -55,6 +63,7 @@ let nextId = 0;
   ],
   providers: [
     { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => PhoneField), multi: true },
+    { provide: NG_VALIDATORS, useExisting: forwardRef(() => PhoneField), multi: true },
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Two boxes side by side, the country's as narrow as « 🇺🇿 UZ +998 » needs, which wrap one under the other where the
@@ -96,7 +105,7 @@ let nextId = 0;
     </mat-form-field>
   `,
 })
-export class PhoneField implements ControlValueAccessor {
+export class PhoneField implements ControlValueAccessor, Validator {
   /** The country a number with no « + » is read by: the company's, else the platform's. */
   readonly country = input('');
   readonly inputId = input('');
@@ -121,6 +130,8 @@ export class PhoneField implements ControlValueAccessor {
   protected onTouched: () => void = () => undefined;
 
   private readonly translate = inject(TranslateService);
+  private readonly session = inject(Session, { optional: true });
+  private readonly injector = inject(Injector);
   private readonly language = toSignal(this.translate.onLangChange, { initialValue: null });
 
   /**
@@ -210,6 +221,23 @@ export class PhoneField implements ControlValueAccessor {
 
   registerOnChange(fn: (value: string) => void): void {
     this.changed = fn;
+  }
+
+  /**
+   * The platform's refusal of a number outside the ranges its country hands out, read from the session as the API reads
+   * it (form-builder's rule says the rest); the value the form opened on is left as it is, as every kept value is.
+   */
+  validate(control: AbstractControl): ValidationErrors | null {
+    const value: unknown = control.value;
+    if (typeof value !== 'string' || value === this.opened) return null;
+    const refused = phoneRefusal(value, this.session?.me()?.phonesOutsideRanges ?? 'refuse');
+    if (refused === null) return null;
+    // Its words live with the form refusals, which no route opens before a field refuses; a fetch that fails leaves
+    // « Valeur refusée. », and the next refusal fetches them again, as formRefusalsIn does.
+    void import('../i18n/texts-part')
+      .then(({ TextsParts }) => this.injector.get(TextsParts).open(FORM_REFUSAL_TEXTS))
+      .catch(() => undefined);
+    return { phone: refused };
   }
 
   registerOnTouched(fn: () => void): void {

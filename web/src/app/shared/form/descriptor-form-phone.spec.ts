@@ -28,6 +28,8 @@ class StaticLoader implements TranslateLoader {
         rejections: {
           phone_length:
             'Ce numéro n’a pas le nombre de chiffres de son pays (exemple : {{example}}).',
+          phone_outside_ranges:
+            'Son pays ne donne pas de numéro comme celui-ci : vérifiez-le (exemple : {{example}}).',
         },
       },
     });
@@ -73,6 +75,15 @@ class FrenchCompany extends Session {
   hasModule(): boolean {
     return true;
   }
+}
+
+/** A French company on a platform whose operators keep a number outside the known ranges, marked to check. */
+class KeepingPlatform extends FrenchCompany {
+  override readonly me = signal<SessionState | null>({
+    user: { id: 'u1' },
+    company: { id: 'c1', countryCode: 'FR', currency: 'EUR' },
+    phonesOutsideRanges: 'keep',
+  });
 }
 
 /**
@@ -261,6 +272,41 @@ describe('DescriptorForm with a phone field', () => {
       await settle();
 
       expect(host.form.controls['phone'].value).toBe('+216 71 234 567');
+    });
+  });
+
+  // The platform's one policy for a number outside the ranges its country hands out (ruled 2026-10-29), read from the
+  // session as the API reads it: « Refuser » by default, with the country's example; « Garder et marquer » takes it.
+  describe('for a number outside the ranges its country hands out', () => {
+    it('refuses it with an example of its country, under the default policy', async () => {
+      configure([{ provide: Session, useClass: FrenchCompany }]);
+      const host = await open('');
+
+      await typeIn('07 00 00 00 00');
+
+      expect(host.form.controls['phone'].hasError('phone')).toBe(true);
+      expect(byTestId('field-error-phone')?.textContent).toMatch(
+        /ne donne pas de numéro comme celui-ci.*exemple : \+33 /,
+      );
+    });
+
+    it('takes it where the platform keeps such numbers marked to check', async () => {
+      configure([{ provide: Session, useClass: KeepingPlatform }]);
+      const host = await open('');
+
+      await typeIn('07 00 00 00 00');
+
+      expect(host.form.controls['phone'].valid).toBe(true);
+      expect(host.form.controls['phone'].value).toBe('+33 7 00 00 00 00');
+    });
+
+    it('leaves one the record already holds as it is', async () => {
+      configure([{ provide: Session, useClass: FrenchCompany }]);
+      const host = await open('+33700000000');
+
+      expect(host.form.controls['phone'].valid).toBe(true);
+      await submit();
+      expect(host.saved).toEqual([{ phone: '+33700000000' }]);
     });
   });
 

@@ -23,7 +23,7 @@ use App\Module\Customers\Domain\Exception\InvalidCustomer;
 use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
-use App\Shared\Application\TypedPhones;
+use App\Shared\Application\Phones\TypedPhones;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Infrastructure\Intl\LibPhoneNumbers;
 use App\Tenancy\Domain\Model\Company;
@@ -67,7 +67,7 @@ final class ManageCustomersTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->fields = new InMemoryCustomFieldDefinitions();
-        $this->manage = new ManageCustomers(new InMemoryCustomers(), $this->groups, $regimes, $this->taxes, ShippedFiscalPresets::presets(), $this->audit, $clock, $this->fields, $transactions, new InMemoryRecordVersions(), new CustomerCheckScopes(ShippedFiscalPresets::presets()), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())));
+        $this->manage = new ManageCustomers(new InMemoryCustomers(), $this->groups, $regimes, $this->taxes, ShippedFiscalPresets::presets(), $this->audit, $clock, $this->fields, $transactions, new InMemoryRecordVersions(), new CustomerCheckScopes(ShippedFiscalPresets::presets()), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);

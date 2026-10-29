@@ -14,6 +14,7 @@ set_aside:
         invalid_email: 'ce n’est pas une adresse e-mail'
         invalid_barcode: 'son chiffre de contrôle ne correspond pas'
         phone_length: 'il n’a pas le nombre de chiffres d’un téléphone de son pays'
+        phone_outside_ranges: 'son pays ne donne pas de tels numéros'
         phone_country: 'sans pays, un téléphone commence par + et l’indicatif'
 column:
     email: 'Adresse e-mail'

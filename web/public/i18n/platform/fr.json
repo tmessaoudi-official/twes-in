@@ -318,6 +318,15 @@
       "save": "Enregistrer",
       "saved": "Pays de la plateforme enregistré."
     },
+    "phones": {
+      "title": "Numéros hors des plages connues",
+      "intro": "Un numéro de la bonne longueur que son pays n’attribue pas : le refuser à la saisie, avec un exemple de ce pays, ou le garder et le marquer « À vérifier ». Les écrans, les imports et l’API suivent ce choix.",
+      "label": "Numéro hors des plages",
+      "refuse": "Refuser",
+      "keep": "Garder et marquer « À vérifier »",
+      "save": "Enregistrer",
+      "saved": "Choix pour les numéros hors des plages enregistré."
+    },
     "support": {
       "title": "Contact du support",
       "intro": "Ce que l’aide de chaque écran propose sous « Nous contacter » à toutes les personnes connectées. Un moyen laissé vide n’y figure pas.",

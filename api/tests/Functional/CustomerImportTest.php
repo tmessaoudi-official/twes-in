@@ -18,8 +18,11 @@ use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Model\CustomerGroup;
+use App\Settings\Application\PhoneSettings;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingContext;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Domain\ValueObject\CheckMark;
@@ -317,12 +320,23 @@ final class CustomerImportTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         self::assertSame([2, 3, 4, 5], $this->arrayAt($this->json(), 'created'));
+        // Outside the numbers handed out, under the platform's « Refuser » (its default, ruled 2026-10-29): set aside.
         self::assertSame([
             ['line' => 4, 'column' => 'phone', 'code' => 'set_aside', 'params' => ['value' => '71 900', 'reason' => 'phone_length', 'example' => '+216 30 010 123', 'callingCode' => '+216']],
+            ['line' => 5, 'column' => 'phone', 'code' => 'set_aside', 'params' => ['value' => '11 111 111', 'reason' => 'phone_outside_ranges', 'example' => '+216 30 010 123', 'callingCode' => '+216']],
         ], $this->json()['notes']);
-        self::assertSame(['+21671900868', '+33123456789', null, '+21611111111'], array_map(fn (string $number): ?string => $this->customer($number)->getProfile()->phone, ['CLI-0040', 'CLI-0041', 'CLI-0042', 'CLI-0043']));
+        self::assertSame(['+21671900868', '+33123456789', null, null], array_map(fn (string $number): ?string => $this->customer($number)->getProfile()->phone, ['CLI-0040', 'CLI-0041', 'CLI-0042', 'CLI-0043']));
         self::assertStringContainsString('(exemple', (string) $this->customer('CLI-0042')->getCheckMark()->note);
-        self::assertTrue($this->customer('CLI-0043')->getCheckMark()->marked, 'a number outside the plan is « À vérifier »');
+        self::assertTrue($this->customer('CLI-0043')->getCheckMark()->marked, 'a number set aside is « À vérifier »');
+
+        // Under « Garder et marquer À vérifier », kept and the customer marked.
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->import("number,name,phone\nCLI-0044,Atelier Gardé,11 111 112\n");
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['notes']);
+        self::assertSame('+21611111112', $this->customer('CLI-0044')->getProfile()->phone);
+        self::assertTrue($this->customer('CLI-0044')->getCheckMark()->marked, 'a number outside the plan is « À vérifier »');
     }
 
     /**

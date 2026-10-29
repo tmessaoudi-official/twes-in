@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { PhonesOutsideRanges } from '../shared/session/session';
+
 /**
  * The auth feature seen from its components: who is signed in, where they work, what they may do. Built by the
  * API adapter (auth-api.ts) from the generated OpenAPI types, which nothing else imports.
@@ -167,6 +169,8 @@ export interface SignedInState {
   supportAccessReason?: string | null;
   /** what the working company asks before this sign-in acts in it, null once proved or when it asks nothing */
   companyProof?: CompanyProofAsked | null;
+  /** what becomes of a phone outside the ranges its country hands out, which every phone field reads as the API applies it */
+  phonesOutsideRanges?: PhonesOutsideRanges;
 }
 
 /** The proof a company asks: the password, the authenticator code beside it, or a passkey instead. */

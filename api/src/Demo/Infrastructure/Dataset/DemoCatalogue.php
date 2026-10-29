@@ -167,7 +167,7 @@ final class DemoCatalogue
                 postalCode: '69003',
                 city: 'Lyon',
                 email: 'bonjour@atelier-mercier.example',
-                phone: '+33 4 00 00 01 00',
+                phone: '+33 4 65 71 01 00',
                 website: 'https://atelier-mercier.example',
             ),
             vatCode: 'TVA20',

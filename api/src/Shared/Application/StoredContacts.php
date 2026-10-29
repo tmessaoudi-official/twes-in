@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Application;
 
+use App\Shared\Application\Phones\TypedPhones;
 use App\Shared\Domain\Service\ContactRules;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Refusal;

@@ -232,6 +232,8 @@ final class RefusalReasonsTest extends KernelTestCase
         $refusals = 0;
         foreach (['fr', 'en', 'ar'] as $language) {
             $translated = self::translated($language, self::SETTINGS_REFUSALS);
+            // A phone setting is typed in the phone field, whose refusals the platform's adapters open with the form refusals.
+            $phones = self::translated($language, self::SETTINGS_REFUSALS, self::FORM_REFUSALS);
             // What a save refuses a key with beyond its value: a level it is not kept at, a key named twice.
             foreach (['level_refused', 'invalid_value'] as $ofTheSave) {
                 if (!\is_string($translated[$ofTheSave] ?? null)) {
@@ -242,7 +244,7 @@ final class RefusalReasonsTest extends KernelTestCase
                 foreach ($catalog->ofChain($chain) as $definition) {
                     foreach ($definition->refusals() as $refusal) {
                         ++$refusals;
-                        $said = $translated[$refusal->reason] ?? null;
+                        $said = ($definition->phone ? $phones : $translated)[$refusal->reason] ?? null;
                         if (!\is_string($said) || '' === $said) {
                             $wrong[] = \sprintf('%s: no %s text for %s', $definition->key, $language, $refusal->reason);
                             continue;

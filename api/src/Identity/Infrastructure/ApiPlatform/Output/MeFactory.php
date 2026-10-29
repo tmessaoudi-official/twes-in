@@ -24,10 +24,12 @@ use App\Licensing\Application\CompanyStandings;
 use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Application\ModuleManifest;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Settings\Application\PhoneSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Settings\Application\SupportSettings;
-use App\Shared\Application\PhoneNumbers;
+use App\Shared\Application\Phones\PhoneNumbers;
+use App\Shared\Application\Phones\PhonePolicy;
 use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use App\Tenancy\Application\Session\CompanyEntry;
@@ -65,6 +67,7 @@ final readonly class MeFactory
         private CompanyEntry $entry,
         private CompanyEntryProofs $entryProofs,
         private CompanyRepository $companies,
+        private PhonePolicy $phonePolicy,
     ) {
     }
 
@@ -82,7 +85,7 @@ final readonly class MeFactory
             array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => null !== $manifest->planned),
         ));
 
-        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED), $this->proofAsked($user, $context));
+        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED), $this->proofAsked($user, $context), $this->phonePolicy->keepsOutsideRanges() ? PhoneSettings::KEEP : PhoneSettings::REFUSE);
     }
 
     private function proofAsked(User $user, ?WorkingContext $context): ?EntryProof

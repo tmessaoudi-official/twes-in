@@ -11,7 +11,7 @@ namespace App\Legal\Application;
 
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
-use App\Shared\Application\PhoneNumbers;
+use App\Shared\Application\Phones\PhoneNumbers;
 use App\Shared\Domain\Service\TypedText;
 
 /**

@@ -15,7 +15,7 @@ use App\Module\Vendors\Application\VendorNotFound;
 use App\Module\Vendors\Application\VendorNumberTaken;
 use App\Module\Vendors\Domain\Exception\InvalidVendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
-use App\Shared\Application\TypedPhones;
+use App\Shared\Application\Phones\TypedPhones;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Infrastructure\Intl\LibPhoneNumbers;
 use App\Tenancy\Domain\Model\Company;
@@ -40,7 +40,7 @@ final class ManageVendorsTest extends TestCase
     {
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->manage = new ManageVendors(new InMemoryVendors(), ShippedFiscalPresets::presets(), $this->audit, new MockClock('2026-09-15 09:00:00'), new InMemoryExpenseCategoryDirectory(), $transactions, new InMemoryRecordVersions(), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())));
+        $this->manage = new ManageVendors(new InMemoryVendors(), ShippedFiscalPresets::presets(), $this->audit, new MockClock('2026-09-15 09:00:00'), new InMemoryExpenseCategoryDirectory(), $transactions, new InMemoryRecordVersions(), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }

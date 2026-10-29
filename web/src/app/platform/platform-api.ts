@@ -41,7 +41,7 @@ import type {
   PlatformSwitch,
   SupportChannel,
 } from './platform-types';
-import { PLATFORM_COUNTRY } from './platform-types';
+import { PLATFORM_COUNTRY, PLATFORM_PHONES, type PlatformPhones } from './platform-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import { TextsParts } from '../shared/i18n/texts-part';
@@ -165,6 +165,7 @@ export class PlatformApi {
           ),
         },
         country: platformCountry(rows),
+        phones: platformPhones(rows),
         versions: platformVersions(rows),
       };
     });
@@ -199,11 +200,17 @@ export class PlatformApi {
 
   /** Texts that could not be fetched leave the field saying « Valeur refusée. », and the next refusal asks again. */
   private async openRefusalTexts(): Promise<void> {
-    const { SETTING_REFUSAL_TEXTS } = await import('../shared/settings/setting-refusals');
-    await this.injector
-      .get(TextsParts)
-      .open(SETTING_REFUSAL_TEXTS)
-      .catch(() => undefined);
+    const [{ SETTING_REFUSAL_TEXTS }, { FORM_REFUSAL_TEXTS }] = await Promise.all([
+      import('../shared/settings/setting-refusals'),
+      import('../shared/form/form-refusal-texts'),
+    ]);
+    // A phone's refusals are the phone field's own, whose words live with the form refusals.
+    const parts = this.injector.get(TextsParts);
+    await Promise.all(
+      [SETTING_REFUSAL_TEXTS, FORM_REFUSAL_TEXTS].map((part) =>
+        parts.open(part).catch(() => undefined),
+      ),
+    );
   }
 
   private decide(
@@ -394,6 +401,16 @@ function platformCountry(rows: readonly SettingSettingRead[]): PlatformCountry |
   const row = rows.find((each) => each.key === PLATFORM_COUNTRY);
   if (row === undefined || typeof row.value !== 'string') return null;
   return { key: PLATFORM_COUNTRY, value: row.value, choices: row.choices ?? [] };
+}
+
+/**
+ * The platform's policy for a phone outside the ranges its country hands out, its default while none is set; null
+ * where the API declares no such setting.
+ */
+function platformPhones(rows: readonly SettingSettingRead[]): PlatformPhones | null {
+  const row = rows.find((each) => each.key === PLATFORM_PHONES);
+  const value = row?.value ?? row?.default;
+  return value === 'refuse' || value === 'keep' ? { key: PLATFORM_PHONES, value } : null;
 }
 
 function toNumber(row: SettingSettingRead): PlatformNumber {

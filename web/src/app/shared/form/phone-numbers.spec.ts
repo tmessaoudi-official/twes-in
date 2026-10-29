@@ -52,17 +52,28 @@ describe('phone numbers', () => {
   });
 
   it('refuses a number of the wrong length for its country, with an example of that country', () => {
-    const refused = phoneRefusal('+216 71 234');
+    const refused = phoneRefusal('+216 71 234', 'refuse');
 
     expect(refused?.key).toBe('import.rejections.phone_length');
     expect(refused?.params?.['example']).toMatch(/^\+216 /);
   });
 
   it('refuses what is no number, and takes a good number or nothing', () => {
-    expect(phoneRefusal('+216 abc')?.key).toBe('import.rejections.invalid_phone');
-    expect(phoneRefusal('+216 ------')?.key).toBe('import.rejections.invalid_phone');
-    expect(phoneRefusal('+216 71 234 567')).toBeNull();
-    expect(phoneRefusal('')).toBeNull();
+    expect(phoneRefusal('+216 abc', 'refuse')?.key).toBe('import.rejections.invalid_phone');
+    expect(phoneRefusal('+216 ------', 'refuse')?.key).toBe('import.rejections.invalid_phone');
+    expect(phoneRefusal('+216 71 234 567', 'refuse')).toBeNull();
+    expect(phoneRefusal('', 'refuse')).toBeNull();
+  });
+
+  // The platform's policy (ruled 2026-10-29), which the API's TypedPhones reads too: « Refuser » refuses a number of the
+  // right length outside the ranges its country hands out, with that country's example; « Garder et marquer » takes it.
+  it("refuses a number outside its country's ranges with its example, unless the platform keeps them", () => {
+    const refused = phoneRefusal('+216 80 123 456', 'refuse');
+
+    expect(refused?.key).toBe('import.rejections.phone_outside_ranges');
+    expect(refused?.params?.['example']).toMatch(/^\+216 /);
+    expect(phoneRefusal('+216 80 123 456', 'keep')).toBeNull();
+    expect(phoneRefusal('+216 71 234', 'keep')?.key).toBe('import.rejections.phone_length');
   });
 
   // Grouped as typed (ruled 2026-10-29): the digits in the country's own groups, the caret after the same digit it

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { PhonesOutsideRanges } from '../shared/session/session';
+
 /** Where a company stands in its subscription, as the platform's company list shows it. */
 export interface SubscriptionStanding {
   readonly stage: 'trial' | 'paid' | 'grace' | 'held' | 'unpaid';
@@ -87,17 +89,29 @@ export interface PlatformImports {
   readonly rows: PlatformNumber | null;
 }
 
+/** The key of the platform's own country, which the platform page and the legal page both read. */
+export const PLATFORM_COUNTRY = 'platform.country';
+
 /**
  * The platform's own country, which its operators set and the phones of its support and legal pages start on
  * (`PlatformCountrySettings` in the API): one of the countries a fiscal preset is written for.
  */
-/** The key of the platform's own country, which the platform page and the legal page both read. */
-export const PLATFORM_COUNTRY = 'platform.country';
-
 export interface PlatformCountry {
   readonly key: string;
   readonly value: string;
   readonly choices: readonly string[];
+}
+
+/** The key of the platform's policy for a phone outside the ranges its country hands out (`PhoneSettings` in the API). */
+export const PLATFORM_PHONES = 'platform.phones.outside_ranges';
+
+/**
+ * What becomes of a phone of the right length outside the ranges its country hands out, which the API and every phone
+ * field read: « refuse », the default, or « keep » and mark it to check.
+ */
+export interface PlatformPhones {
+  readonly key: string;
+  readonly value: PhonesOutsideRanges;
 }
 
 /** A way companies reach the platform's operators, which the help panel offers (`SupportSettings` in the API). */
@@ -127,6 +141,8 @@ export interface PlatformSettings {
   readonly imports: PlatformImports;
   /** Null where the API declares no such setting. */
   readonly country: PlatformCountry | null;
+  /** Null where the API declares no such setting. */
+  readonly phones: PlatformPhones | null;
   readonly versions: Readonly<Record<string, number>>;
 }
 

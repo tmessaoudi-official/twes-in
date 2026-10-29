@@ -11,6 +11,7 @@ import {
 import examples from 'libphonenumber-js/mobile/examples';
 import metadata from 'libphonenumber-js/max/metadata';
 import { countryFlag } from '../i18n/country-names';
+import type { PhonesOutsideRanges } from '../session/session';
 import type { FieldError } from './form-builder';
 import { typedText } from './typed-text';
 
@@ -190,13 +191,17 @@ export function phoneVerdict(typed: string, country: string | null): PhoneVerdic
   return { verdict: parsed.isValid() ? 'valid' : 'to_check', e164: parsed.number };
 }
 
-/** What a phone field's value is refused with, the API's own refusals; null for a good number or no number. */
-export function phoneRefusal(value: string): FieldError | null {
+/**
+ * What a phone field's value is refused with, the API's own refusals; null for a good number or no number. One of the
+ * right length outside the ranges its country hands out follows the platform's policy, as the API's `TypedPhones` does:
+ * refused with its country's example under « refuse », taken under « keep », the API marking it to check.
+ */
+export function phoneRefusal(value: string, outsideRanges: PhonesOutsideRanges): FieldError | null {
   const typed = plain(value);
   if (typed === '') return null;
   // A value is international by now, so a country is named by its own code, never by the field's.
   const { verdict } = phoneVerdict(typed, null);
-  if (verdict === 'valid' || verdict === 'to_check') return null;
+  if (verdict === 'valid' || (verdict === 'to_check' && outsideRanges === 'keep')) return null;
   if (verdict === 'needs_country') return { key: 'import.rejections.phone_country' };
   if (verdict === 'not_a_number') return { key: 'import.rejections.invalid_phone' };
   const country =
@@ -207,8 +212,9 @@ export function phoneRefusal(value: string): FieldError | null {
       ? getExampleNumber(country, examples)?.formatInternational()
       : undefined;
   // A code no country answers to is said as the country missing, whose sentence carries its own example.
-  return example === undefined
-    ? { key: 'import.rejections.phone_country' }
+  if (example === undefined) return { key: 'import.rejections.phone_country' };
+  return verdict === 'to_check'
+    ? { key: 'import.rejections.phone_outside_ranges', params: { example } }
     : { key: 'import.rejections.phone_length', params: { example } };
 }
 

@@ -144,11 +144,17 @@ export class PlatformLegalApi {
 
   /** Texts that could not be fetched leave the field saying its key, and the next refusal asks again. */
   private async openRefusalTexts(): Promise<void> {
-    const { SETTING_REFUSAL_TEXTS } = await import('../shared/settings/setting-refusals');
-    await this.injector
-      .get(TextsParts)
-      .open(SETTING_REFUSAL_TEXTS)
-      .catch(() => undefined);
+    const [{ SETTING_REFUSAL_TEXTS }, { FORM_REFUSAL_TEXTS }] = await Promise.all([
+      import('../shared/settings/setting-refusals'),
+      import('../shared/form/form-refusal-texts'),
+    ]);
+    // A phone's refusals are the phone field's own, whose words live with the form refusals.
+    const parts = this.injector.get(TextsParts);
+    await Promise.all(
+      [SETTING_REFUSAL_TEXTS, FORM_REFUSAL_TEXTS].map((part) =>
+        parts.open(part).catch(() => undefined),
+      ),
+    );
   }
 
   private path(page: LegalPage, language: LegalLanguage, action: string): string {
