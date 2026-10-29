@@ -2,7 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -150,6 +150,12 @@ describe('ShortSaleDialog', () => {
     expect(q(host, 'short-sale-ask')).toBeNull();
     q(host, 'short-sale-close')?.click();
     expect(closed).toEqual([false]);
+    // Following either link leaves the dialog with the page, never open over the count sheet or the receipt.
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    q(host, 'short-sale-count')?.click();
+    q(host, 'short-sale-receive')?.click();
+    expect(closed).toEqual([false, false, false]);
+    expect(navigate).toHaveBeenCalledTimes(2);
   });
 
   it('tells whoever does not keep the stock who can', () => {

@@ -32,7 +32,7 @@ export interface ShortSaleDialogData {
  * A sale taking more than the stock recorded, said before it is kept: each product short, what the sale wants and what
  * its places hold, with « Compter » and « Recevoir » at the place where that puts it right. Where the company asks for a
  * confirmation and the person may give it, the sale goes on below zero, which a count corrects later; otherwise it is
- * only said.
+ * only said. A link closes the dialog as it opens its page: an overlay leaves on the browser's back and forward alone.
  */
 @Component({
   selector: 'app-short-sale-dialog',
@@ -62,6 +62,7 @@ export interface ShortSaleDialogData {
                   mat-stroked-button
                   [routerLink]="count(line).path"
                   [queryParams]="count(line).query"
+                  (click)="ref.close(false)"
                   data-testid="short-sale-count"
                   >{{ 'stock_moves.short.count' | translate }}</a
                 >
@@ -69,6 +70,7 @@ export interface ShortSaleDialogData {
                   mat-stroked-button
                   [routerLink]="receive(line).path"
                   [queryParams]="receive(line).query"
+                  (click)="ref.close(false)"
                   data-testid="short-sale-receive"
                   >{{ 'stock_moves.short.receive' | translate }}</a
                 >
