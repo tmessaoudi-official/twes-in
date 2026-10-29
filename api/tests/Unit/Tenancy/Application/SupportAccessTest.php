@@ -138,7 +138,7 @@ final class SupportAccessTest extends TestCase
 
     private function voter(): PermissionVoter
     {
-        return new PermissionVoter($this->memberships, new InMemoryCurrentCompany($this->company->getId()), new FixedCompanyAccess(), $this->access());
+        return new PermissionVoter($this->memberships, new InMemoryCurrentCompany($this->company->getId()), new FixedCompanyAccess(), $this->access(), SupportDoubles::entry($this->memberships));
     }
 
     private function token(User $user): UsernamePasswordToken

@@ -9,9 +9,11 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use App\Identity\Application\Login\SignInFactors;
 use App\Identity\Domain\Model\User;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 
 /** The end of a login that owed a second factor, whichever factor paid it. */
@@ -20,11 +22,14 @@ final readonly class SecondFactorLogin
     public function __construct(
         private PendingSecondFactor $pending,
         private Security $security,
+        private RequestStack $requests,
     ) {
     }
 
-    public function complete(User $user): Response
+    public function complete(User $user, SignInFactors $factors): Response
     {
+        // The success handler reads what the sign-in was proved with, to know whether the company it opens takes it.
+        $this->requests->getCurrentRequest()?->attributes->set(LoginSuccessHandler::FACTORS, $factors);
         // Only now does a session exist. `login()` dispatches the success event, so the audit row and the session id
         // rotation are the same ones an MFA-less login gets.
         $this->pending->close();

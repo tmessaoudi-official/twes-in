@@ -28,31 +28,41 @@ final readonly class NotificationCentre
         }
     }
 
-    public function latest(Uuid $recipientId): InboxPage
+    /** @param list<Uuid> $outside companies this sign-in has not proved itself for yet, whose notifications wait */
+    public function latest(Uuid $recipientId, array $outside = []): InboxPage
     {
         return new InboxPage(
-            $this->inbox->latestFor($recipientId, $this->pageSize),
-            $this->inbox->unreadCountFor($recipientId),
+            $this->inbox->latestFor($recipientId, $this->pageSize, $outside),
+            $this->inbox->unreadCountFor($recipientId, $outside),
         );
     }
 
-    /** @return array<string, int> company id => unread notifications about it, for the company switcher */
-    public function unreadByCompany(Uuid $recipientId): array
+    /**
+     * @param list<Uuid> $outside
+     *
+     * @return array<string, int> company id => unread notifications about it, for the company switcher
+     */
+    public function unreadByCompany(Uuid $recipientId, array $outside = []): array
     {
-        return $this->inbox->unreadByCompanyFor($recipientId);
+        return $this->inbox->unreadByCompanyFor($recipientId, $outside);
     }
 
-    /** @throws InboxItemNotFound when the item does not exist or belongs to somebody else, which look the same */
-    public function markRead(Uuid $recipientId, Uuid $itemId): void
+    /**
+     * @param list<Uuid> $outside
+     *
+     * @throws InboxItemNotFound when the item does not exist, belongs to somebody else or waits for a proof, which look the same
+     */
+    public function markRead(Uuid $recipientId, Uuid $itemId, array $outside = []): void
     {
-        $item = $this->inbox->ofRecipient($recipientId, $itemId) ?? throw new InboxItemNotFound();
+        $item = $this->inbox->ofRecipient($recipientId, $itemId, $outside) ?? throw new InboxItemNotFound();
 
         $item->markRead($this->clock->now());
         $this->inbox->save($item);
     }
 
-    public function markAllRead(Uuid $recipientId): void
+    /** @param list<Uuid> $outside */
+    public function markAllRead(Uuid $recipientId, array $outside = []): void
     {
-        $this->inbox->markAllReadFor($recipientId, $this->clock->now());
+        $this->inbox->markAllReadFor($recipientId, $this->clock->now(), $outside);
     }
 }

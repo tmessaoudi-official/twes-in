@@ -14,6 +14,8 @@ use App\Identity\Domain\Model\Passkey;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Tenancy\Application\Permission\KnownPermissions;
+use App\Tenancy\Application\Session\CompanyEntry;
+use App\Tenancy\Application\Session\CompanyProofs;
 use App\Tenancy\Application\Support\RecordSupportVisit;
 use App\Tenancy\Application\Support\SupportAccess;
 use App\Tenancy\Application\Support\SupportVisits;
@@ -27,6 +29,12 @@ final class SupportDoubles
     public static function access(MembershipRepository $memberships, InMemoryUsers $users = new InMemoryUsers(), InMemorySupportGrants $grants = new InMemorySupportGrants(), ?MockClock $clock = null): SupportAccess
     {
         return new SupportAccess($users, $memberships, $grants, new SecondFactors(self::noPasskeys()), $clock ?? new MockClock());
+    }
+
+    /** Whether a sign-in may act in a company yet, with the durations a deployment ships. */
+    public static function entry(MembershipRepository $memberships, CompanyProofs $proofs = new InMemoryCompanyProofs(), ?MockClock $clock = null): CompanyEntry
+    {
+        return new CompanyEntry($memberships, $proofs, $clock ?? new MockClock(), 'PT30M', 'PT12H');
     }
 
     public static function visits(): RecordSupportVisit

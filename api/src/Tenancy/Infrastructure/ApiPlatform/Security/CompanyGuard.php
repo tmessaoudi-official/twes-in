@@ -13,6 +13,7 @@ use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Licensing\Application\CompanyAccess;
 use App\Licensing\Domain\ValueObject\Access;
 use App\Shared\Infrastructure\Doctrine\CompanyFilter;
+use App\Tenancy\Application\Session\CompanyEntry;
 use App\Tenancy\Application\Support\SupportAccess;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\CompanyRepository;
@@ -48,6 +49,8 @@ final readonly class CompanyGuard
     public const string SUBSCRIPTION_LOCKED = 'subscription_locked';
     /** What a member is told when the company is closed down and the permission is not one it keeps open. */
     public const string COMPANY_CLOSED = 'company_closed';
+    /** What a member of several companies is told before proving, in this sign-in, that it is them entering this one. */
+    public const string PROOF_REQUIRED = 'company_proof_required';
 
     public function __construct(
         private Security $security,
@@ -56,6 +59,7 @@ final readonly class CompanyGuard
         private EntityManagerInterface $entityManager,
         private CompanyAccess $access,
         private SupportAccess $support,
+        private CompanyEntry $entry,
     ) {
     }
 
@@ -69,6 +73,7 @@ final readonly class CompanyGuard
         if (null === $company || !$this->roleGrants($company, $permission)) {
             throw new NotFoundHttpException('No such company.');
         }
+        $this->mustBeProved($company);
         // Only a member reaches this point, so saying why does not tell a stranger the company exists. A closed company
         // pays for nothing any more, so its subscription is no longer judged: what it keeps open is.
         if ($company->isClosedDown()) {
@@ -112,6 +117,7 @@ final readonly class CompanyGuard
         if (null === $company || !$this->roleGrants($company, $permission)) {
             throw new NotFoundHttpException('No such company.');
         }
+        $this->mustBeProved($company);
         if ($company->isClosedDown()) {
             throw new AccessDeniedHttpException(self::COMPANY_CLOSED);
         }
@@ -132,6 +138,7 @@ final readonly class CompanyGuard
         if (null === $company || !$this->roleGrants($company, $permission)) {
             throw new NotFoundHttpException('No such company.');
         }
+        $this->mustBeProved($company);
 
         return $company;
     }
@@ -143,6 +150,19 @@ final readonly class CompanyGuard
     public function holds(Company $company, string $permission): bool
     {
         return $this->roleGrants($company, $permission);
+    }
+
+    /**
+     * Only a member reaches this, so saying why tells a stranger nothing; asked before the company filter is turned on, so
+     * nothing of an unproved company is read.
+     *
+     * @throws AccessDeniedHttpException when this sign-in has not proved itself for the company yet
+     */
+    private function mustBeProved(Company $company): void
+    {
+        if ($this->entry->awaitsProof($this->account()->getId(), $company->getId())) {
+            throw new AccessDeniedHttpException(self::PROOF_REQUIRED);
+        }
     }
 
     private function roleGrants(Company $company, string $permission): bool

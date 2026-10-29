@@ -13,6 +13,8 @@ import {
 } from '@ngx-translate/core';
 import { BehaviorSubject, map, of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { CompanyEntry } from '../shared/company-proof/company-entry';
+import type { EntryAsked } from '../shared/company-proof/company-entry-proof';
 import { Session } from '../shared/session/session';
 import type { SignedInState } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
@@ -227,6 +229,11 @@ describe('AppShell', () => {
   const permissions = signal<readonly string[]>(['user.read']);
   const watchSummary = signal<WatchSummary | null>(null);
   const watch = { summary: watchSummary.asReadonly(), load: vi.fn(async () => undefined) };
+  const entry = {
+    asked: signal<EntryAsked | null>(null),
+    declined: signal(false),
+    prove: vi.fn(async () => false),
+  };
   const modules = signal<readonly string[]>(['customers']);
   const auth = {
     me: me.asReadonly(),
@@ -284,6 +291,8 @@ describe('AppShell', () => {
 
   beforeEach(async () => {
     me.set(owner);
+    entry.asked.set(null);
+    entry.prove.mockClear();
     permissions.set(['user.read']);
     modules.set(['customers']);
     theme.sidebar.set('expanded');
@@ -311,6 +320,7 @@ describe('AppShell', () => {
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: WatchFacade, useValue: watch },
+        { provide: CompanyEntry, useValue: entry },
         { provide: CompanyFacade, useValue: companies },
         { provide: ThemeFacade, useValue: theme },
         { provide: LanguageFacade, useValue: language },
@@ -852,6 +862,30 @@ describe('AppShell', () => {
 
     expect(byTestId('user-menu')?.getAttribute('aria-current')).toBe('page');
     expect(byTestId('user-menu')?.classList.contains('is-current')).toBe(true);
+  });
+
+  it('shows none of a company’s pages until the sign-in has proved itself for it, then opens the one asked', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/customers');
+    const asked: EntryAsked = { companyId: 'c1', companyName: 'Demo', passkey: false, code: false };
+    entry.asked.set(asked);
+    me.set({ ...owner, companyProof: { passkey: false, code: false } });
+    CountingPage.built = 0;
+    const { fixture, byTestId } = await render();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byTestId('company-proof-panel')).not.toBeNull();
+    expect(CountingPage.built).toBe(0);
+    expect(entry.prove).toHaveBeenCalledWith();
+
+    entry.asked.set(null);
+    me.set({ ...owner, companyProof: null });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byTestId('company-proof-panel')).toBeNull();
+    expect(CountingPage.built).toBe(1);
   });
 
   it('rebuilds the open screen when the company changes, so it never shows the last one’s rows', async () => {

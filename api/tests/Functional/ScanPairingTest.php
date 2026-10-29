@@ -443,6 +443,7 @@ final class ScanPairingTest extends ApiTestCase
         self::assertIsString($photo);
 
         $this->login('till@twes.local', 'password-1234');
+        $this->proveCompany($other, 'password-1234');
         $this->postJson('/api/companies/'.$other->getId()->toRfc4122()."/scan-pairings/$id/photos/$photo/take", null);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

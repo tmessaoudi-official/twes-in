@@ -214,6 +214,18 @@ describe('NotificationBell', () => {
     expect(facade.connect).toHaveBeenCalledTimes(2);
   });
 
+  it('reconnects once the company asked is proved, its channel then in the token', () => {
+    me.set({ ...inCompany('c2'), companyProof: { passkey: false, code: false } });
+    render();
+    TestBed.tick();
+    expect(facade.connect).toHaveBeenCalledOnce();
+
+    me.set({ ...inCompany('c2'), companyProof: null });
+    TestBed.tick();
+    expect(facade.connect).toHaveBeenCalledTimes(2);
+    expect(facade.refresh).toHaveBeenCalledTimes(2);
+  });
+
   it('asks nothing of the API once the session ends, and closes the connection', () => {
     render();
     vi.clearAllMocks();

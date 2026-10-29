@@ -61,6 +61,9 @@ final class NotificationPreferencesTest extends ApiTestCase
         $this->item($this->acme, 'invitation.accepted');
         $this->item($this->globex, 'stock.low');
         $this->login('owner@twes.local', 'password-1234');
+        // The bell counts a company once this sign-in has proved itself for it.
+        $this->proveCompany($this->acme, 'password-1234');
+        $this->proveCompany($this->globex, 'password-1234');
 
         $this->sendJson('PUT', self::PATH, ['companyId' => $this->acme->getId()->toRfc4122(), 'type' => 'stock.low', 'bell' => false, 'email' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);

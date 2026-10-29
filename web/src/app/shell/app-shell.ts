@@ -33,6 +33,7 @@ import { SETTINGS_INDEX } from './settings-area';
 import { ErasureBanner } from '../data-erasure/erasure-banner';
 import { SupportBanner } from '../support-access/support-banner';
 import { DemoBanner } from '../auth/demo-banner';
+import { CompanyProofPanel } from '../shared/company-proof/company-proof-panel';
 import { AuthFacade } from '../auth/auth-facade';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { SubscriptionNoticeBar } from '../licensing/subscription-notice';
@@ -173,6 +174,7 @@ const TOP_BAR_HEIGHT = '--twes-top-bar-height';
     ErasureBanner,
     SupportBanner,
     DemoBanner,
+    CompanyProofPanel,
   ],
   templateUrl: './app-shell.html',
   host: { '(document:keydown)': 'onKeydown($event)' },
@@ -322,6 +324,8 @@ export class AppShell {
   protected readonly initials = computed(() => initialsOf(this.me()?.user.displayName ?? ''));
   /** Which company the open screen was built for; the outlet is keyed on it. */
   protected readonly workingCompany = computed(() => this.me()?.company?.id ?? null);
+  /** Whether the working company waits for this sign-in to prove itself: its pages are not drawn until it has. */
+  protected readonly entryAsked = computed(() => (this.me()?.companyProof ?? null) !== null);
   /**
    * What the command palette offers this user: what the screen on view can do, then the modules' commands, then a
    * way to every screen they may see. The screen's own actions are not gated here — a screen that declared one has

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\Passkey;
 
 use App\Identity\Application\Login\PasskeySignInRefused;
+use App\Identity\Application\Login\SignInFactors;
 use App\Identity\Application\Login\SignInWithPasskey;
 use App\Identity\Application\Login\SwitchPasskeySignIn;
 use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
@@ -88,7 +89,7 @@ final readonly class PasskeySignInController
             return new JsonResponse(['error' => $refused->getMessageKey()], Response::HTTP_UNAUTHORIZED);
         }
 
-        return $this->login->complete($user);
+        return $this->login->complete($user, SignInFactors::Passkey);
     }
 
     #[Route('/api/auth/mfa/passkey-sign-in', name: 'api_auth_mfa_passkey_sign_in', methods: ['PUT'])]

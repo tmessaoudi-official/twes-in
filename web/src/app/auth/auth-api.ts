@@ -248,6 +248,30 @@ export class AuthApi {
     return toState(await send(this.http.post<Me>('/api/auth/passkey-sign-in', body)));
   }
 
+  /** Proves this sign-in for a company with the password, and the authenticator code where the company asks it. */
+  async proveCompany(companyId: string, password: string, code: string | null): Promise<void> {
+    const body = code === null ? { password } : { password, code };
+    await send(this.http.post<void>(`/api/companies/${companyId}/proof`, body));
+  }
+
+  /** Request options naming the account's passkeys, to enter a company that takes one. */
+  async companyProofPasskeyOptions(companyId: string): Promise<PasskeyOptions> {
+    return {
+      ...(await send(
+        this.http.post<PublicKeyCredentialOptionsJson>(
+          `/api/companies/${companyId}/proof/passkey/options`,
+          {},
+        ),
+      )),
+    };
+  }
+
+  /** Proves this sign-in for a company with one of the account's passkeys. */
+  async proveCompanyWithPasskey(companyId: string, credential: PasskeyCredential): Promise<void> {
+    const body: PasskeyAssertion = { credential };
+    await send(this.http.post<void>(`/api/companies/${companyId}/proof/passkey`, body));
+  }
+
   /** Holds the sign-in on this company's customer screen: until it is left, the API answers only the screen. */
   async lockCustomerScreen(companyId: string): Promise<void> {
     await send(this.http.post<void>(`/api/companies/${companyId}/customer-screen/lock`, null));
@@ -315,6 +339,10 @@ function toState(me: Me): SignedInState {
     customerScreenCompanyId: me.customerScreenCompanyId,
     supportAccessUntil: me.supportAccessUntil,
     supportAccessReason: me.supportAccessReason,
+    companyProof:
+      me.companyProof === null || me.companyProof === undefined
+        ? null
+        : { passkey: me.companyProof.passkey, code: me.companyProof.code },
     support: {
       phone: me.support.phone,
       whatsapp: me.support.whatsapp,

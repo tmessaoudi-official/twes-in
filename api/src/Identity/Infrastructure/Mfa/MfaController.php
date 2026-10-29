@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Mfa;
 
+use App\Identity\Application\Login\SignInFactors;
 use App\Identity\Application\Mfa\RegenerateRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactorAlreadyEnrolled;
 use App\Identity\Application\Mfa\SecondFactorLockout;
@@ -100,7 +101,7 @@ final readonly class MfaController
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNAUTHORIZED);
         }
 
-        return $this->secondFactorLogin->complete($user);
+        return $this->secondFactorLogin->complete($user, SignInFactors::PasswordAndFactor);
     }
 
     /** Step one of enrolment. Needs a full session: this changes the account, so it is not part of signing in. */

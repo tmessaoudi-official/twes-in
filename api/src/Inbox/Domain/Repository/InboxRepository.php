@@ -21,23 +21,32 @@ interface InboxRepository
     /** Writes every item together: one notification fanned out to a company is one write. */
     public function add(InboxItem ...$items): void;
 
-    /** @return list<InboxItem> at most $limit of them, newest first */
-    public function latestFor(Uuid $recipientId, int $limit): array;
+    /**
+     * @param list<Uuid> $outside companies left out: those this sign-in has not proved itself for yet
+     *
+     * @return list<InboxItem> at most $limit of them, newest first
+     */
+    public function latestFor(Uuid $recipientId, int $limit, array $outside = []): array;
 
-    public function unreadCountFor(Uuid $recipientId): int;
+    /** @param list<Uuid> $outside */
+    public function unreadCountFor(Uuid $recipientId, array $outside = []): int;
 
     /**
      * The recipient's unread notifications by the company they concern, those of no company and of a company they no longer
      * belong to left out.
      *
+     * @param list<Uuid> $outside
+     *
      * @return array<string, int> company id => count, only the companies with something unread
      */
-    public function unreadByCompanyFor(Uuid $recipientId): array;
+    public function unreadByCompanyFor(Uuid $recipientId, array $outside = []): array;
 
     /** The item only when it belongs to that recipient: nobody reads or marks another person's notifications. */
-    public function ofRecipient(Uuid $recipientId, Uuid $itemId): ?InboxItem;
+    /** @param list<Uuid> $outside */
+    public function ofRecipient(Uuid $recipientId, Uuid $itemId, array $outside = []): ?InboxItem;
 
-    public function markAllReadFor(Uuid $recipientId, \DateTimeImmutable $at): void;
+    /** @param list<Uuid> $outside */
+    public function markAllReadFor(Uuid $recipientId, \DateTimeImmutable $at, array $outside = []): void;
 
     public function save(InboxItem $item): void;
 }

@@ -89,6 +89,7 @@ const me: Me = {
   customerScreenCompanyId: null,
   supportAccessUntil: null,
   supportAccessReason: null,
+  companyProof: null,
   support: { phone: null, whatsapp: null, email: null },
 };
 

@@ -18,6 +18,7 @@ use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\Security\PermissionVoter;
 use App\Tests\Support\FixedCompanyAccess;
+use App\Tests\Support\InMemoryCompanyProofs;
 use App\Tests\Support\InMemoryCurrentCompany;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\SupportDoubles;
@@ -40,7 +41,7 @@ final class PermissionVoterTest extends TestCase
         $this->memberships = new InMemoryMemberships();
         $this->currentCompany = new InMemoryCurrentCompany($this->company->getId());
         $this->access = new FixedCompanyAccess();
-        $this->voter = new PermissionVoter($this->memberships, $this->currentCompany, $this->access, SupportDoubles::access($this->memberships));
+        $this->voter = new PermissionVoter($this->memberships, $this->currentCompany, $this->access, SupportDoubles::access($this->memberships), SupportDoubles::entry($this->memberships));
     }
 
     public function testAMemberWhoseRoleListsThePermissionIsGranted(): void
@@ -142,6 +143,19 @@ final class PermissionVoterTest extends TestCase
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote(new NullToken(), null, ['invoice.read']));
         self::assertSame(VoterInterface::ACCESS_ABSTAIN, $this->voter->vote(new NullToken(), null, ['ROLE_USER']));
         self::assertSame(VoterInterface::ACCESS_ABSTAIN, $this->voter->vote(new NullToken(), null, ['edit']));
+    }
+
+    public function testAMemberOfSeveralCompaniesActsInOneOnlyOnceThisSignInProvedItselfForIt(): void
+    {
+        $proofs = new InMemoryCompanyProofs();
+        $voter = new PermissionVoter($this->memberships, $this->currentCompany, $this->access, SupportDoubles::access($this->memberships), SupportDoubles::entry($this->memberships, $proofs));
+        $user = $this->member(new Role(Role::OWNER, ['*']));
+        $this->memberships->save(new Membership($user, new Company('Other', 'TN', 'TND', 'fr', 'Africa/Tunis'), new Role(Role::OWNER, ['*'])));
+
+        self::assertSame(VoterInterface::ACCESS_DENIED, $voter->vote($this->token($user), null, ['invoice.read']));
+
+        $proofs->proved($this->company->getId(), new \DateTimeImmutable());
+        self::assertSame(VoterInterface::ACCESS_GRANTED, $voter->vote($this->token($user), null, ['invoice.read']));
     }
 
     private function member(Role $role): User

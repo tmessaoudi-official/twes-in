@@ -146,6 +146,8 @@ final class NotificationsTest extends ApiTestCase
         $this->item($other, 'invitation.accepted', '2026-09-13 09:50:00', $this->company);
         $this->em()->flush();
         $this->login('owner@twes.local', 'password-1234');
+        // The bell counts a company once this sign-in has proved itself for it.
+        $this->proveCompany($globex, 'password-1234');
 
         $this->getJson('/api/me/notifications/unread-by-company');
 
@@ -171,6 +173,7 @@ final class NotificationsTest extends ApiTestCase
         $acme = $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:10:00', $this->company);
         $left = $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:20:00', $globex);
         $this->login('owner@twes.local', 'password-1234');
+        $this->proveCompany($globex, 'password-1234');
         $this->getJson('/api/me/notifications');
         self::assertSame(3, $this->json()['unread'], 'all three while a member of both');
 

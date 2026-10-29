@@ -145,6 +145,10 @@ parameters:
     # checked when the container is built (StepUpBounds): PT1M to PT15M, and 3 to 10.
     app.step_up.valid_for: 'PT5M'
     app.step_up.attempts: 5
+    # How long a company an account with several companies has proved itself for stays open to this sign-in: as long as it
+    # is used within the idle time, and no longer than the lifetime in all; signing out forgets it at once.
+    app.company_proof.idle: 'PT30M'
+    app.company_proof.lifetime: 'PT12H'
     # How long « Effacer des données » keeps what it took, for its undo; then the copy and the files only it named go.
     app.erasure.undoable_for: 'PT24H'
     # How long « Récemment supprimés » keeps a deleted record, for its restore; then the copy goes and the delete is final.

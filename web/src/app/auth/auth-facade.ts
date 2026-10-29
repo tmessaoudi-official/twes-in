@@ -8,6 +8,11 @@ import { Session } from '../shared/session/session';
 import { SessionData } from '../shared/session/session-data';
 import { CustomerScreenHold } from '../shared/customer-view/customer-screen-hold';
 import { type StepUpOutcome, StepUpProof } from '../shared/step-up/step-up-proof';
+import {
+  CompanyEntryProof,
+  type EntryAsked,
+  type EntryOutcome,
+} from '../shared/company-proof/company-entry-proof';
 import { AuthApi, AuthRefused } from './auth-api';
 import { ALWAYS_PERMITTED } from './auth-types';
 import type {
@@ -37,7 +42,7 @@ import { refusedFor, saidAlready } from '../shared/errors/said-already';
  * what the API last said. Components depend on it and never on the API adapter.
  */
 @Injectable({ providedIn: 'root' })
-export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
+export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, CompanyEntryProof {
   private readonly api = inject(AuthApi);
   private readonly passkeyClient = inject(PasskeyClient);
   private readonly unsaved = inject(UnsavedChanges);
@@ -243,6 +248,49 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
   /** Whether a passkey ceremony can be answered here: by this browser, at this page's address. */
   passkeySupported(): boolean {
     return this.passkeyClient.supported();
+  }
+
+  /** What the working company asks before this sign-in acts in it. */
+  readonly asked = computed<EntryAsked | null>(() => {
+    const state = this.stateSignal();
+    const proof = state?.companyProof;
+    if (
+      state?.company === null ||
+      state?.company === undefined ||
+      proof === null ||
+      proof === undefined
+    )
+      return null;
+    return {
+      companyId: state.company.id,
+      companyName: state.company.name,
+      passkey: proof.passkey,
+      code: proof.code,
+    };
+  });
+
+  async enterWithPassword(
+    companyId: string,
+    password: string,
+    code: string | null,
+  ): Promise<EntryOutcome> {
+    try {
+      await this.api.proveCompany(companyId, password, code);
+      return 'confirmed';
+    } catch (error) {
+      return codeOf(error) === 'invalid_code' ? 'code_refused' : this.stepUpRefused(error);
+    }
+  }
+
+  async enterWithPasskey(companyId: string): Promise<EntryOutcome> {
+    try {
+      const options = await this.api.companyProofPasskeyOptions(companyId);
+      const credential = await fromBrowser(() => this.passkeyClient.get(options));
+      await this.api.proveCompanyWithPasskey(companyId, credential);
+      return 'confirmed';
+    } catch (error) {
+      return this.stepUpRefused(error);
+    }
   }
 
   /**
@@ -553,6 +601,7 @@ function stepUpOutcome(error: unknown): StepUpOutcome {
     case 'network':
       return 'network';
     case 'invalid_passkey':
+    case 'passkey_sign_in_off':
     case 'passkey_cancelled':
     case 'passkey_not_here':
       return 'no_passkey';

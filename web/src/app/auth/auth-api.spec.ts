@@ -54,6 +54,7 @@ const owner: Me = {
   customerScreenCompanyId: null,
   supportAccessUntil: null,
   supportAccessReason: null,
+  companyProof: null,
   support: { phone: null, whatsapp: null, email: null },
 };
 
@@ -401,6 +402,44 @@ describe('AuthApi', () => {
       .expectOne('/api/auth/password')
       .flush({ error: 'current_password' }, { status: 422, statusText: 'Unprocessable Content' });
     await expect(refused).rejects.toEqual(new AuthRefused('current_password'));
+  });
+
+  it('carries what the working company asks before the sign-in acts in it, null once proved', async () => {
+    const asked = api.me();
+    http
+      .expectOne('/api/auth/me')
+      .flush({ ...owner, companyProof: { passkey: true, code: false } });
+    expect((await asked).companyProof).toEqual({ passkey: true, code: false });
+
+    const proved = api.me();
+    http.expectOne('/api/auth/me').flush({ ...owner, companyProof: null });
+    expect((await proved).companyProof).toBeNull();
+  });
+
+  it('enters a company with the password and the code it asks, or with a passkey', async () => {
+    const entered = api.proveCompany('c2', 'le-bon', '123456');
+    const request = http.expectOne({ method: 'POST', url: '/api/companies/c2/proof' });
+    expect(request.request.body).toEqual({ password: 'le-bon', code: '123456' });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await entered;
+
+    const withoutCode = api.proveCompany('c2', 'le-bon', null);
+    const plain = http.expectOne('/api/companies/c2/proof');
+    expect(plain.request.body).toEqual({ password: 'le-bon' });
+    plain.flush({ error: 'invalid_code' }, { status: 422, statusText: 'Unprocessable Content' });
+    await expect(withoutCode).rejects.toEqual(new AuthRefused('invalid_code'));
+
+    const options = api.companyProofPasskeyOptions('c2');
+    http
+      .expectOne({ method: 'POST', url: '/api/companies/c2/proof/passkey/options' })
+      .flush({ challenge: 'rst' });
+    expect(await options).toEqual({ challenge: 'rst' });
+
+    const answered = api.proveCompanyWithPasskey('c2', { id: 'cred' });
+    const passkeyCall = http.expectOne({ method: 'POST', url: '/api/companies/c2/proof/passkey' });
+    expect(passkeyCall.request.body).toEqual({ credential: { id: 'cred' } });
+    passkeyCall.flush(null, { status: 204, statusText: 'No Content' });
+    await answered;
   });
 
   it('confirms who is at the screen with the password, or with a passkey', async () => {

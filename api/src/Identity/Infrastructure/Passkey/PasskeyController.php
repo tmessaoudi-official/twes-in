@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Passkey;
 
+use App\Identity\Application\Login\SignInFactors;
 use App\Identity\Application\Mfa\LastSecondFactor;
 use App\Identity\Application\Mfa\Passkey\BeginPasskeyAssertion;
 use App\Identity\Application\Mfa\Passkey\BeginPasskeyRegistration;
@@ -177,7 +178,7 @@ final readonly class PasskeyController
             return self::refused(Response::HTTP_UNAUTHORIZED);
         }
 
-        return $this->secondFactorLogin->complete($user);
+        return $this->secondFactorLogin->complete($user, SignInFactors::PasswordAndFactor);
     }
 
     #[Route('/api/auth/mfa/recovery-codes/passkey/options', name: 'api_auth_mfa_recovery_codes_passkey_options', methods: ['POST'])]

@@ -31,6 +31,8 @@ import { AuthFacade } from './auth/auth-facade';
 import { Session } from './shared/session/session';
 import { StepUpProof } from './shared/step-up/step-up-proof';
 import { CustomerScreenHold } from './shared/customer-view/customer-screen-hold';
+import { CompanyEntryProof } from './shared/company-proof/company-entry-proof';
+import { companyProofInterceptor } from './shared/company-proof/company-proof-interceptor';
 import { customerScreenInterceptor } from './shared/customer-view/customer-screen-interceptor';
 import { supportReadOnlyInterceptor } from './shared/support/support-read-only-interceptor';
 import { demoRefusedInterceptor } from './shared/demo/demo-refused-interceptor';
@@ -72,6 +74,8 @@ export const appConfig: ApplicationConfig = {
         effectsInterceptor,
         languageInterceptor,
         activityInterceptor,
+        // After the activity bar's: a request sent again once its company is proved is one request to it.
+        companyProofInterceptor,
         customerScreenInterceptor,
         supportReadOnlyInterceptor,
         demoRefusedInterceptor,
@@ -107,6 +111,7 @@ export const appConfig: ApplicationConfig = {
     { provide: StepUpProof, useExisting: AuthFacade },
     // So is holding the sign-in on the customer screen, which the API keeps in the session.
     { provide: CustomerScreenHold, useExisting: AuthFacade },
+    { provide: CompanyEntryProof, useExisting: AuthFacade },
     { provide: SettingsFacade, useClass: ApiSettings },
     // Outcomes are said in toasts; what the application waits for, in the activity bar (docs/SPEC.md § 8 row 48).
     { provide: Feedback, useExisting: MaterialFeedback },

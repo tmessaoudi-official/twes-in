@@ -467,6 +467,52 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             summary: 'Confirm who is at the screen with a passkey',
             requestBody: $bodyOf('PasskeyAssertion', 'The assertion'),
         )));
+        // A company's own proof: an account in two companies or more proves itself once per sign-in for each it enters.
+        $proofParameters = [new Parameter('companyId', 'path', 'The company to enter', true, schema: ['type' => 'string', 'format' => 'uuid'])];
+        $openApi->getPaths()->addPath('/api/companies/{companyId}/proof', new PathItem(post: new Operation(
+            operationId: 'proveCompanyEntry',
+            tags: ['Auth'],
+            responses: [
+                '204' => new Response('The company is proved for this sign-in, until sign-out, 30 minutes left alone (app.company_proof.idle) or 12 hours (app.company_proof.lifetime)'),
+                '401' => $errorResponse('Not signed in, or `step_up_exhausted`: that wrong answer was the last this sign-in may give (app.step_up.attempts), which is now signed out'),
+                '404' => $errorResponse('Not a company of the account'),
+                '422' => $errorResponse('`invalid_credentials`: the password is not the account\'s; `invalid_code`: the company asks the authenticator code and it is missing or wrong'),
+                '429' => $errorResponse('Too many attempts'),
+            ],
+            summary: 'Enter a company with the password, and the authenticator code where it requires one',
+            parameters: $proofParameters,
+            requestBody: new RequestBody('The password, and the code where the company asks one (Me.companyProof.code)', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['schema' => new \ArrayObject([
+                'type' => 'object',
+                'required' => ['password'],
+                'properties' => ['password' => ['type' => 'string'], 'code' => ['type' => 'string']],
+            ])]))]), true),
+        )));
+        $openApi->getPaths()->addPath('/api/companies/{companyId}/proof/passkey/options', new PathItem(post: new Operation(
+            operationId: 'companyProofPasskeyOptions',
+            tags: ['Auth'],
+            responses: [
+                '200' => $jsonOf('PublicKeyCredentialOptionsJson', "Request options naming the account's passkeys"),
+                '401' => $errorResponse('Not signed in'),
+                '403' => $errorResponse('`passkey_sign_in_off`: the company, or the installation, does not take a passkey to enter, or the account holds none'),
+                '404' => $errorResponse('Not a company of the account'),
+            ],
+            summary: 'Start entering a company with a passkey',
+            parameters: $proofParameters,
+        )));
+        $openApi->getPaths()->addPath('/api/companies/{companyId}/proof/passkey', new PathItem(post: new Operation(
+            operationId: 'proveCompanyEntryWithPasskey',
+            tags: ['Auth'],
+            responses: [
+                '204' => new Response('The company is proved for this sign-in'),
+                '401' => $errorResponse('Not signed in, or `step_up_exhausted`'),
+                '404' => $errorResponse('Not a company of the account'),
+                '422' => $errorResponse("`invalid_passkey`: no options to answer, or the passkey is not one of the account's or does not verify"),
+                '429' => $errorResponse('Too many attempts'),
+            ],
+            summary: 'Enter a company with a passkey',
+            parameters: $proofParameters,
+            requestBody: $bodyOf('PasskeyAssertion', 'The assertion'),
+        )));
         $openApi->getPaths()->addPath('/api/auth/customer-screen', new PathItem(delete: new Operation(
             operationId: 'leaveCustomerScreen',
             tags: ['Auth'],

@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\Security;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Licensing\Application\CompanyAccess;
 use App\Shared\Application\CurrentCompany;
+use App\Tenancy\Application\Session\CompanyEntry;
 use App\Tenancy\Application\Support\SupportAccess;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\MembershipRepository;
@@ -34,6 +35,7 @@ final class PermissionVoter extends Voter
         private readonly CurrentCompany $currentCompany,
         private readonly CompanyAccess $access,
         private readonly SupportAccess $support,
+        private readonly CompanyEntry $entry,
     ) {
     }
 
@@ -64,6 +66,11 @@ final class PermissionVoter extends Voter
             $grant = SupportAccess::permits($permission->value) ? $this->support->grantOf($account->getId(), $companyId) : null;
 
             return null !== $grant && $grant->getCompany()->isActive() && $this->access->accessOf($companyId)->permits($permission->value);
+        }
+
+        // A member of several companies acts in one only once this sign-in has proved itself for it.
+        if ($this->entry->awaitsProof($account->getId(), $companyId)) {
+            return false;
         }
 
         // A closed company still lets its members read it and take its books, whatever its subscription says.

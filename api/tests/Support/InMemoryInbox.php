@@ -25,23 +25,23 @@ final class InMemoryInbox implements InboxRepository
         }
     }
 
-    public function latestFor(Uuid $recipientId, int $limit): array
+    public function latestFor(Uuid $recipientId, int $limit, array $outside = []): array
     {
-        $mine = $this->of($recipientId);
+        $mine = $this->of($recipientId, $outside);
         usort($mine, static fn (InboxItem $a, InboxItem $b) => [$b->getCreatedAt(), $b->getId()->toRfc4122()] <=> [$a->getCreatedAt(), $a->getId()->toRfc4122()]);
 
         return \array_slice($mine, 0, $limit);
     }
 
-    public function unreadCountFor(Uuid $recipientId): int
+    public function unreadCountFor(Uuid $recipientId, array $outside = []): int
     {
-        return \count(array_filter($this->of($recipientId), static fn (InboxItem $item) => !$item->isRead()));
+        return \count(array_filter($this->of($recipientId, $outside), static fn (InboxItem $item) => !$item->isRead()));
     }
 
-    public function unreadByCompanyFor(Uuid $recipientId): array
+    public function unreadByCompanyFor(Uuid $recipientId, array $outside = []): array
     {
         $counts = [];
-        foreach ($this->of($recipientId) as $item) {
+        foreach ($this->of($recipientId, $outside) as $item) {
             $company = $item->getCompany();
             if (!$item->isRead() && null !== $company) {
                 $key = $company->getId()->toRfc4122();
@@ -52,9 +52,9 @@ final class InMemoryInbox implements InboxRepository
         return $counts;
     }
 
-    public function ofRecipient(Uuid $recipientId, Uuid $itemId): ?InboxItem
+    public function ofRecipient(Uuid $recipientId, Uuid $itemId, array $outside = []): ?InboxItem
     {
-        foreach ($this->of($recipientId) as $item) {
+        foreach ($this->of($recipientId, $outside) as $item) {
             if ($item->getId()->equals($itemId)) {
                 return $item;
             }
@@ -63,9 +63,9 @@ final class InMemoryInbox implements InboxRepository
         return null;
     }
 
-    public function markAllReadFor(Uuid $recipientId, \DateTimeImmutable $at): void
+    public function markAllReadFor(Uuid $recipientId, \DateTimeImmutable $at, array $outside = []): void
     {
-        foreach ($this->of($recipientId) as $item) {
+        foreach ($this->of($recipientId, $outside) as $item) {
             $item->markRead($at);
         }
     }
@@ -77,9 +77,16 @@ final class InMemoryInbox implements InboxRepository
         }
     }
 
-    /** @return list<InboxItem> */
-    private function of(Uuid $recipientId): array
+    /**
+     * @param list<Uuid> $outside
+     *
+     * @return list<InboxItem>
+     */
+    private function of(Uuid $recipientId, array $outside = []): array
     {
-        return array_values(array_filter($this->items, static fn (InboxItem $item) => $item->getRecipient()->getId()->equals($recipientId)));
+        $left = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $outside);
+
+        return array_values(array_filter($this->items, static fn (InboxItem $item) => $item->getRecipient()->getId()->equals($recipientId)
+            && !\in_array($item->getCompany()?->getId()->toRfc4122(), $left, true)));
     }
 }

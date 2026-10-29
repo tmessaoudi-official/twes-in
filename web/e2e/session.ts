@@ -62,27 +62,57 @@ export async function signIn(page: Page): Promise<void> {
  * Makes sure the session is working in Demo. A sign-in opens the company pinned, else the one last used, else the
  * first by name (docs/SPEC.md § 7, 2026-09-25 09:03), so after `make fixtures` it may open another of the operator's
  * companies than the one the scenarios' data lives in. CI seeds Demo alone and this does nothing; locally it is what
- * keeps a run about invoices about Demo's invoices.
+ * keeps a run about invoices about Demo's invoices, and it gives the proof an account in several companies owes Demo.
  */
 export async function inACompany(page: Page, csrf: string): Promise<void> {
-  await page.evaluate(async (token) => {
-    const me = (await (await fetch('/api/auth/me')).json()) as {
+  const proof = await page.evaluate(async (token) => {
+    type Me = {
       company: { id: string; name: string } | null;
+      companyProof: { passkey: boolean; code: boolean } | null;
     };
-    if (me.company?.name === 'Demo') return;
-    const answered = (await (await fetch('/api/me/companies')).json()) as
-      { member: { companyId: string; name: string }[] } | { companyId: string; name: string }[];
-    const mine = Array.isArray(answered) ? answered : answered.member;
-    const demo = mine.find((row) => row.name === 'Demo') ?? mine[0];
-    if (demo === undefined) throw new Error('the operator belongs to no company at all');
-    const moved = await fetch('/api/me/company', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'csrf-token': token },
-      body: JSON.stringify({ companyId: demo.companyId }),
-    });
-    if (!moved.ok)
-      throw new Error(`choosing ${demo.name} answered ${moved.status}: ${await moved.text()}`);
+    const read = async () => (await (await fetch('/api/auth/me')).json()) as Me;
+    let me = await read();
+    if (me.company?.name !== 'Demo') {
+      const answered = (await (await fetch('/api/me/companies')).json()) as
+        { member: { companyId: string; name: string }[] } | { companyId: string; name: string }[];
+      const mine = Array.isArray(answered) ? answered : answered.member;
+      const demo = mine.find((row) => row.name === 'Demo') ?? mine[0];
+      if (demo === undefined) throw new Error('the operator belongs to no company at all');
+      const moved = await fetch('/api/me/company', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': token },
+        body: JSON.stringify({ companyId: demo.companyId }),
+      });
+      if (!moved.ok)
+        throw new Error(`choosing ${demo.name} answered ${moved.status}: ${await moved.text()}`);
+      me = await read();
+    }
+    return me.company === null || me.companyProof === null
+      ? null
+      : { companyId: me.company.id, code: me.companyProof.code };
   }, csrf);
+  if (proof === null) return;
+  // An account in two companies or more proves itself for each it enters, once per sign-in; a code the sign-in spent
+  // is refused as a replay, so the proof is tried again until the next step's code is accepted.
+  await expect(async () => {
+    const status = await page.evaluate(
+      async ([companyId, token, password, code]) =>
+        (
+          await fetch(`/api/companies/${companyId}/proof`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'csrf-token': token },
+            body: JSON.stringify(code === null ? { password } : { password, code }),
+          })
+        ).status,
+      [
+        proof.companyId,
+        csrf,
+        OPERATOR_PASSWORD,
+        proof.code ? totp(OPERATOR_TOTP_SECRET) : null,
+      ] as const,
+    );
+    expect(status).toBe(204);
+  }).toPass({ timeout: 45_000 });
 }
 
 /** What a PUT of the company profile accepts, in the order the API reads it; the version read is sent back. */

@@ -565,6 +565,13 @@ abstract class ApiTestCase extends WebTestCase
         $limiters->create($user->getId()->toRfc4122())->reset();
     }
 
+    /** Proves this sign-in for a company, as entering one asks of an account in two companies or more. */
+    protected function proveCompany(Company $company, string $password): void
+    {
+        $this->postJson('/api/companies/'.$company->getId()->toRfc4122().'/proof', ['password' => $password]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
     /** Proves who is at the screen again, as the step-up dialog does before an export (docs/SPEC.md § 7, audit H-b2). */
     protected function stepUp(string $password): void
     {

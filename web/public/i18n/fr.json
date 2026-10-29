@@ -1049,7 +1049,8 @@
       "folded_sections": "Sections repliées des menus",
       "settings_list": "Liste des réglages",
       "stock_map_view": "Vue du plan du stock",
-      "page_size": "Lignes par page"
+      "page_size": "Lignes par page",
+      "passkey_entry": "Entrer avec une clé d’accès"
     },
     "choices": {
       "stock": {
@@ -3340,6 +3341,17 @@
     "intro_sensitive": "Pour changer les coordonnées bancaires, les membres ou les rôles, saisissez votre mot de passe ou utilisez une clé d’accès.",
     "intro_change": "Pour faire ce changement, saisissez votre mot de passe ou utilisez une clé d’accès.",
     "intro_mfa_off": "Pour ne plus exiger la vérification en deux étapes, saisissez votre mot de passe ou utilisez une clé d’accès."
+  },
+  "company_proof": {
+    "title": "Entrer dans {{company}}",
+    "intro": "Vous travaillez dans plusieurs entreprises : chacune demande, une fois par connexion, que vous confirmiez que c’est bien vous.",
+    "code": "Code de l’application d’authentification",
+    "confirm": "Entrer",
+    "panel": "Cette entreprise attend que vous confirmiez que c’est bien vous avant d’ouvrir ses pages.",
+    "prove": "Confirmer que c’est bien moi",
+    "errors": {
+      "code_refused": "Ce code n’est pas le bon : tapez celui que votre application affiche en ce moment."
+    }
   },
   "customer_display": {
     "title": "Affichage client",

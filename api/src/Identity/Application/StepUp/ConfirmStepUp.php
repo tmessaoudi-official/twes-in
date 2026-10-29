@@ -122,14 +122,25 @@ final readonly class ConfirmStepUp implements DeclaresAuditActions
      */
     private function wrong(Uuid $userId, string $method): never
     {
+        $this->countWrong($userId, $method);
+
+        throw new StepUpRefused();
+    }
+
+    /**
+     * A wrong answer to a proof asked beside this one (the authenticator code a company asks with the password), counted
+     * against the same budget of this sign-in.
+     *
+     * @throws StepUpExhausted when that wrong answer was the last this sign-in may give
+     */
+    public function countWrong(Uuid $userId, string $method): void
+    {
         $this->audit->record(new AuditEntry('user', $userId, self::REFUSED, $userId, ['method' => $method]));
         if ($this->proofs->failed($userId) >= $this->attempts) {
             $this->audit->record(new AuditEntry('user', $userId, self::EXHAUSTED, $userId, ['method' => $method]));
 
             throw new StepUpExhausted();
         }
-
-        throw new StepUpRefused();
     }
 
     public function auditActions(): array

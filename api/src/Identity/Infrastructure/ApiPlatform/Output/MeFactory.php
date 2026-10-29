@@ -10,8 +10,11 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\ApiPlatform\Output;
 
 use App\Identity\Application\Account\DemoAccounts;
+use App\Identity\Application\CompanyProof\CompanyEntryProofs;
+use App\Identity\Application\CompanyProof\EntryProof;
 use App\Identity\Application\CustomerScreen\CustomerScreenLock;
 use App\Identity\Application\Login\PasskeySignInSettings;
+use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Identity\Domain\Repository\RecoveryCodeRepository;
 use App\Identity\Domain\Repository\UserRepository;
@@ -27,8 +30,11 @@ use App\Settings\Application\SupportSettings;
 use App\Shared\Application\PhoneNumbers;
 use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Application\Mfa\MfaRequirement;
+use App\Tenancy\Application\Session\CompanyEntry;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
+use App\Tenancy\Application\Session\WorkingContext;
 use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Repository\CompanyRepository;
 use Symfony\Component\Uid\Uuid;
 
 /** The signed-in state of the authenticated account: the user row, the Tenancy working context and its modules. */
@@ -56,6 +62,9 @@ final readonly class MeFactory
         private DemoAccounts $demoAccounts,
         private RecoveryCodeRepository $recoveryCodes,
         private PhoneNumbers $phones,
+        private CompanyEntry $entry,
+        private CompanyEntryProofs $entryProofs,
+        private CompanyRepository $companies,
     ) {
     }
 
@@ -73,7 +82,17 @@ final readonly class MeFactory
             array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => null !== $manifest->planned),
         ));
 
-        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED));
+        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support(), $this->demoAccounts->isDemo($user->getId()), $this->recoveryCodes->countFor($user), true === $this->settings->value(new SettingContext(), PasskeySignInSettings::ALLOWED), $this->proofAsked($user, $context));
+    }
+
+    private function proofAsked(User $user, ?WorkingContext $context): ?EntryProof
+    {
+        if (null === $context || !$this->entry->awaitsProof($user->getId(), Uuid::fromString($context->companyId))) {
+            return null;
+        }
+        $company = $this->companies->ofId(Uuid::fromString($context->companyId));
+
+        return null === $company ? null : $this->entryProofs->of($user, $company);
     }
 
     private function support(): MeSupport

@@ -14,6 +14,7 @@ use App\Inbox\Application\InboxItemNotFound;
 use App\Inbox\Application\NotificationCentre;
 use App\Inbox\Domain\Model\InboxItem;
 use App\Shared\Application\RealtimeTokens;
+use App\Tenancy\Application\Session\CompanyEntry;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -35,13 +36,16 @@ final readonly class NotificationsController
         private RealtimeTokens $tokens,
         private DescribeWorkingContext $workingContext,
         private Security $security,
+        private CompanyEntry $entry,
     ) {
     }
 
     #[Route('/api/me/notifications', name: 'api_me_notifications', methods: ['GET'])]
     public function list(): JsonResponse
     {
-        $page = $this->centre->latest($this->currentUserId());
+        $userId = $this->currentUserId();
+        // What a company this sign-in has not proved itself for says waits until it has: the bell names no work of it.
+        $page = $this->centre->latest($userId, $this->entry->awaitingProof($userId));
 
         return new JsonResponse([
             'items' => array_map(self::item(...), $page->items),
@@ -53,13 +57,16 @@ final readonly class NotificationsController
     #[Route('/api/me/notifications/unread-by-company', name: 'api_me_notifications_unread_by_company', methods: ['GET'])]
     public function unreadByCompany(): JsonResponse
     {
-        return new JsonResponse(['counts' => (object) $this->centre->unreadByCompany($this->currentUserId())]);
+        $userId = $this->currentUserId();
+
+        return new JsonResponse(['counts' => (object) $this->centre->unreadByCompany($userId, $this->entry->awaitingProof($userId))]);
     }
 
     #[Route('/api/me/notifications/read-all', name: 'api_me_notifications_read_all', methods: ['POST'])]
     public function readAll(): Response
     {
-        $this->centre->markAllRead($this->currentUserId());
+        $userId = $this->currentUserId();
+        $this->centre->markAllRead($userId, $this->entry->awaitingProof($userId));
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
@@ -68,7 +75,8 @@ final readonly class NotificationsController
     public function read(string $id): Response
     {
         try {
-            $this->centre->markRead($this->currentUserId(), Uuid::fromString($id));
+            $userId = $this->currentUserId();
+            $this->centre->markRead($userId, Uuid::fromString($id), $this->entry->awaitingProof($userId));
         } catch (InboxItemNotFound) {
             return new JsonResponse(['error' => 'not_found'], Response::HTTP_NOT_FOUND);
         }
@@ -85,7 +93,9 @@ final readonly class NotificationsController
         // someone removed from it, or a member of a company since suspended, renews a token without its channel. A
         // company its owner closed is still read, in the shell, and its reopening is what its members must hear.
         $context = $this->workingContext->for($userId);
-        $heard = null !== $context && \in_array($context->status, [Company::STATUS_ACTIVE, Company::STATUS_CLOSED], true);
+        // Nor is a company heard before this sign-in has proved itself for it.
+        $heard = null !== $context && \in_array($context->status, [Company::STATUS_ACTIVE, Company::STATUS_CLOSED], true)
+            && !$this->entry->awaitsProof($userId, Uuid::fromString($context->companyId));
         $companyId = $heard ? Uuid::fromString($context->companyId) : null;
         // An operator works in no company of their own, and hears what /platform shows on the platform's channel.
         $token = $this->tokens->issue($userId, $companyId, $this->security->isGranted(SecurityUser::ROLE_PLATFORM_OPERATOR));

@@ -1049,7 +1049,8 @@
       "folded_sections": "Folded menu sections",
       "settings_list": "Settings list",
       "stock_map_view": "Stock map view",
-      "page_size": "Rows per page"
+      "page_size": "Rows per page",
+      "passkey_entry": "Enter with a passkey"
     },
     "choices": {
       "stock": {
@@ -3340,6 +3341,17 @@
     "intro_sensitive": "To change the bank details, the members or the roles, enter your password or use a passkey.",
     "intro_change": "To make this change, enter your password or use a passkey.",
     "intro_mfa_off": "To stop requiring two-step verification, enter your password or use a passkey."
+  },
+  "company_proof": {
+    "title": "Enter {{company}}",
+    "intro": "You work in several companies: each one asks you, once per sign-in, to confirm it is you.",
+    "code": "Authenticator app code",
+    "confirm": "Enter",
+    "panel": "This company waits for you to confirm it is you before opening its pages.",
+    "prove": "Confirm it is me",
+    "errors": {
+      "code_refused": "This code is not the right one: type the one your app shows right now."
+    }
   },
   "customer_display": {
     "title": "Customer display",

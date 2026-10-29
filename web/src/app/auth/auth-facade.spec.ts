@@ -62,6 +62,9 @@ describe('AuthFacade', () => {
     changePassword: vi.fn(),
     stepUpPasskeyOptions: vi.fn(),
     stepUpWithPasskey: vi.fn(),
+    proveCompany: vi.fn(),
+    companyProofPasskeyOptions: vi.fn(),
+    proveCompanyWithPasskey: vi.fn(),
     passkeyRegistrationOptions: vi.fn(),
     registerPasskey: vi.fn(),
     listPasskeys: vi.fn(),
@@ -514,6 +517,47 @@ describe('AuthFacade', () => {
 
     client.supported.mockReturnValue(true);
     expect(facade.passkeySupported()).toBe(true);
+  });
+
+  it('says what the working company asks, and how entering it came out', async () => {
+    api.me.mockResolvedValueOnce({ ...owner, companyProof: { passkey: false, code: true } });
+    await facade.load();
+    expect(facade.asked()).toEqual({
+      companyId: 'c1',
+      companyName: 'Demo',
+      passkey: false,
+      code: true,
+    });
+
+    api.proveCompany.mockResolvedValueOnce(undefined);
+    expect(await facade.enterWithPassword('c1', 'le-bon', '123456')).toBe('confirmed');
+    expect(api.proveCompany).toHaveBeenCalledWith('c1', 'le-bon', '123456');
+    api.proveCompany.mockRejectedValueOnce(new AuthRefused('invalid_code'));
+    expect(await facade.enterWithPassword('c1', 'le-bon', '000000')).toBe('code_refused');
+    api.proveCompany.mockRejectedValueOnce(new AuthRefused('invalid_credentials'));
+    expect(await facade.enterWithPassword('c1', 'autre', '123456')).toBe('refused');
+
+    api.companyProofPasskeyOptions.mockRejectedValueOnce(new AuthRefused('passkey_sign_in_off'));
+    expect(await facade.enterWithPasskey('c1')).toBe('no_passkey');
+    api.companyProofPasskeyOptions.mockResolvedValue({ challenge: 'rst' });
+    client.get.mockResolvedValue({ id: 'cred' });
+    api.proveCompanyWithPasskey.mockResolvedValueOnce(undefined);
+    expect(await facade.enterWithPasskey('c1')).toBe('confirmed');
+    expect(api.proveCompanyWithPasskey).toHaveBeenCalledWith('c1', { id: 'cred' });
+
+    api.me.mockResolvedValueOnce({ ...owner, companyProof: null });
+    await facade.reread();
+    expect(facade.asked()).toBeNull();
+  });
+
+  it('signs out once the wrong answers to entering a company ended the session', async () => {
+    api.me.mockResolvedValueOnce({ ...owner, companyProof: { passkey: false, code: false } });
+    await facade.load();
+    api.proveCompany.mockRejectedValueOnce(new AuthRefused('step_up_exhausted'));
+
+    expect(await facade.enterWithPassword('c1', 'cinquième', null)).toBe('signed_out');
+    expect(facade.me()).toBeNull();
+    expect(facade.asked()).toBeNull();
   });
 
   const laptop = {

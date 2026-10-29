@@ -13,9 +13,11 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use App\Identity\Application\Account\DemoAccounts;
+use App\Identity\Application\CompanyProof\EntryProof;
 use App\Identity\Domain\Model\User;
 use App\Identity\Infrastructure\ApiPlatform\Output\MeClosing;
 use App\Identity\Infrastructure\ApiPlatform\Output\MeCompany;
+use App\Identity\Infrastructure\ApiPlatform\Output\MeCompanyProof;
 use App\Identity\Infrastructure\ApiPlatform\Output\MeMfa;
 use App\Identity\Infrastructure\ApiPlatform\Output\MePlannedModule;
 use App\Identity\Infrastructure\ApiPlatform\Output\MeSubscription;
@@ -58,6 +60,8 @@ final readonly class Me
         #[ApiProperty(required: true)] public ?string $supportAccessUntil = null,
         /** What the owner said is wrong, for the support reading the company; null for a member: the banner. */
         #[ApiProperty(required: true)] public ?string $supportAccessReason = null,
+        /** What the working company asks before this sign-in acts in it, null once it has proved itself there. */
+        #[ApiProperty(required: true)] public ?MeCompanyProof $companyProof = null,
     ) {
     }
 
@@ -66,7 +70,7 @@ final readonly class Me
      * @param Standing|null         $standing       where the working company stands in its subscription, null when licensing does not manage it
      * @param list<MePlannedModule> $plannedModules the modules not built yet, whoever is signed in
      */
-    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0, ?Standing $standing = null, array $plannedModules = [], ?string $customerScreenCompanyId = null, MeSupport $support = new MeSupport(), bool $demo = false, int $recoveryCodes = 0, bool $passkeySignInAllowed = false): self
+    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0, ?Standing $standing = null, array $plannedModules = [], ?string $customerScreenCompanyId = null, MeSupport $support = new MeSupport(), bool $demo = false, int $recoveryCodes = 0, bool $passkeySignInAllowed = false, ?EntryProof $companyProof = null): self
     {
         return new self(
             new MeUser($user->getId()->toRfc4122(), $demo ? DemoAccounts::SHOWN_AS : $user->getEmail()->value, $user->getDisplayName(), $user->getLocale(), $user->isPlatformOperator(), $demo),
@@ -79,6 +83,7 @@ final readonly class Me
             $support,
             $context?->supportAccessUntil?->format(\DateTimeInterface::ATOM),
             $context?->supportAccessReason,
+            null === $companyProof ? null : MeCompanyProof::of($companyProof),
         );
     }
 }

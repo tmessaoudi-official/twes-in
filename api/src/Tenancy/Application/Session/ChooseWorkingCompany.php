@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Session;
 
 use App\Shared\Application\CurrentCompany;
+use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Repository\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
@@ -28,8 +29,11 @@ final readonly class ChooseWorkingCompany
      * Reads, never writes: only the switcher records a use. A sign-in writing one would tie, to the second the column
      * keeps, with a switch made right after it, and the next sign-in would read the tie by name.
      */
-    public function for(Uuid $userId): void
+    public function for(Uuid $userId): ?Membership
     {
-        $this->currentCompany->set($this->memberships->toOpenAtSignIn($userId)?->getCompany()->getId());
+        $membership = $this->memberships->toOpenAtSignIn($userId);
+        $this->currentCompany->set($membership?->getCompany()->getId());
+
+        return $membership;
     }
 }

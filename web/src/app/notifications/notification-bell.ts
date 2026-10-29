@@ -48,9 +48,11 @@ export class NotificationBell {
     const auth = inject(AuthFacade);
     // Signed out reads as null, apart from a session with no company: a sign-out would otherwise reconnect and refresh
     // on a session the API has just ended, and their 401s read to the shell as a session that expired on its own.
+    // A company not proved yet is heard once it is: its channel is in the token issued after the proof.
     const companyId = computed(() => {
       const me = auth.me();
-      return me === null ? null : (me.company?.id ?? '');
+      if (me === null) return null;
+      return `${me.company?.id ?? ''}|${(me.companyProof ?? null) === null ? 'proved' : 'asked'}`;
     });
     effect(() => {
       const signedIn = companyId() !== null;

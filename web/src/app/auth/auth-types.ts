@@ -163,6 +163,14 @@ export interface SignedInState {
   supportAccessUntil?: string | null;
   /** what the owner said is wrong, given only to the support reading the company: its banner says it */
   supportAccessReason?: string | null;
+  /** what the working company asks before this sign-in acts in it, null once proved or when it asks nothing */
+  companyProof?: CompanyProofAsked | null;
+}
+
+/** The proof a company asks: the password always, the authenticator code beside it, or a passkey instead. */
+export interface CompanyProofAsked {
+  readonly passkey: boolean;
+  readonly code: boolean;
 }
 
 /** The phone, WhatsApp number and address the platform's operators are reached at, each null when not given. */

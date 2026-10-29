@@ -548,8 +548,13 @@
       <app-support-banner />
       <!-- While a visitor tries the demo, on every page. -->
       <app-demo-banner />
-      @for (companyId of [workingCompany()]; track companyId) {
-        <router-outlet />
+      <!-- A company this sign-in has not proved itself for shows none of its pages until it has. -->
+      @if (entryAsked()) {
+        <app-company-proof-panel />
+      } @else {
+        @for (companyId of [workingCompany()]; track companyId) {
+          <router-outlet />
+        }
       }
       <!-- An erasure that may still be undone, on every page of an owner; its own chunk, loaded for an owner only. -->
       @defer (when owner()) {

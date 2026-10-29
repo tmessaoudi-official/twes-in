@@ -123,6 +123,11 @@ test('an operator opens a company from the platform, and the switcher moves the 
     await page.getByTestId('company-switcher').click();
     await page.getByTestId(`company-option-${name}`).click();
     await expect(page.getByTestId('company-name')).toHaveText(name);
+    // Two companies now: entering the second asks once in this sign-in who is at the screen, before any of its pages.
+    await expect(page.getByTestId('company-proof-panel')).toBeVisible();
+    await page.getByTestId('company-proof-password').fill(OPERATOR_PASSWORD);
+    await page.getByTestId('company-proof-confirm').click();
+    await expect(page.getByTestId('company-proof-panel')).toHaveCount(0);
 
     // The working company is the session, not client state, so a full reload keeps it.
     await page.reload();
