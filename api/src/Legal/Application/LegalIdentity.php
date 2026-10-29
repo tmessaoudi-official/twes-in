@@ -11,6 +11,7 @@ namespace App\Legal\Application;
 
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Application\PhoneNumbers;
 use App\Shared\Domain\Service\TypedText;
 
 /**
@@ -20,18 +21,19 @@ use App\Shared\Domain\Service\TypedText;
  */
 final readonly class LegalIdentity
 {
-    public function __construct(private ReadSetting $settings)
+    public function __construct(private ReadSetting $settings, private PhoneNumbers $phones)
     {
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, string> a phone grouped as its country writes it, never the E.164 it is kept as */
     public function values(): array
     {
         $values = [];
         foreach (LegalSettings::PLACEHOLDERS as $placeholder) {
             $value = $this->settings->value(new SettingContext(), LegalSettings::PREFIX.$placeholder);
             if (\is_string($value) && '' !== TypedText::trimmed($value)) {
-                $values[$placeholder] = TypedText::trimmed($value);
+                $value = TypedText::trimmed($value);
+                $values[$placeholder] = str_ends_with($placeholder, '.phone') ? $this->phones->grouped($value) : $value;
             }
         }
 

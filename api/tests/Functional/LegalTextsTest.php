@@ -67,12 +67,15 @@ final class LegalTextsTest extends ApiTestCase
         $this->stepUp('password-1234');
         $this->sendJson('PUT', '/api/platform/settings/legal.publisher.name', ['value' => 'twes SAS']);
         self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', '/api/platform/settings/legal.publisher.phone', ['value' => '00216 71 900 868']);
+        self::assertResponseIsSuccessful();
         $this->client->getCookieJar()->clear();
 
         $this->client->request('GET', '/api/legal/mentions/fr', server: ['HTTP_ACCEPT' => 'application/json']);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['publisher.name' => 'twes SAS'], $this->body()['values'], 'only what was filled in, by its placeholder');
+        // A phone, kept as E.164, is shown grouped as its country writes it.
+        self::assertSame(['publisher.name' => 'twes SAS', 'publisher.phone' => '+216 71 900 868'], $this->body()['values'], 'only what was filled in, by its placeholder');
         self::assertSame('Éditeur : {{publisher.name}}', $this->body()['body'], 'the text itself is kept as written');
     }
 
