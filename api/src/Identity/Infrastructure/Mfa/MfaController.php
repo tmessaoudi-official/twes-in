@@ -84,7 +84,9 @@ final readonly class MfaController
             return new JsonResponse(['error' => 'account_locked'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+        // Spent before the code is checked, so parallel guesses cannot outrun the budget; a right code gives it back.
+        $attempts = $this->mfaVerifyLimiter->create($userId->toRfc4122());
+        if (!$attempts->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
@@ -100,6 +102,7 @@ final readonly class MfaController
             // can act on (a recovery code, or re-enrolment); the audit row `unreadable_secret` tells the operator why.
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNAUTHORIZED);
         }
+        $attempts->reset();
 
         return $this->secondFactorLogin->complete($user, SignInFactors::PasswordAndFactor);
     }
@@ -214,7 +217,8 @@ final readonly class MfaController
             return new JsonResponse(['error' => 'account_locked'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+        $attempts = $this->mfaVerifyLimiter->create($userId->toRfc4122());
+        if (!$attempts->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
@@ -228,6 +232,7 @@ final readonly class MfaController
             // Not a guess, as at login: refused with the same answer, never counted (docs/SPEC.md § 8 row 26).
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+        $attempts->reset();
 
         return new JsonResponse(['recoveryCodes' => $codes]);
     }

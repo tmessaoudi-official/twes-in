@@ -20,6 +20,7 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\RateLimiter\LimiterInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Requirement\Requirement;
@@ -47,14 +48,15 @@ final readonly class CompanyProofController
     public function password(string $companyId, Request $request): Response
     {
         $userId = $this->currentUserId();
-        if (!$this->limiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+        $attempts = $this->limiter->create($userId->toRfc4122());
+        if (!$attempts->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
         $body = self::body($request);
         $password = $body['password'] ?? null;
         $code = $body['code'] ?? null;
 
-        return $this->answer(fn () => $this->prove->withPassword($userId, Uuid::fromString($companyId), \is_string($password) ? $password : '', \is_string($code) ? $code : null));
+        return $this->answer($attempts, fn () => $this->prove->withPassword($userId, Uuid::fromString($companyId), \is_string($password) ? $password : '', \is_string($code) ? $code : null));
     }
 
     #[Route('/api/companies/{companyId}/proof/passkey/options', name: 'api_company_proof_passkey_options', requirements: ['companyId' => Requirement::UUID], methods: ['POST'])]
@@ -77,7 +79,8 @@ final readonly class CompanyProofController
     public function passkey(string $companyId, Request $request): Response
     {
         $userId = $this->currentUserId();
-        if (!$this->limiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+        $attempts = $this->limiter->create($userId->toRfc4122());
+        if (!$attempts->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
         // Taken before anything is checked, so a failed attempt spends the challenge as surely as a successful one.
@@ -87,14 +90,21 @@ final readonly class CompanyProofController
             return new JsonResponse(['error' => EntryProofRefused::PASSKEY], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return $this->answer(fn () => $this->prove->withPasskey($userId, Uuid::fromString($companyId), $options, json_encode($credential, \JSON_THROW_ON_ERROR)));
+        return $this->answer($attempts, fn () => $this->prove->withPasskey($userId, Uuid::fromString($companyId), $options, json_encode($credential, \JSON_THROW_ON_ERROR)));
     }
 
-    /** @param \Closure(): void $proof */
-    private function answer(\Closure $proof): Response
+    /**
+     * An attempt is spent before anything is checked, so parallel guesses cannot outrun the budget; a proof that holds
+     * gives it back, since the budget is shared with every other answer to who is at the screen and is there to count
+     * guesses, not entries.
+     *
+     * @param \Closure(): void $proof
+     */
+    private function answer(LimiterInterface $attempts, \Closure $proof): Response
     {
         try {
             $proof();
+            $attempts->reset();
         } catch (NotAMember) {
             return self::noSuchCompany();
         } catch (EntryProofRefused $refused) {

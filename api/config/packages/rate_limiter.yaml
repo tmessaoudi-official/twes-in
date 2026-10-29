@@ -5,7 +5,10 @@ framework:
     rate_limiter:
         # The second factor is six digits with one step of leeway either way, which is a small space to guess
         # in: three valid codes per million, and a patient attacker who already has the password. Keyed on the
-        # pending user rather than the IP, so a botnet does not get one budget per address.
+        # pending user rather than the IP, so a botnet does not get one budget per address. Shared by every answer to
+        # who is at the screen (the sign-in's second step, recovery codes, a step-up, a company's entry proof, a password
+        # change): each spends one before it is checked, and one that holds gives the budget back, so it counts guesses,
+        # never the entries of a person going about their day.
         mfa_verify:
             policy: 'fixed_window'
             limit: '%app.rate_limit.mfa_verify.limit%'

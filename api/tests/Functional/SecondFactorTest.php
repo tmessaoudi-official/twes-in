@@ -193,11 +193,11 @@ final class SecondFactorTest extends ApiTestCase
     }
 
     /**
-     * The limiter behind the second factor (five in five minutes) is reached only by codes that are right: the lock
-     * answers every wrong one first, both budgets being five (docs/SPEC.md § 8 row 27). Recovery codes are right and
-     * spent once each, so they are how a run of right codes is made.
+     * The limiter behind the second factor (five in five minutes) counts guesses: an attempt is spent before it is
+     * checked, and a right code gives back what it spent, so a person signing in again and again is never held back.
+     * Recovery codes are right and spent once each, so they are how a run of right codes is made.
      */
-    public function testRightCodesStillMeetTheLimiterAtTheLoginStep(): void
+    public function testRightCodesNeverMeetTheLimiterAtTheLoginStep(): void
     {
         $codes = $this->enrolledUser('someone@twes.local');
 
@@ -211,11 +211,10 @@ final class SecondFactorTest extends ApiTestCase
         $this->login('someone@twes.local', self::PASSWORD);
         $this->postJson('/api/auth/mfa/verify', ['code' => $codes[5]]);
 
-        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
-        self::assertSame(['error' => 'too_many_attempts'], $this->json());
+        self::assertResponseIsSuccessful();
     }
 
-    public function testRightCodesStillMeetTheLimiterWhenReplacingTheRecoveryCodes(): void
+    public function testRightCodesNeverMeetTheLimiterWhenReplacingTheRecoveryCodes(): void
     {
         $codes = $this->enrolledUser('someone@twes.local');
         for ($attempt = 0; $attempt < 5; ++$attempt) {
@@ -225,11 +224,10 @@ final class SecondFactorTest extends ApiTestCase
             self::assertResponseIsSuccessful();
         }
 
-        // Signed in, with the budget both sites share spent: a right authenticator code is still refused.
+        // Signed in after five right codes, the budget both sites share is whole: a right authenticator code is taken.
         $this->postJson('/api/auth/mfa/recovery-codes', ['code' => $this->currentCode()]);
 
-        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
-        self::assertSame(['error' => 'too_many_attempts'], $this->json());
+        self::assertResponseIsSuccessful();
     }
 
     public function testAnotherAccountSigningInClosesTheSecondFactorTheFirstOwed(): void

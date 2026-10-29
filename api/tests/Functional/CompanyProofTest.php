@@ -84,6 +84,25 @@ final class CompanyProofTest extends ApiTestCase
         self::assertSame(Response::HTTP_FORBIDDEN, $this->act($this->second));
     }
 
+    /**
+     * The proof shares its budget with every other answer to who is at the screen: a right answer must give back what
+     * it spent, or a member of several companies entering them one after the other has no attempt left for one typo.
+     */
+    public function testRightProofsNeverLeaveTheMemberShortOfAttempts(): void
+    {
+        $this->memberOfBoth();
+
+        for ($proof = 0; $proof < 5; ++$proof) {
+            $this->postJson($this->proof($this->second), ['password' => self::PASSWORD]);
+            self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        }
+        $this->postJson($this->proof($this->second), ['password' => 'not-the-password']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the typo is answered, not held back');
+        self::assertSame('invalid_credentials', $this->json()['error'] ?? null);
+        $this->postJson($this->proof($this->second), ['password' => self::PASSWORD]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
     public function testACompanyOfSomeoneElseIsStillNoSuchCompany(): void
     {
         $this->memberOfBoth();

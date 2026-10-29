@@ -44,7 +44,10 @@ final readonly class ChangePasswordController
             throw new \LogicException('The password endpoint runs behind the firewall.');
         }
 
-        if (!$this->limiter->create($account->getId()->toRfc4122())->consume()->isAccepted()) {
+        // Spent before the current password is checked, so parallel guesses cannot outrun the budget; a change that
+        // goes through gives it back.
+        $attempts = $this->limiter->create($account->getId()->toRfc4122());
+        if (!$attempts->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
@@ -58,6 +61,7 @@ final readonly class ChangePasswordController
         } catch (NewPasswordRefused $refused) {
             return new JsonResponse(['error' => $refused->reason], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+        $attempts->reset();
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }

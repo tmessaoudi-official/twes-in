@@ -161,7 +161,9 @@ final readonly class PasskeyController
             return new JsonResponse(['error' => 'mfa_not_pending'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+        // Spent before the passkey is checked, so parallel attempts cannot outrun the budget; one that holds gives it back.
+        $attempts = $this->mfaVerifyLimiter->create($userId->toRfc4122());
+        if (!$attempts->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
@@ -177,6 +179,7 @@ final readonly class PasskeyController
         } catch (PasskeyRefused) {
             return self::refused(Response::HTTP_UNAUTHORIZED);
         }
+        $attempts->reset();
 
         return $this->secondFactorLogin->complete($user, SignInFactors::PasswordAndFactor);
     }
@@ -202,7 +205,8 @@ final readonly class PasskeyController
     {
         $userId = $this->currentUserId();
 
-        if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+        $attempts = $this->mfaVerifyLimiter->create($userId->toRfc4122());
+        if (!$attempts->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
@@ -218,6 +222,7 @@ final readonly class PasskeyController
         } catch (PasskeyRefused) {
             return self::refused(Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+        $attempts->reset();
 
         return new JsonResponse(['recoveryCodes' => $codes]);
     }

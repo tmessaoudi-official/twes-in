@@ -63,6 +63,20 @@ final class StepUpTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS, 'the right password is not a way round the budget, nor a new sign-in');
     }
 
+    public function testRightAnswersGiveBackWhatTheySpentSoATypoIsStillAnswered(): void
+    {
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+        for ($i = 0; $i < 5; ++$i) {
+            $this->postJson(self::STEP_UP, ['password' => self::PASSWORD]);
+            self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        }
+
+        $this->postJson(self::STEP_UP, ['password' => 'not-the-password']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('invalid_credentials', $this->stringAt($this->json(), 'error'));
+    }
+
     /**
      * Wrong answers here are a session's own (docs/SPEC.md § 7, the C-F3 ruling): a customer typing at the customer screen
      * must not lock the clerk out everywhere, so the fifth ends this session and the account stays open. Guessing all

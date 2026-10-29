@@ -52,7 +52,9 @@ final readonly class StepUpController
     {
         $userId = $this->currentUserId();
 
-        if (!$this->limiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+        // Spent before the password is checked, so parallel guesses cannot outrun the budget; a right one gives it back.
+        $attempts = $this->limiter->create($userId->toRfc4122());
+        if (!$attempts->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
@@ -65,6 +67,7 @@ final readonly class StepUpController
         } catch (StepUpRefused) {
             return new JsonResponse(['error' => 'invalid_credentials'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+        $attempts->reset();
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
@@ -90,7 +93,8 @@ final readonly class StepUpController
     {
         $userId = $this->currentUserId();
 
-        if (!$this->limiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+        $attempts = $this->limiter->create($userId->toRfc4122());
+        if (!$attempts->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
@@ -109,6 +113,7 @@ final readonly class StepUpController
         } catch (StepUpRefused) {
             return new JsonResponse(['error' => 'invalid_passkey'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+        $attempts->reset();
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
