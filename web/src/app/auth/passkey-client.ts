@@ -15,6 +15,12 @@ export function passkeysWorkAt(hostname: string, host: string): boolean {
   return page === bound || page.endsWith(`.${bound}`);
 }
 
+/** How a passkey is asked for: at once (the default), or offered under an address field, until the signal aborts it. */
+export interface PasskeyRequest {
+  readonly mediation?: CredentialMediationRequirement;
+  readonly signal?: AbortSignal;
+}
+
 /**
  * The browser's WebAuthn and nothing else: options in the JSON the API sends, a credential back in the JSON it expects
  * (WebAuthn Level 3 `parseCreationOptionsFromJSON`, `parseRequestOptionsFromJSON` and `toJSON`). Behind one injectable
@@ -64,12 +70,24 @@ export class PasskeyClient {
     return toJson(await navigator.credentials.create({ publicKey }));
   }
 
-  /** Rejects when the person cancels, the device refuses, or no credential comes back. */
-  async get(options: PasskeyOptions): Promise<PasskeyCredential> {
+  /** Whether this browser can offer its passkeys under an address field (WebAuthn's conditional mediation). */
+  async offersUnderTheField(): Promise<boolean> {
+    return (
+      this.browserCan() &&
+      typeof PublicKeyCredential.isConditionalMediationAvailable === 'function' &&
+      (await PublicKeyCredential.isConditionalMediationAvailable())
+    );
+  }
+
+  /**
+   * Rejects when the person cancels, the device refuses, no credential comes back, or the signal aborts it. A
+   * conditional request waits for the person to pick one of the passkeys the browser shows under the field.
+   */
+  async get(options: PasskeyOptions, how: PasskeyRequest = {}): Promise<PasskeyCredential> {
     const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(
       options as unknown as PublicKeyCredentialRequestOptionsJSON,
     );
-    return toJson(await navigator.credentials.get({ publicKey }));
+    return toJson(await navigator.credentials.get({ publicKey, ...how }));
   }
 }
 

@@ -38,6 +38,7 @@ test('an admin is offered nothing on an owner’s row and never the owner role',
   await page.getByTestId('invitation-submit').click();
   await expect(page).toHaveURL(/\/login$/);
   await page.getByTestId('email').fill(address);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill(PASSWORD);
   await page.getByTestId('submit').click();
   await expect(page).toHaveURL(/\/$/);

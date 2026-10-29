@@ -24,7 +24,9 @@
       "forgot": "Mot de passe oublié ?",
       "session_expired": "Votre session a pris fin. Reconnectez-vous pour continuer.",
       "demo_title": "Essayer la démo",
-      "demo_intro": "Une entreprise fictive et son historique, rien qu’à vous ; tout disparaît à la déconnexion."
+      "demo_intro": "Une entreprise fictive et son historique, rien qu’à vous ; tout disparaît à la déconnexion.",
+      "continue": "Continuer",
+      "change_email": "Changer d’adresse"
     },
     "logout": "Se déconnecter",
     "errors": {

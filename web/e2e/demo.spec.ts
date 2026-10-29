@@ -101,7 +101,7 @@ test('the operators switch the demo off, and the sign-in page stops offering it,
     );
     await visitor.goto('/login');
     expect(await (await asked).json()).toMatchObject({ enabled: false });
-    await expect(visitor.getByTestId('submit')).toBeVisible();
+    await expect(visitor.getByTestId('login-continue')).toBeVisible();
     await expect(visitor.getByTestId('login-demo')).toHaveCount(0);
   } finally {
     // One database is shared by the whole suite, and the demo is on unless an operator says otherwise.

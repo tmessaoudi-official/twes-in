@@ -68,6 +68,7 @@ test('a member deletes their own account behind a red button and a typed word, a
   await page.getByTestId('invitation-submit').click();
   await expect(page).toHaveURL(/\/login$/);
   await page.getByTestId('email').fill(address);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill(PASSWORD);
   await page.getByTestId('submit').click();
   await expect(page).toHaveURL(/\/$/);
@@ -109,6 +110,7 @@ test('a member deletes their own account behind a red button and a typed word, a
 
   // Signing in again within the delay takes the deletion back.
   await page.getByTestId('email').fill(address);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill(PASSWORD);
   await page.getByTestId('submit').click();
   await expect(page).toHaveURL(/\/$/);

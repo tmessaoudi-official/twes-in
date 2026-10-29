@@ -21,13 +21,15 @@ import type {
   LoginError,
   LoginOutcome,
   PasskeyAdded,
+  PasskeyCredential,
+  PasskeyOptions,
   PasskeyRemoved,
   PasskeySignInSwitched,
   PasskeysOutcome,
   PasswordChangeOutcome,
   SignedInState,
 } from './auth-types';
-import { PasskeyClient } from './passkey-client';
+import { PasskeyClient, type PasskeyRequest } from './passkey-client';
 import { refusedFor, saidAlready } from '../shared/errors/said-already';
 
 /**
@@ -403,6 +405,42 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
   }
 
   /** The second half of a login with a passkey instead of a code. */
+  /**
+   * Options for the sign-in with a passkey alone, or null: the installation keeps it off, or the API is out of reach.
+   * Either way the page offers no passkey and the password is there, so a refusal here has nothing to say.
+   */
+  async passkeyAloneOptions(): Promise<PasskeyOptions | null> {
+    try {
+      return await this.api.passkeySignInOptions();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * A whole sign-in with a passkey alone. Null when the request was aborted, as the page does once the person moves
+   * on to the password: that is no refusal to say.
+   */
+  async signInWithPasskeyAlone(
+    options: PasskeyOptions,
+    how: PasskeyRequest = {},
+  ): Promise<LoginOutcome | null> {
+    let credential: PasskeyCredential;
+    try {
+      credential = await this.passkeyClient.get(options, how);
+    } catch (error) {
+      if (how.signal?.aborted === true) return null;
+      return { status: 'refused', error: browserRefusal(error) };
+    }
+    try {
+      const state = await this.api.signInWithPasskeyAlone(credential);
+      this.signedIn(state);
+      return { status: 'signed_in', state };
+    } catch (error) {
+      return { status: 'refused', error: codeOf(error) };
+    }
+  }
+
   async signInWithPasskey(): Promise<LoginOutcome> {
     try {
       const options = await this.api.passkeyLoginOptions();

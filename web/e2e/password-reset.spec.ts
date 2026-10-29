@@ -47,6 +47,7 @@ test('a forgotten password comes back through the mailed link, made by the worke
 
   await page.goto('/login');
   await page.getByTestId('email').fill(address);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill(NEXT);
   await page.getByTestId('submit').click();
   await expect(page).toHaveURL(/\/$/);

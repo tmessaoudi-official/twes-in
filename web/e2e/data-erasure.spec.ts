@@ -65,6 +65,7 @@ test('an owner erases the stock plan, sees it waiting on every page, and undoes 
   await theirPage.getByTestId('invitation-submit').click();
   await expect(theirPage).toHaveURL(/\/login$/);
   await theirPage.getByTestId('email').fill(owner);
+  await theirPage.getByTestId('login-continue').click();
   await theirPage.getByTestId('password').fill(PASSWORD);
   await theirPage.getByTestId('submit').click();
   await expect(theirPage).toHaveURL(/\/$/);

@@ -33,6 +33,7 @@ const OWNER_PASSWORD = 'a-long-enough-password';
 async function signInAs(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
   await page.getByTestId('email').fill(email);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill(password);
   await page.getByTestId('submit').click();
   await expect(page).toHaveURL(/\/$/);

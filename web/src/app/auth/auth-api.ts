@@ -233,6 +233,21 @@ export class AuthApi {
     return toState(await send(this.http.post<Me>('/api/auth/mfa/passkey-login', body)));
   }
 
+  /** Options naming no passkey, for the sign-in with a passkey alone; refused while the installation keeps it off. */
+  async passkeySignInOptions(): Promise<PasskeyOptions> {
+    return {
+      ...(await send(
+        this.http.post<PublicKeyCredentialOptionsJson>('/api/auth/passkey-sign-in/options', {}),
+      )),
+    };
+  }
+
+  /** A whole sign-in paid with a passkey alone, for an account whose owner let it. */
+  async signInWithPasskeyAlone(credential: PasskeyCredential): Promise<SignedInState> {
+    const body: PasskeyAssertion = { credential };
+    return toState(await send(this.http.post<Me>('/api/auth/passkey-sign-in', body)));
+  }
+
   /** Holds the sign-in on this company's customer screen: until it is left, the API answers only the screen. */
   async lockCustomerScreen(companyId: string): Promise<void> {
     await send(this.http.post<void>(`/api/companies/${companyId}/customer-screen/lock`, null));

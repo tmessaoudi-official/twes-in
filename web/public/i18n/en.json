@@ -24,7 +24,9 @@
       "forgot": "Forgot your password?",
       "session_expired": "Your session has ended. Sign in again to continue.",
       "demo_title": "Try the demo",
-      "demo_intro": "A made-up company and its history, yours alone; it all goes when you sign out."
+      "demo_intro": "A made-up company and its history, yours alone; it all goes when you sign out.",
+      "continue": "Continue",
+      "change_email": "Change address"
     },
     "logout": "Sign out",
     "errors": {

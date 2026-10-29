@@ -13,6 +13,7 @@ const THEIR_PASSWORD = 'a-long-enough-password';
 async function signIn(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
   await page.getByTestId('email').fill(email);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill(password);
   await page.getByTestId('submit').click();
   await expect(page).toHaveURL(/\/$/);
@@ -103,6 +104,7 @@ test('an operator ends the sessions of an account, deactivates it and reactivate
   await theirPage.reload();
   await expect(theirPage).toHaveURL(/\/login/);
   await theirPage.getByTestId('email').fill(managed);
+  await theirPage.getByTestId('login-continue').click();
   await theirPage.getByTestId('password').fill(THEIR_PASSWORD);
   await theirPage.getByTestId('submit').click();
   await expect(theirPage.getByTestId('login-error')).toBeVisible();

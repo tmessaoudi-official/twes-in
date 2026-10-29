@@ -175,6 +175,7 @@ export async function showsWhatIsComing(page: Page, csrf: string): Promise<void>
 export async function signInWithCode(page: Page, email: string = OPERATOR_EMAIL): Promise<void> {
   await page.goto('/login');
   await page.getByTestId('email').fill(email);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill(OPERATOR_PASSWORD);
   await page.getByTestId('submit').click();
   await enterOperatorCode(page);

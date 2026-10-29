@@ -92,17 +92,21 @@ const me: Me = {
   support: { phone: null, whatsapp: null, email: null },
 };
 
+const OPTIONS = '/api/auth/passkey-sign-in/options';
+
 describe('LoginPage', () => {
   const passkeyClient = {
     supported: vi.fn(() => true),
     elsewhere: vi.fn((): string | null => null),
     get: vi.fn(),
+    offersUnderTheField: vi.fn(() => Promise.resolve(false)),
   };
 
   beforeEach(async () => {
     passkeyClient.get.mockReset();
     passkeyClient.supported.mockReset().mockReturnValue(true);
     passkeyClient.elsewhere.mockReset().mockReturnValue(null);
+    passkeyClient.offersUnderTheField.mockReset().mockResolvedValue(false);
     await TestBed.configureTestingModule({
       imports: [LoginPage],
       providers: [
@@ -135,6 +139,7 @@ describe('LoginPage', () => {
   async function render(
     signupOpen = false,
     demo: DemoAvailability = { enabled: false, countries: [] },
+    alone: Record<string, unknown> | null = null,
   ) {
     const fixture = TestBed.createComponent(LoginPage);
     // The health probe, the signup and the demo availability are asked at construction; whenStable() would wait for them.
@@ -144,6 +149,14 @@ describe('LoginPage', () => {
       .expectOne('/api/signup')
       .flush({ enabled: signupOpen, countries: signupOpen ? ['TN'] : [] });
     http.expectOne({ method: 'GET', url: '/api/auth/demo' }).flush(demo);
+    // A passkey alone is offered once the API gives options for it, which it refuses while the installation keeps it off.
+    for (const asked of http.match({ method: 'POST', url: OPTIONS })) {
+      if (alone === null) {
+        asked.flush({ error: 'passkey_sign_in_off' }, { status: 404, statusText: 'Not Found' });
+      } else {
+        asked.flush(alone);
+      }
+    }
     await fixture.whenStable();
     await new Promise((resolve) => setTimeout(resolve, 0));
     await fixture.whenStable();
@@ -165,12 +178,25 @@ describe('LoginPage', () => {
     input.dispatchEvent(new Event('input'));
   }
 
+  /** « Continuer »: from the address to the password. */
+  async function next(
+    fixture: { whenStable(): Promise<unknown> },
+    query: (id: string) => HTMLElement | null,
+  ) {
+    query('login-email-form')?.dispatchEvent(new Event('submit'));
+    await settle(fixture);
+  }
+
   it('renders the form and the API status line', async () => {
     const { el, query } = await render();
     expect(el.querySelector('header [role="img"]')?.getAttribute('aria-label')).toBe('twes-in');
     expect(el.querySelector('h1')?.textContent).toContain('Connexion');
     expect(query('email')).not.toBeNull();
-    expect(query('password')).not.toBeNull();
+    // « webauthn »: the browser offers its passkeys for this site under the field.
+    expect(query('email')?.getAttribute('autocomplete')).toBe('username webauthn');
+    expect(query('login-continue')).not.toBeNull();
+    // The password comes once the address is given, for every address, so the page never says which are known.
+    expect(query('password')).toBeNull();
     expect(query('api-status')?.textContent).toContain('opérationnelle');
   });
 
@@ -186,9 +212,13 @@ describe('LoginPage', () => {
   });
 
   it('puts each label above its field and ties it to the control', async () => {
-    const { query } = await render();
+    const { fixture, query } = await render();
 
     for (const id of ['email', 'password']) {
+      if (id === 'password') {
+        type(query<HTMLInputElement>('email')!, 'owner@example.test');
+        await next(fixture, query);
+      }
       const input = query<HTMLInputElement>(id)!;
       expect(input.labels?.[0]?.textContent).toContain(
         id === 'email' ? 'Adresse e-mail' : 'Mot de passe',
@@ -269,22 +299,54 @@ describe('LoginPage', () => {
 
   it('refuses an empty submission without calling the API', async () => {
     const { fixture, el, query } = await render();
+    await next(fixture, query);
+
+    expect(el.textContent).toContain('E-mail obligatoire');
+    expect(query('password')).toBeNull();
+
+    type(query<HTMLInputElement>('email')!, 'owner@example.test');
+    await next(fixture, query);
     query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
 
-    expect(el.textContent).toContain('E-mail obligatoire');
     expect(el.textContent).toContain('Mot de passe obligatoire');
     // afterEach verifies no /api/auth/login request was made.
   });
 
-  it('flags a malformed email before submitting', async () => {
+  it('flags a malformed email before going on', async () => {
     const { fixture, el, query } = await render();
     type(query<HTMLInputElement>('email')!, 'not-an-email');
-    type(query<HTMLInputElement>('password')!, 'pw');
-    query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
-    await fixture.whenStable();
+    await next(fixture, query);
 
     expect(el.textContent).toContain('E-mail invalide');
+    expect(query('password')).toBeNull();
+  });
+
+  it('goes on to the password for any address, asking the API nothing, and back to change it', async () => {
+    const rendered = await render();
+    const { fixture, query } = rendered;
+    type(query<HTMLInputElement>('email')!, 'someone@example.test');
+    await next(fixture, query);
+
+    // afterEach verifies no request was made: whether the address is known is never asked.
+    expect(query('login-address')?.textContent).toContain('someone@example.test');
+    expect(query('login-form')?.querySelector('input[autocomplete="username"]')).not.toBeNull();
+    expect(document.activeElement).toBe(query('password'));
+
+    type(query<HTMLInputElement>('password')!, 'typed');
+    query<HTMLButtonElement>('login-change-email')?.click();
+    await settle(fixture);
+    // Back on the address, the passkey is offered again where the installation allows it: here it does not.
+    rendered.http
+      .expectOne({ method: 'POST', url: OPTIONS })
+      .flush({ error: 'passkey_sign_in_off' }, { status: 404, statusText: 'Not Found' });
+    await settle(fixture);
+
+    expect(query('password')).toBeNull();
+    expect(query<HTMLInputElement>('email')?.value).toBe('someone@example.test');
+    expect(document.activeElement).toBe(query('email'));
+    await next(fixture, query);
+    expect(query<HTMLInputElement>('password')?.value).toBe('');
   });
 
   it('posts the credentials and navigates home on success', async () => {
@@ -292,6 +354,7 @@ describe('LoginPage', () => {
     const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     type(query<HTMLInputElement>('email')!, 'owner@example.test');
+    await next(fixture, query);
     type(query<HTMLInputElement>('password')!, 'pw');
     query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
@@ -311,6 +374,7 @@ describe('LoginPage', () => {
     const { fixture, http, query } = await render();
     vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     type(query<HTMLInputElement>('email')!, '‎owner@example.test​');
+    await next(fixture, query);
     type(query<HTMLInputElement>('password')!, ' pw ');
     query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
@@ -332,6 +396,7 @@ describe('LoginPage', () => {
       const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
       fixture.componentRef.setInput('returnTo', returnTo);
       type(query<HTMLInputElement>('email')!, 'owner@example.test');
+      await next(fixture, query);
       type(query<HTMLInputElement>('password')!, 'pw');
       query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
       await fixture.whenStable();
@@ -345,6 +410,7 @@ describe('LoginPage', () => {
   it('shows the API refusal and clears the password', async () => {
     const { fixture, http, query } = await render();
     type(query<HTMLInputElement>('email')!, 'owner@example.test');
+    await next(fixture, query);
     type(query<HTMLInputElement>('password')!, 'wrong');
     query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
@@ -356,12 +422,13 @@ describe('LoginPage', () => {
 
     expect(query('login-error')?.textContent).toContain('Compte désactivé');
     expect(query<HTMLInputElement>('password')?.value).toBe('');
-    expect(query<HTMLInputElement>('email')?.value).toBe('owner@example.test');
+    expect(query('login-address')?.textContent).toContain('owner@example.test');
   });
 
   async function passThePassword(rendered: Awaited<ReturnType<typeof render>>) {
     const { fixture, http, query } = rendered;
     type(query<HTMLInputElement>('email')!, 'owner@example.test');
+    await next(fixture, query);
     type(query<HTMLInputElement>('password')!, 'pw');
     query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
@@ -494,5 +561,117 @@ describe('LoginPage', () => {
 
     expect(rendered.query('login-error')?.textContent).toContain('Clé refusée');
     expect(rendered.query('mfa-form')).not.toBeNull();
+  });
+
+  describe('a passkey alone', () => {
+    const SIGN_IN = '/api/auth/passkey-sign-in';
+
+    it('is offered beside the address where the installation allows it, and signs in', async () => {
+      const rendered = await render(false, undefined, { challenge: 'first' });
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      passkeyClient.get.mockResolvedValue({ id: 'cred' });
+
+      rendered.query<HTMLButtonElement>('login-passkey')?.click();
+      await rendered.fixture.whenStable();
+      // Asked again: the browser's request answers a challenge of its own.
+      rendered.http.expectOne({ method: 'POST', url: OPTIONS }).flush({ challenge: 'fresh' });
+      await settle(rendered.fixture);
+
+      expect(passkeyClient.get).toHaveBeenCalledWith({ challenge: 'fresh' }, {});
+      const request = rendered.http.expectOne({ method: 'POST', url: SIGN_IN });
+      expect(request.request.body).toEqual({ credential: { id: 'cred' } });
+      request.flush(me);
+      await settle(rendered.fixture);
+
+      expect(navigate).toHaveBeenCalledWith('/');
+    });
+
+    it('is not offered while the installation keeps it off', async () => {
+      const { query } = await render();
+
+      expect(query('login-passkey')).toBeNull();
+    });
+
+    it('is not offered, nor asked for, where this browser cannot use a passkey here', async () => {
+      passkeyClient.supported.mockReturnValue(false);
+      const { query } = await render(false, undefined, { challenge: 'unused' });
+
+      // afterEach verifies no options were asked.
+      expect(query('login-passkey')).toBeNull();
+    });
+
+    it('says a refused passkey and stays on the address', async () => {
+      const rendered = await render(false, undefined, { challenge: 'first' });
+      passkeyClient.get.mockResolvedValue({ id: 'cred' });
+
+      rendered.query<HTMLButtonElement>('login-passkey')?.click();
+      await rendered.fixture.whenStable();
+      rendered.http.expectOne({ method: 'POST', url: OPTIONS }).flush({ challenge: 'fresh' });
+      await settle(rendered.fixture);
+      rendered.http
+        .expectOne({ method: 'POST', url: SIGN_IN })
+        .flush({ error: 'invalid_passkey' }, { status: 401, statusText: 'Unauthorized' });
+      await settle(rendered.fixture);
+
+      expect(rendered.query('login-error')?.textContent).toContain('Clé refusée');
+      expect(rendered.query('login-continue')).not.toBeNull();
+      // The passkey is offered again, on options of its own.
+      rendered.http.expectOne({ method: 'POST', url: OPTIONS }).flush({ challenge: 'again' });
+      await settle(rendered.fixture);
+      expect(rendered.query('login-passkey')).not.toBeNull();
+    });
+
+    it('signs in with a passkey the browser offered under the address field', async () => {
+      passkeyClient.offersUnderTheField.mockResolvedValue(true);
+      passkeyClient.get.mockResolvedValue({ id: 'picked' });
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      const rendered = await render(false, undefined, { challenge: 'waiting' });
+
+      expect(passkeyClient.get).toHaveBeenCalledWith(
+        { challenge: 'waiting' },
+        expect.objectContaining({ mediation: 'conditional' }),
+      );
+      const request = rendered.http.expectOne({ method: 'POST', url: SIGN_IN });
+      expect(request.request.body).toEqual({ credential: { id: 'picked' } });
+      request.flush(me);
+      await settle(rendered.fixture);
+
+      expect(navigate).toHaveBeenCalledWith('/');
+    });
+
+    it('says nothing when the browser withdraws its own offer under the field, nor offers again at once', async () => {
+      passkeyClient.offersUnderTheField.mockResolvedValue(true);
+      passkeyClient.get.mockRejectedValue(new DOMException('Not now.', 'NotAllowedError'));
+      const { query } = await render(false, undefined, { challenge: 'waiting' });
+
+      expect(passkeyClient.get).toHaveBeenCalledTimes(1);
+      // afterEach verifies no new options were asked.
+      expect(query('login-error')).toBeNull();
+      expect(query('login-passkey')).not.toBeNull();
+    });
+
+    it('stops offering under the field once the person goes on to the password', async () => {
+      passkeyClient.offersUnderTheField.mockResolvedValue(true);
+      let signal: AbortSignal | undefined;
+      passkeyClient.get.mockImplementation(
+        (_: unknown, how: { signal?: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            signal = how.signal;
+            how.signal?.addEventListener('abort', () =>
+              reject(new DOMException('Moved on.', 'AbortError')),
+            );
+          }),
+      );
+      const { fixture, query } = await render(false, undefined, { challenge: 'waiting' });
+      expect(signal?.aborted).toBe(false);
+
+      type(query<HTMLInputElement>('email')!, 'owner@example.test');
+      await next(fixture, query);
+
+      expect(signal?.aborted).toBe(true);
+      // afterEach verifies nothing was sent, and the aborted request says nothing.
+      expect(query('login-error')).toBeNull();
+      expect(query('password')).not.toBeNull();
+    });
   });
 });

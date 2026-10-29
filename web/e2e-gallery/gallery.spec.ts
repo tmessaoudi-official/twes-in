@@ -405,6 +405,7 @@ async function signInAs(page: Page, who: string): Promise<void> {
   }
   await page.goto('/login');
   await page.getByTestId('email').fill(`${who}@twes.local`);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill(TESTER_PASSWORD);
   await page.getByTestId('submit').click();
   await expect(page).toHaveURL(/\/$/);
@@ -587,7 +588,7 @@ test('where the focus is on every screen and step', async ({ browser, page }) =>
   await signedOut.goto('/login');
   await settle(signedOut);
   // An empty form is refused in the browser: nothing is sent.
-  await signedOut.getByTestId('submit').click();
+  await signedOut.getByTestId('login-continue').click();
   await steady(signedOut);
   moments.push({
     flow: 'sign-in',
@@ -595,6 +596,7 @@ test('where the focus is on every screen and step', async ({ browser, page }) =>
     facts: await focusFacts(signedOut),
   });
   await signedOut.getByTestId('email').fill(CODES_OPERATOR_EMAIL);
+  await signedOut.getByTestId('login-continue').click();
   await signedOut.getByTestId('password').fill(OPERATOR_PASSWORD);
   await signedOut.getByTestId('submit').click();
   const code = signedOut.getByTestId('mfa-code');

@@ -66,3 +66,53 @@ describe('PasskeyClient', () => {
     expect(passkeys.elsewhere()).toBeNull();
   });
 });
+
+describe('PasskeyClient asking for a passkey', () => {
+  /** A browser's WebAuthn as far as the client reads it. */
+  class FakeCredential {
+    static conditional: boolean | undefined = true;
+    static parseRequestOptionsFromJSON = (json: unknown) => ({ parsed: json });
+    static parseCreationOptionsFromJSON = (json: unknown) => json;
+    static isConditionalMediationAvailable?: () => Promise<boolean> = () =>
+      Promise.resolve(FakeCredential.conditional === true);
+    toJSON() {
+      return { id: 'picked' };
+    }
+  }
+  const credentialsGet = vi.fn();
+
+  beforeEach(() => {
+    FakeCredential.conditional = true;
+    credentialsGet.mockReset().mockResolvedValue(new FakeCredential());
+    vi.stubGlobal('PublicKeyCredential', FakeCredential);
+    vi.stubGlobal('navigator', { credentials: { get: credentialsGet } });
+    TestBed.configureTestingModule({
+      providers: [{ provide: HealthApi, useValue: { passkeys: () => of(null) } }],
+    });
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('says whether the browser offers its passkeys under an address field', async () => {
+    const passkeys = TestBed.inject(PasskeyClient);
+    expect(await passkeys.offersUnderTheField()).toBe(true);
+
+    FakeCredential.conditional = false;
+    expect(await passkeys.offersUnderTheField()).toBe(false);
+  });
+
+  it('asks at once by default, or under the field until the signal aborts it', async () => {
+    const passkeys = TestBed.inject(PasskeyClient);
+
+    expect(await passkeys.get({ challenge: 'c1' })).toEqual({ id: 'picked' });
+    expect(credentialsGet).toHaveBeenLastCalledWith({ publicKey: { parsed: { challenge: 'c1' } } });
+
+    const offer = new AbortController();
+    await passkeys.get({ challenge: 'c2' }, { mediation: 'conditional', signal: offer.signal });
+    expect(credentialsGet).toHaveBeenLastCalledWith({
+      publicKey: { parsed: { challenge: 'c2' } },
+      mediation: 'conditional',
+      signal: offer.signal,
+    });
+  });
+});

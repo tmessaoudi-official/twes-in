@@ -38,6 +38,7 @@ test('an accountant invited to the company reads the books and takes their files
   await page.getByTestId('invitation-submit').click();
   await expect(page).toHaveURL(/\/login$/);
   await page.getByTestId('email').fill(address);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill(PASSWORD);
   await page.getByTestId('submit').click();
   await expect(page).toHaveURL(/\/$/);

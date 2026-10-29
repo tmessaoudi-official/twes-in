@@ -24,6 +24,7 @@ test('login, hello page, logout', async ({ page }) => {
   await expect(page).toHaveURL(/\/login\?returnTo=%2Fcustomers$/);
   // The second operator: its code leaves the shared one's five in five minutes to the proofs (session.ts).
   await page.getByTestId('email').fill(CODES_OPERATOR_EMAIL);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill(PASSWORD);
   await page.getByTestId('submit').click();
   // An operator must carry a second factor, so the password alone leads to the code step.
@@ -70,6 +71,7 @@ test('login, hello page, logout', async ({ page }) => {
 test('a wrong password is refused with a message and no session', async ({ page }) => {
   await page.goto('/login');
   await page.getByTestId('email').fill(EMAIL);
+  await page.getByTestId('login-continue').click();
   await page.getByTestId('password').fill('not-the-password');
   await page.getByTestId('submit').click();
 
