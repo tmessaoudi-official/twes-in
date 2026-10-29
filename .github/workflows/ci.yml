@@ -3,7 +3,10 @@ name: ci
 
 on:
   push:
-    branches: [master]
+    # A cloud session works on a branch its harness names (`claude/...`, `ccr-...`) or one it was told to
+    # (`cloud/...`), and lands on master only through the developer's signed re-commit: CI decides those branches too.
+    # Publish stays master's alone (its own `if`).
+    branches: [master, 'claude/**', 'ccr-*', 'cloud/**']
     # A push that touches only these runs none of these jobs (docs/SPEC.md § 7, 2026-10-04 10:40); one touching
     # docs/SPEC.md still has its Decisions Log stamps checked, by decision-stamps.yml. Not `docs/**`: the pricing
     # vectors under docs/spec are a test fixture.

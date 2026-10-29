@@ -103,6 +103,12 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `deny` and `ask` permission rules stay empty, permanently (developer ruling, 2026-08-06).
 - Message files for `git commit -F` use a session-scoped name; `head -1` the file and print
   `git status --porcelain` in the same command as the commit.
+- **A cloud session** (`CLAUDE_CODE_REMOTE=true`, claude.ai) cannot sign, so it never lands on master: it commits and
+  pushes only the branch its harness gave it (`claude/…`, `ccr-…`), which CI runs as it runs master; the
+  `master-signed` ruleset refuses an unsigned commit there anyway. It runs `make check` on each change and `make gate`
+  once before it says the branch is ready (the setup script starts Docker), and ends with the line the developer runs on
+  the PC: `land.sh /stack/projects/twes-in <branch>` (claude-code-setup), which re-signs every commit as the developer,
+  strips any trailer and fast-forwards master. No tag, no release, no deploy from the cloud.
 
 ## Where things live
 

@@ -4,7 +4,7 @@ name: decision-stamps
 
 on:
   push:
-    branches: [master]
+    branches: [master, 'claude/**', 'ccr-*', 'cloud/**']
     paths:
       - docs/SPEC.md
 
