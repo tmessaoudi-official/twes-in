@@ -40,6 +40,7 @@
     "@ngx-translate/http-loader": "^18.0.0",
     "centrifuge": "^5.8.0",
     "lean-qr": "^2.7.4",
+    "libphonenumber-js": "^1.13.15",
     "marked": "^18.1.1",
     "material-symbols": "^0.48.1",
     "rxjs": "~7.8.0",

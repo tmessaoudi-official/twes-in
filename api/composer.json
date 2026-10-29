@@ -16,6 +16,7 @@
     "doctrine/doctrine-bundle": "^3.3.2",
     "doctrine/doctrine-migrations-bundle": "^4.0",
     "doctrine/orm": "^3.7.5",
+    "giggsey/libphonenumber-for-php-lite": "^9.0.41",
     "league/flysystem": "^3",
     "league/flysystem-async-aws-s3": "^3",
     "league/flysystem-local": "^3",

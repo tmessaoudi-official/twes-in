@@ -8,7 +8,7 @@ Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, Frank
 backup image installs (pgBackRest, MIT; restic, BSD-2-Clause; supercronic, MIT; curl, curl; see `docs/UPDATE.md`), are
 aggregated, not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 116 runtime, 55 dev
+## api (Composer) — 117 runtime, 55 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -42,6 +42,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | evenement/evenement | 3.0.2 | MIT | dev |
 | fidry/cpu-core-counter | 1.4.1 | MIT | dev |
 | friendsofphp/php-cs-fixer | 3.95.27 | MIT | dev |
+| giggsey/libphonenumber-for-php-lite | 9.0.41 | Apache-2.0 | runtime |
 | guzzlehttp/psr7 | 3.2.0 | MIT | runtime |
 | jean85/pretty-package-versions | 2.1.1 | MIT | runtime |
 | league/flysystem | 3.36.0 | MIT | runtime |
@@ -184,7 +185,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | webmozart/assert | 2.5.0 | MIT | runtime |
 | willdurand/negotiation | 3.1.0 | MIT | runtime |
 
-## web (npm) — 40 runtime, 578 dev
+## web (npm) — 41 runtime, 578 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -618,6 +619,7 @@ aggregated, not compiled into what we distribute, and are not listed here.
 | keyv | 5.6.0 | MIT | dev |
 | lean-qr | 2.7.4 | MIT | runtime |
 | levn | 0.4.1 | MIT | dev |
+| libphonenumber-js | 1.13.15 | MIT | runtime |
 | lightningcss | 1.32.0 | MPL-2.0 | dev |
 | lightningcss | 1.33.0 | MPL-2.0 | dev |
 | lightningcss-android-arm64 | 1.32.0 | MPL-2.0 | dev |
