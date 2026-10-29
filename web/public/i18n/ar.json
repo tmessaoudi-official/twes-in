@@ -4153,7 +4153,10 @@
     "references_company": "المراجع بين الشركات",
     "invoices_chain": "سلسلة الفواتير",
     "invoices_arithmetic": "حسابات الفواتير",
-    "invoices_numbering": "ترقيم الفواتير"
+    "invoices_numbering": "ترقيم الفواتير",
+    "customers_contact_rules": "بيانات الاتصال بالعملاء",
+    "vendors_contact_rules": "بيانات الاتصال بالموردين",
+    "tenancy_contact_rules": "بيانات الاتصال بالشركة"
   },
   "support_access": {
     "title": "وصول الدعم",

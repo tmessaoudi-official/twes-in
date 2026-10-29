@@ -149,6 +149,43 @@ final class DataCheckTest extends ApiTestCase
         self::assertContains('references.company', $this->checksFound());
     }
 
+    /**
+     * Row 208: an address or a phone kept from before today's rules stays until someone changes it, and the night's
+     * check lists each one so it is corrected; the finding names the record and the field, never the value.
+     */
+    public function testAnAddressOrAPhoneTodaysRulesRefuseIsFoundByItsRecordAndFieldNeverItsValue(): void
+    {
+        $db = $this->connection();
+        $db->executeStatement("UPDATE customer SET email = 'compta@carthage', phone = '+216 11 111 111' WHERE id = ?", [$this->customerId]);
+        $db->executeStatement("INSERT INTO contact (id, company_id, customer_id, email, phone, is_primary, created_at, updated_at) VALUES (gen_random_uuid(), ?, ?, NULL, '12', false, now(), now())", [$this->company->getId()->toRfc4122(), $this->customerId]);
+        $db->executeStatement("INSERT INTO vendor (id, company_id, number, name, email, phone, is_active, created_at, updated_at) VALUES (gen_random_uuid(), ?, 'FRN-1', 'Atlas', 'achats@', NULL, true, now(), now())", [$this->company->getId()->toRfc4122()]);
+        $db->executeStatement("UPDATE company SET email = 'contact@acme', phone = '+216 71 900 868' WHERE id = ?", [$this->company->getId()->toRfc4122()]);
+        $db->executeStatement("UPDATE establishment SET phone = 'joindre' WHERE company_id = ?", [$this->company->getId()->toRfc4122()]);
+
+        $found = array_values(array_filter($this->findings(), static fn (DataFinding $finding): bool => str_ends_with($finding->check, '.contact_rules')));
+        $by = [];
+        foreach ($found as $finding) {
+            self::assertSame($this->company->getId()->toRfc4122(), $finding->companyId?->toRfc4122());
+            // « <record> [<number>]: <field> », read as its record and field.
+            $by[$finding->check][] = rtrim(explode(' ', $finding->detail)[0], ':').' '.substr($finding->detail, (int) strrpos($finding->detail, ': ') + 2);
+            foreach (['carthage', '111', 'achats', 'acme', 'joindre'] as $value) {
+                self::assertStringNotContainsString($value, $finding->detail, 'a finding never says the value');
+            }
+        }
+        ksort($by);
+        $by = array_map(static function (array $fields): array {
+            sort($fields);
+
+            return $fields;
+        }, $by);
+        // The company's phone is valid, its address is not; the customer's phone is one the plan reads to check, kept.
+        self::assertSame([
+            'customers.contact_rules' => ['contact phone', 'customer email'],
+            'tenancy.contact_rules' => ['company email', 'establishment phone'],
+            'vendors.contact_rules' => ['vendor email'],
+        ], $by);
+    }
+
     public function testEveryCheckDeclaredIsNamedInEveryLanguageOfTheMailsAndTheScreens(): void
     {
         $checks = static::getContainer()->get(RunDataChecks::class)->checks();

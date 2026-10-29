@@ -4153,7 +4153,10 @@
     "references_company": "References across companies",
     "invoices_chain": "Invoice chain",
     "invoices_arithmetic": "Invoice figures",
-    "invoices_numbering": "Invoice numbering"
+    "invoices_numbering": "Invoice numbering",
+    "customers_contact_rules": "Customers' contact details",
+    "vendors_contact_rules": "Vendors' contact details",
+    "tenancy_contact_rules": "The company's contact details"
   },
   "support_access": {
     "title": "Support access",

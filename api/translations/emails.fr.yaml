@@ -133,6 +133,9 @@ data_checks:
     invoices_chain: 'Chaîne des factures'
     invoices_arithmetic: 'Calculs des factures'
     invoices_numbering: 'Numérotation des factures'
+    customers_contact_rules: 'Coordonnées des clients'
+    vendors_contact_rules: 'Coordonnées des fournisseurs'
+    tenancy_contact_rules: 'Coordonnées de la société'
 account_deletion:
     subject: 'Votre compte %product% sera supprimé'
     heading: 'Votre compte est fermé'
