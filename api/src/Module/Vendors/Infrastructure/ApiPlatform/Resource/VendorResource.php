@@ -28,6 +28,7 @@ use App\Module\Vendors\Infrastructure\ApiPlatform\State\Provider\VendorItemProvi
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Intl\GroupedPhones;
 use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -234,7 +235,7 @@ final class VendorResource
         $resource->legalName = $profile->legalName;
         $resource->identifiers = $profile->identifiers;
         $resource->email = $profile->email;
-        $resource->phone = $profile->phone;
+        $resource->phone = GroupedPhones::of($profile->phone);
         $resource->website = $profile->website;
         [$resource->addressLine1, $resource->addressLine2, $resource->postalCode, $resource->city, $resource->countryCode] = $profile->address->parts();
         $resource->iban = $profile->iban;

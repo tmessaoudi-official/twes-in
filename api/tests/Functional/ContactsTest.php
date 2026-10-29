@@ -105,7 +105,7 @@ final class ContactsTest extends ApiTestCase
 
         $this->postJson($this->path(), ['firstName' => 'Leila', 'phone' => '71.900.868', 'isPrimary' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        self::assertSame('+21671900868', $this->json()['phone']);
+        self::assertSame('+216 71 900 868', $this->json()['phone']);
         $id = $this->stringAt($this->json(), 'id');
 
         $this->sendJson('PUT', $this->path($id), ['firstName' => 'Leila', 'phone' => '71 900', 'isPrimary' => true, 'version' => 1]);

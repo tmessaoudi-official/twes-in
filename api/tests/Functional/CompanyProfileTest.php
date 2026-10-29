@@ -90,7 +90,7 @@ final class CompanyProfileTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path(), $this->profile(['phone' => '71 900 868']));
         self::assertResponseIsSuccessful();
-        self::assertSame('+21671900868', $this->json()['phone']);
+        self::assertSame('+216 71 900 868', $this->json()['phone']);
 
         $this->sendJson('PUT', $this->path(), $this->profile(['phone' => '71 900']));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);

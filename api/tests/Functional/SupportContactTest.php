@@ -114,7 +114,10 @@ final class SupportContactTest extends ApiTestCase
 
             $this->sendJson('PUT', '/api/platform/settings/'.$key, ['value' => '00216 71 900 868']);
             self::assertResponseIsSuccessful($key);
-            self::assertSame('+21671900868', $this->json()['value'], $key);
+            self::assertSame('+216 71 900 868', $this->json()['value'], $key);
+            $stored = $this->em()->getConnection()->fetchOne('SELECT value FROM setting WHERE key = ?', [$key]);
+            self::assertIsString($stored);
+            self::assertSame('+21671900868', json_decode($stored, flags: \JSON_THROW_ON_ERROR), 'kept as E.164, answered grouped');
         }
 
         $this->em()->getConnection()->executeStatement("UPDATE setting SET value = '\"71.900.868\"' WHERE key = 'legal.host.phone'");
@@ -129,7 +132,7 @@ final class SupportContactTest extends ApiTestCase
 
         $this->sendJson('PUT', '/api/platform/settings/support.phone', ['value' => "\u{00A0}+216 71 900 868\u{200B} "]);
         self::assertResponseIsSuccessful();
-        self::assertSame('+21671900868', $this->json()['value']);
+        self::assertSame('+216 71 900 868', $this->json()['value']);
 
         // A page saving several keys at once goes through the same judge.
         $this->sendJson('PUT', '/api/platform/settings', ['changes' => [['key' => 'support.email', 'value' => " support@exemple.tn\u{200B}", 'version' => 0]]]);

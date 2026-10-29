@@ -66,7 +66,7 @@ final class EstablishmentsTest extends ApiTestCase
 
         $this->postJson($this->path(), ['code' => '001', 'name' => 'Agence de Sfax', 'phone' => '74 400 400']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        self::assertSame('+21674400400', $this->json()['phone']);
+        self::assertSame('+216 74 400 400', $this->json()['phone']);
         $id = $this->stringAt($this->json(), 'id');
 
         $this->revise($id, ['code' => '001', 'name' => 'Agence de Sfax', 'phone' => '74 400']);

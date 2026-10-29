@@ -157,14 +157,18 @@ test('an open customer takes what another person saved, and keeps what is being 
   try {
     // Nothing typed: the saved phone arrives in place, and a toast says the record changed.
     await reviseCustomer(writer, number, { phone: '71000001' });
-    await expect(watcher.getByTestId('field-phone')).toHaveValue('71000001', { timeout: 10_000 });
+    await expect(watcher.getByTestId('field-phone')).toHaveValue('+216 71 000 001', {
+      timeout: 10_000,
+    });
     await expect(toast(watcher)).toContainText('a modifié cette fiche');
     await expect(watcher.getByTestId('record-changed')).toHaveCount(0);
 
     // Typing the name: the typed name stays, the other field updates, and the name waits for a choice.
     await watcher.getByTestId('field-name').fill(`Mine ${run}`);
     await reviseCustomer(writer, number, { name: `Theirs ${run}`, phone: '71000002' });
-    await expect(watcher.getByTestId('field-phone')).toHaveValue('71000002', { timeout: 10_000 });
+    await expect(watcher.getByTestId('field-phone')).toHaveValue('+216 71 000 002', {
+      timeout: 10_000,
+    });
     await expect(watcher.getByTestId('record-changed')).toBeVisible();
     await expect(watcher.getByTestId('field-name')).toHaveValue(`Mine ${run}`);
     await expect(watcher.getByTestId('field-conflict-name')).toContainText(`Theirs ${run}`);
@@ -184,11 +188,11 @@ test('an open customer takes what another person saved, and keeps what is being 
     await watcher.getByTestId('field-name').fill(`Again ${run}`);
     await watcher.getByTestId('record-save').click();
     await expect(toast(watcher)).toContainText('Rien n’a été enregistré');
-    await expect(watcher.getByTestId('field-phone')).toHaveValue('71000003');
+    await expect(watcher.getByTestId('field-phone')).toHaveValue('+216 71 000 003');
     await expect(watcher.getByTestId('field-name')).toHaveValue(`Again ${run}`);
     await watcher.getByTestId('record-save').click();
     await expect(toast(watcher)).toContainText('Le client a été enregistré.');
-    await expect(watcher.getByTestId('field-phone')).toHaveValue('71000003');
+    await expect(watcher.getByTestId('field-phone')).toHaveValue('+216 71 000 003');
 
     expect(
       await watcher.evaluate(() => (window as unknown as { liveMarker?: boolean }).liveMarker),

@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\Output;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
+use App\Shared\Infrastructure\Intl\GroupedPhones;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyProfileResource;
@@ -47,7 +48,7 @@ final readonly class CompanyProfileRepresentation
         $resource->postalCode = $profile->postalCode;
         $resource->city = $profile->city;
         $resource->email = $profile->email;
-        $resource->phone = $profile->phone;
+        $resource->phone = GroupedPhones::of($profile->phone);
         $resource->website = $profile->website;
         $resource->iban = $profile->iban;
         $resource->bic = $profile->bic;

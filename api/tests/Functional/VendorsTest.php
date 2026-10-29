@@ -139,7 +139,7 @@ final class VendorsTest extends ApiTestCase
 
         $this->postJson($this->path(), $this->vendor(['countryCode' => 'FR', 'city' => 'Lyon', 'iban' => null, 'bic' => null, 'phone' => '01 23 45 67 89']));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        self::assertSame('+33123456789', $this->json()['phone']);
+        self::assertSame('+33 1 23 45 67 89', $this->json()['phone']);
         $id = $this->stringAt($this->json(), 'id');
 
         $this->sendJson('PUT', $this->path($id), [...$this->vendor(['countryCode' => 'FR', 'city' => 'Lyon', 'iban' => null, 'bic' => null, 'phone' => '01 23 45']), 'version' => 1]);
@@ -153,7 +153,7 @@ final class VendorsTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path($id), [...$this->vendor(['countryCode' => 'TN', 'iban' => null, 'bic' => null, 'phone' => '11 111 111']), 'version' => 2]);
         self::assertResponseIsSuccessful();
-        self::assertSame(['+21611111111', true], [$this->json()['phone'], $this->json()['toCheck']]);
+        self::assertSame(['+216 11111111', true], [$this->json()['phone'], $this->json()['toCheck']]);
     }
 
     /** An address kept before today's rule is refused only once it changes (row 208), never for another field's save. */

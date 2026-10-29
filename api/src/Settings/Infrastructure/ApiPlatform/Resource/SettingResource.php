@@ -23,6 +23,7 @@ use App\Settings\Infrastructure\ApiPlatform\State\Processor\ChangeSettingProcess
 use App\Settings\Infrastructure\ApiPlatform\State\Processor\ResetSettingProcessor;
 use App\Settings\Infrastructure\ApiPlatform\State\Provider\PlatformSettingCollectionProvider;
 use App\Settings\Infrastructure\ApiPlatform\State\Provider\SettingCollectionProvider;
+use App\Shared\Infrastructure\Intl\GroupedPhones;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -215,10 +216,12 @@ final class SettingResource
         $resource->labelKey = $definition->labelKey;
         $resource->module = $definition->module;
         $resource->default = $setting->default;
-        $resource->value = $setting->value;
+        // A phone kept as E.164 is answered grouped, as its country writes it; sent back so, it names the same number.
+        $shown = static fn (mixed $value): mixed => $definition->phone && \is_string($value) ? GroupedPhones::of($value) : $value;
+        $resource->value = $shown($setting->value);
         $resource->source = $setting->source?->value;
         foreach ($setting->explicit as $level => $value) {
-            $resource->levels[] = new SettingLevelValue($level, $value);
+            $resource->levels[] = new SettingLevelValue($level, $shown($value));
         }
         $resource->versions = $setting->versions;
         foreach ($definition->chain->levels() as $level) {

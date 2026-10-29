@@ -166,6 +166,31 @@ final class CustomersTest extends ApiTestCase
     }
 
     /**
+     * Row 207 C: a phone kept as E.164 is answered grouped as its own country writes it, whatever the customer's
+     * country, and a form sending back what it was answered changes nothing: a Tunisian number of a French customer is
+     * not read again as a French one.
+     */
+    public function testAPhoneIsAnsweredGroupedAndSendingItBackChangesNothing(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->postJson($this->path(), $this->customer(['phone' => '+21630010123', 'billingCountryCode' => 'FR']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame('+216 30 010 123', $this->json()['phone']);
+
+        $this->getJson($this->path($id));
+        $answered = $this->json();
+        self::assertSame('+216 30 010 123', $answered['phone']);
+        $this->getJson($this->path());
+        self::assertSame(['+216 30 010 123'], array_column($this->jsonList(), 'phone'), 'the list answers it as the record does');
+        $this->sendJson('PUT', $this->path($id), [...$this->customer(['phone' => $answered['phone'], 'billingCountryCode' => 'FR']), 'version' => $answered['version']]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['+216 30 010 123', $answered['version'], false], [$this->json()['phone'], $this->json()['version'], $this->json()['toCheck']], 'nothing was written');
+        self::assertSame('+21630010123', $this->em()->getConnection()->fetchOne('SELECT phone FROM customer WHERE id = ?', [$id]));
+    }
+
+    /**
      * A phone is read by its customer's country, the company's when the address names none, kept as E.164 whatever way
      * it was written, refused with its country's example when its length is wrong, and « À vérifier » when it has the
      * length but lies outside the numbers handed out. A stored value is judged only once it changes (row 208).
@@ -177,7 +202,7 @@ final class CustomersTest extends ApiTestCase
         $this->postJson($this->path(), $this->customer(['phone' => "71\u{00A0}900 868"]));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
-        self::assertSame(['+21671900868', false], [$this->json()['phone'], $this->json()['toCheck']], 'a national number read in the company\'s country');
+        self::assertSame(['+216 71 900 868', false], [$this->json()['phone'], $this->json()['toCheck']], 'a national number read in the company\'s country');
 
         $this->sendJson('PUT', $this->path($id), [...$this->customer(['phone' => '71 900']), 'version' => $this->json()['version']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -185,7 +210,7 @@ final class CustomersTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path($id), [...$this->customer(['phone' => '0033 1 23 45 67 89', 'billingCountryCode' => 'TN']), 'version' => 1]);
         self::assertResponseIsSuccessful();
-        self::assertSame('+33123456789', $this->json()['phone'], '« 00 » names another country');
+        self::assertSame('+33 1 23 45 67 89', $this->json()['phone'], '« 00 » names another country');
 
         // A phone kept before the rule, which it would refuse, is accepted while it is sent back unchanged.
         $this->em()->getConnection()->executeStatement("UPDATE customer SET phone = '71 900' WHERE id = ?", [$id]);
@@ -195,13 +220,13 @@ final class CustomersTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path($id), [...$this->customer(['phone' => '+216 11 111 111', 'toCheck' => false]), 'version' => 3]);
         self::assertResponseIsSuccessful();
-        self::assertSame(['+21611111111', true], [$this->json()['phone'], $this->json()['toCheck']], 'the length of a number, outside the ones handed out');
+        self::assertSame(['+216 11111111', true], [$this->json()['phone'], $this->json()['toCheck']], 'the length of a number, outside the ones handed out');
         self::assertStringContainsString('+216 11111111', $this->stringAt($this->json(), 'checkNote'), 'the number outside the plan, grouped as far as its code goes');
 
         // The person who looked takes the mark off; the same number sent back, written either way, leaves it off.
         $this->sendJson('PUT', $this->path($id), [...$this->customer(['phone' => '+216 11 111 111', 'toCheck' => false]), 'version' => 4]);
         self::assertResponseIsSuccessful();
-        self::assertSame(['+21611111111', false], [$this->json()['phone'], $this->json()['toCheck']]);
+        self::assertSame(['+216 11111111', false], [$this->json()['phone'], $this->json()['toCheck']]);
     }
 
     /**

@@ -67,15 +67,7 @@ final readonly class LibPhoneNumbers implements PhoneNumbers
 
     public function grouped(string $stored): string
     {
-        if (1 !== preg_match('/^\+[1-9][0-9]{6,14}$/D', $stored)) {
-            return $stored;
-        }
-        $util = PhoneNumberUtil::getInstance();
-        try {
-            return $util->format($util->parse($stored, 'ZZ'), PhoneNumberFormat::INTERNATIONAL);
-        } catch (NumberParseException) {
-            return $stored;
-        }
+        return GroupedPhones::of($stored);
     }
 
     public function doubt(string $stored): string

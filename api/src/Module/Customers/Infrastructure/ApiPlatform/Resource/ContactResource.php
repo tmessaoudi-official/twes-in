@@ -23,6 +23,7 @@ use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\RemoveContac
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Processor\ReviseContactProcessor;
 use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\ContactCollectionProvider;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Intl\GroupedPhones;
 use App\Shared\Infrastructure\Validation\ContactRule;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -109,7 +110,7 @@ final class ContactResource
         $details = $contact->getDetails();
         $resource = new self();
         $resource->id = $contact->getId()->toRfc4122();
-        [$resource->firstName, $resource->lastName, $resource->email, $resource->phone, $resource->role] = [$details->firstName, $details->lastName, $details->email, $details->phone, $details->role];
+        [$resource->firstName, $resource->lastName, $resource->email, $resource->phone, $resource->role] = [$details->firstName, $details->lastName, $details->email, GroupedPhones::of($details->phone), $details->role];
         $resource->isPrimary = $contact->isPrimary();
         $resource->version = $contact->getVersion();
 

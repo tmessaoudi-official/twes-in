@@ -30,6 +30,7 @@ use App\Module\Customers\Infrastructure\ApiPlatform\State\Provider\CustomerItemP
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Intl\GroupedPhones;
 use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -282,7 +283,7 @@ final class CustomerResource
         $resource->legalName = $profile->legalName;
         $resource->identifiers = $profile->identifiers;
         $resource->email = $profile->email;
-        $resource->phone = $profile->phone;
+        $resource->phone = GroupedPhones::of($profile->phone);
         $resource->website = $profile->website;
         [$resource->billingAddressLine1, $resource->billingAddressLine2, $resource->billingPostalCode, $resource->billingCity, $resource->billingCountryCode] = $profile->billingAddress->parts();
         [$resource->shippingAddressLine1, $resource->shippingAddressLine2, $resource->shippingPostalCode, $resource->shippingCity, $resource->shippingCountryCode] = $profile->shippingAddress?->parts() ?? [null, null, null, null, null];

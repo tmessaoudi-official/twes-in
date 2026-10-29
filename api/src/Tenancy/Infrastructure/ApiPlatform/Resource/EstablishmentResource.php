@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Intl\GroupedPhones;
 use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Domain\Model\Establishment;
@@ -131,7 +132,7 @@ final class EstablishmentResource
         $resource->addressLine2 = $establishment->getAddressLine2();
         $resource->postalCode = $establishment->getPostalCode();
         $resource->city = $establishment->getCity();
-        $resource->phone = $establishment->getPhone();
+        $resource->phone = GroupedPhones::of($establishment->getPhone());
         $resource->email = $establishment->getEmail();
         $resource->isDefault = $establishment->isDefault();
         $resource->codePattern = $codePattern;

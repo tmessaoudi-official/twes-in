@@ -33,6 +33,7 @@ use App\Module\Purchases\Infrastructure\ApiPlatform\State\Provider\PurchaseOrder
 use App\Module\Purchases\Infrastructure\ApiPlatform\State\Provider\PurchaseOrderItemProvider;
 use App\Shared\Application\ListLimits;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Intl\GroupedPhones;
 use App\Shared\Infrastructure\Validation\ListLimit;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
@@ -340,7 +341,7 @@ final class PurchaseOrderResource
         $resource->vendorName = $order->getVendorName();
         $resource->establishmentId = $order->getEstablishment()->getId()->toRfc4122();
         $snapshot = $order->getVendorSnapshot();
-        $resource->vendorSnapshot = null === $snapshot ? null : ['identifiers' => new \ArrayObject($snapshot->identifiers)] + $snapshot->toArray();
+        $resource->vendorSnapshot = null === $snapshot ? null : ['identifiers' => new \ArrayObject($snapshot->identifiers), 'phone' => GroupedPhones::of($snapshot->phone)] + $snapshot->toArray();
         $resource->issueDate = $order->getIssueDate()?->format('Y-m-d');
         $resource->expectedOn = $header->expectedOn?->format('Y-m-d');
         $resource->remarksPrinted = $header->remarksPrinted;
