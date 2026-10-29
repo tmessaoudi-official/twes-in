@@ -203,7 +203,8 @@ test('a phone is typed beside its country, found by name, and reads back into th
     await page.getByTestId('record-save').click();
     await proveIfAsked(page, OPERATOR_PASSWORD, toast(page));
     await expect(toast(page)).toContainText('Le profil a été enregistré.');
-    expect((await currentProfile(page))['phone']).toBe('+33612345678');
+    // Kept in international form with its groups apart for reading, as every phone is saved.
+    expect((await currentProfile(page))['phone']).toBe('+33 6 12 34 56 78');
 
     await page.reload();
     await expect(page.getByTestId('field-phone-country')).toContainText('+33');
