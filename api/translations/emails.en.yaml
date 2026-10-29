@@ -103,6 +103,8 @@ notification:
         membership_role_changed: 'Role changed'
         membership_removed: 'Removed from a company'
         invitation_expired: 'Invitation expired'
+        subscription_set: 'Subscription changed'
+        subscription_stopped: 'Subscription stopped'
         signup_awaiting_approval: 'Company waiting for approval'
     types:
         invitation_accepted: '%display_name% joined the company.'
@@ -129,6 +131,8 @@ notification:
         membership_role_changed: 'Your role in %company% is now “%label%”: what you may see and do there has changed.'
         membership_removed: 'You are no longer a member of %company% and can no longer reach it. To return, ask one of its owners to invite you again.'
         invitation_expired: 'The invitation sent to %email% to join %company% expired unused. You may send it again from “Members”.'
+        subscription_set: 'The platform changed the subscription of %company%: what you pay, or until when, is under “Subscription”.'
+        subscription_stopped: 'The platform stopped the subscription of %company%: no payment is expected any more, and access stays whole.'
         signup_awaiting_approval: '%company% (%email%) signed up and waits for your approval on the platform page.'
     open: 'Open %product%'
     why: 'You receive this e-mail because « %kind% » is also sent to you by e-mail.'

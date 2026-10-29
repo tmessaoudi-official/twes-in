@@ -105,6 +105,8 @@ notification:
         membership_role_changed: 'تغيّر الدور'
         membership_removed: 'إزالة من شركة'
         invitation_expired: 'انتهت صلاحية دعوة'
+        subscription_set: 'تغيّر الاشتراك'
+        subscription_stopped: 'أُوقف الاشتراك'
         signup_awaiting_approval: 'شركة في انتظار الموافقة'
     types:
         invitation_accepted: 'انضمّ %display_name% إلى الشركة.'
@@ -131,6 +133,8 @@ notification:
         membership_role_changed: 'أصبح دورك في %company% الآن «%label%»: تغيّر ما يمكنك رؤيته وفعله فيها.'
         membership_removed: 'لم تعد عضوًا في %company% ولم يعد بإمكانك الوصول إليها. للعودة، اطلب من أحد مالكيها دعوتك من جديد.'
         invitation_expired: 'انتهت صلاحية الدعوة المرسلة إلى %email% للانضمام إلى %company% دون استخدامها. يمكنك إرسالها من جديد من «الأعضاء».'
+        subscription_set: 'غيّرت المنصّة اشتراك %company%: ما تدفعه، أو حتّى متى، تجده في «الاشتراك».'
+        subscription_stopped: 'أوقفت المنصّة اشتراك %company%: لم يعد أيّ دفع منتظرًا، ويبقى الوصول كاملًا.'
         signup_awaiting_approval: 'سجّلت %company% (%email%) وهي في انتظار موافقتك في صفحة المنصّة.'
     open: 'فتح %product%'
     why: 'تصلك هذه الرسالة لأن « %kind% » يُرسل إليك أيضًا بالبريد الإلكتروني.'

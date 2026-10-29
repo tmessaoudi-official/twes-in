@@ -50,6 +50,8 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'expense.recurring_stopped',
   'subscription.payment_declared',
   'subscription.payment_decided',
+  'subscription.set',
+  'subscription.stopped',
   'module.arrived',
   'support_access.granted',
   'support_access.ended',
@@ -244,6 +246,15 @@ const RECORDS = new Map<string, NotificationRecord>([
       amounts: ['amount'],
       variant: { field: 'decision', values: ['confirmed', 'refused'] },
     },
+  ],
+  // An owner's: an operator set or stopped what their company pays, which the subscription page says.
+  [
+    'subscription.set',
+    { icon: 'card_membership', route: '/company/subscription', permission: 'subscription.read' },
+  ],
+  [
+    'subscription.stopped',
+    { icon: 'card_membership', route: '/company/subscription', permission: 'subscription.read' },
   ],
   // A module the company asked « Me prévenir » for has arrived: switched on from the modules page.
   [

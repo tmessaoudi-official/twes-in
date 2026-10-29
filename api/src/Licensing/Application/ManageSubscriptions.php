@@ -17,12 +17,16 @@ use App\Audit\Domain\ValueObject\Recorded;
 use App\Licensing\Domain\Model\Subscription;
 use App\Licensing\Domain\Repository\SubscriptionRepository;
 use App\Licensing\Domain\ValueObject\SubscriptionTerms;
+use App\Shared\Application\Notification;
+use App\Shared\Application\Notifications;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Repository\CompanyRepository;
+use App\Tenancy\Domain\Repository\MembershipRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -44,6 +48,8 @@ final readonly class ManageSubscriptions implements DeclaresAuditActions
         private ClockInterface $clock,
         private Transactions $transactions,
         private RecordVersions $versions,
+        private MembershipRepository $memberships,
+        private Notifications $notifications,
     ) {
     }
 
@@ -80,7 +86,11 @@ final readonly class ManageSubscriptions implements DeclaresAuditActions
                 $subscription->revise($terms, $now);
             }
             $this->subscriptions->save($subscription);
-            $this->record($subscription, self::SET, $operatorId, ['fields' => self::changed($before, $terms)]);
+            $changed = self::changed($before, $terms);
+            $this->record($subscription, self::SET, $operatorId, ['fields' => $changed]);
+            if (null === $before || [] !== $changed) {
+                $this->tellOwners($company, self::SET);
+            }
 
             return $subscription;
         });
@@ -103,7 +113,27 @@ final readonly class ManageSubscriptions implements DeclaresAuditActions
             $this->versions->expect($subscription, $version);
             $this->record($subscription, self::STOPPED, $operatorId, ['fields' => self::changed($subscription->getTerms(), null)]);
             $this->subscriptions->remove($subscription);
+            $this->tellOwners($company, self::STOPPED);
         });
+    }
+
+    /**
+     * What the company pays, or until when, is its owners' business, and the platform changed it: each is told, and the
+     * subscription page says what it now is. Terms set again unchanged tell nothing.
+     */
+    private function tellOwners(Company $company, string $type): void
+    {
+        foreach ($this->memberships->ofCompany($company->getId()) as $membership) {
+            if (Role::OWNER !== $membership->getRole()->getName()) {
+                continue;
+            }
+            $this->notifications->publish(new Notification(
+                'user:'.$membership->getUser()->getId()->toRfc4122(),
+                $type,
+                ['company' => $company->getName()],
+                $company->getId()->toRfc4122(),
+            ));
+        }
     }
 
     /** @param array<string, mixed> $changes */
@@ -136,8 +166,9 @@ final readonly class ManageSubscriptions implements DeclaresAuditActions
     {
         return [
             'period' => null === $terms ? null : $terms->period->count.' '.$terms->period->unit->value,
-            'trialEndsAt' => $terms?->trialEndsAt?->format(\DATE_ATOM),
-            'paidUntil' => $terms?->paidUntil?->format(\DATE_ATOM),
+            // The instant, not its writing: terms read back from the database come in another time zone than those typed.
+            'trialEndsAt' => $terms?->trialEndsAt?->getTimestamp(),
+            'paidUntil' => $terms?->paidUntil?->getTimestamp(),
             'price' => $terms?->price,
             'currency' => $terms?->currency,
             'graceDays' => $terms?->graceDays,

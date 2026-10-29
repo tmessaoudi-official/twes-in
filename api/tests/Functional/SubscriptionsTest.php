@@ -15,6 +15,8 @@ use App\Licensing\Domain\ValueObject\BillingPeriod;
 use App\Licensing\Domain\ValueObject\PeriodUnit;
 use App\Licensing\Domain\ValueObject\SubscriptionTerms;
 use App\Tenancy\Domain\Model\Company;
+use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -102,6 +104,38 @@ final class SubscriptionsTest extends ApiTestCase
             ['fields' => ['trialEndsAt', 'paidUntil', 'price', 'currency', 'graceDays']],
             ['fields' => ['period', 'paidUntil', 'price', 'currency', 'graceDays']],
         ], $changes);
+    }
+
+    /** What the company pays, or until when, is the owners' business: each is told when an operator changes or stops it. */
+    public function testTheOwnersAreToldWhenAnOperatorSetsOrStopsTheirSubscription(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('owner@twes.local', 'password-1234', $company);
+        $coOwner = $this->createUser('co-owner@twes.local', 'password-1234');
+        $role = $this->em()->getRepository(Role::class)->findOneBy(['name' => Role::OWNER, 'company' => $company]);
+        self::assertInstanceOf(Role::class, $role);
+        $acme = $this->em()->find(Company::class, $company->getId());
+        self::assertInstanceOf(Company::class, $acme);
+        $this->em()->persist(new Membership($coOwner, $acme, $role));
+        $this->em()->flush();
+        $this->createUser('clerk@twes.local', 'password-1234', $company, ['sale.write'], 'clerk');
+
+        $this->subscribe($company, ['paidThrough' => $this->daysFromToday(30)]);
+        $this->subscribe($company, ['paidThrough' => $this->daysFromToday(30)]);
+        self::assertSame(['{"fields": ["period", "paidUntil"]}', '{"fields": []}'], $this->em()->getConnection()->fetchFirstColumn("SELECT changes FROM audit_log WHERE action = 'subscription.set' ORDER BY at, id"), 'the same terms again change nothing, though read back in another time zone');
+        $this->sendJson('DELETE', $this->subscriptionOf($company).'?version='.$this->seen($company));
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        $told = $this->em()->getConnection()->fetchAllAssociative(
+            "SELECT u.email, i.type, i.company_id, i.payload FROM inbox_item i JOIN \"user\" u ON u.id = i.recipient_id WHERE i.type LIKE 'subscription.%' ORDER BY i.type, u.email",
+        );
+        $expected = [];
+        foreach (['subscription.set', 'subscription.stopped'] as $type) {
+            foreach (['co-owner@twes.local', 'owner@twes.local'] as $email) {
+                $expected[] = ['email' => $email, 'type' => $type, 'company_id' => $company->getId()->toRfc4122(), 'payload' => '{"company":"Acme"}'];
+            }
+        }
+        self::assertSame($expected, $told, 'each owner, once per change: terms set again unchanged tell nothing, and the clerk is not told');
     }
 
     /** Stopping erases the terms, so it names the version it was read at, as every delete of an edited record does. */

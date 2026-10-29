@@ -161,6 +161,19 @@ final class NotificationMailTest extends ApiTestCase
         self::assertStringContainsString("L’invitation envoyée à lea@example.com pour rejoindre Acme a expiré sans être utilisée. Vous pouvez l’envoyer à nouveau depuis «\u{a0}Membres\u{a0}».", $this->bodiesTo()['owner@twes.local']);
     }
 
+    public function testTermsThePlatformSetOrStoppedSayWhereToReadThemOrWhatFollows(): void
+    {
+        $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);
+        $other = $this->member('other@twes.local', 'en', Role::OWNER, null);
+        $this->tell($owner, 'subscription.set', ['company' => 'Acme']);
+        $this->tell($other, 'subscription.stopped', ['company' => 'Acme']);
+        self::assertSame(2, $this->deliverQueued());
+
+        $bodies = $this->bodiesTo();
+        self::assertStringContainsString("La plateforme a modifié l’abonnement de Acme\u{a0}: ce que vous payez, ou jusqu’à quand, est dans «\u{a0}Abonnement\u{a0}».", $bodies['owner@twes.local']);
+        self::assertStringContainsString('The platform stopped the subscription of Acme: no payment is expected any more, and access stays whole.', $bodies['other@twes.local']);
+    }
+
     public function testADayAndAMomentAreWrittenAsTheReaderChoseAndEachReaderInTurnGetsTheirOwn(): void
     {
         $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);
