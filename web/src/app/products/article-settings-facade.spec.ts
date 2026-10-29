@@ -57,6 +57,18 @@ describe('ArticleSettings', () => {
     });
   });
 
+  it('stores and forgets a role’s own value at the role level, naming the role', async () => {
+    const role = { roleId: 'r1' };
+    const change = { key: 'stock.sale_without_stock', value: 'refuse', version: 0 };
+
+    expect(await facade.save('c1', role, [change])).toBe(true);
+    expect(await facade.reset('c1', role, change.key)).toBe(true);
+
+    expect(api.changeAll).toHaveBeenCalledWith('c1', 'role', [change], role);
+    expect(api.reset).toHaveBeenCalledWith('c1', change.key, 'role', undefined, role);
+    expect(api.chain).toHaveBeenCalledWith('c1', 'articles', role);
+  });
+
   it('names what the API refused', async () => {
     api.changeAll.mockRejectedValue(new SettingsRefused('invalid'));
 

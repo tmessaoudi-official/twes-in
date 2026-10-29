@@ -144,6 +144,45 @@ final class SettingsTest extends ApiTestCase
         self::assertSame('dark', $this->row('presentation.scheme')['value']);
     }
 
+    public function testAnotherRolesChainIsReadAsThatRoleSeesIt(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $clerk = new Role('clerk', ['company.read'], $this->company);
+        $this->em()->persist($clerk);
+        $this->em()->flush();
+        $this->sendJson('PUT', $this->path().'/presentation.scheme', ['level' => 'role', 'roleId' => $clerk->getId()->toRfc4122(), 'value' => 'dark']);
+        self::assertResponseIsSuccessful();
+
+        $this->getJson($this->path().'?chain=presentation&roleId='.$clerk->getId()->toRfc4122());
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('dark', $this->row('presentation.scheme')['value']);
+        self::assertSame('role', $this->row('presentation.scheme')['source']);
+        $writable = $this->row('presentation.scheme')['writableLevels'];
+        self::assertIsArray($writable);
+        self::assertContains('role', $writable);
+        $this->getJson($this->path().'?chain=presentation');
+        self::assertNotSame('dark', $this->row('presentation.scheme')['value'], 'the caller reads their own role, not the clerk\'s');
+    }
+
+    public function testOnlyWhoSetsTheCompanysDefaultsReadsAnotherRolesChain(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company, ['company.read', 'company.settings'], 'settings-owner');
+        $clerk = new Role('clerk', ['company.read'], $this->company);
+        $foreign = new Role('clerk', ['company.read'], $this->createCompany('Globex'));
+        $this->em()->persist($clerk);
+        $this->em()->persist($foreign);
+        $this->em()->flush();
+        $this->signedIn(['company.read']);
+
+        $this->getJson($this->path().'?chain=presentation&roleId='.$clerk->getId()->toRfc4122());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->login('owner@twes.local', 'password-1234');
+        $this->getJson($this->path().'?chain=presentation&roleId='.$foreign->getId()->toRfc4122());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testARoleOfAnotherCompanyIsNotFound(): void
     {
         $this->signedIn(['company.read', 'company.settings']);

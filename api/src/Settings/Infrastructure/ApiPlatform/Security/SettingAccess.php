@@ -100,24 +100,33 @@ final readonly class SettingAccess
     /**
      * The caller in the company: their role there, when they hold one (an operator may not), and themselves; and, when
      * one is named, the subject the chain is read for: a customer (with its group) or a customer group, a product (with
-     * its category) or a product category, or an establishment. A read names one subject at most, whatever its chain.
+     * its category) or a product category, or an establishment; or another role, read as that role sees it by whoever
+     * sets the company's defaults, which is how its own values are shown to be changed. A read names one subject at
+     * most, whatever its chain.
      */
-    public function contextOf(Company $company, ?string $customerId = null, ?string $customerGroupId = null, ?string $productId = null, ?string $productCategoryId = null, ?string $establishmentId = null): SettingContext
+    public function contextOf(Company $company, ?string $customerId = null, ?string $customerGroupId = null, ?string $productId = null, ?string $productCategoryId = null, ?string $establishmentId = null, ?string $roleId = null): SettingContext
     {
-        $userId = $this->callerId();
-        $roleId = $this->memberships->ofUserInCompany($userId, $company->getId())?->getRole()->getId();
         $named = [];
-        foreach (['customerId' => $customerId, 'customerGroupId' => $customerGroupId, 'productId' => $productId, 'productCategoryId' => $productCategoryId, 'establishmentId' => $establishmentId] as $name => $identifier) {
+        foreach (['customerId' => $customerId, 'customerGroupId' => $customerGroupId, 'productId' => $productId, 'productCategoryId' => $productCategoryId, 'establishmentId' => $establishmentId, 'roleId' => $roleId] as $name => $identifier) {
             $value = self::named($identifier);
             if (null !== $value) {
                 $named[$name] = $value;
             }
         }
-        if ([] === $named) {
-            return new SettingContext($company, $roleId, $userId);
-        }
         if (\count($named) > 1) {
             throw new BadRequestHttpException(implode(', ', array_keys($named)).': name one subject, not several.');
+        }
+        if (isset($named['roleId'])) {
+            if (!$this->mayShare($company)) {
+                throw new NotFoundHttpException('No such role.');
+            }
+
+            return $this->contextOfRole($company, $named['roleId']);
+        }
+        $userId = $this->callerId();
+        $roleId = $this->memberships->ofUserInCompany($userId, $company->getId())?->getRole()->getId();
+        if ([] === $named) {
+            return new SettingContext($company, $roleId, $userId);
         }
         $name = array_key_first($named);
         $id = Uuid::isValid($named[$name]) ? Uuid::fromString($named[$name]) : null;

@@ -180,5 +180,8 @@
         </div>
       }
     </form>
+    @if (defaultsSubject(); as subject) {
+      <app-article-defaults [subject]="subject" />
+    }
   }
 </section>

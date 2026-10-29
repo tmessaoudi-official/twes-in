@@ -12,13 +12,15 @@ import type {
   VersionedSettingChange,
 } from '../shared/settings/settings-types';
 
-/** The level a product's, a product category's or an establishment's own values are stored at. */
+/** The level a product's, a product category's, an establishment's or a role's own values are stored at. */
 export const articleLevelOf = (subject: ArticleSubject): SettingLevel =>
   'productId' in subject
     ? 'product'
     : 'establishmentId' in subject
       ? 'establishment'
-      : 'product_category';
+      : 'roleId' in subject
+        ? 'role'
+        : 'product_category';
 
 /** The articles chain as one product, product category or establishment sees it, read and changed at its own level. */
 @Injectable({ providedIn: 'root' })

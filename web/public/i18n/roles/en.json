@@ -35,7 +35,8 @@
       "delete_title": "Delete this role?",
       "delete_message": "The “{{name}}” role goes, with the list of what it permits: nothing puts it back.",
       "keep": "Keep the role",
-      "changed_since": "The “{{name}}” role was changed in the meantime: nothing was deleted. Read it again before deleting it."
+      "changed_since": "The “{{name}}” role was changed in the meantime: nothing was deleted. Read it again before deleting it.",
+      "defaults_intro": "What this role decides where it works, such as selling beyond the stock recorded. A value chosen here prevails over the company’s and the establishment’s."
     }
   }
 }

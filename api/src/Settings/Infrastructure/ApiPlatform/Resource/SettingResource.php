@@ -47,6 +47,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 new Parameter('productId', 'query', 'Read the chain as this product sees it, its category included', false, schema: ['type' => 'string', 'format' => 'uuid']),
                 new Parameter('productCategoryId', 'query', 'Read the chain as this product category sees it', false, schema: ['type' => 'string', 'format' => 'uuid']),
                 new Parameter('establishmentId', 'query', 'Read the chain as this establishment sees it', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                new Parameter('roleId', 'query', 'Read the chain as this role sees it, with company.settings', false, schema: ['type' => 'string', 'format' => 'uuid']),
             ]),
         ),
         new Put(

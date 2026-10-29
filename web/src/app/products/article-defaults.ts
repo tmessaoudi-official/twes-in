@@ -79,7 +79,9 @@ export class ArticleDefaults {
       ? 'products.defaults.intro_product'
       : 'establishmentId' in this.subject()
         ? 'products.defaults.intro_establishment'
-        : 'products.defaults.intro_category',
+        : 'roleId' in this.subject()
+          ? 'company.roles.defaults_intro'
+          : 'products.defaults.intro_category',
   );
   protected readonly writable = computed(() =>
     this.settings.rows().some((row) => row.writableLevels.includes(this.level())),

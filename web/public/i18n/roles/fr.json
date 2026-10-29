@@ -35,7 +35,8 @@
       "delete_title": "Supprimer ce rôle ?",
       "delete_message": "Le rôle « {{name}} » disparaît, avec la liste de ce qu’il permet : rien ne le remet.",
       "keep": "Garder le rôle",
-      "changed_since": "Le rôle « {{name}} » a été modifié entre-temps : rien n’a été supprimé. Relisez-le avant de le supprimer."
+      "changed_since": "Le rôle « {{name}} » a été modifié entre-temps : rien n’a été supprimé. Relisez-le avant de le supprimer.",
+      "defaults_intro": "Ce que ce rôle décide là où il travaille, comme vendre au-delà du stock enregistré. Une valeur choisie ici l’emporte sur celles de la société et de l’établissement."
     }
   }
 }

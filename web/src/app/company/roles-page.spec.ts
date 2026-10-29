@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { signal } from '@angular/core';
+import { Component, input, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import {
@@ -24,6 +24,18 @@ import { Session } from '../shared/session/session';
 import type { RolesError } from './roles-api';
 import { RolesFacade } from './roles-facade';
 import { RolesPage } from './roles-page';
+import { ArticleDefaults } from '../products/article-defaults';
+import type { ArticleSubject } from '../shared/settings/settings-types';
+
+/** Stands in for the defaults card, which reads the settings engine: the page only decides whom it is for. */
+@Component({
+  selector: 'app-article-defaults',
+  template: '<p data-testid="role-defaults" [attr.data-subject]="said()"></p>',
+})
+class DefaultsStub {
+  readonly subject = input.required<ArticleSubject>();
+  protected readonly said = () => JSON.stringify(this.subject());
+}
 import type { PermissionGroupRow, RoleHolders, RoleRow } from './roles-types';
 
 class StaticLoader implements TranslateLoader {
@@ -121,6 +133,7 @@ describe('RolesPage', () => {
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
+    hasModule: vi.fn(),
   };
   let fixture: ComponentFixture<RolesPage>;
 
@@ -152,6 +165,7 @@ describe('RolesPage', () => {
     facade.remove.mockReset().mockResolvedValue(true);
     facade.clearError.mockReset();
     auth.hasPermission.mockReset().mockReturnValue(true);
+    auth.hasModule.mockReset().mockReturnValue(false);
     TestBed.configureTestingModule({
       imports: [RolesPage],
       providers: [
@@ -183,6 +197,43 @@ describe('RolesPage', () => {
     expect(q('role-owner')?.textContent).toContain('2 membre(s)');
     expect(q('role-barista')?.textContent).not.toContain('fourni');
     expect(q('role-barista')?.textContent).toContain('0 membre(s)');
+  });
+
+  // What a role decides at a place is a setting, not a permission: a shipped role has its own values too.
+  it('offers the open role its own defaults, to whoever sets the company’s, where the stock is kept', async () => {
+    auth.hasModule.mockImplementation((key: string) => key === 'inventory');
+    TestBed.overrideComponent(RolesPage, {
+      remove: { imports: [ArticleDefaults] },
+      add: { imports: [DefaultsStub] },
+    });
+    await open();
+    q('role-new')!.click();
+    await settle();
+    expect(q('role-defaults')).toBeNull();
+
+    q('role-open-member')!.click();
+    await settle();
+    expect(q('role-defaults')?.getAttribute('data-subject')).toBe('{"roleId":"r-member"}');
+  });
+
+  it.each([
+    ['without the company’s settings', 'inventory', false],
+    ['without the stock', 'invoices', true],
+  ])('offers no role defaults %s', async (_case, module, settings) => {
+    auth.hasModule.mockImplementation((key: string) => key === module);
+    auth.hasPermission.mockImplementation((permission: string) =>
+      permission === 'company.settings' ? settings : true,
+    );
+    TestBed.overrideComponent(RolesPage, {
+      remove: { imports: [ArticleDefaults] },
+      add: { imports: [DefaultsStub] },
+    });
+    await open();
+    q('role-open-member')!.click();
+    await settle();
+
+    expect(q('role-editor')).not.toBeNull();
+    expect(q('role-defaults')).toBeNull();
   });
 
   it('offers editing and deleting for a custom role only', async () => {

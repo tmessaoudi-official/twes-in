@@ -38,6 +38,8 @@ import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
 import { lengthSaid } from '../shared/form/length-said';
 import { RefusedField } from '../shared/form/refused-field';
+import { ArticleDefaults } from '../products/article-defaults';
+import type { ArticleSubject } from '../shared/settings/settings-types';
 
 /** What a role's name keeps, as the API holds it. */
 const ROLE_NAME_MAX = 64;
@@ -53,6 +55,7 @@ const ROLE_NAME_MAX = 64;
 @Component({
   selector: 'app-roles-page',
   imports: [
+    ArticleDefaults,
     Label,
     CapitalizePipe,
     FormsModule,
@@ -99,6 +102,21 @@ export class RolesPage implements OnInit {
   });
 
   protected readonly creating = computed(() => this.openId() === RolesPage.NEW);
+  /**
+   * The open role's own values of what a role decides at a place (selling beyond the stock), set by whoever sets the
+   * company's defaults; a built-in role has them too, since they are no permission. A new role has none until it exists.
+   */
+  protected readonly defaultsSubject = computed<ArticleSubject | null>(
+    () => {
+      const role = this.open();
+      return role === null ||
+        !this.auth.hasModule('inventory') ||
+        !this.auth.hasPermission('company.settings')
+        ? null
+        : { roleId: role.id };
+    },
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
   protected readonly editorOpen = computed(() => this.openId() !== null);
   protected readonly editable = computed(
     () => this.mayManage() && (this.creating() || this.open()?.builtIn === false),
