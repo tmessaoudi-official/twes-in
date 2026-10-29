@@ -113,6 +113,24 @@ final class NotificationMailTest extends ApiTestCase
         self::assertStringContainsString('à A1 a trouvé un écart de -2 m.', $bodies['lea@twes.local']);
     }
 
+    public function testAModuleThatArrivedIsNamedInItsReadersLanguage(): void
+    {
+        // « Me prévenir » was asked of one module among many: the mail names it, as the bell does.
+        $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);
+        $other = $this->member('other@twes.local', 'ar', Role::OWNER, null);
+        $arrived = ['module' => 'quotes', 'label_key' => 'modules.quotes', 'company' => 'Acme'];
+        $this->tell($owner, 'module.arrived', $arrived);
+        $this->tell($other, 'module.arrived', $arrived);
+        $third = $this->member('third@twes.local', 'en', Role::OWNER, null);
+        $this->tell($third, 'module.arrived', $arrived);
+        self::assertSame(3, $this->deliverQueued());
+
+        $bodies = $this->bodiesTo();
+        self::assertStringContainsString('The module “Quotes” you were waiting for has arrived', $bodies['third@twes.local']);
+        self::assertStringContainsString("Le module «\u{a0}Devis\u{a0}», que vous attendiez, est arrivé", $bodies['owner@twes.local']);
+        self::assertStringContainsString('عروض الأسعار', $bodies['other@twes.local']);
+    }
+
     public function testADayAndAMomentAreWrittenAsTheReaderChoseAndEachReaderInTurnGetsTheirOwn(): void
     {
         $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);
