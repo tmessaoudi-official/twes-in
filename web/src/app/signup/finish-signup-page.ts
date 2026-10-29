@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Select } from '../shared/form/select';
+import { countriesNamed } from '../shared/i18n/country-names';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { SignupFacade } from './signup-facade';
 import { SignedOutLayout } from '../auth/signed-out-layout';
@@ -46,10 +47,11 @@ export class FinishSignupPage implements OnInit {
   protected readonly busy = this.signup.busy;
   protected readonly error = this.signup.error;
   protected readonly countries = computed(() => this.signup.availability()?.countries ?? []);
+  /** Each country as every screen names it, in the order of those names. */
   protected readonly countryOptions = computed(() =>
-    this.countries().map((code) => ({
+    countriesNamed(this.countries(), this.language.current()).map(({ code, label }) => ({
       value: code,
-      label: this.countryName(code),
+      label,
       testId: `signup-country-${code}`,
     })),
   );
@@ -79,10 +81,6 @@ export class FinishSignupPage implements OnInit {
   async ngOnInit(): Promise<void> {
     this.signup.forget();
     await Promise.all([this.signup.loadAvailability(), this.signup.loadLink(this.token())]);
-  }
-
-  protected countryName(code: string): string {
-    return new Intl.DisplayNames([this.language.current()], { type: 'region' }).of(code) ?? code;
   }
 
   protected async submit(): Promise<void> {

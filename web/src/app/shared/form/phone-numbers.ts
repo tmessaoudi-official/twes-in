@@ -10,6 +10,7 @@ import {
 } from 'libphonenumber-js';
 import examples from 'libphonenumber-js/mobile/examples';
 import metadata from 'libphonenumber-js/min/metadata';
+import { countryFlag } from '../i18n/country-names';
 import type { FieldError } from './form-builder';
 import { typedText } from './typed-text';
 
@@ -36,11 +37,6 @@ export interface ReadPhone {
 
 const isCountry = (code: string): code is CountryCode =>
   (getCountries() as readonly string[]).includes(code);
-
-/** A country's flag, drawn by the device from its two regional-indicator letters. */
-function flagOf(code: string): string {
-  return String.fromCodePoint(...[...code].map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65));
-}
 
 /**
  * What was typed with every space plain and no invisible mark: a number copied from a hint, a refusal or a printed
@@ -161,7 +157,7 @@ export function phoneCountries(language: string): readonly PhoneCountry[] {
       const name = names.of(code);
       return name === undefined || name === code
         ? []
-        : [{ code, callingCode: getCountryCallingCode(code), name, flag: flagOf(code) }];
+        : [{ code, callingCode: getCountryCallingCode(code), name, flag: countryFlag(code) }];
     })
     .sort((a, b) => a.name.localeCompare(b.name, locales));
 }

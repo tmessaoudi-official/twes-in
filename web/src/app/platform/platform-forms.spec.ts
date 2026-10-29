@@ -3,7 +3,7 @@
 import type { ListQuery } from '../shared/list/list-types';
 import { ACCOUNTS_LIST, accountSearch, companiesListOf, companySearch } from './platform-forms';
 
-const COMPANIES_LIST = companiesListOf(['FR', 'TN']);
+const COMPANIES_LIST = companiesListOf(['FR', 'TN'], 'fr');
 
 const query = (over: Partial<ListQuery>): ListQuery => ({
   query: '',
@@ -115,15 +115,16 @@ describe('the platform lists', () => {
     });
   });
 
-  // The country filter offers the countries the platform's setting offers, the presets', each named by its texts.
+  // The country filter offers the countries the platform's setting offers, the presets', each named as every screen names
+  // a country: its flag and the browser's name for it, in the screen's language (ruled 2026-10-29).
   it('offers the countries it is given as the companies list country filter, and no others', () => {
-    const filter = companiesListOf(['FR', 'MA', 'TN']).filters?.find(
+    const filter = companiesListOf(['FR', 'MA', 'TN'], 'fr').filters?.find(
       (each) => each.id === 'country',
     );
     expect(filter?.options).toEqual([
-      { value: 'FR', label: 'platform.companies.countries.FR' },
-      { value: 'MA', label: 'platform.companies.countries.MA' },
-      { value: 'TN', label: 'platform.companies.countries.TN' },
+      { value: 'FR', label: '\u{1F1EB}\u{1F1F7} France' },
+      { value: 'MA', label: '\u{1F1F2}\u{1F1E6} Maroc' },
+      { value: 'TN', label: '\u{1F1F9}\u{1F1F3} Tunisie' },
     ]);
   });
 

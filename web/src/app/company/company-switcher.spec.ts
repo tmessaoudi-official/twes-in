@@ -131,6 +131,8 @@ describe('CompanySwitcher', () => {
     // Its lines read as words of their own, not « GlobexTunisie ».
     const words = button?.querySelector('.twes-rail-company-text')?.textContent;
     expect(words?.replace(/\s+/g, ' ').trim()).toMatch(/^Globex \S/);
+    // Its country is named as every screen names one: its flag and the browser's name for it.
+    expect(words).toContain('\u{1F1F9}\u{1F1F3} Tunisie · TND');
   });
 
   it('shows beside each company what waits in it, and on the closed button what waits in the others', async () => {

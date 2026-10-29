@@ -458,7 +458,7 @@
                         ><bdi>{{ company.name }}</bdi></span
                       >
                       <span class="text-sm text-on-surface-variant">
-                        <bdi>{{ company.countryCode }}</bdi> ·
+                        <bdi>{{ countryNamed(company.countryCode) }}</bdi> ·
                         {{
                           'platform.waiting.owners'
                             | translate: { owners: company.owners.join(', ') }
@@ -516,7 +516,6 @@
                     [label]="'platform.companies.country' | translate"
                     [labelInside]="true"
                     [options]="countryOptions()"
-                    [translateLabels]="true"
                     [ngModel]="companyCountry()"
                     (ngModelChange)="companyCountry.set($event)"
                     [ngModelOptions]="{ standalone: true }"
@@ -561,7 +560,7 @@
                       <bdi>{{ company.name }}</bdi>
                     </h3>
                     <span class="text-sm text-on-surface-variant">
-                      {{ 'platform.companies.countries.' + company.countryCode | translate }} ·
+                      <bdi>{{ countryNamed(company.countryCode) }}</bdi> ·
                       {{ 'platform.companies.statuses.' + statusShown(company) | translate }}
                     </span>
                     <span class="text-sm">
@@ -714,7 +713,7 @@
             emptyTestId="platform-companies-empty"
           >
             <ng-template appDataListCell="country" let-row>
-              {{ 'platform.companies.countries.' + row.countryCode | translate }}
+              <bdi>{{ countryNamed(row.countryCode) }}</bdi>
             </ng-template>
             <ng-template appDataListCell="status" let-row>
               <app-status-badge [tone]="tone(row)">

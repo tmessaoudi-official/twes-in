@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { countriesNamed } from '../shared/i18n/country-names';
 import { filterValues } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
@@ -27,9 +28,13 @@ const ACCOUNT_SORT_KEYS: Readonly<
 /**
  * The platform's companies, a page at a time: the API searches, filters and sorts them, so every column that sorts
  * names a key the API knows. Opening one links to the list itself with the company named, which shows its sheet. Its
- * country filter offers the countries given: those the platform's country setting offers, the fiscal presets'.
+ * country filter offers the countries given: those the platform's country setting offers, the fiscal presets', each
+ * as every screen names a country, in the language given.
  */
-export function companiesListOf(countries: readonly string[]): ListDescriptor<PlatformCompanyRow> {
+export function companiesListOf(
+  countries: readonly string[],
+  language: string,
+): ListDescriptor<PlatformCompanyRow> {
   return {
     id: 'platform-companies',
     rowId: (row) => row.id,
@@ -97,9 +102,9 @@ export function companiesListOf(countries: readonly string[]): ListDescriptor<Pl
         label: `${COMPANY_FIELDS}.country`,
         multiple: true,
         value: (row) => row.countryCode,
-        options: countries.map((code) => ({
+        options: countriesNamed(countries, language).map(({ code, label }) => ({
           value: code,
-          label: `platform.companies.countries.${code}`,
+          label,
         })),
       },
     ],

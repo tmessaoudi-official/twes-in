@@ -24,6 +24,7 @@ import { HealthFacade } from '../shared/health/health-facade';
 import { SignupFacade } from '../signup/signup-facade';
 import { AuthFacade } from './auth-facade';
 import type { DemoCountry, LoginError, LoginOutcome } from './auth-types';
+import { countryName } from '../shared/i18n/country-names';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { PasskeyClient } from './passkey-client';
 import { SignedOutLayout } from './signed-out-layout';
@@ -200,8 +201,9 @@ export class LoginPage {
     afterNextRender(() => field()?.nativeElement.focus(), { injector: this.injector });
   }
 
+  /** A country as every screen names it: its flag and the browser's name in the screen's language. */
   protected countryName(code: string): string {
-    return new Intl.DisplayNames([this.language.current()], { type: 'region' }).of(code) ?? code;
+    return countryName(code, this.language.current());
   }
 
   protected async enterDemo(country: string): Promise<void> {

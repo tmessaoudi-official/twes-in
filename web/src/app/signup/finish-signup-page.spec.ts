@@ -121,6 +121,19 @@ describe('FinishSignupPage', () => {
     expect(query('signup-finish-email')?.textContent).toContain('new@example.test');
   });
 
+  // A country named one way everywhere (ruled 2026-10-29): its flag and the browser's name for it.
+  it('offers each country by its flag and its name', async () => {
+    const { fixture } = await render();
+    const options = (
+      fixture.componentInstance as unknown as {
+        countryOptions(): readonly { value: string; label: string }[];
+      }
+    ).countryOptions();
+    expect(options.find((option) => option.value === 'TN')?.label).toBe(
+      '\u{1F1F9}\u{1F1F3} Tunisie',
+    );
+  });
+
   it('finishes with what was typed, in the browser time zone unless another is chosen', async () => {
     const { fixture, query } = await render();
 

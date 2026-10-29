@@ -40,10 +40,6 @@
       "invite": "Invite an owner",
       "invited": "Invitation sent to {{email}}.",
       "none": "No company.",
-      "countries": {
-        "TN": "Tunisia",
-        "FR": "France"
-      },
       "statuses": {
         "pending": "Waiting",
         "active": "Active",

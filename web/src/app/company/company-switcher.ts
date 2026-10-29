@@ -8,6 +8,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { NotificationsFacade } from '../notifications/notifications-facade';
 import { Label } from '../shared/a11y/label';
+import { countryName } from '../shared/i18n/country-names';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { CountBadge } from '../shared/ui/count-badge';
 import { companyLogoUrl } from './company-api';
@@ -64,15 +65,11 @@ export class CompanySwitcher implements OnInit {
     () => [...(this.current()?.name.trim() ?? '')][0]?.toLocaleUpperCase() ?? '?',
   );
 
-  /** « Tunisie · TND »: the country in the interface's language, and the currency the company counts in. */
+  /** « 🇹🇳 Tunisie · TND »: the country as every screen names it, and the currency the company counts in. */
   protected readonly where = computed(() => {
     const company = this.current();
     if (company === null) return '';
-    // The API keeps an ISO 3166 alpha-2 code, which Intl names in every supported language.
-    const country = new Intl.DisplayNames([this.language.current()], { type: 'region' }).of(
-      company.countryCode,
-    );
-    return `${country ?? company.countryCode} · ${company.currency}`;
+    return `${countryName(company.countryCode, this.language.current())} · ${company.currency}`;
   });
 
   /**

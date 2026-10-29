@@ -179,7 +179,6 @@ class StaticLoader implements TranslateLoader {
             'Invitation de propriétaire envoyée à {{email}}, valable jusqu’au {{day}}.',
           owner_invitation_expired:
             'L’invitation de propriétaire envoyée à {{email}} a expiré le {{day}} : invitez de nouveau.',
-          countries: { TN: 'Tunisie', FR: 'France' },
           statuses: {
             pending: 'En attente',
             active: 'Active',
@@ -654,7 +653,8 @@ describe('PlatformPage', () => {
 
     const line = query('waiting-Nouvelle Société')!;
     expect(line.textContent).toContain('Nouvelle Société');
-    expect(line.textContent).toContain('TN');
+    // A country is named one way everywhere (ruled 2026-10-29): its flag and the browser's name, no text of ours.
+    expect(line.textContent).toContain('\u{1F1F9}\u{1F1F3} Tunisie');
     expect(line.textContent).toContain('nadia@example.test');
     expect(query('platform-waiting-empty')).toBeNull();
   });
@@ -732,6 +732,10 @@ describe('PlatformPage', () => {
     const { fixture, query } = await render('/?tab=companies&company=c1');
 
     const sheet = query('company-sheet-Nouvelle Société')!;
+    expect(sheet.textContent).toContain('\u{1F1F9}\u{1F1F3} Tunisie');
+    expect(
+      query('company-Nouvelle Société')!.querySelector('[data-column="country"]')?.textContent,
+    ).toContain('\u{1F1F9}\u{1F1F3} Tunisie');
     expect(sheet.querySelector('[data-testid="document-action-approve"]')).toBeNull();
     // Rare, so behind the bar's « ⋮ » rather than under the pointer.
     expect(sheet.querySelector('[data-testid="document-action-suspend"]')).toBeNull();
@@ -1473,6 +1477,10 @@ describe('PlatformPage', () => {
       document.body.querySelectorAll('[data-testid^="platform-company-country-option-"]'),
     ).map((option) => option.getAttribute('data-testid')!.slice(-2));
     expect(offered).toEqual(['FR', 'MA', 'TN']);
+    expect(
+      document.body.querySelector('[data-testid="platform-company-country-option-MA"]')
+        ?.textContent,
+    ).toContain('\u{1F1F2}\u{1F1E6} Maroc');
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
     fixture.detectChanges();
     await fixture.whenStable();

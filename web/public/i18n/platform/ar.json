@@ -40,10 +40,6 @@
       "invite": "دعوة مالك",
       "invited": "أُرسلت الدعوة إلى {{email}}.",
       "none": "لا شركة.",
-      "countries": {
-        "TN": "تونس",
-        "FR": "فرنسا"
-      },
       "statuses": {
         "pending": "في الانتظار",
         "active": "نشطة",

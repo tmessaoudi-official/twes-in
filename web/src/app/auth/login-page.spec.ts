@@ -245,7 +245,8 @@ describe('LoginPage', () => {
     const { query } = await render(false, DEMO_OPEN);
 
     expect(query('login-demo')?.textContent).toContain('Essayer la démo');
-    expect(query('login-demo-TN')?.textContent).toContain('Tunisie');
+    // A country named one way everywhere: its flag and the browser's name for it.
+    expect(query('login-demo-TN')?.textContent).toContain('\u{1F1F9}\u{1F1F3} Tunisie');
     expect(query('login-demo-TN')?.textContent).toContain('Carthage Conseil');
     expect(query('login-demo-FR')?.textContent).toContain('France');
     expect(query('login-demo-FR')?.textContent).toContain('Atelier Mercier');
