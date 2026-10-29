@@ -95,6 +95,25 @@ final readonly class DoctrineInvitationRepository implements InvitationRepositor
         return $unused;
     }
 
+    public function runOutUntold(\DateTimeImmutable $now, int $limit): array
+    {
+        /** @var list<Invitation> $runOut */
+        $runOut = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invitation::class, 'i')
+            ->where('i.acceptedAt IS NULL')
+            ->andWhere('i.runOutToldAt IS NULL')
+            ->andWhere('i.expiresAt < :now')
+            ->orderBy('i.expiresAt', 'ASC')
+            ->addOrderBy('i.id', 'ASC')
+            ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        return $runOut;
+    }
+
     public function save(Invitation $invitation): void
     {
         $this->entityManager->persist($invitation);

@@ -40,6 +40,12 @@ interface InvitationRepository
      */
     public function unusedOfCompanies(array $companyIds, \DateTimeImmutable $expiredSince): array;
 
+    /**
+     * @return list<Invitation> of every company, the invitations nobody used that ran out by $now and whose sender was not
+     *                          yet told, the earliest run out first, at most $limit
+     */
+    public function runOutUntold(\DateTimeImmutable $now, int $limit): array;
+
     public function save(Invitation $invitation): void;
 
     /** Inviting the same address again replaces the open invitation, so exactly one token ever works. */

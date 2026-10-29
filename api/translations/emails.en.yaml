@@ -102,6 +102,7 @@ notification:
         support_access_ended: 'Support access closed'
         membership_role_changed: 'Role changed'
         membership_removed: 'Removed from a company'
+        invitation_expired: 'Invitation expired'
         signup_awaiting_approval: 'Company waiting for approval'
     types:
         invitation_accepted: '%display_name% joined the company.'
@@ -127,6 +128,7 @@ notification:
         support_access_ended: '%by% closed the platform support’s access to %company%.'
         membership_role_changed: 'Your role in %company% is now “%label%”: what you may see and do there has changed.'
         membership_removed: 'You are no longer a member of %company% and can no longer reach it. To return, ask one of its owners to invite you again.'
+        invitation_expired: 'The invitation sent to %email% to join %company% expired unused. You may send it again from “Members”.'
         signup_awaiting_approval: '%company% (%email%) signed up and waits for your approval on the platform page.'
     open: 'Open %product%'
     why: 'You receive this e-mail because « %kind% » is also sent to you by e-mail.'

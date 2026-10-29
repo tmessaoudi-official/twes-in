@@ -104,6 +104,7 @@ notification:
         support_access_ended: 'أُغلق وصول الدعم'
         membership_role_changed: 'تغيّر الدور'
         membership_removed: 'إزالة من شركة'
+        invitation_expired: 'انتهت صلاحية دعوة'
         signup_awaiting_approval: 'شركة في انتظار الموافقة'
     types:
         invitation_accepted: 'انضمّ %display_name% إلى الشركة.'
@@ -129,6 +130,7 @@ notification:
         support_access_ended: 'أغلق %by% وصول دعم المنصّة إلى %company%.'
         membership_role_changed: 'أصبح دورك في %company% الآن «%label%»: تغيّر ما يمكنك رؤيته وفعله فيها.'
         membership_removed: 'لم تعد عضوًا في %company% ولم يعد بإمكانك الوصول إليها. للعودة، اطلب من أحد مالكيها دعوتك من جديد.'
+        invitation_expired: 'انتهت صلاحية الدعوة المرسلة إلى %email% للانضمام إلى %company% دون استخدامها. يمكنك إرسالها من جديد من «الأعضاء».'
         signup_awaiting_approval: 'سجّلت %company% (%email%) وهي في انتظار موافقتك في صفحة المنصّة.'
     open: 'فتح %product%'
     why: 'تصلك هذه الرسالة لأن « %kind% » يُرسل إليك أيضًا بالبريد الإلكتروني.'

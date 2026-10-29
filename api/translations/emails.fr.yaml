@@ -103,6 +103,7 @@ notification:
         support_access_ended: 'Accès du support fermé'
         membership_role_changed: 'Rôle changé'
         membership_removed: 'Retrait d’une entreprise'
+        invitation_expired: 'Invitation expirée'
         signup_awaiting_approval: 'Entreprise en attente d’approbation'
     types:
         invitation_accepted: '%display_name% a rejoint l’entreprise.'
@@ -128,6 +129,7 @@ notification:
         support_access_ended: '%by% a fermé l’accès du support de la plateforme à %company%.'
         membership_role_changed: 'Votre rôle dans %company% est maintenant « %label% » : ce que vous pouvez y voir et y faire a changé.'
         membership_removed: 'Vous ne faites plus partie de %company% : vous n’y avez plus accès. Pour y revenir, demandez à l’un de ses propriétaires de vous inviter à nouveau.'
+        invitation_expired: 'L’invitation envoyée à %email% pour rejoindre %company% a expiré sans être utilisée. Vous pouvez l’envoyer à nouveau depuis « Membres ».'
         signup_awaiting_approval: '%company% (%email%) s’est inscrite et attend votre approbation dans la page de la plateforme.'
     open: 'Ouvrir %product%'
     why: 'Vous recevez cet e-mail parce que « %kind% » vous est aussi envoyé par e-mail.'

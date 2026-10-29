@@ -74,6 +74,13 @@ class Invitation implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $mailFailedAt = null;
 
+    /**
+     * When whoever sent it was told it ran out unused; null until then, so they are told once, whichever run of the worker
+     * comes first after it ran out.
+     */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $runOutToldAt = null;
+
     public function __construct(
         Company $company,
         Email $email,
@@ -173,5 +180,16 @@ class Invitation implements CompanyOwned
     public function getMailFailedAt(): ?\DateTimeImmutable
     {
         return $this->mailFailedAt;
+    }
+
+    /** Its sender was told it ran out unused, or there was nobody left to tell: either way it is not asked again. */
+    public function runOutTold(\DateTimeImmutable $now): void
+    {
+        $this->runOutToldAt = $now;
+    }
+
+    public function getRunOutToldAt(): ?\DateTimeImmutable
+    {
+        return $this->runOutToldAt;
     }
 }

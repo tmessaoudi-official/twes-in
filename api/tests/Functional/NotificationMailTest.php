@@ -152,6 +152,15 @@ final class NotificationMailTest extends ApiTestCase
         self::assertStringContainsString("Vous ne faites plus partie de Acme\u{a0}: vous n’y avez plus accès.", $bodies['gone@twes.local']);
     }
 
+    public function testAnInvitationThatRanOutTellsItsSenderWhereToSendItAgain(): void
+    {
+        $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);
+        $this->tell($owner, 'invitation.expired', ['company' => 'Acme', 'email' => 'lea@example.com']);
+        self::assertSame(1, $this->deliverQueued());
+
+        self::assertStringContainsString("L’invitation envoyée à lea@example.com pour rejoindre Acme a expiré sans être utilisée. Vous pouvez l’envoyer à nouveau depuis «\u{a0}Membres\u{a0}».", $this->bodiesTo()['owner@twes.local']);
+    }
+
     public function testADayAndAMomentAreWrittenAsTheReaderChoseAndEachReaderInTurnGetsTheirOwn(): void
     {
         $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);

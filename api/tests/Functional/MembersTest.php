@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
+use App\Tenancy\Application\Invitation\TellRunOutInvitations;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
@@ -111,6 +112,44 @@ final class MembersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame(Role::MEMBER, $this->invitedRow('late@twes.local')['role']);
         self::assertSame(1, $this->rowCount("SELECT COUNT(*) FROM invitation WHERE email = 'late@twes.local'"), 'the expired one replaced');
+    }
+
+    /** Nobody looks at the list to see a link run out: whoever sent it is told once, and may send it again. */
+    public function testWhoeverSentAnInvitationIsToldOnceWhenItRanOutUnused(): void
+    {
+        $this->adminSignedIn();
+        foreach (['late@twes.local', 'open@twes.local', 'used@twes.local'] as $address) {
+            $this->postJson($this->path(), ['email' => $address, 'role' => Role::MEMBER]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+        $connection = $this->em()->getConnection();
+        $connection->executeStatement("UPDATE invitation SET expires_at = expires_at - INTERVAL '8 days' WHERE email IN ('late@twes.local', 'used@twes.local')");
+        $connection->executeStatement("UPDATE invitation SET accepted_at = expires_at - INTERVAL '1 day' WHERE email = 'used@twes.local'");
+        $tell = static::getContainer()->get(TellRunOutInvitations::class);
+
+        self::assertSame(1, $tell->handle());
+        self::assertSame(0, $tell->handle(), 'told once, whatever runs after');
+
+        $told = $this->toldOf(TellRunOutInvitations::EXPIRED);
+        self::assertCount(1, $told);
+        self::assertSame($connection->fetchOne("SELECT invited_by_id FROM invitation WHERE email = 'late@twes.local'"), $told[0]['recipient_id']);
+        self::assertSame($this->company->getId()->toRfc4122(), $told[0]['company_id']);
+        self::assertSame(['company' => 'Acme', 'email' => 'late@twes.local'], $told[0]['payload']);
+    }
+
+    public function testAnInvitationWhoseSenderLeftRunsOutUntold(): void
+    {
+        $this->adminSignedIn();
+        $this->postJson($this->path(), ['email' => 'late@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $connection = $this->em()->getConnection();
+        $connection->executeStatement("UPDATE invitation SET expires_at = expires_at - INTERVAL '8 days'");
+        $connection->executeStatement('DELETE FROM membership WHERE user_id = (SELECT invited_by_id FROM invitation)');
+
+        self::assertSame(0, static::getContainer()->get(TellRunOutInvitations::class)->handle());
+
+        self::assertSame([], $this->toldOf(TellRunOutInvitations::EXPIRED), 'the company is no longer theirs to hear of');
+        self::assertSame(1, $this->rowCount('SELECT COUNT(*) FROM invitation WHERE run_out_told_at IS NOT NULL'), 'and it is not asked again');
     }
 
     /** An owner who typed the address wrong takes the invitation back: its link stops working, and the list forgets it. */

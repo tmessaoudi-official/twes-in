@@ -77,6 +77,17 @@ final class InMemoryInvitations implements InvitationRepository
         ));
     }
 
+    public function runOutUntold(\DateTimeImmutable $now, int $limit): array
+    {
+        $runOut = array_values(array_filter(
+            $this->invitations,
+            static fn (Invitation $i): bool => null === $i->getAcceptedAt() && null === $i->getRunOutToldAt() && $i->getExpiresAt() < $now,
+        ));
+        usort($runOut, static fn (Invitation $a, Invitation $b): int => $a->getExpiresAt() <=> $b->getExpiresAt());
+
+        return \array_slice($runOut, 0, $limit);
+    }
+
     public function save(Invitation $invitation): void
     {
         if (!\in_array($invitation, $this->invitations, true)) {

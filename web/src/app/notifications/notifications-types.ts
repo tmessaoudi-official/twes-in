@@ -31,6 +31,7 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'invitation.accepted',
   'membership.role_changed',
   'membership.removed',
+  'invitation.expired',
   'stock.delivery_note_lines_left_out',
   'stock.delivery_note_moved_no_stock',
   'stock.invoice_lines_left_out',
@@ -121,6 +122,8 @@ const RECORDS = new Map<string, NotificationRecord>([
   // has nothing left there to open. A built-in role is named through its key, the company's own by its name.
   ['membership.role_changed', { icon: 'manage_accounts', route: null, permission: null }],
   ['membership.removed', { icon: 'person_remove', route: null, permission: null }],
+  // An invitation that ran out unused leads to the members, where it is listed as expired and sent again.
+  ['invitation.expired', { icon: 'mail', route: '/members', permission: 'user.read' }],
   // A delivery note whose stock did not all move: the movements show what did. One whose stock failed to move waits on
   // « À surveiller », which leads to the document, where it is moved again.
   [
