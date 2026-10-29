@@ -59,6 +59,26 @@ final class EstablishmentsTest extends ApiTestCase
         self::assertEquals(1, $count);
     }
 
+    /** An establishment's phone is read by its company's country, kept as E.164, refused with an example. */
+    public function testAnEstablishmentsPhoneIsReadByItsCompanysCountry(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+
+        $this->postJson($this->path(), ['code' => '001', 'name' => 'Agence de Sfax', 'phone' => '74 400 400']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame('+21674400400', $this->json()['phone']);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->revise($id, ['code' => '001', 'name' => 'Agence de Sfax', 'phone' => '74 400']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'phone', 'reason' => 'phone_length', 'params' => ['example' => '+216 30 010 123', 'callingCode' => '+216']]], $this->refusals());
+
+        $this->em()->getConnection()->executeStatement("UPDATE establishment SET phone = '74 400' WHERE id = ?", [$id]);
+        $this->revise($id, ['code' => '001', 'name' => 'Agence de Sfax-Ville', 'phone' => '74 400']);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Agence de Sfax-Ville', '74 400'], [$this->json()['name'], $this->json()['phone']]);
+    }
+
     public function testACodeWithoutThePresetsShapeIsUnprocessable(): void
     {
         $this->signedIn(['company.read', 'company.settings']);

@@ -19,6 +19,7 @@ use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Application\TypedPhones;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\CompanyRepository;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
@@ -43,6 +44,7 @@ final readonly class ReviseCompanyProfile implements DeclaresAuditActions
         private ClockInterface $clock,
         private Transactions $transactions,
         private RecordVersions $versions,
+        private TypedPhones $phones,
     ) {
     }
 
@@ -64,6 +66,14 @@ final readonly class ReviseCompanyProfile implements DeclaresAuditActions
         if (null !== $refusal) {
             throw new InvalidCompanyProfile($refusal->field, $refusal->message, $refusal->reason, $refusal->params);
         }
+
+        // Read by the company's own country; kept as E.164, judged only once it changes. A company has no « À vérifier »
+        // of its own: a number outside the ones handed out is kept, its owner being the one who knows it.
+        $kept = $this->phones->kept($profile->phone, $company->getProfile()->phone, $company->getCountryCode());
+        if (null !== $kept->refusal) {
+            throw new InvalidCompanyProfile('phone', $kept->refusal->message, $kept->refusal->reason, $kept->refusal->params);
+        }
+        $profile = $profile->withPhone($kept->phone);
 
         return $this->transactions->run(function () use ($company, $profile, $actorUserId, $version): Company {
             $company = $this->companies->lockedOfId($company->getId()) ?? throw new CompanyNotFound('No such company.');

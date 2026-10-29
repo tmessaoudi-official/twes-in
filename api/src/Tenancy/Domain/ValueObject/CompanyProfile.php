@@ -53,6 +53,12 @@ final readonly class CompanyProfile
         return clone ($this, ['identifiers' => RegistrationNumbers::kept($identifiers)]);
     }
 
+    /** The same profile carrying this phone, as the numbering plans keep it (E.164, or a value kept before them). */
+    public function withPhone(?string $phone): self
+    {
+        return clone ($this, ['phone' => self::text($phone)]);
+    }
+
     /** @param array<string, string|null> $identifiers */
     public function __construct(
         ?string $legalName = null,

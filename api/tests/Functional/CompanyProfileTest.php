@@ -83,6 +83,25 @@ final class CompanyProfileTest extends ApiTestCase
         self::assertEquals(1, $count);
     }
 
+    /** The company's phone is read by its own country, kept as E.164, refused with an example, judged once it changes. */
+    public function testThePhoneIsReadByTheCompanysCountry(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+
+        $this->sendJson('PUT', $this->path(), $this->profile(['phone' => '71 900 868']));
+        self::assertResponseIsSuccessful();
+        self::assertSame('+21671900868', $this->json()['phone']);
+
+        $this->sendJson('PUT', $this->path(), $this->profile(['phone' => '71 900']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'phone', 'reason' => 'phone_length', 'params' => ['example' => '+216 30 010 123', 'callingCode' => '+216']]], $this->refusals());
+
+        $this->em()->getConnection()->executeStatement("UPDATE company SET phone = '71 900' WHERE id = ?", [$this->company->getId()->toRfc4122()]);
+        $this->sendJson('PUT', $this->path(), $this->profile(['phone' => '71 900', 'legalName' => 'Acme SARL']));
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Acme SARL', '71 900'], [$this->json()['legalName'], $this->json()['phone']]);
+    }
+
     public function testAnIdentifierThatDoesNotHaveThePresetsShapeIsUnprocessable(): void
     {
         $this->signedIn(['company.read', 'company.settings']);

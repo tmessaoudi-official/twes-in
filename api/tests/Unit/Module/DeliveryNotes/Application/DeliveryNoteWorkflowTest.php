@@ -48,8 +48,10 @@ use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\Receivers\ChooseReceiver;
 use App\Shared\Application\Receivers\ReceiverChoice;
+use App\Shared\Application\TypedPhones;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Shared\Domain\ValueObject\Receiver;
+use App\Shared\Infrastructure\Intl\LibPhoneNumbers;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
 use App\Tenancy\Application\Numbering\AllocateNumber;
@@ -73,6 +75,7 @@ use App\Tests\Support\RecordingDomainEvents;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Translation\IdentityTranslator;
 use Symfony\Component\Uid\Uuid;
 
 final class DeliveryNoteWorkflowTest extends TestCase
@@ -244,7 +247,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
 
     public function testANumberAnotherEstablishmentOfTheCompanyAlreadyGaveIsRefusedWithTheWayOut(): void
     {
-        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions())
+        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions(), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())))
             ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);
         // A new site gets its code into the format it copies; someone revising it back out is what this refusal still guards.
         foreach ($this->series->series as $series) {

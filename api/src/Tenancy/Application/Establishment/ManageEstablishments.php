@@ -18,6 +18,7 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Application\TypedPhones;
 use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Exception\InvalidEstablishment;
 use App\Tenancy\Domain\Model\Company;
@@ -50,6 +51,7 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
         private ClockInterface $clock,
         private Transactions $transactions,
         private RecordVersions $versions,
+        private TypedPhones $phones,
     ) {
     }
 
@@ -80,8 +82,9 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
             $template = $this->defaultOf($company);
             $others = [] !== $this->establishments->ofCompany($company->getId());
 
+            $phone = $this->keptPhone($company, $details->phone, null);
             $establishment = Establishment::create($company, $code, $details->name, false, $now);
-            $establishment->revise($code, $details->name, $details->addressLine1, $details->addressLine2, $details->postalCode, $details->city, $details->phone, $details->email, $now);
+            $establishment->revise($code, $details->name, $details->addressLine1, $details->addressLine2, $details->postalCode, $details->city, $phone, $details->email, $now);
             if ($details->isDefault) {
                 $this->handOverDefault($company, $establishment, $now);
             }
@@ -126,9 +129,10 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
                 throw new InvalidEstablishment('isDefault', 'A company keeps one default establishment: make another one the default instead.', 'default_kept');
             }
 
+            $phone = $this->keptPhone($company, $details->phone, $establishment->getPhone());
             $now = $this->clock->now();
             $before = self::fields($establishment);
-            $establishment->revise($code, $details->name, $details->addressLine1, $details->addressLine2, $details->postalCode, $details->city, $details->phone, $details->email, $now);
+            $establishment->revise($code, $details->name, $details->addressLine1, $details->addressLine2, $details->postalCode, $details->city, $phone, $details->email, $now);
             if ($details->isDefault && !$establishment->isDefault()) {
                 $this->handOverDefault($company, $establishment, $now);
             }
@@ -154,6 +158,22 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
         }
 
         return false;
+    }
+
+    /**
+     * The phone as kept (`TypedPhones`), read by the company's country, judged only once it changes. An establishment has
+     * no « À vérifier »: a number outside the ones handed out is kept.
+     *
+     * @throws InvalidEstablishment
+     */
+    private function keptPhone(Company $company, ?string $typed, ?string $held): ?string
+    {
+        $kept = $this->phones->kept($typed, $held, $company->getCountryCode());
+        if (null !== $kept->refusal) {
+            throw new InvalidEstablishment('phone', $kept->refusal->message, $kept->refusal->reason, $kept->refusal->params);
+        }
+
+        return $kept->phone;
     }
 
     private function checkedCode(Company $company, string $code): string
