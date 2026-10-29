@@ -12,7 +12,7 @@ import { REALTIME_CONNECTOR, type RealtimeConnector } from '../shared/realtime/r
 
 const added: InboxEntry = {
   id: 'n1',
-  type: 'membership.added',
+  type: 'invitation.received',
   payload: { company: 'Acme' },
   companyId: null,
   createdAt: '2026-09-13T10:00:00+00:00',
@@ -111,7 +111,7 @@ describe('NotificationsFacade', () => {
     api.list.mockResolvedValue(page([added], 1));
     facade.connect();
 
-    opened[0].onPublication({ type: 'membership.added', payload: {} });
+    opened[0].onPublication({ type: 'invitation.received', payload: {} });
     await vi.waitFor(() => expect(facade.unread()).toBe(1));
 
     expect(api.list).toHaveBeenCalledOnce();
@@ -193,7 +193,7 @@ describe('NotificationsFacade', () => {
 
 describe('notificationKey', () => {
   it('names a known type under notifications.types', () => {
-    expect(notificationKey('membership.added')).toBe('notifications.types.membership_added');
+    expect(notificationKey('invitation.accepted')).toBe('notifications.types.invitation_accepted');
     expect(notificationKey('invitation.accepted')).toBe('notifications.types.invitation_accepted');
   });
 

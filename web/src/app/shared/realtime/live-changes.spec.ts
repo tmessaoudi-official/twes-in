@@ -57,7 +57,7 @@ describe('readLiveChange', () => {
 
   it('is not a change: a notification, or anything malformed', () => {
     for (const data of [
-      { type: 'membership.added', payload: {} },
+      { type: 'invitation.received', payload: {} },
       customer({ kind: 3 }),
       customer({ action: undefined }),
       customer({ actor: { id: 7 } }),

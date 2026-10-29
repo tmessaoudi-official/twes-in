@@ -637,7 +637,6 @@
     "today": "Aujourd’hui",
     "yesterday": "Hier",
     "types": {
-      "membership_added": "Vous avez été ajouté à {{company}}.",
       "invitation_accepted": "{{display_name}} a rejoint l’entreprise.",
       "invitation_received": "Une invitation à rejoindre {{company}} vous attend dans votre messagerie.",
       "stock_delivery_note_lines_left_out": "Le bon de livraison {{number}} est validé, mais certaines de ses lignes n’ont pas sorti de stock (unité différente ou quantité absente).",
@@ -677,7 +676,6 @@
       "signup_awaiting_approval": "{{company}} ({{email}}) s’est inscrite et attend votre approbation."
     },
     "kinds": {
-      "membership_added": "Ajout à une société",
       "invitation_received": "Invitation reçue",
       "invitation_accepted": "Nouveau membre",
       "stock_delivery_note_lines_left_out": "Bon de livraison : lignes sans sortie de stock",

@@ -25,7 +25,7 @@ describe('NotificationsApi', () => {
       items: [
         {
           id: 'n1',
-          type: 'membership.added',
+          type: 'invitation.received',
           payload: { company: 'Acme' },
           companyId: null,
           createdAt: '2026-09-13T10:00:00+00:00',
@@ -39,7 +39,7 @@ describe('NotificationsApi', () => {
       items: [
         {
           id: 'n1',
-          type: 'membership.added',
+          type: 'invitation.received',
           payload: { company: 'Acme' },
           companyId: null,
           createdAt: '2026-09-13T10:00:00+00:00',

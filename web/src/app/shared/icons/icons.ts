@@ -9,7 +9,6 @@
 export const ICONS = [
   'add',
   'add_box',
-  'add_business',
   'add_link',
   'admin_panel_settings',
   'arrow_back',

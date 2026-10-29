@@ -38,7 +38,7 @@ class StaticLoader implements TranslateLoader {
         today: 'Aujourd’hui',
         yesterday: 'Hier',
         types: {
-          membership_added: 'Vous avez rejoint {{company}}',
+          invitation_received: 'Une invitation de {{company}} vous attend',
           invitation_accepted: '{{display_name}} a rejoint l’entreprise',
           unknown: 'Nouvelle notification',
           module_arrived: '« {{label}} » est arrivé pour {{company}}',
@@ -90,7 +90,7 @@ const NOW = new Date('2026-09-14T09:00:00Z');
 
 const unreadEntry: InboxEntry = {
   id: 'n1',
-  type: 'membership.added',
+  type: 'invitation.received',
   payload: { company: 'Acme' },
   companyId: null,
   createdAt: '2026-09-14T08:55:00+00:00',
@@ -368,16 +368,16 @@ describe('NotificationBell', () => {
 
     expect(all('notifications-day').map(text)).toEqual(['Aujourd’hui', 'Hier', '12/09/2026']);
     expect(all('notification-text').map(text)).toEqual([
-      'Vous avez rejoint Acme',
+      'Une invitation de Acme vous attend',
       'Salma a rejoint l’entreprise',
       'Nouvelle notification',
-      'Vous avez rejoint Acme',
+      'Une invitation de Acme vous attend',
     ]);
     expect(all('notification-icon').map(text)).toEqual([
-      'add_business',
+      'mail',
       'group_add',
       'notifications',
-      'add_business',
+      'mail',
     ]);
     expect(text(all('notification-time')[0])).toBe('il y a 5 minutes');
     expect(all('notification-time')[0].getAttribute('datetime')).toBe(unreadEntry.createdAt);

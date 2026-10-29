@@ -56,7 +56,7 @@ class InboxItem
     public function __construct(User $recipient, ?Company $company, string $type, array $payload, \DateTimeImmutable $now)
     {
         if (\strlen($type) > 80 || 1 !== preg_match(self::TYPE_PATTERN, $type)) {
-            throw new \InvalidArgumentException(\sprintf('A notification type is a dotted lower-case code such as "membership.added", "%s" given.', $type));
+            throw new \InvalidArgumentException(\sprintf('A notification type is a dotted lower-case code such as "invitation.accepted", "%s" given.', $type));
         }
 
         $this->id = Uuid::v7();

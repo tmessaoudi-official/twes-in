@@ -40,7 +40,7 @@ final readonly class InboxOpenApi implements OpenApiFactoryInterface
             'required' => ['id', 'type', 'payload', 'companyId', 'createdAt', 'readAt'],
             'properties' => [
                 'id' => ['type' => 'string', 'format' => 'uuid'],
-                'type' => ['type' => 'string', 'description' => 'A dotted code such as "membership.added"; the SPA translates it.'],
+                'type' => ['type' => 'string', 'description' => 'A dotted code such as "invitation.accepted"; the SPA translates it.'],
                 'payload' => ['type' => 'object', 'additionalProperties' => ['anyOf' => [['type' => 'string'], ['type' => 'number'], ['type' => 'boolean'], ['type' => 'null']]]],
                 'companyId' => ['anyOf' => [['type' => 'string', 'format' => 'uuid'], ['type' => 'null']], 'description' => 'Set when the notification was published to a company.'],
                 'createdAt' => ['type' => 'string', 'format' => 'date-time'],

@@ -637,7 +637,6 @@
     "today": "اليوم",
     "yesterday": "أمس",
     "types": {
-      "membership_added": "أُضفت إلى {{company}}.",
       "invitation_accepted": "انضمّ {{display_name}} إلى الشركة.",
       "invitation_received": "دعوة للانضمام إلى {{company}} في انتظارك في بريدك الإلكتروني.",
       "stock_delivery_note_lines_left_out": "تمت المصادقة على وصل التسليم {{number}}، لكن بعض أسطره لم تُخرج شيئًا من المخزون (وحدة قيس مختلفة أو كمية غائبة).",
@@ -677,7 +676,6 @@
       "signup_awaiting_approval": "سجّلت {{company}} ({{email}}) وهي في انتظار موافقتك."
     },
     "kinds": {
-      "membership_added": "إضافة إلى شركة",
       "invitation_received": "دعوة مستلمة",
       "invitation_accepted": "عضو جديد",
       "stock_delivery_note_lines_left_out": "وصل تسليم: أسطر دون إخراج من المخزون",

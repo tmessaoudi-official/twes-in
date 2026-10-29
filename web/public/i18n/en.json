@@ -637,7 +637,6 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "types": {
-      "membership_added": "You were added to {{company}}.",
       "invitation_accepted": "{{display_name}} joined the company.",
       "invitation_received": "An invitation to join {{company}} is waiting in your email.",
       "stock_delivery_note_lines_left_out": "Delivery note {{number}} is validated, but some of its lines moved no stock (another unit, or no quantity).",
@@ -677,7 +676,6 @@
       "signup_awaiting_approval": "{{company}} ({{email}}) signed up and waits for your approval."
     },
     "kinds": {
-      "membership_added": "Added to a company",
       "invitation_received": "Invitation received",
       "invitation_accepted": "New member",
       "stock_delivery_note_lines_left_out": "Delivery note: lines that moved no stock",

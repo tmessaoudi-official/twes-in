@@ -10,7 +10,7 @@ export type NotificationPayload = Readonly<Record<string, string | number | bool
 
 export interface InboxEntry {
   id: string;
-  /** a dotted code such as "membership.added"; translated under notifications.types */
+  /** a dotted code such as "invitation.accepted"; translated under notifications.types */
   type: string;
   payload: NotificationPayload;
   companyId: string | null;
@@ -27,7 +27,6 @@ export interface InboxPage {
 
 /** The types this client has words for; anything newer is shown with a generic line until it does. */
 export const KNOWN_NOTIFICATION_TYPES = [
-  'membership.added',
   'invitation.received',
   'invitation.accepted',
   'stock.delivery_note_lines_left_out',
@@ -64,7 +63,7 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'installation.clock_off',
 ] as const;
 
-/** "membership.added" → "notifications.types.membership_added"; an unknown type → the generic key. */
+/** "invitation.accepted" → "notifications.types.invitation_accepted"; an unknown type → the generic key. */
 export function notificationKey(type: string): string {
   return (KNOWN_NOTIFICATION_TYPES as readonly string[]).includes(type)
     ? `notifications.types.${type.replaceAll('.', '_')}`
@@ -113,8 +112,6 @@ export interface NotificationRecord {
 
 // The money and document events (invoice paid, overdue, payment recorded, delivery note delivered) add their rows here.
 const RECORDS = new Map<string, NotificationRecord>([
-  // Being added to a company is news about another company: nothing here to open.
-  ['membership.added', { icon: 'add_business', route: null, permission: null }],
   // An invitation is to another company, and its link is in the mail alone: nothing here to open either.
   ['invitation.received', { icon: 'mail', route: null, permission: null }],
   ['invitation.accepted', { icon: 'group_add', route: '/members', permission: 'user.read' }],
