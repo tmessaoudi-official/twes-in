@@ -1,0 +1,144 @@
+[
+  {
+    "plan": "TN",
+    "typed": "71 234 567",
+    "country": "TN",
+    "verdict": "valid",
+    "e164": "+21671234567"
+  },
+  {
+    "plan": "TN",
+    "typed": "20 123 456",
+    "country": "TN",
+    "verdict": "valid",
+    "e164": "+21620123456"
+  },
+  {
+    "plan": "TN",
+    "typed": "+216 30 123 456",
+    "country": null,
+    "verdict": "valid",
+    "e164": "+21630123456"
+  },
+  {
+    "plan": "TN",
+    "typed": "71\u00a0234\u202f567",
+    "country": "TN",
+    "verdict": "valid",
+    "e164": "+21671234567"
+  },
+  {
+    "plan": "TN",
+    "typed": "\u200e+216 71 234 567\u200b",
+    "country": "FR",
+    "verdict": "valid",
+    "e164": "+21671234567"
+  },
+  {
+    "plan": "TN",
+    "typed": "+216 80 123 456",
+    "country": null,
+    "verdict": "to_check",
+    "e164": "+21680123456"
+  },
+  {
+    "plan": "TN",
+    "typed": "+216 10 123 456",
+    "country": null,
+    "verdict": "to_check",
+    "e164": "+21610123456"
+  },
+  {
+    "plan": "TN",
+    "typed": "01 234 567",
+    "country": "TN",
+    "verdict": "to_check",
+    "e164": "+21601234567"
+  },
+  {
+    "plan": "TN",
+    "typed": "+216 71 234",
+    "country": null,
+    "verdict": "wrong_length",
+    "e164": null
+  },
+  {
+    "plan": "TN",
+    "typed": "+216 71 234 5678",
+    "country": null,
+    "verdict": "wrong_length",
+    "e164": null
+  },
+  { "plan": "TN", "typed": "71 234", "country": "TN", "verdict": "wrong_length", "e164": null },
+  {
+    "plan": "FR",
+    "typed": "06 12 34 56 78",
+    "country": "FR",
+    "verdict": "valid",
+    "e164": "+33612345678"
+  },
+  {
+    "plan": "FR",
+    "typed": "+33 1 23 45 67 89",
+    "country": null,
+    "verdict": "valid",
+    "e164": "+33123456789"
+  },
+  {
+    "plan": "FR",
+    "typed": "0033 6 12 34 56 78",
+    "country": "TN",
+    "verdict": "valid",
+    "e164": "+33612345678"
+  },
+  {
+    "plan": "FR",
+    "typed": "+33 7 00 00 00 00",
+    "country": null,
+    "verdict": "to_check",
+    "e164": "+33700000000"
+  },
+  {
+    "plan": "FR",
+    "typed": "+33 0 12 34 56 78",
+    "country": null,
+    "verdict": "to_check",
+    "e164": "+33012345678"
+  },
+  {
+    "plan": "FR",
+    "typed": "+33 6 12 34 56",
+    "country": null,
+    "verdict": "wrong_length",
+    "e164": null
+  },
+  {
+    "plan": "FR",
+    "typed": "+33 6 12 34 56 78 9",
+    "country": null,
+    "verdict": "wrong_length",
+    "e164": null
+  },
+  { "plan": "FR", "typed": "06 12 34", "country": "FR", "verdict": "wrong_length", "e164": null },
+  { "plan": "FR", "typed": "+33 12", "country": null, "verdict": "wrong_length", "e164": null },
+  { "plan": "US", "typed": "253 0000", "country": "US", "verdict": "wrong_length", "e164": null },
+  { "plan": null, "typed": "71234567", "country": null, "verdict": "needs_country", "e164": null },
+  { "plan": null, "typed": "71234567", "country": "ZZ", "verdict": "needs_country", "e164": null },
+  { "plan": null, "typed": "abc", "country": "TN", "verdict": "not_a_number", "e164": null },
+  { "plan": null, "typed": "+216 abc", "country": null, "verdict": "not_a_number", "e164": null },
+  {
+    "plan": null,
+    "typed": "+216 ------",
+    "country": null,
+    "verdict": "not_a_number",
+    "e164": null
+  },
+  {
+    "plan": null,
+    "typed": "+999 1234567",
+    "country": null,
+    "verdict": "not_a_number",
+    "e164": null
+  },
+  { "plan": null, "typed": "+33 1", "country": null, "verdict": "not_a_number", "e164": null }
+]

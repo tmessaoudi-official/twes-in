@@ -6,19 +6,20 @@ import {
   getCountryCallingCode,
   getExampleNumber,
   parsePhoneNumberFromString,
-  validatePhoneNumberLength,
-} from 'libphonenumber-js';
+} from 'libphonenumber-js/max';
 import examples from 'libphonenumber-js/mobile/examples';
-import metadata from 'libphonenumber-js/min/metadata';
+import metadata from 'libphonenumber-js/max/metadata';
 import { countryFlag } from '../i18n/country-names';
 import type { FieldError } from './form-builder';
 import { typedText } from './typed-text';
 
 /**
  * The one phone rule of the screens: a country picked beside the local number, written out in international form
- * (« +216 71 234 567 », its groups kept apart for reading), read back into the two when it parses. A number is refused
- * here for its length only, as the API's `TypedPhones` refuses it; one of the right length the numbering plan has not
- * handed out is the API's to keep with a doubt. Its own file, so the numbering plans load with the forms that use them.
+ * (« +216 71 234 567 », its groups kept apart for reading), read back into the two when it parses. A number is judged
+ * here as the API's `LibPhoneNumbers` judges it, by each country's full plan (libphonenumber-js's « max » metadata, as
+ * the API reads Google's whole plan), and refused as `TypedPhones` refuses it; one of the right length the plan has not
+ * handed out is the API's to keep with a doubt. Its own file, so the numbering plans load with the forms that use them,
+ * in a chunk of their own, never with the first page.
  */
 
 /** One country a phone may be read by: its code, its calling code, its name in the screen's language and its flag. */
@@ -101,30 +102,63 @@ export function readPhone(value: string, fallback: string): ReadPhone {
   return { country: read.country, local: typedText(rest.slice(read.code.length)) };
 }
 
+/** The API's verdicts on a phone (`PhoneVerdict`), in its own words. */
+export type PhoneVerdictKind =
+  'valid' | 'to_check' | 'wrong_length' | 'needs_country' | 'not_a_number';
+
+/** A phone judged: its verdict, and the number kept in E.164 for a valid one or one to check. */
+export interface PhoneVerdict {
+  readonly verdict: PhoneVerdictKind;
+  readonly e164: string | null;
+}
+
+/** Only the digits, a leading « + », and what a person puts between the groups, as the API's `LibPhoneNumbers` reads. */
+const WRITTEN = /^\+?[0-9 ().\-/]+$/;
+
+/**
+ * A phone judged as the API's `LibPhoneNumbers::judge` judges it, by its country's full numbering plan: read by the
+ * country given unless « + » or « 00 » names another; refused for no number, no country to read it by, or a wrong
+ * length; valid, or to check when its length is right but the country hands out no such range. phone-vectors.json holds
+ * the two to the same answers.
+ */
+export function phoneVerdict(typed: string, country: string | null): PhoneVerdict {
+  const written = plain(typed)
+    .replace(/[\p{Z}\p{Cc}]+/gu, ' ')
+    .trim()
+    .replace(/^00/, '+');
+  if (written === '' || !WRITTEN.test(written) || !/[0-9]/.test(written)) {
+    return { verdict: 'not_a_number', e164: null };
+  }
+  const region = country !== null && isCountry(country) ? country : undefined;
+  if (!written.startsWith('+') && region === undefined) {
+    return { verdict: 'needs_country', e164: null };
+  }
+  const parsed = parsePhoneNumberFromString(written, region);
+  if (parsed === undefined) return { verdict: 'not_a_number', e164: null };
+  if (!parsed.isPossible()) return { verdict: 'wrong_length', e164: null };
+  return { verdict: parsed.isValid() ? 'valid' : 'to_check', e164: parsed.number };
+}
+
 /** What a phone field's value is refused with, the API's own refusals; null for a good number or no number. */
 export function phoneRefusal(value: string): FieldError | null {
   const typed = plain(value);
   if (typed === '') return null;
-  // Signs with no digit after the country code are no number at all, whatever length the code alone would be.
-  const number = typed.replace(/^\+[0-9]{1,3}\s/, '');
-  if (!/[0-9]/.test(number)) return { key: 'import.rejections.invalid_phone' };
-  const verdict = validatePhoneNumberLength(typed);
-  if (verdict === undefined) return null;
-  if (verdict === 'TOO_SHORT' || verdict === 'TOO_LONG' || verdict === 'INVALID_LENGTH') {
-    const country =
-      parsePhoneNumberFromString(typed)?.country ??
-      countryOfCode(typed.replace(/\D/g, ''), '')?.country;
-    const example =
-      country !== undefined && isCountry(country)
-        ? getExampleNumber(country, examples)?.formatInternational()
-        : undefined;
-    // A code no country answers to is said as the country missing, whose sentence carries its own example.
-    return example === undefined
-      ? { key: 'import.rejections.phone_country' }
-      : { key: 'import.rejections.phone_length', params: { example } };
-  }
-  if (verdict === 'INVALID_COUNTRY') return { key: 'import.rejections.phone_country' };
-  return { key: 'import.rejections.invalid_phone' };
+  // A value is international by now, so a country is named by its own code, never by the field's.
+  const { verdict } = phoneVerdict(typed, null);
+  if (verdict === 'valid' || verdict === 'to_check') return null;
+  if (verdict === 'needs_country') return { key: 'import.rejections.phone_country' };
+  if (verdict === 'not_a_number') return { key: 'import.rejections.invalid_phone' };
+  const country =
+    parsePhoneNumberFromString(typed)?.country ??
+    countryOfCode(typed.replace(/\D/g, ''), '')?.country;
+  const example =
+    country !== undefined && isCountry(country)
+      ? getExampleNumber(country, examples)?.formatInternational()
+      : undefined;
+  // A code no country answers to is said as the country missing, whose sentence carries its own example.
+  return example === undefined
+    ? { key: 'import.rejections.phone_country' }
+    : { key: 'import.rejections.phone_length', params: { example } };
 }
 
 /**
