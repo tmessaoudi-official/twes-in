@@ -5,6 +5,7 @@ import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
 import { proveIfAsked } from './step-up';
 import { toast } from './toast';
 import { axeAtRest } from './axe';
+import { addVirtualAuthenticator } from './virtual-authenticator';
 
 // A passkey is bound to a domain, and Chromium refuses an IP address as one, so this file talks to the stack as
 // localhost whatever address the other files use. The API allows exactly that origin (APP_WEBAUTHN_ORIGINS).
@@ -47,22 +48,6 @@ async function expectAccessible(page: Page, screen: string): Promise<void> {
       `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
   );
   expect(violations, screen).toEqual([]);
-}
-
-/** Chromium's virtual authenticator: a platform authenticator that verifies the user and needs no touch. */
-async function addVirtualAuthenticator(page: Page): Promise<void> {
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('WebAuthn.enable');
-  await cdp.send('WebAuthn.addVirtualAuthenticator', {
-    options: {
-      protocol: 'ctap2',
-      transport: 'internal',
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      automaticPresenceSimulation: true,
-    },
-  });
 }
 
 test('an account adds a passkey, signs in with it, and removes it', async ({ page, request }) => {

@@ -6,6 +6,7 @@ import { OPERATOR_PASSWORD, signIn as signInAsOperator } from './session';
 import { proveIfAsked } from './step-up';
 import { toast } from './toast';
 import { totp } from './totp';
+import { addVirtualAuthenticator, passkeysUnderTheField } from './virtual-authenticator';
 
 // A passkey is bound to a domain, and Chromium refuses an IP address as one, so this file talks to the stack as
 // localhost whatever address the other files use. The API allows exactly that origin (APP_WEBAUTHN_ORIGINS).
@@ -26,22 +27,6 @@ async function signOut(page: Page): Promise<void> {
   await page.getByTestId('user-menu').click();
   await page.getByTestId('logout').click();
   await expect(page).toHaveURL(/\/login$/);
-}
-
-/** Chromium's virtual authenticator: a platform authenticator that keeps its passkeys and verifies the user. */
-async function addVirtualAuthenticator(page: Page): Promise<void> {
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('WebAuthn.enable');
-  await cdp.send('WebAuthn.addVirtualAuthenticator', {
-    options: {
-      protocol: 'ctap2',
-      transport: 'internal',
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      automaticPresenceSimulation: true,
-    },
-  });
 }
 
 test('the address comes first, then the password for any address, and the address can be changed', async ({
@@ -150,6 +135,14 @@ test('an account switched on signs in with its passkey alone, and with nothing o
   });
   await page.getByTestId('login-passkey').click();
   await expect(page.getByTestId('greeting')).toContainText('Passkey Alone');
+
+  // The address field offers the same passkey, and picking it signs in by itself: nothing is clicked.
+  await signOut(page);
+  await passkeysUnderTheField(page, true);
+  await page.reload();
+  await expect(page.getByTestId('greeting')).toContainText('Passkey Alone');
+  await expect(page).not.toHaveURL(/\/login$/);
+  await passkeysUnderTheField(page, false);
 
   // Switched off, the same passkey is refused, and the password still leads to the code.
   await page.getByTestId('user-menu').click();
