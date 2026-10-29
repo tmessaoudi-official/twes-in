@@ -10,6 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Settings\Application\PhoneSettings;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -92,6 +95,29 @@ final class EstablishmentsTest extends ApiTestCase
         $this->getJson($this->path());
         $rows = array_values(array_filter($this->jsonList(), static fn (array $row): bool => $id === ($row['id'] ?? null)));
         self::assertSame(['phone'], $rows[0]['contactsToCheck'] ?? null);
+
+        $this->revise($id, ['code' => '001', 'name' => 'Agence de Sfax', 'phone' => '74 400 400']);
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['contactsToCheck']);
+    }
+
+    /**
+     * Where the platform keeps a phone outside the ranges its country hands out, the establishment says it « À vérifier »,
+     * in the list and on revising, in a word of its own (the developer's ruling of 2026-10-29, never silent).
+     */
+    public function testAPhoneOutsideTheRangesKeptByThePlatformIsSaidToCheck(): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->postJson($this->path(), ['code' => '001', 'name' => 'Agence de Sfax', 'phone' => '+216 80 123 456']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['phone_outside_ranges'], $this->json()['contactsToCheck']);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->getJson($this->path());
+        $rows = array_values(array_filter($this->jsonList(), static fn (array $row): bool => $id === ($row['id'] ?? null)));
+        self::assertSame(['phone_outside_ranges'], $rows[0]['contactsToCheck'] ?? null);
 
         $this->revise($id, ['code' => '001', 'name' => 'Agence de Sfax', 'phone' => '74 400 400']);
         self::assertResponseIsSuccessful();

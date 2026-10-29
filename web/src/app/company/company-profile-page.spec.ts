@@ -170,6 +170,16 @@ describe('CompanyProfilePage', () => {
     expect(q('profile-check')).toBeNull();
   });
 
+  it('says « À vérifier » for a phone the platform keeps outside its country’s ranges, in words of its own', async () => {
+    profileSignal.set({ ...profile, contactsToCheck: ['phone_outside_ranges'] });
+    await open();
+
+    const reasons = [...(q('profile-check-reasons')?.querySelectorAll('[data-reason]') ?? [])];
+    expect(reasons.map((reason) => reason.textContent?.trim())).toEqual([
+      'check.reasons.kept_phone_outside_ranges',
+    ]);
+  });
+
   // docs/SPEC.md § 7, 2026-09-26 22:24: each company uploads its logo in Paramètres › Entreprise.
   it('says there is no logo yet, and offers to choose a picture', async () => {
     await open();

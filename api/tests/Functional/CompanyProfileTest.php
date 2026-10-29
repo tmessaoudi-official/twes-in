@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Settings\Application\PhoneSettings;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -116,6 +119,26 @@ final class CompanyProfileTest extends ApiTestCase
         $this->sendJson('PUT', $this->path(), $this->profile(['email' => 'contact@acme.tn', 'phone' => '71 900']));
         self::assertResponseIsSuccessful();
         self::assertSame(['phone'], $this->json()['contactsToCheck'], 'the field corrected leaves, the one kept stays');
+    }
+
+    /**
+     * Where the platform keeps a phone outside the ranges its country hands out, the profile says it « À vérifier », in a
+     * word of its own: today's rules do not refuse it (the developer's ruling of 2026-10-29, never silent).
+     */
+    public function testAPhoneOutsideTheRangesKeptByThePlatformIsSaidToCheckUntilChanged(): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->signedIn(['company.read', 'company.settings']);
+
+        $this->sendJson('PUT', $this->path(), $this->profile(['phone' => '+216 80 123 456']));
+        self::assertResponseIsSuccessful();
+        self::assertSame('+216 80 123 456', $this->json()['phone']);
+        self::assertSame(['phone_outside_ranges'], $this->json()['contactsToCheck']);
+
+        $this->sendJson('PUT', $this->path(), $this->profile(['phone' => '71 900 868']));
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['contactsToCheck'], 'a number its country hands out leaves the list');
     }
 
     public function testAnIdentifierThatDoesNotHaveThePresetsShapeIsUnprocessable(): void

@@ -280,6 +280,16 @@ describe('EstablishmentsPage', () => {
     expect(q('establishments-check')).toBeNull();
   });
 
+  it('names above the list an establishment keeping a phone the platform keeps outside its country’s ranges', async () => {
+    establishments.set([{ ...head, contactsToCheck: ['phone_outside_ranges'] }]);
+    await settle();
+
+    const listed = [
+      ...(q('establishments-check-reasons')?.querySelectorAll('[data-reason]') ?? []),
+    ];
+    expect(listed[0]?.textContent).toContain('check.establishment_kept_phone_outside_ranges');
+  });
+
   it('revises an establishment by its identifier', async () => {
     q('row-action-edit-e1')!.click();
     await settle();

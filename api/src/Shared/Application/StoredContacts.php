@@ -17,8 +17,8 @@ use App\Shared\Domain\ValueObject\Refusal;
 /**
  * What a record keeps that today's rules for an address and a phone would refuse, for the nightly checks and marks
  * (row 208): a value kept before a rule stays until it is changed, and these find it so a person corrects it. A
- * national number that the plan reads is not refused, only not yet written in its international form, nor is one of
- * the right length the plan only reads to check.
+ * national number that the plan reads is not refused, only not yet written in its international form; one of the right
+ * length outside the ranges its country hands out follows the platform's policy, refused, or kept with a doubt.
  */
 final readonly class StoredContacts
 {
@@ -45,5 +45,25 @@ final readonly class StoredContacts
         }
 
         return $refused;
+    }
+
+    /**
+     * What a record with no mark of its own says « À vérifier » of its contact (the company's profile, an establishment):
+     * each field today's rules refuse, and `phone_outside_ranges` for a phone outside the ranges its country hands out
+     * that the platform keeps rather than refuses, which nothing else would say (never silent). It stays until the
+     * number changes: such a record keeps no trace of someone having looked.
+     *
+     * @param string|null $country the record's country, which reads a national number
+     *
+     * @return list<'email'|'phone'|'phone_outside_ranges'>
+     */
+    public function toCheck(?string $email, ?string $phone, ?string $country): array
+    {
+        $fields = array_keys($this->refused($email, $phone, $country));
+        if (!\in_array('phone', $fields, true) && null !== $this->phones->kept($phone, null, $country)->doubt) {
+            $fields[] = 'phone_outside_ranges';
+        }
+
+        return $fields;
     }
 }

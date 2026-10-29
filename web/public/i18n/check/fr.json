@@ -13,7 +13,8 @@
       "name_doubtful": "Nom douteux",
       "identifier_missing": "Numéro d’identification manquant",
       "kept_email": "E-mail que les règles d’aujourd’hui refusent",
-      "kept_phone": "Téléphone que les règles d’aujourd’hui refusent"
+      "kept_phone": "Téléphone que les règles d’aujourd’hui refusent",
+      "kept_phone_outside_ranges": "Téléphone que son pays n’attribue pas, gardé par la plateforme"
     },
     "marked": "Marqué à la main",
     "filter": {
@@ -41,6 +42,7 @@
     },
     "identifier_named": "Manque : {{identifier}}",
     "establishment_kept_email": "{{establishment}} : e-mail que les règles d’aujourd’hui refusent",
-    "establishment_kept_phone": "{{establishment}} : téléphone que les règles d’aujourd’hui refusent"
+    "establishment_kept_phone": "{{establishment}} : téléphone que les règles d’aujourd’hui refusent",
+    "establishment_kept_phone_outside_ranges": "{{establishment}} : téléphone que son pays n’attribue pas, gardé par la plateforme"
   }
 }

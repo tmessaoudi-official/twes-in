@@ -70,6 +70,24 @@ describe('CompanyApi, the profile', () => {
     expect(profile.contactsToCheck).toEqual([]);
   });
 
+  // The developer's ruling of 2026-10-29: a phone the platform keeps outside its country's ranges is said « À vérifier »
+  // wherever a mark has a place, in words of its own, since today's rules do not refuse it.
+  it('keeps the contacts to check the screens know, a phone kept outside the ranges among them', async () => {
+    const reading = api.profile('c1');
+    http.expectOne({ method: 'GET', url: '/api/companies/c1/profile' }).flush({
+      name: 'Demo',
+      countryCode: 'TN',
+      writable: true,
+      identifiers: {},
+      vatRegime: 'standard',
+      identifierFields: [],
+      vatRegimes: [],
+      contactsToCheck: ['email', 'phone_outside_ranges', 'fax'],
+    });
+
+    expect((await reading).contactsToCheck).toEqual(['email', 'phone_outside_ranges']);
+  });
+
   it('names a value the preset refused as invalid, not as a member error', async () => {
     const revising = api.reviseProfile('c1', changes, 4);
     const request = http.expectOne({ method: 'PUT', url: '/api/companies/c1/profile' });

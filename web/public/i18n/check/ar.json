@@ -13,7 +13,8 @@
       "name_doubtful": "اسم مشكوك فيه",
       "identifier_missing": "رقم التعريف ناقص",
       "kept_email": "بريد إلكتروني ترفضه قواعد اليوم",
-      "kept_phone": "هاتف ترفضه قواعد اليوم"
+      "kept_phone": "هاتف ترفضه قواعد اليوم",
+      "kept_phone_outside_ranges": "هاتف لا يمنحه بلده، احتفظت به المنصة"
     },
     "marked": "عليه علامة يدوية",
     "filter": {
@@ -41,6 +42,7 @@
     },
     "identifier_named": "ينقص: {{identifier}}",
     "establishment_kept_email": "{{establishment}}: بريد إلكتروني ترفضه قواعد اليوم",
-    "establishment_kept_phone": "{{establishment}}: هاتف ترفضه قواعد اليوم"
+    "establishment_kept_phone": "{{establishment}}: هاتف ترفضه قواعد اليوم",
+    "establishment_kept_phone_outside_ranges": "{{establishment}}: هاتف لا يمنحه بلده، احتفظت به المنصة"
   }
 }

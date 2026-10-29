@@ -161,9 +161,10 @@ final class CompanyProfileResource
     public bool $vatOnDebits = false;
 
     /**
-     * The contact fields today's rules refuse, kept from before a rule: « À vérifier » on the profile until changed.
+     * The contact fields today's rules refuse, kept from before a rule, and `phone_outside_ranges` for a phone the platform
+     * keeps outside its country's ranges: « À vérifier » on the profile until changed.
      *
-     * @var list<'email'|'phone'>
+     * @var list<'email'|'phone'|'phone_outside_ranges'>
      */
     #[ApiProperty(writable: false, required: true)]
     #[Groups([self::READ])]

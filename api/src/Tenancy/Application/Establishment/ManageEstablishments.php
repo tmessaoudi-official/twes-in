@@ -60,13 +60,14 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
 
     /**
      * The establishment's e-mail and phone that today's rules refuse, kept from before a rule until someone changes them,
-     * read by its company's country as its form reads them: what its page says « À vérifier ».
+     * and a phone the platform keeps outside its country's ranges, read by its company's country as its form reads them:
+     * what its page says « À vérifier ».
      *
-     * @return list<'email'|'phone'>
+     * @return list<'email'|'phone'|'phone_outside_ranges'>
      */
     public function contactsToCheck(Company $company, Establishment $establishment): array
     {
-        return array_keys($this->contacts->refused($establishment->getEmail(), $establishment->getPhone(), $company->getCountryCode()));
+        return $this->contacts->toCheck($establishment->getEmail(), $establishment->getPhone(), $company->getCountryCode());
     }
 
     /** @return list<Establishment> the default first, then by code */

@@ -105,11 +105,14 @@ export interface CompanyProfile extends CompanyProfileChanges {
   readonly contactsToCheck: readonly KeptContact[];
 }
 
-/** A contact field a record keeps from before today's rules, which they would refuse. */
-export type KeptContact = 'email' | 'phone';
+/**
+ * A contact field a record keeps from before today's rules, which they would refuse; or its phone kept outside the ranges
+ * its country hands out because the platform keeps such numbers, which they do not refuse but nothing else would say.
+ */
+export type KeptContact = 'email' | 'phone' | 'phone_outside_ranges';
 
 /** The contact fields the screens say « À vérifier », in the order they show them. */
-export const KEPT_CONTACTS: readonly KeptContact[] = ['email', 'phone'];
+export const KEPT_CONTACTS: readonly KeptContact[] = ['email', 'phone', 'phone_outside_ranges'];
 
 export type CompanyError =
   | 'unknown_user'

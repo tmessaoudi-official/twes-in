@@ -116,9 +116,10 @@ final class EstablishmentResource
     public bool $codeLocked = false;
 
     /**
-     * The contact fields today's rules refuse, kept from before a rule: « À vérifier » on the establishment until changed.
+     * The contact fields today's rules refuse, kept from before a rule, and `phone_outside_ranges` for a phone the platform
+     * keeps outside its country's ranges: « À vérifier » on the establishment until changed.
      *
-     * @var list<'email'|'phone'>
+     * @var list<'email'|'phone'|'phone_outside_ranges'>
      */
     #[ApiProperty(writable: false, required: true)]
     #[Groups([self::READ])]
@@ -130,7 +131,7 @@ final class EstablishmentResource
     #[Groups([self::READ, RecordVersion::REVISE])]
     public ?int $version = null;
 
-    /** @param list<'email'|'phone'> $contactsToCheck */
+    /** @param list<'email'|'phone'|'phone_outside_ranges'> $contactsToCheck */
     public static function of(Establishment $establishment, string $codePattern, bool $codeLocked, array $contactsToCheck): self
     {
         $resource = new self();

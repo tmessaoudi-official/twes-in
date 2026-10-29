@@ -59,7 +59,7 @@ final readonly class CompanyProfileRepresentation
         $resource->latePenaltyText = $profile->latePenaltyText;
         $resource->vatOnDebits = $profile->vatOnDebits;
         $resource->offersVatOnDebits = $preset->invoiceFields->offersVatOnDebits();
-        $resource->contactsToCheck = array_keys($this->contacts->refused($profile->email, $profile->phone, $company->getCountryCode()));
+        $resource->contactsToCheck = $this->contacts->toCheck($profile->email, $profile->phone, $company->getCountryCode());
         foreach ($preset->identifiers as $identifier) {
             $resource->identifierFields[] = new CompanyIdentifierField(
                 $identifier->key,

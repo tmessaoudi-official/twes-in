@@ -13,7 +13,8 @@
       "name_doubtful": "Name in doubt",
       "identifier_missing": "Registration number missing",
       "kept_email": "E-mail today’s rules refuse",
-      "kept_phone": "Phone today’s rules refuse"
+      "kept_phone": "Phone today’s rules refuse",
+      "kept_phone_outside_ranges": "Phone its country does not hand out, kept by the platform"
     },
     "marked": "Marked by hand",
     "filter": {
@@ -41,6 +42,7 @@
     },
     "identifier_named": "Missing: {{identifier}}",
     "establishment_kept_email": "{{establishment}}: e-mail today’s rules refuse",
-    "establishment_kept_phone": "{{establishment}}: phone today’s rules refuse"
+    "establishment_kept_phone": "{{establishment}}: phone today’s rules refuse",
+    "establishment_kept_phone_outside_ranges": "{{establishment}}: phone its country does not hand out, kept by the platform"
   }
 }
