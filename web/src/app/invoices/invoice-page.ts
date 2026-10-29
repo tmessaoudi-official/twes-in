@@ -102,6 +102,7 @@ import {
 import { QuantityTotalsView } from '../shared/documents/quantity-totals';
 import { productsIntoLines, takeInAdded, type TakenIn } from '../shared/documents/add-to';
 import { StockMoveFailures } from '../inventory/stock-move-failures';
+import { ShortSales } from '../inventory/short-sale-dialog';
 
 /**
  * One invoice or credit note: a new draft to fill in, a draft to revise, issue or cancel, or an issued document to
@@ -150,6 +151,7 @@ export class InvoicePage {
   private readonly facade = inject(InvoicesFacade);
   private readonly unsaved = inject(UnsavedChanges);
   private readonly dialog = inject(MatDialog);
+  private readonly shortSales = inject(ShortSales);
   private readonly feedback = inject(Feedback);
   private readonly invoiceActions = inject(InvoiceActions);
   protected readonly auth = inject(AuthFacade);
@@ -1223,6 +1225,18 @@ export class InvoicePage {
         this.sync.version(),
         this.revisedHere,
         excessTo,
+      );
+    }
+    // A sale beyond the stock recorded is said first, and issued again once the person confirmed it.
+    if (issued === null && (await this.shortSales.confirmed(this.facade.refusals()))) {
+      issued = await this.facade.reviseAndIssue(
+        companyId,
+        id,
+        input,
+        this.sync.version(),
+        this.revisedHere,
+        undefined,
+        true,
       );
     }
     if (issued === null) await this.refused();

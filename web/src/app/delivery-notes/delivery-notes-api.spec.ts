@@ -463,6 +463,33 @@ describe('DeliveryNotesApi', () => {
     await expect(pending).rejects.toThrow();
   });
 
+  it('validates again with the sale beyond the stock confirmed, and only when asked', async () => {
+    const plain = api.validate('c1', 'n1');
+    const first = http.expectOne(
+      (req) => req.url === '/api/companies/c1/delivery-notes/n1/validate',
+    );
+    expect(first.request.params.has('shortOfStock')).toBe(false);
+    first.flush({ id: 'n1', status: 'validated' });
+    await plain;
+
+    const confirmed = api.validate('c1', 'n1', true);
+    const again = http.expectOne(
+      (req) => req.url === '/api/companies/c1/delivery-notes/n1/validate',
+    );
+    expect(again.request.params.get('shortOfStock')).toBe('confirmed');
+    again.flush({ id: 'n1', status: 'validated' });
+    await confirmed;
+
+    const delivered = api.validateAndDeliver('c1', 'n1', null, true);
+    const both = http.expectOne(
+      (req) => req.url === '/api/companies/c1/delivery-notes/n1/validate-and-deliver',
+    );
+    expect(both.request.params.get('shortOfStock')).toBe('confirmed');
+    expect(both.request.body).toEqual({ receivedBy: null });
+    both.flush({ id: 'n1', status: 'delivered' });
+    await delivered;
+  });
+
   it('validates, delivers at a moment or now, and cancels', async () => {
     const validated = api.validate('c1', 'n1');
     const validate = http.expectOne('/api/companies/c1/delivery-notes/n1/validate');

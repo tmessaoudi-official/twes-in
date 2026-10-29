@@ -173,11 +173,12 @@ export class DeliveryNotesFacade {
     input: DeliveryNoteInput,
     version: number | null,
     revised: () => void,
+    confirmedShort = false,
   ): Promise<DeliveryNoteRow | null> {
     return this.step(async () => {
       this.noteSignal.set(await this.api.revise(companyId, id, input, version));
       revised();
-      return this.api.validate(companyId, id);
+      return this.api.validate(companyId, id, confirmedShort);
     });
   }
 
@@ -188,11 +189,12 @@ export class DeliveryNotesFacade {
     input: DeliveryNoteInput,
     version: number | null,
     revised: () => void,
+    confirmedShort = false,
   ): Promise<DeliveryNoteRow | null> {
     return this.step(async () => {
       this.noteSignal.set(await this.api.revise(companyId, id, input, version));
       revised();
-      return this.api.validateAndDeliver(companyId, id);
+      return this.api.validateAndDeliver(companyId, id, null, confirmedShort);
     });
   }
 

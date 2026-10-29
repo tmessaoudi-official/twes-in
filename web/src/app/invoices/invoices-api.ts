@@ -72,6 +72,7 @@ import {
   type ResolvedPrice,
 } from './invoices-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { SHORT_SALE_CONFIRMED } from '../inventory/short-sales';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class InvoicesRefused extends Error {
@@ -332,9 +333,17 @@ export class InvoicesApi {
     );
   }
 
-  /** Numbers a draft and fixes what it says; 409 when its establishment cannot number it, 422 without lines. */
-  async issue(companyId: string, id: string, excessTo?: CreditExcessTo): Promise<InvoiceRow> {
-    return this.step(companyId, id, 'issue', null, excessTo);
+  /**
+   * Numbers a draft and fixes what it says; 409 when its establishment cannot number it, 422 without lines or on a
+   * line taking more than the stock recorded, unless the company lets that be confirmed and `confirmedShort` says it was.
+   */
+  async issue(
+    companyId: string,
+    id: string,
+    excessTo?: CreditExcessTo,
+    confirmedShort = false,
+  ): Promise<InvoiceRow> {
+    return this.step(companyId, id, 'issue', null, excessTo, confirmedShort);
   }
 
   /** Cancels a draft; an issued document is never cancelled (409). */
@@ -542,9 +551,11 @@ export class InvoicesApi {
     action: 'issue' | 'cancel' | 'credit-notes' | 'duplicate' | 'receiver',
     body: InvoiceInvoiceCredit | InvoiceReceiveBody | null = null,
     excessTo?: CreditExcessTo,
+    confirmedShort = false,
   ): Promise<InvoiceRow> {
-    const params =
+    const excess =
       excessTo === undefined ? new HttpParams() : new HttpParams().set('excessTo', excessTo);
+    const params = confirmedShort ? excess.set(...SHORT_SALE_CONFIRMED) : excess;
     return this.guard(async () =>
       toInvoice(
         await firstValueFrom(

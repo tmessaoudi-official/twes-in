@@ -28,6 +28,7 @@ import { InvoicePage } from './invoice-page';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { FileSaver } from '../shared/files/save-file';
 import { InvoicesFacade } from './invoices-facade';
+import { ShortSales } from '../inventory/short-sale-dialog';
 import {
   type ChargeLeftOutReason,
   PREVIEW_DELAY,
@@ -66,6 +67,7 @@ class StaticLoader implements TranslateLoader {
         rejections: {
           lines_required: 'Ajoutez au moins une ligne.',
           invalid_value: 'Valeur refusée.',
+          stock_short: '{{name}} : il en faut {{wanted}}, le stock en compte {{on_hand}}.',
           quantity_decimals: '« {{unit}} » se compte en nombres entiers.',
           customer_deactivated: 'Le client « {{number}} » est désactivé.',
           tax_on_line: '{{tax}} se compte sur chaque ligne.',
@@ -275,6 +277,7 @@ const issued: InvoiceRow = {
 describe('InvoicePage', () => {
   const error = signal<InvoicesError | null>(null);
   const refusals = signal<readonly FieldRefusal[]>([]);
+  const shortSales = { confirmed: vi.fn<(said: readonly FieldRefusal[]) => Promise<boolean>>() };
   const invoice = signal<InvoiceRow | null>(null);
   const optionsShown = signal<InvoiceOptions | null>(options);
   const facade = {
@@ -445,6 +448,7 @@ describe('InvoicePage', () => {
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'i9' });
     facade.revise.mockReset().mockResolvedValue(draft);
     facade.reviseAndIssue.mockReset().mockResolvedValue(issued);
+    shortSales.confirmed.mockReset().mockResolvedValue(false);
     facade.cancel.mockReset().mockResolvedValue({ ...draft, status: 'cancelled' });
     facade.creditNote.mockReset();
     facade.duplicate.mockReset();
@@ -468,6 +472,7 @@ describe('InvoicePage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: InvoicesFacade, useValue: facade },
+        { provide: ShortSales, useValue: shortSales },
         { provide: ProductScans, useValue: scans },
         { provide: InventoryFacade, useValue: inventory },
         { provide: CustomerDisplay, useValue: display },
@@ -1179,6 +1184,69 @@ describe('InvoicePage', () => {
       expect.any(Function),
       'refund',
     );
+    error.set(null);
+  });
+
+  it('issues an invoice once a sale beyond the stock is confirmed, and not before', async () => {
+    const short: FieldRefusal = {
+      field: 'lines[0].quantity',
+      reason: 'stock_short_to_confirm',
+      params: { name: 'Vis', wanted: '3', on_hand: '1' },
+    };
+    facade.reviseAndIssue.mockImplementationOnce(() => {
+      error.set('invalid');
+      refusals.set([short]);
+      return Promise.resolve(null);
+    });
+    shortSales.confirmed.mockResolvedValueOnce(true);
+    invoice.set(draft);
+    await open('i1');
+    q('document-action-issue')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+
+    await vi.waitFor(() => expect(facade.reviseAndIssue).toHaveBeenCalledTimes(2));
+    expect(shortSales.confirmed).toHaveBeenCalledWith([short]);
+    expect(facade.reviseAndIssue).toHaveBeenLastCalledWith(
+      'c1',
+      'i1',
+      expect.anything(),
+      expect.anything(),
+      expect.any(Function),
+      undefined,
+      true,
+    );
+    await vi.waitFor(() => expect(effectToasts()).toEqual(['invoices.issued:corrigeable']));
+    error.set(null);
+  });
+
+  it('issues nothing when a sale beyond the stock is not confirmed, and says it on its line', async () => {
+    facade.reviseAndIssue.mockImplementationOnce(() => {
+      error.set('invalid');
+      refusals.set([
+        {
+          field: 'lines[0].quantity',
+          reason: 'stock_short',
+          params: { name: 'Vis', wanted: '3', on_hand: '1' },
+        },
+      ]);
+      return Promise.resolve(null);
+    });
+    invoice.set(draft);
+    await open('i1');
+    q('document-action-issue')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('line-0-quantity-error')?.textContent).toContain(
+        'Vis : il en faut 3, le stock en compte 1.',
+      ),
+    );
+    expect(facade.reviseAndIssue).toHaveBeenCalledTimes(1);
+    expect(effectToasts()).toEqual([]);
     error.set(null);
   });
 

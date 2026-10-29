@@ -17,6 +17,19 @@
       "title": "Le stock est-il réglé ?",
       "message": "Le stock de {{number}} ne sera pas remis à jour par ce document. Choisissez-le seulement si vous l’avez corrigé vous-même, par un ajustement ou une réception.",
       "keep": "Garder le rappel"
+    },
+    "short": {
+      "title_confirm": "Vendre au-delà du stock enregistré ?",
+      "title_refused": "Stock insuffisant",
+      "intro_confirm": "Cette vente prend plus que le stock enregistré. Il passera sous zéro, et « À surveiller » le montrera jusqu’au prochain comptage.",
+      "intro_refused": "Cette vente prend plus que le stock enregistré : comptez le stock ou recevez la marchandise, puis recommencez.",
+      "line": "{{name}} ({{product}}) : il en faut {{wanted}} {{unit}}, {{on_hand}} {{unit}} en stock",
+      "count": "Compter",
+      "receive": "Recevoir",
+      "ask_writer": "Une personne qui gère le stock peut le compter ou recevoir la marchandise.",
+      "confirm": "Vendre quand même",
+      "keep": "Garder le brouillon",
+      "close": "Fermer"
     }
   }
 }

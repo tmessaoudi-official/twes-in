@@ -28,6 +28,7 @@ import {
 import { DeliveryNotePage } from './delivery-note-page';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
+import { ShortSales } from '../inventory/short-sale-dialog';
 import { ProductScans } from '../products/product-scans';
 import { InventoryFacade } from '../inventory/inventory-facade';
 import { ScanBus } from '../shared/scan/scan-bus';
@@ -63,6 +64,7 @@ class StaticLoader implements TranslateLoader {
           product_deactivated: 'Le produit « {{reference}} » est désactivé.',
           customer_deactivated: 'Le client « {{number}} » est désactivé.',
           invalid_text: 'Texte refusé : {{max}} caractères au plus.',
+          stock_short: '{{name}} : il en faut {{wanted}}, le stock en compte {{on_hand}}.',
         },
       },
       delivery_notes: {
@@ -183,6 +185,7 @@ describe('DeliveryNotePage', () => {
   const shownOptions = signal<DeliveryNoteOptions | null>(options);
   const error = signal<DeliveryNotesError | null>(null);
   const refusals = signal<readonly FieldRefusal[]>([]);
+  const shortSales = { confirmed: vi.fn<(said: readonly FieldRefusal[]) => Promise<boolean>>() };
   const note = signal<DeliveryNoteRow | null>(null);
   const facade = {
     options: shownOptions.asReadonly(),
@@ -349,6 +352,7 @@ describe('DeliveryNotePage', () => {
       .mockResolvedValue({ ...validated, status: 'delivered' });
     facade.deliver.mockReset().mockResolvedValue({ kept: { ...validated, status: 'delivered' } });
     facade.cancel.mockReset().mockResolvedValue({ ...validated, status: 'cancelled' });
+    shortSales.confirmed.mockReset().mockResolvedValue(false);
     TestBed.configureTestingModule({
       imports: [DeliveryNotePage],
       providers: [
@@ -363,6 +367,7 @@ describe('DeliveryNotePage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: DeliveryNotesFacade, useValue: facade },
+        { provide: ShortSales, useValue: shortSales },
         { provide: ProductScans, useValue: scans },
         { provide: InventoryFacade, useValue: inventory },
         { provide: CustomerDisplay, useValue: display },
@@ -845,6 +850,7 @@ describe('DeliveryNotePage', () => {
       expect.objectContaining({ lines: [expect.objectContaining({ quantity: '4' })] }),
       1,
       expect.any(Function),
+      false,
     );
     await vi.waitFor(() =>
       expect(effectToasts()).toEqual(['delivery_notes.validated:corrigeable']),
@@ -869,11 +875,86 @@ describe('DeliveryNotePage', () => {
       expect.objectContaining({ lines: [expect.objectContaining({ quantity: '5' })] }),
       1,
       expect.any(Function),
+      false,
     );
     expect(facade.reviseAndValidate).not.toHaveBeenCalled();
     await vi.waitFor(() =>
       expect(effectToasts()).toEqual(['delivery_notes.validated_delivered:corrigeable']),
     );
+  });
+
+  // A sale beyond the stock recorded is said in its own dialog before anything is numbered.
+  for (const [action, call, toast] of [
+    ['validate', 'reviseAndValidate', 'delivery_notes.validated:corrigeable'],
+    [
+      'validate-deliver',
+      'reviseValidateAndDeliver',
+      'delivery_notes.validated_delivered:corrigeable',
+    ],
+  ] as const) {
+    it(`numbers the note once a sale beyond the stock is confirmed (${action})`, async () => {
+      const short: FieldRefusal = {
+        field: 'lines[0].quantity',
+        reason: 'stock_short_to_confirm',
+        params: { name: 'Vis', wanted: '3', on_hand: '1' },
+      };
+      facade[call].mockImplementationOnce(async () => {
+        error.set('invalid');
+        refusals.set([short]);
+        return null;
+      });
+      shortSales.confirmed.mockResolvedValueOnce(true);
+      note.set(draft);
+      await open('n1');
+      type('line-0-quantity', '3');
+      q(`document-action-${action}`)!.click();
+      await settle();
+      over('confirm-run')!.click();
+      await settle();
+
+      await vi.waitFor(() => expect(facade[call]).toHaveBeenCalledTimes(2));
+      expect(shortSales.confirmed).toHaveBeenCalledWith([short]);
+      expect(facade[call]).toHaveBeenLastCalledWith(
+        'c1',
+        'n1',
+        expect.anything(),
+        expect.anything(),
+        expect.any(Function),
+        true,
+      );
+      await vi.waitFor(() => expect(effectToasts()).toEqual([toast]));
+      error.set(null);
+    });
+  }
+
+  it('numbers nothing when a sale beyond the stock is not confirmed, and says it on its line', async () => {
+    facade.reviseAndValidate.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refusals.set([
+        {
+          field: 'lines[0].quantity',
+          reason: 'stock_short',
+          params: { name: 'Vis', wanted: '3', on_hand: '1' },
+        },
+      ]);
+      return null;
+    });
+    note.set(draft);
+    await open('n1');
+    type('line-0-quantity', '3');
+    q('document-action-validate')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(q('line-0-quantity-error')?.textContent).toContain(
+        'Vis : il en faut 3, le stock en compte 1.',
+      ),
+    );
+    expect(facade.reviseAndValidate).toHaveBeenCalledTimes(1);
+    expect(effectToasts()).toEqual([]);
+    error.set(null);
   });
 
   /** The next save is refused as made over a version saved since, and the read after it brings that version. */
@@ -1010,6 +1091,7 @@ describe('DeliveryNotePage', () => {
         expect.anything(),
         1,
         expect.any(Function),
+        false,
       );
       expect(error()).toBeNull();
       expect(failureToasts()).toEqual(['live.saved_since']);
@@ -1045,6 +1127,7 @@ describe('DeliveryNotePage', () => {
       expect.anything(),
       2,
       expect.any(Function),
+      false,
     );
   });
 

@@ -109,7 +109,9 @@
       "above_sold": "A return gives back no more than the sale took out, {{quantity}}.",
       "lot_of_another": "Lot “{{lot}}” is not a lot of “{{reference}}”.",
       "serial_one_piece": "A serial number is a single piece: it moves one at a time, quantity 1.",
-      "same_location": "The goods are already there: choose another location."
+      "same_location": "The goods are already there: choose another location.",
+      "stock_short": "{{name}}: {{wanted}} {{unit}} needed, the stock recorded holds {{on_hand}} {{unit}}. Count the stock or receive the goods first.",
+      "stock_short_to_confirm": "{{name}}: {{wanted}} {{unit}} needed, the stock recorded holds {{on_hand}} {{unit}}. Confirm the sale to go on."
     }
   }
 }

@@ -197,11 +197,12 @@ export class InvoicesFacade {
     version: number | null,
     revised: () => void,
     excessTo?: CreditExcessTo,
+    confirmedShort = false,
   ): Promise<InvoiceRow | null> {
     return this.step(async () => {
       this.invoiceSignal.set(await this.api.revise(companyId, id, input, version));
       revised();
-      return this.api.issue(companyId, id, excessTo);
+      return this.api.issue(companyId, id, excessTo, confirmedShort);
     });
   }
 

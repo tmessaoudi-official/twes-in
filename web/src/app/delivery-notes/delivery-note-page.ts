@@ -103,6 +103,7 @@ import { taxNames } from '../invoices/tax-names';
 import { QuantityTotalsView } from '../shared/documents/quantity-totals';
 import { liveFigures, toDocumentFigures } from '../shared/documents/document-figures';
 import { StockMoveFailures } from '../inventory/stock-move-failures';
+import { ShortSales } from '../inventory/short-sale-dialog';
 
 /**
  * One delivery note: a new draft to fill in, a draft to revise and validate, or a numbered note to deliver, cancel
@@ -147,6 +148,7 @@ export class DeliveryNotePage {
   private readonly facade = inject(DeliveryNotesFacade);
   private readonly unsaved = inject(UnsavedChanges);
   private readonly dialog = inject(MatDialog);
+  private readonly shortSales = inject(ShortSales);
   private readonly feedback = inject(Feedback);
   protected readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
@@ -1039,13 +1041,20 @@ export class DeliveryNotePage {
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
     const kind = kindAmong(this.actions(), 'validate');
-    const validated = await this.facade.reviseAndValidate(
-      companyId,
-      id,
-      input,
-      this.sync.version(),
-      this.revisedHere,
-    );
+    const validate = (confirmedShort: boolean) =>
+      this.facade.reviseAndValidate(
+        companyId,
+        id,
+        input,
+        this.sync.version(),
+        this.revisedHere,
+        confirmedShort,
+      );
+    let validated = await validate(false);
+    // A sale beyond the stock recorded is said first, and sent again once the person confirmed it.
+    if (validated === null && (await this.shortSales.confirmed(this.facade.refusals()))) {
+      validated = await validate(true);
+    }
     if (validated === null) await this.refused();
     if (validated === null || kind === undefined) return;
     // Its next step, to whoever may take it (docs/SPEC.md § 7, 2026-09-26, row 139).
@@ -1061,13 +1070,19 @@ export class DeliveryNotePage {
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
     const kind = kindAmong(this.actions(), 'validate-deliver');
-    const delivered = await this.facade.reviseValidateAndDeliver(
-      companyId,
-      id,
-      input,
-      this.sync.version(),
-      this.revisedHere,
-    );
+    const deliver = (confirmedShort: boolean) =>
+      this.facade.reviseValidateAndDeliver(
+        companyId,
+        id,
+        input,
+        this.sync.version(),
+        this.revisedHere,
+        confirmedShort,
+      );
+    let delivered = await deliver(false);
+    if (delivered === null && (await this.shortSales.confirmed(this.facade.refusals()))) {
+      delivered = await deliver(true);
+    }
     if (delivered === null) await this.refused();
     if (delivered === null || kind === undefined) return;
     const next = this.invoiceable(delivered)

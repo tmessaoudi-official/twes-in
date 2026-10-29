@@ -804,8 +804,16 @@ describe('InvoicesApi', () => {
     const issued = api.issue('c1', 'i1', 'refund');
     const request = http.expectOne((req) => req.url === '/api/companies/c1/invoices/i1/issue');
     expect(request.request.params.get('excessTo')).toBe('refund');
+    expect(request.request.params.has('shortOfStock')).toBe(false);
     request.flush({ id: 'i1' });
     await issued;
+
+    const confirmed = api.issue('c1', 'i1', undefined, true);
+    const again = http.expectOne((req) => req.url === '/api/companies/c1/invoices/i1/issue');
+    expect(again.request.params.get('shortOfStock')).toBe('confirmed');
+    expect(again.request.params.has('excessTo')).toBe(false);
+    again.flush({ id: 'i1' });
+    await confirmed;
   });
 
   it('asks for the price a product sells at for a customer and a quantity', async () => {

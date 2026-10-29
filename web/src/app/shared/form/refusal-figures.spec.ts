@@ -58,6 +58,12 @@ describe('RefusalFigures', () => {
     });
   });
 
+  it('writes what a short sale wants and what the stock holds as quantities, below zero too', () => {
+    expect(
+      spaced(TestBed.inject(RefusalFigures).written({ wanted: '1500.250', on_hand: '-2.000' })),
+    ).toEqual({ wanted: '1 500,250', on_hand: '-2,000' });
+  });
+
   it('writes an amount the API stored with three decimals at the euro’s two', () => {
     me.set({ user: { id: 'u1' }, company: { id: 'c1', countryCode: 'FR', currency: 'EUR' } });
 

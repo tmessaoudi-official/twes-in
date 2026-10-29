@@ -13,6 +13,8 @@ const FIGURES: Readonly<Record<string, 'amount' | 'day' | 'decimal'>> = {
   day: 'day',
   quantity: 'decimal',
   price: 'decimal',
+  wanted: 'decimal',
+  on_hand: 'decimal',
 };
 
 /**

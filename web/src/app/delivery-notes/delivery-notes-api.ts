@@ -53,6 +53,7 @@ import {
 import { InvoicesApi, refusedField } from '../invoices/invoices-api';
 import { trackingOf } from '../products/products-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { SHORT_SALE_CONFIRMED } from '../inventory/short-sales';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class DeliveryNotesRefused extends Error {
@@ -261,9 +262,12 @@ export class DeliveryNotesApi {
     );
   }
 
-  /** Numbers a draft; 409 when it is not one or its establishment cannot number it, 422 without lines. */
-  async validate(companyId: string, id: string): Promise<DeliveryNoteRow> {
-    return this.step(companyId, id, 'validate', null);
+  /**
+   * Numbers a draft; 409 when it is not one or its establishment cannot number it, 422 without lines or on a line
+   * taking more than the stock recorded, unless the company lets that be confirmed and `confirmedShort` says it was.
+   */
+  async validate(companyId: string, id: string, confirmedShort = false): Promise<DeliveryNoteRow> {
+    return this.step(companyId, id, 'validate', null, confirmedShort);
   }
 
   /**
@@ -274,9 +278,10 @@ export class DeliveryNotesApi {
     companyId: string,
     id: string,
     receivedBy: ReceiverChoice | null = null,
+    confirmedShort = false,
   ): Promise<DeliveryNoteRow> {
     const body: DeliveryNoteDeliveryNoteReceive = { receivedBy };
-    return this.step(companyId, id, 'validate-and-deliver', body);
+    return this.step(companyId, id, 'validate-and-deliver', body, confirmedShort);
   }
 
   /**
@@ -402,13 +407,18 @@ export class DeliveryNotesApi {
     id: string,
     action: 'validate' | 'validate-and-deliver' | 'deliver' | 'receiver' | 'cancel',
     body: DeliveryNoteDeliveryNoteDeliver | DeliveryNoteDeliveryNoteReceive | null,
+    confirmedShort = false,
   ): Promise<DeliveryNoteRow> {
+    const params = confirmedShort
+      ? new HttpParams().set(...SHORT_SALE_CONFIRMED)
+      : new HttpParams();
     return this.guard(async () =>
       toNote(
         await firstValueFrom(
           this.http.post<DeliveryNoteDeliveryNoteRead>(
             `${notePath(companyId, id)}/${action}`,
             body,
+            { params },
           ),
         ),
       ),

@@ -109,7 +109,9 @@
       "above_sold": "Un retour rend au plus ce que la vente a sorti, {{quantity}}.",
       "lot_of_another": "Le lot « {{lot}} » n’est pas un lot de « {{reference}} ».",
       "serial_one_piece": "Un numéro de série est une seule pièce : il se déplace un à la fois, quantité 1.",
-      "same_location": "Les articles y sont déjà : choisissez un autre emplacement."
+      "same_location": "Les articles y sont déjà : choisissez un autre emplacement.",
+      "stock_short": "{{name}} : il en faut {{wanted}} {{unit}}, le stock enregistré en compte {{on_hand}} {{unit}}. Comptez le stock ou recevez la marchandise d’abord.",
+      "stock_short_to_confirm": "{{name}} : il en faut {{wanted}} {{unit}}, le stock enregistré en compte {{on_hand}} {{unit}}. Confirmez la vente pour continuer."
     }
   }
 }

@@ -17,6 +17,19 @@
       "title": "Is the stock settled?",
       "message": "The stock of {{number}} will not be updated by this document. Choose this only if you corrected it yourself, with an adjustment or a receipt.",
       "keep": "Keep the reminder"
+    },
+    "short": {
+      "title_confirm": "Sell beyond the stock recorded?",
+      "title_refused": "Not enough stock",
+      "intro_confirm": "This sale takes more than the stock recorded. It will go below zero, and “To watch” shows it until the next count.",
+      "intro_refused": "This sale takes more than the stock recorded: count the stock or receive the goods, then try again.",
+      "line": "{{name}} ({{product}}): {{wanted}} {{unit}} needed, {{on_hand}} {{unit}} in stock",
+      "count": "Count",
+      "receive": "Receive",
+      "ask_writer": "Someone who manages the stock can count it or receive the goods.",
+      "confirm": "Sell anyway",
+      "keep": "Keep the draft",
+      "close": "Close"
     }
   }
 }

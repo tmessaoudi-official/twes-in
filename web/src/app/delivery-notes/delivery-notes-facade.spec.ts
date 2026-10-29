@@ -211,13 +211,19 @@ describe('DeliveryNotesFacade', () => {
     expect(await facade.reviseValidateAndDeliver('c1', 'n1', input, 2, revised)).toEqual(delivered);
     expect(api.revise).toHaveBeenCalledWith('c1', 'n1', input, 2);
     expect(revised).toHaveBeenCalledTimes(1);
-    expect(api.validateAndDeliver).toHaveBeenCalledWith('c1', 'n1');
+    expect(api.validateAndDeliver).toHaveBeenCalledWith('c1', 'n1', null, false);
     expect(facade.note()).toEqual(delivered);
+
+    await facade.reviseValidateAndDeliver('c1', 'n1', input, 2, revised, true);
+    expect(api.validateAndDeliver).toHaveBeenLastCalledWith('c1', 'n1', null, true);
+    api.validate.mockResolvedValue(draft);
+    await facade.reviseAndValidate('c1', 'n1', input, 2, revised, true);
+    expect(api.validate).toHaveBeenLastCalledWith('c1', 'n1', true);
 
     api.validateAndDeliver.mockClear();
     api.revise.mockRejectedValue(new DeliveryNotesRefused('invalid'));
     expect(await facade.reviseValidateAndDeliver('c1', 'n1', input, 2, revised)).toBeNull();
-    expect(revised).toHaveBeenCalledTimes(1);
+    expect(revised).toHaveBeenCalledTimes(3);
     expect(api.validateAndDeliver).not.toHaveBeenCalled();
     expect(facade.error()).toBe('invalid');
   });
