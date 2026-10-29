@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Identity\Application\Mfa\SecondFactorLockout;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\UserRepository;
@@ -57,7 +58,8 @@ final readonly class RecordFailedLogin implements DeclaresAuditActions
             $changes['failed_login_count'] = $user->getFailedLoginCount();
             $changes['locked'] = $user->isLockedAt($now);
             if ($locks) {
-                $this->notices->tell($user->getId(), SecurityChange::AccountLocked, until: $user->getLockedUntil());
+                $change = SecondFactorLockout::WRONG_CODE === $attempt->reason ? SecurityChange::SecondFactorLocked : SecurityChange::AccountLocked;
+                $this->notices->tell($user->getId(), $change, until: $user->getLockedUntil());
             }
         }
 

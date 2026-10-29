@@ -181,6 +181,10 @@ security_notice:
     locked_until: 'Il reste verrouillé jusqu’au %moment% (fuseau horaire %zone%).'
     unlock: 'Pour le déverrouiller tout de suite, choisissez un nouveau mot de passe avec « Mot de passe oublié » : le lien est envoyé à cette adresse.'
     locked_not_you: 'Si ce n’est pas vous qui avez essayé, quelqu’un tente de deviner votre mot de passe : choisissez-en un que vous n’utilisez nulle part ailleurs, et activez la vérification en deux étapes.'
+    code_locked_not_you: 'Si ce n’est pas vous qui avez essayé, votre mot de passe est connu de quelqu’un d’autre : changez-le dès maintenant avec « Mot de passe oublié », et ne le réutilisez nulle part ailleurs.'
+    second_factor_locked:
+        heading: 'Compte verrouillé après des codes erronés'
+        body: 'Votre compte a été verrouillé après plusieurs codes de vérification erronés, saisis après le bon mot de passe : personne ne peut s’y connecter pour l’instant.'
     factors_replaced:
         heading: 'Facteurs de connexion réinitialisés'
         body: 'La personne qui gère votre installation a retiré les seconds facteurs de votre compte (application d’authentification, codes de secours et, le cas échéant, clés d’accès) et fermé toutes vos sessions. À votre prochaine connexion avec votre mot de passe, vous en configurerez un nouveau.'

@@ -12,6 +12,7 @@ namespace App\Tests\Unit\Identity\Application;
 use App\Identity\Application\Login\FailedLoginAttempt;
 use App\Identity\Application\Login\LoginAudit;
 use App\Identity\Application\Login\RecordFailedLogin;
+use App\Identity\Application\Mfa\SecondFactorLockout;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
@@ -87,6 +88,21 @@ final class RecordFailedLoginTest extends TestCase
         self::assertSame([SecurityChange::AccountLocked], $this->notices->told);
         self::assertEquals([$this->clock->now()->modify('+15 minutes')], $this->notices->until);
         self::assertTrue($user->getId()->equals($this->notices->userIds[0]));
+    }
+
+    /** Wrong codes are typed after the right password: the lock they set says so, as its owner has more to do than wait. */
+    public function testALockSetByAWrongSecondFactorIsToldAsOne(): void
+    {
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $this->users->save($user);
+
+        for ($i = 0; $i < 4; ++$i) {
+            $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'BadCredentialsException', wrongCredential: true));
+        }
+        $this->useCase->handle(new FailedLoginAttempt($user->getId(), null, SecondFactorLockout::WRONG_CODE, wrongCredential: true));
+
+        self::assertSame([SecurityChange::SecondFactorLocked], $this->notices->told);
+        self::assertEquals([$this->clock->now()->modify('+15 minutes')], $this->notices->until);
     }
 
     public function testARefusalThatIsNotAWrongPasswordLeavesTheCounterAlone(): void

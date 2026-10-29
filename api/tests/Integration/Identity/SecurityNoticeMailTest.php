@@ -101,6 +101,22 @@ final class SecurityNoticeMailTest extends KernelTestCase
         }
     }
 
+    /** Locked by wrong codes, the password was right: its owner is told to change it, not that someone guesses at it. */
+    public function testALockSetByWrongCodesSaysThePasswordIsKnown(): void
+    {
+        self::bootKernel();
+        $mailer = static::getContainer()->get(SecurityNoticeMailer::class);
+        self::assertInstanceOf(SecurityNoticeMailer::class, $mailer);
+
+        $mailer->send(new SecurityNoticeMail('someone@twes.local', 'fr', SecurityChange::SecondFactorLocked, lockEnd: new LockEnd('2026-10-25 14:30', 'Africa/Tunis', 'dmy')));
+        $html = (string) $this->lastMail()->getHtmlBody();
+
+        self::assertStringContainsString('jusqu’au 25/10/2026 14:30 (fuseau horaire Africa/Tunis)', $html);
+        self::assertStringContainsString('votre mot de passe est connu de quelqu’un d’autre', $html);
+        self::assertStringNotContainsString('tente de deviner votre mot de passe', $html);
+        self::assertStringNotContainsString('il n’y a rien à faire', $html);
+    }
+
     private function lastMail(): Email
     {
         $messages = self::getMailerMessages();

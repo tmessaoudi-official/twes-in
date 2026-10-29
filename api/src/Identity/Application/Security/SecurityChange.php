@@ -27,12 +27,23 @@ enum SecurityChange: string
     case FactorsReplaced = 'factors_replaced';
     /** Wrong passwords or codes locked the account for a while: told once, when the lock is set, with when it ends. */
     case AccountLocked = 'account_locked';
+    /**
+     * The same lock, set by wrong second-factor codes: those are typed after the right password, so its owner is told the
+     * password is known to someone else, not that someone guesses at it.
+     */
+    case SecondFactorLocked = 'second_factor_locked';
     /** An operator switched the account off, its sessions ended with it. */
     case OperatorDeactivated = 'operator_deactivated';
     /** An operator switched the account on again. */
     case OperatorReactivated = 'operator_reactivated';
     /** An operator ended every session of the account. */
     case OperatorEndedSessions = 'operator_ended_sessions';
+
+    /** Whether it tells of a lock, which ends on its own and which its owner cannot sign in to look at. */
+    public function isALock(): bool
+    {
+        return self::AccountLocked === $this || self::SecondFactorLocked === $this;
+    }
 
     /**
      * Whether the installation made it rather than someone holding a session: its owner is told what follows, never

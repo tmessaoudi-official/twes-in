@@ -13,7 +13,7 @@
           <p>{{ 'security_notice.locked_until'|trans({'%moment%': lockedUntil, '%zone%': zone}, 'emails') }}</p>
         {% endif %}
         <p>{{ 'security_notice.unlock'|trans({}, 'emails') }}</p>
-        <p>{{ 'security_notice.locked_not_you'|trans({}, 'emails') }}</p>
+        <p>{{ (passwordKnown ? 'security_notice.code_locked_not_you' : 'security_notice.locked_not_you')|trans({}, 'emails') }}</p>
       {% elseif not fromServer %}
         <p>{{ 'security_notice.if_you'|trans({}, 'emails') }}</p>
         <p>{{ 'security_notice.not_you'|trans({}, 'emails') }}</p>

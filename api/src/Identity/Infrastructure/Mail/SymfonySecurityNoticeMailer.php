@@ -35,7 +35,7 @@ final readonly class SymfonySecurityNoticeMailer implements SecurityNoticeMailer
     {
         $change = $mail->change->value;
         $heading = $this->translator->trans("security_notice.$change.heading", [], 'emails', $mail->locale);
-        $lockEnd = SecurityChange::AccountLocked === $mail->change ? $mail->lockEnd : null;
+        $lockEnd = $mail->change->isALock() ? $mail->lockEnd : null;
         $this->mailer->send(
             (new TemplatedEmail())
                 ->from($this->sender)
@@ -49,7 +49,9 @@ final readonly class SymfonySecurityNoticeMailer implements SecurityNoticeMailer
                     // Made by the installation, the person is told what to do next, not asked whether it was them.
                     'fromServer' => $mail->change->byTheInstallation(),
                     // Locked, the person cannot sign in to check anything: they are told when it ends and how to end it now.
-                    'locked' => SecurityChange::AccountLocked === $mail->change,
+                    'locked' => $mail->change->isALock(),
+                    // Locked by wrong codes, the password was right: changing it is what ends the danger.
+                    'passwordKnown' => SecurityChange::SecondFactorLocked === $mail->change,
                     'lockedUntil' => null === $lockEnd ? null : $this->figures->moment($lockEnd->moment, $mail->locale, $lockEnd->dateFormat),
                     'zone' => $lockEnd?->zone,
                     'productName' => $this->productName,

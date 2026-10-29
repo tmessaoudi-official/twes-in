@@ -278,7 +278,7 @@ final class SecondFactorTest extends ApiTestCase
             self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
             self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
         }
-        self::assertSame(['account_locked'], $this->securityNotices(), 'the code that sets the lock tells its owner by mail');
+        self::assertSame(['second_factor_locked'], $this->securityNotices(), 'the code that sets the lock tells its owner by mail, as a lock set after the right password');
 
         // The right code now buys nothing, and what refuses it is the lock: a limiter would say too_many_attempts.
         $this->postJson('/api/auth/mfa/verify', ['code' => $this->currentCode()]);
