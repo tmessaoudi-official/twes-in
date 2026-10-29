@@ -241,7 +241,7 @@ final readonly class PasskeyController
         return $account->getId();
     }
 
-    /** @return array{id: string, name: string, createdAt: string, lastUsedAt: string|null} */
+    /** @return array{id: string, name: string, createdAt: string, lastUsedAt: string|null, discoverable: bool|null} */
     private static function describe(Passkey $passkey): array
     {
         return [
@@ -249,6 +249,7 @@ final readonly class PasskeyController
             'name' => $passkey->getName(),
             'createdAt' => $passkey->getCreatedAt()->format(\DATE_ATOM),
             'lastUsedAt' => $passkey->getLastUsedAt()?->format(\DATE_ATOM),
+            'discoverable' => $passkey->isDiscoverable(),
         ];
     }
 

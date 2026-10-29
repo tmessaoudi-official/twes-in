@@ -15,6 +15,8 @@ final readonly class VerifiedPasskey
     public function __construct(
         public string $credentialId,
         public string $record,
+        /** Whether the browser said the key lives on the device and can sign in alone; null when it said nothing. */
+        public ?bool $discoverable = null,
     ) {
     }
 }

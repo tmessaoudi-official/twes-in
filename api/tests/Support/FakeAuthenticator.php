@@ -52,7 +52,7 @@ final class FakeAuthenticator
      *
      * @return array<string, mixed>
      */
-    public function register(array $options, int $flags = self::USER_PRESENT | self::USER_VERIFIED, int $signCount = 0, ?string $challenge = null, ?string $origin = null): array
+    public function register(array $options, int $flags = self::USER_PRESENT | self::USER_VERIFIED, int $signCount = 0, ?string $challenge = null, ?string $origin = null, ?bool $residentKey = null): array
     {
         $clientData = $this->clientData('webauthn.create', $challenge ?? self::challengeOf($options), $origin);
         $authData = hash('sha256', $this->rpId, true).\chr(($flags | self::ATTESTED_DATA) & 0xFF).pack('N', $signCount)
@@ -71,6 +71,8 @@ final class FakeAuthenticator
                 'attestationObject' => self::base64Url((string) $attestation),
                 'transports' => ['internal'],
             ],
+            // What the browser's credProps says of the key it made: kept on it (resident), or not; nothing when it says nothing.
+            'clientExtensionResults' => null === $residentKey ? [] : ['credProps' => ['rk' => $residentKey]],
         ];
     }
 

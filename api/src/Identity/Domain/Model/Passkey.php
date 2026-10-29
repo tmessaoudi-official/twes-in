@@ -52,8 +52,16 @@ class Passkey
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $lastUsedAt = null;
 
-    public function __construct(User $user, string $credentialId, string $record, string $name, ?\DateTimeImmutable $now = null)
+    /**
+     * Whether the key lives on the device with the account it opens, so it can sign in alone, as the browser said when it
+     * made it; null when it said nothing, as every key made before it was asked.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?bool $discoverable;
+
+    public function __construct(User $user, string $credentialId, string $record, string $name, ?\DateTimeImmutable $now = null, ?bool $discoverable = null)
     {
+        $this->discoverable = $discoverable;
         $this->id = Uuid::v7();
         $this->user = $user;
         $this->credentialId = $credentialId;
@@ -69,6 +77,11 @@ class Passkey
     {
         $this->record = $record;
         $this->lastUsedAt = $now;
+    }
+
+    public function isDiscoverable(): ?bool
+    {
+        return $this->discoverable;
     }
 
     public function getId(): Uuid

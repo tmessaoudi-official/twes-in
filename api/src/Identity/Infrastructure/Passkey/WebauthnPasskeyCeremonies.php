@@ -18,6 +18,8 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Webauthn\AttestationStatement\AttestationStatementSupportManager;
 use Webauthn\AttestationStatement\NoneAttestationStatementSupport;
+use Webauthn\AuthenticationExtensions\AuthenticationExtensions;
+use Webauthn\AuthenticationExtensions\CredentialPropertiesInputExtension;
 use Webauthn\AuthenticatorAssertionResponse;
 use Webauthn\AuthenticatorAssertionResponseValidator;
 use Webauthn\AuthenticatorAttestationResponse;
@@ -77,14 +79,17 @@ final readonly class WebauthnPasskeyCeremonies implements PasskeyCeremonies
             PublicKeyCredentialUserEntity::create($userName, $userHandle, $displayName),
             random_bytes(32),
             [PublicKeyCredentialParameters::createPk(self::ES256), PublicKeyCredentialParameters::createPk(self::RS256)],
+            // Kept on the device with the account it opens, so it can one day sign in alone, the address not typed.
             AuthenticatorSelectionCriteria::create(
                 null,
                 AuthenticatorSelectionCriteria::USER_VERIFICATION_REQUIREMENT_REQUIRED,
-                AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_PREFERRED,
+                AuthenticatorSelectionCriteria::RESIDENT_KEY_REQUIREMENT_REQUIRED,
             ),
             PublicKeyCredentialCreationOptions::ATTESTATION_CONVEYANCE_PREFERENCE_NONE,
             $this->descriptors($excludeCredentialIds),
             self::TIMEOUT_MS,
+            // The browser then says whether it did keep it there, which an authenticator may still decline.
+            AuthenticationExtensions::create([CredentialPropertiesInputExtension::enable()]),
         ));
     }
 
@@ -109,7 +114,25 @@ final readonly class WebauthnPasskeyCeremonies implements PasskeyCeremonies
             throw new PasskeyRefused('', 0, $e);
         }
 
-        return new VerifiedPasskey(self::encode($record->publicKeyCredentialId), $this->toJson($record));
+        return new VerifiedPasskey(self::encode($record->publicKeyCredentialId), $this->toJson($record), self::residentKeyOf($credentialJson));
+    }
+
+    /**
+     * What the browser's credProps said of the key it made, which the library leaves out of what it reads: true when the
+     * key lives on the device, false when it does not, null when the browser says nothing.
+     */
+    private static function residentKeyOf(string $credentialJson): ?bool
+    {
+        try {
+            $body = json_decode($credentialJson, true, 16, \JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+        $results = \is_array($body) ? $body['clientExtensionResults'] ?? null : null;
+        $credProps = \is_array($results) ? $results['credProps'] ?? null : null;
+        $residentKey = \is_array($credProps) ? $credProps['rk'] ?? null : null;
+
+        return \is_bool($residentKey) ? $residentKey : null;
     }
 
     public function requestOptions(array $allowCredentialIds): string

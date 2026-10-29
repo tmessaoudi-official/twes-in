@@ -256,12 +256,13 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
         ]);
         $schemas['Passkey'] = new \ArrayObject([
             'type' => 'object',
-            'required' => ['id', 'name', 'createdAt', 'lastUsedAt'],
+            'required' => ['id', 'name', 'createdAt', 'lastUsedAt', 'discoverable'],
             'properties' => [
                 'id' => ['type' => 'string', 'format' => 'uuid'],
                 'name' => ['type' => 'string'],
                 'createdAt' => ['type' => 'string', 'format' => 'date-time'],
                 'lastUsedAt' => ['type' => ['string', 'null'], 'format' => 'date-time'],
+                'discoverable' => ['type' => ['boolean', 'null'], 'description' => 'Whether the key lives on the device and can sign in alone, as the browser said when it made it; null when it said nothing.'],
             ],
         ]);
         $schemas['PasskeyList'] = new \ArrayObject([

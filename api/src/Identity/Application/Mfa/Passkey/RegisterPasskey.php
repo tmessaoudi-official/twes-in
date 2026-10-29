@@ -61,7 +61,7 @@ final readonly class RegisterPasskey implements DeclaresAuditActions
 
         return $this->transactions->run(function () use ($user, $verified, $name, $now): RegisteredPasskey {
             $first = !$this->secondFactors->has($user);
-            $passkey = new Passkey($user, $verified->credentialId, $verified->record, $name, $now);
+            $passkey = new Passkey($user, $verified->credentialId, $verified->record, $name, $now, $verified->discoverable);
             $this->passkeys->save($passkey);
 
             $codes = $first ? $this->issueRecoveryCodes->handle($user, $now) : [];

@@ -103,6 +103,39 @@ final class PasskeyTest extends ApiTestCase
         self::assertSame(['Laptop', 'Phone'], array_map(static fn (mixed $p): mixed => \is_array($p) ? $p['name'] ?? null : null, $this->arrayAt($this->json(), 'passkeys')));
     }
 
+    /**
+     * A passkey that signs in alone must live on the device, with the account it opens: one is asked of every new key,
+     * and what the browser says it made is kept, so a key that cannot sign in alone is known.
+     */
+    public function testANewPasskeyIsAskedToBeDiscoverableAndWhatTheBrowserMadeIsKept(): void
+    {
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+
+        $options = $this->creationOptions();
+        $selection = $this->section($options, 'authenticatorSelection');
+        self::assertSame('required', $this->stringAt($selection, 'residentKey'));
+        self::assertTrue($this->boolAt($selection, 'requireResidentKey'));
+        self::assertTrue($this->boolAt($this->section($options, 'extensions'), 'credProps'));
+
+        $this->postJson('/api/auth/mfa/passkeys', ['name' => 'Laptop', 'credential' => (new FakeAuthenticator())->register($options, residentKey: true)]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson('/api/auth/mfa/passkeys', ['name' => 'Key', 'credential' => (new FakeAuthenticator())->register($this->creationOptions(), residentKey: false)]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson('/api/auth/mfa/passkeys', ['name' => 'Silent', 'credential' => (new FakeAuthenticator())->register($this->creationOptions())]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->getJson('/api/auth/mfa/passkeys');
+        $said = [];
+        foreach ($this->arrayAt($this->json(), 'passkeys') as $passkey) {
+            self::assertIsArray($passkey);
+            self::assertArrayHasKey('discoverable', $passkey);
+            self::assertIsString($passkey['name'] ?? null);
+            $said[$passkey['name']] = $passkey['discoverable'];
+        }
+        self::assertSame(['Laptop' => true, 'Key' => false, 'Silent' => null], $said, 'a browser that says nothing leaves it unknown');
+    }
+
     public function testARegistrationChallengeIsSpentByTheFirstAttemptEvenAFailedOne(): void
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
