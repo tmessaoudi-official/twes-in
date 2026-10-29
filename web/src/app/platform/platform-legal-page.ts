@@ -19,6 +19,9 @@ import { Feedback } from '../shared/feedback/feedback';
 import { emailTaken } from '../shared/form/email-rule';
 import type { FieldError } from '../shared/form/form-builder';
 import type { FieldRefusal } from '../shared/form/field-refusals';
+import { PLATFORM_PHONE_COUNTRY } from '../shared/form/phone-country';
+import { PhoneField } from '../shared/form/phone-field';
+import { phoneRefusal } from '../shared/form/phone-numbers';
 import { refusedError } from '../shared/form/refusal-words';
 import { Select, type SelectOption } from '../shared/form/select';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
@@ -62,6 +65,7 @@ type ListPart =
     MatButtonModule,
     MatIconModule,
     MomentPipe,
+    PhoneField,
     RouterLink,
     Select,
     TranslatePipe,
@@ -73,6 +77,8 @@ export class PlatformLegalPage implements OnInit {
   protected readonly facade = inject(PlatformLegalFacade);
   private readonly feedback = inject(Feedback);
   private readonly translate = inject(TranslateService);
+  /** The country a phone of the publisher or the host is read by: the platform's, as no company is open here. */
+  protected readonly phoneCountry = inject(PLATFORM_PHONE_COUNTRY);
   protected readonly pages = LEGAL_PAGES;
   protected readonly names = LEGAL_LANGUAGE_NAMES;
   protected readonly directionOf = directionOf;
@@ -187,6 +193,15 @@ export class PlatformLegalPage implements OnInit {
         if (this.addressField(placeholder) && value.trim() !== '' && !emailTaken(value)) {
           refused.set(placeholder, { field: placeholder, reason: 'invalid_email', params: {} });
         }
+        // A phone kept from before the rule is left as it is until it is typed again, as every form leaves it.
+        const phone = this.phoneField(placeholder) ? phoneRefusal(value) : null;
+        if (phone !== null && value !== this.facade.identity()[placeholder]) {
+          refused.set(placeholder, {
+            field: placeholder,
+            reason: phone.key.replace(/^import\.rejections\./, ''),
+            params: phone.params ?? {},
+          });
+        }
       }
     }
     return refused;
@@ -256,6 +271,23 @@ export class PlatformLegalPage implements OnInit {
     const value = (event.target as HTMLInputElement).value;
     this.identityDraft.update((draft) => ({ ...draft, [placeholder]: value }));
     this.retyped.update((retyped) => new Set([...retyped, placeholder]));
+  }
+
+  /** A phone field hands its number in international form, as it is typed or its country picked. */
+  protected typedPhone(placeholder: string, value: string): void {
+    this.identityDraft.update((draft) => ({ ...draft, [placeholder]: value }));
+    this.retyped.update((retyped) => new Set([...retyped, placeholder]));
+  }
+
+  /** Whether an identity field holds a phone: the one phone field, its country picked beside the local number. */
+  protected phoneField(placeholder: string): boolean {
+    return placeholder.endsWith('.phone');
+  }
+
+  /** What is said under a phone field, in the screen's words, or nothing. */
+  protected phoneError(placeholder: string): string {
+    const error = this.identityError(placeholder);
+    return error === null ? '' : (this.translate.instant(error.key, error.params) as string);
   }
 
   /** Whether an identity field holds an e-mail address: it shows an example and is held to the one e-mail rule. */

@@ -22,35 +22,53 @@
     <p class="max-w-prose text-sm">{{ 'platform.legal.identity.intro' | translate }}</p>
     <div class="grid gap-3 md:grid-cols-2">
       @for (placeholder of identityFields(); track placeholder) {
-        <label class="flex flex-col gap-1">
-          <span>{{ 'platform.legal.identity.' + placeholder | translate }}</span>
-          <input
-            class="twes-legal-editor"
-            type="text"
-            [value]="identityDraft()[placeholder] ?? ''"
-            (input)="typedIdentity(placeholder, $event)"
-            [attr.aria-invalid]="identityError(placeholder) !== null"
-            [attr.aria-describedby]="identityDescribedBy(placeholder)"
-            [attr.data-testid]="'legal-identity-' + placeholder"
-          />
-          @if (addressField(placeholder)) {
-            <span
-              class="text-xs"
-              [id]="'legal-identity-' + placeholder + '-hint'"
-              [attr.data-testid]="'legal-identity-' + placeholder + '-hint'"
-              >{{ 'platform.legal.identity.email_hint' | translate }}</span
-            >
-          }
-          @if (identityError(placeholder); as error) {
-            <span
-              class="text-xs text-error"
-              [id]="'legal-identity-' + placeholder + '-error'"
-              [attr.data-testid]="'legal-identity-' + placeholder + '-error'"
-              >{{ error.key | translate: error.params }}</span
-            >
-          }
-          <code class="text-xs">{{ written(placeholder) }}</code>
-        </label>
+        @if (phoneField(placeholder)) {
+          <div class="flex flex-col gap-1">
+            <label [for]="'legal-identity-' + placeholder + '-input'">{{
+              'platform.legal.identity.' + placeholder | translate
+            }}</label>
+            <app-phone-field
+              [ngModel]="identityDraft()[placeholder] ?? ''"
+              (ngModelChange)="typedPhone(placeholder, $event)"
+              [country]="phoneCountry"
+              [inputId]="'legal-identity-' + placeholder + '-input'"
+              [testId]="'legal-identity-' + placeholder"
+              [error]="phoneError(placeholder)"
+              [errorTestId]="'legal-identity-' + placeholder + '-error'"
+            />
+            <code class="text-xs">{{ written(placeholder) }}</code>
+          </div>
+        } @else {
+          <label class="flex flex-col gap-1">
+            <span>{{ 'platform.legal.identity.' + placeholder | translate }}</span>
+            <input
+              class="twes-legal-editor"
+              type="text"
+              [value]="identityDraft()[placeholder] ?? ''"
+              (input)="typedIdentity(placeholder, $event)"
+              [attr.aria-invalid]="identityError(placeholder) !== null"
+              [attr.aria-describedby]="identityDescribedBy(placeholder)"
+              [attr.data-testid]="'legal-identity-' + placeholder"
+            />
+            @if (addressField(placeholder)) {
+              <span
+                class="text-xs"
+                [id]="'legal-identity-' + placeholder + '-hint'"
+                [attr.data-testid]="'legal-identity-' + placeholder + '-hint'"
+                >{{ 'platform.legal.identity.email_hint' | translate }}</span
+              >
+            }
+            @if (identityError(placeholder); as error) {
+              <span
+                class="text-xs text-error"
+                [id]="'legal-identity-' + placeholder + '-error'"
+                [attr.data-testid]="'legal-identity-' + placeholder + '-error'"
+                >{{ error.key | translate: error.params }}</span
+              >
+            }
+            <code class="text-xs">{{ written(placeholder) }}</code>
+          </label>
+        }
       }
     </div>
     <p>

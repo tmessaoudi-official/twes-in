@@ -31,6 +31,8 @@ class StaticLoader implements TranslateLoader {
           invalid_email:
             'Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn).',
           invalid_text: 'Au plus {{max}} caractères.',
+          phone_length:
+            'Ce numéro n’a pas le nombre de chiffres d’un téléphone de son pays (exemple\u00a0: {{example}}).',
           invalid_value: 'Valeur refusée.',
         },
       },
@@ -66,7 +68,12 @@ class StaticLoader implements TranslateLoader {
             title: 'Éditeur et hébergeur',
             save: 'Enregistrer',
             saved: 'Identité enregistrée.',
-            publisher: { name: 'Nom de l’éditeur', address: 'Adresse', email: 'E-mail' },
+            publisher: {
+              name: 'Nom de l’éditeur',
+              address: 'Adresse',
+              email: 'E-mail',
+              phone: 'Téléphone',
+            },
             host: { name: 'Hébergeur' },
           },
         },
@@ -165,6 +172,7 @@ describe('PlatformLegalPage', () => {
       identity: signal<Readonly<Record<string, string>>>({
         'publisher.name': 'twes SAS',
         'publisher.email': '',
+        'publisher.phone': '',
         'host.name': '',
       }),
       identityRefusals: signal<readonly FieldRefusal[]>([]),
@@ -461,6 +469,57 @@ describe('PlatformLegalPage', () => {
     q('legal-identity-save')!.click();
     await settle();
     expect(facade.saveIdentity).toHaveBeenCalledWith({ 'publisher.email': 'contact@twes.tn' });
+  });
+
+  // Row 252: the publisher's and host's phones are the one phone field, read by the platform's country.
+  it("asks a phone as its country and local number, says a wrong length with its country's example, and saves it international", async () => {
+    await render();
+    const country = q('legal-identity-publisher.phone-country')!;
+    const phone = q('legal-identity-publisher.phone') as HTMLInputElement;
+    expect(country.textContent).toContain('+216');
+    expect(phone.getAttribute('type')).toBe('tel');
+
+    phone.value = '71 900';
+    phone.dispatchEvent(new Event('input'));
+    await settle();
+    q('legal-identity-save')!.click();
+    await settle();
+    expect(facade.saveIdentity).not.toHaveBeenCalled();
+    expect(q('legal-identity-publisher.phone-error')?.textContent).toContain('exemple : +216 ');
+    expect(phone.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(phone);
+
+    phone.value = '71 900 868';
+    phone.dispatchEvent(new Event('input'));
+    await settle();
+    expect(q('legal-identity-publisher.phone-error')).toBeNull();
+    q('legal-identity-save')!.click();
+    await settle();
+    expect(facade.saveIdentity).toHaveBeenCalledWith({ 'publisher.phone': '+216 71 900 868' });
+  });
+
+  it('reads a kept phone into its country and local part, and counts it unchanged until it is typed otherwise', async () => {
+    facade.identity.set({ 'publisher.name': 'twes SAS', 'publisher.phone': '+33 6 12 34 56 78' });
+    await render();
+    expect(q('legal-identity-publisher.phone-country')!.textContent).toContain('+33');
+    expect((q('legal-identity-publisher.phone') as HTMLInputElement).value).toBe('06 12 34 56 78');
+    expect(q('legal-identity-save')!.hasAttribute('disabled')).toBe(true);
+  });
+
+  it('leaves a phone kept from before the rule as it is, refusing it only once typed again', async () => {
+    facade.identity.set({ 'publisher.phone': '71.900.868 poste 12', 'host.name': '' });
+    await render();
+    expect((q('legal-identity-publisher.phone') as HTMLInputElement).value).toBe(
+      '71.900.868 poste 12',
+    );
+    const host = q('legal-identity-host.name') as HTMLInputElement;
+    host.value = 'OVH SAS';
+    host.dispatchEvent(new Event('input'));
+    await settle();
+    q('legal-identity-save')!.click();
+    await settle();
+    expect(q('legal-identity-publisher.phone-error')).toBeNull();
+    expect(facade.saveIdentity).toHaveBeenCalledWith({ 'host.name': 'OVH SAS' });
   });
 
   it('shows an example under every address field, which the field is described by, and under no other', async () => {
