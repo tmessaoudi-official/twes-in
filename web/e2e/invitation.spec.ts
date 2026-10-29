@@ -136,6 +136,67 @@ test('an address that already has an account joins from the mailed link with not
   await expect(row).toContainText('Administrateur');
 });
 
+// The page says a company the platform refused, and why, before anything is filled in: signing in would say it only
+// after the account was made. Each run leaves one refused company behind.
+test('the invited owner of a company the platform refused reads it, and why, before the form', async ({
+  page,
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  const stamp = Date.now();
+  const owner = `refused-owner-${stamp}@twes.local`;
+  const name = `Refusée ${stamp}`;
+  const reason = 'Matricule fiscal introuvable';
+
+  await signInAsOperator(page);
+  const opened = await sendProving(page, OPERATOR_PASSWORD, 'POST', '/api/companies', {
+    name,
+    countryCode: 'TN',
+    currency: 'TND',
+    locale: 'fr',
+    timezone: 'Africa/Tunis',
+  });
+  expect(opened.status).toBe(201);
+  const companyId = (opened.body as { id: string }).id;
+  const invited = await sendProving(
+    page,
+    OPERATOR_PASSWORD,
+    'POST',
+    `/api/platform/companies/${companyId}/owners`,
+    { email: owner },
+  );
+  expect(invited.status).toBe(201);
+  const rejected = await sendProving(
+    page,
+    OPERATOR_PASSWORD,
+    'POST',
+    `/api/platform/companies/${companyId}/reject`,
+    { reason },
+  );
+  expect(rejected.status).toBe(200);
+
+  // The link arrives in a mail client: opened with no session at all.
+  const theirs = await browser.newContext();
+  const theirPage = await theirs.newPage();
+  await theirPage.goto(`/invitations/${await invitationTokenFor(request, owner)}`);
+  const closed = theirPage.getByTestId('invitation-company-closed');
+  await expect(closed).toContainText(`${name} n’a pas été acceptée par l’équipe de la plateforme`);
+  await expect(theirPage.getByTestId('invitation-company-reason')).toContainText(reason);
+  // Said above the form, which stays: the person may still make the account.
+  const above = await closed.evaluate(
+    (notice) =>
+      document.querySelector('[data-testid="invitation-name"]') !== null &&
+      (notice.compareDocumentPosition(
+        document.querySelector('[data-testid="invitation-name"]') as Node,
+      ) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+        0,
+  );
+  expect(above).toBe(true);
+  await theirs.close();
+});
+
 test('a link that has already been used is refused', async ({ page }) => {
   await page.goto(`/invitations/${'a'.repeat(64)}`);
 

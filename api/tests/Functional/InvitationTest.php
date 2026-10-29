@@ -314,6 +314,23 @@ final class InvitationTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
+    public function testTheLinkOfARefusedCompanySaysItAndWhyBeforeAnythingIsFilledIn(): void
+    {
+        $refused = $this->createPendingCompany();
+        $token = $this->inviteAndReadTheToken($refused, Role::OWNER);
+        $company = $this->em()->find(Company::class, $refused->getId());
+        self::assertNotNull($company);
+        $company->suspend(new \DateTimeImmutable(), 'Matricule fiscal introuvable');
+        $this->em()->flush();
+        $this->signOut();
+
+        $this->getJson('/api/invitations/'.$token);
+
+        self::assertResponseIsSuccessful();
+        $body = $this->json();
+        self::assertSame([true, false, 'Matricule fiscal introuvable'], [$body['companyRefused'], $body['companySuspended'], $body['companyReason']]);
+    }
+
     public function testAnOwnerAcceptingActivatesThePendingCompany(): void
     {
         $pending = $this->em()->getRepository(Company::class)->findOneBy(['name' => 'Waiting'])

@@ -11,6 +11,9 @@ const offer: InvitationOffer = {
   roleName: 'member',
   expiresAt: '2026-09-16T10:00:00+00:00',
   hasAccount: false,
+  companyRefused: false,
+  companySuspended: false,
+  companyReason: null,
 };
 
 describe('InvitationFacade', () => {

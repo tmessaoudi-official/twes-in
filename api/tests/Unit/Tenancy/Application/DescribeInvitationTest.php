@@ -60,6 +60,33 @@ final class DescribeInvitationTest extends TestCase
         self::assertTrue($summary->hasAccount);
     }
 
+    public function testAnOpenCompanyIsSaidToBeNeitherRefusedNorSuspended(): void
+    {
+        $summary = $this->describe()->for($this->open()->raw);
+        self::assertNotNull($summary);
+        self::assertSame([false, false, null], [$summary->companyRefused, $summary->companySuspended, $summary->companyReason]);
+    }
+
+    public function testACompanyRefusedBeforeItsOwnerJoinedIsSaidRefusedWithItsReasonBeforeTheFormIsFilled(): void
+    {
+        $company = Company::pending('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable(self::NOW));
+        $company->suspend(new \DateTimeImmutable(self::NOW), 'Matricule fiscal introuvable');
+        $summary = $this->describe()->for($this->open($company)->raw);
+
+        self::assertNotNull($summary);
+        self::assertSame([true, false, 'Matricule fiscal introuvable'], [$summary->companyRefused, $summary->companySuspended, $summary->companyReason]);
+    }
+
+    public function testASuspendedCompanyIsSaidSuspendedWithItsReason(): void
+    {
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company->suspend(new \DateTimeImmutable(self::NOW), 'Règlement en attente');
+        $summary = $this->describe()->for($this->open($company)->raw);
+
+        self::assertNotNull($summary);
+        self::assertSame([false, true, 'Règlement en attente'], [$summary->companyRefused, $summary->companySuspended, $summary->companyReason]);
+    }
+
     public function testAnUnknownLinkDescribesNothing(): void
     {
         self::assertNull($this->describe()->for(InvitationToken::generate()->raw));
@@ -85,11 +112,11 @@ final class DescribeInvitationTest extends TestCase
         self::assertNull($this->describe()->for($token->raw));
     }
 
-    private function open(): InvitationToken
+    private function open(?Company $company = null): InvitationToken
     {
         $token = InvitationToken::generate();
         $this->invitations->save(new Invitation(
-            new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'),
+            $company ?? new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'),
             Email::fromString('stranger@twes.local'),
             new Role(Role::MEMBER, []),
             $token,

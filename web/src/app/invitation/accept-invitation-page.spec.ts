@@ -35,6 +35,13 @@ class StaticLoader implements TranslateLoader {
           'Ce que vous ferez chez {{company}} sera inscrit dans son journal d’activité. Voir',
       },
       legal: { pages: { privacy: 'Confidentialité' } },
+      auth: {
+        awaiting: {
+          suspended: '{{company}} est suspendue. Contactez l’équipe de la plateforme.',
+          refused: '{{company}} n’a pas été acceptée par l’équipe de la plateforme. Contactez-la.',
+          reason: 'Motif :',
+        },
+      },
     });
   }
 }
@@ -45,6 +52,9 @@ const offer: InvitationOffer = {
   roleName: 'member',
   expiresAt: '2026-09-16T10:00:00+00:00',
   hasAccount: false,
+  companyRefused: false,
+  companySuspended: false,
+  companyReason: null,
 };
 
 describe('AcceptInvitationPage', () => {
@@ -118,6 +128,36 @@ describe('AcceptInvitationPage', () => {
 
     expect(invitation.accept).toHaveBeenCalledWith('a-token');
     expect(navigate).toHaveBeenCalledWith('/login');
+  });
+
+  // Signing in would say it; the page says it first, with the reason and whom to ask, above the form it still offers.
+  it.each([
+    [{ companyRefused: true }, 'n’a pas été acceptée par l’équipe de la plateforme'],
+    [{ companySuspended: true }, 'est suspendue. Contactez l’équipe de la plateforme'],
+  ])('says before its form a company the platform closed (%o)', async (closed, said) => {
+    await render({ ...offer, ...closed, companyReason: 'Matricule introuvable' });
+
+    const notice = byTestId('invitation-company-closed');
+    expect(notice?.textContent).toContain(`Acme ${said}`);
+    expect(byTestId('invitation-company-reason')?.textContent).toContain(
+      'Motif : Matricule introuvable',
+    );
+    const form = byTestId('invitation-name');
+    expect(
+      form !== null &&
+        notice !== null &&
+        (notice.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    ).toBe(true);
+  });
+
+  it('says nothing of an open company, nor a reason it was not given', async () => {
+    await render(offer);
+    expect(byTestId('invitation-company-closed')).toBeNull();
+
+    TestBed.resetTestingModule();
+    await render({ ...offer, companyRefused: true });
+    expect(byTestId('invitation-company-closed')).not.toBeNull();
+    expect(byTestId('invitation-company-reason')).toBeNull();
   });
 
   it('tells whoever joins, before they do, that what they do is kept in the journal', async () => {

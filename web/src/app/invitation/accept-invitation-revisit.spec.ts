@@ -32,6 +32,9 @@ const acme: InvitationOffer = {
   roleName: 'member',
   expiresAt: '2026-09-16T10:00:00+00:00',
   hasAccount: true,
+  companyRefused: false,
+  companySuspended: false,
+  companyReason: null,
 };
 
 /**

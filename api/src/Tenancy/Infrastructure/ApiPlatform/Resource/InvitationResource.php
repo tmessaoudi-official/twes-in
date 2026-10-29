@@ -68,6 +68,21 @@ final class InvitationResource
     #[Groups([self::READ])]
     public ?bool $hasAccount = null;
 
+    /** Whether the platform refused the company before it was ever opened, which the page says before its form. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?bool $companyRefused = null;
+
+    /** Whether the platform suspended the company once open, which the page says before its form too. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?bool $companySuspended = null;
+
+    /** The platform's reason for either, null when it gave none or the company is open. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $companyReason = null;
+
     /** Needed only to make an account; an address that has one sends none, and one sent is ignored. */
     #[Assert\NotBlank(allowNull: true, groups: ['accept'])]
     #[Assert\Length(min: 1, max: 120, groups: ['accept'])]
@@ -95,6 +110,9 @@ final class InvitationResource
         $resource->roleName = $summary->roleName;
         $resource->expiresAt = $summary->expiresAt;
         $resource->hasAccount = $summary->hasAccount;
+        $resource->companyRefused = $summary->companyRefused;
+        $resource->companySuspended = $summary->companySuspended;
+        $resource->companyReason = $summary->companyReason;
 
         return $resource;
     }

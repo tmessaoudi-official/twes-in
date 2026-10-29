@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Invitation;
 
 use App\Identity\Domain\Repository\UserRepository;
+use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\InvitationRepository;
 use App\Tenancy\Domain\ValueObject\InvitationToken;
 use Psr\Clock\ClockInterface;
@@ -40,12 +41,19 @@ final readonly class DescribeInvitation
             return null;
         }
 
+        // A company the operator closed is said before the form, as signing in would say it, not after the person joins.
+        $company = $invitation->getCompany();
+        $closed = Company::STATUS_SUSPENDED === $company->getStatus();
+
         return new InvitationSummary(
             $invitation->getEmail()->value,
-            $invitation->getCompany()->getName(),
+            $company->getName(),
             $invitation->getRoleName(),
             $invitation->getExpiresAt()->format(\DATE_ATOM),
             null !== $this->users->ofEmail($invitation->getEmail()),
+            $closed && !$company->wasOpened(),
+            $closed && $company->wasOpened(),
+            $closed ? $company->getSuspensionReason() : null,
         );
     }
 }

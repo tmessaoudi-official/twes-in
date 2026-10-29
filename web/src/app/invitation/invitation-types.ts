@@ -8,6 +8,12 @@ export interface InvitationOffer {
   readonly expiresAt: string;
   /** The address already has an account: accepting then asks for nothing, and never sets a password. */
   readonly hasAccount: boolean;
+  /** The platform refused the company before it was ever opened: said before the form, as signing in would say it. */
+  readonly companyRefused: boolean;
+  /** The platform suspended the company once open: said before the form too. */
+  readonly companySuspended: boolean;
+  /** The platform's reason for either, null when it gave none. */
+  readonly companyReason: string | null;
 }
 
 /**

@@ -19,6 +19,34 @@ describe('InvitationApi', () => {
 
   afterEach(() => http.verify());
 
+  it('reads whether the platform closed the company, and why, as the link describes it', async () => {
+    const read = api.offer('t'.repeat(64));
+    http.expectOne(`/api/invitations/${'t'.repeat(64)}`).flush({
+      email: 'a@example.test',
+      companyName: 'Acme',
+      roleName: 'owner',
+      expiresAt: '2026-11-05T10:00:00+00:00',
+      hasAccount: false,
+      companyRefused: true,
+      companySuspended: false,
+      companyReason: 'Matricule introuvable',
+    });
+    await expect(read).resolves.toMatchObject({
+      companyRefused: true,
+      companySuspended: false,
+      companyReason: 'Matricule introuvable',
+    });
+
+    // An answer that names none of them is an open company.
+    const older = api.offer('u'.repeat(64));
+    http.expectOne(`/api/invitations/${'u'.repeat(64)}`).flush({ companyName: 'Acme' });
+    await expect(older).resolves.toMatchObject({
+      companyRefused: false,
+      companySuspended: false,
+      companyReason: null,
+    });
+  });
+
   it('says the link was tried too often, rather than an invalid request, when the API holds it back', async () => {
     const read = api.offer('t'.repeat(64));
     http

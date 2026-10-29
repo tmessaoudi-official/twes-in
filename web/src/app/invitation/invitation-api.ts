@@ -32,6 +32,9 @@ export class InvitationApi {
         roleName: body.roleName ?? '',
         expiresAt: body.expiresAt ?? '',
         hasAccount: body.hasAccount ?? false,
+        companyRefused: body.companyRefused ?? false,
+        companySuspended: body.companySuspended ?? false,
+        companyReason: body.companyReason ?? null,
       };
     });
   }

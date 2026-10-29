@@ -18,6 +18,12 @@ final readonly class InvitationSummary
         public string $roleName,
         public string $expiresAt,
         public bool $hasAccount = false,
+        /** the operator refused the company before it was ever opened: joining it opens nothing */
+        public bool $companyRefused = false,
+        /** the operator suspended the company once open: its members cannot work in it until it is opened again */
+        public bool $companySuspended = false,
+        /** the operator's reason for either, null when they gave none or the company is open */
+        public ?string $companyReason = null,
     ) {
     }
 }
