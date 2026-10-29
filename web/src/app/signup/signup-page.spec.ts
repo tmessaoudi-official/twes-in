@@ -148,6 +148,26 @@ describe('SignupPage', () => {
     expect(facade.request).not.toHaveBeenCalled();
   });
 
+  it('refuses an address whose domain has no dot, which the API would refuse', async () => {
+    const { fixture, query } = await render();
+
+    type(query<HTMLInputElement>('signup-email')!, 'owner@exemple');
+    query<HTMLFormElement>('signup-form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(facade.request).not.toHaveBeenCalled();
+  });
+
+  it('offers the address a slip of a key most likely meant, never writing it in', async () => {
+    const { fixture, query } = await render();
+
+    type(query<HTMLInputElement>('signup-email')!, 'owner@hotmial.fr');
+    fixture.detectChanges();
+
+    expect(query('signup-email-typo')?.querySelector('bdi')?.textContent).toBe('owner@hotmail.fr');
+    expect(query<HTMLInputElement>('signup-email')!.value).toBe('owner@hotmial.fr');
+  });
+
   it('says why an ask was turned away', async () => {
     error.set('too_many');
 

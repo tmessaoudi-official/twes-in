@@ -899,7 +899,8 @@ describe('CustomerPage', () => {
       return null;
     });
 
-    type('field-email', 'nobody@nowhere');
+    // An address the screen takes: what is tested is the API's refusal, said on its field.
+    type('field-email', 'nobody@nowhere.tn');
     await settle();
     q('record-save')!.click();
     await settle();

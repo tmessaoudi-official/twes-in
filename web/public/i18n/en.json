@@ -790,7 +790,7 @@
     "none_found": "Nothing found.",
     "errors": {
       "required": "This field is required.",
-      "email": "Enter a valid email address.",
+      "email": "An email address is written name@domain.extension (example: accounts@example.tn). Check the @ and the dot.",
       "option": "Choose one of the proposed values.",
       "pattern": "This value does not have the expected format.",
       "min_length": "At least {{min}} characters.",
@@ -801,6 +801,7 @@
       "time": "Enter a valid time of day, such as 9:05.",
       "colour": "Enter a colour written as #rrggbb, such as #1f6feb."
     },
+    "email_typo": "Did you mean:",
     "leave": {
       "title": "Leave without saving?",
       "message": "Your changes will be lost.",
@@ -2934,7 +2935,7 @@
       "title": "Create an account",
       "intro": "Enter your email address and we will send you a link to finish signing up.",
       "email": "Email address",
-      "email_invalid": "This email address is not valid.",
+      "email_invalid": "An email address is written name@domain.extension (example: accounts@example.tn). Check the @ and the dot.",
       "submit": "Send me a link",
       "sent": "Check your inbox: if this address can be used to sign up, a link to finish is on its way. It is valid for 24 hours.",
       "closed": "Signing up is not open at the moment.",

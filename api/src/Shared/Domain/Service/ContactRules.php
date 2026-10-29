@@ -52,6 +52,9 @@ final class ContactRules
      * no flag, reads it as PCRE does under `/u`.
      */
     public const string SPACES = " \u{00A0}\u{1680}\u{2000}-\u{200A}\u{202F}\u{205F}\u{3000}";
+
+    /** The same rule for a setting that may be left empty, as a setting's pattern is written. */
+    public const string EMAIL_OR_EMPTY = '/^('.self::EMAIL_PATTERN.')?$/D';
     /** A phone number as an HTML form's pattern writes it, the whole value matched. */
     public const string PHONE_PATTERN = '\+?[0-9'.self::SPACES.'().\-]{3,40}';
     private const string PHONE = '/^'.self::PHONE_PATTERN.'$/uD';
@@ -68,7 +71,7 @@ final class ContactRules
     public static function email(string $value): ?Refusal
     {
         return \strlen($value) > self::EMAIL_MAX || 1 !== preg_match(self::EMAIL, $value)
-            ? new Refusal('invalid_email', 'Not an e-mail address.')
+            ? new Refusal('invalid_email', 'An e-mail address is written name@domain.extension, such as accounts@example.tn.')
             : null;
     }
 

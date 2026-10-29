@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
+use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\CreateEstablishmentProcessor;
@@ -94,7 +95,7 @@ final class EstablishmentResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $phone = null;
 
-    #[Assert\Email(groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
+    #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE])]
     #[Assert\Length(max: 254, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 254]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;

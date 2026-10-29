@@ -16,6 +16,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Feedback } from '../shared/feedback/feedback';
+import { emailTaken } from '../shared/form/email-rule';
+import type { FieldError } from '../shared/form/form-builder';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { refusedError } from '../shared/form/refusal-words';
 import { Select, type SelectOption } from '../shared/form/select';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
@@ -164,6 +168,29 @@ export class PlatformLegalPage implements OnInit {
   protected readonly identityChanged = computed(
     () => Object.keys(this.identityChanges()).length > 0,
   );
+  /** Whether a save of the identity was asked: what it would refuse is said from then on, as it is typed. */
+  private readonly identityTried = signal(false);
+  /** The fields typed again since the API refused them, whose refusal no longer says what they hold. */
+  private readonly retyped = signal<ReadonlySet<string>>(new Set());
+  /**
+   * Each identity field refused, by placeholder: an address the one e-mail rule refuses, said before the save asks who
+   * is at the screen, since the API asks that before it reads what was sent; and what the API refused in the last save,
+   * until that field is typed again.
+   */
+  private readonly identityRefused = computed(() => {
+    const refused = new Map<string, FieldRefusal>();
+    for (const refusal of this.facade.identityRefusals()) {
+      if (!this.retyped().has(refusal.field)) refused.set(refusal.field, refusal);
+    }
+    if (this.identityTried()) {
+      for (const [placeholder, value] of Object.entries(this.identityDraft())) {
+        if (placeholder.endsWith('.email') && value.trim() !== '' && !emailTaken(value)) {
+          refused.set(placeholder, { field: placeholder, reason: 'invalid_email', params: {} });
+        }
+      }
+    }
+    return refused;
+  });
   /**
    * What is typed and not saved: the identity's fields changed, the open text, and the texts kept for pages opened
    * before. Leaving the screen or reloading it loses them all, so the page is held while any is there.
@@ -228,9 +255,25 @@ export class PlatformLegalPage implements OnInit {
   protected typedIdentity(placeholder: string, event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.identityDraft.update((draft) => ({ ...draft, [placeholder]: value }));
+    this.retyped.update((retyped) => new Set([...retyped, placeholder]));
+  }
+
+  /** What is said under an identity field the screen or the API refuses, in the words every form uses. */
+  protected identityError(placeholder: string): FieldError | null {
+    const refusal = this.identityRefused().get(placeholder);
+    return refusal === undefined ? null : refusedError(this.translate, refusal);
   }
 
   protected async saveIdentity(): Promise<void> {
+    this.identityTried.set(true);
+    const first = this.identityFields().find((placeholder) =>
+      this.identityRefused().has(placeholder),
+    );
+    if (first !== undefined) {
+      document.querySelector<HTMLElement>(`[data-testid="legal-identity-${first}"]`)?.focus();
+      return;
+    }
+    this.retyped.set(new Set());
     const outcome = await this.facade.saveIdentity(this.identityChanges());
     if (outcome === 'saved') this.feedback.success('platform.legal.identity.saved');
     else if (outcome === 'saved_since') this.feedback.failure('live.saved_since');

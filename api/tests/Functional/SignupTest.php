@@ -118,9 +118,12 @@ final class SignupTest extends ApiTestCase
     {
         $this->openSignup();
 
-        $this->postJson('/api/signup', ['email' => 'not an address']);
+        foreach (['not an address', 'owner@exemple', 'é@exemple.tn'] as $email) {
+            $this->postJson('/api/signup', ['email' => $email]);
 
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $email);
+            self::assertSame(['invalid_email', []], $this->refusalOf('email'), $email);
+        }
         self::assertEmailCount(0);
     }
 

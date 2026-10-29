@@ -122,7 +122,8 @@ describe('DescriptorForm, a save the API refused', () => {
     });
     fixture = TestBed.createComponent(Host);
     fixture.componentInstance.form.controls['name']!.setValue('Carthage');
-    fixture.componentInstance.form.controls['email']!.setValue('nobody@nowhere');
+    // A domain with its dot: the one e-mail rule, as the API holds it, refuses one without.
+    fixture.componentInstance.form.controls['email']!.setValue('nobody@nowhere.tn');
     await settle();
   });
 

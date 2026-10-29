@@ -4,7 +4,7 @@
     "of": "شركة {{company}}",
     "name": "الاسم",
     "email": "البريد الإلكتروني",
-    "email_invalid": "هذا البريد الإلكتروني غير صالح.",
+    "email_invalid": "يُكتب البريد الإلكتروني بالشكل nom@domaine.extension (مثال: compta@exemple.tn). تحقّق من @ ومن النقطة.",
     "role": "الدور",
     "actions": "الإجراءات",
     "add": "إضافة",

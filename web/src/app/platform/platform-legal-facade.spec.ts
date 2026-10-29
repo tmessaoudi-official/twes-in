@@ -3,7 +3,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { StepUp } from '../shared/step-up/step-up';
-import { PlatformLegalApi } from './platform-legal-api';
+import { LegalIdentityRefused, PlatformLegalApi } from './platform-legal-api';
 import { PlatformLegalFacade } from './platform-legal-facade';
 
 // The proof dialog is answered by the test; `retrying` itself is StepUp's own.
@@ -87,5 +87,20 @@ describe('PlatformLegalFacade', () => {
     expect(api.saveIdentity).toHaveBeenLastCalledWith([
       { placeholder: 'publisher.name', value: 'Autre', version: 3 },
     ]);
+  });
+
+  it('keeps nothing when the API refuses a field, saying which, until a save is kept', async () => {
+    await facade.load();
+    const refusal = { field: 'publisher.name', reason: 'invalid_text', params: { max: 200 } };
+    api.saveIdentity.mockRejectedValueOnce(new LegalIdentityRefused([refusal]));
+
+    expect(await facade.saveIdentity({ 'publisher.name': 'x'.repeat(201) })).toBe('refused');
+    expect(facade.identityRefusals()).toEqual([refusal]);
+    expect(facade.identity()).toEqual({ 'publisher.name': 'twes' });
+    expect(facade.failed()).toBe(false);
+
+    api.saveIdentity.mockResolvedValueOnce('saved');
+    expect(await facade.saveIdentity({ 'publisher.name': 'Autre' })).toBe('saved');
+    expect(facade.identityRefusals()).toEqual([]);
   });
 });

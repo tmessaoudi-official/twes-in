@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,6 +10,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { SignupFacade } from './signup-facade';
+import { emailRule, emailTypo } from '../shared/form/email-rule';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { onTypedText, typedText } from '../shared/form/typed-text';
 
@@ -42,9 +44,14 @@ export class SignupPage implements OnInit {
   protected readonly form = new FormGroup({
     email: new FormControl('', {
       nonNullable: true,
-      validators: [onTypedText(Validators.required), onTypedText(Validators.email)],
+      validators: [onTypedText(Validators.required), emailRule],
     }),
   });
+  private readonly typedEmail = toSignal(this.form.controls.email.valueChanges, {
+    initialValue: this.form.controls.email.value,
+  });
+  /** The address a slip of a key most likely meant, offered under the field and never written into it. */
+  protected readonly typo = computed(() => emailTypo(this.typedEmail()));
 
   async ngOnInit(): Promise<void> {
     this.signup.forget();

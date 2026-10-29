@@ -29,8 +29,22 @@
             type="text"
             [value]="identityDraft()[placeholder] ?? ''"
             (input)="typedIdentity(placeholder, $event)"
+            [attr.aria-invalid]="identityError(placeholder) !== null"
+            [attr.aria-describedby]="
+              identityError(placeholder) === null
+                ? null
+                : 'legal-identity-' + placeholder + '-error'
+            "
             [attr.data-testid]="'legal-identity-' + placeholder"
           />
+          @if (identityError(placeholder); as error) {
+            <span
+              class="text-xs text-error"
+              [id]="'legal-identity-' + placeholder + '-error'"
+              [attr.data-testid]="'legal-identity-' + placeholder + '-error'"
+              >{{ error.key | translate: error.params }}</span
+            >
+          }
           <code class="text-xs">{{ written(placeholder) }}</code>
         </label>
       }

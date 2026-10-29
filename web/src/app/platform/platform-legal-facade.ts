@@ -6,7 +6,8 @@ import type { LegalLanguage } from '../shared/legal/legal-api';
 import type { LegalPage } from '../shared/legal/legal-pages';
 import { StepUp } from '../shared/step-up/step-up';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
-import { PlatformLegalApi } from './platform-legal-api';
+import { LegalIdentityRefused, PlatformLegalApi } from './platform-legal-api';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-legal-types';
 import { sessionSignal } from '../shared/session/session-data';
 
@@ -23,6 +24,7 @@ export class PlatformLegalFacade {
   /** A failure is one thing here, the API not reached or refusing: the page says so without a reason. */
   private readonly state = requestState<true>(() => true);
   private readonly identitySignal = sessionSignal<Readonly<Record<string, string>>>({});
+  private readonly identityRefusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
   private opened: { page: LegalPage; language: LegalLanguage } | null = null;
   /** The version of each placeholder's row when read, which a save sends back. */
   private identityVersions: Readonly<Record<string, number>> = {};
@@ -33,6 +35,8 @@ export class PlatformLegalFacade {
   readonly busy = this.state.busy;
   /** The publisher's and host's identity, by placeholder, the empty ones included, in the API's order. */
   readonly identity = this.identitySignal.asReadonly();
+  /** What the API refused in the last save of the identity, each field by its placeholder; none once one is kept. */
+  readonly identityRefusals = this.identityRefusalsSignal.asReadonly();
   /** Whether the last read or write did not reach the API. */
   readonly failed = computed(() => this.state.error() !== null);
 
@@ -46,22 +50,32 @@ export class PlatformLegalFacade {
 
   /**
    * Saves every placeholder changed, together or not at all. `saved_since`: another operator saved one of them since it
-   * was read, nothing was kept, and the identity is read again so the form shows what is saved.
+   * was read, nothing was kept, and the identity is read again so the form shows what is saved. `refused`: the API
+   * refused a field, nothing was kept, and `identityRefusals` says which and why.
    */
   async saveIdentity(
     changes: Readonly<Record<string, string>>,
-  ): Promise<'saved' | 'saved_since' | 'failed'> {
+  ): Promise<'saved' | 'saved_since' | 'refused' | 'failed'> {
     let since = false;
+    let refused: readonly FieldRefusal[] = [];
     const saved = await this.run(async () => {
       const versioned = Object.entries(changes).map(([placeholder, value]) => {
         const version = this.identityVersions[placeholder];
         if (version === undefined) throw new Error(`No version was read for ${placeholder}.`);
         return { placeholder, value, version };
       });
-      since = (await this.proven(() => this.api.saveIdentity(versioned))) === 'saved_since';
+      try {
+        since = (await this.proven(() => this.api.saveIdentity(versioned))) === 'saved_since';
+      } catch (error) {
+        if (!(error instanceof LegalIdentityRefused)) throw error;
+        refused = error.refusals;
+        return;
+      }
       this.holdIdentity(await this.api.identity());
     });
+    this.identityRefusalsSignal.set(refused);
     if (!saved) return 'failed';
+    if (refused.length > 0) return 'refused';
     return since ? 'saved_since' : 'saved';
   }
 

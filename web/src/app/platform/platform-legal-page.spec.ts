@@ -12,6 +12,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { Feedback } from '../shared/feedback/feedback';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formatDay, formatMoment } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { PluralCompiler } from '../shared/i18n/plural-compiler';
@@ -25,6 +26,14 @@ import type { LegalStatusRow, LegalVersionRow } from './platform-legal-types';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      import: {
+        rejections: {
+          invalid_email:
+            'Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn).',
+          invalid_text: 'Au plus {{max}} caractères.',
+          invalid_value: 'Valeur refusée.',
+        },
+      },
       legal: { pages: { mentions: 'Mentions légales', cookies: 'Cookies', security: 'Sécurité' } },
       platform: {
         legal: {
@@ -57,7 +66,7 @@ class StaticLoader implements TranslateLoader {
             title: 'Éditeur et hébergeur',
             save: 'Enregistrer',
             saved: 'Identité enregistrée.',
-            publisher: { name: 'Nom de l’éditeur', address: 'Adresse' },
+            publisher: { name: 'Nom de l’éditeur', address: 'Adresse', email: 'E-mail' },
             host: { name: 'Hébergeur' },
           },
         },
@@ -102,6 +111,7 @@ describe('PlatformLegalPage', () => {
     busy: ReturnType<typeof signal<boolean>>;
     failed: ReturnType<typeof signal<boolean>>;
     identity: ReturnType<typeof signal<Readonly<Record<string, string>>>>;
+    identityRefusals: ReturnType<typeof signal<readonly FieldRefusal[]>>;
     load: ReturnType<typeof vi.fn>;
     saveIdentity: ReturnType<typeof vi.fn>;
     open: ReturnType<typeof vi.fn>;
@@ -154,8 +164,10 @@ describe('PlatformLegalPage', () => {
       // Every legal.* setting, in the API's order, the empty ones included: the form's fields.
       identity: signal<Readonly<Record<string, string>>>({
         'publisher.name': 'twes SAS',
+        'publisher.email': '',
         'host.name': '',
       }),
+      identityRefusals: signal<readonly FieldRefusal[]>([]),
       load: vi.fn(async () => undefined),
       saveIdentity: vi.fn(async () => 'saved'),
       open: vi.fn(async (page: string, language: string) => {
@@ -421,6 +433,56 @@ describe('PlatformLegalPage', () => {
     expect(said()).toContainEqual(
       expect.objectContaining({ key: 'platform.legal.identity.saved' }),
     );
+  });
+
+  // The API asks who is at the screen before it reads the save, so an address it would refuse is said first.
+  it('says an address the one e-mail rule refuses under its field, and asks no save until it is mended', async () => {
+    await render();
+    const email = q('legal-identity-publisher.email') as HTMLInputElement;
+    email.value = 'contact@twes';
+    email.dispatchEvent(new Event('input'));
+    await settle();
+    expect(q('legal-identity-publisher.email-error')).toBeNull();
+
+    q('legal-identity-save')!.click();
+    await settle();
+
+    expect(facade.saveIdentity).not.toHaveBeenCalled();
+    expect(q('legal-identity-publisher.email-error')?.textContent).toContain(
+      'nom@domaine.extension',
+    );
+    expect(email.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(email);
+
+    email.value = 'contact@twes.tn';
+    email.dispatchEvent(new Event('input'));
+    await settle();
+    expect(q('legal-identity-publisher.email-error')).toBeNull();
+    q('legal-identity-save')!.click();
+    await settle();
+    expect(facade.saveIdentity).toHaveBeenCalledWith({ 'publisher.email': 'contact@twes.tn' });
+  });
+
+  it('says what the API refused under its field, until that field is typed again', async () => {
+    facade.saveIdentity.mockImplementation(async () => {
+      facade.identityRefusals.set([
+        { field: 'host.name', reason: 'invalid_text', params: { max: 200 } },
+      ]);
+      return 'refused';
+    });
+    await render();
+    const host = q('legal-identity-host.name') as HTMLInputElement;
+    host.value = 'OVH';
+    host.dispatchEvent(new Event('input'));
+    await settle();
+    q('legal-identity-save')!.click();
+    await settle();
+
+    expect(q('legal-identity-host.name-error')?.textContent).toContain('200');
+    host.value = 'OVH SAS';
+    host.dispatchEvent(new Event('input'));
+    await settle();
+    expect(q('legal-identity-host.name-error')).toBeNull();
   });
 
   it('previews a text with the publisher filled in, as the public page will show it', async () => {

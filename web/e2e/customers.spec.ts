@@ -133,7 +133,7 @@ test('an e-mail the browser takes and the API refuses is said under the field, i
     await page.getByTestId('field-number').fill(number);
     await page.getByTestId('field-name').fill(`Refus ${run}`);
     await page.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
-    // An address with no dot in its domain: the browser's rule takes it, the API's does not.
+    // An address with no dot in its domain: the one e-mail rule refuses it on the screen, as the API would.
     await page.getByTestId('field-email').fill('compta@carthage');
     await page.getByTestId('record-save').click();
 

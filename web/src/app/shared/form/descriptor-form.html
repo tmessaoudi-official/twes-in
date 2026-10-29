@@ -337,7 +337,11 @@
                         <mat-icon aria-hidden="true">close</mat-icon>
                       </button>
                     }
-                    @if (field.hint) {
+                    @if (typoFor(field); as address) {
+                      <mat-hint [attr.data-testid]="'field-typo-' + field.id"
+                        >{{ 'form.email_typo' | translate }} <bdi>{{ address }}</bdi></mat-hint
+                      >
+                    } @else if (field.hint) {
                       <mat-hint>{{ field.hint | translate: field.hintParams }}</mat-hint>
                     }
                     @if (errorFor(field); as error) {

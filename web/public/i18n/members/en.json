@@ -4,7 +4,7 @@
     "of": "Company {{company}}",
     "name": "Name",
     "email": "Email address",
-    "email_invalid": "This email address is not valid.",
+    "email_invalid": "An email address is written name@domain.extension (example: accounts@example.tn). Check the @ and the dot.",
     "role": "Role",
     "actions": "Actions",
     "add": "Add",

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Legal\Application;
 
 use App\Shared\Application\Languages;
+use App\Shared\Domain\Service\ContactRules;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -36,8 +37,8 @@ final readonly class SecurityTxt
     public function render(array $values, \DateTimeImmutable $now): ?string
     {
         $contact = $values['security.email'] ?? '';
-        // A validated address holds no whitespace, so no line break can smuggle a field of its own into the file.
-        if (false === filter_var($contact, \FILTER_VALIDATE_EMAIL)) {
+        // An address the one rule takes holds no whitespace, so no line break can smuggle a field of its own into the file.
+        if (null !== ContactRules::email($contact)) {
             return null;
         }
         $expires = $now->setTimezone(new \DateTimeZone('UTC'))->setTime(0, 0)->modify(self::EXPIRES_AFTER);

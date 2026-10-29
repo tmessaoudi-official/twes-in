@@ -30,6 +30,11 @@
               autocomplete="email"
               data-testid="signup-email"
             />
+            @if (typo(); as address) {
+              <mat-hint data-testid="signup-email-typo"
+                >{{ 'form.email_typo' | translate }} <bdi>{{ address }}</bdi></mat-hint
+              >
+            }
             @if (form.controls.email.touched && form.controls.email.invalid) {
               <mat-error>{{ 'signup.request.email_invalid' | translate }}</mat-error>
             }

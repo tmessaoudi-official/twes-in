@@ -283,9 +283,13 @@ final class MembersTest extends ApiTestCase
     {
         $this->adminSignedIn();
 
-        $this->postJson($this->path(), ['email' => 'not-an-address', 'role' => Role::MEMBER]);
+        // Each refused with the reason the screen words with the format and an example, the one rule of every address.
+        foreach (['not-an-address', 'joiner@twes', 'joiner@twes..local', 'é@twes.local'] as $email) {
+            $this->postJson($this->path(), ['email' => $email, 'role' => Role::MEMBER]);
 
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $email);
+            self::assertSame(['invalid_email', []], $this->refusalOf('email'), $email);
+        }
     }
 
     public function testAnInventedRoleIsRefused(): void

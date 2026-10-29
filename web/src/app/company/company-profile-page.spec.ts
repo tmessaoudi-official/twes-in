@@ -269,7 +269,8 @@ describe('CompanyProfilePage', () => {
       return false;
     });
     const email = q('field-email') as HTMLInputElement;
-    email.value = 'compta@carthage';
+    // An address the screen takes: what is tested is the API's refusal, said on its field.
+    email.value = 'compta@carthage.tn';
     email.dispatchEvent(new Event('input'));
     await settle();
     q('record-save')!.click();

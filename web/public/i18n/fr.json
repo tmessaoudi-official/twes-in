@@ -790,7 +790,7 @@
     "none_found": "Aucun résultat.",
     "errors": {
       "required": "Ce champ est obligatoire.",
-      "email": "Saisissez une adresse e-mail valide.",
+      "email": "Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn). Vérifiez l’arobase et le point.",
       "option": "Choisissez l’une des valeurs proposées.",
       "pattern": "Cette valeur n’a pas le format attendu.",
       "min_length": "Au moins {{min}} caractères.",
@@ -801,6 +801,7 @@
       "time": "Saisissez une heure valide, par exemple 9h05.",
       "colour": "Saisissez une couleur au format #rrggbb, par exemple #1f6feb."
     },
+    "email_typo": "Vouliez-vous dire :",
     "leave": {
       "title": "Quitter sans enregistrer ?",
       "message": "Vos modifications seront perdues.",
@@ -2934,7 +2935,7 @@
       "title": "Créer un compte",
       "intro": "Saisissez votre adresse e-mail : nous vous enverrons un lien pour terminer l’inscription.",
       "email": "Adresse e-mail",
-      "email_invalid": "Cette adresse e-mail n’est pas valide.",
+      "email_invalid": "Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn). Vérifiez l’arobase et le point.",
       "submit": "Recevoir le lien",
       "sent": "Consultez votre boîte de réception : si cette adresse peut servir à s’inscrire, un lien pour terminer est en route. Il est valable 24 heures.",
       "closed": "Les inscriptions ne sont pas ouvertes pour l’instant.",

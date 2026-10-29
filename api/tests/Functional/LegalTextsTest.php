@@ -12,6 +12,7 @@ namespace App\Tests\Functional;
 use App\Legal\Domain\Model\LegalText;
 use App\Legal\Domain\ValueObject\LegalLanguage;
 use App\Legal\Domain\ValueObject\LegalPage;
+use Symfony\Component\HttpFoundation\Response;
 
 /** docs/SPEC.md § 8 row 148: a legal page is read by anyone, signed in or not. */
 final class LegalTextsTest extends ApiTestCase
@@ -94,6 +95,26 @@ final class LegalTextsTest extends ApiTestCase
         $text = (string) $this->client->getResponse()->getContent();
         self::assertStringStartsWith("Contact: mailto:security@twes.test\n", $text);
         self::assertMatchesRegularExpression('#^Canonical: https?://[^\s]+/\.well-known/security\.txt$#m', $text);
+    }
+
+    /** Each address the legal pages name is held to the one rule every address is, an empty one meaning none given. */
+    public function testEveryAddressTheLegalPagesNameIsAnAddressSomeoneCanWriteTo(): void
+    {
+        $this->createUser('op@twes.local', 'password-1234', operator: true);
+        $this->login('op@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
+
+        foreach (['legal.publisher.email', 'legal.privacy.email', 'legal.security.email', 'legal.commercial.email'] as $key) {
+            foreach (['contact', 'contact@twes', 'contact at twes.tn', 'é@twes.tn'] as $email) {
+                $this->sendJson('PUT', '/api/platform/settings/'.$key, ['value' => $email]);
+                self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, "$key $email");
+                self::assertSame('invalid_email', $this->refusalOf($key)[0], "$key $email");
+            }
+            foreach (['contact@twes.tn', ''] as $email) {
+                $this->sendJson('PUT', '/api/platform/settings/'.$key, ['value' => $email]);
+                self::assertResponseIsSuccessful("$key $email");
+            }
+        }
     }
 
     private function write(LegalPage $page, LegalLanguage $language, string $body, string $at): LegalText

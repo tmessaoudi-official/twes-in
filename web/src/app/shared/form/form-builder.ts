@@ -10,6 +10,7 @@ import {
 } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from './form-types';
 import { onTypedText, typedText } from './typed-text';
+import { emailRule } from './email-rule';
 
 /**
  * A form as a pure function of its descriptor: one control per declared field with the validators the field
@@ -104,7 +105,7 @@ function validatorsFor(field: FormField): ValidatorFn[] {
   if (field.required)
     validators.push(field.kind === 'checkbox' ? Validators.requiredTrue : requiredValue);
   const typed = typesText(field) ? onTypedText : (validator: ValidatorFn) => validator;
-  if (field.kind === 'email') validators.push(typed(Validators.email));
+  if (field.kind === 'email') validators.push(typed(emailRule));
   if (field.kind === 'select' || field.kind === 'multiselect') validators.push(oneOf(field));
   // A string pattern is anchored at both ends by Validators.pattern, so it matches the whole value.
   if (field.pattern !== undefined) validators.push(typed(Validators.pattern(field.pattern)));

@@ -4,7 +4,7 @@
     "of": "Entreprise {{company}}",
     "name": "Nom",
     "email": "Adresse e-mail",
-    "email_invalid": "Cette adresse e-mail n’est pas valide.",
+    "email_invalid": "Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn). Vérifiez l’arobase et le point.",
     "role": "Rôle",
     "actions": "Actions",
     "add": "Ajouter",

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { FormControl, Validators } from '@angular/forms';
+import { emailTaken } from '../shared/form/email-rule';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { typedText } from '../shared/form/typed-text';
 
@@ -23,9 +23,8 @@ export function companyNameRefusal(name: string): FieldRefusal | null {
 }
 
 /**
- * Why an owner's address would be refused, as the API words it; null when it would be taken. Its shape is the shared
- * form's e-mail check, the one every other address field of the screens is held to, on the address without the
- * invisible marks a paste leaves at its ends, as the API reads it.
+ * Why an owner's address would be refused, as the API words it; null when it would be taken. Its shape is the one
+ * e-mail rule every address field of the screens and the API is held to.
  */
 export function ownerEmailRefusal(email: string): FieldRefusal | null {
   const typed = typedText(email);
@@ -33,8 +32,7 @@ export function ownerEmailRefusal(email: string): FieldRefusal | null {
   if (typed.length > OWNER_EMAIL_MAX) {
     return refusal('email', 'invalid_text', { max: OWNER_EMAIL_MAX });
   }
-  // typed-email: judged on typedText(email), taken above
-  if (Validators.email(new FormControl(typed)) !== null) return refusal('email', 'invalid_email');
+  if (!emailTaken(typed)) return refusal('email', 'invalid_email');
   return null;
 }
 

@@ -238,6 +238,33 @@ describe('MembersPage', () => {
     expect(members.add).not.toHaveBeenCalled();
   });
 
+  // The one e-mail rule the API holds a new member's address to: Angular's own validator takes a domain with no dot.
+  it('refuses an address whose domain has no dot, which the API would refuse', async () => {
+    const component = fixture.componentInstance as unknown as {
+      form: { setValue: (v: { email: string; role: string }) => void };
+      add: () => Promise<void>;
+    };
+    component.form.setValue({ email: 'joiner@example', role: 'member' });
+
+    await component.add();
+
+    expect(members.add).not.toHaveBeenCalled();
+  });
+
+  it('offers the address a slip of a key most likely meant, and sends what was typed', async () => {
+    const input = fixture.nativeElement.querySelector(
+      '[data-testid="member-email"]',
+    ) as HTMLInputElement;
+    input.value = 'joiner@gmial.com';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const typo = fixture.nativeElement.querySelector('[data-testid="member-email-typo"]');
+    expect(typo?.querySelector('bdi')?.textContent).toBe('joiner@gmail.com');
+    await (fixture.componentInstance as unknown as { add: () => Promise<void> }).add();
+    expect(members.add).toHaveBeenCalledWith('c1', 'joiner@gmial.com', 'member');
+  });
+
   it('sends a valid address with the chosen role', async () => {
     const component = fixture.componentInstance as unknown as {
       form: { setValue: (v: { email: string; role: string }) => void };

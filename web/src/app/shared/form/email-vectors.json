@@ -1,0 +1,22 @@
+{
+  "pattern": "[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+",
+  "taken": [
+    "compta@exemple.tn",
+    "a.b-c_d+e@sous.domaine.fr",
+    "x@y.co",
+    "O'Brien@example.ie",
+    "1@2.tn"
+  ],
+  "refused": [
+    "compta",
+    "compta@exemple",
+    "compta@@exemple.tn",
+    "compta@exemple..tn",
+    "compta@-exemple.tn",
+    "compta @exemple.tn",
+    "é@exemple.tn",
+    "compta@exemple.tn.",
+    "<x>@y.z",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@exemple.tn"
+  ]
+}

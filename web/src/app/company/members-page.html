@@ -71,6 +71,11 @@
               formControlName="email"
               data-testid="member-email"
             />
+            @if (typo(); as address) {
+              <mat-hint data-testid="member-email-typo"
+                >{{ 'form.email_typo' | translate }} <bdi>{{ address }}</bdi></mat-hint
+              >
+            }
             @if (form.controls.email.touched && form.controls.email.invalid) {
               <mat-error data-testid="member-email-error">
                 {{ 'members.email_invalid' | translate }}

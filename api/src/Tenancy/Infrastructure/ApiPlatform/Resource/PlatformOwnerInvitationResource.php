@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\Resource;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
+use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\InviteOwnerProcessor;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -43,7 +44,7 @@ final class PlatformOwnerInvitationResource
 
     #[ApiProperty(identifier: false)]
     #[Assert\NotBlank(groups: ['invite'], payload: ['reason' => 'value_required'])]
-    #[Assert\Email(groups: ['invite'], payload: ['reason' => 'invalid_email'])]
+    #[ContactRule(ContactRule::EMAIL, groups: ['invite'])]
     #[Assert\Length(max: 254, groups: ['invite'], payload: ['reason' => 'invalid_text', 'params' => ['max' => 254]])]
     #[Groups([self::READ, self::WRITE])]
     public string $email = '';

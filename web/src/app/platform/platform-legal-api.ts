@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   LegalTextStatusLegalTextStatusRead,
@@ -12,13 +12,24 @@ import type {
 } from '../api/types.gen';
 import type { LegalLanguage } from '../shared/legal/legal-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
+import { refusedFor } from '../shared/errors/said-already';
+import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import { TextsParts } from '../shared/i18n/texts-part';
 import type { LegalPage } from '../shared/legal/legal-pages';
 import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-legal-types';
+
+/** The identity's fields the API refused, each named by its placeholder, with the reason the screens translate. */
+export class LegalIdentityRefused extends Error {
+  constructor(readonly refusals: readonly FieldRefusal[]) {
+    super('refused');
+  }
+}
 
 /** The HTTP edge of the operator's legal pages (docs/SPEC.md § 8 row 148): the only code here that knows the endpoints. */
 @Injectable({ providedIn: 'root' })
 export class PlatformLegalApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   async overview(): Promise<LegalStatusRow[]> {
     const rows = await firstValueFrom(
@@ -112,8 +123,29 @@ export class PlatformLegalApi {
       ) {
         return 'saved_since';
       }
-      throw error;
+      const refusals =
+        error instanceof HttpErrorResponse && error.status === 422
+          ? refusalsIn(error.error).map((refusal) => ({
+              ...refusal,
+              field: refusal.field.startsWith(IDENTITY_PREFIX)
+                ? refusal.field.slice(IDENTITY_PREFIX.length)
+                : refusal.field,
+            }))
+          : [];
+      if (refusals.length === 0) throw error;
+      // A setting refused by its shape is said in the settings' refusal texts, which the platform's own do not carry.
+      await this.openRefusalTexts();
+      throw refusedFor(error, new LegalIdentityRefused(refusals));
     }
+  }
+
+  /** Texts that could not be fetched leave the field saying its key, and the next refusal asks again. */
+  private async openRefusalTexts(): Promise<void> {
+    const { SETTING_REFUSAL_TEXTS } = await import('../shared/settings/setting-refusals');
+    await this.injector
+      .get(TextsParts)
+      .open(SETTING_REFUSAL_TEXTS)
+      .catch(() => undefined);
   }
 
   private path(page: LegalPage, language: LegalLanguage, action: string): string {

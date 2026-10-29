@@ -22,6 +22,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { Select } from '../shared/form/select';
 import { unsavedChanges } from '../shared/form/dirty-count';
+import { emailRule, emailTypo } from '../shared/form/email-rule';
 import { AuthFacade } from '../auth/auth-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
@@ -258,13 +259,15 @@ export class MembersPage implements OnInit {
   protected readonly form = new FormGroup({
     email: new FormControl('', {
       nonNullable: true,
-      validators: [onTypedText(Validators.required), onTypedText(Validators.email)],
+      validators: [onTypedText(Validators.required), emailRule],
     }),
     role: new FormControl<string>('member', { nonNullable: true }),
   });
   private readonly typedEmail = toSignal(this.form.controls.email.valueChanges, {
     initialValue: this.form.controls.email.value,
   });
+  /** The address a slip of a key most likely meant, offered under the field and never written into it. */
+  protected readonly typo = computed(() => emailTypo(this.typedEmail()));
   /** The invitation already waiting for the address typed, which sending replaces. */
   protected readonly replaces = computed(() => {
     const typed = typedText(this.typedEmail()).toLowerCase();

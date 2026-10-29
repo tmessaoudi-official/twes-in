@@ -3,7 +3,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { PlatformLegalApi } from './platform-legal-api';
+import { provideTranslateService } from '@ngx-translate/core';
+import { LegalIdentityRefused, PlatformLegalApi } from './platform-legal-api';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { RECORD_CHANGED } from '../shared/errors/record-changed';
 
 describe('PlatformLegalApi', () => {
@@ -12,7 +14,7 @@ describe('PlatformLegalApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideTranslateService()],
     });
     api = TestBed.inject(PlatformLegalApi);
     http = TestBed.inject(HttpTestingController);
@@ -56,6 +58,28 @@ describe('PlatformLegalApi', () => {
       .expectOne('/api/platform/settings')
       .flush({ type: RECORD_CHANGED, status: 409 }, { status: 409, statusText: 'Conflict' });
     expect(await since).toBe('saved_since');
+  });
+
+  it('names each field the API refused by its placeholder, and opens the settings’ refusal texts first', async () => {
+    const open = vi.spyOn(TestBed.inject(TextsParts), 'open').mockResolvedValue(undefined);
+    const saved = api.saveIdentity([
+      { placeholder: 'publisher.email', value: 'contact@twes', version: 1 },
+    ]);
+    http.expectOne('/api/platform/settings').flush(
+      {
+        violations: [
+          { propertyPath: 'legal.publisher.email', payload: { reason: 'invalid_email' } },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+
+    const refused = await saved.catch((error: unknown) => error);
+    expect(refused).toBeInstanceOf(LegalIdentityRefused);
+    expect((refused as LegalIdentityRefused).refusals).toEqual([
+      { field: 'publisher.email', reason: 'invalid_email', params: {} },
+    ]);
+    expect(open).toHaveBeenCalledWith('settings-refusals');
   });
 
   it('writes a new version and validates the latest at the page and language path', async () => {

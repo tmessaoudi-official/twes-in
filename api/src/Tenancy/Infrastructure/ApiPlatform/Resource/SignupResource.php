@@ -14,6 +14,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Post;
 use App\Identity\Application\Password\NewPasswordPolicy;
+use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\CompleteSignupProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\RequestSignupProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Provider\SignupAvailabilityProvider;
@@ -80,6 +81,7 @@ final class SignupResource
     public array $countries = [];
 
     #[Assert\NotBlank(groups: [self::REQUEST])]
+    #[ContactRule(ContactRule::EMAIL, groups: [self::REQUEST])]
     #[Assert\Length(max: 254, groups: [self::REQUEST])]
     #[Groups([self::REQUEST, self::LINK])]
     public string $email = '';

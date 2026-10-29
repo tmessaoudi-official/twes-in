@@ -29,6 +29,7 @@ class StaticLoader implements TranslateLoader {
         password: 'Mot de passe',
         password_hint: '{{min}} caractères',
         password_too_short: 'Au moins {{min}} caractères.',
+        errors: { too_many: 'Trop de tentatives avec ce lien : réessayez dans quelques minutes.' },
         submit: 'Créer mon compte',
         journal:
           'Ce que vous ferez chez {{company}} sera inscrit dans son journal d’activité. Voir',
@@ -48,10 +49,11 @@ const offer: InvitationOffer = {
 
 describe('AcceptInvitationPage', () => {
   const current = signal<InvitationOffer | null>(offer);
+  const failed = signal<InvitationError | null>(null);
   const invitation = {
     offer: current.asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal<InvitationError | null>(null).asReadonly(),
+    error: failed.asReadonly(),
     forget: vi.fn(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -89,6 +91,7 @@ describe('AcceptInvitationPage', () => {
   beforeEach(() => {
     invitation.load.mockReset().mockResolvedValue(offer);
     invitation.accept.mockReset().mockResolvedValue(true);
+    failed.set(null);
   });
 
   it('asks an address with no account for a name and a password', async () => {
@@ -131,6 +134,19 @@ describe('AcceptInvitationPage', () => {
     await render(null);
 
     expect(byTestId('invitation-error')).not.toBeNull();
+    expect(byTestId('invitation-back')?.getAttribute('href')).toBe('/login');
+  });
+
+  // Row 196: a client past the link's budget is told to wait, and nothing about the link; the way back stays.
+  it('says too many attempts were made, without a word about the link, and leads back to the sign-in', async () => {
+    invitation.load.mockResolvedValue(null);
+    failed.set('too_many');
+    await render(null);
+
+    expect(byTestId('invitation-error')?.textContent?.trim()).toBe(
+      'Trop de tentatives avec ce lien : réessayez dans quelques minutes.',
+    );
+    expect(byTestId('invitation-password')).toBeNull();
     expect(byTestId('invitation-back')?.getAttribute('href')).toBe('/login');
   });
 

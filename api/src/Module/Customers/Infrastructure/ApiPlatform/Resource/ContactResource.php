@@ -82,7 +82,7 @@ final class ContactResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $lastName = null;
 
-    #[Assert\Email(groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
+    #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE])]
     #[Assert\Length(max: 254, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 254]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;

@@ -27,6 +27,7 @@ import { DecimalInput } from './decimal-input';
 import { ColourField } from './colour-field';
 import { DayCalendarButton } from './day-calendar-button';
 import { DayInput } from './day-input';
+import { emailTypo } from './email-rule';
 import { PickField, type PickOption } from './pick-field';
 import { Select } from './select';
 import { type DescriptorFormGroup, type FieldError, fieldError } from './form-builder';
@@ -233,6 +234,14 @@ export class DescriptorForm {
     this.revision();
     const control = this.form().controls[field.id];
     return control?.touched ? fieldError(control, field) : null;
+  }
+
+  /** For an e-mail field, the address a slip of a key most likely meant: offered under it, never written into it. */
+  protected typoFor(field: FormField): string | null {
+    if (field.kind !== 'email') return null;
+    this.revision();
+    const value: unknown = this.form().controls[field.id]?.value;
+    return typeof value === 'string' ? emailTypo(value) : null;
   }
 
   /** What the field's suggestions hold of what is typed, whatever its case; none once it is typed in full. */

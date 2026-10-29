@@ -14,6 +14,7 @@ use App\Settings\Domain\ValueObject\SettingChain;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Settings\Domain\ValueObject\SettingType;
+use App\Shared\Domain\Service\ContactRules;
 
 /**
  * Who publishes and hosts this platform, which the legal pages name (docs/SPEC.md § 7, 2026-09-26 08:52: a self-hosted
@@ -52,16 +53,16 @@ final readonly class LegalSettings implements DeclaresSettings
         yield new SettingDefinition(self::PREFIX.'publisher.name', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.publisher.name', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'publisher.address', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.publisher.address', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'publisher.registration', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.publisher.registration', self::MODULE);
-        yield new SettingDefinition(self::PREFIX.'publisher.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.publisher.email', self::MODULE);
+        yield new SettingDefinition(self::PREFIX.'publisher.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.publisher.email', self::MODULE, maxLength: ContactRules::EMAIL_MAX, pattern: ContactRules::EMAIL_OR_EMPTY, patternReason: 'invalid_email');
         yield new SettingDefinition(self::PREFIX.'publisher.phone', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.publisher.phone', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'publisher.director', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.publisher.director', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'host.name', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.host.name', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'host.address', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.host.address', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'host.phone', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.host.phone', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'host.country', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.host.country', self::MODULE);
-        yield new SettingDefinition(self::PREFIX.'privacy.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.privacy.email', self::MODULE);
-        yield new SettingDefinition(self::PREFIX.'security.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.security.email', self::MODULE);
-        yield new SettingDefinition(self::PREFIX.'commercial.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.commercial.email', self::MODULE);
+        yield new SettingDefinition(self::PREFIX.'privacy.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.privacy.email', self::MODULE, maxLength: ContactRules::EMAIL_MAX, pattern: ContactRules::EMAIL_OR_EMPTY, patternReason: 'invalid_email');
+        yield new SettingDefinition(self::PREFIX.'security.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.security.email', self::MODULE, maxLength: ContactRules::EMAIL_MAX, pattern: ContactRules::EMAIL_OR_EMPTY, patternReason: 'invalid_email');
+        yield new SettingDefinition(self::PREFIX.'commercial.email', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.commercial.email', self::MODULE, maxLength: ContactRules::EMAIL_MAX, pattern: ContactRules::EMAIL_OR_EMPTY, patternReason: 'invalid_email');
         yield new SettingDefinition(self::PREFIX.'mail.provider', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.mail.provider', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'backup.provider', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.backup.provider', self::MODULE);
         yield new SettingDefinition(self::PREFIX.'monitor.provider', SettingType::Text, '', SettingChain::Platform, [SettingLevel::Platform], 'settings.platform.legal.monitor.provider', self::MODULE);

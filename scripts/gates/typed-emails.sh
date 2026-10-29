@@ -34,7 +34,7 @@ else
 fi
 
 if ((${#problems[@]})); then
-  printf 'typed-emails: FAIL — %d address check(s) on what was typed with its ends (wrap it in onTypedText from shared/form/typed-text, or say why with typed-email: <why>):\n' "${#problems[@]}"
+  printf 'typed-emails: FAIL — %d address check(s) on what was typed with its ends (a new or changed address takes emailRule from shared/form/email-rule; one an account signs in with is wrapped in onTypedText from shared/form/typed-text; or say why with typed-email: <why>):\n' "${#problems[@]}"
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi

@@ -121,7 +121,7 @@ final class CompanyProfileResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $city = null;
 
-    #[Assert\Email(groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
+    #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE])]
     #[Assert\Length(max: 254, groups: [self::WRITE], payload: ['reason' => 'invalid_email'])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;

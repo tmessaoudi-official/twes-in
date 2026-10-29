@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Application\Member\MemberView;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -93,7 +94,7 @@ final class MemberResource
     public ?string $userId = null;
 
     #[Assert\NotBlank(groups: ['add'])]
-    #[Assert\Email(groups: ['add'])]
+    #[ContactRule(ContactRule::EMAIL, groups: ['add'])]
     #[Assert\Length(max: 254, groups: ['add'])]
     #[Groups([self::READ, self::WRITE])]
     public string $email = '';
