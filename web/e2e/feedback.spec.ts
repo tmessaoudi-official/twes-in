@@ -12,8 +12,10 @@ test('a slow request shows the bar and says it is taking long, then everything c
   await signIn(page);
   await expect(page.getByTestId('greeting')).toBeVisible();
 
+  // Held twice as long as the screen waits before saying it is slow (SLOW_AFTER_MS, 8 s): the line then stays long
+  // enough for the landmark scan below to read it on a loaded runner, where a one-second window ran out mid-scan.
   await page.route('**/api/companies/*/customers**', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 9_000));
+    await new Promise((resolve) => setTimeout(resolve, 16_000));
     await route.continue();
   });
   await page.getByTestId('nav-customers').click();
@@ -45,7 +47,7 @@ test('a slow request shows the bar and says it is taking long, then everything c
   ).toEqual([]);
   // The scan waits for the page to stop moving first: the bar must still have been there when it read the page.
   await expect(page.getByTestId('activity-slow')).toBeVisible();
-  await expect(page.getByTestId('activity-progress')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByTestId('activity-progress')).toHaveCount(0, { timeout: 30_000 });
   await expect(page.getByTestId('activity-slow')).toHaveCount(0);
 });
 
