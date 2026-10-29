@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Module\Customers\Domain\Exception\InvalidContact;
 use App\Module\Customers\Domain\Model\Contact;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Repository\ContactRepository;
@@ -22,6 +23,7 @@ use App\Module\Customers\Domain\ValueObject\ContactDetails;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Application\TypedPhones;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -44,6 +46,7 @@ final readonly class ManageContacts implements DeclaresAuditActions
         private ClockInterface $clock,
         private Transactions $transactions,
         private RecordVersions $versions,
+        private TypedPhones $phones,
     ) {
     }
 
@@ -57,11 +60,15 @@ final readonly class ManageContacts implements DeclaresAuditActions
         return $this->contacts->ofCustomer($this->customer($company, $customerId)->getId());
     }
 
-    /** @throws CustomerNotFound */
+    /**
+     * @throws CustomerNotFound
+     * @throws InvalidContact
+     */
     public function add(Company $company, Uuid $customerId, ContactDetails $details, bool $isPrimary, ?Uuid $actorUserId): Contact
     {
         return $this->transactions->run(function () use ($company, $customerId, $details, $isPrimary, $actorUserId): Contact {
             $customer = $this->customer($company, $customerId);
+            $details = $this->withPhoneAsKept($company, $customer, $details, null);
             $others = $this->contacts->ofCustomer($customer->getId());
             $isPrimary = $isPrimary || [] === $others;
             if ($isPrimary) {
@@ -79,6 +86,7 @@ final readonly class ManageContacts implements DeclaresAuditActions
      * @throws CustomerNotFound
      * @throws ContactNotFound
      * @throws RecordChanged
+     * @throws InvalidContact
      */
     public function revise(Company $company, Uuid $customerId, Uuid $contactId, ContactDetails $details, bool $isPrimary, ?Uuid $actorUserId, ?int $version = null): Contact
     {
@@ -87,6 +95,7 @@ final readonly class ManageContacts implements DeclaresAuditActions
             if (null !== $version) {
                 $this->versions->expect($contact, $version);
             }
+            $details = $this->withPhoneAsKept($company, $contact->getCustomer(), $details, $contact->getDetails()->phone);
             $now = $this->clock->now();
             $changed = $contact->revise($details, $now);
             if ($isPrimary && !$contact->isPrimary()) {
@@ -132,6 +141,22 @@ final readonly class ManageContacts implements DeclaresAuditActions
                 $this->contacts->save($other);
             }
         }
+    }
+
+    /**
+     * The details with their phone as kept (`TypedPhones`), read by the customer's billing country, else the company's.
+     * A contact has no « À vérifier » of its own yet: a number outside the ones handed out is kept, unmarked.
+     *
+     * @throws InvalidContact
+     */
+    private function withPhoneAsKept(Company $company, Customer $customer, ContactDetails $details, ?string $held): ContactDetails
+    {
+        $kept = $this->phones->kept($details->phone, $held, $customer->getProfile()->billingAddress->countryCode ?? $company->getCountryCode());
+        if (null !== $kept->refusal) {
+            throw new InvalidContact('phone', $kept->refusal->message, $kept->refusal->reason, $kept->refusal->params);
+        }
+
+        return $details->withPhone($kept->phone);
     }
 
     /** A customer merged into another handed it its contacts: its address reaches the customer kept's. */

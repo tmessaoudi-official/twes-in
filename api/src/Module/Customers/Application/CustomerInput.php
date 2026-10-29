@@ -43,4 +43,10 @@ final readonly class CustomerInput
     {
         return clone ($this, ['profile' => $profile]);
     }
+
+    /** The same input with this « À vérifier »: the one a phone's doubt adds to what was written. */
+    public function withMark(CheckMark $mark): self
+    {
+        return clone ($this, ['mark' => $mark]);
+    }
 }

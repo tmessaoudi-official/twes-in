@@ -1,6 +1,7 @@
 {
   "examples": {
     "import.rejections.invalid_phone": "phone",
+    "import.rejections.phone_country": "phone",
     "import.rejections.invalid_iban": "iban",
     "platform.support.phone_hint": "support_phone",
     "import.rejections.invalid_phone_digits": "support_phone",

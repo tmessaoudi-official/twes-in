@@ -37,6 +37,12 @@ final readonly class ContactDetails
         $this->role = self::text($role, 'role');
     }
 
+    /** The same details carrying this phone, as the numbering plans keep it (E.164, or a value kept before them). */
+    public function withPhone(?string $phone): self
+    {
+        return clone ($this, ['phone' => self::text($phone, 'phone')]);
+    }
+
     public function equals(self $other): bool
     {
         return get_object_vars($this) === get_object_vars($other);

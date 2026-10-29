@@ -3124,6 +3124,8 @@
       "invalid_reference": "La référence compte 1 à 32 lettres sans accent, chiffres, points, tirets, barres obliques ou soulignés, sans espace (exemple : VIS-M6-20).",
       "invalid_email": "Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn). Vérifiez l’arobase et le point.",
       "invalid_phone": "Un téléphone s’écrit en chiffres, avec + devant l’indicatif et, au besoin, des espaces, points, tirets ou parenthèses (exemple : +216 71 900 868).",
+      "phone_length": "Ce numéro n’a pas le nombre de chiffres d’un téléphone de son pays (exemple : {{example}}). Avec + devant, l’indicatif choisit le pays.",
+      "phone_country": "Sans pays connu, un téléphone commence par + et l’indicatif du pays (exemple : +216 71 900 868).",
       "invalid_website": "Une adresse web commence par https:// ou http:// puis le nom du site (exemple : https://exemple.tn).",
       "invalid_description": "Description refusée, car trop longue. Raccourcissez-la.",
       "invalid_barcode": "Un code-barres compte 1 à 64 caractères sans espace ni accent, et un code EAN ou UPC finit par sa clé de contrôle (exemple : 6190000000019). Rescannez-le ou recopiez-le chiffre par chiffre.",

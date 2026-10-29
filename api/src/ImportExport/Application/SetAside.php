@@ -27,6 +27,8 @@ final class SetAside
         'invalid_iban',
         'invalid_bic',
         'invalid_phone',
+        'phone_length',
+        'phone_country',
         'invalid_email',
         'invalid_barcode',
     ];

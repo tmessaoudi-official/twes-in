@@ -23,6 +23,7 @@ use App\Module\Vendors\Domain\ValueObject\VendorSearch;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Application\TypedPhones;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
@@ -50,6 +51,7 @@ final readonly class ManageVendors implements DeclaresAuditActions
         private ExpenseCategoryDirectory $expenseCategories,
         private Transactions $transactions,
         private RecordVersions $versions,
+        private TypedPhones $phones,
     ) {
     }
 
@@ -83,6 +85,7 @@ final readonly class ManageVendors implements DeclaresAuditActions
             if (null !== $this->vendors->ofNumberInCompany(TypedText::trimmed($input->number), $company->getId())) {
                 throw new VendorNumberTaken();
             }
+            $input = $this->withPhoneAsKept($company, $input, null);
             $this->check($company, $input, null);
             $vendor = Vendor::create($company, $input->number, $input->profile, $this->clock->now());
             if (!$input->isActive) {
@@ -121,6 +124,7 @@ final readonly class ManageVendors implements DeclaresAuditActions
             if (null !== $holder && !$holder->getId()->equals($vendor->getId())) {
                 throw new VendorNumberTaken();
             }
+            $input = $this->withPhoneAsKept($company, $input, $vendor);
             $this->check($company, $input, $vendor);
 
             // After the name, whose rename settles a doubt about it.
@@ -160,6 +164,26 @@ final readonly class ManageVendors implements DeclaresAuditActions
         $preset = $this->presets->get($company->getFiscalPreset());
 
         return $input->withProfile($input->profile->withIdentifiers(IdentifierRules::normalised($preset, $input->profile->identifiers, '')));
+    }
+
+    /**
+     * The input with its phone as kept (`TypedPhones`), read by the vendor's country, else the company's. A number of
+     * the right length outside the ones handed out marks the vendor « À vérifier », its line after the note the mark
+     * already carries.
+     *
+     * @throws InvalidVendor
+     */
+    private function withPhoneAsKept(Company $company, VendorInput $input, ?Vendor $current): VendorInput
+    {
+        $profile = $input->profile;
+        $kept = $this->phones->kept($profile->phone, $current?->getProfile()->phone, $profile->address->countryCode ?? $company->getCountryCode());
+        if (null !== $kept->refusal) {
+            throw new InvalidVendor('phone', $kept->refusal->message, $kept->refusal->reason, $kept->refusal->params);
+        }
+        $input = $input->withProfile($profile->withPhone($kept->phone));
+        $mark = $kept->markOn($input->mark ?? $current?->getCheckMark());
+
+        return null === $mark ? $input : $input->withMark($mark);
     }
 
     private function check(Company $company, VendorInput $input, ?Vendor $current): void

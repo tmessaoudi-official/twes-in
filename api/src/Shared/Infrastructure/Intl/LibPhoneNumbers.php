@@ -16,6 +16,7 @@ use libphonenumber\NumberParseException;
 use libphonenumber\PhoneNumberFormat;
 use libphonenumber\PhoneNumberUtil;
 use libphonenumber\ValidationResult;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * The numbering plans of Google's libphonenumber, through giggsey's lite port: the data, not our own guess, says which
@@ -25,6 +26,13 @@ final readonly class LibPhoneNumbers implements PhoneNumbers
 {
     /** Only the digits, a leading « + », and what a person puts between the groups. */
     private const string WRITTEN = '/^\+?[0-9 ().\-\/]+$/D';
+
+    /** The « À vérifier » words, beside an import's set-aside cells. */
+    private const string DOMAIN = 'imports';
+
+    public function __construct(private TranslatorInterface $translator)
+    {
+    }
 
     public function judge(string $typed, ?string $country): PhoneVerdict
     {
@@ -68,6 +76,11 @@ final readonly class LibPhoneNumbers implements PhoneNumbers
         } catch (NumberParseException) {
             return $stored;
         }
+    }
+
+    public function doubt(string $stored): string
+    {
+        return $this->translator->trans('doubt.phone', ['%value%' => $this->grouped($stored)], self::DOMAIN);
     }
 
     private function example(string $region): ?string

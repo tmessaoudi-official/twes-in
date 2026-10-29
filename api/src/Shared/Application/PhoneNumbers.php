@@ -26,4 +26,10 @@ interface PhoneNumbers
 
     /** A kept number grouped as its country writes it; a value that is no number is given back as it is. */
     public function grouped(string $stored): string;
+
+    /**
+     * The « À vérifier » line a record carries for a kept number of the right length outside the ones its country hands
+     * out, in the reader's language.
+     */
+    public function doubt(string $stored): string;
 }

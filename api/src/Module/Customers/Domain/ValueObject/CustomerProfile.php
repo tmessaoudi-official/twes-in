@@ -88,6 +88,12 @@ final readonly class CustomerProfile
         return clone ($this, ['identifiers' => RegistrationNumbers::kept($identifiers)]);
     }
 
+    /** The same profile carrying this phone, as the numbering plans keep it (E.164, or a value kept before them). */
+    public function withPhone(?string $phone): self
+    {
+        return clone ($this, ['phone' => self::text($phone)]);
+    }
+
     /**
      * Holds what is written to the rules the form holds it to, each refusal under the form field it names. Asked by the
      * customer as it is created or revised, never as a profile is read back from a stored row.

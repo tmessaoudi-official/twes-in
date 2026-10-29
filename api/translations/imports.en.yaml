@@ -13,6 +13,8 @@ set_aside:
         invalid_phone: 'it is not a phone number'
         invalid_email: 'it is not an e-mail address'
         invalid_barcode: 'its check digit does not match'
+        phone_length: 'it does not have the number of digits of a phone in its country'
+        phone_country: 'with no country, a phone starts with + and its country code'
 column:
     email: 'E-mail address'
     phone: 'Phone'
@@ -21,3 +23,6 @@ column:
     barcode: 'Barcode'
     pack_barcode: 'Pack barcode'
     supplier_code: 'Supplier code'
+# The « À vérifier » line a record carries for a phone of the right length outside the numbers handed out (row 207).
+doubt:
+    phone: 'Phone “%value%”: the length is right, but this number is not among those handed out in its country. To check.'

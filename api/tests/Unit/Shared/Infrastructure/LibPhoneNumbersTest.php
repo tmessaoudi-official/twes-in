@@ -13,6 +13,7 @@ use App\Shared\Domain\ValueObject\PhoneVerdict;
 use App\Shared\Infrastructure\Intl\LibPhoneNumbers;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Translation\IdentityTranslator;
 
 /**
  * A phone number judged by its country's plan: the record's country reads a national number, a leading + or 00 names
@@ -44,22 +45,22 @@ final class LibPhoneNumbersTest extends TestCase
     #[DataProvider('numbers')]
     public function testANumberIsJudgedByItsCountrysPlan(string $typed, ?string $country, string $verdict, ?string $e164): void
     {
-        $judged = new LibPhoneNumbers()->judge($typed, $country);
+        $judged = new LibPhoneNumbers(new IdentityTranslator())->judge($typed, $country);
 
         self::assertSame([$verdict, $e164], [$judged->verdict, $judged->e164]);
     }
 
     public function testARefusedNumberCarriesItsCountrysExampleAndCallingCode(): void
     {
-        $judged = new LibPhoneNumbers()->judge('71 900', 'TN');
+        $judged = new LibPhoneNumbers(new IdentityTranslator())->judge('71 900', 'TN');
 
         self::assertSame(['+216 30 010 123', '+216'], [$judged->example, $judged->callingCode]);
-        self::assertSame('+33 1 23 45 67 89', new LibPhoneNumbers()->judge('01 23', 'FR')->example);
+        self::assertSame('+33 1 23 45 67 89', new LibPhoneNumbers(new IdentityTranslator())->judge('01 23', 'FR')->example);
     }
 
     public function testAKeptNumberIsShownGroupedAsItsCountryWritesIt(): void
     {
-        $phones = new LibPhoneNumbers();
+        $phones = new LibPhoneNumbers(new IdentityTranslator());
 
         self::assertSame('+216 71 900 868', $phones->grouped('+21671900868'));
         self::assertSame('+33 6 12 34 56 78', $phones->grouped('+33612345678'));
@@ -69,7 +70,7 @@ final class LibPhoneNumbersTest extends TestCase
 
     public function testAnUnknownCountryIsReadAsNoCountry(): void
     {
-        self::assertSame(PhoneVerdict::NEEDS_COUNTRY, new LibPhoneNumbers()->judge('71 900 868', 'ZZ')->verdict);
-        self::assertSame(PhoneVerdict::VALID, new LibPhoneNumbers()->judge('+21671900868', 'ZZ')->verdict);
+        self::assertSame(PhoneVerdict::NEEDS_COUNTRY, new LibPhoneNumbers(new IdentityTranslator())->judge('71 900 868', 'ZZ')->verdict);
+        self::assertSame(PhoneVerdict::VALID, new LibPhoneNumbers(new IdentityTranslator())->judge('+21671900868', 'ZZ')->verdict);
     }
 }

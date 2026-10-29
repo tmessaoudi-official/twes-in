@@ -129,6 +129,33 @@ final class VendorsTest extends ApiTestCase
     }
 
     /** The form's rules and the domain's answer one shape, under the reasons a vendor file is refused with. */
+    /**
+     * A vendor's phone is read by its own country, kept as E.164, refused with that country's example, and « À vérifier »
+     * outside the numbers handed out; a stored value is judged only once it changes.
+     */
+    public function testAVendorsPhoneIsReadByItsOwnCountry(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+
+        $this->postJson($this->path(), $this->vendor(['countryCode' => 'FR', 'city' => 'Lyon', 'iban' => null, 'bic' => null, 'phone' => '01 23 45 67 89']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame('+33123456789', $this->json()['phone']);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), [...$this->vendor(['countryCode' => 'FR', 'city' => 'Lyon', 'iban' => null, 'bic' => null, 'phone' => '01 23 45']), 'version' => 1]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'phone', 'reason' => 'phone_length', 'params' => ['example' => '+33 1 23 45 67 89', 'callingCode' => '+33']]], $this->refusals());
+
+        $this->em()->getConnection()->executeStatement("UPDATE vendor SET phone = '01 23 45' WHERE id = ?", [$id]);
+        $this->sendJson('PUT', $this->path($id), [...$this->vendor(['countryCode' => 'FR', 'city' => 'Lyon', 'iban' => null, 'bic' => null, 'phone' => '01 23 45', 'name' => 'Sotumag SA']), 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Sotumag SA', '01 23 45'], [$this->json()['name'], $this->json()['phone']]);
+
+        $this->sendJson('PUT', $this->path($id), [...$this->vendor(['countryCode' => 'TN', 'iban' => null, 'bic' => null, 'phone' => '11 111 111']), 'version' => 2]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['+21611111111', true], [$this->json()['phone'], $this->json()['toCheck']]);
+    }
+
     public function testARefusalNamesItsFieldAndAReasonTheScreenTranslates(): void
     {
         $this->signedIn(['vendor.read', 'vendor.write']);

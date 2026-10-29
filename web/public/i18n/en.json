@@ -3124,6 +3124,8 @@
       "invalid_reference": "A reference has 1 to 32 unaccented letters, digits, dots, dashes, slashes or underscores, with no space (example: VIS-M6-20).",
       "invalid_email": "An email address is written name@domain.extension (example: accounts@example.tn). Check the @ and the dot.",
       "invalid_phone": "A phone number is written in digits, with + before the country code and, if needed, spaces, dots, dashes or brackets (example: +216 71 900 868).",
+      "phone_length": "This number does not have the number of digits of a phone in its country (example: {{example}}). With + in front, the country code chooses the country.",
+      "phone_country": "With no country known, a phone starts with + and the country code (example: +216 71 900 868).",
       "invalid_website": "A web address starts with https:// or http:// then the site's name (example: https://example.tn).",
       "invalid_description": "Description refused: too long. Shorten it.",
       "invalid_barcode": "A barcode has 1 to 64 characters with no space or accent, and an EAN or UPC code ends with its check digit (example: 6190000000019). Scan it again or copy it digit by digit.",

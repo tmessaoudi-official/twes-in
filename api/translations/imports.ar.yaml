@@ -13,6 +13,8 @@ set_aside:
         invalid_phone: 'ليس رقم هاتف'
         invalid_email: 'ليس عنوان بريد إلكتروني'
         invalid_barcode: 'رقم التحقّق فيه لا يطابق'
+        phone_length: 'عدد أرقامه لا يطابق رقم هاتف في بلده'
+        phone_country: 'دون بلد، يبدأ رقم الهاتف بـ + ورمز البلد'
 column:
     email: 'البريد الإلكتروني'
     phone: 'الهاتف'
@@ -21,3 +23,6 @@ column:
     barcode: 'الرمز الشريطي'
     pack_barcode: 'الرمز الشريطي للعلبة'
     supplier_code: 'رمز المزوّد'
+# The « À vérifier » line a record carries for a phone of the right length outside the numbers handed out (row 207).
+doubt:
+    phone: 'الهاتف « %value% »: طوله صحيح، لكن هذا الرقم ليس من الأرقام المسندة في بلده. يجب التحقّق منه.'

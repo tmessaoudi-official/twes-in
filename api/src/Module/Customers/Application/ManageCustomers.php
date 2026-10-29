@@ -33,6 +33,7 @@ use App\Module\Customers\Domain\ValueObject\CustomerSearch;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
+use App\Shared\Application\TypedPhones;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
@@ -65,6 +66,7 @@ final readonly class ManageCustomers implements DeclaresAuditActions
         private Transactions $transactions,
         private RecordVersions $versions,
         private CustomerCheckScopes $checkScopes,
+        private TypedPhones $phones,
     ) {
     }
 
@@ -98,6 +100,7 @@ final readonly class ManageCustomers implements DeclaresAuditActions
             if (null !== $this->customers->ofNumberInCompany(TypedText::trimmed($input->number), $company->getId())) {
                 throw new CustomerNumberTaken();
             }
+            $input = $this->withPhoneAsKept($company, $input, null);
             [$group, $regime] = $this->checked($company, $input, null);
             $values = $this->customFieldValues($company, $input, null);
             $customer = Customer::create($company, $input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, $this->clock->now());
@@ -140,6 +143,7 @@ final readonly class ManageCustomers implements DeclaresAuditActions
             if (null !== $holder && !$holder->getId()->equals($customer->getId())) {
                 throw new CustomerNumberTaken();
             }
+            $input = $this->withPhoneAsKept($company, $input, $customer);
             [$group, $regime] = $this->checked($company, $input, $customer);
             $values = $this->customFieldValues($company, $input, $customer);
 
@@ -163,6 +167,26 @@ final readonly class ManageCustomers implements DeclaresAuditActions
         $preset = $this->presets->get($company->getFiscalPreset());
 
         return $input->withProfile($input->profile->withIdentifiers(IdentifierRules::normalised($preset, $input->profile->identifiers, IdentifierRules::BUSINESS_CUSTOMER)));
+    }
+
+    /**
+     * The input with its phone as kept (`TypedPhones`), read by the billing address's country, else the company's. A
+     * number of the right length outside the ones handed out marks the customer « À vérifier », its line after the note
+     * the mark already carries, so the person who looks reads what to check.
+     *
+     * @throws InvalidCustomer
+     */
+    private function withPhoneAsKept(Company $company, CustomerInput $input, ?Customer $current): CustomerInput
+    {
+        $profile = $input->profile;
+        $kept = $this->phones->kept($profile->phone, $current?->getProfile()->phone, $profile->billingAddress->countryCode ?? $company->getCountryCode());
+        if (null !== $kept->refusal) {
+            throw new InvalidCustomer('phone', $kept->refusal->message, $kept->refusal->reason, $kept->refusal->params);
+        }
+        $input = $input->withProfile($profile->withPhone($kept->phone));
+        $mark = $kept->markOn($input->mark ?? $current?->getCheckMark());
+
+        return null === $mark ? $input : $input->withMark($mark);
     }
 
     /**

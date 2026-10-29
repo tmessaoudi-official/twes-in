@@ -94,6 +94,12 @@ final readonly class VendorProfile
         return clone ($this, ['identifiers' => RegistrationNumbers::kept($identifiers)]);
     }
 
+    /** The same profile carrying this phone, as the numbering plans keep it (E.164, or a value kept before them). */
+    public function withPhone(?string $phone): self
+    {
+        return clone ($this, ['phone' => self::text($phone)]);
+    }
+
     /** @return list<string> the fields whose value differs from the other profile's, in declaration order */
     public function differencesFrom(self $other): array
     {

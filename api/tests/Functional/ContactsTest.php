@@ -98,6 +98,27 @@ final class ContactsTest extends ApiTestCase
         self::assertSame(['version'], array_column($this->arrayAt($this->json(), 'violations'), 'propertyPath'));
     }
 
+    /** A contact's phone is read by its customer's country, kept as E.164, and refused with that country's example. */
+    public function testAContactsPhoneIsReadByItsCustomersCountry(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->postJson($this->path(), ['firstName' => 'Leila', 'phone' => '71.900.868', 'isPrimary' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame('+21671900868', $this->json()['phone']);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), ['firstName' => 'Leila', 'phone' => '71 900', 'isPrimary' => true, 'version' => 1]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'phone', 'reason' => 'phone_length', 'params' => ['example' => '+216 30 010 123', 'callingCode' => '+216']]], $this->refusals());
+
+        // A phone kept before the rule is accepted while it is sent back unchanged.
+        $this->em()->getConnection()->executeStatement("UPDATE contact SET phone = '71 900' WHERE id = ?", [$id]);
+        $this->sendJson('PUT', $this->path($id), ['firstName' => 'Leila', 'lastName' => 'Trabelsi', 'phone' => '71 900', 'isPrimary' => true, 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Trabelsi', '71 900'], [$this->json()['lastName'], $this->json()['phone']]);
+    }
+
     public function testAContactWithoutANameIsRefused(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);

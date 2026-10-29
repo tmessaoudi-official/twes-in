@@ -23,7 +23,9 @@ use App\Module\Customers\Domain\Exception\InvalidCustomer;
 use App\Module\Customers\Domain\Model\CustomerGroup;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Shared\Application\TypedPhones;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Infrastructure\Intl\LibPhoneNumbers;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
@@ -39,6 +41,7 @@ use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Translation\IdentityTranslator;
 use Symfony\Component\Uid\Uuid;
 
 final class ManageCustomersTest extends TestCase
@@ -64,7 +67,7 @@ final class ManageCustomersTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->fields = new InMemoryCustomFieldDefinitions();
-        $this->manage = new ManageCustomers(new InMemoryCustomers(), $this->groups, $regimes, $this->taxes, ShippedFiscalPresets::presets(), $this->audit, $clock, $this->fields, $transactions, new InMemoryRecordVersions(), new CustomerCheckScopes(ShippedFiscalPresets::presets()));
+        $this->manage = new ManageCustomers(new InMemoryCustomers(), $this->groups, $regimes, $this->taxes, ShippedFiscalPresets::presets(), $this->audit, $clock, $this->fields, $transactions, new InMemoryRecordVersions(), new CustomerCheckScopes(ShippedFiscalPresets::presets()), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);
