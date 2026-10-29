@@ -13,6 +13,7 @@ use App\Licensing\Domain\Model\Subscription;
 use App\Licensing\Domain\Repository\SubscriptionRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Symfony\Component\Uid\Uuid;
@@ -60,6 +61,31 @@ final readonly class DoctrineSubscriptionRepository implements SubscriptionRepos
         }
 
         return $byCompany;
+    }
+
+    public function coveredBy(\DateTimeImmutable $by): array
+    {
+        // Covered time ends at the later of the trial and the paid period, so it ends by then when both do.
+        /** @var list<Subscription> $subscriptions */
+        $subscriptions = $this->entityManager->createQueryBuilder()
+            ->select('s', 'c')->from(Subscription::class, 's')->join('s.company', 'c')
+            ->where('s.trialEndsAt IS NULL OR s.trialEndsAt <= :by')
+            ->andWhere('s.paidUntil IS NULL OR s.paidUntil <= :by')
+            ->orderBy('s.id', 'ASC')
+            ->setParameter('by', $by, Types::DATETIMETZ_IMMUTABLE)
+            ->getQuery()
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getResult();
+
+        return $subscriptions;
+    }
+
+    public function lapseTold(Subscription $subscription, \DateTimeImmutable $coveredUntil): void
+    {
+        $this->entityManager->createQuery('UPDATE '.Subscription::class.' s SET s.lapseToldFor = :covered WHERE s.id = :id')
+            ->setParameter('covered', $coveredUntil, Types::DATETIMETZ_IMMUTABLE)
+            ->setParameter('id', $subscription->getId(), 'uuid')
+            ->execute();
     }
 
     public function save(Subscription $subscription): void

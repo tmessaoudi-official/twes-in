@@ -28,6 +28,14 @@ interface SubscriptionRepository
      */
     public function ofCompanies(array $companyIds): array;
 
+    /**
+     * @return list<Subscription> every subscription whose covered time ends by $by, with its company, read afresh
+     */
+    public function coveredBy(\DateTimeImmutable $by): array;
+
+    /** Keeps that its owners were told this end of covered time is near, without touching the terms or their version. */
+    public function lapseTold(Subscription $subscription, \DateTimeImmutable $coveredUntil): void;
+
     public function save(Subscription $subscription): void;
 
     public function remove(Subscription $subscription): void;

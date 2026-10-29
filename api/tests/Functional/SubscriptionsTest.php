@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Licensing\Application\ManageSubscriptions;
+use App\Licensing\Application\TellLapsingSubscriptions;
 use App\Licensing\Domain\Model\Subscription;
 use App\Licensing\Domain\ValueObject\BillingPeriod;
 use App\Licensing\Domain\ValueObject\PeriodUnit;
@@ -18,6 +19,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Subscriptions (docs/SPEC.md § 7, 2026-09-17): an operator sets a company's terms from the platform endpoints, the
@@ -287,6 +289,67 @@ final class SubscriptionsTest extends ApiTestCase
         $this->login('stranger@twes.local', 'password-1234');
         $this->getJson($this->profileOf($company));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * Nobody watches the end of what they paid for: the owners are told once, a few days before the covered time ends,
+     * until when access stays whole; not the subscription far from its end, not one whose payment already waits for the
+     * operator, not one past its lock, and again only once paying moved the end.
+     */
+    public function testTheOwnersAreToldOnceBeforeWhatTheyPaidForEnds(): void
+    {
+        $lapsing = $this->createCompany('Acme');
+        $this->createUser('owner@twes.local', 'password-1234', $lapsing);
+        $this->createUser('clerk@twes.local', 'password-1234', $lapsing, ['sale.write'], 'clerk');
+        $far = $this->createCompany('Globex');
+        $this->createUser('far@twes.local', 'password-1234', $far);
+        $declared = $this->createCompany('Initech');
+        $this->createUser('declared@twes.local', 'password-1234', $declared);
+        $locked = $this->createCompany('Umbrella');
+        $this->createUser('locked@twes.local', 'password-1234', $locked);
+        // Set through the use case: signing the operator in for each would spend the sign-in limiter.
+        $this->paidThrough($lapsing, 3, 7);
+        $this->paidThrough($far, 60, null);
+        $this->paidThrough($declared, 2, null);
+        $this->paidThrough($locked, -30, 3);
+        $this->login('declared@twes.local', 'password-1234');
+        $this->postJson('/api/companies/'.$declared->getId()->toRfc4122().'/subscription/payments', ['amount' => '100.000', 'currency' => 'TND', 'method' => 'cash', 'paidOn' => $this->daysFromToday(0), 'reference' => 'REC-12', 'note' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $tell = static::getContainer()->get(TellLapsingSubscriptions::class);
+
+        $version = $this->seen($lapsing);
+        self::assertSame(1, $tell->handle());
+        self::assertSame(0, $tell->handle(), 'told once');
+        self::assertSame($version, $this->seen($lapsing), 'telling is no change to the terms an operator may be editing');
+
+        $told = $this->em()->getConnection()->fetchAllAssociative(
+            "SELECT u.email, i.company_id, i.payload FROM inbox_item i JOIN \"user\" u ON u.id = i.recipient_id WHERE i.type = 'subscription.lapsing'",
+        );
+        self::assertCount(1, $told);
+        self::assertSame('owner@twes.local', $told[0]['email']);
+        self::assertSame($lapsing->getId()->toRfc4122(), $told[0]['company_id']);
+        self::assertIsString($told[0]['payload']);
+        self::assertSame(
+            ['company' => 'Acme', 'covered_until' => $this->daysFromToday(3), 'grace_until' => $this->daysFromToday(10)],
+            json_decode($told[0]['payload'], true, 4, \JSON_THROW_ON_ERROR),
+        );
+
+        $this->paidThrough($lapsing, 5, 7);
+        self::assertSame(1, $tell->handle(), 'a new end is told again');
+    }
+
+    /** Terms paid through the end of a day counted from today, in the company's zone, set as an operator sets them. */
+    private function paidThrough(Company $company, int $days, ?int $graceDays): void
+    {
+        $operator = $this->em()->getConnection()->fetchOne("SELECT id FROM \"user\" WHERE email = 'op@twes.local'");
+        if (false === $operator) {
+            $operator = $this->createUser('op@twes.local', 'password-1234', operator: true)->getId()->toRfc4122();
+            $this->operatorCreated = true;
+        }
+        self::assertIsString($operator);
+        $end = new \DateTimeImmutable($this->daysFromToday($days).' 23:59:59', new \DateTimeZone('Africa/Tunis'));
+        $terms = new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Month), null, $end, null, null, $graceDays);
+        static::getContainer()->get(ManageSubscriptions::class)->set($company->getId(), $terms, Uuid::fromString($operator), $this->seen($company));
     }
 
     public function testGraceKeepsFullAccessAndTheCompanyWithoutASubscriptionIsNotManaged(): void

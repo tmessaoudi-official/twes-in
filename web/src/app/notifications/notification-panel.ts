@@ -100,7 +100,7 @@ export class NotificationPanel {
    * The words' parameters: the payload as the API sent it, each amount written as the screen writes amounts (at the
    * payload's `scale`, or as sent when an older one has none), each quantity without the zeros that say nothing and
    * followed by its unit when the payload names one (an older notice names none), each
-   * moment in the screen's order of a day, and, when it names something by its translation key (`label_key`, such as
+   * moment and day in the screen's order of a day, and, when it names something by its translation key (`label_key`, such as
    * the module that arrived), that thing's name in the screen's language as `label`. A value that is not what it should
    * be is written as it came.
    */
@@ -126,6 +126,9 @@ export class NotificationPanel {
       const [, day, time] = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/.exec(value) ?? [];
       return day === undefined ? value : `${this.format.day(day)} ${time}`;
     });
+    write(record.days, (value) =>
+      /^\d{4}-\d{2}-\d{2}$/.test(value) ? this.format.day(value) : value,
+    );
     const labelKey = entry.payload['label_key'];
     if (typeof labelKey === 'string') {
       params['label'] = this.translate.instant(labelKey) as string;

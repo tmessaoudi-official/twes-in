@@ -75,6 +75,13 @@ class Subscription implements CompanyOwned
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
+    /**
+     * The end of covered time its owners were last told is near, so each end is told once. Written by the repository
+     * alone, outside the version: telling the owners is no change to the terms an operator may be editing.
+     */
+    #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $lapseToldFor = null;
+
     #[ORM\Version]
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
     private int $version = 1;
@@ -194,6 +201,12 @@ class Subscription implements CompanyOwned
     }
 
     /** Whole days from one instant to a later one, a started day counting as one. */
+    /** Whether its owners were already told this end of covered time is near. */
+    public function wasToldOfLapse(\DateTimeImmutable $coveredUntil): bool
+    {
+        return $this->lapseToldFor?->getTimestamp() === $coveredUntil->getTimestamp();
+    }
+
     private static function daysBetween(\DateTimeImmutable $from, \DateTimeImmutable $to): int
     {
         return (int) ceil(($to->getTimestamp() - $from->getTimestamp()) / 86400);

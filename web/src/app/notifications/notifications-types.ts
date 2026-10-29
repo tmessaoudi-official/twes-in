@@ -52,6 +52,7 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'subscription.payment_decided',
   'subscription.set',
   'subscription.stopped',
+  'subscription.lapsing',
   'module.arrived',
   'support_access.granted',
   'support_access.ended',
@@ -113,6 +114,8 @@ export interface NotificationRecord {
   readonly variant?: { readonly field: string; readonly values: readonly string[] };
   /** the payload's moments, sent as the company's `YYYY-MM-DD HH:mm`, which the words write in the screen's order of a day */
   readonly moments?: readonly string[];
+  /** the payload's days, sent as the company's `YYYY-MM-DD`, written the same way */
+  readonly days?: readonly string[];
 }
 
 // The money and document events (invoice paid, overdue, payment recorded, delivery note delivered) add their rows here.
@@ -255,6 +258,16 @@ const RECORDS = new Map<string, NotificationRecord>([
   [
     'subscription.stopped',
     { icon: 'card_membership', route: '/company/subscription', permission: 'subscription.read' },
+  ],
+  // An owner's: the time their company paid for ends soon, and the subscription page is where a payment is declared.
+  [
+    'subscription.lapsing',
+    {
+      icon: 'card_membership',
+      route: '/company/subscription',
+      permission: 'subscription.read',
+      days: ['covered_until', 'grace_until'],
+    },
   ],
   // A module the company asked « Me prévenir » for has arrived: switched on from the modules page.
   [

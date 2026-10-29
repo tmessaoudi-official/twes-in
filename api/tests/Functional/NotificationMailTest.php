@@ -174,6 +174,15 @@ final class NotificationMailTest extends ApiTestCase
         self::assertStringContainsString('The platform stopped the subscription of Acme: no payment is expected any more, and access stays whole.', $bodies['other@twes.local']);
     }
 
+    public function testTheEndOfWhatWasPaidForIsWrittenAsTheReaderWritesADay(): void
+    {
+        $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);
+        $this->tell($owner, 'subscription.lapsing', ['company' => 'Acme', 'covered_until' => '2026-11-28', 'grace_until' => '2026-12-05']);
+        self::assertSame(1, $this->deliverQueued());
+
+        self::assertStringContainsString("L’abonnement de Acme est couvert jusqu’au 28/11/2026. Sans règlement d’ici le 05/12/2026, l’accès sera restreint\u{a0}: déclarez votre règlement dans «\u{a0}Abonnement\u{a0}».", $this->bodiesTo()['owner@twes.local']);
+    }
+
     public function testADayAndAMomentAreWrittenAsTheReaderChoseAndEachReaderInTurnGetsTheirOwn(): void
     {
         $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);

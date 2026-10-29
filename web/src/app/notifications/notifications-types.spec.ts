@@ -186,6 +186,10 @@ describe('quantities and moments in a notification', () => {
     expect(notificationRecord('stock.count_difference').unit).toBe('unit');
     expect(notificationRecord('stock.imported').quantities).toBeUndefined();
     expect(notificationRecord('support_access.granted').moments).toEqual(['until']);
+    expect(notificationRecord('subscription.lapsing').days).toEqual([
+      'covered_until',
+      'grace_until',
+    ]);
   });
 });
 

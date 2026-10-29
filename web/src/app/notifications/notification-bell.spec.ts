@@ -45,6 +45,8 @@ class StaticLoader implements TranslateLoader {
           invoice_credit_limit_passed: '{{customer}} doit {{owed}} {{currency}} pour {{limit}}',
           stock_low: '{{product}} est tombé à {{on_hand}}, seuil {{point}}',
           support_access_granted: 'Support ouvert jusqu’au {{until}}',
+          subscription_lapsing:
+            'Couvert jusqu’au {{covered_until}}, restreint après le {{grace_until}}',
           subscription_payment_decided: 'Votre règlement a reçu une réponse',
           subscription_payment_decided_confirmed: 'Règlement confirmé pour {{company}}',
           subscription_payment_decided_refused: 'Règlement non confirmé pour {{company}}',
@@ -508,7 +510,7 @@ describe('NotificationBell', () => {
     ]);
   });
 
-  it('writes the quantities and moments it says as the screen writes them', async () => {
+  it('writes the quantities, moments and days it says as the screen writes them', async () => {
     items.set([
       {
         ...unreadEntry,
@@ -534,6 +536,12 @@ describe('NotificationBell', () => {
         type: 'support_access.granted',
         payload: { until: 'demain' },
       },
+      {
+        ...unreadEntry,
+        id: 'n10',
+        type: 'subscription.lapsing',
+        payload: { covered_until: '2026-11-28', grace_until: 'bientôt' },
+      },
     ]);
     const fixture = render();
     await open(fixture);
@@ -543,6 +551,7 @@ describe('NotificationBell', () => {
       'Support ouvert jusqu’au 20/10/2026 14:30',
       'Clou est tombé à beaucoup, seuil 100',
       'Support ouvert jusqu’au demain',
+      'Couvert jusqu’au 28/11/2026, restreint après le bientôt',
     ]);
   });
 

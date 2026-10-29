@@ -19,6 +19,7 @@ use App\Identity\Infrastructure\Password\PasswordResetAskedHandler;
 use App\Identity\Infrastructure\Scheduler\FinalizeAccountDeletionsEveryNight;
 use App\Inbox\Infrastructure\Mail\NotificationToMailHandler;
 use App\Module\Customers\Infrastructure\Scheduler\MarkKeptCustomerContactsEveryNight;
+use App\Licensing\Infrastructure\Scheduler\TellLapsingSubscriptionsEveryHour;
 use App\Module\Invoices\Infrastructure\Scheduler\RemindLateInvoicesEveryHour;
 use App\Module\Recurring\Infrastructure\Scheduler\RunRecurringInvoicesEveryHour;
 use App\Module\RecurringExpenses\Infrastructure\Scheduler\RunRecurringExpensesEveryHour;
@@ -61,6 +62,7 @@ final class BackgroundWorkScopeTest extends TestCase
         MarkKeptCustomerContactsEveryNight::class => 'each customer keeping a refused value, of an active company with the customers module on, handed to the use case with its company',
         MarkKeptVendorContactsEveryNight::class => 'each vendor keeping a refused value, of an active company with the vendors module on, handed to the use case with its company',
         TellRunOutInvitationsEveryHour::class => 'every company at once, on purpose: an invitation runs out by its date alone, and each one told names its own company, to its sender only while still a member of it',
+        TellLapsingSubscriptionsEveryHour::class => 'every company at once, on purpose: a subscription ends by its date alone, and each one told names its own company, to that company\'s owners only',
         RemindLateInvoicesEveryHour::class => 'each active company with the invoices module on, handed to the use case one at a time',
         RunRecurringExpensesEveryHour::class => 'each active company with the recurring expenses module on, handed to the use case one at a time',
         RunRecurringInvoicesEveryHour::class => 'each active company with the recurring module on, handed to the use case one at a time',
