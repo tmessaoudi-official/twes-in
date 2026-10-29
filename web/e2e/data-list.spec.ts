@@ -121,7 +121,7 @@ test('a scan waits for an overlay that arrives a few frames after the page looke
   await signIn(page);
   await openMembers(page);
   await page.evaluate(() => {
-    // The scan reads the overlays' container, which the CDK only makes for the first overlay: none has opened yet.
+    // The overlay lands in the overlays' container, which the CDK only makes for the first overlay: none has opened yet.
     const overlays =
       document.querySelector('.cdk-overlay-container') ??
       document.body.appendChild(
@@ -130,9 +130,10 @@ test('a scan waits for an overlay that arrives a few frames after the page looke
     const later = (frames: number, then: () => void): void => {
       requestAnimationFrame(() => (frames > 1 ? later(frames - 1, then) : then()));
     };
-    const looking = Element.prototype.getAnimations;
-    Element.prototype.getAnimations = function (this: Element, options?: GetAnimationsOptions) {
-      Element.prototype.getAnimations = looking;
+    // The arrival is staged on the scan's first look, which reads every animation of the document.
+    const looking = Document.prototype.getAnimations;
+    Document.prototype.getAnimations = function (this: Document) {
+      Document.prototype.getAnimations = looking;
       later(2, () => {
         const arriving = document.createElement('div');
         arriving.dataset['testid'] = 'late-overlay';
@@ -140,7 +141,7 @@ test('a scan waits for an overlay that arrives a few frames after the page looke
         // Longer than a scan takes, shorter than the helper waits.
         arriving.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 6_000 });
       });
-      return looking.call(this, options);
+      return looking.call(this);
     };
   });
 
