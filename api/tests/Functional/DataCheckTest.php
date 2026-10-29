@@ -16,6 +16,8 @@ use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Infrastructure\Scheduler\MarkKeptCustomerContactsEveryNight;
+use App\Module\Vendors\Infrastructure\Scheduler\MarkKeptVendorContactsEveryNight;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\ShippedLanguages;
 use Doctrine\DBAL\Connection;
@@ -184,6 +186,45 @@ final class DataCheckTest extends ApiTestCase
             'tenancy.contact_rules' => ['company email', 'establishment phone'],
             'vendors.contact_rules' => ['vendor email'],
         ], $by);
+    }
+
+    /**
+     * Row 208's marks: the night leaves « À vérifier » on each customer and vendor keeping such a value, a line for each
+     * in the company's language naming the value, once; a record already marked keeps its own note.
+     */
+    public function testTheNightMarksEachCustomerAndVendorKeepingOneOnceInItsCompanysLanguage(): void
+    {
+        $db = $this->connection();
+        $company = $this->company->getId()->toRfc4122();
+        $db->executeStatement("UPDATE customer SET email = 'compta@carthage' WHERE id = ?", [$this->customerId]);
+        $db->executeStatement("INSERT INTO contact (id, company_id, customer_id, first_name, phone, is_primary, created_at, updated_at) VALUES (gen_random_uuid(), ?, ?, 'Leila', '12', false, now(), now())", [$company, $this->customerId]);
+        $vendor = $db->fetchOne("INSERT INTO vendor (id, company_id, number, name, email, is_active, created_at, updated_at) VALUES (gen_random_uuid(), ?, 'FRN-1', 'Atlas', 'achats@', true, now(), now()) RETURNING id", [$company]);
+        $seen = $this->customerOf($this->company, 'Déjà vu');
+        $db->executeStatement("UPDATE customer SET email = 'x@', to_check = true, check_note = 'Vu au téléphone' WHERE id = ?", [$seen]);
+        $night = function (): void {
+            $this->em()->clear();
+            static::getContainer()->get(MarkKeptCustomerContactsEveryNight::class)();
+            static::getContainer()->get(MarkKeptVendorContactsEveryNight::class)();
+        };
+
+        $night();
+
+        $customer = $db->fetchAssociative('SELECT to_check, check_note FROM customer WHERE id = ?', [$this->customerId]);
+        self::assertIsArray($customer);
+        self::assertTrue($customer['to_check']);
+        self::assertIsString($customer['check_note']);
+        [$email, $phone] = explode("\n", $customer['check_note']);
+        self::assertSame("Adresse e-mail «\u{a0}compta@carthage\u{a0}» ne suit plus la règle\u{a0}: ce n’est pas une adresse e-mail. À corriger.", $email);
+        self::assertStringStartsWith("Téléphone du contact Leila «\u{a0}12\u{a0}» ne suit plus la règle\u{a0}:", $phone);
+        self::assertSame([true, "Adresse e-mail «\u{a0}achats@\u{a0}» ne suit plus la règle\u{a0}: ce n’est pas une adresse e-mail. À corriger."], array_values((array) $db->fetchAssociative('SELECT to_check, check_note FROM vendor WHERE id = ?', [$vendor])));
+        self::assertSame([true, 'Vu au téléphone'], array_values((array) $db->fetchAssociative('SELECT to_check, check_note FROM customer WHERE id = ?', [$seen])), 'a mark already there is left as it is');
+        $journal = "SELECT count(*) FROM audit_log WHERE action IN ('customer.revised', 'vendor.revised') AND actor_user_id IS NULL AND company_id = ?";
+        self::assertSame(2, $db->fetchOne($journal, [$company]), 'each mark is in the journal, made by no one');
+
+        $night();
+
+        self::assertSame(2, $db->fetchOne($journal, [$company]), 'the next night writes nothing again');
+        self::assertSame($customer['check_note'], $db->fetchOne('SELECT check_note FROM customer WHERE id = ?', [$this->customerId]));
     }
 
     public function testEveryCheckDeclaredIsNamedInEveryLanguageOfTheMailsAndTheScreens(): void

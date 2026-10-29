@@ -26,3 +26,8 @@ column:
 # The « À vérifier » line a record carries for a phone of the right length outside the numbers handed out (row 207).
 doubt:
     phone: 'Phone “%value%”: the length is right, but this number is not among those handed out in its country. To check.'
+# The « À vérifier » line the night leaves on a record keeping an e-mail or a phone today's rule refuses (row 208).
+kept:
+    line: '%label% “%value%” no longer follows the rule: %why%. To correct.'
+    contact: '%label% of the contact %name% “%value%” no longer follows the rule: %why%. To correct.'
+    unnamed_contact: '%label% of a contact “%value%” no longer follows the rule: %why%. To correct.'

@@ -52,7 +52,7 @@ final readonly class CompanyContactChecks implements DeclaresDataChecks
         foreach ($rows as $row) {
             $row = Rows::row($row);
             $code = Rows::textOrNull($row['code']);
-            foreach ($this->contacts->refused(Rows::textOrNull($row['email']), Rows::textOrNull($row['phone']), Rows::textOrNull($row['country'])) as $field) {
+            foreach (array_keys($this->contacts->refused(Rows::textOrNull($row['email']), Rows::textOrNull($row['phone']), Rows::textOrNull($row['country']))) as $field) {
                 yield new DataFinding(self::CONTACT_RULES, Uuid::fromString(Rows::text($row['company_id'])), null === $code ? \sprintf('company: %s', $field) : \sprintf('establishment %s: %s', $code, $field));
             }
         }

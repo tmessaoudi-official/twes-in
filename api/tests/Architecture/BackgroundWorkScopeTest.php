@@ -18,10 +18,12 @@ use App\Identity\Infrastructure\Mail\SecurityNoticeToMailHandler;
 use App\Identity\Infrastructure\Password\PasswordResetAskedHandler;
 use App\Identity\Infrastructure\Scheduler\FinalizeAccountDeletionsEveryNight;
 use App\Inbox\Infrastructure\Mail\NotificationToMailHandler;
+use App\Module\Customers\Infrastructure\Scheduler\MarkKeptCustomerContactsEveryNight;
 use App\Module\Invoices\Infrastructure\Scheduler\RemindLateInvoicesEveryHour;
 use App\Module\Recurring\Infrastructure\Scheduler\RunRecurringInvoicesEveryHour;
 use App\Module\RecurringExpenses\Infrastructure\Scheduler\RunRecurringExpensesEveryHour;
 use App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos;
+use App\Module\Vendors\Infrastructure\Scheduler\MarkKeptVendorContactsEveryNight;
 use App\Records\Infrastructure\Scheduler\EndRemovalsEveryQuarterHour;
 use App\Shared\Infrastructure\Scheduler\PurgeSubmissionsEveryHour;
 use App\Tenancy\Infrastructure\Invitation\InvitationToMailHandler;
@@ -55,6 +57,8 @@ final class BackgroundWorkScopeTest extends TestCase
         SecurityNoticeToMailHandler::class => 'the account by its id, no company: how a person signs in belongs to the account',
         PurgeSubmissionsEveryHour::class => 'every company at once, on purpose: a write\'s key is forgotten by its age alone',
         RemoveClosedCompaniesEveryNight::class => 'each closed company whose retention has ended, by its own id, removed whole in its own transaction',
+        MarkKeptCustomerContactsEveryNight::class => 'each customer keeping a refused value, of an active company with the customers module on, handed to the use case with its company',
+        MarkKeptVendorContactsEveryNight::class => 'each vendor keeping a refused value, of an active company with the vendors module on, handed to the use case with its company',
         RemindLateInvoicesEveryHour::class => 'each active company with the invoices module on, handed to the use case one at a time',
         RunRecurringExpensesEveryHour::class => 'each active company with the recurring expenses module on, handed to the use case one at a time',
         RunRecurringInvoicesEveryHour::class => 'each active company with the recurring module on, handed to the use case one at a time',

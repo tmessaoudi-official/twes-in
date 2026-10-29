@@ -26,3 +26,8 @@ column:
 # The « À vérifier » line a record carries for a phone of the right length outside the numbers handed out (row 207).
 doubt:
     phone: 'الهاتف « %value% »: طوله صحيح، لكن هذا الرقم ليس من الأرقام المسندة في بلده. يجب التحقّق منه.'
+# The « À vérifier » line the night leaves on a record keeping an e-mail or a phone today's rule refuses (row 208).
+kept:
+    line: '%label% « %value% » لم يعد يوافق القاعدة: %why%. يجب تصحيحه.'
+    contact: '%label% لجهة الاتصال %name% « %value% » لم يعد يوافق القاعدة: %why%. يجب تصحيحه.'
+    unnamed_contact: '%label% لإحدى جهات الاتصال « %value% » لم يعد يوافق القاعدة: %why%. يجب تصحيحه.'

@@ -25,6 +25,7 @@ use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Application\TypedPhones;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
@@ -135,6 +136,31 @@ final readonly class ManageVendors implements DeclaresAuditActions
             }
 
             return $vendor;
+        });
+    }
+
+    /**
+     * Marks the vendor « À vérifier » with this note, for what the night found it keeps that today's rules refuse
+     * (row 208). One already marked, for this or any reason, or merged away is left as it is, so the night marks a
+     * record once and a person who takes the mark off without correcting the value finds it again the next night.
+     * No one acts: the journal names no person.
+     *
+     * @return bool whether the vendor was marked
+     *
+     * @throws VendorNotFound
+     */
+    public function markToCheck(Company $company, Uuid $id, string $note): bool
+    {
+        return $this->transactions->run(function () use ($company, $id, $note): bool {
+            $vendor = $this->get($company, $id);
+            if ($vendor->getCheckMark()->marked || $vendor->isMergedAway()) {
+                return false;
+            }
+            $changed = $vendor->reviseCheck(new CheckMark(true, mb_substr($note, 0, CheckMark::NOTE_MAX)), true, $this->clock->now());
+            $this->vendors->save($vendor);
+            $this->record($company, $vendor->getId(), self::REVISED, ['fields' => $changed], null);
+
+            return true;
         });
     }
 

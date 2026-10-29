@@ -35,6 +35,7 @@ use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Application\TypedPhones;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
@@ -158,6 +159,31 @@ final readonly class ManageCustomers implements DeclaresAuditActions
             }
 
             return $customer;
+        });
+    }
+
+    /**
+     * Marks the customer « À vérifier » with this note, for what the night found it keeps that today's rules refuse
+     * (row 208). One already marked, for this or any reason, or merged away is left as it is, so the night marks a
+     * record once and a person who takes the mark off without correcting the value finds it again the next night.
+     * No one acts: the journal names no person.
+     *
+     * @return bool whether the customer was marked
+     *
+     * @throws CustomerNotFound
+     */
+    public function markToCheck(Company $company, Uuid $id, string $note): bool
+    {
+        return $this->transactions->run(function () use ($company, $id, $note): bool {
+            $customer = $this->get($company, $id);
+            if ($customer->getCheckMark()->marked || $customer->isMergedAway()) {
+                return false;
+            }
+            $changed = $customer->reviseCheck(new CheckMark(true, mb_substr($note, 0, CheckMark::NOTE_MAX)), $this->clock->now());
+            $this->customers->save($customer);
+            $this->record($company, $customer->getId(), self::REVISED, ['fields' => $changed], null);
+
+            return true;
         });
     }
 
