@@ -184,7 +184,7 @@ export class PlatformLegalPage implements OnInit {
     }
     if (this.identityTried()) {
       for (const [placeholder, value] of Object.entries(this.identityDraft())) {
-        if (placeholder.endsWith('.email') && value.trim() !== '' && !emailTaken(value)) {
+        if (this.addressField(placeholder) && value.trim() !== '' && !emailTaken(value)) {
           refused.set(placeholder, { field: placeholder, reason: 'invalid_email', params: {} });
         }
       }
@@ -256,6 +256,20 @@ export class PlatformLegalPage implements OnInit {
     const value = (event.target as HTMLInputElement).value;
     this.identityDraft.update((draft) => ({ ...draft, [placeholder]: value }));
     this.retyped.update((retyped) => new Set([...retyped, placeholder]));
+  }
+
+  /** Whether an identity field holds an e-mail address: it shows an example and is held to the one e-mail rule. */
+  protected addressField(placeholder: string): boolean {
+    return placeholder.endsWith('.email');
+  }
+
+  /** What a reader hears after an identity field's name: its example, then what is refused in it. */
+  protected identityDescribedBy(placeholder: string): string | null {
+    const ids = [
+      ...(this.addressField(placeholder) ? [`legal-identity-${placeholder}-hint`] : []),
+      ...(this.identityError(placeholder) === null ? [] : [`legal-identity-${placeholder}-error`]),
+    ];
+    return ids.length === 0 ? null : ids.join(' ');
   }
 
   /** What is said under an identity field the screen or the API refuses, in the words every form uses. */

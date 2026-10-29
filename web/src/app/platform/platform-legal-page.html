@@ -30,13 +30,17 @@
             [value]="identityDraft()[placeholder] ?? ''"
             (input)="typedIdentity(placeholder, $event)"
             [attr.aria-invalid]="identityError(placeholder) !== null"
-            [attr.aria-describedby]="
-              identityError(placeholder) === null
-                ? null
-                : 'legal-identity-' + placeholder + '-error'
-            "
+            [attr.aria-describedby]="identityDescribedBy(placeholder)"
             [attr.data-testid]="'legal-identity-' + placeholder"
           />
+          @if (addressField(placeholder)) {
+            <span
+              class="text-xs"
+              [id]="'legal-identity-' + placeholder + '-hint'"
+              [attr.data-testid]="'legal-identity-' + placeholder + '-hint'"
+              >{{ 'platform.legal.identity.email_hint' | translate }}</span
+            >
+          }
           @if (identityError(placeholder); as error) {
             <span
               class="text-xs text-error"

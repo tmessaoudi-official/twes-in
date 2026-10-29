@@ -263,7 +263,8 @@
         "source": {
           "url": "Adresse du code source"
         },
-        "jurisdiction": "Tribunaux compétents"
+        "jurisdiction": "Tribunaux compétents",
+        "email_hint": "Par exemple contact@exemple.tn"
       }
     },
     "tabs": {

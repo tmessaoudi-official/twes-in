@@ -463,6 +463,26 @@ describe('PlatformLegalPage', () => {
     expect(facade.saveIdentity).toHaveBeenCalledWith({ 'publisher.email': 'contact@twes.tn' });
   });
 
+  it('shows an example under every address field, which the field is described by, and under no other', async () => {
+    await render();
+    const email = q('legal-identity-publisher.email') as HTMLInputElement;
+    const hint = q('legal-identity-publisher.email-hint');
+    expect(hint?.textContent?.trim()).toBe('platform.legal.identity.email_hint');
+    expect(email.getAttribute('aria-describedby')).toBe(hint?.id);
+    expect(q('legal-identity-publisher.name-hint')).toBeNull();
+    expect(q('legal-identity-publisher.name')?.getAttribute('aria-describedby')).toBeNull();
+
+    email.value = 'contact@twes';
+    email.dispatchEvent(new Event('input'));
+    await settle();
+    q('legal-identity-save')!.click();
+    await settle();
+    expect(email.getAttribute('aria-describedby')?.split(' ')).toEqual([
+      hint?.id,
+      q('legal-identity-publisher.email-error')?.id,
+    ]);
+  });
+
   it('says what the API refused under its field, until that field is typed again', async () => {
     facade.saveIdentity.mockImplementation(async () => {
       facade.identityRefusals.set([

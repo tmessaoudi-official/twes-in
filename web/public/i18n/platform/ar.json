@@ -263,7 +263,8 @@
         "source": {
           "url": "عنوان الشيفرة المصدرية"
         },
-        "jurisdiction": "المحاكم المختصّة"
+        "jurisdiction": "المحاكم المختصّة",
+        "email_hint": "مثلًا contact@exemple.tn"
       }
     },
     "tabs": {

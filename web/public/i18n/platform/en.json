@@ -263,7 +263,8 @@
         "source": {
           "url": "Source code address"
         },
-        "jurisdiction": "Competent courts"
+        "jurisdiction": "Competent courts",
+        "email_hint": "For example contact@example.tn"
       }
     },
     "tabs": {

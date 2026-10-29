@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { browserPattern } from '../form/api-pattern';
 import { languageChoices } from '../i18n/language-options';
 import { languageEntry } from '../i18n/languages';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../form/form-types';
@@ -243,7 +244,7 @@ function bounds(row: SettingRow): Pick<FormField, 'min' | 'max'> {
 
 /** A text with an empty default may be left empty; a pattern or a long limit decides the field's shape. */
 function textField(id: string, label: string, row: SettingRow): FormField {
-  const pattern = row.pattern === null ? undefined : unanchored(row.pattern);
+  const pattern = row.pattern === null ? undefined : browserPattern(row.pattern);
   const long = pattern === undefined && (row.maxLength ?? Number.POSITIVE_INFINITY) > LONG_TEXT;
   return {
     id,
@@ -263,7 +264,7 @@ function textField(id: string, label: string, row: SettingRow): FormField {
 export function settingRules(
   rule: Pick<SettingRow, 'maxLength' | 'pattern' | 'patternReason'>,
 ): Pick<FormField, 'maxLength' | 'pattern' | 'patternError'> {
-  const pattern = rule.pattern === null ? undefined : unanchored(rule.pattern);
+  const pattern = rule.pattern === null ? undefined : browserPattern(rule.pattern);
   return {
     ...(rule.maxLength === null ? {} : { maxLength: rule.maxLength }),
     ...(pattern === undefined ? {} : { pattern }),
@@ -271,10 +272,4 @@ export function settingRules(
       ? {}
       : { patternError: `import.rejections.${rule.patternReason}` }),
   };
-}
-
-/** `/^[A-Z]{3}$/` becomes `[A-Z]{3}`: the form anchors a string pattern at both ends itself. */
-function unanchored(delimited: string): string {
-  const match = /^\/\^?(.*?)\$?\/[a-z]*$/s.exec(delimited);
-  return match?.[1] ?? delimited;
 }
