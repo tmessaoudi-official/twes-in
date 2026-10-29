@@ -206,6 +206,8 @@ export function trackingOf(value: string): ProductTracking {
 
 /** A lot or serial as a label carries it: printable characters without space or accent, 40 at most, as the API keeps it. */
 export const LOT_CODE_PATTERN = /^[\x21-\x7E]{1,40}$/;
+/** The pattern's length, which a field checks on its own to say a code too long as such, kept whole. */
+export const LOT_CODE_LENGTH = 40;
 
 /** What a save sends: the main photo is the gallery's to say, never the form's, and the merge only « Fusionner… »'s. */
 export type ProductInput = Omit<

@@ -96,6 +96,9 @@
                   [attr.data-testid]="'line-' + i + '-product-error'"
                 >
                   {{ error.key | translate: error.params }}
+                  @if (error.count) {
+                    <bdi>{{ error.count }}</bdi>
+                  }
                 </p>
               }
             </div>
@@ -107,7 +110,6 @@
                   matInput
                   formControlName="description"
                   required
-                  maxlength="5000"
                   [attr.data-testid]="'line-' + i + '-description'"
                 />
               </mat-form-field>
@@ -116,8 +118,11 @@
                   role="alert"
                   class="px-4 pt-1 pb-2 text-xs text-error"
                   [attr.data-testid]="'line-' + i + '-description-error'"
-                  >{{ error.key | translate: error.params }}</span
-                >
+                  >{{ error.key | translate: error.params }}
+                  @if (error.count) {
+                    <bdi>{{ error.count }}</bdi>
+                  }
+                </span>
               }
             </div>
 
@@ -143,8 +148,11 @@
                   role="alert"
                   class="px-4 pt-1 pb-2 text-xs text-error"
                   [attr.data-testid]="'line-' + i + '-quantity-error'"
-                  >{{ error.key | translate: error.params }}</span
-                >
+                  >{{ error.key | translate: error.params }}
+                  @if (error.count) {
+                    <bdi>{{ error.count }}</bdi>
+                  }
+                </span>
               }
             </div>
 
@@ -155,7 +163,6 @@
                   <input
                     matInput
                     formControlName="lotCode"
-                    maxlength="40"
                     autocomplete="off"
                     [attr.data-testid]="'line-' + i + '-lot'"
                   />
@@ -165,8 +172,11 @@
                     role="alert"
                     class="px-4 pt-1 pb-2 text-xs text-error"
                     [attr.data-testid]="'line-' + i + '-lot-error'"
-                    >{{ error.key | translate: error.params }}</span
-                  >
+                    >{{ error.key | translate: error.params }}
+                    @if (error.count) {
+                      <bdi>{{ error.count }}</bdi>
+                    }
+                  </span>
                 }
               </div>
             }
@@ -196,8 +206,11 @@
                   role="alert"
                   class="px-4 pb-2 text-xs text-error"
                   [attr.data-testid]="'line-' + i + '-unit-error'"
-                  >{{ error.key | translate: error.params }}</span
-                >
+                  >{{ error.key | translate: error.params }}
+                  @if (error.count) {
+                    <bdi>{{ error.count }}</bdi>
+                  }
+                </span>
               }
             </div>
 
@@ -232,8 +245,11 @@
                   role="alert"
                   class="px-4 pb-2 text-xs text-error"
                   [attr.data-testid]="'line-' + i + '-price-error'"
-                  >{{ error.key | translate: error.params }}</span
-                >
+                  >{{ error.key | translate: error.params }}
+                  @if (error.count) {
+                    <bdi>{{ error.count }}</bdi>
+                  }
+                </span>
               }
             </div>
 
@@ -300,8 +316,11 @@
                   role="alert"
                   class="px-4 pt-1 pb-2 text-xs text-error"
                   [attr.data-testid]="'line-' + i + '-discount-error'"
-                  >{{ error.key | translate: error.params }}</span
-                >
+                  >{{ error.key | translate: error.params }}
+                  @if (error.count) {
+                    <bdi>{{ error.count }}</bdi>
+                  }
+                </span>
               }
             </div>
           </div>
@@ -345,6 +364,9 @@
                       [attr.data-testid]="'line-' + i + '-taxes-error'"
                     >
                       {{ error.key | translate: error.params }}
+                      @if (error.count) {
+                        <bdi>{{ error.count }}</bdi>
+                      }
                     </p>
                   }
                 </div>

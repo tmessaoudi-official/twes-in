@@ -7,7 +7,11 @@ import { filterValues, idValues, rangeParams } from '../shared/list/list-filters
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import type { PickOption } from '../shared/form/pick-field';
-import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
+import {
+  LOT_CODE_LENGTH,
+  LOT_CODE_PATTERN,
+  type ProductTracking,
+} from '../products/products-types';
 import { type LineStock, type OnHand, stockOfLines } from '../shared/documents/line-stock';
 import type { ReceiverChoice } from '../shared/receivers/receiver';
 import {
@@ -691,7 +695,7 @@ export function lineGroup(
       creditedLineId: new FormControl(line?.creditedLineId ?? '', { nonNullable: true }),
       lotCode: new FormControl(line?.lotCode ?? '', {
         nonNullable: true,
-        validators: [matches(LOT_CODE_PATTERN)],
+        validators: [Validators.maxLength(LOT_CODE_LENGTH), matches(LOT_CODE_PATTERN)],
       }),
       returned: new FormControl(line?.returned ?? false, { nonNullable: true }),
       deductsInvoiceId: new FormControl(line?.deductsInvoiceId ?? '', { nonNullable: true }),

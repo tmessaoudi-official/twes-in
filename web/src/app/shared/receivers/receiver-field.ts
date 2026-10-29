@@ -7,7 +7,8 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
-import { RECEIVER_NAME_MAX, type ReceiverContact, type ReceiverForm } from './receiver';
+import { lengthSaidOf } from '../form/length-said';
+import { type ReceiverContact, type ReceiverForm } from './receiver';
 
 /** A name as two people write it alike: case and the spaces around and between its words set aside. */
 function sameName(name: string): string {
@@ -39,7 +40,6 @@ function sameName(name: string): string {
           matInput
           type="text"
           autocomplete="off"
-          [maxlength]="nameMax"
           [formControl]="form().controls.name"
           [matAutocomplete]="contactsOffered"
           matAutocompletePosition="above"
@@ -70,10 +70,10 @@ function sameName(name: string): string {
           <mat-error [attr.data-testid]="testId() + '-error'">{{
             'receivers.required' | translate
           }}</mat-error>
-        } @else if (form().controls.name.hasError('maxlength')) {
-          <mat-error [attr.data-testid]="testId() + '-error'">{{
-            'form.errors.max_length' | translate: { max: nameMax }
-          }}</mat-error>
+        } @else if (lengthSaidOf(form().controls.name); as error) {
+          <mat-error [attr.data-testid]="testId() + '-error'"
+            >{{ error.key | translate: error.params }} <bdi>{{ error.count }}</bdi></mat-error
+          >
         }
       </mat-form-field>
       @if (addable()) {
@@ -95,7 +95,7 @@ export class ReceiverField {
   readonly pickedHint = input('receivers.a_contact');
   /** Whether a name typed may be added to the list it was not in; a company's members are never added this way. */
   readonly offersAdding = input(true);
-  protected readonly nameMax = RECEIVER_NAME_MAX;
+  protected readonly lengthSaidOf = lengthSaidOf;
 
   /** The contacts whose name holds what is typed, whatever its case; all of them before anything is. */
   protected offered(): readonly ReceiverContact[] {

@@ -156,6 +156,7 @@ describe('fieldError', () => {
     expect(errorOf(name, 'x'.repeat(81))).toEqual({
       key: 'form.errors.max_length',
       params: { max: 80 },
+      count: '81 / 80',
     });
     expect(errorOf(terms, -1)).toEqual({ key: 'form.errors.min', params: { min: 0 } });
     expect(errorOf(terms, 121)).toEqual({ key: 'form.errors.max', params: { max: 120 } });

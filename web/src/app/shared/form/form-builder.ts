@@ -11,6 +11,7 @@ import {
 import type { FieldValue, FormDescriptor, FormField, FormValues } from './form-types';
 import { onTypedText, typedText } from './typed-text';
 import { emailRule } from './email-rule';
+import { lengthSaidOf } from './length-said';
 
 /**
  * A form as a pure function of its descriptor: one control per declared field with the validators the field
@@ -47,6 +48,8 @@ export interface FieldError {
    * the error shows, and « not the expected format » says nothing about which one (MSG-03, WCAG 3.3.3).
    */
   hint?: string;
+  /** How many characters are there out of how many fit (« 5003 / 5000 »), said beside a value too long. */
+  count?: string;
 }
 
 export type DescriptorFormGroup = FormGroup<Record<string, FormControl<FieldValue>>>;
@@ -187,8 +190,7 @@ export function fieldError(control: AbstractControl, field: FormField): FieldErr
       : { key: 'form.errors.pattern' };
   if (errors['minlength'])
     return { key: 'form.errors.min_length', params: { min: field.minLength! } };
-  if (errors['maxlength'])
-    return { key: 'form.errors.max_length', params: { max: field.maxLength! } };
+  if (errors['maxlength']) return lengthSaidOf(control);
   if (errors['min']) return { key: 'form.errors.min', params: { min: field.min! } };
   if (errors['max']) return { key: 'form.errors.max', params: { max: field.max! } };
   return null;

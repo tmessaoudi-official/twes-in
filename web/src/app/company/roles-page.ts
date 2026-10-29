@@ -36,6 +36,11 @@ import { runAction } from '../shared/actions/run-action';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
+import { lengthSaid } from '../shared/form/length-said';
+import { RefusedField } from '../shared/form/refused-field';
+
+/** What a role's name keeps, as the API holds it. */
+const ROLE_NAME_MAX = 64;
 
 /**
  * The company's roles, and a matrix of what each may do (docs/SPEC.md § 7, 2026-09-20 11:30, row 104).
@@ -59,6 +64,7 @@ import type { RoleRow } from './roles-types';
     PartConflict,
     RecordBar,
     RecordChanged,
+    RefusedField,
     TranslatePipe,
   ],
   templateUrl: './roles-page.html',
@@ -104,6 +110,8 @@ export class RolesPage implements OnInit {
    * somebody had typed before (docs/SPEC.md § Lessons). A reload while the editor is open leaves both alone.
    */
   protected readonly draftName = signal('');
+  /** A name past what a role keeps, kept whole and said under the field rather than cut as it is pasted. */
+  protected readonly nameTooLong = computed(() => lengthSaid(this.draftName(), ROLE_NAME_MAX));
 
   private readonly ticksSignal = signal<ReadonlySet<string>>(new Set());
   private readonly nameModel = viewChild('roleNameModel', { read: NgModel });
@@ -260,6 +268,10 @@ export class RolesPage implements OnInit {
       // Spaces alone pass `required`: the name is said needed here, under its field, where the cursor goes.
       this.nameModel()?.control.setErrors({ required: true });
       this.nameModel()?.control.markAsTouched();
+      this.nameInput()?.nativeElement.focus();
+      return;
+    }
+    if (this.nameTooLong() !== null) {
       this.nameInput()?.nativeElement.focus();
       return;
     }

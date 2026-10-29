@@ -120,6 +120,7 @@ export interface DeliverDialogData {
         </mat-form-field>
         <mat-form-field subscriptSizing="dynamic" class="w-32">
           <mat-label>{{ 'delivery_notes.actions.delivered_time' | translate }}</mat-label>
+          <!-- paste-cut: a time is HH:MM, five characters; what follows is no time, and the first five are said wrong if they are -->
           <input
             matInput
             type="text"

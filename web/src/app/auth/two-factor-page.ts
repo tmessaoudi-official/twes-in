@@ -26,6 +26,7 @@ import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { StepUp } from '../shared/step-up/step-up';
 import { SignedOutLayout } from './signed-out-layout';
 import { MfaLockout } from './mfa-lockout';
+import { lengthSaidOf } from '../shared/form/length-said';
 
 /**
  * Two-step verification for the signed-in account: an authenticator app, passkeys, and the recovery codes behind both.
@@ -100,6 +101,7 @@ export class TwoFactorPage {
   protected readonly regenerateForm = new FormGroup({
     code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
+  protected readonly lengthSaidOf = lengthSaidOf;
   protected readonly passkeyForm = new FormGroup({
     name: new FormControl('', {
       nonNullable: true,

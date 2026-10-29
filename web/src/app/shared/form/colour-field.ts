@@ -74,6 +74,7 @@ const HEX = /^#[0-9a-f]{6}$/;
         class="size-8 shrink-0 rounded-control border-2 border-on-surface-variant ring-2 ring-surface ring-inset"
         [style.background-color]="valid() ? text() : null"
       ></span>
+      <!-- paste-cut: a colour is #rrggbb, seven characters; a longer paste is no colour, and its first seven are said wrong if they are -->
       <input
         type="text"
         class="min-h-10 w-36 rounded-control border border-outline bg-surface px-4 py-1.5 font-mono text-base"

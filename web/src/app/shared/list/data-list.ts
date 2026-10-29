@@ -92,6 +92,8 @@ import { Label } from '../a11y/label';
 import { FormsModule } from '@angular/forms';
 import { Select, type SelectOption } from '../form/select';
 import type { PickOption } from '../form/pick-field';
+import { lengthSaid } from '../form/length-said';
+import { RefusedField } from '../form/refused-field';
 import { ListFilterPanel } from './list-filter-panel';
 import { TranslatedPaginatorIntl } from './translated-paginator-intl';
 import {
@@ -138,6 +140,8 @@ const ANY_FACET = '*';
 const RESIZE_STEP = 16;
 const MIN_WIDTH = 48;
 const MAX_WIDTH = 960;
+/** What a saved view's name keeps. */
+const VIEW_NAME_MAX = 60;
 export const FALLBACK_WIDTH = 160;
 /** How many of a row's actions stand as buttons: « one or two », the rest in « ⋮ ». */
 const ROW_BUTTONS = 2;
@@ -231,6 +235,7 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
     MatPaginatorModule,
     MatFormFieldModule,
     MatInputModule,
+    RefusedField,
     MatIconModule,
     MatButtonModule,
     MatCheckboxModule,
@@ -310,6 +315,8 @@ export class DataList<Row> implements OnInit {
   /** What each picked record is called, by id, for its chip. */
   protected readonly pickNames = signal<Readonly<Record<string, string>>>({});
   protected readonly viewName = signal('');
+  /** A view's name past its limit, kept whole as pasted and said under the field; saving waits until it fits. */
+  protected readonly viewNameTooLong = computed(() => lengthSaid(this.viewName(), VIEW_NAME_MAX));
   protected readonly pageIndex = signal(0);
   private readonly chosenPageSize = this.settings.value(PRESENTATION.pageSize);
   /** The size a list opens at: the one the person chose for every list where this one offers it, else its own first. */
@@ -1290,7 +1297,7 @@ export class DataList<Row> implements OnInit {
   /** Saves the text filter, the filter options and the column layout under the typed name. */
   protected onSaveView(event: Event): void {
     event.preventDefault();
-    if (this.viewName().trim() === '') return;
+    if (this.viewName().trim() === '' || this.viewNameTooLong() !== null) return;
     const draft = {
       name: this.viewName(),
       query: this.query(),

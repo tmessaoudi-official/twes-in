@@ -16,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { FieldError } from '../shared/form/form-builder';
+import { lengthSaidOf } from '../shared/form/length-said';
 import { LineRefusals, refusedOn } from '../shared/documents/line-refusals';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { DecimalInput } from '../shared/form/decimal-input';
@@ -131,6 +132,9 @@ export class PurchaseOrderLines {
     const control = line.controls[field];
     const refused = refusedOn(control);
     if (refused !== null) return refused;
+    // A value too long is said at once, the paste kept whole, so the person sees why before leaving the field.
+    const tooLong = lengthSaidOf(control);
+    if (tooLong !== null) return tooLong;
     return control.touched && control.invalid
       ? { key: `purchases.lines.errors.${field}`, params: {} }
       : null;

@@ -21,6 +21,8 @@ import { DayInput } from '../shared/form/day-input';
 import { DecimalInput } from '../shared/form/decimal-input';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { FieldError } from '../shared/form/form-builder';
+import { lengthSaid } from '../shared/form/length-said';
+import { RefusedField } from '../shared/form/refused-field';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { refusedError, worded } from '../shared/form/refusal-words';
 import { revealInvalid } from '../shared/form/reveal-invalid';
@@ -101,6 +103,7 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
     MatInputModule,
     MatSelectModule,
     ReceiverField,
+    RefusedField,
     TranslatePipe,
     AmountPipe,
   ],
@@ -112,6 +115,11 @@ export class ReceiveDialog {
   protected readonly data = inject<ReceiveDialogData>(MAT_DIALOG_DATA);
 
   protected readonly referenceMax = SUPPLIER_REFERENCE_MAX;
+  protected readonly lengthSaid = lengthSaid;
+  /** A reference past its limit, kept whole as pasted and said under its field. */
+  protected readonly referenceTooLong = computed(() =>
+    lengthSaid(this.supplierReference().trim(), SUPPLIER_REFERENCE_MAX),
+  );
   protected readonly lotMax = LOT_CODE_MAX;
   protected readonly plain = plainDecimal;
   private readonly today = todayIn(this.data.timeZone);

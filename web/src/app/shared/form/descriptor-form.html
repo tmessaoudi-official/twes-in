@@ -262,7 +262,6 @@
                           rows="3"
                           [formControlName]="field.id"
                           [required]="field.required ?? false"
-                          [attr.maxlength]="field.maxLength ?? null"
                           [attr.data-testid]="'field-' + field.id"
                         ></textarea>
                       }
@@ -288,7 +287,6 @@
                           type="text"
                           [formControlName]="field.id"
                           [required]="field.required ?? false"
-                          [attr.maxlength]="field.maxLength ?? null"
                           [attr.data-testid]="'field-' + field.id"
                         />
                       }
@@ -300,7 +298,6 @@
                             [type]="field.kind"
                             [formControlName]="field.id"
                             [required]="field.required ?? false"
-                            [attr.maxlength]="field.maxLength ?? null"
                             [matAutocomplete]="inUse"
                             [attr.data-testid]="'field-' + field.id"
                           />
@@ -318,7 +315,6 @@
                             [type]="field.kind"
                             [formControlName]="field.id"
                             [required]="field.required ?? false"
-                            [attr.maxlength]="field.maxLength ?? null"
                             [attr.autocomplete]="field.autocomplete ?? null"
                             [attr.data-testid]="'field-' + field.id"
                           />
@@ -350,6 +346,9 @@
                           (error.key | translate: error.params) +
                             (error.hint ? ' ' + (error.hint | translate) : '')
                         }}
+                        @if (error.count) {
+                          <bdi>{{ error.count }}</bdi>
+                        }
                       </mat-error>
                     }
                   </mat-form-field>

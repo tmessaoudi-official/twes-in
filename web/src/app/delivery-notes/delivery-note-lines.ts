@@ -37,6 +37,7 @@ import type {
   TaxFamily,
 } from './delivery-notes-types';
 import { DecimalInput } from '../shared/form/decimal-input';
+import { lengthSaidOf } from '../shared/form/length-said';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { Select, type SelectOption } from '../shared/form/select';
 import { type IssuedLine, IssuedLines } from '../shared/ui/issued-lines';
@@ -254,6 +255,9 @@ export class DeliveryNoteLines {
     const control = line.controls[field];
     const refused = refusedOn(control);
     if (refused !== null) return refused;
+    // A value too long is said at once, the paste kept whole, so the person sees why before leaving the field.
+    const tooLong = lengthSaidOf(control);
+    if (tooLong !== null) return tooLong;
     if (!control.touched || control.disabled) return null;
     const invalid = control.invalid || (field === 'quantity' && line.hasError('quantityDecimals'));
     return invalid ? { key: `delivery_notes.lines.errors.${field}`, params: {} } : null;

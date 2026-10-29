@@ -266,11 +266,16 @@
           <mat-label>{{ 'list.view_name' | translate }}</mat-label>
           <input
             matInput
-            maxlength="60"
+            [appRefused]="viewNameTooLong() !== null"
             [value]="viewName()"
             (input)="onViewName($event)"
             data-testid="list-view-name"
           />
+          @if (viewNameTooLong(); as error) {
+            <mat-error data-testid="list-view-name-too-long"
+              >{{ error.key | translate: error.params }} <bdi>{{ error.count }}</bdi></mat-error
+            >
+          }
         </mat-form-field>
         <button
           mat-flat-button

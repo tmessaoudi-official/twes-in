@@ -47,6 +47,7 @@ import type {
 } from './invoices-types';
 import { Label } from '../shared/a11y/label';
 import { DecimalInput } from '../shared/form/decimal-input';
+import { lengthSaidOf } from '../shared/form/length-said';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { Select, type SelectOption } from '../shared/form/select';
 import { ProductScans } from '../products/product-scans';
@@ -356,6 +357,9 @@ export class InvoiceLines {
     const control = line.controls[field];
     const refused = refusedOn(control);
     if (refused !== null) return refused;
+    // A value too long is said at once, the paste kept whole, so the person sees why before leaving the field.
+    const tooLong = lengthSaidOf(control);
+    if (tooLong !== null) return tooLong;
     if (!control.touched || control.disabled) return null;
     if (field === 'quantity' && control.valid && line.hasError('aboveSource')) {
       return { key: 'invoices.lines.errors.quantity_above_source', params: {} };

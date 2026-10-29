@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, ElementRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -15,6 +22,8 @@ import type { FieldError } from '../shared/form/form-builder';
 import { FormStep } from '../shared/form/form-step';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { revealInvalid } from '../shared/form/reveal-invalid';
+import { lengthSaid } from '../shared/form/length-said';
+import { RefusedField } from '../shared/form/refused-field';
 import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 import {
   type ReceiverChoice,
@@ -68,6 +77,7 @@ export interface QuoteAnswered {
     MatFormFieldModule,
     MatInputModule,
     ReceiverField,
+    RefusedField,
     TranslatePipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -115,20 +125,23 @@ export interface QuoteAnswered {
             <textarea
               matInput
               rows="3"
-              [maxlength]="reasonMax"
+              [appRefused]="(reasonRefused() ?? reasonTooLong()) !== null"
               [ngModel]="reason()"
               (ngModelChange)="reason.set($event); reasonRefused.set(null)"
               data-testid="quote-refusal-reason"
             ></textarea>
             <mat-hint>{{ 'quotes.answer.reason_hint' | translate }}</mat-hint>
           </mat-form-field>
-          @if (reasonRefused(); as said) {
+          @if (reasonRefused() ?? reasonTooLong(); as said) {
             <p
               role="alert"
               class="px-4 text-xs text-error"
               data-testid="quote-refusal-reason-error"
             >
               {{ said.key | translate: said.params }}
+              @if (said.count) {
+                <bdi>{{ said.count }}</bdi>
+              }
             </p>
           }
         }
@@ -162,11 +175,14 @@ export class QuoteAnswerDialog {
   protected readonly ref = inject<MatDialogRef<QuoteAnswerDialog, boolean>>(MatDialogRef);
   protected readonly data = inject<QuoteAnswerDialogData>(MAT_DIALOG_DATA);
   protected readonly maxBytes = ATTACHMENT_MAX_BYTES;
-  protected readonly reasonMax = REFUSAL_REASON_MAX;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   /** Empty is the company's today; anything else must be a day, which the day input says (`date`). */
   protected readonly day = new FormControl('', { nonNullable: true });
   protected readonly reason = signal('');
+  /** A reason past its limit, kept whole as pasted and said under the field; the answer waits until it fits. */
+  protected readonly reasonTooLong = computed(() =>
+    lengthSaid(this.reason().trim(), REFUSAL_REASON_MAX),
+  );
   protected readonly signed = signal<File | null>(null);
   protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
   /** What the API refused of the reason, until it changes. */
@@ -184,6 +200,7 @@ export class QuoteAnswerDialog {
     const receiver = this.receiver;
     const fields = receiver === null ? [this.day] : [this.day, receiver];
     if (revealInvalid(fields, this.host) || this.step.busy()) return;
+    if (this.data.kind === 'refuse' && this.reasonTooLong() !== null) return;
     const answered: QuoteAnswered = {
       answeredOn: this.day.value,
       refusalReason: this.data.kind === 'refuse' ? this.reason().trim() : '',

@@ -344,13 +344,17 @@
                   matInput
                   id="two-factor-passkey-name-input"
                   type="text"
-                  maxlength="80"
                   formControlName="name"
                   data-testid="two-factor-passkey-name"
                 />
                 <mat-hint>{{ 'auth.two_factor.passkey_name_hint' | translate }}</mat-hint>
                 @if (passkeyForm.controls.name.hasError('required')) {
                   <mat-error>{{ 'auth.two_factor.passkey_name_required' | translate }}</mat-error>
+                } @else if (lengthSaidOf(passkeyForm.controls.name); as error) {
+                  <mat-error data-testid="two-factor-passkey-name-too-long"
+                    >{{ error.key | translate: error.params }}
+                    <bdi>{{ error.count }}</bdi></mat-error
+                  >
                 }
               </mat-form-field>
             </div>

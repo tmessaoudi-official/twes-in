@@ -32,12 +32,17 @@
         <input
           matInput
           autocomplete="off"
-          [maxlength]="referenceMax"
+          [appRefused]="referenceTooLong() !== null"
           [ngModel]="supplierReference()"
           (ngModelChange)="supplierReference.set($event)"
           data-testid="receive-reference"
         />
         <mat-hint>{{ 'purchases.receive.reference_hint' | translate }}</mat-hint>
+        @if (referenceTooLong(); as error) {
+          <mat-error data-testid="receive-reference-too-long"
+            >{{ error.key | translate: error.params }} <bdi>{{ error.count }}</bdi></mat-error
+          >
+        }
       </mat-form-field>
     </div>
 
@@ -118,11 +123,16 @@
               <input
                 matInput
                 autocomplete="off"
-                [maxlength]="lotMax"
+                [appRefused]="lengthSaid(row.lotCode.trim(), lotMax) !== null"
                 [ngModel]="row.lotCode"
                 (ngModelChange)="update(i, { lotCode: $event })"
                 [attr.data-testid]="'receive-row-' + i + '-lot'"
               />
+              @if (lengthSaid(row.lotCode.trim(), lotMax); as error) {
+                <mat-error [attr.data-testid]="'receive-row-' + i + '-lot-too-long'"
+                  >{{ error.key | translate: error.params }} <bdi>{{ error.count }}</bdi></mat-error
+                >
+              }
             </mat-form-field>
             <mat-form-field subscriptSizing="dynamic">
               <mat-label>{{ 'purchases.receive.expires' | translate }}</mat-label>
@@ -153,21 +163,24 @@
             </mat-form-field>
           }
         </div>
+        <!-- A lot too long is said under its own field, with its count. -->
         @if (problems()[i]; as problem) {
-          <p
-            role="alert"
-            class="text-xs text-error"
-            [attr.data-testid]="'receive-row-' + i + '-problem'"
-          >
-            {{
-              'purchases.receive.problems.' + problem
-                | translate
-                  : {
-                      expected: (plain(row.line.outstanding) | amount: null),
-                      unit: row.line.unitName,
-                    }
-            }}
-          </p>
+          @if (problem !== 'lot_length') {
+            <p
+              role="alert"
+              class="text-xs text-error"
+              [attr.data-testid]="'receive-row-' + i + '-problem'"
+            >
+              {{
+                'purchases.receive.problems.' + problem
+                  | translate
+                    : {
+                        expected: (plain(row.line.outstanding) | amount: null),
+                        unit: row.line.unitName,
+                      }
+              }}
+            </p>
+          }
         }
         @if (refusedWords(i); as said) {
           <p

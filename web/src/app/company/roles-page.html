@@ -125,11 +125,17 @@
           [ngModel]="draftName()"
           (ngModelChange)="draftName.set($event)"
           [disabled]="!editable()"
-          maxlength="64"
+          [appRefused]="
+            nameTooLong() !== null || (!!roleNameModel.invalid && !!roleNameModel.touched)
+          "
           required
           data-testid="role-name"
         />
-        @if (roleNameModel.invalid) {
+        @if (nameTooLong(); as error) {
+          <mat-error data-testid="role-name-too-long"
+            >{{ error.key | translate: error.params }} <bdi>{{ error.count }}</bdi></mat-error
+          >
+        } @else if (roleNameModel.invalid) {
           <mat-error data-testid="role-name-error">{{
             'form.errors.required' | translate
           }}</mat-error>

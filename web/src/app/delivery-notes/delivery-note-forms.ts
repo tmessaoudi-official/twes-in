@@ -23,7 +23,11 @@ import {
   type TaxFamily,
   DELIVERY_NOTE_STATUS_TONES,
 } from './delivery-notes-types';
-import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
+import {
+  LOT_CODE_LENGTH,
+  LOT_CODE_PATTERN,
+  type ProductTracking,
+} from '../products/products-types';
 import { type LineStock, type OnHand, stockOfLines } from '../shared/documents/line-stock';
 import type { ReceiverChoice } from '../shared/receivers/receiver';
 
@@ -409,7 +413,7 @@ export function lineGroup(line: DeliveryNoteLine | null, options: DeliveryNoteOp
       }),
       lotCode: new FormControl(line?.lotCode ?? '', {
         nonNullable: true,
-        validators: [matches(LOT_CODE_PATTERN)],
+        validators: [Validators.maxLength(LOT_CODE_LENGTH), matches(LOT_CODE_PATTERN)],
       }),
       productTracking: new FormControl<ProductTracking | ''>(line?.productTracking ?? '', {
         nonNullable: true,

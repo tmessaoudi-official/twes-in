@@ -41,8 +41,11 @@
               role="alert"
               class="px-4 pt-1 pb-2 text-xs text-error"
               [attr.data-testid]="'purchase-line-' + i + '-product-error'"
-              >{{ error.key | translate: error.params }}</span
-            >
+              >{{ error.key | translate: error.params }}
+              @if (error.count) {
+                <bdi>{{ error.count }}</bdi>
+              }
+            </span>
           }
         </div>
 
@@ -52,15 +55,17 @@
             <input
               matInput
               formControlName="description"
-              maxlength="5000"
               [attr.data-testid]="'purchase-line-' + i + '-description'"
             />
             <mat-hint>{{ 'purchases.lines.description_hint' | translate }}</mat-hint>
           </mat-form-field>
           @if (errorOf(line, 'description'); as error) {
-            <span role="alert" class="px-4 pt-1 pb-2 text-xs text-error">{{
-              error.key | translate: error.params
-            }}</span>
+            <span role="alert" class="px-4 pt-1 pb-2 text-xs text-error"
+              >{{ error.key | translate: error.params }}
+              @if (error.count) {
+                <bdi>{{ error.count }}</bdi>
+              }
+            </span>
           }
         </div>
 
@@ -83,8 +88,11 @@
               role="alert"
               class="px-4 pt-1 pb-2 text-xs text-error"
               [attr.data-testid]="'purchase-line-' + i + '-quantity-error'"
-              >{{ error.key | translate: error.params }}</span
-            >
+              >{{ error.key | translate: error.params }}
+              @if (error.count) {
+                <bdi>{{ error.count }}</bdi>
+              }
+            </span>
           }
         </div>
 
@@ -100,9 +108,12 @@
               />
             </mat-form-field>
             @if (errorOf(line, 'unitPriceNet'); as error) {
-              <span role="alert" class="px-4 pt-1 pb-2 text-xs text-error">{{
-                error.key | translate: error.params
-              }}</span>
+              <span role="alert" class="px-4 pt-1 pb-2 text-xs text-error"
+                >{{ error.key | translate: error.params }}
+                @if (error.count) {
+                  <bdi>{{ error.count }}</bdi>
+                }
+              </span>
             }
           </div>
         }
