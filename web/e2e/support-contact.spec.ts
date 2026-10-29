@@ -25,9 +25,14 @@ test('the contact the operators set is offered in the help, a channel left empty
     await card.getByTestId('field-phone').fill('------');
     await card.getByTestId('field-phone').press('Tab');
     await expect(card.getByTestId('field-error-phone')).toContainText('6');
-    await card.getByTestId('field-phone').fill('+216 71 000 000');
+    // The platform's numbers are read by its country (row 252): the local number alone, beside « +216 ».
+    await expect(card.getByTestId('field-phone-country')).toContainText('+216');
+    await card.getByTestId('field-phone').fill('71 000 000');
     await expect(card.getByTestId('field-error-phone')).toHaveCount(0);
-    await card.getByTestId('field-whatsapp').fill('+216 20 123 456');
+    // WhatsApp takes the phone's number in one press, and stays the operator's to change.
+    await card.getByTestId('field-action-whatsapp').click();
+    await expect(card.getByTestId('field-whatsapp')).toHaveValue('71 000 000');
+    await card.getByTestId('field-whatsapp').fill('20 123 456');
     await card.getByTestId('field-email').fill('');
     const saved = page.waitForResponse(
       (response) =>

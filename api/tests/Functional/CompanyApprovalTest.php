@@ -88,6 +88,8 @@ final class CompanyApprovalTest extends ApiTestCase
     public function testRefusingAWaitingCompanyKeepsItClosedAndTellsItsOwnersWhyAndWhomToAsk(): void
     {
         $this->em()->persist(new Setting(SettingAddress::platform(), 'support.phone', '+216 71 900 868', new \DateTimeImmutable()));
+        // Both numbers are kept as E.164 and written grouped as their country writes them.
+        $this->em()->persist(new Setting(SettingAddress::platform(), 'support.whatsapp', '+21620123456', new \DateTimeImmutable()));
         $this->em()->flush();
         $company = $this->pendingCompany('Nouvelle Société', 'nadia@example.test');
         $this->signedInAsOperator();
@@ -104,6 +106,7 @@ final class CompanyApprovalTest extends ApiTestCase
         self::assertStringContainsString('+216 71 900 868', $mail, 'whom to ask');
         // A number split between two lines on a phone's narrow screen is misread or miscopied: it is kept whole.
         self::assertStringContainsString('<bdi dir="ltr" style="white-space: nowrap;">+216 71 900 868</bdi>', $mail, 'the number kept on one line');
+        self::assertStringContainsString('<bdi dir="ltr" style="white-space: nowrap;">+216 20 123 456</bdi>', $mail, 'the WhatsApp number grouped');
 
         $this->getJson(self::WAITING);
         self::assertSame([], $this->jsonList());

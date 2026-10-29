@@ -43,6 +43,14 @@ import { applicableValues, applyVisibility, fieldApplies } from './form-visibili
 import { RefusalFigures } from './refusal-figures';
 import { refusedError } from './refusal-words';
 
+/** What a field offers under it to fill it from elsewhere, named by a translation key. */
+export interface FieldAction {
+  label: string;
+  run: () => void;
+  /** Whether there is nothing to fill it with now. */
+  disabled?: () => boolean;
+}
+
 /** Where one `pick` field's rows come from, and the record it holds now as that record itself says it. */
 export interface PickSource {
   search: (words: string) => Promise<readonly PickOption[]>;
@@ -136,6 +144,11 @@ export class DescriptorForm {
    * platform's; the platform's own forms name the platform's, whatever company the operator has open.
    */
   readonly phoneCountryOf = input<string | null>(null);
+  /**
+   * A button drawn under a phone field, per field id, that fills it from elsewhere: WhatsApp's « Même numéro que le
+   * téléphone ». An input like `pickers`, since a descriptor is data and an action a function; the field stays editable.
+   */
+  readonly fieldActions = input<Readonly<Record<string, FieldAction>>>({});
 
   private readonly session = inject(Session, { optional: true });
   private readonly platformCountry = inject(PLATFORM_PHONE_COUNTRY);

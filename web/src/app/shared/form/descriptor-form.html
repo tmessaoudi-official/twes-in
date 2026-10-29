@@ -223,6 +223,19 @@
                     [errorTestId]="'field-error-' + field.id"
                     [hint]="field.hint ? (field.hint | translate: field.hintParams) : ''"
                   />
+                  @if (fieldActions()[field.id]; as action) {
+                    <div>
+                      <button
+                        mat-button
+                        type="button"
+                        [disabled]="readOnly() || (action.disabled?.() ?? false)"
+                        (click)="action.run()"
+                        [attr.data-testid]="'field-action-' + field.id"
+                      >
+                        {{ action.label | translate }}
+                      </button>
+                    </div>
+                  }
                 } @else if (field.kind === 'colour') {
                   <app-colour-field
                     [inputId]="controlId(field)"

@@ -103,9 +103,9 @@ final readonly class MeFactory
             return \is_string($value) && '' !== TypedText::trimmed($value) ? TypedText::trimmed($value) : null;
         };
 
-        // The phone is kept as E.164 and shown grouped as its country writes it; the link dials its digits.
-        $phone = $channel(SupportSettings::PHONE);
+        // Both numbers are kept as E.164 and shown grouped as their country writes them; a link dials the digits.
+        $grouped = fn (?string $number): ?string => null === $number ? null : $this->phones->grouped($number);
 
-        return new MeSupport(null === $phone ? null : $this->phones->grouped($phone), $channel(SupportSettings::WHATSAPP), $channel(SupportSettings::EMAIL));
+        return new MeSupport($grouped($channel(SupportSettings::PHONE)), $grouped($channel(SupportSettings::WHATSAPP)), $channel(SupportSettings::EMAIL));
     }
 }

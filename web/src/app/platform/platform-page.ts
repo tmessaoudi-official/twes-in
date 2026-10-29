@@ -29,7 +29,8 @@ import { firstValueFrom, map } from 'rxjs';
 import { refusalParams } from '../shared/form/refusal-words';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SETTING_REFUSAL_TEXTS } from '../shared/settings/setting-refusals';
-import { DescriptorForm } from '../shared/form/descriptor-form';
+import { DescriptorForm, type FieldAction } from '../shared/form/descriptor-form';
+import { PLATFORM_PHONE_COUNTRY } from '../shared/form/phone-country';
 import { Session } from '../shared/session/session';
 import { EndOtherSessions } from '../account/end-other-sessions';
 import { unsavedChanges } from '../shared/form/dirty-count';
@@ -406,6 +407,23 @@ export class PlatformPage implements OnInit {
     return saved === null ? null : untracked(() => buildFormGroup(descriptor, saved));
   });
   private readonly supportForm = viewChild<DescriptorForm>('supportForm');
+  /** The support's numbers are the platform's, read by its country whatever company the operator has open. */
+  protected readonly platformPhoneCountry = inject(PLATFORM_PHONE_COUNTRY);
+  /** WhatsApp is often the phone's own number: one press copies it, and the field stays the operator's to change. */
+  protected readonly supportActions: Readonly<Record<string, FieldAction>> = {
+    whatsapp: {
+      label: 'platform.support.same_as_phone',
+      disabled: () => String(this.supportGroup()?.controls['phone']?.value ?? '').trim() === '',
+      run: () => {
+        const group = this.supportGroup();
+        const whatsapp = group?.controls['whatsapp'];
+        if (group === null || whatsapp === undefined) return;
+        whatsapp.setValue(group.controls['phone']?.value ?? '');
+        whatsapp.markAsDirty();
+        whatsapp.markAsTouched();
+      },
+    },
+  };
   private readonly supportTyped = unsavedChanges(this.supportGroup, this.supportSaved);
   protected readonly supportChanged = computed(() => this.supportTyped() > 0);
   protected readonly delays = this.platform.delays;

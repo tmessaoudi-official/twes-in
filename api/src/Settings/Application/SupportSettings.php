@@ -47,7 +47,7 @@ final readonly class SupportSettings implements DeclaresSettings
         $platform = [SettingLevel::Platform];
 
         yield new SettingDefinition(self::PHONE, SettingType::Text, '', $chain, $platform, 'settings.platform.support.phone', self::MODULE, maxLength: 30, pattern: self::PHONE_PATTERN, patternReason: 'invalid_phone_digits', phone: true);
-        yield new SettingDefinition(self::WHATSAPP, SettingType::Text, '', $chain, $platform, 'settings.platform.support.whatsapp', self::MODULE, maxLength: 30, pattern: self::WHATSAPP_PATTERN, patternReason: 'invalid_whatsapp');
+        yield new SettingDefinition(self::WHATSAPP, SettingType::Text, '', $chain, $platform, 'settings.platform.support.whatsapp', self::MODULE, maxLength: 30, pattern: self::WHATSAPP_PATTERN, patternReason: 'invalid_whatsapp', phone: true);
         yield new SettingDefinition(self::EMAIL, SettingType::Text, '', $chain, $platform, 'settings.platform.support.email', self::MODULE, maxLength: ContactRules::EMAIL_MAX, pattern: ContactRules::EMAIL_OR_EMPTY, patternReason: 'invalid_email');
         yield new SettingDefinition(self::STATUS_URL, SettingType::Text, '', $chain, $platform, 'settings.platform.support.status_url', self::MODULE, maxLength: 200, pattern: self::STATUS_URL_PATTERN, patternReason: 'invalid_status_url');
     }

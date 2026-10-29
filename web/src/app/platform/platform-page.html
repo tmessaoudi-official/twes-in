@@ -340,6 +340,8 @@
                   #supportForm
                   [descriptor]="supportDescriptor()"
                   [form]="group"
+                  [phoneCountryOf]="platformPhoneCountry"
+                  [fieldActions]="supportActions"
                   (submitted)="saveSupport($event)"
                   testId="platform-support-form"
                 >

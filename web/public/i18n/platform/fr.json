@@ -322,6 +322,7 @@
       "phone_hint": "Par exemple +216 71 000 000",
       "whatsapp": "WhatsApp",
       "whatsapp_hint": "Le numéro au format international, indicatif du pays en tête : +216 20 123 456",
+      "same_as_phone": "Même numéro que le téléphone",
       "email": "Adresse e-mail",
       "email_hint": "Par exemple support@exemple.tn",
       "status_url": "Page d’état du service",

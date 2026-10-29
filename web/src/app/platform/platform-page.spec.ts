@@ -82,6 +82,7 @@ class StaticLoader implements TranslateLoader {
       },
       form: { errors: { email: 'Adresse e-mail invalide.' } },
       platform: {
+        support: { same_as_phone: 'Même numéro que le téléphone' },
         grants: {
           title: 'Accès du support',
           none: 'Aucune entreprise n’ouvre son accès au support pour le moment.',
@@ -1057,6 +1058,44 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.saveSupport).toHaveBeenCalledWith({ whatsapp: '+216 20 123 456' });
+  });
+
+  // One phone field everywhere (row 252): the support's numbers are the platform's, read by its country whatever company
+  // the operator has open, and WhatsApp takes the phone's number in one press, still the operator's to change.
+  it("offers WhatsApp the phone's number in one press, under the platform's country whatever company is open", async () => {
+    TestBed.overrideProvider(AuthFacade, {
+      useValue: {
+        me: () => ({
+          user: { id: 'op1' },
+          company: { id: 'c9', countryCode: 'FR', currency: 'EUR' },
+        }),
+        refresh: vi.fn(),
+      },
+    });
+    const { fixture, query } = await render();
+    const type = (id: string, value: string) => {
+      const input = query<HTMLInputElement>(id)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+    expect(query('field-phone-country')!.textContent).toContain('+216');
+
+    type('field-phone', '71 900 868');
+    query<HTMLButtonElement>('field-action-whatsapp')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(query('field-action-whatsapp')!.textContent).toContain('Même numéro que le téléphone');
+    expect(query<HTMLInputElement>('field-whatsapp')!.value).toBe('71 900 868');
+    expect(query('field-whatsapp-country')!.textContent).toContain('+216');
+
+    type('field-whatsapp', '20 123 456');
+    query<HTMLButtonElement>('platform-support-save')!.click();
+    await fixture.whenStable();
+    expect(facade.saveSupport).toHaveBeenCalledWith({
+      phone: '+216 71 900 868',
+      whatsapp: '+216 20 123 456',
+    });
   });
 
   it('counts what is typed in every card and not saved, holding the page until the platform holds it', async () => {

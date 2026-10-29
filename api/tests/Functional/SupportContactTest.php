@@ -52,7 +52,8 @@ final class SupportContactTest extends ApiTestCase
         $this->signedInAsOperator();
 
         // WhatsApp opens a chat only from the number in its international form.
-        foreach (['support.whatsapp' => ['20 123 456', 'call me'], 'support.phone' => ['phone'], 'support.email' => ['support', 'a@b']] as $key => $values) {
+        // Its length is its country's, as every phone's (`TypedPhones`).
+        foreach (['support.whatsapp' => ['20 123 456', 'call me', '+216 20 12'], 'support.phone' => ['phone'], 'support.email' => ['support', 'a@b']] as $key => $values) {
             foreach ($values as $value) {
                 $this->sendJson('PUT', '/api/platform/settings/'.$key, ['value' => $value]);
                 self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $key.' '.$value);

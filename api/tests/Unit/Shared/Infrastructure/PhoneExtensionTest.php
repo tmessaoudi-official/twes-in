@@ -44,7 +44,7 @@ final class PhoneExtensionTest extends TestCase
 
         self::assertGreaterThanOrEqual(6, $printed, 'the documents print the seller\'s, the buyer\'s and the vendor\'s phone');
         self::assertSame([], $bare);
-        // The mail telling an owner their company was closed lists the support channels, the phone among them.
-        self::assertStringContainsString("channel == 'phone' ? value|phone : value", (string) file_get_contents(self::TEMPLATES.'/email/company_closed_by_operator.html.twig'));
+        // The mail telling an owner their company was closed lists the support channels, both numbers among them.
+        self::assertStringContainsString("channel in ['phone', 'whatsapp'] ? value|phone : value", (string) file_get_contents(self::TEMPLATES.'/email/company_closed_by_operator.html.twig'));
     }
 }
