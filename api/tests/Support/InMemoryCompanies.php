@@ -21,6 +21,9 @@ final class InMemoryCompanies implements CompanyRepository
     /** @var list<Company> */
     public array $companies = [];
 
+    /** @var list<Company> whose owners were told it is soon removed */
+    private array $removalTold = [];
+
     public function ofId(Uuid $id): ?Company
     {
         foreach ($this->companies as $company) {
@@ -80,6 +83,20 @@ final class InMemoryCompanies implements CompanyRepository
         usort($due, static fn (Company $a, Company $b): int => $a->getRetainUntil() <=> $b->getRetainUntil());
 
         return $due;
+    }
+
+    public function closedDownNearingRemoval(\DateTimeImmutable $from, \DateTimeImmutable $before): array
+    {
+        $near = array_values(array_filter($this->companies, fn (Company $company): bool => $company->isClosedDown()
+            && $company->getRetainUntil() >= $from && $company->getRetainUntil() < $before && !\in_array($company, $this->removalTold, true)));
+        usort($near, static fn (Company $a, Company $b): int => $a->getRetainUntil() <=> $b->getRetainUntil());
+
+        return $near;
+    }
+
+    public function removalTold(Company $company, \DateTimeImmutable $now): void
+    {
+        $this->removalTold[] = $company;
     }
 
     public function removeWhole(Company $company): void

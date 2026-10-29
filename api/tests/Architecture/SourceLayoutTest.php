@@ -96,6 +96,7 @@ final class SourceLayoutTest extends TestCase
         'App\Shared\Infrastructure\Scheduler\PurgeSubmissionsEveryHour',
         'App\Tenancy\Infrastructure\Invitation\InvitationToMail',
         'App\Tenancy\Infrastructure\Scheduler\RemoveClosedCompaniesEveryNight',
+        'App\Tenancy\Infrastructure\Scheduler\TellClosedCompaniesNearRemovalEveryNight',
         'App\Tenancy\Infrastructure\Scheduler\TellRunOutInvitationsEveryHour',
         'App\Tenancy\Infrastructure\Signup\SignupAsked',
     ];

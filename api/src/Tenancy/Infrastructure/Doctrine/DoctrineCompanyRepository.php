@@ -76,6 +76,29 @@ final readonly class DoctrineCompanyRepository implements CompanyRepository
         return $companies;
     }
 
+    public function closedDownNearingRemoval(\DateTimeImmutable $from, \DateTimeImmutable $before): array
+    {
+        /** @var list<Company> $companies */
+        $companies = $this->entityManager->createQueryBuilder()->select('c')->from(Company::class, 'c')
+            ->where('c.status = :closed')->andWhere('c.retainUntil >= :from')->andWhere('c.retainUntil < :before')
+            ->andWhere('c.removalToldAt IS NULL')
+            ->setParameter('closed', Company::STATUS_CLOSED)
+            ->setParameter('from', $from, Types::DATE_IMMUTABLE)->setParameter('before', $before, Types::DATE_IMMUTABLE)
+            ->orderBy('c.retainUntil')->addOrderBy('c.id')->getQuery()
+            // Read afresh: a company this worker loaded before keeps what it held then.
+            ->setHint(Query::HINT_REFRESH, true)->getResult();
+
+        return $companies;
+    }
+
+    public function removalTold(Company $company, \DateTimeImmutable $now): void
+    {
+        $this->entityManager->createQuery('UPDATE '.Company::class.' c SET c.removalToldAt = :now WHERE c.id = :id')
+            ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
+            ->setParameter('id', $company->getId(), 'uuid')
+            ->execute();
+    }
+
     /**
      * One DELETE, never the ORM's removal: a company's rows reach each other through foreign keys checked at the end of
      * the statement, so only a single statement can take them all; the ORM would delete them one table at a time. The

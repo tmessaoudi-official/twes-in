@@ -29,6 +29,7 @@ use App\Records\Infrastructure\Scheduler\EndRemovalsEveryQuarterHour;
 use App\Shared\Infrastructure\Scheduler\PurgeSubmissionsEveryHour;
 use App\Tenancy\Infrastructure\Invitation\InvitationToMailHandler;
 use App\Tenancy\Infrastructure\Scheduler\RemoveClosedCompaniesEveryNight;
+use App\Tenancy\Infrastructure\Scheduler\TellClosedCompaniesNearRemovalEveryNight;
 use App\Tenancy\Infrastructure\Scheduler\TellRunOutInvitationsEveryHour;
 use App\Tenancy\Infrastructure\Signup\SignupAskedHandler;
 use PHPUnit\Framework\TestCase;
@@ -63,6 +64,7 @@ final class BackgroundWorkScopeTest extends TestCase
         MarkKeptVendorContactsEveryNight::class => 'each vendor keeping a refused value, of an active company with the vendors module on, handed to the use case with its company',
         TellRunOutInvitationsEveryHour::class => 'every company at once, on purpose: an invitation runs out by its date alone, and each one told names its own company, to its sender only while still a member of it',
         TellLapsingSubscriptionsEveryHour::class => 'every company at once, on purpose: a subscription ends by its date alone, and each one told names its own company, to that company\'s owners only',
+        TellClosedCompaniesNearRemovalEveryNight::class => 'each closed company whose removal draws near, by its own id, told to that company\'s owners only',
         RemindLateInvoicesEveryHour::class => 'each active company with the invoices module on, handed to the use case one at a time',
         RunRecurringExpensesEveryHour::class => 'each active company with the recurring expenses module on, handed to the use case one at a time',
         RunRecurringInvoicesEveryHour::class => 'each active company with the recurring module on, handed to the use case one at a time',

@@ -17,6 +17,8 @@ use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
+use App\Shared\Application\Notification;
+use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\CreateCompany;
@@ -54,6 +56,7 @@ final readonly class CloseDownCompany implements DeclaresAuditActions
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private Notifications $notifications,
     ) {
     }
 
@@ -78,6 +81,11 @@ final readonly class CloseDownCompany implements DeclaresAuditActions
                 $this->supportGrants->save($grant);
             }
             $this->audit->record(new AuditEntry(CreateCompany::ENTITY_TYPE, $company->getId(), self::CLOSED_DOWN, $owner->getUser()->getId(), ['retainUntil' => $retainUntil->format('Y-m-d')], $company->getId()));
+            // Everyone else working there would otherwise find out from a refused save.
+            $this->tellTheOthers($company, self::CLOSED_DOWN, $owner, [
+                'reopen_until' => $this->terms->reopenUntil($now)->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d H:i'),
+                'retain_until' => $retainUntil->format('Y-m-d'),
+            ]);
         });
 
         return new ClosedDown($retainUntil, $this->terms->reopenUntil($now));
@@ -99,7 +107,19 @@ final readonly class CloseDownCompany implements DeclaresAuditActions
             $company->reopen($now);
             $this->companies->save($company);
             $this->audit->record(new AuditEntry(CreateCompany::ENTITY_TYPE, $company->getId(), self::REOPENED, $owner->getUser()->getId(), [], $company->getId()));
+            $this->tellTheOthers($company, self::REOPENED, $owner, []);
         });
+    }
+
+    /** @param array<string, string> $details */
+    private function tellTheOthers(Company $company, string $type, Membership $owner, array $details): void
+    {
+        $this->notifications->publish(new Notification(
+            'company:'.$company->getId()->toRfc4122(),
+            $type,
+            ['company' => $company->getName(), 'by' => $owner->getUser()->getDisplayName(), ...$details],
+            actorId: $owner->getUser()->getId()->toRfc4122(),
+        ));
     }
 
     /** @throws OwnerOnly|StepUpRequired */

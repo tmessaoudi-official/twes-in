@@ -123,6 +123,8 @@ parameters:
     app.account.deletion_at: '03:15'
     # The nightly run that removes the closed companies whose retention has ended (RemoveClosedCompanies).
     app.company.removal_at: '03:30'
+    # How many days before that night a closed company's owners are told it goes (TellClosedCompaniesNearRemoval).
+    app.company.removal_notice_days: 30
     # How many days before the time a company paid for ends its owners are told (TellLapsingSubscriptions).
     app.subscription.lapse_notice_days: 7
     # Mail the API sends itself.

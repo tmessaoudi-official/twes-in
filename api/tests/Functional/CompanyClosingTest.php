@@ -16,6 +16,7 @@ use App\Identity\Domain\ValueObject\Email;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Tenancy\Application\Closing\TellClosedCompaniesNearRemoval;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Model\Role;
@@ -152,6 +153,62 @@ final class CompanyClosingTest extends ApiTestCase
         self::assertSame(1, $this->journalCount('company.closed_down'));
         self::assertSame(0, $this->numberOf('SELECT COUNT(*) FROM invitation WHERE company_id = ? AND accepted_at IS NULL'), 'an open invitation would let someone in');
         self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM support_grant WHERE company_id = ? AND ended_at IS NOT NULL'), 'support ends with it');
+    }
+
+    /** Everyone else working there finds out from the bell or a mail, not from a refused save: closing and reopening alike. */
+    public function testTheOtherMembersAreToldTheCompanyClosedAndThatItReopened(): void
+    {
+        $clerk = $this->createUser('clerk@twes.local', self::PASSWORD, $this->company, ['sale.write'], 'clerk');
+
+        $this->closeDown();
+        $closed = $this->json();
+        $this->postJson($this->path().'/reopen', []);
+        self::assertResponseIsSuccessful();
+
+        $told = $this->em()->getConnection()->fetchAllAssociative(
+            "SELECT recipient_id, company_id, type, payload FROM inbox_item WHERE type LIKE 'company.%' ORDER BY created_at, type",
+        );
+        self::assertSame(['company.closed_down', 'company.reopened'], array_column($told, 'type'));
+        self::assertSame([$clerk->getId()->toRfc4122(), $clerk->getId()->toRfc4122()], array_column($told, 'recipient_id'), 'the owner who did it is not told');
+        self::assertSame($this->company->getId()->toRfc4122(), $told[0]['company_id']);
+        $zone = new \DateTimeZone('Africa/Tunis');
+        self::assertSame([
+            'company' => 'Acme',
+            'by' => 'Owner',
+            'reopen_until' => (new \DateTimeImmutable($this->stringAt($closed, 'reopenUntil')))->setTimezone($zone)->format('Y-m-d H:i'),
+            'retain_until' => $this->stringAt($closed, 'retainUntil'),
+        ], json_decode($this->stringAt($told[0], 'payload'), true, 4, \JSON_THROW_ON_ERROR));
+        self::assertSame(['company' => 'Acme', 'by' => 'Owner'], json_decode($this->stringAt($told[1], 'payload'), true, 4, \JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Its owners are told once, some days ahead, that everything goes for good, while its books can still be taken: not
+     * years ahead, and not on the night it goes.
+     */
+    public function testTheOwnersAreToldOnceBeforeAClosedCompanyIsRemoved(): void
+    {
+        $this->createUser('clerk@twes.local', self::PASSWORD, $this->company, ['sale.write'], 'clerk');
+        $this->closeDown();
+        $tell = static::getContainer()->get(TellClosedCompaniesNearRemoval::class);
+        self::assertSame(0, $tell->handle(), 'years ahead');
+
+        $soon = (new \DateTimeImmutable('today', new \DateTimeZone('UTC')))->modify('+10 days')->format('Y-m-d');
+        $this->em()->getConnection()->executeStatement('UPDATE company SET retain_until = ? WHERE id = ?', [$soon, $this->company->getId()->toRfc4122()]);
+        $version = $this->em()->getConnection()->fetchOne('SELECT version FROM company WHERE id = ?', [$this->company->getId()->toRfc4122()]);
+
+        self::assertSame(1, $tell->handle());
+        self::assertSame(0, $tell->handle(), 'told once');
+        self::assertSame($version, $this->em()->getConnection()->fetchOne('SELECT version FROM company WHERE id = ?', [$this->company->getId()->toRfc4122()]), 'telling is no change to the company');
+
+        $told = $this->em()->getConnection()->fetchAllAssociative("SELECT recipient_id, company_id, payload FROM inbox_item WHERE type = 'company.removal_near'");
+        self::assertCount(1, $told, 'its owner, not the clerk');
+        self::assertSame($this->owner->getId()->toRfc4122(), $told[0]['recipient_id']);
+        self::assertSame($this->company->getId()->toRfc4122(), $told[0]['company_id']);
+        self::assertSame(['company' => 'Acme', 'retain_until' => $soon], json_decode($this->stringAt($told[0], 'payload'), true, 4, \JSON_THROW_ON_ERROR));
+
+        $yesterday = (new \DateTimeImmutable('today', new \DateTimeZone('UTC')))->modify('-1 day')->format('Y-m-d');
+        $this->em()->getConnection()->executeStatement('UPDATE company SET retain_until = ?, removal_told_at = NULL WHERE id = ?', [$yesterday, $this->company->getId()->toRfc4122()]);
+        self::assertSame(0, $tell->handle(), 'not on the night it goes');
     }
 
     /** The session says until when the company is kept and its closing may be taken back, which the page it lands on shows. */

@@ -105,6 +105,13 @@ class Company
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $retainUntil = null;
 
+    /**
+     * When its owners were told the company is soon removed; null until then, and again once it reopens. Written by the
+     * repository alone, outside the version: telling is no change to the company.
+     */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $removalToldAt = null;
+
     #[ORM\Column(length: 200, nullable: true)]
     private ?string $legalName = null;
 
@@ -262,6 +269,7 @@ class Company
         $this->changeStatusTo(self::STATUS_ACTIVE, $now);
         $this->closedDownAt = null;
         $this->retainUntil = null;
+        $this->removalToldAt = null;
     }
 
     public function isClosedDown(): bool

@@ -53,6 +53,9 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'subscription.set',
   'subscription.stopped',
   'subscription.lapsing',
+  'company.closed_down',
+  'company.reopened',
+  'company.removal_near',
   'module.arrived',
   'support_access.granted',
   'support_access.ended',
@@ -267,6 +270,31 @@ const RECORDS = new Map<string, NotificationRecord>([
       route: '/company/subscription',
       permission: 'subscription.read',
       days: ['covered_until', 'grace_until'],
+    },
+  ],
+  // An owner closed the company down or took it back: the closing page says until when it is kept and may reopen.
+  [
+    'company.closed_down',
+    {
+      icon: 'domain_disabled',
+      route: '/company/closing',
+      permission: 'company.settings',
+      moments: ['reopen_until'],
+      days: ['retain_until'],
+    },
+  ],
+  [
+    'company.reopened',
+    { icon: 'business', route: '/company/closing', permission: 'company.settings' },
+  ],
+  // An owner's: the closed company goes for good soon, and the closing page is where its books are still taken.
+  [
+    'company.removal_near',
+    {
+      icon: 'domain_disabled',
+      route: '/company/closing',
+      permission: 'company.settings',
+      days: ['retain_until'],
     },
   ],
   // A module the company asked « Me prévenir » for has arrived: switched on from the modules page.

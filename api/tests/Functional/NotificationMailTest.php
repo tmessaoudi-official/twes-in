@@ -183,6 +183,19 @@ final class NotificationMailTest extends ApiTestCase
         self::assertStringContainsString("L’abonnement de Acme est couvert jusqu’au 28/11/2026. Sans règlement d’ici le 05/12/2026, l’accès sera restreint\u{a0}: déclarez votre règlement dans «\u{a0}Abonnement\u{a0}».", $this->bodiesTo()['owner@twes.local']);
     }
 
+    public function testAClosingSaysUntilWhenItMayBeTakenBackAndWhenEverythingGoes(): void
+    {
+        $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);
+        $other = $this->member('other@twes.local', 'en', Role::OWNER, null);
+        $this->tell($owner, 'company.closed_down', ['company' => 'Acme', 'by' => 'Léa', 'reopen_until' => '2026-11-05 10:30', 'retain_until' => '2036-12-31']);
+        $this->tell($other, 'company.removal_near', ['company' => 'Acme', 'retain_until' => '2036-12-31']);
+        self::assertSame(2, $this->deliverQueued());
+
+        $bodies = $this->bodiesTo();
+        self::assertStringContainsString("Léa a fermé Acme\u{a0}: plus rien ne s’y crée ni ne s’y modifie. Un propriétaire peut la rouvrir jusqu’au 05/11/2026 10:30\u{202f}; ses documents sont conservés jusqu’au 31/12/2036.", $bodies['owner@twes.local']);
+        self::assertStringContainsString('Acme, closed, will be deleted for good with all its data after 31/12/2036.', $bodies['other@twes.local']);
+    }
+
     public function testADayAndAMomentAreWrittenAsTheReaderChoseAndEachReaderInTurnGetsTheirOwn(): void
     {
         $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);

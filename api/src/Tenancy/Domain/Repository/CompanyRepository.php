@@ -39,6 +39,15 @@ interface CompanyRepository
     /** @return list<Company> the companies closed down whose last day kept is before $day, the earliest first */
     public function closedDownKeptUntilBefore(\DateTimeImmutable $day): array;
 
+    /**
+     * @return list<Company> the companies closed down whose last day kept falls from $from to before $before and whose
+     *                       owners were not yet told, the earliest first
+     */
+    public function closedDownNearingRemoval(\DateTimeImmutable $from, \DateTimeImmutable $before): array;
+
+    /** Keeps that its owners were told it is soon removed, without touching the company or its version. */
+    public function removalTold(Company $company, \DateTimeImmutable $now): void;
+
     /** Deletes the company and every row that is its own, in one statement the database's cascades carry through. */
     public function removeWhole(Company $company): void;
 }
