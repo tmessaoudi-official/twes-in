@@ -20,7 +20,7 @@ test('a slow request shows the bar and says it is taking long, then everything c
 
   await expect(page.getByTestId('activity-progress')).toBeVisible();
   // The bar lies over the page's top edge and moves nothing: in the flow it pushed the whole app 4 px down on every
-  // request, and back up when it ended (CI run 36267701194 met the settings list 4 px off, 2026-09-26). Read afresh
+  // request, and back up when it ended (CI run 36267701194 met the settings list 4 px off). Read afresh
   // each time: the bar is re-created when one request ends before the next begins, and a bar read once can be one that
   // has just left the page, whose computed position is empty (CI run 36309353959).
   await expect
@@ -38,11 +38,13 @@ test('a slow request shows the bar and says it is taking long, then everything c
     .toEqual(['fixed', 0]);
   await expect(page.getByTestId('activity-slow')).toBeVisible({ timeout: 12_000 });
   await expect(page.getByTestId('activity-slow')).toHaveAttribute('role', 'status');
-  // What the bar shows sits in a landmark like the rest of the page (CI met the bar outside one, 2026-09-17).
+  // What the bar shows sits in a landmark like the rest of the page (CI met the bar outside one).
   const outside = await (await axeAtRest(page)).withRules(['region']).analyze();
   expect(
     outside.violations.flatMap((violation) => violation.nodes.map((node) => node.target.join(' '))),
   ).toEqual([]);
+  // The scan waits for the page to stop moving first: the bar must still have been there when it read the page.
+  await expect(page.getByTestId('activity-slow')).toBeVisible();
   await expect(page.getByTestId('activity-progress')).toHaveCount(0, { timeout: 15_000 });
   await expect(page.getByTestId('activity-slow')).toHaveCount(0);
 });

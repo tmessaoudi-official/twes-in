@@ -11,11 +11,31 @@ import { iconFontLoaded } from './icon-font';
  */
 export async function wcagViolations(page: Page): Promise<string[]> {
   await expect(page.locator('[aria-hidden="true"] [data-testid="toast"]')).toHaveCount(0);
+  const axe = await (
+    await axeAtRest(page)
+  )
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  return axe.violations.map(
+    (violation) =>
+      `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
+  );
+}
+
+/**
+ * The one way a scan starts: axe once the icon font has arrived. axe decides whether a font draws icons from the first
+ * three it measures and keeps that answer for the whole scan, so a scan begun while the font is still on its way reads
+ * every icon button as its name in words and fails label-content-name-mismatch on all of them at once.
+ */
+export async function axeAtRest(page: Page): Promise<AxeBuilder> {
+  await iconFontLoaded(page);
+  // Every scan waits for the page to stop moving, here rather than in one caller: a spec scanning through this alone
+  // read the signup refusal dialog mid-fade, every element of it failing contrast (CI run 40820750440).
   // A tooltip is waited for too: clicking a control parks the pointer on it, `appLabel` shows its tooltip, and axe
   // reads colours through the fade — reporting a contrast nobody ever sees, since at rest the surface is 12:1. The
   // fade is on an ancestor, so the surface's own opacity is already 1 while it runs: ask the animations, not the
-  // computed style (2026-09-17, CI run 35272397610 on a commit that changed one Markdown file). The same holds for
-  // every overlay, not tooltips alone: a dialog read while it fades in failed on its filter chips (2026-09-23, CI run
+  // computed style (CI run 35272397610, on a commit that changed one Markdown file). The same holds for
+  // every overlay, not tooltips alone: a dialog read while it fades in failed on its filter chips (CI run
   // 35833959425, the notification centre). An endless animation (a spinner) never finishes, and is not a fade.
   // Still means still for a few frames, not at one look: a pointer left where a panel closed hovers what lies beneath
   // on the next frame, and a tooltip there starts its fade a moment later, after a single look found nothing moving
@@ -42,23 +62,5 @@ export async function wcagViolations(page: Page): Promise<string[]> {
       { timeout: 10_000 },
     )
     .toBe(true);
-  const axe = await (
-    await axeAtRest(page)
-  )
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map(
-    (violation) =>
-      `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
-  );
-}
-
-/**
- * The one way a scan starts: axe once the icon font has arrived. axe decides whether a font draws icons from the first
- * three it measures and keeps that answer for the whole scan, so a scan begun while the font is still on its way reads
- * every icon button as its name in words and fails label-content-name-mismatch on all of them at once.
- */
-export async function axeAtRest(page: Page): Promise<AxeBuilder> {
-  await iconFontLoaded(page);
   return new AxeBuilder({ page });
 }
