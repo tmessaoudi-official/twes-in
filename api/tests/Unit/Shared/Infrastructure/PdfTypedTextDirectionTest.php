@@ -53,12 +53,12 @@ final class PdfTypedTextDirectionTest extends TestCase
         $found = 0;
         foreach ($templates as $template) {
             $source = (string) file_get_contents($template);
-            preg_match_all('/(<[a-z]+\b[^>]*>)\{\{\s*[a-z]+\.phone\s*\}\}/', $source, $phones, \PREG_SET_ORDER);
+            preg_match_all('/(<[a-z]+\b[^>]*>)\{\{\s*[a-z]+\.phone(?:\|phone)?\s*\}\}/', $source, $phones, \PREG_SET_ORDER);
             foreach ($phones as [$written, $holder]) {
                 ++$found;
                 self::assertSame('<bdi dir="ltr">', $holder, basename($template).": $written");
             }
-            self::assertSame(\count($phones), preg_match_all('/\.phone\s*\}\}/', $source), basename($template).' writes a telephone number outside an element of its own');
+            self::assertSame(\count($phones), preg_match_all('/\.phone(?:\|phone)?\s*\}\}/', $source), basename($template).' writes a telephone number outside an element of its own');
         }
         self::assertGreaterThanOrEqual(6, $found, 'the seller\'s on four documents and the buyer\'s and vendor\'s on the order to a vendor');
     }

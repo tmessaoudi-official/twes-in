@@ -45,7 +45,7 @@
         {% if seller.address.line2 %}<div><bdi>{{ seller.address.line2 }}</bdi></div>{% endif %}
         <div><bdi>{{ seller.address.postalCode }} {{ seller.address.city }}</bdi></div>
       {%- endif %}
-      {% if seller.phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} <bdi dir="ltr">{{ seller.phone }}</bdi></div>{% endif %}
+      {% if seller.phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} <bdi dir="ltr">{{ seller.phone|phone }}</bdi></div>{% endif %}
       {% if seller.email %}<div>{{ 'company.email'|trans({}, t, locale) }} <bdi>{{ seller.email }}</bdi></div>{% endif %}
     </div>
     <div class="party">

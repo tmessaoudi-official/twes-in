@@ -16,7 +16,7 @@
         <ul>
           {# Each kept on one line: a number split on a phone's narrow screen is misread or miscopied. #}
           {% for channel, value in support %}
-            <li>{{ ('company_decision.channels.' ~ channel)|trans({}, 'emails') }} <bdi dir="ltr" style="white-space: nowrap;">{{ value }}</bdi></li>
+            <li>{{ ('company_decision.channels.' ~ channel)|trans({}, 'emails') }} <bdi dir="ltr" style="white-space: nowrap;">{{ channel == 'phone' ? value|phone : value }}</bdi></li>
           {% endfor %}
         </ul>
       {% else %}
