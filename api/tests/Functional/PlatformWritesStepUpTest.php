@@ -51,6 +51,7 @@ final class PlatformWritesStepUpTest extends ApiTestCase
         yield 'deactivate an account' => ['POST', "/api/platform/accounts/$id/deactivate"];
         yield 'reactivate an account' => ['POST', "/api/platform/accounts/$id/reactivate"];
         yield 'end an account\'s sessions' => ['POST', "/api/platform/accounts/$id/end-sessions"];
+        yield 'lift an owner\'s password lock' => ['POST', "/api/platform/accounts/$id/unlock"];
         yield 'approve a company' => ['POST', "/api/platform/companies/$id/approve"];
         yield 'reject a company' => ['POST', "/api/platform/companies/$id/reject"];
         yield 'add an owner' => ['POST', "/api/platform/companies/$id/owners"];

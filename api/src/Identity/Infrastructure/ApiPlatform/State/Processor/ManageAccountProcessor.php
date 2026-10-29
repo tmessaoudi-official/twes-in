@@ -13,9 +13,11 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Application\Account\AccountNotFound;
 use App\Identity\Application\Account\ManageAccounts;
+use App\Identity\Application\Account\NotAnOwner;
 use App\Identity\Application\Account\OwnAccount;
 use App\Identity\Infrastructure\ApiPlatform\Resource\PlatformAccountResource;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -23,7 +25,7 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Ends the sessions of, deactivates or reactivates the account in the path; the operation's security has already
+ * Ends the sessions of, deactivates, reactivates or lifts the password lock of the account in the path; the operation's security has already
  * required an operator.
  *
  * @implements ProcessorInterface<null, PlatformAccountResource>
@@ -50,12 +52,15 @@ final readonly class ManageAccountProcessor implements ProcessorInterface
             $view = match ($operation->getName()) {
                 PlatformAccountResource::DEACTIVATE => $this->accounts->deactivate($userId, $operator->getId()),
                 PlatformAccountResource::REACTIVATE => $this->accounts->reactivate($userId, $operator->getId()),
+                PlatformAccountResource::UNLOCK => $this->accounts->liftLock($userId, $operator->getId()),
                 default => $this->accounts->endSessions($userId, $operator->getId()),
             };
         } catch (AccountNotFound $notFound) {
             throw new NotFoundHttpException($notFound->getMessage(), $notFound);
         } catch (OwnAccount $own) {
             throw new ConflictHttpException($own->getMessage(), $own);
+        } catch (NotAnOwner $notAnOwner) {
+            throw DomainRule::conflict('account', $notAnOwner->getMessage(), 'not_an_owner', [], $notAnOwner);
         }
 
         return PlatformAccountResource::of($view);

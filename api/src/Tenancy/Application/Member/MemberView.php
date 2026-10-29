@@ -28,6 +28,8 @@ final readonly class MemberView
         public ?string $invitationId = null,
         /** Until when an invitation's link can be used; null on a member's row. */
         public ?string $expiresAt = null,
+        /** Until when wrong guesses keep the member's password locked; null when they do not now, and on an invited row. */
+        public ?string $passwordLockedUntil = null,
     ) {
     }
 }

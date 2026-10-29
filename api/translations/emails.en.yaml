@@ -208,6 +208,12 @@ security_notice:
     operator_ended_sessions:
         heading: 'Sessions ended'
         body: 'The person who runs your installation ended all your sessions: sign in again to continue.'
+    lock_lifted_by_owner:
+        heading: 'Password unlocked by your company'
+        body: 'The owner of a company you belong to lifted the lock that wrong attempts had put on your password: you can sign in with it again. If you did not ask them to, change your password in “My account”.'
+    lock_lifted_by_operator:
+        heading: 'Password unlocked by the installation'
+        body: 'The person who runs your installation lifted the lock that wrong attempts had put on your password: you can sign in with it again. If you did not ask them to, change your password in “My account”.'
     passkey: 'Passkey:'
     if_you: 'If this was you, there is nothing to do.'
     not_you: 'If this was not you and you can still sign in, change your password in “My account”, then check “Two-step verification”.'

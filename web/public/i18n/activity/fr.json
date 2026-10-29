@@ -5,6 +5,9 @@
         "login": "s’est connecté",
         "logout": "s’est déconnecté"
       },
+      "account": {
+        "lock_lifted": "a déverrouillé le mot de passe d’un membre"
+      },
       "company": {
         "profile_revised": "a modifié le profil de la société",
         "logo_changed": "a changé le logo",

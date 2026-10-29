@@ -23,7 +23,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * Accounts, as the platform's operators look them up a page at a time (?q= words of an address or a name, narrowed by
- * `active` and `platformOperator`, each with the companies it belongs to) and the three things they do about one. Only an operator reaches any of it (docs/SPEC.md § 7, 2026-09-15).
+ * `active` and `platformOperator`, each with the companies it belongs to) and the four things they do about one. Only an operator reaches any of it (docs/SPEC.md § 7, 2026-09-15).
  */
 #[ApiResource(
     shortName: 'PlatformAccount',
@@ -73,6 +73,16 @@ use Symfony\Component\Serializer\Attribute\Groups;
             security: 'is_granted("platform.account.manage")',
             normalizationContext: ['groups' => [self::READ]],
         ),
+        // A company owner's password, locked by wrong guesses: nobody in the company is above them to lift it (row 241).
+        new Post(
+            uriTemplate: '/platform/accounts/{userId}/unlock',
+            name: self::UNLOCK,
+            status: 200,
+            input: false,
+            processor: ManageAccountProcessor::class,
+            security: 'is_granted("platform.account.manage")',
+            normalizationContext: ['groups' => [self::READ]],
+        ),
     ],
 )]
 final class PlatformAccountResource
@@ -82,6 +92,7 @@ final class PlatformAccountResource
     public const string END_SESSIONS = 'platform_account_end_sessions';
     public const string DEACTIVATE = 'platform_account_deactivate';
     public const string REACTIVATE = 'platform_account_reactivate';
+    public const string UNLOCK = 'platform_account_unlock';
 
     // No identifier: reached only through the uriTemplates above (see PlatformCompanyResource).
     #[ApiProperty(identifier: false, writable: false)]
@@ -109,6 +120,11 @@ final class PlatformAccountResource
     #[Groups([self::READ])]
     public string $createdAt = '';
 
+    /** Until when wrong guesses keep its password locked; null when they do not now. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $passwordLockedUntil = null;
+
     /**
      * The companies the account belongs to with the role it holds in each, by name. Sent by the list, where a person
      * is read beside their companies, and left out of the answer to an action on one account.
@@ -129,6 +145,7 @@ final class PlatformAccountResource
         $resource->active = $view->active;
         $resource->platformOperator = $view->platformOperator;
         $resource->createdAt = $view->createdAt;
+        $resource->passwordLockedUntil = $view->passwordLockedUntil;
         $resource->companies = null === $companies ? null : array_map(PlatformAccountCompanyRow::of(...), $companies);
 
         return $resource;

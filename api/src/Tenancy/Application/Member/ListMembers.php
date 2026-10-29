@@ -39,6 +39,7 @@ final readonly class ListMembers
     /** @return list<MemberView> */
     public function for(Uuid $companyId): array
     {
+        $now = $this->clock->now();
         $members = array_map(
             fn (Membership $m) => new MemberView(
                 $m->getUser()->getId()->toRfc4122(),
@@ -46,11 +47,12 @@ final readonly class ListMembers
                 $m->getUser()->getDisplayName(),
                 $m->getRole()->getName(),
                 $m->getCreatedAt()->format(\DATE_ATOM),
+                // Said to the company, whose owner may lift it: the member was told by mail when it was set.
+                passwordLockedUntil: $m->getUser()->isLockedAt($now) ? $m->getUser()->getLockedUntil()?->format(\DATE_ATOM) : null,
             ),
             $this->memberships->ofCompany($companyId),
         );
         // An invitation names nobody: an existing account is not a member, and not shown as one, until it accepts.
-        $now = $this->clock->now();
         $invited = array_map(
             static fn (Invitation $i) => new MemberView(
                 null,

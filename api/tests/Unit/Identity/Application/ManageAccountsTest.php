@@ -10,9 +10,11 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Identity\Application;
 
 use App\Identity\Application\Account\AccountNotFound;
+use App\Identity\Application\Account\CompanyOwners;
 use App\Identity\Application\Account\DemoAccounts;
 use App\Identity\Application\Account\ManageAccounts;
 use App\Identity\Application\Account\OwnAccount;
+use App\Identity\Application\Login\LiftPasswordLock;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\AccountSearch;
@@ -24,6 +26,7 @@ use App\Tests\Support\InMemoryUsers;
 use App\Tests\Support\RecordedSecurityNotices;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 #[CoversClass(ManageAccounts::class)]
@@ -59,7 +62,14 @@ final class ManageAccountsTest extends TestCase
             }
         };
         $this->notices = new RecordedSecurityNotices();
-        $this->accounts = new ManageAccounts($this->users, $this->audit, $transactions, $demos, $this->notices);
+        $clock = new MockClock();
+        $owners = new class implements CompanyOwners {
+            public function ownsACompany(Uuid $userId): bool
+            {
+                return true;
+            }
+        };
+        $this->accounts = new ManageAccounts($this->users, $this->audit, $transactions, $demos, $this->notices, new LiftPasswordLock($this->users, $this->audit, $this->notices, $clock, $transactions), $owners, $clock);
         $this->operator = $this->account('op@twes.local', 'Operator');
     }
 

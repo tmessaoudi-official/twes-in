@@ -5,6 +5,9 @@
         "login": "سجّل الدخول",
         "logout": "سجّل الخروج"
       },
+      "account": {
+        "lock_lifted": "فتح قفل كلمة مرور أحد الأعضاء"
+      },
       "company": {
         "profile_revised": "عدّل ملفّ الشركة",
         "logo_changed": "غيّر الشعار",

@@ -64,7 +64,7 @@ final class SecurityNoticeMailTest extends KernelTestCase
             $subjects[] = (string) $mail->getSubject();
             // What an operator did to the account was not the person's doing: no « if it was not you ».
             self::assertSame(
-                !\in_array($change, [SecurityChange::FactorsReplaced, SecurityChange::OperatorDeactivated, SecurityChange::OperatorReactivated, SecurityChange::OperatorEndedSessions], true),
+                !\in_array($change, [SecurityChange::FactorsReplaced, SecurityChange::OperatorDeactivated, SecurityChange::OperatorReactivated, SecurityChange::OperatorEndedSessions, SecurityChange::LockLiftedByOwner, SecurityChange::LockLiftedByOperator], true),
                 str_contains((string) $mail->getHtmlBody(), 'Si ce n’est pas vous'),
                 $change->value,
             );

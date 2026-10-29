@@ -44,6 +44,7 @@ final class DemoAccountGuardTest extends ApiTestCase
         '_api_/companies/{companyId}/invitations/{invitationId}_delete',
         '_api_/companies/{companyId}/members/{userId}_delete',
         '_api_/companies/{companyId}/members/{userId}/role_put',
+        '_api_/companies/{companyId}/members/{userId}/unlock_post',
         '_api_/companies/{companyId}/members_get_collection',
         '_api_/companies/{companyId}/subscription_get',
         '_api_/me/companies_get_collection',

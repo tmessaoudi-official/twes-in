@@ -21,10 +21,12 @@ final readonly class AccountView
         public bool $active,
         public bool $platformOperator,
         public string $createdAt,
+        /** Until when wrong guesses keep its password locked, null when they do not now. */
+        public ?string $passwordLockedUntil = null,
     ) {
     }
 
-    public static function of(User $user): self
+    public static function of(User $user, \DateTimeImmutable $now): self
     {
         return new self(
             $user->getId()->toRfc4122(),
@@ -33,6 +35,7 @@ final readonly class AccountView
             $user->isActive(),
             $user->isPlatformOperator(),
             $user->getCreatedAt()->format(\DATE_ATOM),
+            $user->isLockedAt($now) ? $user->getLockedUntil()?->format(\DATE_ATOM) : null,
         );
     }
 }

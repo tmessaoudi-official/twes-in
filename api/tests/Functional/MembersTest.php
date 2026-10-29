@@ -711,6 +711,96 @@ final class MembersTest extends ApiTestCase
         self::assertSame(Role::OWNER, $this->invitedRow('co-owner@twes.local')['role']);
     }
 
+    /**
+     * A clerk who locked their password by mistyping it is let back in by their company's owner, without the fifteen
+     * minutes or the mailed link (row 241): the list says whose password is locked and until when, lifting it is
+     * recorded in the company's journal, and the clerk is told by mail.
+     */
+    public function testAnOwnerLiftsTheLockOfAMembersPassword(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
+        $clerk = $this->builtInMember('clerk@twes.local', Role::MEMBER);
+        $this->lockByWrongPasswords('clerk@twes.local');
+        $this->signInAs('owner@twes.local');
+
+        self::assertIsString($this->memberRow('clerk@twes.local')['passwordLockedUntil']);
+        self::assertNull($this->memberRow('owner@twes.local')['passwordLockedUntil']);
+
+        $this->postJson($this->unlockPath($clerk), []);
+
+        self::assertResponseIsSuccessful();
+        self::assertNull($this->json()['passwordLockedUntil']);
+        self::assertContains('lock_lifted_by_owner', $this->securityNotices(), 'the clerk is told who let them back in');
+        self::assertSame(1, $this->rowCount(\sprintf(
+            "SELECT COUNT(*) FROM audit_log WHERE action = 'account.lock_lifted' AND entity_id = '%s' AND company_id = '%s'",
+            $clerk->getId()->toRfc4122(),
+            $this->company->getId()->toRfc4122(),
+        )));
+        $this->client->getCookieJar()->clear();
+        $this->login('clerk@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
+    }
+
+    /** The owner's alone, whatever a custom role grants: said before any proof is asked. */
+    public function testAnAdminDoesNotLiftALock(): void
+    {
+        $this->createAdmin();
+        $clerk = $this->builtInMember('clerk@twes.local', Role::MEMBER);
+        $this->lockByWrongPasswords('clerk@twes.local');
+        $this->login('admin@twes.local', 'password-1234');
+
+        $this->postJson($this->unlockPath($clerk), []);
+
+        $this->assertRefusedBeforeTheProof('an admin lifting a lock');
+        $this->client->getCookieJar()->clear();
+        $this->login('clerk@twes.local', 'password-1234');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED, 'still locked');
+    }
+
+    public function testAnOwnerLiftsNoLockOutsideTheirCompany(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
+        $stranger = $this->createUser('stranger@twes.local', 'password-1234', $this->createCompany('Globex'));
+        $this->lockByWrongPasswords('stranger@twes.local');
+        $this->signInAs('owner@twes.local');
+
+        $this->postJson($this->unlockPath($stranger), []);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertNotContains('lock_lifted_by_owner', $this->securityNotices());
+        $this->client->getCookieJar()->clear();
+        $this->login('stranger@twes.local', 'password-1234');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED, 'still locked');
+    }
+
+    /** Five wrong passwords, which lock the password for the configured while. */
+    private function lockByWrongPasswords(string $email): void
+    {
+        $this->client->getCookieJar()->clear();
+        for ($i = 0; $i < 5; ++$i) {
+            $this->login($email, 'not-the-password');
+        }
+        $this->client->getCookieJar()->clear();
+    }
+
+    /** @return array<mixed> the member's row the list shows for that address */
+    private function memberRow(string $email): array
+    {
+        $this->getJson($this->path());
+        self::assertResponseIsSuccessful();
+        foreach ($this->jsonList() as $row) {
+            if ($email === ($row['email'] ?? null) && 'joined' === ($row['status'] ?? null)) {
+                return $row;
+            }
+        }
+        self::fail(\sprintf('No member row for %s.', $email));
+    }
+
+    private function unlockPath(User $member): string
+    {
+        return $this->path().'/'.$member->getId()->toRfc4122().'/unlock';
+    }
+
     private function assertRefusedBeforeTheProof(string $what): void
     {
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, $what);

@@ -149,6 +149,44 @@ final class PlatformAccountsTest extends ApiTestCase
         self::assertSame(['account.deactivated', 'account.reactivated'], $this->auditedActions($target));
     }
 
+    /**
+     * A company's owner has nobody above them in it to lift the lock wrong passwords set on theirs: the operator does,
+     * from the platform, audited, and the owner is told by mail (row 241). Wrong guesses are forgotten with it.
+     */
+    public function testAnOperatorLiftsTheLockOfAnOwnersPassword(): void
+    {
+        $target = $this->createUser('nadia@acme.test', self::PASSWORD, $this->createCompany('Acme'));
+        $this->lockByWrongPasswords('nadia@acme.test');
+        $this->signedInAsOperator();
+
+        $this->getJson('/api/platform/accounts?q=nadia');
+        self::assertIsString($this->jsonList()[0]['passwordLockedUntil'], 'the list says the lock and until when');
+
+        $this->postJson($this->pathOf($target, 'unlock'), []);
+
+        self::assertResponseIsSuccessful();
+        self::assertNull($this->json()['passwordLockedUntil']);
+        self::assertContains('lock_lifted_by_operator', $this->securityNotices(), 'the owner is told who let them back in');
+        self::assertSame(['account.lock_lifted'], $this->auditedActions($target));
+        $this->client->getCookieJar()->clear();
+        $this->login('nadia@acme.test', self::PASSWORD);
+        self::assertResponseIsSuccessful();
+    }
+
+    /** Anyone else's lock is lifted by an owner of their company, or by the mailed link, never by the platform. */
+    public function testAnOperatorDoesNotLiftTheLockOfAnAccountOwningNoCompany(): void
+    {
+        $target = $this->createUser('sami@acme.test', self::PASSWORD, $this->createCompany('Acme'), roleName: 'member');
+        $this->lockByWrongPasswords('sami@acme.test');
+        $this->signedInAsOperator();
+
+        $this->postJson($this->pathOf($target, 'unlock'), []);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame([['propertyPath' => 'account', 'reason' => 'not_an_owner', 'params' => []]], $this->refusals());
+        self::assertSame([], $this->auditedActions($target));
+    }
+
     public function testAnOperatorCannotDeactivateTheirOwnAccount(): void
     {
         $operator = $this->signedInAsOperator();
@@ -180,6 +218,16 @@ final class PlatformAccountsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
 
         return $operator;
+    }
+
+    /** Five wrong passwords, which lock the password for the configured while. */
+    private function lockByWrongPasswords(string $email): void
+    {
+        $this->client->getCookieJar()->clear();
+        for ($i = 0; $i < 5; ++$i) {
+            $this->login($email, 'not-the-password');
+        }
+        $this->client->getCookieJar()->clear();
     }
 
     /** @return list<Cookie> the session of that account, set aside while somebody else signs in */

@@ -5,6 +5,9 @@
         "login": "signed in",
         "logout": "signed out"
       },
+      "account": {
+        "lock_lifted": "unlocked a member’s password"
+      },
       "company": {
         "profile_revised": "changed the company profile",
         "logo_changed": "changed the logo",

@@ -47,6 +47,7 @@ use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Closing\TellClosedCompaniesNearRemoval;
 use App\Tenancy\Application\Invitation\MailInvitation;
 use App\Tenancy\Application\Invitation\TellRunOutInvitations;
+use App\Tenancy\Application\Member\LiftMemberLock;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Application\Session\PinCompanyAtSignIn;
@@ -98,6 +99,7 @@ final class CommandsAndQueriesTest extends TestCase
         DeliverInvoices::class => 'the draft note goes through ManageDeliveryNotes, which records it with the invoice it delivers',
         PhonePairings::class => 'a phone lent to a tab for a while, nothing the company keeps',
         MailInvitation::class => 'the worker mailing an invitation whose creation was recorded',
+        LiftMemberLock::class => 'the accounts\' LiftPasswordLock, which it calls through its PasswordLocks port, records it in the company\'s journal',
         AllocateNumber::class => 'a part of issuing, inside the transaction of the document it numbers, which records it',
         SealInvoiceChains::class => 'the chain is itself the record: issuing seals within its own audited transaction, and the start seals what an earlier release issued, which no person changes',
         ProductReferences::class => 'a part of creating a product, inside the transaction of the product it names, which records it',

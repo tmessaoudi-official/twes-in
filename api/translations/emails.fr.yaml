@@ -209,6 +209,12 @@ security_notice:
     operator_ended_sessions:
         heading: 'Sessions fermées'
         body: 'La personne qui gère votre installation a fermé toutes vos sessions : reconnectez-vous pour continuer.'
+    lock_lifted_by_owner:
+        heading: 'Mot de passe déverrouillé par votre entreprise'
+        body: 'Le propriétaire d’une entreprise dont vous êtes membre a levé le verrou que des essais erronés avaient mis sur votre mot de passe : vous pouvez de nouveau vous connecter avec lui. Si vous ne lui avez rien demandé, changez votre mot de passe dans « Mon compte ».'
+    lock_lifted_by_operator:
+        heading: 'Mot de passe déverrouillé par l’installation'
+        body: 'La personne qui gère votre installation a levé le verrou que des essais erronés avaient mis sur votre mot de passe : vous pouvez de nouveau vous connecter avec lui. Si vous ne lui avez rien demandé, changez votre mot de passe dans « Mon compte ».'
     passkey: 'Clé concernée :'
     if_you: 'Si c’est vous, il n’y a rien à faire.'
     not_you: 'Si ce n’est pas vous et que vous pouvez encore vous connecter, changez votre mot de passe dans « Mon compte », puis vérifiez « Vérification en deux étapes ».'

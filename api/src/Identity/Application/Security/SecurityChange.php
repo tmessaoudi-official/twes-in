@@ -38,6 +38,10 @@ enum SecurityChange: string
     case OperatorReactivated = 'operator_reactivated';
     /** An operator ended every session of the account. */
     case OperatorEndedSessions = 'operator_ended_sessions';
+    /** An owner of a company the account belongs to lifted the lock wrong guesses had set on its password. */
+    case LockLiftedByOwner = 'lock_lifted_by_owner';
+    /** An operator lifted the lock wrong guesses had set on the password of a company owner. */
+    case LockLiftedByOperator = 'lock_lifted_by_operator';
 
     /** Whether it tells of a lock, which ends on its own and which its owner cannot sign in to look at. */
     public function isALock(): bool
@@ -46,11 +50,11 @@ enum SecurityChange: string
     }
 
     /**
-     * Whether the installation made it rather than someone holding a session: its owner is told what follows, never
-     * asked whether it was them.
+     * Whether the installation, or someone in charge of the account, made it rather than someone holding its session:
+     * its owner is told what follows, never asked whether it was them.
      */
     public function byTheInstallation(): bool
     {
-        return \in_array($this, [self::FactorsReplaced, self::OperatorDeactivated, self::OperatorReactivated, self::OperatorEndedSessions], true);
+        return \in_array($this, [self::FactorsReplaced, self::OperatorDeactivated, self::OperatorReactivated, self::OperatorEndedSessions, self::LockLiftedByOwner, self::LockLiftedByOperator], true);
     }
 }

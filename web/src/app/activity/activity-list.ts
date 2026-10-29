@@ -65,6 +65,7 @@ export const ACTIVITY_KINDS = [
 export const ACTIVITY_ACTIONS: readonly string[] = [
   'auth.login',
   'auth.logout',
+  'account.lock_lifted',
   'company.profile_revised',
   'company.logo_changed',
   'company.logo_removed',

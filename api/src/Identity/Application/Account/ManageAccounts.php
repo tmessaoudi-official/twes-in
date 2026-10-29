@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Identity\Application\Login\LiftPasswordLock;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Model\User;
@@ -22,12 +23,14 @@ use App\Identity\Domain\ValueObject\AccountSearch;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
  * What an operator does about an account, audited against it (docs/SPEC.md § 7, 2026-09-15): ends its sessions,
- * deactivates it, which ends them too, and reactivates it. A company's owner removes someone from the company
- * instead and never reaches the account. Asking for the state an account is already in changes and audits nothing.
+ * deactivates it, which ends them too, reactivates it, and lifts the lock on a company owner's password, whom nobody in
+ * the company is above (row 241). A company's owner removes someone from the company, or lifts their lock, instead and
+ * never reaches the account. Asking for the state an account is already in changes and audits nothing.
  * The demo's throwaway owners are no operator's concern, so the list leaves them out.
  */
 final readonly class ManageAccounts implements DeclaresAuditActions
@@ -37,8 +40,16 @@ final readonly class ManageAccounts implements DeclaresAuditActions
     public const string DEACTIVATED = 'account.deactivated';
     public const string REACTIVATED = 'account.reactivated';
 
-    public function __construct(private UserRepository $users, private AuditTrail $audit, private Transactions $transactions, private DemoAccounts $demos, private SecurityNotices $notices)
-    {
+    public function __construct(
+        private UserRepository $users,
+        private AuditTrail $audit,
+        private Transactions $transactions,
+        private DemoAccounts $demos,
+        private SecurityNotices $notices,
+        private LiftPasswordLock $locks,
+        private CompanyOwners $owners,
+        private ClockInterface $clock,
+    ) {
     }
 
     /**
@@ -48,7 +59,23 @@ final readonly class ManageAccounts implements DeclaresAuditActions
      */
     public function search(AccountSearch $search, PageRequest $page): Page
     {
-        return $this->users->search($search->leavingOut($this->demos->all()), $page)->map(AccountView::of(...));
+        $now = $this->clock->now();
+
+        return $this->users->search($search->leavingOut($this->demos->all()), $page)->map(static fn (User $user): AccountView => AccountView::of($user, $now));
+    }
+
+    /** @throws AccountNotFound|NotAnOwner */
+    public function liftLock(Uuid $userId, Uuid $operatorId): AccountView
+    {
+        return $this->transactions->run(function () use ($userId, $operatorId): AccountView {
+            $user = $this->accountOf($userId);
+            if (!$this->owners->ownsACompany($user->getId())) {
+                throw new NotAnOwner('The platform lifts the lock of a company owner\'s password only.');
+            }
+            $this->locks->lift($user->getId(), $operatorId, null, SecurityChange::LockLiftedByOperator);
+
+            return AccountView::of($user, $this->clock->now());
+        });
     }
 
     /** @throws AccountNotFound */
@@ -61,7 +88,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
             $this->record($user, self::SESSIONS_ENDED, $operatorId);
             $this->notices->tell($user->getId(), SecurityChange::OperatorEndedSessions);
 
-            return AccountView::of($user);
+            return AccountView::of($user, $this->clock->now());
         });
     }
 
@@ -81,7 +108,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
                 $this->notices->tell($user->getId(), SecurityChange::OperatorDeactivated);
             }
 
-            return AccountView::of($user);
+            return AccountView::of($user, $this->clock->now());
         });
     }
 
@@ -97,7 +124,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
                 $this->notices->tell($user->getId(), SecurityChange::OperatorReactivated);
             }
 
-            return AccountView::of($user);
+            return AccountView::of($user, $this->clock->now());
         });
     }
 

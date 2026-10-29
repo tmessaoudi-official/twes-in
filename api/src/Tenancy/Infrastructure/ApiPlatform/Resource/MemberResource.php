@@ -21,6 +21,7 @@ use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\ChangeMemberRoleProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\InviteMemberProcessor;
+use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\LiftMemberLockProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\RemoveMemberProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\WithdrawInvitationProcessor;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Provider\MemberCollectionProvider;
@@ -63,6 +64,16 @@ use Symfony\Component\Validator\Constraints as Assert;
             processor: RemoveMemberProcessor::class,
             security: 'is_granted("ROLE_USER")',
             read: false,
+        ),
+        // The lock wrong guesses set on a member's password, lifted by the company's owner (row 241).
+        new Post(
+            uriTemplate: '/companies/{companyId}/members/{userId}/unlock',
+            status: 200,
+            input: false,
+            processor: LiftMemberLockProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            normalizationContext: ['groups' => [self::READ]],
         ),
         // An invitation sent to the wrong address is taken back; sending it again, or at another role, is inviting again.
         new Delete(
@@ -135,6 +146,11 @@ final class MemberResource
     #[Groups([self::READ])]
     public ?string $expiresAt = null;
 
+    /** Until when wrong guesses keep the member's password locked; null when they do not now, and on an invited row. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $passwordLockedUntil = null;
+
     public static function of(MemberView $view): self
     {
         $resource = new self();
@@ -146,6 +162,7 @@ final class MemberResource
         $resource->status = $view->status;
         $resource->invitationId = $view->invitationId;
         $resource->expiresAt = $view->expiresAt;
+        $resource->passwordLockedUntil = $view->passwordLockedUntil;
 
         return $resource;
     }
