@@ -328,11 +328,15 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->addOrderBy('m.id', 'DESC')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
+        // Counted apart: every join reaches one row, so a movement counts once with no DISTINCT over every id, and the
+        // vendors, which no filter reads, drop out of the plan.
+        $total = Rows::int((clone $query)->select('COUNT(m.id)')->resetDQLPart('orderBy')
+            ->setFirstResult(0)->setMaxResults(null)->getQuery()->getSingleScalarResult());
         $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
         /** @var list<StockMovement> $movements */
         $movements = iterator_to_array($paginator, false);
 
-        return new Page($movements, \count($paginator), $page);
+        return new Page($movements, $total, $page);
     }
 
     public function soldWithoutStockAmong(Uuid $companyId, array $movements): array

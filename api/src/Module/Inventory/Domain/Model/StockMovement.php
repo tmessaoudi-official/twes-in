@@ -37,6 +37,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'stock_movement')]
 #[ORM\Index(name: 'idx_stock_movement_company', columns: ['company_id'])]
+#[ORM\Index(name: 'idx_stock_movement_moved', columns: ['company_id', 'at', 'id'])]
 #[ORM\Index(name: 'idx_stock_movement_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_stock_movement_location', columns: ['location_id'])]
 #[ORM\Index(name: 'idx_stock_movement_lot', columns: ['lot_id'])]
