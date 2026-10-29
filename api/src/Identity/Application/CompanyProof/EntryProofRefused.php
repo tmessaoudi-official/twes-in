@@ -20,6 +20,8 @@ final class EntryProofRefused extends \DomainException
     public const string PASSKEY = 'invalid_passkey';
     /** The company does not take a passkey, or the account holds none. */
     public const string PASSKEY_NOT_TAKEN = 'passkey_sign_in_off';
+    /** The company requires a second factor and the account's is a passkey: the password alone does not enter it. */
+    public const string PASSKEY_REQUIRED = 'passkey_required';
 
     public function __construct(public readonly string $reason)
     {

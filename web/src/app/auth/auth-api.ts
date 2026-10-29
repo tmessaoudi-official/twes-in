@@ -342,7 +342,11 @@ function toState(me: Me): SignedInState {
     companyProof:
       me.companyProof === null || me.companyProof === undefined
         ? null
-        : { passkey: me.companyProof.passkey, code: me.companyProof.code },
+        : {
+            passkey: me.companyProof.passkey,
+            code: me.companyProof.code,
+            password: me.companyProof.password,
+          },
     support: {
       phone: me.support.phone,
       whatsapp: me.support.whatsapp,

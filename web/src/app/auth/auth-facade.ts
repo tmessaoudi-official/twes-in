@@ -266,6 +266,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
       companyName: state.company.name,
       passkey: proof.passkey,
       code: proof.code,
+      password: proof.password,
     };
   });
 
@@ -278,7 +279,11 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
       await this.api.proveCompany(companyId, password, code);
       return 'confirmed';
     } catch (error) {
-      return codeOf(error) === 'invalid_code' ? 'code_refused' : this.stepUpRefused(error);
+      const code = codeOf(error);
+      if (code === 'invalid_code') return 'code_refused';
+      // The session read before the company changed what it takes: the passkey is now the way in.
+      if (code === 'passkey_required') return 'passkey_required';
+      return this.stepUpRefused(error);
     }
   }
 

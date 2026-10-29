@@ -17,9 +17,20 @@ export class CompanyEntry {
   private readonly dialog = inject(MatDialog);
   private pending: Promise<boolean> | null = null;
   private readonly declinedFor = signal<string | null>(null);
+  /** The company whose proof lapsed under an open page, or is being read again to find out. */
+  private readonly lapsedFor = signal<string | null>(null);
+  private readonly rereading = signal(false);
 
   /** What the working company asks, null once it is proved or when it asks nothing. */
   readonly asked = this.proof.asked;
+  /**
+   * Whether the working company's pages wait for its proof: on entering it, never when a proof lapsed under a page
+   * already open, which keeps what it shows and what was typed while the question is asked over it.
+   */
+  readonly blocking = computed(() => {
+    const asked = this.asked();
+    return asked !== null && !this.rereading() && this.lapsedFor() !== asked.companyId;
+  });
   /** Whether the person turned down the proof the working company asks. */
   readonly declined = computed(() => {
     const asked = this.asked();
@@ -37,16 +48,28 @@ export class CompanyEntry {
 
   private async ask(again: boolean): Promise<boolean> {
     // A proof that lapsed while the page was open is not in the session read earlier: the API's refusal says so.
-    if (this.asked() === null) await this.proof.reread();
+    let lapsed = false;
+    if (this.asked() === null) {
+      this.rereading.set(true);
+      try {
+        await this.proof.reread();
+      } finally {
+        lapsed = true;
+        this.lapsedFor.set(this.asked()?.companyId ?? null);
+        this.rereading.set(false);
+      }
+    }
     const asked = this.asked();
     if (asked === null || (this.declinedFor() === asked.companyId && !again)) return false;
 
     const given = await this.open(asked);
     if (!given) {
-      this.declinedFor.set(asked.companyId);
+      // A lapsed proof turned down is asked again by the next refused request: its page stays as it was.
+      if (!lapsed && this.lapsedFor() !== asked.companyId) this.declinedFor.set(asked.companyId);
       return false;
     }
     this.declinedFor.set(null);
+    this.lapsedFor.set(null);
     await this.proof.reread();
     return true;
   }

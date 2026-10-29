@@ -3352,8 +3352,11 @@
     "confirm": "Enter",
     "panel": "This company waits for you to confirm it is you before opening its pages.",
     "prove": "Confirm it is me",
+    "passkey_only": "This company asks for a second proof, and yours is your passkey: it is enough, with no password.",
+    "passkey_unavailable": "This company asks for your passkey, and this browser cannot offer one: open this page on the device that holds yours.",
     "errors": {
-      "code_refused": "This code is not the right one: type the one your app shows right now."
+      "code_refused": "This code is not the right one: type the one your app shows right now.",
+      "passkey_required": "This company does not take the password alone: enter with your passkey."
     }
   },
   "customer_display": {

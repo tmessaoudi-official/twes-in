@@ -231,6 +231,7 @@ describe('AppShell', () => {
   const watch = { summary: watchSummary.asReadonly(), load: vi.fn(async () => undefined) };
   const entry = {
     asked: signal<EntryAsked | null>(null),
+    blocking: signal(false),
     declined: signal(false),
     prove: vi.fn(async () => false),
   };
@@ -292,6 +293,7 @@ describe('AppShell', () => {
   beforeEach(async () => {
     me.set(owner);
     entry.asked.set(null);
+    entry.blocking.set(false);
     entry.prove.mockClear();
     permissions.set(['user.read']);
     modules.set(['customers']);
@@ -867,9 +869,16 @@ describe('AppShell', () => {
   it('shows none of a company’s pages until the sign-in has proved itself for it, then opens the one asked', async () => {
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/customers');
-    const asked: EntryAsked = { companyId: 'c1', companyName: 'Demo', passkey: false, code: false };
+    const asked: EntryAsked = {
+      companyId: 'c1',
+      companyName: 'Demo',
+      passkey: false,
+      code: false,
+      password: true,
+    };
     entry.asked.set(asked);
-    me.set({ ...owner, companyProof: { passkey: false, code: false } });
+    entry.blocking.set(true);
+    me.set({ ...owner, companyProof: { passkey: false, code: false, password: true } });
     CountingPage.built = 0;
     const { fixture, byTestId } = await render();
     fixture.detectChanges();
@@ -880,12 +889,37 @@ describe('AppShell', () => {
     expect(entry.prove).toHaveBeenCalledWith();
 
     entry.asked.set(null);
+    entry.blocking.set(false);
     me.set({ ...owner, companyProof: null });
     fixture.detectChanges();
     await fixture.whenStable();
 
     expect(byTestId('company-proof-panel')).toBeNull();
     expect(CountingPage.built).toBe(1);
+  });
+
+  it('keeps the open page when a proof lapses under it, the question asked over what it shows', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/customers');
+    const { fixture, byTestId } = await render();
+    CountingPage.built = 0;
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const before = CountingPage.built;
+
+    entry.asked.set({
+      companyId: 'c1',
+      companyName: 'Demo',
+      passkey: false,
+      code: false,
+      password: true,
+    });
+    me.set({ ...owner, companyProof: { passkey: false, code: false, password: true } });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byTestId('company-proof-panel')).toBeNull();
+    expect(CountingPage.built).toBe(before);
   });
 
   it('rebuilds the open screen when the company changes, so it never shows the last one’s rows', async () => {

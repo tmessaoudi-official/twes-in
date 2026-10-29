@@ -64,7 +64,7 @@ final class CompanyProofTest extends ApiTestCase
         // Entering it is allowed: the session then says what proof it asks.
         $this->enter($this->second);
         $this->getJson('/api/auth/me');
-        self::assertSame(['passkey' => false, 'code' => false], $this->json()['companyProof']);
+        self::assertSame(['passkey' => false, 'code' => false, 'password' => true], $this->json()['companyProof']);
 
         $this->postJson($this->proof($this->second), ['password' => self::PASSWORD]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
@@ -110,6 +110,35 @@ final class CompanyProofTest extends ApiTestCase
         }
     }
 
+    public function testAMemberWhoseSecondFactorIsAPasskeyEntersACompanyRequiringOneWithItNotThePasswordAlone(): void
+    {
+        $this->memberOfBoth();
+        $authenticator = new FakeAuthenticator();
+        $this->stepUp(self::PASSWORD);
+        $this->postJson('/api/auth/mfa/passkeys/options', null);
+        $this->postJson('/api/auth/mfa/passkeys', ['name' => 'Laptop', 'credential' => $authenticator->register($this->json(), residentKey: true)]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $second = $this->fresh($this->second);
+        $second->requireMfa(true);
+        $this->em()->flush();
+        // A company that takes no passkey to enter still takes it as the second factor it requires.
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($second), CompanyEntrySettings::PASSKEY, SettingLevel::Company, false, null);
+        $this->enter($this->second);
+
+        $this->getJson('/api/auth/me');
+        self::assertSame(['passkey' => true, 'code' => false, 'password' => false], $this->json()['companyProof']);
+        $this->postJson($this->proof($this->second), ['password' => self::PASSWORD]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('passkey_required', $this->json()['error'] ?? null);
+        self::assertSame(Response::HTTP_FORBIDDEN, $this->act($this->second));
+
+        $this->postJson($this->proof($this->second).'/passkey/options', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->proof($this->second).'/passkey', ['credential' => $authenticator->assert($this->json())]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame(Response::HTTP_OK, $this->act($this->second));
+    }
+
     public function testACompanyRequiringASecondFactorAsksTheCodeBesideThePassword(): void
     {
         $this->second->requireMfa(true);
@@ -117,7 +146,7 @@ final class CompanyProofTest extends ApiTestCase
         $this->memberOfBoth(authenticator: true);
         $this->enter($this->second);
         $this->getJson('/api/auth/me');
-        self::assertSame(['passkey' => false, 'code' => true], $this->json()['companyProof']);
+        self::assertSame(['passkey' => false, 'code' => true, 'password' => true], $this->json()['companyProof']);
 
         $this->postJson($this->proof($this->second), ['password' => self::PASSWORD]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -211,7 +240,7 @@ final class CompanyProofTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->enter($this->second);
         $this->getJson('/api/auth/me');
-        self::assertSame(['passkey' => true, 'code' => false], $this->json()['companyProof']);
+        self::assertSame(['passkey' => true, 'code' => false, 'password' => true], $this->json()['companyProof']);
 
         $this->postJson($this->proof($this->second).'/passkey/options', null);
         self::assertResponseIsSuccessful();
@@ -225,7 +254,7 @@ final class CompanyProofTest extends ApiTestCase
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($third), CompanyEntrySettings::PASSKEY, SettingLevel::Company, false, null);
         $this->enter($third);
         $this->getJson('/api/auth/me');
-        self::assertSame(['passkey' => false, 'code' => false], $this->json()['companyProof']);
+        self::assertSame(['passkey' => false, 'code' => false, 'password' => true], $this->json()['companyProof']);
         $this->postJson($this->proof($third).'/passkey/options', null);
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
         self::assertSame('passkey_sign_in_off', $this->json()['error'] ?? null);
@@ -250,7 +279,7 @@ final class CompanyProofTest extends ApiTestCase
         // Acme opened, refusing a passkey: its proof is asked at once.
         self::assertSame(Response::HTTP_FORBIDDEN, $this->act($this->first));
         $this->getJson('/api/auth/me');
-        self::assertSame(['passkey' => false, 'code' => false], $this->json()['companyProof']);
+        self::assertSame(['passkey' => false, 'code' => false, 'password' => true], $this->json()['companyProof']);
     }
 
     private function memberOfBoth(bool $authenticator = false): void

@@ -41,19 +41,30 @@ import { signInAddress } from '../session/return-to';
              Its foot leaves room for the eye's 48 px touch target, which hangs 4 px below the 40 px field. -->
         <div class="flex flex-col gap-3 pb-1">
           <p data-testid="company-proof-intro">{{ 'company_proof.intro' | translate }}</p>
-          <mat-form-field>
-            <mat-label>{{ 'step_up.password' | translate }}</mat-label>
-            <input
-              matInput
-              #entryPassword
-              type="password"
-              autocomplete="current-password"
-              [formControl]="password"
-              data-testid="company-proof-password"
-            />
-            <app-password-toggle matSuffix [field]="entryPassword" />
-          </mat-form-field>
-          @if (asked.code) {
+          @if (!asked.password) {
+            <p data-testid="company-proof-passkey-only">
+              {{
+                (proof.passkeySupported()
+                  ? 'company_proof.passkey_only'
+                  : 'company_proof.passkey_unavailable'
+                ) | translate
+              }}
+            </p>
+          } @else {
+            <mat-form-field>
+              <mat-label>{{ 'step_up.password' | translate }}</mat-label>
+              <input
+                matInput
+                #entryPassword
+                type="password"
+                autocomplete="current-password"
+                [formControl]="password"
+                data-testid="company-proof-password"
+              />
+              <app-password-toggle matSuffix [field]="entryPassword" />
+            </mat-form-field>
+          }
+          @if (asked.password && asked.code) {
             <mat-form-field>
               <mat-label>{{ 'company_proof.code' | translate }}</mat-label>
               <input
@@ -69,8 +80,9 @@ import { signInAddress } from '../session/return-to';
           @if (problem(); as key) {
             <p role="alert" class="text-error" data-testid="company-proof-error">
               {{
-                (key === 'code_refused' ? 'company_proof.errors.' : 'step_up.errors.') + key
-                  | translate
+                (key === 'code_refused' || key === 'passkey_required'
+                  ? 'company_proof.errors.'
+                  : 'step_up.errors.') + key | translate
               }}
             </p>
           }
@@ -97,14 +109,16 @@ import { signInAddress } from '../session/return-to';
             {{ 'step_up.passkey' | translate }}
           </button>
         }
-        <button
-          mat-flat-button
-          type="submit"
-          [disabled]="busy()"
-          data-testid="company-proof-confirm"
-        >
-          {{ 'company_proof.confirm' | translate }}
-        </button>
+        @if (asked.password) {
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="busy()"
+            data-testid="company-proof-confirm"
+          >
+            {{ 'company_proof.confirm' | translate }}
+          </button>
+        }
       </mat-dialog-actions>
     </form>
   `,

@@ -37,11 +37,14 @@ final readonly class CompanyEntryProofs
     public function of(User $user, Company $company): EntryProof
     {
         $code = $company->isMfaRequired() && $user->hasTotp();
-        $passkeyAsFactor = $company->isMfaRequired() && !$user->hasTotp();
+        $passkeyAsFactor = $company->isMfaRequired() && !$user->hasTotp() && $this->passkeys->countFor($user) > 0;
 
         return new EntryProof(
             ($passkeyAsFactor || $this->takesPasskey($user, $company)) && $this->passkeys->countFor($user) > 0,
             $code,
+            // A password alone would enter a company that requires a second factor; an account with none at all is held
+            // by the enrolment the company requires before it acts anywhere, so its password stays its way in.
+            !$passkeyAsFactor,
         );
     }
 

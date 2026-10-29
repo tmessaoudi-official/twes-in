@@ -68,7 +68,7 @@ export async function inACompany(page: Page, csrf: string): Promise<void> {
   const proof = await page.evaluate(async (token) => {
     type Me = {
       company: { id: string; name: string } | null;
-      companyProof: { passkey: boolean; code: boolean } | null;
+      companyProof: { passkey: boolean; code: boolean; password: boolean } | null;
     };
     const read = async () => (await (await fetch('/api/auth/me')).json()) as Me;
     let me = await read();
@@ -93,7 +93,8 @@ export async function inACompany(page: Page, csrf: string): Promise<void> {
   }, csrf);
   if (proof === null) return;
   // An account in two companies or more proves itself for each it enters, once per sign-in; a code the sign-in spent
-  // is refused as a replay, so the proof is tried again until the next step's code is accepted.
+  // is refused as a replay, so the proof is tried again with the next step's code, thirty seconds on: every attempt
+  // counts against the operator's five in five minutes, which the step-ups share.
   await expect(async () => {
     const status = await page.evaluate(
       async ([companyId, token, password, code]) =>
@@ -112,7 +113,7 @@ export async function inACompany(page: Page, csrf: string): Promise<void> {
       ] as const,
     );
     expect(status).toBe(204);
-  }).toPass({ timeout: 45_000 });
+  }).toPass({ intervals: [31_000], timeout: 70_000 });
 }
 
 /** What a PUT of the company profile accepts, in the order the API reads it; the version read is sent back. */

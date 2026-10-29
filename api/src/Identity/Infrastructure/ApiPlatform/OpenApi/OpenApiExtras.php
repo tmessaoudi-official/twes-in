@@ -58,7 +58,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             'properties' => [
                 'error' => [
                     'type' => 'string',
-                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required', 'mfa_already_enrolled', 'invalid_passkey', 'mfa_last_factor', 'mfa_authenticator_required', 'passkey_not_found', 'demo_off', 'demo_busy', 'unknown_country', 'demo_refused', PasskeySignInRefused::OFF, PasskeySignInRefused::NEEDS_AUTHENTICATOR, PasskeySignInRefused::NEEDS_PASSKEY],
+                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required', 'mfa_already_enrolled', 'invalid_passkey', 'mfa_last_factor', 'mfa_authenticator_required', 'passkey_not_found', 'demo_off', 'demo_busy', 'unknown_country', 'demo_refused', 'passkey_required', PasskeySignInRefused::OFF, PasskeySignInRefused::NEEDS_AUTHENTICATOR, PasskeySignInRefused::NEEDS_PASSKEY],
                 ],
             ],
         ]);
@@ -476,7 +476,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                 '204' => new Response('The company is proved for this sign-in, until sign-out, 30 minutes left alone (app.company_proof.idle) or 12 hours (app.company_proof.lifetime)'),
                 '401' => $errorResponse('Not signed in, or `step_up_exhausted`: that wrong answer was the last this sign-in may give (app.step_up.attempts), which is now signed out'),
                 '404' => $errorResponse('Not a company of the account'),
-                '422' => $errorResponse('`invalid_credentials`: the password is not the account\'s; `invalid_code`: the company asks the authenticator code and it is missing or wrong'),
+                '422' => $errorResponse('`invalid_credentials`: the password is not the account\'s; `invalid_code`: the company asks the authenticator code and it is missing or wrong; `passkey_required`: the company requires a second factor and the account\'s is a passkey, which alone enters it'),
                 '429' => $errorResponse('Too many attempts'),
             ],
             summary: 'Enter a company with the password, and the authenticator code where it requires one',

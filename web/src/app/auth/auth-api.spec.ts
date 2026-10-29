@@ -408,8 +408,8 @@ describe('AuthApi', () => {
     const asked = api.me();
     http
       .expectOne('/api/auth/me')
-      .flush({ ...owner, companyProof: { passkey: true, code: false } });
-    expect((await asked).companyProof).toEqual({ passkey: true, code: false });
+      .flush({ ...owner, companyProof: { passkey: true, code: false, password: false } });
+    expect((await asked).companyProof).toEqual({ passkey: true, code: false, password: false });
 
     const proved = api.me();
     http.expectOne('/api/auth/me').flush({ ...owner, companyProof: null });

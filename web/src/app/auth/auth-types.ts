@@ -44,6 +44,8 @@ export type LoginError =
   | 'passkey_sign_in_off'
   | 'passkey_sign_in_needs_authenticator'
   | 'passkey_sign_in_needs_passkey'
+  // A company requiring a second factor of an account whose only one is a passkey: the password alone does not enter it.
+  | 'passkey_required'
   // The browser produced no passkey: cancelled, timed out, or no authenticator to answer. Never sent by the API.
   | 'passkey_cancelled'
   // The browser refused because this device already holds a passkey for the account. Never sent by the API.
@@ -167,10 +169,12 @@ export interface SignedInState {
   companyProof?: CompanyProofAsked | null;
 }
 
-/** The proof a company asks: the password always, the authenticator code beside it, or a passkey instead. */
+/** The proof a company asks: the password, the authenticator code beside it, or a passkey instead. */
 export interface CompanyProofAsked {
   readonly passkey: boolean;
   readonly code: boolean;
+  /** false where the account's passkey is the second factor the company requires, which alone enters it */
+  readonly password: boolean;
 }
 
 /** The phone, WhatsApp number and address the platform's operators are reached at, each null when not given. */

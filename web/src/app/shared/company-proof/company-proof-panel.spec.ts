@@ -23,6 +23,7 @@ describe('CompanyProofPanel', () => {
       companyName: 'Globex',
       passkey: false,
       code: false,
+      password: true,
     });
     const entry = { asked, prove: vi.fn(async () => false) };
     TestBed.configureTestingModule({

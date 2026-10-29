@@ -215,7 +215,7 @@ describe('NotificationBell', () => {
   });
 
   it('reconnects once the company asked is proved, its channel then in the token', () => {
-    me.set({ ...inCompany('c2'), companyProof: { passkey: false, code: false } });
+    me.set({ ...inCompany('c2'), companyProof: { passkey: false, code: false, password: true } });
     render();
     TestBed.tick();
     expect(facade.connect).toHaveBeenCalledOnce();

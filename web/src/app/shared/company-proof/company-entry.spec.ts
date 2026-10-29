@@ -9,7 +9,13 @@ import { CompanyEntry } from './company-entry';
 import { CompanyEntryProof, type EntryAsked } from './company-entry-proof';
 
 describe('CompanyEntry', () => {
-  const globex: EntryAsked = { companyId: 'c2', companyName: 'Globex', passkey: false, code: true };
+  const globex: EntryAsked = {
+    companyId: 'c2',
+    companyName: 'Globex',
+    passkey: false,
+    code: true,
+    password: true,
+  };
   const asked = signal<EntryAsked | null>(null);
   const reread = vi.fn<() => Promise<void>>();
   const open = vi.fn();
@@ -86,6 +92,32 @@ describe('CompanyEntry', () => {
     reread.mockReset().mockImplementation(async () => undefined);
     await expect(entry().prove()).resolves.toBe(false);
     expect(open).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the page open under a proof that lapsed, and asks again on the next refusal once turned down', async () => {
+    asked.set(null);
+    reread.mockImplementation(async () => {
+      asked.set(globex);
+      // Read again, the session says the proof is asked: the page stays while that is found out.
+      expect(entry().blocking()).toBe(false);
+    });
+    const lapsed = entry().prove();
+    await opened();
+    expect(entry().blocking()).toBe(false);
+    answer(false);
+    await expect(lapsed).resolves.toBe(false);
+    expect(entry().blocking()).toBe(false);
+    expect(entry().declined()).toBe(false);
+
+    closed = new Subject<boolean | undefined>();
+    void entry().prove();
+    await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(2));
+  });
+
+  it('holds the pages of a company just entered until it is proved', () => {
+    expect(entry().blocking()).toBe(true);
+    asked.set(null);
+    expect(entry().blocking()).toBe(false);
   });
 
   it('asks a company switched to even after another was turned down', async () => {

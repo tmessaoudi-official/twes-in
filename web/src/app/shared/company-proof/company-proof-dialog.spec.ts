@@ -18,7 +18,9 @@ class StaticLoader implements TranslateLoader {
       step_up: { errors: { refused: 'Mauvais mot de passe.' } },
       company_proof: {
         title: 'Entrer dans {{company}}',
-        errors: { code_refused: 'Mauvais code.' },
+        passkey_only: 'Votre clé d’accès suffit.',
+        passkey_unavailable: 'Ce navigateur n’en a pas.',
+        errors: { code_refused: 'Mauvais code.', passkey_required: 'Clé d’accès demandée.' },
       },
     });
   }
@@ -82,6 +84,7 @@ describe('CompanyProofDialog', () => {
     companyName: 'Globex',
     passkey: false,
     code: false,
+    password: true,
   };
 
   beforeEach(() => {
@@ -142,6 +145,34 @@ describe('CompanyProofDialog', () => {
     proof.passkeySupported.mockReturnValue(false);
     await open({ ...password, passkey: true });
     expect(q('company-proof-passkey')).toBeNull();
+  });
+
+  it('asks only the passkey where it is the second factor the company requires, and says a browser that has none', async () => {
+    await open({ ...password, passkey: true, password: false });
+
+    expect(q('company-proof-password')).toBeNull();
+    expect(q('company-proof-code')).toBeNull();
+    expect(q('company-proof-confirm')).toBeNull();
+    expect(q('company-proof-passkey-only')?.textContent).toContain('Votre clé d’accès suffit.');
+    q('company-proof-passkey')?.click();
+    await settle();
+    expect(proof.enterWithPasskey).toHaveBeenCalledExactlyOnceWith('c2');
+    expect(proof.enterWithPassword).not.toHaveBeenCalled();
+
+    proof.passkeySupported.mockReturnValue(false);
+    await open({ ...password, passkey: true, password: false });
+    expect(q('company-proof-passkey')).toBeNull();
+    expect(q('company-proof-passkey-only')?.textContent).toContain('Ce navigateur n’en a pas.');
+  });
+
+  it('says a password the company no longer takes and points to the passkey', async () => {
+    proof.enterWithPassword.mockResolvedValue('passkey_required');
+    await open(password);
+    type('company-proof-password', 'secret');
+    await submit();
+
+    expect(q('company-proof-error')?.textContent).toContain('Clé d’accès demandée.');
+    expect(close).not.toHaveBeenCalled();
   });
 
   it('gives up without a proof when closed', async () => {

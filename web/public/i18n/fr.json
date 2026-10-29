@@ -3352,8 +3352,11 @@
     "confirm": "Entrer",
     "panel": "Cette entreprise attend que vous confirmiez que c’est bien vous avant d’ouvrir ses pages.",
     "prove": "Confirmer que c’est bien moi",
+    "passkey_only": "Cette entreprise demande une seconde preuve, et la vôtre est votre clé d’accès : elle suffit, sans mot de passe.",
+    "passkey_unavailable": "Cette entreprise demande votre clé d’accès, et ce navigateur ne peut pas en proposer : ouvrez cette page sur l’appareil qui garde la vôtre.",
     "errors": {
-      "code_refused": "Ce code n’est pas le bon : tapez celui que votre application affiche en ce moment."
+      "code_refused": "Ce code n’est pas le bon : tapez celui que votre application affiche en ce moment.",
+      "passkey_required": "Cette entreprise n’accepte pas le mot de passe seul : entrez avec votre clé d’accès."
     }
   },
   "customer_display": {

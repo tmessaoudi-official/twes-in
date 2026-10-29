@@ -520,13 +520,17 @@ describe('AuthFacade', () => {
   });
 
   it('says what the working company asks, and how entering it came out', async () => {
-    api.me.mockResolvedValueOnce({ ...owner, companyProof: { passkey: false, code: true } });
+    api.me.mockResolvedValueOnce({
+      ...owner,
+      companyProof: { passkey: false, code: true, password: true },
+    });
     await facade.load();
     expect(facade.asked()).toEqual({
       companyId: 'c1',
       companyName: 'Demo',
       passkey: false,
       code: true,
+      password: true,
     });
 
     api.proveCompany.mockResolvedValueOnce(undefined);
@@ -536,6 +540,8 @@ describe('AuthFacade', () => {
     expect(await facade.enterWithPassword('c1', 'le-bon', '000000')).toBe('code_refused');
     api.proveCompany.mockRejectedValueOnce(new AuthRefused('invalid_credentials'));
     expect(await facade.enterWithPassword('c1', 'autre', '123456')).toBe('refused');
+    api.proveCompany.mockRejectedValueOnce(new AuthRefused('passkey_required'));
+    expect(await facade.enterWithPassword('c1', 'le-bon', null)).toBe('passkey_required');
 
     api.companyProofPasskeyOptions.mockRejectedValueOnce(new AuthRefused('passkey_sign_in_off'));
     expect(await facade.enterWithPasskey('c1')).toBe('no_passkey');
@@ -551,7 +557,10 @@ describe('AuthFacade', () => {
   });
 
   it('signs out once the wrong answers to entering a company ended the session', async () => {
-    api.me.mockResolvedValueOnce({ ...owner, companyProof: { passkey: false, code: false } });
+    api.me.mockResolvedValueOnce({
+      ...owner,
+      companyProof: { passkey: false, code: false, password: true },
+    });
     await facade.load();
     api.proveCompany.mockRejectedValueOnce(new AuthRefused('step_up_exhausted'));
 

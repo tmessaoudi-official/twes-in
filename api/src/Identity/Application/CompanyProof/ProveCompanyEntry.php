@@ -66,18 +66,23 @@ final readonly class ProveCompanyEntry implements DeclaresAuditActions
 
     /**
      * @throws NotAMember        when the company is not the account's, which answers as a company that is not there
-     * @throws EntryProofRefused when the password or the code is wrong
+     * @throws EntryProofRefused when the password or the code is wrong, or the company takes only the account's passkey
      * @throws StepUpExhausted   when that wrong answer was the last this sign-in may give
      */
     public function withPassword(Uuid $userId, Uuid $companyId, string $password, ?string $code): void
     {
         [$user, $company] = $this->memberIn($userId, $companyId);
+        $asked = $this->proofs->of($user, $company);
+        // Refused before the password is read, so a person sent to the wrong form spends none of the sign-in's answers.
+        if (!$asked->password) {
+            throw new EntryProofRefused(EntryProofRefused::PASSKEY_REQUIRED);
+        }
         try {
             $this->stepUp->withPassword($userId, $password);
         } catch (StepUpRefused) {
             throw new EntryProofRefused(EntryProofRefused::PASSWORD);
         }
-        if ($this->proofs->of($user, $company)->code) {
+        if ($asked->code) {
             try {
                 $this->secondFactor->handle($userId, $code ?? '', $this->clock->now());
             } catch (SecondFactorRefused|SecondFactorUnreadable) {
