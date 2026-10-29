@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\ApiPlatform\Output;
 
 use ApiPlatform\Validator\Exception\ValidationException;
+use App\Shared\Application\ShortSales\ShortLine;
+use App\Shared\Application\ShortSales\ShortOfStock;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationList;
@@ -39,6 +41,20 @@ final class DomainRule extends Constraint
         $conflict->setStatus(409);
 
         return $conflict;
+    }
+
+    /**
+     * A sale refused for the stock it would take, as one violation per short line, on that line's quantity: what it
+     * wants, what its places hold and where, so the screen lists them and offers to count or receive there.
+     */
+    public static function shortOfStock(ShortOfStock $refused): ValidationException
+    {
+        $violations = array_map(
+            static fn (ShortLine $line): ConstraintViolation => self::violation(\sprintf('lines[%d].quantity', $line->index), \sprintf('%s: %s wanted, %s in stock.', $line->reference, $line->wanted, $line->onHand), $refused->reason(), $line->params()),
+            $refused->lines,
+        );
+
+        return new ValidationException(new ConstraintViolationList($violations), previous: $refused);
     }
 
     /**

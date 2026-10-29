@@ -165,7 +165,8 @@
     },
     "stock": {
       "read": "Voir le stock",
-      "write": "Enregistrer les mouvements de stock"
+      "write": "Enregistrer les mouvements de stock",
+      "sell_short": "Confirmer une vente au-delà du stock"
     },
     "user": {
       "read": "Voir les membres",
@@ -1000,7 +1001,8 @@
       "price_on_cost_change_hint": "Quand une réception change le prix de revient d’un article sous son prix de vente : proposer d’ajuster le prix (la marge s’affiche jusqu’à ce que quelqu’un décide), garder le prix, ou suivre la marge."
     },
     "stock": {
-      "cost_on_receive": "Ce que fait une réception de stock au coût d’un produit"
+      "cost_on_receive": "Ce que fait une réception de stock au coût d’un produit",
+      "sale_without_stock": "Sortie sans stock enregistré"
     },
     "customer_screen": {
       "show_stock": "Dire sur l’écran client si un produit est en stock ou non"
@@ -1053,6 +1055,11 @@
           "average": "Appliquer la moyenne pondérée",
           "last": "Appliquer le coût de la dernière réception",
           "manual": "Ne jamais changer le coût"
+        },
+        "sale_without_stock": {
+          "allow": "Autoriser et signaler",
+          "confirm": "Confirmer",
+          "refuse": "Refuser"
         }
       },
       "article": {

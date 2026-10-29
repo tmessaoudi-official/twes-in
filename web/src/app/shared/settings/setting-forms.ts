@@ -17,6 +17,7 @@ const CHAIN_LEVELS: Record<SettingChain, readonly SettingLevel[]> = {
     'platform',
     'company',
     'establishment',
+    'role',
     'product_category',
     'product',
     'document_line',

@@ -25,8 +25,9 @@ enum SettingChain: string
     {
         return match ($this) {
             self::Parties => [SettingLevel::Platform, SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer, SettingLevel::Document],
-            // An establishment narrows the company and nothing else: only a setting that declares it is read there.
-            self::Articles => [SettingLevel::Platform, SettingLevel::Company, SettingLevel::Establishment, SettingLevel::ProductCategory, SettingLevel::Product, SettingLevel::DocumentLine],
+            // An establishment narrows the company and nothing else, and a role narrows the establishment, for what a role
+            // does at a place (selling beyond the stock): only a setting that declares either is read there.
+            self::Articles => [SettingLevel::Platform, SettingLevel::Company, SettingLevel::Establishment, SettingLevel::Role, SettingLevel::ProductCategory, SettingLevel::Product, SettingLevel::DocumentLine],
             self::Presentation => [SettingLevel::Platform, SettingLevel::Company, SettingLevel::Role, SettingLevel::User],
             // A floor belongs to a company and nothing below one draws a plan, so the chain stops at the company.
             self::Venue => [SettingLevel::Platform, SettingLevel::Company],

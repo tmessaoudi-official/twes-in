@@ -49,6 +49,7 @@ use App\Shared\Domain\ValueObject\Receiver;
 use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Validation\ListLimit;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\ShortSaleConsents;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -181,6 +182,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             read: false,
             input: false,
             parameters: [
+                ShortSaleConsents::QUERY => new QueryParameter(schema: ['type' => 'string', 'enum' => [ShortSaleConsents::CONFIRMED]], description: ShortSaleConsents::DESCRIPTION),
                 'excessTo' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['balance', 'refund']], description: 'For a credit note of an invoice that was paid beyond what the credit note leaves due: where the part already paid goes, to the customer\'s credit balance or to a refund. Required then (422 on `excessTo`), ignored otherwise.'),
             ],
             normalizationContext: self::NORMALIZATION,

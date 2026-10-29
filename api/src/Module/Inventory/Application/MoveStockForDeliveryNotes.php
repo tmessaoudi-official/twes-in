@@ -27,6 +27,8 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Shared\Application\ShortSales\ShortLine;
+use App\Shared\Application\ShortSales\SoldLine;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
 use BcMath\Number;
@@ -99,27 +101,7 @@ final readonly class MoveStockForDeliveryNotes
             return [];
         }
 
-        $skipped = [];
-        $out = [];
-        foreach ($lines as $line) {
-            // A document issued for a product merged away since takes the goods from the product kept, which holds them.
-            $product = null === $line->productId ? null : $this->products->ofIdInCompany($line->productId, $companyId)?->standingFor();
-            if (null === $product || !$this->stock->tracked($product)) {
-                continue;
-            }
-            if (!$product->getUnit()->getId()->equals($line->unitId)) {
-                $skipped[] = \sprintf('a line of %s is counted in another unit than its stock, so it moved no stock', $product->getReference());
-                continue;
-            }
-            if (!is_numeric($line->quantity)) {
-                $skipped[] = \sprintf('a line of %s has no quantity, so it moved no stock', $product->getReference());
-                continue;
-            }
-            // A named lot is its own group, taken as named; a line naming none joins its product's first-to-expire group.
-            $lot = ProductTracking::None === $product->getTracking() ? null : $line->lotCode;
-            $key = $product->getId()->toRfc4122().(null === $lot ? '' : "\0".$lot);
-            $out[$key] = [$product, ($out[$key][1] ?? new Number(0))->add($line->quantity), $lot];
-        }
+        [$out, $skipped] = $this->grouped($companyId, $lines);
         if ([] === $out) {
             return $skipped;
         }
@@ -205,6 +187,89 @@ final readonly class MoveStockForDeliveryNotes
 
             return $skipped;
         });
+    }
+
+    /**
+     * Each product the lines would take more of than the places it leaves from hold, as the move itself would share it
+     * out: short where a movement it would write leaves its place below zero, which is what « Sorties sans stock » lists
+     * afterwards. Only a product kept without lots or serial numbers: those leave from their lots, and what no lot holds
+     * is said and never moved. Read without the move's locks, so two sales made at the same moment may both pass.
+     *
+     * @param list<SoldLine> $lines
+     *
+     * @return list<ShortLine>
+     */
+    public function shortOf(Uuid $companyId, Uuid $establishmentId, array $lines): array
+    {
+        if (!$this->modules->isEnabled($companyId, self::MODULE)) {
+            return [];
+        }
+        [$out] = $this->grouped($companyId, $lines);
+        $out = array_filter($out, static fn (array $group): bool => ProductTracking::None === $group[0]->getTracking());
+        $establishment = [] === $out ? null : $this->establishments->ofIdInCompany($establishmentId, $companyId);
+        if (null === $establishment) {
+            return [];
+        }
+        $products = [];
+        foreach ($out as [$product]) {
+            $products[$product->getId()->toRfc4122()] = $product;
+        }
+        $places = $this->placesOf($products, $establishment->getId(), $companyId, $this->locations->defaultOf($establishment));
+        $short = [];
+        foreach ($out as [$product, $quantity, , $index]) {
+            $list = $places[$product->getId()->toRfc4122()];
+            $held = [];
+            foreach ($list as $place) {
+                $held[$place->getId()->toRfc4122()] = new Number($this->movements->onHand($product->getId(), $place->getId()));
+            }
+            $below = array_any(
+                self::shared($this->movements, $product, $list, $quantity),
+                static fn (array $leaving): bool => -1 === $held[$leaving[0]->getId()->toRfc4122()]->sub($leaving[1])->compare(0),
+            );
+            if ($below) {
+                $onHand = array_reduce($held, static fn (Number $sum, Number $at): Number => $sum->add($at), new Number(0));
+                $unit = $product->getUnit();
+                $short[] = new ShortLine($index, $product->getId()->toRfc4122(), $product->getReference(), $product->getDetails()->name, $quantity->value, $onHand->value, $unit->getName(), $list[0]->getId()->toRfc4122());
+            }
+        }
+        usort($short, static fn (ShortLine $a, ShortLine $b): int => $a->index <=> $b->index);
+
+        return $short;
+    }
+
+    /**
+     * The lines' quantities by what leaves together: a product, or a product's named lot, with the first line naming it,
+     * and why a line of a product whose stock is kept moves nothing.
+     *
+     * @param list<DeliveredQuantity|SoldLine> $lines
+     *
+     * @return array{array<string, array{Product, Number, ?string, int}>, list<string>}
+     */
+    private function grouped(Uuid $companyId, array $lines): array
+    {
+        $skipped = [];
+        $out = [];
+        foreach ($lines as $at => $line) {
+            // A document issued for a product merged away since takes the goods from the product kept, which holds them.
+            $product = null === $line->productId ? null : $this->products->ofIdInCompany($line->productId, $companyId)?->standingFor();
+            if (null === $product || !$this->stock->tracked($product)) {
+                continue;
+            }
+            if (!$product->getUnit()->getId()->equals($line->unitId)) {
+                $skipped[] = \sprintf('a line of %s is counted in another unit than its stock, so it moved no stock', $product->getReference());
+                continue;
+            }
+            if (!is_numeric($line->quantity)) {
+                $skipped[] = \sprintf('a line of %s has no quantity, so it moved no stock', $product->getReference());
+                continue;
+            }
+            // A named lot is its own group, taken as named; a line naming none joins its product's first-to-expire group.
+            $lot = ProductTracking::None === $product->getTracking() ? null : $line->lotCode;
+            $key = $product->getId()->toRfc4122().(null === $lot ? '' : "\0".$lot);
+            $out[$key] = [$product, ($out[$key][1] ?? new Number(0))->add($line->quantity), $lot, $out[$key][3] ?? ($line instanceof SoldLine ? $line->index : $at)];
+        }
+
+        return [$out, $skipped];
     }
 
     /**

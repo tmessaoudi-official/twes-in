@@ -48,6 +48,7 @@ use App\Shared\Domain\ValueObject\Receiver;
 use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use App\Shared\Infrastructure\Validation\ListLimit;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\ShortSaleConsents;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -137,6 +138,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             input: false,
+            parameters: [ShortSaleConsents::QUERY => new QueryParameter(schema: ['type' => 'string', 'enum' => [ShortSaleConsents::CONFIRMED]], description: ShortSaleConsents::DESCRIPTION)],
             normalizationContext: self::NORMALIZATION,
         ),
         new Post(
@@ -155,6 +157,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             processor: ValidateAndDeliverDeliveryNoteProcessor::class,
             security: 'is_granted("ROLE_USER")',
             read: false,
+            parameters: [ShortSaleConsents::QUERY => new QueryParameter(schema: ['type' => 'string', 'enum' => [ShortSaleConsents::CONFIRMED]], description: ShortSaleConsents::DESCRIPTION)],
             normalizationContext: self::NORMALIZATION,
             denormalizationContext: ['groups' => [self::RECEIVE]],
             validationContext: ['groups' => [self::RECEIVE]],

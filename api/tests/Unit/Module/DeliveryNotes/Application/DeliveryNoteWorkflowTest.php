@@ -58,6 +58,7 @@ use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
+use App\Tests\Support\AllowingSaleStock;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryDeliveryNotes;
@@ -131,6 +132,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
             NoQuotesToDeliver::lines($this->notes),
             NoInvoicesToDeliver::lines($this->notes),
             new ChooseReceiver($this->contacts = new InMemoryReceiverContacts()),
+            new AllowingSaleStock(),
         );
         $now = $this->clock->now();
         $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);

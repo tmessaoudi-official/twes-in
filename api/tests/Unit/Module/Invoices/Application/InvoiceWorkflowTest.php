@@ -67,6 +67,7 @@ use App\Shared\Domain\ValueObject\WatermarkSpread;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
+use App\Tests\Support\AllowingSaleStock;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomerCredits;
@@ -150,6 +151,7 @@ final class InvoiceWorkflowTest extends TestCase
             new DocumentNames($this->taxes),
             new ExcludedTaxFamilies(ShippedFiscalPresets::presets()),
             new DeliveryNoteRoom(new InMemorySourceDeliveryNoteLines(), $this->invoices),
+            new AllowingSaleStock(),
         );
         foreach ([$this->company, $this->globex] as $company) {
             $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));

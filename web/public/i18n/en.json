@@ -165,7 +165,8 @@
     },
     "stock": {
       "read": "See stock",
-      "write": "Record stock movements"
+      "write": "Record stock movements",
+      "sell_short": "Confirm a sale beyond the stock"
     },
     "user": {
       "read": "See members",
@@ -1000,7 +1001,8 @@
       "price_on_cost_change_hint": "When a receipt changes a product’s cost price under its selling price: offer to adjust the price (the margin shows until someone decides), keep the price, or keep the margin."
     },
     "stock": {
-      "cost_on_receive": "What a stock receipt does to a product's cost"
+      "cost_on_receive": "What a stock receipt does to a product's cost",
+      "sale_without_stock": "Sale without recorded stock"
     },
     "customer_screen": {
       "show_stock": "Say on the customer screen whether a product is in stock or not"
@@ -1053,6 +1055,11 @@
           "average": "Apply the weighted average",
           "last": "Apply the cost of the last receipt",
           "manual": "Never change the cost"
+        },
+        "sale_without_stock": {
+          "allow": "Allow and flag",
+          "confirm": "Confirm",
+          "refuse": "Refuse"
         }
       },
       "article": {

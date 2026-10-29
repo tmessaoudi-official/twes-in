@@ -24,11 +24,13 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\CreditNoteRight;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Application\ShortSales\ShortOfStock;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\Exception\InvalidNumbering;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
+use App\Tenancy\Infrastructure\ApiPlatform\Security\ShortSaleConsents;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -43,7 +45,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
  */
 final readonly class IssueInvoiceProcessor implements ProcessorInterface
 {
-    public function __construct(private InvoiceWorkflow $workflow, private InvoiceView $view, private CompanyGuard $guard, private CreditNoteRight $creditNotes)
+    public function __construct(private InvoiceWorkflow $workflow, private InvoiceView $view, private CompanyGuard $guard, private CreditNoteRight $creditNotes, private ShortSaleConsents $consents)
     {
     }
 
@@ -61,13 +63,15 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
         }
 
         try {
-            $invoice = $this->workflow->issue($company, CompanyPath::identifier($uriVariables, 'invoiceId'), $this->guard->account()->getId(), $excessTo);
+            $invoice = $this->workflow->issue($company, CompanyPath::identifier($uriVariables, 'invoiceId'), $this->guard->account()->getId(), $excessTo, $this->consents->of($company, $context));
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvoiceNotDraft|NoNumberingSeries|InvalidNumbering|InvoiceNumberTaken $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidInvoice $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
+        } catch (ShortOfStock $short) {
+            throw DomainRule::shortOfStock($short);
         } catch (MentionDatumMissing $missing) {
             // The setting to give leads, as a refused field does: the screen names it from that word alone.
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $missing->datum, $missing->getMessage()), $missing); // plain-refusal: a setting to complete, not a field of the form

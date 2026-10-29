@@ -30,6 +30,10 @@ use App\Settings\Application\ReadSetting;
 use App\Shared\Application\DomainEvents;
 use App\Shared\Application\Receivers\ChooseReceiver;
 use App\Shared\Application\Receivers\ReceiverChoice;
+use App\Shared\Application\ShortSales\SaleStock;
+use App\Shared\Application\ShortSales\ShortOfStock;
+use App\Shared\Application\ShortSales\ShortSaleConsent;
+use App\Shared\Application\ShortSales\SoldLine;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Receiver;
 use App\Shared\Domain\ValueObject\ReceiverRule;
@@ -69,6 +73,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         private QuoteLines $quoteLines,
         private InvoiceLines $invoiceLines,
         private ChooseReceiver $receivers,
+        private SaleStock $stock,
     ) {
     }
 
@@ -79,12 +84,13 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
      * @throws NoNumberingSeries       when the note's establishment numbers no delivery note
      * @throws InvalidNumbering        when the company's day comes before the month of the series' last number
      * @throws DeliveryNoteNumberTaken when another establishment of the company already gave the number
+     * @throws ShortOfStock            when « Sortie sans stock enregistré » refuses what it takes, or asks it confirmed
      */
-    public function validate(Company $company, Uuid $id, ?Uuid $actorUserId): DeliveryNote
+    public function validate(Company $company, Uuid $id, ?Uuid $actorUserId, ?ShortSaleConsent $consent = null): DeliveryNote
     {
         // Held until this transaction ends and read as it stands, before the series: a request that read the draft
         // before another validated it is refused here, and takes no number.
-        $note = $this->transactions->run(fn (): DeliveryNote => $this->numbered($company, $this->locked($company, $id), $actorUserId));
+        $note = $this->transactions->run(fn (): DeliveryNote => $this->numbered($company, $this->locked($company, $id), $actorUserId, null, $consent));
         $this->events->publish(...$note->releaseEvents());
 
         return $note;
@@ -101,14 +107,15 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
      * @throws InvalidNumbering
      * @throws DeliveryNoteNumberTaken
      * @throws DeliveryNoteTransitionRefused
+     * @throws ShortOfStock
      */
-    public function validateAndDeliver(Company $company, Uuid $id, ?Uuid $actorUserId, ?ReceiverChoice $receivedBy = null): DeliveryNote
+    public function validateAndDeliver(Company $company, Uuid $id, ?Uuid $actorUserId, ?ReceiverChoice $receivedBy = null, ?ShortSaleConsent $consent = null): DeliveryNote
     {
-        $note = $this->transactions->run(function () use ($company, $id, $actorUserId, $receivedBy): DeliveryNote {
+        $note = $this->transactions->run(function () use ($company, $id, $actorUserId, $receivedBy, $consent): DeliveryNote {
             $note = $this->locked($company, $id);
             // Named as it is validated, so the note's issued print says who received.
             $receiver = null === $receivedBy ? null : $this->receiver($company, $note, $receivedBy, $actorUserId);
-            $note = $this->numbered($company, $note, $actorUserId, $receiver);
+            $note = $this->numbered($company, $note, $actorUserId, $receiver, $consent);
 
             return $this->delivered($company, $note, null, null, $actorUserId);
         });
@@ -184,7 +191,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         return $note;
     }
 
-    private function numbered(Company $company, DeliveryNote $note, ?Uuid $actorUserId, ?Receiver $receiver = null): DeliveryNote
+    private function numbered(Company $company, DeliveryNote $note, ?Uuid $actorUserId, ?Receiver $receiver = null, ?ShortSaleConsent $consent = null): DeliveryNote
     {
         $note->assertDraft('is validated');
         // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile.
@@ -193,6 +200,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         }
         $this->chargedByItsRegimes($company, $note);
         $this->stillDeliverable($company, $note);
+        $this->stockedEnough($company, $note, $consent ?? new ShortSaleConsent());
         $allocated = $this->numbers->allocate($company, $note->getEstablishment(), self::DOCUMENT_TYPE);
         if ($this->notes->numberTaken($company->getId(), $allocated->number)) {
             throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()));
@@ -221,6 +229,27 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         $this->record($company, $note, self::DELIVERED, ['deliveryDate' => $note->getHeader()->deliveryDate?->format('Y-m-d')], $actorUserId);
 
         return $note;
+    }
+
+    /**
+     * « Sortie sans stock enregistré », read before the series: a sale its rule refuses, or one it asks confirmed that
+     * nobody who may confirmed, takes no number and moves nothing. A draft is never asked: its line stays red until then.
+     *
+     * @throws ShortOfStock
+     */
+    private function stockedEnough(Company $company, DeliveryNote $note, ShortSaleConsent $consent): void
+    {
+        $lines = [];
+        foreach ($note->getLines() as $index => $line) {
+            // A line handing over an issued invoice's goods takes nothing: the invoice took them.
+            if (null === $line->getSourceInvoiceLineId()) {
+                $lines[] = new SoldLine($index, $line->getProduct()?->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode());
+            }
+        }
+        $refused = [] === $lines ? null : $this->stock->shortfall($company, $note->getEstablishment()->getId(), $consent->roleId, $lines)->refusal($consent);
+        if (null !== $refused) {
+            throw $refused;
+        }
     }
 
     /**

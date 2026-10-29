@@ -44,6 +44,10 @@ use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\DomainEvents;
+use App\Shared\Application\ShortSales\SaleStock;
+use App\Shared\Application\ShortSales\ShortOfStock;
+use App\Shared\Application\ShortSales\ShortSaleConsent;
+use App\Shared\Application\ShortSales\SoldLine;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
@@ -83,6 +87,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
         private DocumentNames $names,
         private ExcludedTaxFamilies $excluded,
         private DeliveryNoteRoom $noteRoom,
+        private SaleStock $stock,
     ) {
     }
 
@@ -104,10 +109,11 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
      *                              must name someone, or names someone where they name nobody
      * @throws InvalidInvoice       on `amountDue` when a credit note comes to more than its invoice invoiced less its earlier credit notes;
      *                              on `excessTo` when part of it was already paid and it does not say where that goes
+     * @throws ShortOfStock         when « Sortie sans stock enregistré » refuses what its own lines take, or asks it confirmed
      */
-    public function issue(Company $company, Uuid $id, ?Uuid $actorUserId, ?CreditExcessTo $excessTo = null): Invoice
+    public function issue(Company $company, Uuid $id, ?Uuid $actorUserId, ?CreditExcessTo $excessTo = null, ?ShortSaleConsent $consent = null): Invoice
     {
-        $invoice = $this->transactions->run(function () use ($company, $id, $actorUserId, $excessTo): Invoice {
+        $invoice = $this->transactions->run(function () use ($company, $id, $actorUserId, $excessTo, $consent): Invoice {
             // Held until this transaction ends and read as it stands, before the series: a request that read the draft
             // before another issued it is refused here, and takes no number.
             $invoice = $this->invoices->lockedOfIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
@@ -142,6 +148,9 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             $vatOnDebits = $fields->offersVatOnDebits() ? $company->getProfile()->vatOnDebits : null;
             // Before the series: a document refused for a mention it cannot print takes no number.
             $mentions = $this->mentions->forIssue($company, $customer, $type, $language, $operations);
+            if (InvoiceType::Invoice === $type) {
+                $this->stockedEnough($company, $invoice, $consent ?? new ShortSaleConsent());
+            }
             $allocated = $this->numbers->allocate($company, $invoice->getEstablishment(), $type->value);
             if ($this->invoices->numberTaken($company->getId(), $type, $allocated->number)) {
                 throw new InvoiceNumberTaken(\sprintf('The number %s is already on another document of this company: give the %s series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $type->value, $invoice->getEstablishment()->getCode()));
@@ -238,6 +247,27 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             if (null !== $leftOutBy) {
                 throw new InvalidInvoice('documentTaxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()), 'regime_excludes_tax', ['tax' => $tax->getCode()]);
             }
+        }
+    }
+
+    /**
+     * « Sortie sans stock enregistré », read before the series, on what the invoice sells itself: the lines a delivery
+     * note handed over left stock with that note. A sale its rule refuses, or one it asks confirmed that nobody who may
+     * confirmed, takes no number and moves nothing; a draft is never asked.
+     *
+     * @throws ShortOfStock
+     */
+    private function stockedEnough(Company $company, Invoice $invoice, ShortSaleConsent $consent): void
+    {
+        $lines = [];
+        foreach ($invoice->getLines() as $index => $line) {
+            if (null !== $line->getProduct() && null === $line->getSourceDeliveryNoteLineId()) {
+                $lines[] = new SoldLine($index, $line->getProduct()->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode());
+            }
+        }
+        $refused = [] === $lines ? null : $this->stock->shortfall($company, $invoice->getEstablishment()->getId(), $consent->roleId, $lines)->refusal($consent);
+        if (null !== $refused) {
+            throw $refused;
         }
     }
 

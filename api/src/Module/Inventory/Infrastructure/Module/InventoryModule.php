@@ -25,6 +25,6 @@ final readonly class InventoryModule implements DeclaresModule
 
     public function manifest(): ModuleManifest
     {
-        return new ModuleManifest(self::KEY, 'modules.inventory', [ProductsModule::KEY], [StockPermission::READ, StockPermission::WRITE]);
+        return new ModuleManifest(self::KEY, 'modules.inventory', [ProductsModule::KEY], [StockPermission::READ, StockPermission::WRITE, StockPermission::SELL_SHORT]);
     }
 }
