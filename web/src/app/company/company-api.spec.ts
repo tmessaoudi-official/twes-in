@@ -67,6 +67,7 @@ describe('CompanyApi, the profile', () => {
     expect(profile.identifierFields[0]?.required).toBe(true);
     expect(profile.vatRegimes).toEqual([{ code: 'standard', label: 'Régime normal' }]);
     expect([profile.vatOnDebits, profile.offersVatOnDebits]).toEqual([false, false]);
+    expect(profile.contactsToCheck).toEqual([]);
   });
 
   it('names a value the preset refused as invalid, not as a member error', async () => {

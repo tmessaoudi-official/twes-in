@@ -61,6 +61,7 @@ const profile: CompanyProfile = {
   vatRegime: 'standard',
   vatOnDebits: false,
   offersVatOnDebits: false,
+  contactsToCheck: [],
   invoiceFooterText: null,
   latePenaltyText: null,
   identifierFields: [
@@ -151,6 +152,22 @@ describe('CompanyProfilePage', () => {
     expect((q('field-identifier__matricule_fiscal') as HTMLInputElement).value).toBe(
       '1234567A/B/M/000',
     );
+  });
+
+  it('says « À vérifier » with each contact field today’s rules refuse, kept from before them, and nothing once none is', async () => {
+    profileSignal.set({ ...profile, contactsToCheck: ['email', 'phone'] });
+    await open();
+
+    const reasons = [...(q('profile-check-reasons')?.querySelectorAll('[data-reason]') ?? [])];
+    expect(reasons.map((reason) => reason.getAttribute('data-reason'))).toEqual(['email', 'phone']);
+    expect(reasons.map((reason) => reason.textContent?.trim())).toEqual([
+      'check.reasons.kept_email',
+      'check.reasons.kept_phone',
+    ]);
+
+    profileSignal.set({ ...profile, contactsToCheck: [] });
+    await settle();
+    expect(q('profile-check')).toBeNull();
   });
 
   // docs/SPEC.md § 7, 2026-09-26 22:24: each company uploads its logo in Paramètres › Entreprise.

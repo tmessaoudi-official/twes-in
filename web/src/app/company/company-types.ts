@@ -101,7 +101,15 @@ export interface CompanyProfile extends CompanyProfileChanges {
   readonly vatRegimes: readonly VatRegimeOption[];
   /** Whether the company's fiscal preset offers the débits option (France). */
   readonly offersVatOnDebits: boolean;
+  /** The contact fields today's rules refuse, kept from before them: « À vérifier » until changed. */
+  readonly contactsToCheck: readonly KeptContact[];
 }
+
+/** A contact field a record keeps from before today's rules, which they would refuse. */
+export type KeptContact = 'email' | 'phone';
+
+/** The contact fields the screens say « À vérifier », in the order they show them. */
+export const KEPT_CONTACTS: readonly KeptContact[] = ['email', 'phone'];
 
 export type CompanyError =
   | 'unknown_user'
@@ -135,6 +143,8 @@ export interface EstablishmentRow {
   readonly codePattern: string;
   /** Whether numbered documents carry the code, which then no longer changes. */
   readonly codeLocked: boolean;
+  /** The contact fields today's rules refuse, kept from before them: « À vérifier » until changed. */
+  readonly contactsToCheck: readonly KeptContact[];
   /** The version read, which a revision sends back (a later one saved elsewhere refuses it). */
   readonly version: number;
 }
@@ -142,7 +152,7 @@ export interface EstablishmentRow {
 /** What a person writes about an establishment; setting isDefault hands the role over from the current default. */
 export type EstablishmentInput = Omit<
   EstablishmentRow,
-  'id' | 'codePattern' | 'codeLocked' | 'version'
+  'id' | 'codePattern' | 'codeLocked' | 'contactsToCheck' | 'version'
 >;
 
 export type ResetPeriod = 'yearly' | 'monthly' | 'never';

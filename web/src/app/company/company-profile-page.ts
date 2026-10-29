@@ -30,11 +30,13 @@ import { RecordBar } from '../shared/form/record-bar';
 import { CompanyClosing } from './company-closing';
 import { FileDrop } from '../shared/form/file-drop';
 import { LOGO_MAX_BYTES } from '../shared/form/file-limits';
+import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 
 /** What the company's documents say about it, revised by whoever holds the settings permission. */
 @Component({
   selector: 'app-company-profile-page',
   imports: [
+    CheckPanel,
     FileDrop,
     MatButtonModule,
     MatCardModule,
@@ -55,6 +57,13 @@ export class CompanyProfilePage implements OnInit {
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
+  /** What today's rules refuse of the contact the company keeps from before them, until it is changed in the form below. */
+  protected readonly contactChecks = computed<readonly CheckItem[]>(() =>
+    (this.facade.profile()?.contactsToCheck ?? []).map((field) => ({
+      id: field,
+      key: `check.reasons.kept_${field}`,
+    })),
+  );
   protected readonly busy = this.facade.busy;
   /** Where the logo is read, or null while the company has none. */
   protected readonly logoUrl = computed(() => {

@@ -115,13 +115,23 @@ final class EstablishmentResource
     #[Groups([self::READ])]
     public bool $codeLocked = false;
 
+    /**
+     * The contact fields today's rules refuse, kept from before a rule: « À vérifier » on the establishment until changed.
+     *
+     * @var list<'email'|'phone'>
+     */
+    #[ApiProperty(writable: false, required: true)]
+    #[Groups([self::READ])]
+    public array $contactsToCheck = [];
+
     /** The version read; a revision sends back the one it was opened at, and one saved since answers 409. */
     #[Assert\NotNull(groups: [RecordVersion::REVISE], payload: ['reason' => 'value_required'])]
     #[Assert\Positive(groups: [RecordVersion::REVISE])]
     #[Groups([self::READ, RecordVersion::REVISE])]
     public ?int $version = null;
 
-    public static function of(Establishment $establishment, string $codePattern, bool $codeLocked): self
+    /** @param list<'email'|'phone'> $contactsToCheck */
+    public static function of(Establishment $establishment, string $codePattern, bool $codeLocked, array $contactsToCheck): self
     {
         $resource = new self();
         $resource->id = $establishment->getId()->toRfc4122();
@@ -137,6 +147,7 @@ final class EstablishmentResource
         $resource->isDefault = $establishment->isDefault();
         $resource->codePattern = $codePattern;
         $resource->codeLocked = $codeLocked;
+        $resource->contactsToCheck = $contactsToCheck;
 
         return $resource;
     }

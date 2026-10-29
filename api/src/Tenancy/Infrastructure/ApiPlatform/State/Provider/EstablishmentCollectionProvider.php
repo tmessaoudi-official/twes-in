@@ -31,6 +31,6 @@ final readonly class EstablishmentCollectionProvider implements ProviderInterfac
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::READ_PERMISSION);
         $pattern = $this->manage->codePattern($company);
 
-        return array_map(fn (Establishment $establishment) => EstablishmentResource::of($establishment, $pattern, $this->manage->isCodeLocked($company, $establishment)), $this->manage->list($company));
+        return array_map(fn (Establishment $establishment) => EstablishmentResource::of($establishment, $pattern, $this->manage->isCodeLocked($company, $establishment), $this->manage->contactsToCheck($company, $establishment)), $this->manage->list($company));
     }
 }

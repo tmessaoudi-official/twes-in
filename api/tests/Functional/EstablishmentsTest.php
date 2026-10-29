@@ -79,6 +79,25 @@ final class EstablishmentsTest extends ApiTestCase
         self::assertSame(['Agence de Sfax-Ville', '74 400'], [$this->json()['name'], $this->json()['phone']]);
     }
 
+    /** An establishment's contact kept from before today's rules is said to check, by field, in the list and on revising. */
+    public function testAnEstablishmentsContactKeptFromBeforeTodaysRulesIsSaidToCheck(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->postJson($this->path(), ['code' => '001', 'name' => 'Agence de Sfax', 'phone' => '74 400 400']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame([], $this->json()['contactsToCheck']);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->em()->getConnection()->executeStatement("UPDATE establishment SET phone = '74 400' WHERE id = ?", [$id]);
+        $this->getJson($this->path());
+        $rows = array_values(array_filter($this->jsonList(), static fn (array $row): bool => $id === ($row['id'] ?? null)));
+        self::assertSame(['phone'], $rows[0]['contactsToCheck'] ?? null);
+
+        $this->revise($id, ['code' => '001', 'name' => 'Agence de Sfax', 'phone' => '74 400 400']);
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['contactsToCheck']);
+    }
+
     public function testACodeWithoutThePresetsShapeIsUnprocessable(): void
     {
         $this->signedIn(['company.read', 'company.settings']);

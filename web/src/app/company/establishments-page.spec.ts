@@ -64,6 +64,7 @@ const head: EstablishmentRow = {
   isDefault: true,
   codePattern: '^[0-9]{3}$',
   codeLocked: false,
+  contactsToCheck: [],
   version: 1,
 };
 
@@ -256,6 +257,27 @@ describe('EstablishmentsPage', () => {
     expect(q('field-error-code')?.textContent).toContain(
       'Des documents numérotés portent ce code : il ne change plus.',
     );
+  });
+
+  it('names above the list each establishment keeping a contact today’s rules refuse, and says it in its editor', async () => {
+    establishments.set([{ ...head, contactsToCheck: ['phone'] }]);
+    await settle();
+
+    const listed = [
+      ...(q('establishments-check-reasons')?.querySelectorAll('[data-reason]') ?? []),
+    ];
+    expect(listed.map((reason) => reason.getAttribute('data-reason'))).toEqual(['e1-phone']);
+    expect(listed[0]?.textContent).toContain('check.establishment_kept_phone');
+
+    q('row-action-edit-e1')!.click();
+    await settle();
+    const own = [...(q('establishment-check-reasons')?.querySelectorAll('[data-reason]') ?? [])];
+    expect(own.map((reason) => reason.getAttribute('data-reason'))).toEqual(['phone']);
+
+    establishments.set([{ ...head, contactsToCheck: [] }]);
+    await settle();
+    expect(q('establishment-check')).toBeNull();
+    expect(q('establishments-check')).toBeNull();
   });
 
   it('revises an establishment by its identifier', async () => {

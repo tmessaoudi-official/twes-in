@@ -18,6 +18,7 @@ const head: EstablishmentRow = {
   isDefault: true,
   codePattern: '^[0-9]{3}$',
   codeLocked: false,
+  contactsToCheck: [],
   version: 1,
 };
 const sfax: EstablishmentInput = { ...head, code: '001', name: 'Agence de Sfax', isDefault: false };

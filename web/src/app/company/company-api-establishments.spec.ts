@@ -40,9 +40,16 @@ describe('CompanyApi establishments and numbering', () => {
 
   it('reads establishments, filling what the API left out', async () => {
     const pending = api.establishments('c1');
-    http
-      .expectOne('/api/companies/c1/establishments')
-      .flush([{ id: 'e1', code: '000', name: 'Acme', isDefault: true, codePattern: '^[0-9]{3}$' }]);
+    http.expectOne('/api/companies/c1/establishments').flush([
+      {
+        id: 'e1',
+        code: '000',
+        name: 'Acme',
+        isDefault: true,
+        codePattern: '^[0-9]{3}$',
+        contactsToCheck: ['phone', 'fax'],
+      },
+    ]);
 
     expect(await pending).toEqual([
       {
@@ -58,6 +65,7 @@ describe('CompanyApi establishments and numbering', () => {
         isDefault: true,
         codePattern: '^[0-9]{3}$',
         codeLocked: false,
+        contactsToCheck: ['phone'],
         version: 0,
       },
     ]);

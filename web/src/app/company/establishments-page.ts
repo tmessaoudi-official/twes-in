@@ -26,6 +26,7 @@ import type { FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { EstablishmentRow } from './company-types';
+import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 import {
   companyAddress,
   ESTABLISHMENT_ADDRESS_FIELDS,
@@ -47,6 +48,7 @@ import type { ArticleSubject } from '../shared/settings/settings-types';
   selector: 'app-establishments-page',
   imports: [
     ArticleDefaults,
+    CheckPanel,
     MatButtonModule,
     MatCardModule,
     MatIconModule,
@@ -97,6 +99,26 @@ export class EstablishmentsPage implements OnInit {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
+  /** Each establishment keeping a contact today's rules refuse, named above the list so it is opened and corrected. */
+  protected readonly contactChecks = computed<readonly CheckItem[]>(() =>
+    this.establishments().flatMap((row) =>
+      row.contactsToCheck.map((field) => ({
+        id: `${row.id}-${field}`,
+        key: `check.establishment_kept_${field}`,
+        params: { establishment: `${row.code} ${row.name}` },
+      })),
+    ),
+  );
+  /** The open establishment's own, read from the list as last loaded, so a save that corrects it clears it at once. */
+  protected readonly editingChecks = computed<readonly CheckItem[]>(() => {
+    const editing = this.editing();
+    if (editing === null || editing === 'new') return [];
+    const row = this.establishments().find((candidate) => candidate.id === editing.id);
+    return (row?.contactsToCheck ?? []).map((field) => ({
+      id: field,
+      key: `check.reasons.kept_${field}`,
+    }));
+  });
   protected readonly rowTestId = (row: EstablishmentRow): string => `establishment-${row.code}`;
 
   protected readonly editing = signal<EstablishmentRow | 'new' | null>(null);

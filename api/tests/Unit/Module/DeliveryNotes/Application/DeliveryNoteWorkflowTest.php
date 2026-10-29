@@ -249,7 +249,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
 
     public function testANumberAnotherEstablishmentOfTheCompanyAlreadyGaveIsRefusedWithTheWayOut(): void
     {
-        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions(), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())))
+        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions, new InMemoryRecordVersions(), $phones = new TypedPhones(new LibPhoneNumbers(new IdentityTranslator())), new \App\Shared\Application\StoredContacts($phones))
             ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);
         // A new site gets its code into the format it copies; someone revising it back out is what this refusal still guards.
         foreach ($this->series->series as $series) {

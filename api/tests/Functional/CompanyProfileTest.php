@@ -102,6 +102,22 @@ final class CompanyProfileTest extends ApiTestCase
         self::assertSame(['Acme SARL', '71 900'], [$this->json()['legalName'], $this->json()['phone']]);
     }
 
+    /** What today's rules refuse of a contact kept from before is said to whoever reads the profile, by field, until it is changed. */
+    public function testAContactKeptFromBeforeTodaysRulesIsSaidToCheckUntilChanged(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->getJson($this->path());
+        self::assertSame([], $this->json()['contactsToCheck']);
+
+        $this->em()->getConnection()->executeStatement("UPDATE company SET email = 'contact@acme', phone = '71 900' WHERE id = ?", [$this->company->getId()->toRfc4122()]);
+        $this->getJson($this->path());
+        self::assertSame(['email', 'phone'], $this->json()['contactsToCheck']);
+
+        $this->sendJson('PUT', $this->path(), $this->profile(['email' => 'contact@acme.tn', 'phone' => '71 900']));
+        self::assertResponseIsSuccessful();
+        self::assertSame(['phone'], $this->json()['contactsToCheck'], 'the field corrected leaves, the one kept stays');
+    }
+
     public function testAnIdentifierThatDoesNotHaveThePresetsShapeIsUnprocessable(): void
     {
         $this->signedIn(['company.read', 'company.settings']);

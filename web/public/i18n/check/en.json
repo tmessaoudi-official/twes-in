@@ -11,7 +11,9 @@
       "unit_to_confirm": "Unit to confirm",
       "to_count": "To count",
       "name_doubtful": "Name in doubt",
-      "identifier_missing": "Registration number missing"
+      "identifier_missing": "Registration number missing",
+      "kept_email": "E-mail today’s rules refuse",
+      "kept_phone": "Phone today’s rules refuse"
     },
     "marked": "Marked by hand",
     "filter": {
@@ -32,8 +34,13 @@
       "title": "To check",
       "missing": "This product lacks:",
       "missing_vendor": "To look at on this vendor:",
-      "missing_customer": "This customer lacks:"
+      "missing_customer": "This customer lacks:",
+      "kept_company": "To review on this company:",
+      "kept_establishment": "To review on this establishment:",
+      "kept_establishments": "To review on these establishments:"
     },
-    "identifier_named": "Missing: {{identifier}}"
+    "identifier_named": "Missing: {{identifier}}",
+    "establishment_kept_email": "{{establishment}}: e-mail today’s rules refuse",
+    "establishment_kept_phone": "{{establishment}}: phone today’s rules refuse"
   }
 }

@@ -44,6 +44,6 @@ final readonly class ReviseEstablishmentProcessor implements ProcessorInterface
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
-        return EstablishmentResource::of($establishment, $this->manage->codePattern($company), $this->manage->isCodeLocked($company, $establishment));
+        return EstablishmentResource::of($establishment, $this->manage->codePattern($company), $this->manage->isCodeLocked($company, $establishment), $this->manage->contactsToCheck($company, $establishment));
     }
 }

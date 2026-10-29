@@ -17,6 +17,7 @@ use App\Audit\Domain\ValueObject\Recorded;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
+use App\Shared\Application\StoredContacts;
 use App\Shared\Application\Transactions;
 use App\Shared\Application\TypedPhones;
 use App\Shared\Domain\Service\ContactRules;
@@ -53,7 +54,19 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
         private Transactions $transactions,
         private RecordVersions $versions,
         private TypedPhones $phones,
+        private StoredContacts $contacts,
     ) {
+    }
+
+    /**
+     * The establishment's e-mail and phone that today's rules refuse, kept from before a rule until someone changes them,
+     * read by its company's country as its form reads them: what its page says « À vérifier ».
+     *
+     * @return list<'email'|'phone'>
+     */
+    public function contactsToCheck(Company $company, Establishment $establishment): array
+    {
+        return array_keys($this->contacts->refused($establishment->getEmail(), $establishment->getPhone(), $company->getCountryCode()));
     }
 
     /** @return list<Establishment> the default first, then by code */

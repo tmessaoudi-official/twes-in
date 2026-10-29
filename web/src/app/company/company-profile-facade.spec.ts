@@ -27,6 +27,7 @@ const changes: CompanyProfileChanges = {
 const saved: CompanyProfile = {
   ...changes,
   offersVatOnDebits: false,
+  contactsToCheck: [],
   name: 'Demo',
   countryCode: 'TN',
   writable: true,

@@ -160,6 +160,15 @@ final class CompanyProfileResource
     #[Groups([self::READ, self::WRITE])]
     public bool $vatOnDebits = false;
 
+    /**
+     * The contact fields today's rules refuse, kept from before a rule: « À vérifier » on the profile until changed.
+     *
+     * @var list<'email'|'phone'>
+     */
+    #[ApiProperty(writable: false, required: true)]
+    #[Groups([self::READ])]
+    public array $contactsToCheck = [];
+
     /** Whether the company's fiscal preset offers the débits option, so a form shows it. */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]

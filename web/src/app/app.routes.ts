@@ -770,6 +770,7 @@ export const routes: Routes = [
             title: 'nav.company_profile',
             // route-open: « Fermer l'entreprise » sits on this page, and the owner of a company its subscription made
             // read-only, which narrows company.settings away, must still reach it to close the company.
+            canActivate: [textsOpened(CHECK_TEXTS)],
             loadComponent: () =>
               import('./company/company-profile-page').then((m) => m.CompanyProfilePage),
           },
@@ -814,7 +815,10 @@ export const routes: Routes = [
           {
             path: 'company/establishments',
             title: 'nav.establishments',
-            canActivate: [permissionGuard(SETTINGS_NAV, '/company/establishments')],
+            canActivate: [
+              permissionGuard(SETTINGS_NAV, '/company/establishments'),
+              textsOpened(CHECK_TEXTS),
+            ],
             loadComponent: () =>
               import('./company/establishments-page').then((m) => m.EstablishmentsPage),
           },

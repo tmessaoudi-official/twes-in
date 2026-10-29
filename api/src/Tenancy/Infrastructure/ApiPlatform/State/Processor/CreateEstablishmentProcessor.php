@@ -41,6 +41,6 @@ final readonly class CreateEstablishmentProcessor implements ProcessorInterface
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
 
-        return EstablishmentResource::of($establishment, $this->manage->codePattern($company), false);
+        return EstablishmentResource::of($establishment, $this->manage->codePattern($company), false, $this->manage->contactsToCheck($company, $establishment));
     }
 }

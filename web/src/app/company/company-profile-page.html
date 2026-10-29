@@ -79,6 +79,14 @@
       </mat-card-content>
     </mat-card>
 
+    @if (contactChecks().length > 0) {
+      <app-check-panel
+        testId="profile-check"
+        heading="check.panel.kept_company"
+        [items]="contactChecks()"
+      />
+    }
+
     @if (descriptor(); as descriptor) {
       @if (form(); as form) {
         @if (sync.changedBy(); as changedBy) {

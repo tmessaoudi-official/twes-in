@@ -11,7 +11,9 @@
       "unit_to_confirm": "Unité à confirmer",
       "to_count": "À compter",
       "name_doubtful": "Nom douteux",
-      "identifier_missing": "Numéro d’identification manquant"
+      "identifier_missing": "Numéro d’identification manquant",
+      "kept_email": "E-mail que les règles d’aujourd’hui refusent",
+      "kept_phone": "Téléphone que les règles d’aujourd’hui refusent"
     },
     "marked": "Marqué à la main",
     "filter": {
@@ -32,8 +34,13 @@
       "title": "À vérifier",
       "missing": "Il manque à cet article :",
       "missing_vendor": "À revoir sur ce fournisseur :",
-      "missing_customer": "Il manque à ce client :"
+      "missing_customer": "Il manque à ce client :",
+      "kept_company": "À revoir sur cette entreprise :",
+      "kept_establishment": "À revoir sur cet établissement :",
+      "kept_establishments": "À revoir sur ces établissements :"
     },
-    "identifier_named": "Manque : {{identifier}}"
+    "identifier_named": "Manque : {{identifier}}",
+    "establishment_kept_email": "{{establishment}} : e-mail que les règles d’aujourd’hui refusent",
+    "establishment_kept_phone": "{{establishment}} : téléphone que les règles d’aujourd’hui refusent"
   }
 }

@@ -28,6 +28,7 @@ const profile: CompanyProfile = {
   vatRegime: 'standard',
   vatOnDebits: false,
   offersVatOnDebits: false,
+  contactsToCheck: [],
   invoiceFooterText: null,
   latePenaltyText: null,
   identifierFields: [

@@ -17,6 +17,7 @@ import type {
   WorkingCompanyWorkingCompanyRead,
 } from '../api/types.gen';
 import {
+  KEPT_CONTACTS,
   RESET_PERIODS,
   type CompanyError,
   type CompanyOption,
@@ -24,6 +25,7 @@ import {
   type CompanyProfileChanges,
   type EstablishmentInput,
   type EstablishmentRow,
+  type KeptContact,
   type MemberRole,
   type MemberRow,
   type NumberingChanges,
@@ -353,6 +355,11 @@ export class CompanyApi {
   }
 }
 
+/** The contact fields the API says « À vérifier », those the screens know, in the order they show them. */
+function keptContacts(raw: readonly string[] | undefined): KeptContact[] {
+  return KEPT_CONTACTS.filter((field) => (raw ?? []).includes(field));
+}
+
 function toProfile(raw: CompanyProfileCompanyProfileRead): CompanyProfile {
   return {
     name: raw.name ?? '',
@@ -375,6 +382,7 @@ function toProfile(raw: CompanyProfileCompanyProfileRead): CompanyProfile {
     vatRegime: raw.vatRegime ?? 'standard',
     vatOnDebits: raw.vatOnDebits ?? false,
     offersVatOnDebits: raw.offersVatOnDebits ?? false,
+    contactsToCheck: keptContacts(raw.contactsToCheck),
     invoiceFooterText: raw.invoiceFooterText ?? null,
     latePenaltyText: raw.latePenaltyText ?? null,
     identifierFields: (raw.identifierFields ?? []).map((field) => ({
@@ -448,6 +456,7 @@ function toEstablishment(row: EstablishmentEstablishmentRead): EstablishmentRow 
     isDefault: row.isDefault ?? false,
     codePattern: row.codePattern ?? '',
     codeLocked: row.codeLocked ?? false,
+    contactsToCheck: keptContacts(row.contactsToCheck),
     // Every read carries it; a 0 would be refused by the API rather than taken for a version.
     version: row.version ?? 0,
   };

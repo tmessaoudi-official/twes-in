@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\Output;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
+use App\Shared\Application\StoredContacts;
 use App\Shared\Infrastructure\Intl\GroupedPhones;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Model\Company;
@@ -26,6 +27,7 @@ final readonly class CompanyProfileRepresentation
         private FiscalPresets $presets,
         private TranslatorInterface $translator,
         private CompanyLogo $logo,
+        private StoredContacts $contacts,
     ) {
     }
 
@@ -57,6 +59,7 @@ final readonly class CompanyProfileRepresentation
         $resource->latePenaltyText = $profile->latePenaltyText;
         $resource->vatOnDebits = $profile->vatOnDebits;
         $resource->offersVatOnDebits = $preset->invoiceFields->offersVatOnDebits();
+        $resource->contactsToCheck = array_keys($this->contacts->refused($profile->email, $profile->phone, $company->getCountryCode()));
         foreach ($preset->identifiers as $identifier) {
             $resource->identifierFields[] = new CompanyIdentifierField(
                 $identifier->key,

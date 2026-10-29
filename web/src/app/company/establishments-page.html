@@ -24,6 +24,13 @@
   }
 
   @if (form(); as form) {
+    @if (editingChecks().length > 0) {
+      <app-check-panel
+        testId="establishment-check"
+        heading="check.panel.kept_establishment"
+        [items]="editingChecks()"
+      />
+    }
     @if (sync.changedBy(); as changedBy) {
       <app-record-changed
         [changedBy]="changedBy"
@@ -72,6 +79,14 @@
         </mat-card-content>
       </mat-card>
     }
+  }
+
+  @if (contactChecks().length > 0) {
+    <app-check-panel
+      testId="establishments-check"
+      heading="check.panel.kept_establishments"
+      [items]="contactChecks()"
+    />
   }
 
   <app-data-list

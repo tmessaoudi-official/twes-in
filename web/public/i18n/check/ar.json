@@ -11,7 +11,9 @@
       "unit_to_confirm": "وحدة القيس للتأكيد",
       "to_count": "للعدّ",
       "name_doubtful": "اسم مشكوك فيه",
-      "identifier_missing": "رقم التعريف ناقص"
+      "identifier_missing": "رقم التعريف ناقص",
+      "kept_email": "بريد إلكتروني ترفضه قواعد اليوم",
+      "kept_phone": "هاتف ترفضه قواعد اليوم"
     },
     "marked": "عليه علامة يدوية",
     "filter": {
@@ -32,8 +34,13 @@
       "title": "للتحقق",
       "missing": "ينقص هذا المنتج:",
       "missing_vendor": "ما يجب مراجعته لدى هذا المزوّد:",
-      "missing_customer": "ينقص هذا الحريف:"
+      "missing_customer": "ينقص هذا الحريف:",
+      "kept_company": "للمراجعة في هذه الشركة:",
+      "kept_establishment": "للمراجعة في هذه المؤسسة:",
+      "kept_establishments": "للمراجعة في هذه المؤسسات:"
     },
-    "identifier_named": "ينقص: {{identifier}}"
+    "identifier_named": "ينقص: {{identifier}}",
+    "establishment_kept_email": "{{establishment}}: بريد إلكتروني ترفضه قواعد اليوم",
+    "establishment_kept_phone": "{{establishment}}: هاتف ترفضه قواعد اليوم"
   }
 }
