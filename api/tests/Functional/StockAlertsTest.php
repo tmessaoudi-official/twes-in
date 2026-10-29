@@ -32,6 +32,8 @@ final class StockAlertsTest extends ApiTestCase
     private string $laptopId;
     private string $keeperId;
     private string $bossId;
+    /** what the laptop is counted in, which every quantity told of it is said with */
+    private string $unit;
 
     protected function setUp(): void
     {
@@ -40,6 +42,7 @@ final class StockAlertsTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
+        $this->unit = $piece->getName();
         $now = new \DateTimeImmutable();
         $laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '900'), $piece, null, [], $now);
         $this->em()->persist($laptop);
@@ -69,7 +72,7 @@ final class StockAlertsTest extends ApiTestCase
         self::assertIsString($raw);
         $payload = json_decode($raw, true);
         self::assertIsArray($payload);
-        self::assertSame(['ART-001', '-3.000', $this->laptopId], [$payload['reference'], $payload['difference'], $payload['product_id']]);
+        self::assertSame(['ART-001', '-3.000', $this->unit, $this->laptopId], [$payload['reference'], $payload['difference'], $payload['unit'] ?? null, $payload['product_id']]);
     }
 
     public function testStockThatFallsToItsReorderPointTellsAllTheKeepersOnceAndNotWhileItStaysThere(): void
@@ -117,7 +120,7 @@ final class StockAlertsTest extends ApiTestCase
         self::assertCount(2, $told, 'twenty put aside leaves four to sell: every keeper is told');
         $payload = json_decode(\is_string($told[0]['payload']) ? $told[0]['payload'] : '', true);
         self::assertIsArray($payload);
-        self::assertSame('4.000', $payload['on_hand']);
+        self::assertSame(['4.000', $this->unit], [$payload['on_hand'], $payload['unit'] ?? null]);
 
         $this->move($aside->getId()->toRfc4122(), $site, '5');
         self::assertCount(2, $this->told('stock.low'), 'goods coming back from quarantine are no fall');

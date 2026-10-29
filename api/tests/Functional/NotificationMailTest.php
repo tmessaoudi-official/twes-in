@@ -103,13 +103,14 @@ final class NotificationMailTest extends ApiTestCase
     public function testAQuantityIsWrittenAsItsReadersLanguageWritesNumbersWithNoTrailingZero(): void
     {
         $lea = $this->member('lea@twes.local', 'fr', 'keeper');
-        $this->tell($this->keeper, 'stock.low', ['on_hand' => '3.500', 'point' => '1250.000'] + self::PRODUCT);
-        $this->tell($lea, 'stock.count_difference', ['product' => 'Vis M6', 'reference' => 'VIS-6', 'location' => 'A1', 'difference' => '-2.000']);
+        $this->tell($this->keeper, 'stock.low', ['on_hand' => '3.500', 'point' => '1250.000', 'unit' => 'kg'] + self::PRODUCT);
+        $this->tell($lea, 'stock.count_difference', ['product' => 'Vis M6', 'reference' => 'VIS-6', 'location' => 'A1', 'difference' => '-2.000', 'unit' => 'm']);
         self::assertSame(2, $this->deliverQueued());
 
+        // Each with the unit it is counted in: « -2 » metres is not « -2 » pieces.
         $bodies = $this->bodiesTo();
-        self::assertStringContainsString('Vis M6 (VIS-6) is down to 3.5 at Siège, at or under its reorder point of 1,250.', $bodies['keeper@twes.local']);
-        self::assertStringContainsString('à A1 a trouvé un écart de -2.', $bodies['lea@twes.local']);
+        self::assertStringContainsString('Vis M6 (VIS-6) is down to 3.5 kg at Siège, at or under its reorder point of 1,250 kg.', $bodies['keeper@twes.local']);
+        self::assertStringContainsString('à A1 a trouvé un écart de -2 m.', $bodies['lea@twes.local']);
     }
 
     public function testADayAndAMomentAreWrittenAsTheReaderChoseAndEachReaderInTurnGetsTheirOwn(): void

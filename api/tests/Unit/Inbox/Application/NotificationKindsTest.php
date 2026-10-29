@@ -45,6 +45,17 @@ final class NotificationKindsTest extends TestCase
         self::assertFalse($kinds->has('membership.removed'));
     }
 
+    public function testAKindSayingAQuantityNamesTheFieldOfItsUnit(): void
+    {
+        // « -3 » kilograms is not « -3 » pieces: a quantity is said with the unit it is counted in.
+        self::assertSame('unit', new NotificationKind('stock.low', NotificationAudience::Company, quantities: ['on_hand'], unit: 'unit')->unit);
+        self::assertNull(new NotificationKind('stock.imported', NotificationAudience::Company)->unit, 'a kind saying no quantity needs no unit');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('stock.low');
+        new NotificationKind('stock.low', NotificationAudience::Company, quantities: ['on_hand']);
+    }
+
     public function testAKindDeclaredTwiceIsAProgrammingError(): void
     {
         $this->expectException(\LogicException::class);

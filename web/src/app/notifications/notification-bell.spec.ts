@@ -471,15 +471,16 @@ describe('NotificationBell', () => {
     ]);
   });
 
-  // The API sends a quantity at its column's three decimals and a moment as the company's day and hour: the bell writes
-  // the quantity without the zeros that say nothing and the day in the screen's order, and anything else as it came.
+  // The API sends a quantity at its column's three decimals with the unit it is counted in, and a moment as the company's
+  // day and hour: the bell writes the quantity without the zeros that say nothing and with its unit, the day in the
+  // screen's order, and anything else as it came (an older notice with no unit says the number alone).
   it('writes the quantities and moments it says as the screen writes them', async () => {
     items.set([
       {
         ...unreadEntry,
         id: 'n6',
         type: 'stock.low',
-        payload: { product: 'Vis', on_hand: '1234.500', point: '2000.000' },
+        payload: { product: 'Vis', on_hand: '1234.500', point: '2000.000', unit: 'kg' },
       },
       {
         ...unreadEntry,
@@ -504,7 +505,7 @@ describe('NotificationBell', () => {
     await open(fixture);
 
     expect(all('notification-text').map((item) => text(item))).toEqual([
-      'Vis est tombé à 1 234,5, seuil 2 000',
+      'Vis est tombé à 1 234,5 kg, seuil 2 000 kg',
       'Support ouvert jusqu’au 20/10/2026 14:30',
       'Clou est tombé à beaucoup, seuil 100',
       'Support ouvert jusqu’au demain',

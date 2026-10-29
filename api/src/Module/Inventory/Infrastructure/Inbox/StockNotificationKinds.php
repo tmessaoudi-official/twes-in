@@ -20,10 +20,10 @@ final readonly class StockNotificationKinds implements DeclaresNotificationKinds
 {
     public function notificationKinds(): array
     {
-        // The quantities each one writes; the import's are counts of lines, written as they are.
+        // The quantities each one writes, with the product's unit; the import's are counts of lines, written as they are.
         $quantities = [TellStockKeepers::COUNT_DIFFERENCE => ['difference'], TellStockKeepers::LOW => ['on_hand', 'point']];
 
-        return array_map(static fn (string $type): NotificationKind => new NotificationKind($type, NotificationAudience::Company, InventoryModule::KEY, TellStockKeepers::PERMISSION, quantities: $quantities[$type] ?? []), [
+        return array_map(static fn (string $type): NotificationKind => new NotificationKind($type, NotificationAudience::Company, InventoryModule::KEY, TellStockKeepers::PERMISSION, quantities: $quantities[$type] ?? [], unit: isset($quantities[$type]) ? 'unit' : null), [
             TellStockKeepers::LINES_LEFT_OUT,
             TellStockKeepers::MOVED_NO_STOCK,
             TellStockKeepers::INVOICE_LINES_LEFT_OUT,

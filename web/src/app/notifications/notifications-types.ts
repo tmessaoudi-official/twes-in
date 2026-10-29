@@ -88,6 +88,8 @@ export interface NotificationRecord {
   readonly amounts?: readonly string[];
   /** the payload's quantities, sent at their column's decimals, which the words write without the zeros that say nothing */
   readonly quantities?: readonly string[];
+  /** the payload's field naming the unit the quantities are counted in, written after each: « -3 kg » is not « -3 » pieces */
+  readonly unit?: string;
   /** the payload's moments, sent as the company's `YYYY-MM-DD HH:mm`, which the words write in the screen's order of a day */
   readonly moments?: readonly string[];
 }
@@ -134,6 +136,7 @@ const RECORDS = new Map<string, NotificationRecord>([
       route: '/stock/movements',
       permission: 'stock.read',
       quantities: ['difference'],
+      unit: 'unit',
     },
   ],
   // A file whose counts found differences leads to the movements too, where each count it wrote reads as the import's.
@@ -145,6 +148,7 @@ const RECORDS = new Map<string, NotificationRecord>([
       route: '/stock',
       permission: 'stock.read',
       quantities: ['on_hand', 'point'],
+      unit: 'unit',
     },
   ],
   // An invoice that took a customer past their credit limit leads to the invoices, where the account is read.

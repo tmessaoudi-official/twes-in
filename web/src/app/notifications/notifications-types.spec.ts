@@ -89,6 +89,7 @@ describe('stock alerts', () => {
       route: '/stock',
       permission: 'stock.read',
       quantities: ['on_hand', 'point'],
+      unit: 'unit',
     });
   });
 });
@@ -172,8 +173,22 @@ describe('amounts in a notification', () => {
 describe('quantities and moments in a notification', () => {
   it('are named by each type that says one', () => {
     expect(notificationRecord('stock.count_difference').quantities).toEqual(['difference']);
+    expect(notificationRecord('stock.count_difference').unit).toBe('unit');
     expect(notificationRecord('stock.imported').quantities).toBeUndefined();
     expect(notificationRecord('support_access.granted').moments).toEqual(['until']);
+  });
+});
+
+// « -3 » kilograms is not « -3 » pieces: whatever says a quantity names the payload's field holding its unit.
+describe('a quantity in a notification', () => {
+  it('is said with its unit by every type that says one', () => {
+    const saying = KNOWN_NOTIFICATION_TYPES.map(
+      (type) => [type, notificationRecord(type)] as const,
+    ).filter(([, record]) => (record.quantities ?? []).length > 0);
+    expect(saying.map(([type]) => type)).toEqual(['stock.count_difference', 'stock.low']);
+    for (const [type, record] of saying) {
+      expect([type, record.unit]).toEqual([type, 'unit']);
+    }
   });
 });
 

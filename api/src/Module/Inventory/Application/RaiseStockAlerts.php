@@ -77,6 +77,7 @@ final readonly class RaiseStockAlerts
             'product' => $product->getDetails()->name,
             'location' => $movement->getLocation()->getCode(),
             'difference' => $movement->getQuantity(),
+            'unit' => $product->getUnit()->getName(),
         ]);
     }
 
@@ -100,6 +101,7 @@ final readonly class RaiseStockAlerts
                 'establishment' => $establishment->getName(),
                 'on_hand' => $after->value,
                 'point' => $point->getQuantity(),
+                'unit' => $product->getUnit()->getName(),
             ]);
         }
     }

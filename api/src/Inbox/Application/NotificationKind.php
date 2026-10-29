@@ -27,6 +27,8 @@ final readonly class NotificationKind
      * @param list<string> $days       the payload's days (`Y-m-d`), written in the reader's order of day, month and year
      * @param list<string> $moments    the payload's moments (`Y-m-d H:i`, in the company's time zone), the same with the time
      * @param list<string> $quantities the payload's quantities, decimal strings written with no trailing zero
+     * @param string|null  $unit       the payload's field holding the unit the quantities are counted in, written after
+     *                                 each (« -3 kg » is not « -3 » pieces); required of a kind that says a quantity
      */
     public function __construct(
         public string $type,
@@ -39,6 +41,10 @@ final readonly class NotificationKind
         public array $days = [],
         public array $moments = [],
         public array $quantities = [],
+        public ?string $unit = null,
     ) {
+        if ([] !== $quantities && null === $unit) {
+            throw new \LogicException(\sprintf('The notification kind "%s" says a quantity without naming the field of its unit.', $type));
+        }
     }
 }

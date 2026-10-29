@@ -22,7 +22,7 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * A notification as a mail, in its reader's language: the kind's short name (and its company) as the subject, the
- * sentence the bell says as the body, its amounts, quantities, days and moments written as the reader writes them (as a
+ * sentence the bell says as the body, its amounts, quantities (with their unit), days and moments written as the reader writes them (as a
  * printed document does, from the decimal string and never through a float). Its stop link, also given as List-Unsubscribe, opens the page whose button turns
  * that kind's mail off; it decides nothing by itself, since mail clients and scanners open links on their own.
  */
@@ -90,6 +90,10 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
         $payload = $mail->payload;
         $kind = $this->kinds->get($mail->type);
         $scale = $payload['scale'] ?? null;
+        // An older notice names no unit: its quantities are written alone, as they were.
+        $field = $kind?->unit;
+        $unit = null === $field ? null : $payload[$field] ?? null;
+        $unit = \is_string($unit) && '' !== $unit ? ' '.$unit : '';
         $parameters = [];
         foreach ($payload as $name => $value) {
             $parameters['%'.$name.'%'] = match (true) {
@@ -97,7 +101,7 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
                 \is_bool($value) => $value ? '1' : '0',
                 !\is_string($value) || null === $kind => (string) $value,
                 \is_int($scale) && \in_array($name, $kind->amounts, true) => $this->figures->amount($value, $scale, $mail->locale, $mail->numberFormat),
-                \in_array($name, $kind->quantities, true) => $this->figures->quantity($value, $mail->locale, $mail->numberFormat),
+                \in_array($name, $kind->quantities, true) => $this->figures->quantity($value, $mail->locale, $mail->numberFormat).$unit,
                 \in_array($name, $kind->days, true) => $this->figures->day($value, $mail->locale, $mail->dateFormat),
                 \in_array($name, $kind->moments, true) => $this->figures->moment($value, $mail->locale, $mail->dateFormat),
                 default => $value,
