@@ -48,6 +48,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
         private SecurityNotices $notices,
         private LiftPasswordLock $locks,
         private CompanyOwners $owners,
+        private AccountChanges $accounts,
         private ClockInterface $clock,
     ) {
     }
@@ -105,6 +106,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
                 $user->rotateSecurityStamp();
                 $this->users->save($user);
                 $this->record($user, self::DEACTIVATED, $operatorId);
+                $this->accounts->said($user->getId(), self::DEACTIVATED);
                 $this->notices->tell($user->getId(), SecurityChange::OperatorDeactivated);
             }
 
@@ -121,6 +123,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
                 $user->setActive(true);
                 $this->users->save($user);
                 $this->record($user, self::REACTIVATED, $operatorId);
+                $this->accounts->said($user->getId(), self::REACTIVATED);
                 $this->notices->tell($user->getId(), SecurityChange::OperatorReactivated);
             }
 

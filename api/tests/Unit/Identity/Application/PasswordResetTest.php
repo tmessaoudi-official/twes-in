@@ -187,7 +187,7 @@ final class PasswordResetTest extends TestCase
             }
         };
 
-        return new ResetPassword($this->users, $this->resets, $hasher, new NewPasswordPolicy(new FakeBreachedPasswordCheck(false)), $this->audit, $this->transactions, $this->clock, $this->sessions, new RecordedSecurityNotices());
+        return new ResetPassword($this->users, $this->resets, $hasher, new NewPasswordPolicy(new FakeBreachedPasswordCheck(false)), $this->audit, $this->transactions, $this->clock, $this->sessions, new RecordedSecurityNotices(), new \App\Identity\Application\Account\AccountChanges(new \App\Tests\Support\InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()));
     }
 
     private function assertNotUsable(callable $act): void

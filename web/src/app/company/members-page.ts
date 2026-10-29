@@ -300,7 +300,8 @@ export class MembersPage implements OnInit {
     const companyId = this.company()?.id;
     if (companyId) {
       this.live.reloadOn(
-        ['membership', 'invitation', 'role'],
+        // An account's lock changes outside the company, by a guess, the operator or the mailed link: it is said here too.
+        ['membership', 'invitation', 'role', 'account'],
         () => this.members.load(companyId),
         this.destroyRef,
       );

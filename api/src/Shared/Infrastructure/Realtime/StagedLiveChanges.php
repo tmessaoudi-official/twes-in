@@ -31,7 +31,8 @@ use Symfony\Contracts\Service\ResetInterface;
  * editor must hear that its own record is gone. The tab itself never hears its echo through the connection, so what a
  * request from a tab said is kept for its answer (`LiveChangesAnswer`), and its own screens hear it there. The kinds
  * /platform shows (`app.realtime.platform_kinds`) are said on the platform's channel too, to operators who work in no
- * company, by kind, record and action alone: who did it, and every other kind, stay the company's.
+ * company, by kind, record and action alone, when they are a company's or an account's: who did it, and every other
+ * kind, stay the company's, and one said to its actor alone stays theirs.
  */
 final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetInterface
 {
@@ -149,7 +150,7 @@ final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetIn
             ...(null === $count ? [] : ['bulk' => true, 'count' => $count]),
         ];
         $origin = $this->origin();
-        if (null !== $change->companyId && \in_array($change->kind, $this->platformKinds, true)) {
+        if ((null !== $change->companyId || null !== $change->forUserId) && \in_array($change->kind, $this->platformKinds, true)) {
             $this->publisher->push(RealtimeTokens::PLATFORM, ['type' => 'changed', ...$said, 'actor' => null, 'origin' => null]);
         }
         $this->publisher->push($channel, [

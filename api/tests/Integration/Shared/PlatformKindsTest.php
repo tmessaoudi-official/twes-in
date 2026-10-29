@@ -13,7 +13,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
  * What the API says on the platform's channel (`app.realtime.platform_kinds`) is what /platform reloads on
- * (`PLATFORM_KINDS`, web/src/app/platform/platform-kinds.ts), and each is a kind some use case records: a kind said
+ * (`PLATFORM_KINDS`, web/src/app/platform/platform-kinds.ts), and each is a kind some use case records or says (an
+ * account's lock, said without an audit entry of that kind, as `AccountChanges::KIND`): a kind said
  * and never heard, or heard and never said, leaves the operator's page stale with no error anywhere.
  */
 final class PlatformKindsTest extends KernelTestCase
@@ -34,7 +35,7 @@ final class PlatformKindsTest extends KernelTestCase
         $recorded = [];
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root.'/api/src', \FilesystemIterator::SKIP_DOTS)) as $file) {
             if ($file instanceof \SplFileInfo && 'php' === $file->getExtension()) {
-                preg_match_all("/ENTITY_TYPE = '([a-z_]+)'/", (string) file_get_contents($file->getPathname()), $types);
+                preg_match_all("/(?:ENTITY_TYPE|KIND) = '([a-z_]+)'/", (string) file_get_contents($file->getPathname()), $types);
                 $recorded = [...$recorded, ...$types[1]];
             }
         }

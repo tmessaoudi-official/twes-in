@@ -175,7 +175,7 @@ parameters:
     app.realtime.push_enabled: true
     # What /platform shows of a company, said to operators on the platform's channel by kind alone: a support grant, the
     # company's standing and approval, an owner invited or joined, its subscription and the payments it declares.
-    app.realtime.platform_kinds: [company, signup, invitation, membership, support_grant, subscription, payment_declaration]
+    app.realtime.platform_kinds: [company, signup, invitation, membership, support_grant, subscription, payment_declaration, account]
     # How many notifications the centre returns at once; the unread count always covers all of them.
     app.inbox.page_size: 50
     # PDFs are rendered by a Gotenberg container (docs/SPEC.md § 2 PDF).

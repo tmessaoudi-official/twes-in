@@ -36,7 +36,7 @@ final class RecordFailedLoginTest extends TestCase
         $this->audit = new InMemoryAuditTrail();
         $this->notices = new RecordedSecurityNotices();
         $this->clock = new MockClock('2026-09-09 12:00:00');
-        $this->useCase = new RecordFailedLogin($this->users, $this->audit, $this->notices, $this->clock, 5, 'PT15M');
+        $this->useCase = new RecordFailedLogin($this->users, $this->audit, $this->notices, new \App\Identity\Application\Account\AccountChanges(new \App\Tests\Support\InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), new \App\Tests\Support\FakeTransactions(), $this->clock, 5, 'PT15M');
     }
 
     public function testAWrongPasswordCountsAgainstTheAccountAndIsAudited(): void

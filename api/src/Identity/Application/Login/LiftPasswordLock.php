@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Identity\Application\Account\AccountChanges;
 use App\Identity\Application\Account\AccountNotFound;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
@@ -37,6 +38,7 @@ final readonly class LiftPasswordLock implements DeclaresAuditActions
         private UserRepository $users,
         private AuditTrail $audit,
         private SecurityNotices $notices,
+        private AccountChanges $accounts,
         private ClockInterface $clock,
         private Transactions $transactions,
     ) {
@@ -59,6 +61,7 @@ final readonly class LiftPasswordLock implements DeclaresAuditActions
             $this->users->save($user);
             $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $user->getId(), self::LIFTED, $actorUserId, [], $companyId));
             $this->notices->tell($user->getId(), $told);
+            $this->accounts->said($user->getId(), self::LIFTED);
 
             return true;
         });

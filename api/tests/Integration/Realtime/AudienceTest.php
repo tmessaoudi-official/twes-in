@@ -22,7 +22,7 @@ final class AudienceTest extends TestCase
 {
     /** Each kind written with no company, and who hears it. */
     private const array AUDIENCE = [
-        'user' => 'a person\'s own account (factors, password, sessions, proofs, their deletion asked or cancelled), said to their own tabs; a sign-in that failed names nobody; an operator\'s action on an account and the worker\'s deletion reach no other screen, the accounts list read again when opened',
+        'user' => 'a person\'s own account (factors, password, sessions, proofs, their deletion asked or cancelled), said to their own tabs; a sign-in that failed names nobody; its lock, the lift and the operator\'s deactivation are said again by AccountChanges to its companies\' members lists and to the platform; the worker\'s deletion and the operator\'s ending of sessions reach no other screen, the accounts list read again when opened',
         'legal_text' => 'written by the operators, whose platform channel says only `app.realtime.platform_kinds`: the legal pages read it when opened',
         'company' => 'a company removed by the worker, its sandbox or its retention over: no member is left, the operators\' list read again when opened',
     ];

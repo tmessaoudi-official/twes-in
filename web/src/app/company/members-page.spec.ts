@@ -27,6 +27,7 @@ import { MEMBERS_LIST, MembersPage } from './members-page';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -195,6 +196,14 @@ describe('MembersPage', () => {
 
   it('loads the members of the company being worked in', () => {
     expect(members.load).toHaveBeenCalledWith('c1');
+  });
+
+  it('reads the members again when an account’s lock changes outside the company, by a guess or the operator', async () => {
+    members.load.mockClear();
+
+    await announceSaved('account', 'u7', null, 'account.locked');
+
+    expect(members.load).toHaveBeenCalledExactlyOnceWith('c1');
   });
 
   it('shows every member it was given', () => {

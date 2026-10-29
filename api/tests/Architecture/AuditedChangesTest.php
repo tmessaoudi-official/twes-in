@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace App\Tests\Architecture;
 
 use App\Audit\Application\AuditTrail;
-use App\Identity\Application\Login\RecordFailedLogin;
 use App\Identity\Application\Login\RecordLogout;
 use App\Identity\Application\Login\RecordSuccessfulLogin;
 use App\Identity\Application\Mfa\Passkey\FinishPasskeyLogin;
@@ -26,7 +25,6 @@ final class AuditedChangesTest extends TestCase
 {
     /** Use cases whose audit row is the record of an authentication event, kept even when the request that caused it fails. */
     public const array AUTH_EVENTS = [
-        RecordFailedLogin::class => 'a refused password is on record even though the login fails',
         RecordSuccessfulLogin::class => 'the login event itself',
         RecordLogout::class => 'the logout event itself',
         FinishPasskeyLogin::class => 'a refused passkey is on record even though the login fails',

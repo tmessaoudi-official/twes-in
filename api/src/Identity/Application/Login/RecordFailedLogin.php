@@ -14,10 +14,12 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Identity\Application\Account\AccountChanges;
 use App\Identity\Application\Mfa\SecondFactorLockout;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\UserRepository;
+use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -38,6 +40,8 @@ final readonly class RecordFailedLogin implements DeclaresAuditActions
         private UserRepository $users,
         private AuditTrail $audit,
         private SecurityNotices $notices,
+        private AccountChanges $accounts,
+        private Transactions $transactions,
         private ClockInterface $clock,
         #[Autowire(param: 'app.auth.lock_after_failures')]
         private int $lockAfterFailures,
@@ -47,6 +51,12 @@ final readonly class RecordFailedLogin implements DeclaresAuditActions
     }
 
     public function handle(FailedLoginAttempt $attempt): void
+    {
+        // A unit of its own: the guess that sets the lock changes what the account's row shows, which is said when it commits.
+        $this->transactions->run(fn () => $this->record($attempt));
+    }
+
+    private function record(FailedLoginAttempt $attempt): void
     {
         $user = null === $attempt->userId ? null : $this->users->ofId($attempt->userId);
         $changes = ['email' => $attempt->email, 'reason' => $attempt->reason];
@@ -60,6 +70,7 @@ final readonly class RecordFailedLogin implements DeclaresAuditActions
             if ($locks) {
                 $change = SecondFactorLockout::WRONG_CODE === $attempt->reason ? SecurityChange::SecondFactorLocked : SecurityChange::AccountLocked;
                 $this->notices->tell($user->getId(), $change, until: $user->getLockedUntil());
+                $this->accounts->said($user->getId(), AccountChanges::LOCKED);
             }
         }
 

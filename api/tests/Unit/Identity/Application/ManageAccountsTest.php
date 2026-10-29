@@ -69,7 +69,7 @@ final class ManageAccountsTest extends TestCase
                 return true;
             }
         };
-        $this->accounts = new ManageAccounts($this->users, $this->audit, $transactions, $demos, $this->notices, new LiftPasswordLock($this->users, $this->audit, $this->notices, $clock, $transactions), $owners, $clock);
+        $this->accounts = new ManageAccounts($this->users, $this->audit, $transactions, $demos, $this->notices, new LiftPasswordLock($this->users, $this->audit, $this->notices, new \App\Identity\Application\Account\AccountChanges(new \App\Tests\Support\InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), $clock, $transactions), $owners, new \App\Identity\Application\Account\AccountChanges(new \App\Tests\Support\InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), $clock);
         $this->operator = $this->account('op@twes.local', 'Operator');
     }
 
