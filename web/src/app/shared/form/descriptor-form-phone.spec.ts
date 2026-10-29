@@ -134,6 +134,8 @@ describe('DescriptorForm with a phone field', () => {
     it("starts on the company's country and hands on the number in international form", async () => {
       const host = await open('');
 
+      // Two boxes (ruled after 16:53): the country by its flag, its name and its code, then the local number.
+      expect(picked()).toContain('France');
       expect(picked()).toContain('+33');
       await typeIn('06 12 34 56 78');
       expect(host.form.controls['phone'].value).toBe('+33 6 12 34 56 78');
