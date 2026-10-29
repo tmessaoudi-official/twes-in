@@ -128,6 +128,45 @@ describe('multiselect', () => {
   });
 });
 
+// A record may hold an address or a phone kept from before today's rule: the API judges it only once it changes (row
+// 208, `ContactRule` onceChanged), so the screen must not refuse it while it stands, or no other field could be saved.
+describe('a value kept from before the rule', () => {
+  const kept: FormField = { id: 'phone', label: 'c.phone', kind: 'tel', pattern: '[0-9 +]{3,20}' };
+  const keptForm: FormDescriptor = {
+    id: 'kept',
+    sections: [{ id: 's', title: 's', fields: [email, kept, vat] }],
+  };
+
+  it('keeps the address the record holds valid, and judges any other', () => {
+    const control = buildFormGroup(keptForm, { email: 'compta@exemple' }).controls['email'];
+    expect(control.valid).toBe(true);
+
+    control.setValue('caisse@exemple');
+    expect(control.hasError('email')).toBe(true);
+
+    control.setValue(' compta@exemple ');
+    expect(control.valid).toBe(true);
+  });
+
+  it('keeps the phone the record holds valid, and judges any other', () => {
+    const control = buildFormGroup(keptForm, { phone: '71 900 868 poste 3' }).controls['phone'];
+    expect(control.valid).toBe(true);
+
+    control.setValue('71 900 869 poste 3');
+    expect(control.hasError('pattern')).toBe(true);
+  });
+
+  it('keeps nothing for an empty start, nor for a rule the API judges on every write', () => {
+    const empty = buildFormGroup(keptForm, { email: '' }).controls['email'];
+    empty.setValue('compta@exemple');
+    expect(empty.hasError('email')).toBe(true);
+
+    expect(buildFormGroup(keptForm, { vat: 'fr 12' }).controls['vat'].hasError('pattern')).toBe(
+      true,
+    );
+  });
+});
+
 describe('fieldError', () => {
   const errorOf = (field: FormField, value: FieldValue) => {
     const group = buildFormGroup(customer);

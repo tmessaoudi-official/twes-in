@@ -49,6 +49,21 @@ class Host {
   readonly form = buildFormGroup(descriptor, { email: '' });
 }
 
+@Component({
+  imports: [DescriptorForm],
+  template: `<app-descriptor-form
+    [descriptor]="descriptor"
+    [form]="form"
+    testId="customer-form"
+    (submitted)="saved.push($event)"
+  />`,
+})
+class KeptHost {
+  readonly descriptor = descriptor;
+  readonly form = buildFormGroup(descriptor, { email: 'compta@exemple' });
+  readonly saved: unknown[] = [];
+}
+
 /**
  * Every address field of a descriptor form is held to the one e-mail rule the API holds it to, and offers, never
  * writes, the common domain a slip of a key most likely meant.
@@ -75,7 +90,7 @@ describe('DescriptorForm with an e-mail field', () => {
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      imports: [Host],
+      imports: [Host, KeptHost],
       providers: [
         provideTranslateService({
           lang: 'fr',
@@ -104,6 +119,23 @@ describe('DescriptorForm with an e-mail field', () => {
     expect(byTestId('field-typo-email')?.querySelector('bdi')?.textContent).toBe('ali@gmail.com');
     expect(host.form.controls['email'].value).toBe('ali@gmial.com');
     expect(host.form.controls['email'].valid).toBe(true);
+  });
+
+  // Row 208: an address kept from before today's rule is judged by the API only once it changes, and the night's
+  // « À vérifier » sends the person to this very form; refusing it here would stop every other field being saved.
+  it("saves a record whose kept address today's rule refuses, while it stands", async () => {
+    const kept = TestBed.createComponent(KeptHost);
+    kept.detectChanges();
+    await kept.whenStable();
+
+    kept.debugElement
+      .query((node) => node.name === 'app-descriptor-form')
+      .componentInstance.submit();
+    kept.detectChanges();
+    await kept.whenStable();
+
+    expect(kept.componentInstance.saved).toEqual([{ email: 'compta@exemple' }]);
+    expect(kept.nativeElement.querySelector('[data-testid="field-error-email"]')).toBeNull();
   });
 
   it('offers nothing for an address at a domain of its own', async () => {

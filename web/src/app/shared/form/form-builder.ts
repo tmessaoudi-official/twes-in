@@ -102,16 +102,34 @@ function oneOf(field: FormField): ValidatorFn {
   };
 }
 
-function validatorsFor(field: FormField): ValidatorFn[] {
+/**
+ * A rule the API judges a revision's value by only once it differs from what the record holds (`ContactRule` with
+ * onceChanged, row 208: an address or a phone kept from before today's rule): the value the form opened on passes it, so
+ * a record holding one still saves its other fields, and any other value is judged. An empty start keeps nothing.
+ */
+function onceChanged(rule: ValidatorFn, start: FieldValue): ValidatorFn {
+  const kept = typeof start === 'string' ? typedText(start) : '';
+  if (kept === '') return rule;
+  return (control) =>
+    typeof control.value === 'string' && typedText(control.value) === kept ? null : rule(control);
+}
+
+/** The kinds whose rule the API applies once changed: an address and a phone (`onceChanged: true` in api/src). */
+const KEPT_KINDS: ReadonlySet<FormField['kind']> = new Set(['email', 'tel']);
+
+function validatorsFor(field: FormField, start: FieldValue): ValidatorFn[] {
   const validators: ValidatorFn[] = [];
   // A required checkbox is one that must be ticked; requiredTrue reports the same `required` error.
   if (field.required)
     validators.push(field.kind === 'checkbox' ? Validators.requiredTrue : requiredValue);
   const typed = typesText(field) ? onTypedText : (validator: ValidatorFn) => validator;
-  if (field.kind === 'email') validators.push(typed(emailRule));
+  const shaped = KEPT_KINDS.has(field.kind)
+    ? (rule: ValidatorFn) => onceChanged(typed(rule), start)
+    : typed;
+  if (field.kind === 'email') validators.push(shaped(emailRule));
   if (field.kind === 'select' || field.kind === 'multiselect') validators.push(oneOf(field));
   // A string pattern is anchored at both ends by Validators.pattern, so it matches the whole value.
-  if (field.pattern !== undefined) validators.push(typed(Validators.pattern(field.pattern)));
+  if (field.pattern !== undefined) validators.push(shaped(Validators.pattern(field.pattern)));
   if (field.minLength !== undefined) validators.push(typed(Validators.minLength(field.minLength)));
   if (field.maxLength !== undefined) validators.push(typed(Validators.maxLength(field.maxLength)));
   if (field.min !== undefined) validators.push(Validators.min(field.min));
@@ -144,8 +162,8 @@ export function buildFormGroup(
         ? initial[field.id]
         : (field.defaultValue ?? emptyValue(field));
       controls[field.id] = typesText(field)
-        ? typedTextControl(start, validatorsFor(field))
-        : new FormControl<FieldValue>(start, { validators: validatorsFor(field) });
+        ? typedTextControl(start, validatorsFor(field, start))
+        : new FormControl<FieldValue>(start, { validators: validatorsFor(field, start) });
     }
   }
   for (const field of descriptor.sections.flatMap((section) => section.fields)) {
