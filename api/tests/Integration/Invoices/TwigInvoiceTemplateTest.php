@@ -31,6 +31,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceLineDetails;
 use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Shared\Domain\ValueObject\DocumentLayout;
 use App\Shared\Domain\ValueObject\DocumentWatermark;
+use App\Shared\Domain\ValueObject\PrintedPage;
 use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Shared\Domain\ValueObject\WatermarkIntensity;
 use App\Shared\Domain\ValueObject\WatermarkSpread;
@@ -48,6 +49,7 @@ use App\Texts\Domain\ValueObject\TextAddress;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Contracts\Translation\TranslatorInterface;
+use Twig\Environment;
 
 /**
  * The invoice layout against a real draft, in every design (docs/SPEC.md § 7, 2026-10-01 23:30): whatever the layout and
@@ -142,6 +144,17 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
     }
 
     /** One partial draws every document's watermark, so no document can print it otherwise than the company set it. */
+    /** The demo band lines up with the content: its side margins are the sheet's, read from where the renderer reads them. */
+    public function testTheDemoBandKeepsTheSheetsSideMargins(): void
+    {
+        $twig = static::getContainer()->get('twig');
+        self::assertInstanceOf(Environment::class, $twig);
+        $band = $twig->render('pdf/_demo_band.html.twig', ['demo' => true, 't' => 'pdf', 'locale' => 'fr']);
+
+        self::assertSame(2, substr_count($band, \sprintf('width: calc(100%% - %sin); margin: 0 %sin;', 2 * PrintedPage::MARGIN_IN, PrintedPage::MARGIN_IN)), 'header and footer');
+        self::assertSame('', trim($twig->render('pdf/_demo_band.html.twig', ['demo' => false, 't' => 'pdf', 'locale' => 'fr'])));
+    }
+
     public function testEveryDocumentDrawsItsWatermarkThroughTheOnePartial(): void
     {
         $drawn = 0;

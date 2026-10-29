@@ -40,6 +40,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_stock_movement_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_stock_movement_location', columns: ['location_id'])]
 #[ORM\Index(name: 'idx_stock_movement_lot', columns: ['lot_id'])]
+#[ORM\Index(name: 'idx_stock_movement_counts', columns: ['product_id', 'location_id', 'at'], options: ['where' => "((source_type)::text = 'count'::text)"])]
 #[ORM\Index(name: 'idx_stock_movement_reverses', columns: ['reverses_source_id'], options: ['where' => '(reverses_source_id IS NOT NULL)'])]
 #[ORM\Index(name: 'idx_stock_movement_vendor', columns: ['vendor_id'])]
 #[ORM\Index(name: 'idx_stock_movement_import_run', columns: ['import_run_id'], options: ['where' => '(import_run_id IS NOT NULL)'])]

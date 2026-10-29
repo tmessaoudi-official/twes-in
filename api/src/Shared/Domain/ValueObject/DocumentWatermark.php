@@ -28,9 +28,9 @@ final readonly class DocumentWatermark
     /** Columns and rows of the page a spread count fills, each cell holding one copy. */
     private const array GRID = [1 => [1, 1], 3 => [1, 3], 6 => [2, 3], 12 => [3, 4]];
 
-    /** What a page leaves the word, in points: an A4 sheet (210 × 297 mm) less the renderer's margin of 0.4 in a side. */
-    public const float PAGE_WIDTH_PT = (210 - 2 * 10.16) * 72 / 25.4;
-    public const float PAGE_HEIGHT_PT = (297 - 2 * 10.16) * 72 / 25.4;
+    /** What a page leaves the word, in points: the sheet the renderer prints on, less its margins. */
+    public const float PAGE_WIDTH_PT = PrintedPage::CONTENT_WIDTH_PT;
+    public const float PAGE_HEIGHT_PT = PrintedPage::CONTENT_HEIGHT_PT;
 
     /** A letter of the bold capitals it prints in, with its letter spacing, and a line, as shares of the word's size. */
     public const float LETTER_EM = 0.82;
@@ -62,16 +62,18 @@ final readonly class DocumentWatermark
 
     /**
      * The size `word` prints at: the count's own, or smaller, so that the word turned on the diagonal stays across its
-     * page, or its cell when spread, and down it. « DUPLICATA » at 96 pt ran off a page's right edge; a word a company
-     * rewords in « Textes » is measured the same way, in whatever language it prints.
+     * page, or its cell when spread, and down it; grouped copies are one block of lines turned together, as high as its
+     * lines. « DUPLICATA » at 96 pt ran off a page's right edge; a word a company rewords in « Textes » is measured the
+     * same way, in whatever language it prints.
      */
     public function wordSizePtFor(string $word): int
     {
         [$columns, $rows] = WatermarkSpread::Spread === $this->spread ? $this->grid() : [1, 1];
         $letters = max(1, mb_strlen($word));
+        $high = WatermarkSpread::Grouped === $this->spread && $this->copies > 1 ? $this->copies * self::GROUPED_LINE_HEIGHT : self::LINE_EM;
         [$cos, $sin] = [cos(deg2rad(self::TURN_DEGREES)), sin(deg2rad(self::TURN_DEGREES))];
-        $across = (self::PAGE_WIDTH_PT / $columns) / ($letters * self::LETTER_EM * $cos + self::LINE_EM * $sin);
-        $down = (self::PAGE_HEIGHT_PT / $rows) / ($letters * self::LETTER_EM * $sin + self::LINE_EM * $cos);
+        $across = (self::PAGE_WIDTH_PT / $columns) / ($letters * self::LETTER_EM * $cos + $high * $sin);
+        $down = (self::PAGE_HEIGHT_PT / $rows) / ($letters * self::LETTER_EM * $sin + $high * $cos);
 
         return min(self::WORD_SIZE_PT[$this->copies], (int) floor(min($across, $down)));
     }

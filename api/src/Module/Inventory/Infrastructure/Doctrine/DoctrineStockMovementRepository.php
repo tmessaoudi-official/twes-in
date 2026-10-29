@@ -62,19 +62,26 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     /** Whether stock is kept of the product `p`, the company's word bound as `companyKeepsStock` ({@see StockKept}). */
     private const string KEPT = 'STOCK_KEPT(p.kind, IDENTITY(p.company), IDENTITY(p.category), p.id, :companyKeepsStock) = true';
 
+    /** Whether the movement `m` left its place below zero, the sums of the whole company's places worked out once. */
+    private const string BELOW_ZERO = 'LEFT_BELOW_ZERO(m.id, :belowZeroCompany)';
+
     /**
      * « Sortie sans stock » (Decisions Log 2026-10-28 00:13), of a movement `m` whose product is `p`: a sale or a delivery
-     * after which its place held less than nothing, every movement of the product there summed up to it in the order they
-     * moved (the second, then the id), and that no count of the product at that place followed, nor of the product it
-     * was merged into, which counts what it carried. A sale is never blocked, so this is what a count has to settle; of
-     * a product whose stock is no longer kept, a count is refused, so its sales are none.
+     * after which its lot at its place (or what has no lot there) held less than nothing ({@see LeftBelowZero}, which sums
+     * them once for the whole statement), as « Sous zéro » lists a place lot by lot; and that no count of it there
+     * followed, of the product or of the product it was merged into, whose lot of the same code carries it. A sale is
+     * never blocked, so this is what a count has to settle; of a product whose stock is no longer kept, a count is
+     * refused, so its sales are none.
      */
     private const string WITHOUT_STOCK = 'm.quantity < 0 AND m.sourceType IN (:soldSources) AND '.self::KEPT
-        .' AND (SELECT SUM(b.quantity) FROM '.StockMovement::class.' b WHERE b.company = m.company AND b.product = m.product'
-        .' AND b.location = m.location AND (b.at < m.at OR (b.at = m.at AND b.id <= m.id))) < 0'
+        .' AND '.self::BELOW_ZERO.' = true'
         .' AND NOT EXISTS (SELECT c.id FROM '.StockMovement::class.' c WHERE c.company = m.company AND c.location = m.location'
-        .' AND (c.product = m.product OR c.product = p.mergedInto) AND c.sourceType = :countSource'
-        .' AND (c.at > m.at OR (c.at = m.at AND c.id > m.id)))';
+        // The source written out, and the moment's bound first, so the database reads the counts' own index
+        // (idx_stock_movement_counts) from the sale's moment on, not every movement of the place.
+        .' AND (c.product = m.product OR c.product = p.mergedInto) AND c.sourceType = \''.StockMovement::SOURCE_COUNT.'\''
+        .' AND ((c.lot IS NULL AND m.lot IS NULL) OR c.lot = m.lot OR c.lot IN (SELECT tw.id FROM '.StockLot::class.' tw, '
+        .StockLot::class.' ml WHERE ml.id = IDENTITY(m.lot) AND tw.product = p.mergedInto AND tw.code = ml.code))'
+        .' AND c.at >= m.at AND (c.at > m.at OR c.id > m.id))';
 
     public function __construct(private EntityManagerInterface $entityManager, private MergedProducts $mergedProducts, private ReadSetting $settings)
     {
@@ -340,7 +347,9 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->select('m.id')->from(StockMovement::class, 'm')->join('m.product', 'p')
             ->where('m.company = :company')->setParameter('company', $companyId, 'uuid')
             ->andWhere('m.id IN (:movements)')->setParameter('movements', self::ids(array_map(static fn (StockMovement $each): Uuid => $each->getId(), array_values($sales))), ArrayParameterType::STRING)
-            ->andWhere(self::WITHOUT_STOCK), $companyId)
+            // The sums of the page's products only, which are what its rows read.
+            ->andWhere(str_replace(self::BELOW_ZERO, 'LEFT_BELOW_ZERO(m.id, :belowZeroCompany, :belowZeroProducts)', self::WITHOUT_STOCK))
+            ->setParameter('belowZeroProducts', array_values(array_unique(array_map(static fn (StockMovement $each): string => $each->getProduct()->getId()->toRfc4122(), $sales))), ArrayParameterType::STRING), $companyId)
             ->getQuery()->getScalarResult();
 
         $found = [];
@@ -360,7 +369,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     private function soldWithoutStock(QueryBuilder $query, Uuid $companyId): QueryBuilder
     {
         return $query->setParameter('soldSources', [StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE], ArrayParameterType::STRING)
-            ->setParameter('countSource', StockMovement::SOURCE_COUNT)
+            ->setParameter('belowZeroCompany', $companyId->toRfc4122())
             ->setParameter('companyKeepsStock', $this->companyKeepsStock($companyId), ParameterType::BOOLEAN);
     }
 

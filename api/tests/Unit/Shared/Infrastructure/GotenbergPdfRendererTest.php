@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Shared\Infrastructure;
 
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Domain\ValueObject\DocumentWatermark;
+use App\Shared\Domain\ValueObject\PrintedPage;
 use App\Shared\Infrastructure\Pdf\GotenbergPdfRenderer;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -35,6 +37,40 @@ final class GotenbergPdfRendererTest extends TestCase
         }
         self::assertIsArray($options['headers']);
         self::assertMatchesRegularExpression('/^Content-Type: multipart\/form-data; boundary=/mi', implode("\n", array_filter($options['headers'], is_string(...))));
+    }
+
+    /**
+     * The sheet it prints on is the one a watermark's word is fitted to (DocumentWatermark reads PrintedPage): a sheet or
+     * a margin changed on one side and not the other would print a word sized for another page.
+     */
+    public function testItPrintsOnTheSheetEveryFitReads(): void
+    {
+        $pdf = new MockResponse('%PDF-1.7 rendered', ['http_code' => 200]);
+        new GotenbergPdfRenderer(new MockHttpClient($pdf), self::URL)->render('<p>x</p>');
+        $png = new MockResponse("\x89PNG\r\n\x1a\n picture", ['http_code' => 200]);
+        new GotenbergPdfRenderer(new MockHttpClient($png), self::URL)->firstPage('<p>x</p>');
+
+        $sent = static function (MockResponse $response): array {
+            $body = $response->getRequestOptions()['body'] ?? null;
+            self::assertIsString($body);
+            preg_match_all('/name="([a-zA-Z]+)"\r\n\r\n([^\r]*)\r\n/', $body, $fields);
+
+            return array_combine($fields[1], $fields[2]);
+        };
+        $inches = static fn (float $value): string => rtrim(rtrim(\sprintf('%.4F', $value), '0'), '.');
+        self::assertSame(
+            [$inches(PrintedPage::WIDTH_IN), $inches(PrintedPage::HEIGHT_IN), ...array_fill(0, 4, $inches(PrintedPage::MARGIN_IN))],
+            array_values(array_intersect_key($sent($pdf), array_flip(['paperWidth', 'paperHeight', 'marginTop', 'marginBottom', 'marginLeft', 'marginRight']))),
+        );
+        self::assertSame(
+            [(string) (int) round(PrintedPage::WIDTH_IN * 96), (string) (int) round(PrintedPage::HEIGHT_IN * 96)],
+            array_values(array_intersect_key($sent($png), array_flip(['width', 'height']))),
+        );
+        $screenshot = $png->getRequestOptions()['body'] ?? null;
+        self::assertIsString($screenshot);
+        self::assertStringContainsString('html { padding: '.$inches(PrintedPage::MARGIN_IN).'in; }', $screenshot);
+        self::assertEqualsWithDelta((PrintedPage::WIDTH_IN - 2 * PrintedPage::MARGIN_IN) * 72, DocumentWatermark::PAGE_WIDTH_PT, 1e-9);
+        self::assertEqualsWithDelta((PrintedPage::HEIGHT_IN - 2 * PrintedPage::MARGIN_IN) * 72, DocumentWatermark::PAGE_HEIGHT_PT, 1e-9);
     }
 
     public function testAPagesOwnHeaderAndFooterLeaveItAndGoAsHeaderAndFooterDocuments(): void

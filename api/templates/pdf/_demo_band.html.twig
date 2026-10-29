@@ -1,13 +1,16 @@
 {#- A demo's document says so on every page, top and bottom, in a band of the page's margin: the renderer sends each
     `template data-pdf` as the PDF's own header or footer, which Chromium prints on every sheet beside the content, never
-    over it. Its styles travel with it, since a header is a page of its own. The diagonal watermark keeps the document's
-    state. `demo` is whether the company is a demo sandbox. -#}
+    over it. Its styles travel with it, since a header is a page of its own, and it keeps the sheet's own side margins
+    (PrintedPage), so it lines up with the content. The diagonal watermark keeps the document's state. `demo` is whether
+    the company is a demo sandbox. -#}
+{%- set side = constant('App\\Shared\\Domain\\ValueObject\\PrintedPage::MARGIN_IN') -%}
+{%- set inner = 'calc(100% - ' ~ (2 * side) ~ 'in)' -%}
 {%- if demo %}
   {%- for place in ['header', 'footer'] %}
   <template data-pdf="{{ place }}">
     <style>
       html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .demo-band { box-sizing: border-box; flex: none; width: calc(100% - 0.8in); margin: 0 0.4in; padding: 2px 0; border: 1px solid #cf222e; background: #fde7e9;
+      .demo-band { box-sizing: border-box; flex: none; width: {{ inner }}; margin: 0 {{ side }}in; padding: 2px 0; border: 1px solid #cf222e; background: #fde7e9;
         color: #8a1c24; font-family: "Inter", "Helvetica Neue", Arial, "Noto Sans Arabic", sans-serif; font-size: 8pt; font-weight: 700;
         letter-spacing: .08em; text-align: center; }
     </style>

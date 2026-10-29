@@ -12,6 +12,7 @@ namespace App\Tests\Unit\Shared\Domain;
 use App\Shared\Domain\ValueObject\DocumentDesign;
 use App\Shared\Domain\ValueObject\DocumentLayout;
 use App\Shared\Domain\ValueObject\DocumentWatermark;
+use App\Shared\Domain\ValueObject\PrintedPage;
 use App\Shared\Domain\ValueObject\WatermarkIntensity;
 use App\Shared\Domain\ValueObject\WatermarkSpread;
 use PHPUnit\Framework\TestCase;
@@ -24,9 +25,9 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class DocumentWatermarkTest extends TestCase
 {
-    /** The pages a document prints on: A4 less Gotenberg's margin of 0.4 in on every side, in millimetres. */
-    private const float PAGE_WIDTH_MM = 210 - 2 * 10.16;
-    private const float PAGE_HEIGHT_MM = 297 - 2 * 10.16;
+    /** The pages a document prints on: A4 as the renderer sends it (8.27 × 11.7 in) less its margin of 0.4 in a side, in millimetres. */
+    private const float PAGE_WIDTH_MM = (8.27 - 2 * 0.4) * 25.4;
+    private const float PAGE_HEIGHT_MM = (11.7 - 2 * 0.4) * 25.4;
 
     /** A letter of the bold capitals it prints in, with its letter spacing, and a line, as shares of the word's size. */
     private const float LETTER_EM = 0.82;
@@ -93,6 +94,7 @@ final class DocumentWatermarkTest extends TestCase
         self::assertGreaterThanOrEqual(9, max([0, ...array_map(mb_strlen(...), $words)]), 'the words were read');
         // A company's own wording (« Textes ») is measured the same way, however long.
         $words[] = 'DOCUMENT NON CONTRACTUEL';
+        $words[] = 'COPIE CONFORME À ORIGINAL';
         [$cos, $sin] = [cos(deg2rad(30)), sin(deg2rad(30))];
 
         foreach ($words as $text) {
@@ -109,10 +111,14 @@ final class DocumentWatermarkTest extends TestCase
                     self::assertLessThanOrEqual(self::PAGE_WIDTH_MM / $columns, $word * $cos + $line * $sin, "$label: across");
                     self::assertLessThanOrEqual(self::PAGE_HEIGHT_MM / $rows, $word * $sin + $line * $cos, "$label: down");
 
-                    // Grouped, the copies are lines of one block turned on the diagonal: as wide as the word, as high as the lines.
-                    $block = $copies * DocumentWatermark::GROUPED_LINE_HEIGHT * $size;
+                    // Grouped, the copies are lines of one block turned on the diagonal: as wide as the word, as high as its
+                    // lines, which are GROUPED_LINE_HEIGHT apart; the whole block, turned, stays across and down the page.
                     self::assertGreaterThan($line, DocumentWatermark::GROUPED_LINE_HEIGHT * $size, 'grouped lines leave room between them');
-                    self::assertLessThanOrEqual(hypot(self::PAGE_WIDTH_MM, self::PAGE_HEIGHT_MM), hypot($word, $block), "$label: on the page");
+                    if (WatermarkSpread::Grouped === $spread && $copies > 1) {
+                        $block = $copies * DocumentWatermark::GROUPED_LINE_HEIGHT * $size;
+                        self::assertLessThanOrEqual(self::PAGE_WIDTH_MM, $word * $cos + $block * $sin, "$label: the block across");
+                        self::assertLessThanOrEqual(self::PAGE_HEIGHT_MM, $word * $sin + $block * $cos, "$label: the block down");
+                    }
                 }
             }
         }
@@ -130,9 +136,11 @@ final class DocumentWatermarkTest extends TestCase
         self::assertSame(22, new DocumentWatermark(WatermarkIntensity::Normal, 12, WatermarkSpread::Spread)->wordSizePtFor('COPIE'));
     }
 
-    /** The page the value object fits the word to is the page the renderer prints on. */
+    /** The page the value object fits the word to is the page the renderer prints on (GotenbergPdfRendererTest sends it). */
     public function testItFitsTheWordToThePageTheTestsMeasure(): void
     {
+        self::assertSame([8.27, 11.7, 0.4], [PrintedPage::WIDTH_IN, PrintedPage::HEIGHT_IN, PrintedPage::MARGIN_IN]);
+        self::assertSame([PrintedPage::CONTENT_WIDTH_PT, PrintedPage::CONTENT_HEIGHT_PT], [DocumentWatermark::PAGE_WIDTH_PT, DocumentWatermark::PAGE_HEIGHT_PT]);
         self::assertEqualsWithDelta(self::PAGE_WIDTH_MM / self::POINT_MM, DocumentWatermark::PAGE_WIDTH_PT, 0.001);
         self::assertEqualsWithDelta(self::PAGE_HEIGHT_MM / self::POINT_MM, DocumentWatermark::PAGE_HEIGHT_PT, 0.001);
         self::assertSame([self::LETTER_EM, self::LINE_EM, 30], [DocumentWatermark::LETTER_EM, DocumentWatermark::LINE_EM, DocumentWatermark::TURN_DEGREES]);

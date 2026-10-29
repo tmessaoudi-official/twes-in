@@ -11,6 +11,7 @@ namespace App\Shared\Infrastructure\Pdf;
 
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Domain\ValueObject\PrintedPage;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mime\Part\DataPart;
 use Symfony\Component\Mime\Part\Multipart\FormDataPart;
@@ -18,15 +19,22 @@ use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Gotenberg's Chromium routes: the page goes up as `index.html` in a multipart form and the PDF comes back, on A4
- * (8.27 x 11.7 inches) with its backgrounds printed; or its screenshot of the first sheet, A4 at 96 dots an inch in
+ * Gotenberg's Chromium routes: the page goes up as `index.html` in a multipart form and the PDF comes back, on the sheet
+ * every document prints on ({@see PrintedPage}: A4, 8.27 x 11.7 inches) with its backgrounds printed; or its screenshot of the first sheet, A4 at 96 dots an inch in
  * print media, the margins the PDF takes laid inside it, since a screenshot has no page margins of its own. Gotenberg
  * reads a part's bytes as they are, so the page is sent unencoded.
  */
 final readonly class GotenbergPdfRenderer implements PdfRenderer
 {
     /** The page margins, in inches, on every side: the templates leave them to this (PdfTemplateMarginsTest). */
-    private const string MARGIN = '0.4';
+    private const string MARGIN = PrintedPage::MARGIN_IN.'';
+
+    /** A4, in inches, as the fit of a watermark's word reads it: one sheet for the two. */
+    private const string PAPER_WIDTH = PrintedPage::WIDTH_IN.'';
+    private const string PAPER_HEIGHT = PrintedPage::HEIGHT_IN.'';
+
+    /** The first sheet's picture is the sheet at 96 dots an inch, the screen's measure. */
+    private const int DOTS = 96;
 
     public function __construct(private HttpClientInterface $httpClient, #[Autowire(param: 'app.pdf.gotenberg_url')] private string $url, private float $timeoutSeconds = 30.0)
     {
@@ -54,8 +62,8 @@ final readonly class GotenbergPdfRenderer implements PdfRenderer
         }
         $pdf = $this->send('chromium/convert/html', [
             ...$files,
-            'paperWidth' => '8.27',
-            'paperHeight' => '11.7',
+            'paperWidth' => self::PAPER_WIDTH,
+            'paperHeight' => self::PAPER_HEIGHT,
             'marginTop' => self::MARGIN,
             'marginBottom' => self::MARGIN,
             'marginLeft' => self::MARGIN,
@@ -75,8 +83,8 @@ final readonly class GotenbergPdfRenderer implements PdfRenderer
         $page = str_contains($html, '<head>') ? preg_replace('/<head>/', '<head>'.$margins, $html, 1) ?? $html : $margins.$html;
         $picture = $this->post('screenshot', [
             'files' => new DataPart($page, 'index.html', 'text/html', '8bit'),
-            'width' => '794',
-            'height' => '1123',
+            'width' => (string) (int) round(PrintedPage::WIDTH_IN * self::DOTS),
+            'height' => (string) (int) round(PrintedPage::HEIGHT_IN * self::DOTS),
             'clip' => 'true',
             'format' => 'png',
             'emulatedMediaType' => 'print',

@@ -10,8 +10,14 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
+use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
+use App\Module\Customers\Domain\Model\Customer;
+use App\Module\Customers\Domain\ValueObject\CustomerKind;
+use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\Inventory\Domain\Model\StockLocation;
+use App\Module\Inventory\Domain\Model\StockLot;
 use App\Module\Inventory\Domain\Model\StockMovement;
 use App\Module\Inventory\Domain\ValueObject\StockLocationKind;
 use App\Module\Inventory\Domain\ValueObject\StockLossReason;
@@ -222,6 +228,104 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         self::assertSame([$short], $this->listed('yes'), 'the list says the same of it');
     }
 
+    public function testASaleIsSummedInItsOwnLotAsWhatIsBelowZeroIsListed(): void
+    {
+        // « Sous zéro » lists a place lot by lot. VIS sold without a lot before it was tracked by lot, then received and
+        // sold by lot: the unlotted sale took what has no lot there to -3, though the lot there holds 5, so it is one;
+        // the lot's sale left it at 1, though the place's sum is -2, so it is none.
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        $this->places();
+        $unlotted = $this->moved(StockMovement::delivery($this->product($this->visId), $this->place($this->siteId), '3', Uuid::v7(), $this->at(2)));
+        $this->tracked(true);
+        $lot = StockLot::open($this->product($this->visId), 'L-1', null, new \DateTimeImmutable());
+        $this->em()->persist($lot);
+        $this->em()->flush();
+        $lotId = $lot->getId()->toRfc4122();
+        $this->moved(StockMovement::receipt($this->product($this->visId), $this->place($this->siteId), '5', null, $this->at(1), $this->lot($lotId)));
+        $ofTheLot = $this->moved(StockMovement::sale($this->product($this->visId), $this->place($this->siteId), '4', Uuid::v7(), $this->at(3), $this->lot($lotId)));
+        self::assertSame([$unlotted], $this->listed('yes'));
+        self::assertContains($ofTheLot, $this->listed('no'));
+        self::assertSame([[$this->visId, null, '-3.000']], $this->belowZero(), 'the row « Sous zéro » shows');
+
+        // A count of the lot settles nothing of what has none; a count of what has none does.
+        $this->moved(StockMovement::count($this->product($this->visId), $this->place($this->siteId), '1', '1', null, $this->at(4), $this->lot($lotId)));
+        self::assertSame([$unlotted], $this->listed('yes'), 'a count of another lot');
+        $this->tracked(false);
+        $this->moved(StockMovement::count($this->product($this->visId), $this->place($this->siteId), '0', '-3', null, $this->at(5)));
+        self::assertSame([], $this->listed('yes'), 'counted without a lot, as it was sold');
+
+        // Merged, a lot goes on under its code (CarryMergedStock's twin): a count of the twin settles its sale, a count of
+        // another lot of the product kept does not.
+        $this->tracked(true);
+        $short = $this->moved(StockMovement::sale($this->product($this->visId), $this->place($this->siteId), '9', Uuid::v7(), $this->at(6), $this->lot($lotId)));
+        $twin = StockLot::open($this->product($this->gantId), 'L-1', null, new \DateTimeImmutable());
+        $other = StockLot::open($this->product($this->gantId), 'L-2', null, new \DateTimeImmutable());
+        $this->em()->persist($twin);
+        $this->em()->persist($other);
+        $this->em()->flush();
+        [$twinId, $otherId] = [$twin->getId()->toRfc4122(), $other->getId()->toRfc4122()];
+        $this->em()->getConnection()->executeStatement('UPDATE product SET merged_into_id = ?, is_active = false WHERE id = ?', [$this->gantId, $this->visId]);
+        self::assertSame([$short], $this->listed('yes'), 'merged, still to count');
+        $this->moved(StockMovement::count($this->product($this->gantId), $this->place($this->siteId), '0', '0', null, $this->at(7), $this->lot($otherId)));
+        self::assertSame([$short], $this->listed('yes'), 'a count of another lot of the product kept');
+        $this->moved(StockMovement::count($this->product($this->gantId), $this->place($this->siteId), '0', '0', null, $this->at(8), $this->lot($twinId)));
+        self::assertSame([], $this->listed('yes'), 'counted under the lot that carries its code');
+    }
+
+    /** The lot as the entity manager knows it now, as {@see Product()} finds a product. */
+    private function lot(string $id): StockLot
+    {
+        $lot = $this->em()->find(StockLot::class, $id);
+        self::assertInstanceOf(StockLot::class, $lot);
+
+        return $lot;
+    }
+
+    /** VIS and GANT tracked by lot, or not: a product's tracking changes over its life, its history stays. */
+    private function tracked(bool $byLot): void
+    {
+        $this->em()->getConnection()->executeStatement('UPDATE product SET tracking = ? WHERE id IN (?, ?)', [$byLot ? 'lot' : 'none', $this->visId, $this->gantId]);
+        $this->em()->refresh($this->product($this->visId));
+        $this->em()->refresh($this->product($this->gantId));
+    }
+
+    public function testADeliveryNoteValidatedShortLeavesTheListOnceTheCountSheetCountsItsPlace(): void
+    {
+        // The e2e's own path (stock-below-zero.spec.ts): a note validated through the API takes the place below zero, the
+        // count sheet records what is there through stock-counts, and the list asked by product no longer holds the sale.
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write', 'customer.read', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
+        $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
+        self::assertNotNull($regime);
+        $customer = Customer::create($this->managed(), 'CLI-Z1', new CustomerProfile(CustomerKind::Company, 'Carthage'), null, $regime, [], new \DateTimeImmutable());
+        $this->em()->persist($customer);
+        $this->em()->flush();
+        $this->postJson($this->company().'/delivery-notes', ['customerId' => $customer->getId()->toRfc4122(), 'establishmentId' => null, 'deliveryDate' => null,
+            'deliveryAddressLine1' => null, 'deliveryAddressLine2' => null, 'deliveryPostalCode' => null, 'deliveryCity' => null, 'deliveryCountryCode' => null,
+            'customerReference' => null, 'remarksPrinted' => null, 'notesInternal' => null, 'lines' => [['productId' => $this->visId, 'quantity' => '999']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        $this->postJson($this->company().'/delivery-notes/'.$this->stringAt($this->json(), 'id').'/validate', null);
+        self::assertResponseIsSuccessful();
+
+        $this->getJson($this->company().'/stock-movements?productId[]='.$this->visId);
+        $moved = $this->jsonList();
+        self::assertCount(1, $moved, 'the note moved its goods out of one place');
+        $place = $this->stringAt($moved[0], 'locationId');
+        $sale = $this->stringAt($moved[0], 'id');
+        $listed = function (): array {
+            $this->getJson($this->company().'/stock-movements?productId='.$this->visId.'&withoutStock=yes');
+            self::assertResponseIsSuccessful();
+
+            return array_map(fn (array $row): string => $this->stringAt($row, 'id'), $this->jsonList());
+        };
+        self::assertSame([$sale], $listed());
+
+        $this->postJson($this->company().'/stock-counts', ['productId' => $this->visId, 'parts' => [['locationId' => $place, 'quantity' => '0']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        self::assertSame([], $this->belowZero(), '« Sous zéro » has it no more');
+        self::assertSame([], $listed(), 'nor « Sorties sans stock »');
+    }
+
     public function testTheFilterTakesOnlyYesOrNo(): void
     {
         $this->signedIn(['company.read', 'stock.read']);
@@ -304,6 +408,15 @@ final class StockSoldWithoutStockTest extends ApiTestCase
         }
 
         return $flags;
+    }
+
+    /** @return list<array{string, ?string, string}> product, lot and quantity of each level the stock tab's « Sous zéro » holds */
+    private function belowZero(): array
+    {
+        $this->getJson($this->company().'/stock-levels?negative=yes');
+        self::assertResponseIsSuccessful();
+
+        return array_map(fn (array $row): array => [$this->stringAt($row, 'productId'), \is_string($row['lotCode'] ?? null) ? $row['lotCode'] : null, $this->stringAt($row, 'quantity')], $this->jsonList());
     }
 
     /** @param list<string> $permissions */
