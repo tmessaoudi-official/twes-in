@@ -1,0 +1,10 @@
+[
+  {
+    "tier": "web",
+    "name": "libphonenumber-js",
+    "lock": "MIT",
+    "licence": "MIT AND Apache-2.0",
+    "text": "scripts/notices/texts/libphonenumber-js.LICENSE.Apache",
+    "reason": "Its code is MIT (its LICENSE); the phone numbering metadata it derives from Google's libphonenumber is Apache-2.0, whose text it ships as LICENSE.Apache (its README, « License »)."
+  }
+]

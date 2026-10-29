@@ -118,7 +118,12 @@ foreach (shippedWasmPackages($root) as $package) {
 }
 
 $notices = $root.'/THIRD-PARTY-NOTICES.md';
-if (!is_file($notices) || file_get_contents($notices) !== renderNotices($records, $fonts, $wasm)) {
+// A licence declared beyond a lock: its lock still says what was read, its package is there, its text and reason are.
+foreach (licenceOverrideProblems($root) as $problem) {
+    $violations[] = $problem;
+}
+
+if (!is_file($notices) || file_get_contents($notices) !== renderNotices($records, $fonts, $wasm, licenceOverrideTexts($root))) {
     $violations[] = 'THIRD-PARTY-NOTICES.md is out of date — run: php scripts/notices/generate-third-party-notices.php';
 }
 

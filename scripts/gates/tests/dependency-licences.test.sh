@@ -173,4 +173,38 @@ assert_gate "a component without its licence text beside it fails" "$d" 1 "web/s
 d=$(fixture); vendor_wasm "$d"; rm -r "$d/web/src/third-party/demo"; php "$GEN" --root "$d" >/dev/null
 assert_gate "a build shipping a package's wasm with no manifest fails" "$d" 1 "web/angular.json ships demo-wasm's WebAssembly, and no web/src/third-party/*/COMPONENTS.json lists what it compiles in"
 
+# A package whose lock entry names one licence while it ships another text too: declared in
+# scripts/notices/licence-overrides.json with its reason and the text, never by editing the notices.
+override() { # override <root> [<php-expression over $j, the overrides list>]
+  mkdir -p "$1/scripts/notices/texts"
+  printf 'Apache License\nVersion 2.0, January 2004\n' > "$1/scripts/notices/texts/runtime-isc.LICENSE.Apache"
+  cat > "$1/scripts/notices/licence-overrides.json" <<'JSON'
+[{"tier":"web","name":"runtime-isc","lock":"ISC","licence":"ISC AND Apache-2.0","text":"scripts/notices/texts/runtime-isc.LICENSE.Apache","reason":"Its code is ISC; it ships data under Apache-2.0."}]
+JSON
+  [[ -n "${2:-}" ]] && mutate "$1" scripts/notices/licence-overrides.json "$2"
+  php "$GEN" --root "$1" >/dev/null 2>&1
+}
+
+d=$(fixture); override "$d"
+assert_gate "a declared override of a permitted pair passes" "$d" 0 "OK"
+if grep -q '| runtime-isc | 1.0.0 | ISC AND Apache-2.0 | runtime |' "$d/THIRD-PARTY-NOTICES.md" && grep -q 'Version 2.0, January 2004' "$d/THIRD-PARTY-NOTICES.md" && grep -q 'it ships data under Apache-2.0' "$d/THIRD-PARTY-NOTICES.md"; then ok "notices record the pair, the reason and the text"; else bad "notices lack the override" "$(cat "$d/THIRD-PARTY-NOTICES.md")"; fi
+
+d=$(fixture); override "$d"; mutate "$d" web/package-lock.json '$j["packages"]["node_modules/runtime-isc"]["license"]="MIT";'; php "$GEN" --root "$d" >/dev/null
+assert_gate "a lock that no longer says what the override read fails: read the package again" "$d" 1 "scripts/notices/licence-overrides.json read web/runtime-isc's lock as 'ISC', it now says 'MIT'"
+
+d=$(fixture); override "$d"; mutate "$d" web/package-lock.json 'unset($j["packages"]["node_modules/runtime-isc"]);'; php "$GEN" --root "$d" >/dev/null
+assert_gate "an override of a package no longer locked fails" "$d" 1 "scripts/notices/licence-overrides.json names web/runtime-isc, which no lock holds"
+
+d=$(fixture); override "$d" '$j[0]["licence"]="ISC AND GPL-3.0-only";'
+assert_gate "an override cannot admit a refused licence" "$d" 1 "web/runtime-isc (ISC AND GPL-3.0-only) is a RUNTIME dependency outside the permitted identifiers"
+
+d=$(fixture); override "$d"; rm "$d/scripts/notices/texts/runtime-isc.LICENSE.Apache"
+assert_gate "an override without its text fails" "$d" 1 "scripts/notices/texts/runtime-isc.LICENSE.Apache, the licence text web/runtime-isc ships, is missing or empty"
+
+d=$(fixture); override "$d" '$j[0]["reason"]=" ";'
+assert_gate "an override without its reason fails" "$d" 1 "scripts/notices/licence-overrides.json gives no reason for web/runtime-isc"
+
+d=$(fixture); override "$d"; printf 'Apache License\nVersion 2.0, January 2004\nedited\n' > "$d/scripts/notices/texts/runtime-isc.LICENSE.Apache"
+assert_gate "notices are regenerated when the text changes" "$d" 1 "THIRD-PARTY-NOTICES.md is out of date"
+
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

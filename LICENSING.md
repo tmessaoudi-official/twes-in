@@ -41,7 +41,11 @@ contribution without it silently forecloses the commercial licence for that file
 
 **2. Every dependency must be PERMISSIVE — not merely AGPL-compatible.** `THIRD-PARTY-NOTICES.md` is
 generated from the lock files (`make notices`); regenerate it in the same change that adds a dependency,
-and read the actual LICENSE file of anything whose lock entry is not a bare SPDX identifier. For anything
+and read the actual LICENSE file of anything whose lock entry is not a bare SPDX identifier. A package whose lock
+names one licence while it ships another text too (libphonenumber-js: MIT code, Google's metadata under Apache-2.0)
+is declared in `scripts/notices/licence-overrides.json` with what its lock said, the whole expression, the text it
+ships (kept in `scripts/notices/texts/`) and why; the notices print the pair and the text, and the licence gate holds
+the expression to the same permitted list and refuses the override once its lock moves. For anything
 we **distribute**, the permitted
 set is exactly ten identifiers (developer rulings, 2026-07-29 and 2026-09-23): **MIT, Apache-2.0, BSD-2-Clause,
 BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0, Unicode-3.0** — every one non-copyleft *and* imposing no

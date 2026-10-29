@@ -14,5 +14,5 @@ require __DIR__.'/../lib/dependency-inventory.php';
 // Run it in the same change that adds a dependency, a font or a wasm.
 $args = parseArguments($argv);
 $path = $args['root'].'/THIRD-PARTY-NOTICES.md';
-file_put_contents($path, renderNotices(dependencyInventory($args['root']), vendoredFonts($args['root']), vendoredWasm($args['root'])));
+file_put_contents($path, renderNotices(dependencyInventory($args['root']), vendoredFonts($args['root']), vendoredWasm($args['root']), licenceOverrideTexts($args['root'])));
 echo "wrote $path\n";
