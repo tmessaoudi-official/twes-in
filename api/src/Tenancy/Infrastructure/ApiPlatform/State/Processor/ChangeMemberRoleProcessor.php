@@ -63,7 +63,7 @@ final readonly class ChangeMemberRoleProcessor implements ProcessorInterface
             throw new AccessDeniedHttpException($refused->getMessage(), $refused);
         }
 
-        foreach ($this->members->for($company->getId()) as $view) {
+        foreach ($this->members->for($company->getId(), $this->guard->account()->getId()) as $view) {
             if ($userId === $view->userId) {
                 return MemberResource::of($view);
             }

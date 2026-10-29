@@ -39,7 +39,7 @@
       } @else {
         {{ row.displayName }}
         @if (row.passwordLockedUntil) {
-          <!-- Wrong guesses locked it: said to the company, whose owner lifts it from « ⋮ » (row 241). -->
+          <!-- Wrong guesses locked it: the API says it to the owner alone, who lifts it from « ⋮ ». -->
           <span class="block text-sm opacity-70" [attr.data-testid]="'member-lock-' + row.userId">{{
             'members.password_locked_until'
               | translate: { moment: (row.passwordLockedUntil | moment: company()?.timezone) }

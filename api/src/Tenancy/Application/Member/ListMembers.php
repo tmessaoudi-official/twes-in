@@ -12,6 +12,7 @@ namespace App\Tenancy\Application\Member;
 use App\Identity\Application\Account\DemoAccounts;
 use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Model\Membership;
+use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Repository\InvitationRepository;
 use App\Tenancy\Domain\Repository\MembershipRepository;
 use Psr\Clock\ClockInterface;
@@ -36,10 +37,16 @@ final readonly class ListMembers
     ) {
     }
 
-    /** @return list<MemberView> */
-    public function for(Uuid $companyId): array
+    /**
+     * @param Uuid|null $readerId who reads the list: the lock wrong guesses set on a password is said to the company's owner
+     *                            alone, who lifts it; whoever guessed, a colleague, must not learn that or until when it holds
+     *
+     * @return list<MemberView>
+     */
+    public function for(Uuid $companyId, ?Uuid $readerId = null): array
     {
         $now = $this->clock->now();
+        $ownerReads = null !== $readerId && Role::OWNER === $this->memberships->ofUserInCompany($readerId, $companyId)?->getRole()->getName();
         $members = array_map(
             fn (Membership $m) => new MemberView(
                 $m->getUser()->getId()->toRfc4122(),
@@ -47,8 +54,8 @@ final readonly class ListMembers
                 $m->getUser()->getDisplayName(),
                 $m->getRole()->getName(),
                 $m->getCreatedAt()->format(\DATE_ATOM),
-                // Said to the company, whose owner may lift it: the member was told by mail when it was set.
-                passwordLockedUntil: $m->getUser()->isLockedAt($now) ? $m->getUser()->getLockedUntil()?->format(\DATE_ATOM) : null,
+                // Said to the owner, who may lift it: the member was told by mail when it was set.
+                passwordLockedUntil: $ownerReads && $m->getUser()->isLockedAt($now) ? $m->getUser()->getLockedUntil()?->format(\DATE_ATOM) : null,
             ),
             $this->memberships->ofCompany($companyId),
         );

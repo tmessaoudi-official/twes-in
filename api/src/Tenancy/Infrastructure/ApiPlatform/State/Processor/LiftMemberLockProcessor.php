@@ -58,7 +58,7 @@ final readonly class LiftMemberLockProcessor implements ProcessorInterface
             throw new AccessDeniedHttpException($refused->getMessage(), $refused);
         }
 
-        foreach ($this->members->for($company->getId()) as $view) {
+        foreach ($this->members->for($company->getId(), $actorId) as $view) {
             if ($userId->toRfc4122() === $view->userId) {
                 return MemberResource::of($view);
             }

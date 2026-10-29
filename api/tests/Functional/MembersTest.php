@@ -749,6 +749,9 @@ final class MembersTest extends ApiTestCase
         $this->lockByWrongPasswords('clerk@twes.local');
         $this->login('admin@twes.local', 'password-1234');
 
+        // Whoever guessed must not learn that, or until when, they locked it: only its owner, who lifts it, reads it.
+        self::assertNull($this->memberRow('clerk@twes.local')['passwordLockedUntil'] ?? null, 'an admin does not read the lock');
+
         $this->postJson($this->unlockPath($clerk), []);
 
         $this->assertRefusedBeforeTheProof('an admin lifting a lock');

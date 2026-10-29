@@ -32,7 +32,7 @@ final readonly class MemberCollectionProvider implements ProviderInterface
 
         return array_map(
             static fn (MemberView $view) => MemberResource::of($view),
-            $this->listMembers->for($company->getId()),
+            $this->listMembers->for($company->getId(), $this->guard->account()->getId()),
         );
     }
 }
