@@ -39,7 +39,7 @@ final class SupportContactTest extends ApiTestCase
 
         $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
         $this->login('owner@example.test', self::PASSWORD);
-        $expected = ['phone' => '+216 71 000 000', 'whatsapp' => '+216 20 123 456', 'email' => null];
+        $expected = ['phone' => '+21671000000', 'whatsapp' => '+216 20 123 456', 'email' => null];
         self::assertSame($expected, $this->json()['support'], 'the login answer');
 
         $this->client->request('GET', '/api/auth/me');
@@ -86,12 +86,40 @@ final class SupportContactTest extends ApiTestCase
             self::assertSame('invalid_email', $this->refusalOf('support.email')[0], $email);
         }
 
-        foreach (['support.phone' => ['+216 71 900 868', '71.900.868', '+33 6 12 34 56 78'], 'support.email' => ['support@exemple.tn']] as $key => $values) {
+        foreach (['support.phone' => ['+216 71 900 868', '0033 6 12 34 56 78'], 'support.email' => ['support@exemple.tn']] as $key => $values) {
             foreach ($values as $value) {
                 $this->sendJson('PUT', '/api/platform/settings/'.$key, ['value' => $value]);
                 self::assertResponseIsSuccessful($key.' '.$value);
             }
         }
+    }
+
+    /**
+     * The platform's phones (support, the legal pages' publisher and host) have no country to be read by: written with
+     * « + » or « 00 », kept as E.164, a wrong length refused with its country's example; a stored value is judged only
+     * once it changes.
+     */
+    public function testThePlatformsPhonesAreWrittenInTheirInternationalForm(): void
+    {
+        $this->signedInAsOperator();
+
+        foreach (['support.phone', 'legal.publisher.phone', 'legal.host.phone'] as $key) {
+            $this->sendJson('PUT', '/api/platform/settings/'.$key, ['value' => '71 900 868']);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $key);
+            self::assertSame('phone_country', $this->refusalOf($key)[0], $key);
+
+            $this->sendJson('PUT', '/api/platform/settings/'.$key, ['value' => '+216 71 900']);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $key);
+            self::assertSame('phone_length', $this->refusalOf($key)[0], $key);
+
+            $this->sendJson('PUT', '/api/platform/settings/'.$key, ['value' => '00216 71 900 868']);
+            self::assertResponseIsSuccessful($key);
+            self::assertSame('+21671900868', $this->json()['value'], $key);
+        }
+
+        $this->em()->getConnection()->executeStatement("UPDATE setting SET value = '\"71.900.868\"' WHERE key = 'legal.host.phone'");
+        $this->sendJson('PUT', '/api/platform/settings', ['changes' => [['key' => 'legal.host.phone', 'value' => '71.900.868', 'version' => 1], ['key' => 'support.email', 'value' => 'support@exemple.tn', 'version' => 0]]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'a value kept before the rule is sent back with the page');
     }
 
     /** A number pasted from a web page brings its invisible ends along: it is taken and kept without them. */
@@ -101,7 +129,7 @@ final class SupportContactTest extends ApiTestCase
 
         $this->sendJson('PUT', '/api/platform/settings/support.phone', ['value' => "\u{00A0}+216 71 900 868\u{200B} "]);
         self::assertResponseIsSuccessful();
-        self::assertSame('+216 71 900 868', $this->json()['value']);
+        self::assertSame('+21671900868', $this->json()['value']);
 
         // A page saving several keys at once goes through the same judge.
         $this->sendJson('PUT', '/api/platform/settings', ['changes' => [['key' => 'support.email', 'value' => " support@exemple.tn\u{200B}", 'version' => 0]]]);

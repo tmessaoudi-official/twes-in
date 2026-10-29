@@ -23,6 +23,7 @@ use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\DomainEvents;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
+use App\Shared\Application\TypedPhones;
 use App\Shared\Domain\ValueObject\Refusal;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -45,6 +46,7 @@ final readonly class ChangeSettings implements DeclaresAuditActions
         private ClockInterface $clock,
         private Transactions $transactions,
         private DomainEvents $events,
+        private TypedPhones $phones,
     ) {
     }
 
@@ -60,7 +62,10 @@ final readonly class ChangeSettings implements DeclaresAuditActions
         if (null !== $refusal) {
             throw new InvalidSettingValue([$key => $refusal]);
         }
-        $value = $definition->normalize($value);
+        [$value, $refusal] = $this->phoneKept($definition, $address, $key, $definition->normalize($value));
+        if (null !== $refusal) {
+            throw new InvalidSettingValue([$key => $refusal]);
+        }
 
         // A single key is a person's own choice or a value set from a script: the last word is the intent, and holding
         // the row keeps two of them from meeting at the version check of a flush.
@@ -101,7 +106,12 @@ final readonly class ChangeSettings implements DeclaresAuditActions
                 $refused[$change->key] = $refusal;
                 continue;
             }
-            $located[$change->key] = [$address, $definition->normalize($change->value), $change->version];
+            [$value, $refusal] = $this->phoneKept($definition, $address, $change->key, $definition->normalize($change->value));
+            if (null !== $refusal) {
+                $refused[$change->key] = $refusal;
+                continue;
+            }
+            $located[$change->key] = [$address, $value, $change->version];
         }
         if ([] !== $refused) {
             throw new InvalidSettingValue($refused);
@@ -120,6 +130,23 @@ final readonly class ChangeSettings implements DeclaresAuditActions
             return $told;
         });
         $this->events->publish(...$told);
+    }
+
+    /**
+     * A phone setting's value as the numbering plans keep it (`TypedPhones`), with no country to read it by, so written
+     * with « + » or « 00 »; what the setting already holds is judged only once it changes. Any other value as it came.
+     *
+     * @return array{mixed, ?Refusal}
+     */
+    private function phoneKept(SettingDefinition $definition, SettingAddress $address, string $key, mixed $value): array
+    {
+        if (!$definition->phone || !\is_string($value)) {
+            return [$value, null];
+        }
+        $held = $this->settings->find($address, $key)?->getValue();
+        $kept = $this->phones->kept($value, \is_string($held) ? $held : null, null);
+
+        return [$kept->phone ?? '', $kept->refusal];
     }
 
     /** @return list<PersonalSettingChanged> what to tell once the transaction has committed */

@@ -58,7 +58,7 @@ final class InvoiceMentionsTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), $this->clock, $transactions, new RecordingDomainEvents());
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), $this->clock, $transactions, new RecordingDomainEvents(), new \App\Shared\Application\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator())));
         $presets = ShippedFiscalPresets::presets();
         $this->mentions = new InvoiceMentions($presets, new ExcludedTaxFamilies($presets), ShippedMentionWording::wording(), new ReadSetting($resolve));
         $this->atelier = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris');

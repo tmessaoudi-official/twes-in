@@ -37,6 +37,9 @@ final readonly class SettingDefinition
      * @param string|null        $keyPattern    a regular expression, when the definition covers a family of keys
      * @param string|null        $patternReason the reason a value outside the pattern is refused with, whose text says
      *                                          the format with an example; required beside a pattern
+     * @param bool               $phone         a phone number, which the change keeps as its country's numbering plan
+     *                                          does (E.164) and refuses with that plan's reasons; with no country to
+     *                                          read it by, it is written with « + » or « 00 » first
      *
      * @throws \InvalidArgumentException for a malformed key, a level outside the chain, a pattern without its reason or a
      *                                   default it would refuse
@@ -56,6 +59,7 @@ final readonly class SettingDefinition
         public ?string $pattern = null,
         public ?string $keyPattern = null,
         public ?string $patternReason = null,
+        public bool $phone = false,
     ) {
         if (1 !== preg_match(self::KEY, $key)) {
             throw new \InvalidArgumentException(\sprintf('"%s" is not a setting key.', $key));
@@ -127,7 +131,7 @@ final readonly class SettingDefinition
             SettingType::Bool => [self::notYesOrNo()],
             SettingType::Int => [self::notAWholeNumber(), ...(null === $this->min && null === $this->max ? [] : [$this->outOfBounds(true)])],
             SettingType::Decimal, SettingType::Money => [self::notANumber(), ...(is_numeric($this->min) || is_numeric($this->max) ? [$this->outOfBounds(false)] : [])],
-            SettingType::Text => [self::notText(), $this->tooLong(), ...(null === $this->pattern ? [] : [$this->outsidePattern()])],
+            SettingType::Text => [self::notText(), $this->tooLong(), ...(null === $this->pattern ? [] : [$this->outsidePattern()]), ...($this->phone ? self::phoneRefusals() : [])],
             SettingType::Enum => [new Refusal('unknown_choice', 'expected one of '.implode(', ', $this->choices))],
             SettingType::Colour => [new Refusal('not_a_colour', 'expected a colour written #rrggbb')],
             SettingType::Json => [new Refusal('invalid_value', 'expected a list or an object')],
@@ -191,6 +195,16 @@ final readonly class SettingDefinition
         }
 
         return null === $this->pattern || 1 === preg_match($this->pattern, $value) ? null : $this->outsidePattern();
+    }
+
+    /** @return list<Refusal> what the numbering plans refuse a phone with, as the change says it */
+    private static function phoneRefusals(): array
+    {
+        return [
+            new Refusal('phone_length', 'too many or too few digits for its country', ['example' => '+216 30 010 123', 'callingCode' => '+216']),
+            new Refusal('phone_country', 'a phone with no country to read it by starts with + and its country code'),
+            new Refusal('invalid_phone', 'expected a phone number'),
+        ];
     }
 
     private function jsonRefusal(mixed $value): ?Refusal

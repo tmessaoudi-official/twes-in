@@ -128,7 +128,7 @@ final class InvoiceWorkflowTest extends TestCase
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new InvoiceReceiverSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->read = new ReadSetting($resolve);
-        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents());
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents(), new \App\Shared\Application\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator())));
         $numbers = new AllocateNumber($this->series, $this->transactions, $this->clock);
         $this->workflow = new InvoiceWorkflow(
             $this->invoices,
