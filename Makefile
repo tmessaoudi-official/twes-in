@@ -12,6 +12,13 @@ COMPOSE_PROFILES ?= $(if $(LAN_HOST),lan)
 # Live development by default (compose.live.yaml, docs/START.md § 1): every docker compose command below, and any a
 # recipe starts, sees the same services. Never set in .env, which a plain `docker compose` (CI's) reads too.
 COMPOSE_FILE ?= compose.yaml:compose.live.yaml
+# Behind a proxy that re-terminates TLS (a claude.ai cloud session), its CA reaches every build as the optional BuildKit
+# secret extra_ca (compose.extra-ca.yaml, scripts/gates/build-extra-ca.sh): only when CCS_EXTRA_CA_FILE names a file
+# that exists, so a computer and CI build exactly as before.
+EXTRA_CA := $(if $(CCS_EXTRA_CA_FILE),$(wildcard $(CCS_EXTRA_CA_FILE)))
+comma := ,
+EXTRA_CA_SECRET := $(if $(EXTRA_CA),--secret id=extra_ca$(comma)src=$(EXTRA_CA))
+override COMPOSE_FILE := $(COMPOSE_FILE)$(if $(EXTRA_CA),:compose.extra-ca.yaml)
 # Everything that parses, tests or builds the project runs in a container, never on the host's PHP, Composer or Node
 # (docs/SPEC.md § 7): the host needs Docker, make, bash and git, nothing else. The services are `tools` (PHP, the gates'
 # own tools, the Docker CLI) and `web-tools` (Node, Playwright's Chromium), compose.yaml, profile `tools`. They run as
@@ -52,7 +59,7 @@ tools-image:   ## build the PHP toolchain image (a no-op when nothing under infr
 	docker compose --profile tools build -q tools
 
 web-tools-image: ## build the Node + Playwright toolchain image
-	docker build -q --load -f infra/web/tools.Dockerfile -t twes-in-web-tools infra/web >/dev/null
+	docker build -q --load $(EXTRA_CA_SECRET) -f infra/web/tools.Dockerfile -t twes-in-web-tools infra/web >/dev/null
 
 # The PowerShell toolchain image, named by its Dockerfile: its build reaches PowerShell Gallery, which fails now and
 # then, so an image already built from the same Dockerfile is kept, here and in CI's cache (.github/workflows/ci.yml).
@@ -64,7 +71,7 @@ ps-tools-tag:  ## print the PowerShell toolchain image's name, which CI's cache 
 ps-tools-image: ## build the PowerShell toolchain image: the Windows installer's parser and PSScriptAnalyzer (a no-op when built from this Dockerfile)
 	@# Inspect fails only on an image not there, which is what it asks; a failed build shows PowerShell's own error.
 	@docker image inspect $(PS_TOOLS_IMAGE) >/dev/null 2>&1 || { mkdir -p var/tmp && \
-	  docker build --progress=plain --load -f infra/powershell/Dockerfile -t $(PS_TOOLS_IMAGE) infra/powershell \
+	  docker build --progress=plain --load $(EXTRA_CA_SECRET) -f infra/powershell/Dockerfile -t $(PS_TOOLS_IMAGE) infra/powershell \
 	    >var/tmp/ps-tools-build.log 2>&1 || { tail -n 60 var/tmp/ps-tools-build.log; exit 1; }; }
 
 gate-powershell: ps-tools-image   ## the Windows installer, scripts/onprem/install.ps1: parsed, PSScriptAnalyzer clean, its .wslconfig editing run
@@ -262,6 +269,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/build-extra-ca.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/sort-directions.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/domain-refusals.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/list-limits.test.sh
@@ -340,6 +348,7 @@ in-gate-licences:
 	bash scripts/gates/stored-items.sh
 	bash scripts/gates/icons-declared.sh
 	bash scripts/gates/float-casts.sh
+	bash scripts/gates/build-extra-ca.sh
 	bash scripts/gates/sort-directions.sh
 	bash scripts/gates/domain-refusals.sh
 	bash scripts/gates/list-limits.sh

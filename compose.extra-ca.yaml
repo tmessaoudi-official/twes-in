@@ -1,0 +1,30 @@
+# The builds' trust in a proxy that re-terminates TLS, such as a claude.ai cloud session's agent proxy: its CA, the file
+# CCS_EXTRA_CA_FILE names (claude-code-setup sets it in the session), is handed to every build as the BuildKit secret
+# extra_ca, which each downloading step mounts for itself (infra/**/Dockerfile) and adds to what it already trusts. TLS
+# checks stay on. The Makefile adds this file to COMPOSE_FILE only when CCS_EXTRA_CA_FILE names a file that exists, so a
+# computer and CI build exactly as before; a secret is in no image layer (scripts/gates/build-extra-ca.sh holds the rest).
+services:
+  api:
+    build:
+      secrets: [extra_ca]
+  migrate:
+    build:
+      secrets: [extra_ca]
+  worker:
+    build:
+      secrets: [extra_ca]
+  demo-worker:
+    build:
+      secrets: [extra_ca]
+  migrate-watch:
+    build:
+      secrets: [extra_ca]
+  web:
+    build:
+      secrets: [extra_ca]
+  tools:
+    build:
+      secrets: [extra_ca]
+secrets:
+  extra_ca:
+    file: ${CCS_EXTRA_CA_FILE:?the agent proxy's CA file}

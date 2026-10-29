@@ -6,7 +6,11 @@ FROM node:26.12.1-alpine AS node-base
 FROM node-base AS build
 WORKDIR /app
 COPY web/package.json web/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# Behind a proxy that re-terminates TLS (a cloud session), npm is handed its CA as the optional secret extra_ca
+# (compose.extra-ca.yaml) through NODE_EXTRA_CA_CERTS, for this step only; without it the step runs as it always did.
+RUN --mount=type=secret,id=extra_ca \
+    if [ -s /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi \
+ && npm ci --no-audit --no-fund
 COPY web/ ./
 # The TypeScript types under src/app/api are generated, gitignored and kept out of the build context
 # (.dockerignore): they come from the api image's exported OpenAPI document, so the bundle always matches the

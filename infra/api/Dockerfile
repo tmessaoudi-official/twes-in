@@ -17,7 +17,14 @@ WORKDIR /app
 
 # bcmath: the money calculator works on BcMath\Number (api/src/Fiscal/Domain/Calculation). gd and exif: a product's
 # photos are cut into thumbnails on the server, turned upright first as the phone that took them says.
-RUN install-php-extensions pdo_pgsql intl zip opcache bcmath gd exif
+# Behind a proxy that re-terminates TLS (a cloud session), the build is handed its CA as the optional secret extra_ca
+# (compose.extra-ca.yaml), added to the system bundle for this step only (SSL_CERT_FILE, read by curl and Composer) on a
+# tmpfs, so it is in no layer; without it the step runs as it always did. TLS checks stay on.
+RUN --mount=type=secret,id=extra_ca --mount=type=tmpfs,target=/run/extra-ca \
+    if [ -s /run/secrets/extra_ca ]; then { if [ -f /etc/ssl/certs/ca-certificates.crt ]; then cat /etc/ssl/certs/ca-certificates.crt; fi; \
+      cat /run/secrets/extra_ca; } > /run/extra-ca/all.pem \
+      && export SSL_CERT_FILE=/run/extra-ca/all.pem; fi \
+ && install-php-extensions pdo_pgsql intl zip opcache bcmath gd exif
 COPY infra/api/conf.d/10-app.ini "$PHP_INI_DIR/conf.d/"
 
 COPY --from=composer:2.10.3 /usr/bin/composer /usr/bin/composer
@@ -40,7 +47,11 @@ RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
 # Dependencies first so source edits do not invalidate the vendor layer.
 COPY api/composer.json api/composer.lock api/symfony.lock ./
-RUN composer install --no-scripts --no-autoloader --prefer-dist --no-progress --no-interaction
+RUN --mount=type=secret,id=extra_ca --mount=type=tmpfs,target=/run/extra-ca \
+    if [ -s /run/secrets/extra_ca ]; then { if [ -f /etc/ssl/certs/ca-certificates.crt ]; then cat /etc/ssl/certs/ca-certificates.crt; fi; \
+      cat /run/secrets/extra_ca; } > /run/extra-ca/all.pem \
+      && export SSL_CERT_FILE=/run/extra-ca/all.pem; fi \
+ && composer install --no-scripts --no-autoloader --prefer-dist --no-progress --no-interaction
 
 COPY api/ ./
 # The screens' texts as shipped, which a text override is checked against (app.texts.screen_directory).
@@ -100,7 +111,11 @@ RUN cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 COPY infra/api/conf.d/20-app.prod.ini "$PHP_INI_DIR/conf.d/"
 
 COPY api/composer.json api/composer.lock api/symfony.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress --no-interaction
+RUN --mount=type=secret,id=extra_ca --mount=type=tmpfs,target=/run/extra-ca \
+    if [ -s /run/secrets/extra_ca ]; then { if [ -f /etc/ssl/certs/ca-certificates.crt ]; then cat /etc/ssl/certs/ca-certificates.crt; fi; \
+      cat /run/secrets/extra_ca; } > /run/extra-ca/all.pem \
+      && export SSL_CERT_FILE=/run/extra-ca/all.pem; fi \
+ && composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-progress --no-interaction
 
 COPY api/ ./
 # The screens' texts as shipped, which a text override is checked against (app.texts.screen_directory).

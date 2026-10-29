@@ -10,6 +10,10 @@ ARG PLAYWRIGHT_VERSION=1.64.1
 # Only the system libraries Chromium and WebKit need are installed here: WebKit is Safari's engine, which the phone
 # scenarios also run on, since a shop's iPhones run no other. The browsers themselves are downloaded by `make e2e`
 # (`playwright-browser`, in the Makefile) into var/cache/ms-playwright of the working tree, on Docker's default network.
-RUN npm install --global --no-audit --no-fund "playwright@${PLAYWRIGHT_VERSION}" \
+# Behind a proxy that re-terminates TLS (a cloud session), npm is handed its CA as the optional secret extra_ca
+# (compose.extra-ca.yaml) through NODE_EXTRA_CA_CERTS, for this step only; without it the step runs as it always did.
+RUN --mount=type=secret,id=extra_ca \
+    if [ -s /run/secrets/extra_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/extra_ca; fi \
+ && npm install --global --no-audit --no-fund "playwright@${PLAYWRIGHT_VERSION}" \
  && playwright install-deps chromium webkit \
  && rm -rf /var/lib/apt/lists/*
