@@ -20,6 +20,7 @@ use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Application\TypedPhones;
+use App\Shared\Domain\Service\ContactRules;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\CompanyRepository;
 use App\Tenancy\Domain\ValueObject\CompanyProfile;
@@ -74,6 +75,11 @@ final readonly class ReviseCompanyProfile implements DeclaresAuditActions
             throw new InvalidCompanyProfile('phone', $kept->refusal->message, $kept->refusal->reason, $kept->refusal->params);
         }
         $profile = $profile->withPhone($kept->phone);
+        // The address too is held to its rule once it changes (row 208): the form leaves a revision's address to this.
+        $email = null === $profile->email || $profile->email === $company->getProfile()->email ? null : ContactRules::email($profile->email);
+        if (null !== $email) {
+            throw new InvalidCompanyProfile('email', $email->message, $email->reason, $email->params);
+        }
 
         return $this->transactions->run(function () use ($company, $profile, $actorUserId, $version): Company {
             $company = $this->companies->lockedOfId($company->getId()) ?? throw new CompanyNotFound('No such company.');

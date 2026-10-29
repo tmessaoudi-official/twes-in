@@ -24,6 +24,7 @@ use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Application\TypedPhones;
+use App\Shared\Domain\Service\ContactRules;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -95,7 +96,7 @@ final readonly class ManageContacts implements DeclaresAuditActions
             if (null !== $version) {
                 $this->versions->expect($contact, $version);
             }
-            $details = $this->withPhoneAsKept($company, $contact->getCustomer(), $details, $contact->getDetails()->phone);
+            $details = $this->withPhoneAsKept($company, $contact->getCustomer(), $details, $contact->getDetails());
             $now = $this->clock->now();
             $changed = $contact->revise($details, $now);
             if ($isPrimary && !$contact->isPrimary()) {
@@ -145,13 +146,18 @@ final readonly class ManageContacts implements DeclaresAuditActions
 
     /**
      * The details with their phone as kept (`TypedPhones`), read by the customer's billing country, else the company's.
-     * A contact has no « À vérifier » of its own yet: a number outside the ones handed out is kept, unmarked.
+     * A contact has no « À vérifier » of its own yet: a number outside the ones handed out is kept, unmarked. The e-mail
+     * address is held to its rule here too, once it changes (row 208): the form leaves a revision's address to this.
      *
      * @throws InvalidContact
      */
-    private function withPhoneAsKept(Company $company, Customer $customer, ContactDetails $details, ?string $held): ContactDetails
+    private function withPhoneAsKept(Company $company, Customer $customer, ContactDetails $details, ?ContactDetails $held): ContactDetails
     {
-        $kept = $this->phones->kept($details->phone, $held, $customer->getProfile()->billingAddress->countryCode ?? $company->getCountryCode());
+        $email = null === $details->email || $details->email === $held?->email ? null : ContactRules::email($details->email);
+        if (null !== $email) {
+            throw new InvalidContact('email', $email->message, $email->reason, $email->params);
+        }
+        $kept = $this->phones->kept($details->phone, $held?->phone, $customer->getProfile()->billingAddress->countryCode ?? $company->getCountryCode());
         if (null !== $kept->refusal) {
             throw new InvalidContact('phone', $kept->refusal->message, $kept->refusal->reason, $kept->refusal->params);
         }

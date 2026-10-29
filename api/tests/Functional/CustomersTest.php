@@ -204,6 +204,27 @@ final class CustomersTest extends ApiTestCase
         self::assertSame(['+21611111111', false], [$this->json()['phone'], $this->json()['toCheck']]);
     }
 
+    /**
+     * An e-mail address kept before today's rule is refused only once it is changed (row 208): sent back with the rest
+     * of the form, it never stops another field being saved.
+     */
+    public function testAnAddressKeptBeforeTheRuleIsJudgedOnlyOnceItChanges(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->postJson($this->path(), $this->customer(['email' => 'compta@carthage.tn']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->em()->getConnection()->executeStatement("UPDATE customer SET email = 'compta@carthage' WHERE id = ?", [$id]);
+
+        $this->sendJson('PUT', $this->path($id), [...$this->customer(['name' => 'Carthage Conseil SA', 'email' => 'compta@carthage']), 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Carthage Conseil SA', 'compta@carthage'], [$this->json()['name'], $this->json()['email']]);
+
+        $this->sendJson('PUT', $this->path($id), [...$this->customer(['email' => 'compta@carthag']), 'version' => 2]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'changed, it is held to the rule');
+        self::assertSame('invalid_email', $this->refusals()[0]['reason'] ?? null);
+    }
+
     public function testANumberAnotherCustomerHasAnswersConflict(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);

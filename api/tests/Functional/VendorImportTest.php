@@ -336,8 +336,11 @@ FRN-0020,Quincaillerie Ben Salah,TN59 1000 6035 1835 9847 8832,Rappeler le compt
             ."\nFRN-0002,Outillage Pro,,".self::MATRICULE.",,,,,,\n";
     }
 
-    /** A vendor stored before a rule is held to it when a file writes it again, under the column the rule names. */
-    public function testAFileUpdatingAVendorStoredBeforeARuleIsRefusedOnTheCellItBreaks(): void
+    /**
+     * A vendor stored before a rule keeps what a file leaves alone: a stored value today's rule refuses is refused only
+     * once it changes (row 208, 2026-10-27 17:51, which replaces holding the whole record to the rule).
+     */
+    public function testAFileUpdatingAVendorStoredBeforeARuleLeavesWhatItDoesNotWrite(): void
     {
         $this->signedIn(['vendor.read', 'vendor.write']);
         $this->import("number,name,email\nFRN-0100,Sotumag,achats@sotumag.tn\n");
@@ -347,9 +350,7 @@ FRN-0020,Quincaillerie Ben Salah,TN59 1000 6035 1835 9847 8832,Rappeler le compt
         $this->import("number,name\nFRN-0100,Sotumag Group\n", mode: 'upsert', dryRun: true);
 
         self::assertResponseIsSuccessful();
-        $rejected = $this->arrayAt($this->json(), 'rejected');
-        self::assertIsArray($rejected[0] ?? null);
-        self::assertSame([2, 'email', 'invalid_email'], [$rejected[0]['line'] ?? null, $rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null]);
+        self::assertSame([[], [2]], [$this->arrayAt($this->json(), 'rejected'), $this->arrayAt($this->json(), 'updated')]);
     }
 
     /**

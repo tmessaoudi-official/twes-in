@@ -19,6 +19,7 @@ use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Application\TypedPhones;
+use App\Shared\Domain\Service\ContactRules;
 use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Exception\InvalidEstablishment;
 use App\Tenancy\Domain\Model\Company;
@@ -130,6 +131,7 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
             }
 
             $phone = $this->keptPhone($company, $details->phone, $establishment->getPhone());
+            self::checkEmail($details->email, $establishment->getEmail());
             $now = $this->clock->now();
             $before = self::fields($establishment);
             $establishment->revise($code, $details->name, $details->addressLine1, $details->addressLine2, $details->postalCode, $details->city, $phone, $details->email, $now);
@@ -158,6 +160,21 @@ final readonly class ManageEstablishments implements DeclaresAuditActions
         }
 
         return false;
+    }
+
+    /**
+     * The address is held to its rule once it changes (row 208): the form leaves a revision's address to this, so one kept
+     * before today's rule never refuses another change.
+     *
+     * @throws InvalidEstablishment
+     */
+    private static function checkEmail(?string $typed, ?string $held): void
+    {
+        $typed = null === $typed ? null : TypedText::trimmed($typed);
+        $refusal = null === $typed || '' === $typed || $typed === $held ? null : ContactRules::email($typed);
+        if (null !== $refusal) {
+            throw new InvalidEstablishment('email', $refusal->message, $refusal->reason, $refusal->params);
+        }
     }
 
     /**

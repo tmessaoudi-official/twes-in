@@ -143,14 +143,18 @@ final readonly class VendorProfile
 
     /**
      * Holds what is written to the rules the form holds it to, each refusal under the form field it names. Asked by the
-     * vendor as it is created or revised, never as a profile is read back from a stored row.
+     * vendor as it is created or revised, never as a profile is read back from a stored row. A contact the vendor
+     * already holds is judged only once it changes (row 208): one kept before today's rule never refuses another change.
+     *
+     * @param array<string, ?string> $held the e-mail and phone the vendor holds now, by field
      *
      * @throws InvalidVendor
      */
-    public function check(): void
+    public function check(array $held = []): void
     {
+        $kept = array_intersect_assoc(['email' => $this->email, 'phone' => $this->phone], $held);
         foreach ($this->refusals() as $field => $refusal) {
-            if (null !== $refusal) {
+            if (null !== $refusal && !\array_key_exists($field, $kept)) {
                 throw new InvalidVendor($field, $refusal->message, $refusal->reason, $refusal->params);
             }
         }

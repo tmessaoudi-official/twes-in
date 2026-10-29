@@ -246,7 +246,7 @@ class Vendor implements CompanyOwned
     private function apply(VendorProfile $profile): void
     {
         // Held to the form's rules as it is written; read back from a stored row, it is not held again.
-        $profile->check();
+        $profile->check(['email' => $this->email, 'phone' => $this->phone]);
         $this->name = $profile->name;
         $this->legalName = $profile->legalName;
         $this->identifiers = $profile->identifiers;

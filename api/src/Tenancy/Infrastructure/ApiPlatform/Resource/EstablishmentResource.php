@@ -95,7 +95,7 @@ final class EstablishmentResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $phone = null;
 
-    #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE])]
+    #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE], onceChanged: true)]
     #[Assert\Length(max: 254, groups: [self::WRITE], payload: ['reason' => 'invalid_text', 'params' => ['max' => 254]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;

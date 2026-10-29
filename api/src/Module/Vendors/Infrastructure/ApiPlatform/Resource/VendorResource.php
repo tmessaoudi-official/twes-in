@@ -134,11 +134,11 @@ final class VendorResource
     // count: not bounded yet ("Limits on the other lists", docs/plans/first-client.plan.md)
     public array $identifiers = [];
 
-    #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE])]
+    #[ContactRule(ContactRule::EMAIL, groups: [self::WRITE], onceChanged: true)]
     #[Groups([self::READ, self::WRITE])]
     public ?string $email = null;
 
-    #[ContactRule(ContactRule::PHONE, groups: [self::WRITE])]
+    #[ContactRule(ContactRule::PHONE, groups: [self::WRITE], onceChanged: true)]
     #[Groups([self::READ, self::WRITE])]
     public ?string $phone = null;
 

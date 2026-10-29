@@ -208,8 +208,10 @@ final class CustomerTest extends TestCase
 
         self::assertSame('ali@', $profile->email);
         self::assertSame([], $customer->revise('CLI-0001', $profile, null, $this->standard, [], true, $this->now), 'saying again what is stored writes nothing');
+        // Row 208: the address kept before the rule never refuses another change, only a change of its own.
+        self::assertSame(['number'], $customer->revise('CLI-0002', $profile, null, $this->standard, [], true, $this->now));
         $this->expectException(InvalidCustomer::class);
-        $customer->revise('CLI-0002', $profile, null, $this->standard, [], true, $this->now);
+        $customer->revise('CLI-0002', self::profile('ali@x'), null, $this->standard, [], true, $this->now);
     }
 
     private static function profile(?string $email = null): CustomerProfile

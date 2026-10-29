@@ -156,6 +156,24 @@ final class VendorsTest extends ApiTestCase
         self::assertSame(['+21611111111', true], [$this->json()['phone'], $this->json()['toCheck']]);
     }
 
+    /** An address kept before today's rule is refused only once it changes (row 208), never for another field's save. */
+    public function testAnAddressKeptBeforeTheRuleIsJudgedOnlyOnceItChanges(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->postJson($this->path(), $this->vendor(['email' => 'ventes@sotumag.tn']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->em()->getConnection()->executeStatement("UPDATE vendor SET email = 'ventes@sotumag' WHERE id = ?", [$id]);
+
+        $this->sendJson('PUT', $this->path($id), [...$this->vendor(['name' => 'Sotumag SA', 'email' => 'ventes@sotumag']), 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Sotumag SA', 'ventes@sotumag'], [$this->json()['name'], $this->json()['email']]);
+
+        $this->sendJson('PUT', $this->path($id), [...$this->vendor(['email' => 'ventes@sotuma']), 'version' => 2]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('invalid_email', $this->refusals()[0]['reason'] ?? null);
+    }
+
     public function testARefusalNamesItsFieldAndAReasonTheScreenTranslates(): void
     {
         $this->signedIn(['vendor.read', 'vendor.write']);

@@ -26,8 +26,16 @@ final class ContactRule extends Constraint
     public const string BIC = 'bic';
     public const string IBAN = 'iban';
 
-    /** @param self::EMAIL|self::PHONE|self::WEBSITE|self::COUNTRY|self::BIC|self::IBAN $rule */
-    public function __construct(public readonly string $rule, ?array $groups = null)
+    /**
+     * @param self::EMAIL|self::PHONE|self::WEBSITE|self::COUNTRY|self::BIC|self::IBAN $rule
+     * @param bool                                                                     $onceChanged a value the record being
+     *                                                                                              revised already holds is
+     *                                                                                              not judged again, so one
+     *                                                                                              kept before today's rule
+     *                                                                                              never refuses another
+     *                                                                                              change (row 208)
+     */
+    public function __construct(public readonly string $rule, ?array $groups = null, public readonly bool $onceChanged = false)
     {
         parent::__construct(null, $groups);
     }

@@ -12,6 +12,7 @@ namespace App\Shared\Infrastructure\Validation;
 use App\Shared\Domain\Service\ContactRules;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Constraints\Iban;
 use Symfony\Component\Validator\ConstraintValidator;
@@ -24,6 +25,11 @@ use Symfony\Component\Validator\Exception\UnexpectedValueException;
  */
 final class ContactRuleValidator extends ConstraintValidator
 {
+    /** @param RequestStack $requests the container's; a validator built on its own (a unit test) knows of no revision */
+    public function __construct(private readonly RequestStack $requests = new RequestStack())
+    {
+    }
+
     public function validate(mixed $value, Constraint $constraint): void
     {
         if (!$constraint instanceof ContactRule) {
@@ -41,6 +47,9 @@ final class ContactRuleValidator extends ConstraintValidator
 
         // The domain keeps a value without its surrounding spaces, so it judges it so.
         $value = TypedText::trimmed($value);
+        if ($this->leftToTheUseCase($constraint)) {
+            return;
+        }
         if (ContactRule::IBAN === $constraint->rule) {
             $this->account($value);
 
@@ -56,6 +65,16 @@ final class ContactRuleValidator extends ConstraintValidator
         if (null !== $refusal) {
             $this->context->getViolations()->add(DomainRule::violation($this->context->getPropertyPath(), $refusal->message, $refusal->reason, $refusal->params, $this->context->getRoot(), $value));
         }
+    }
+
+    /**
+     * Whether a revision's value is left to the use case, which alone reads what the record holds (these operations
+     * read nothing before their processor) and judges the value only once it changes (row 208), so one kept before
+     * today's rule never refuses another change. A creation is judged here, with every other field's fault.
+     */
+    private function leftToTheUseCase(ContactRule $constraint): bool
+    {
+        return $constraint->onceChanged && \in_array($this->requests->getCurrentRequest()?->getMethod(), ['PUT', 'PATCH'], true);
     }
 
     /** An IBAN, or a bare RIB as the IBAN it spells: the domain's shape and checksum, then its country's own length. */

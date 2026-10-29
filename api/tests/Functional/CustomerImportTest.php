@@ -325,8 +325,11 @@ final class CustomerImportTest extends ApiTestCase
         self::assertTrue($this->customer('CLI-0043')->getCheckMark()->marked, 'a number outside the plan is « À vérifier »');
     }
 
-    /** A customer stored before a rule is held to it when a file writes it again, under the column the rule names. */
-    public function testAFileUpdatingACustomerStoredBeforeARuleIsRefusedOnTheCellItBreaks(): void
+    /**
+     * A customer stored before a rule keeps what a file leaves alone: a stored value today's rule refuses is refused
+     * only once it changes (row 208, 2026-10-27 17:51, which replaces holding the whole record to the rule).
+     */
+    public function testAFileUpdatingACustomerStoredBeforeARuleLeavesWhatItDoesNotWrite(): void
     {
         $this->signedIn(['customer.read', 'customer.write']);
         $this->import("number,name,kind,email\nCLI-0001,Carthage Conseil,individual,compta@carthage.tn\n");
@@ -336,9 +339,7 @@ final class CustomerImportTest extends ApiTestCase
         $this->import("number,name\nCLI-0001,Carthage Conseil Group\n", mode: 'upsert', dryRun: true);
 
         self::assertResponseIsSuccessful();
-        $rejected = $this->arrayAt($this->json(), 'rejected');
-        self::assertIsArray($rejected[0] ?? null);
-        self::assertSame([2, 'email', 'invalid_email'], [$rejected[0]['line'] ?? null, $rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null]);
+        self::assertSame([[], [2]], [$this->arrayAt($this->json(), 'rejected'), $this->arrayAt($this->json(), 'updated')]);
     }
 
     public function testCreateModeRefusesAKnownNumberAndUpsertFillsInOnlyTheCellsTheRowHas(): void
