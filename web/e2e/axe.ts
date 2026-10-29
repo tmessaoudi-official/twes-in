@@ -19,14 +19,16 @@ export async function wcagViolations(page: Page): Promise<string[]> {
   // 35833959425, the notification centre). An endless animation (a spinner) never finishes, and is not a fade.
   // Still means still for a few frames, not at one look: a pointer left where a panel closed hovers what lies beneath
   // on the next frame, and a tooltip there starts its fade a moment later, after a single look found nothing moving
-  // (CI run 39093920621, the build line's tooltip under a select's option).
+  // (CI run 39093920621, the build line's tooltip under a select's option). And a fade is not an overlay's alone: a
+  // field's mat-error fades in over 300 ms in the page itself, and a scan read the barcode refusal's red at 59 % on its
+  // way in, 3:1 where it rests above 6:1 (CI run 40796135343). So every finite animation of the document is waited for.
   await expect
     .poll(
       () =>
         page.evaluate(async () => {
           const moving = (): boolean =>
-            [...document.querySelectorAll('.cdk-overlay-container')]
-              .flatMap((overlays) => overlays.getAnimations({ subtree: true }))
+            document
+              .getAnimations()
               .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
               .some((animation) => 'running' === animation.playState);
           for (let frame = 0; frame < 3; frame += 1) {

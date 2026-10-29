@@ -86,6 +86,31 @@ test('a scan waits for a tooltip to arrive instead of reading it mid-fade', asyn
   expect(await tooltipsArriving(page), 'the scan waited for the tooltip').toBe(false);
 });
 
+test('a scan waits for a fade in the page itself, as a field error arrives', async ({ page }) => {
+  // CI read `color-contrast: #mat-mdc-error-0` under a barcode's code (run 40796135343): Material fades a mat-error in
+  // over 300 ms inside the page, not in an overlay, and the scan looked at the overlays only. A fade is staged in the
+  // page, long enough that it cannot end by itself between the scan's first look and its read.
+  await signIn(page);
+  await openMembers(page);
+  await page.evaluate(() => {
+    const said = document.createElement('p');
+    said.dataset['testid'] = 'staged-fade';
+    said.textContent = 'Ce code est déjà celui d’un autre article.';
+    document.querySelector('main')?.append(said);
+    said.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 3000 });
+  });
+  const arriving = (): Promise<boolean> =>
+    page.evaluate(() =>
+      (document.querySelector('[data-testid="staged-fade"]')?.getAnimations() ?? []).some(
+        (animation) => 'running' === animation.playState,
+      ),
+    );
+  expect(await arriving(), 'the fade is under way when the scan starts').toBe(true);
+
+  expect(await wcagViolations(page), 'members, a text faded in').toEqual([]);
+  expect(await arriving(), 'the scan waited for the fade').toBe(false);
+});
+
 test('a scan waits for an overlay that arrives a few frames after the page looked still', async ({
   page,
 }) => {
