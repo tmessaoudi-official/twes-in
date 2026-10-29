@@ -468,6 +468,41 @@ describe('Select', () => {
     expect(document.body.textContent).toContain('Nothing found');
   });
 
+  // The phone field's country (ruled 2026-10-29): the closed box shows « 🇹🇳 TN +216 », short enough to sit beside the
+  // number, while the list keeps each full name, found by it or by the short text, and the box is still named by it.
+  it('shows a short text in the closed box, named by the full one, and finds an option by either', async () => {
+    const countries: SelectOption[] = many.map((option) => ({
+      ...option,
+      label: `${option.label} +1`,
+      short: `${option.value.slice(0, 2).toUpperCase()} +1`,
+      shortSpoken: option.label,
+    }));
+    fixture.componentInstance.options.set(countries);
+    fixture.componentInstance.control.setValue('france');
+    await settle();
+
+    const trigger = q('sel')!;
+    const shown = trigger.querySelector('[data-short]')!;
+    expect(shown.textContent?.trim()).toBe('FR +1');
+    expect(shown.getAttribute('aria-hidden')).toBeNull();
+    const named = (trigger.getAttribute('aria-labelledby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+      .join(' ');
+    expect(named).toContain('Currency');
+    expect(named).toContain('France');
+    expect(named).toContain('FR +1');
+
+    await open();
+    expect(optionLabels()).toContain('France +1');
+    const search = q('sel-search') as HTMLInputElement;
+    search.value = 'eg +1';
+    search.dispatchEvent(new Event('input'));
+    await settle();
+    // « ÉG +1 » is Égypte's short text, which no full name holds.
+    expect(optionLabels()).toEqual(['Égypte +1']);
+  });
+
   describe('multiple', () => {
     beforeEach(async () => {
       fixture.componentInstance.multiple.set(true);

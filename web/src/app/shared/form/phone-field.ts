@@ -49,12 +49,13 @@ let nextId = 0;
     { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => PhoneField), multi: true },
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  // Two boxes side by side, which wrap one under the other where the field is too narrow for both: on a phone.
+  // Two boxes side by side, the country's as narrow as « 🇺🇿 UZ +998 » needs, which wrap one under the other where the
+  // field is too narrow for both.
   host: { class: 'flex min-w-0 flex-wrap items-start gap-2' },
   template: `
     <span [id]="countryLabelId" class="sr-only">{{ 'form.phone.country' | translate }}</span>
     <app-select
-      class="min-w-0 flex-[1_1_13rem]"
+      class="min-w-0 flex-[0_0_9.5rem]"
       [labelledBy]="countryLabelId"
       [options]="countryOptions()"
       [formControl]="countryControl"
@@ -135,9 +136,12 @@ export class PhoneField implements ControlValueAccessor {
     const screen = this.translate.getCurrentLang() ?? this.translate.getFallbackLang() ?? '';
     return phoneCountries(screen).map((country) => ({
       value: country.code,
-      // « 🇹🇳 Tunisie +216 », as ruled: the name found by the search, the code isolated left to right so « +216 » keeps
+      // « 🇹🇳 Tunisie +216 » in the list, found by the name; « 🇹🇳 TN +216 » in the closed box, which the full name still
+      // names (ruled 2026-10-29: the name made the box too wide). The code is isolated left to right so « +216 » keeps
       // its sign before its digits in Arabic.
       label: `${country.flag} ${country.name} \u2066+${country.callingCode}\u2069`,
+      short: `${country.flag} ${country.code} \u2066+${country.callingCode}\u2069`,
+      shortSpoken: country.name,
       testId: `${this.testId()}-country-${country.code}`,
     }));
   });

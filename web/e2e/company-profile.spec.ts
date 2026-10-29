@@ -187,7 +187,9 @@ test('a phone is typed beside its country, found by name, and reads back into th
     const country = page.getByTestId('field-phone-country');
     // The seeded company is Tunisian: a number with no « + » is read as Tunisia's.
     await expect(country).toContainText('+216');
-    await expect(country).toContainText('Tunisie');
+    // Closed, the box shows « 🇹🇳 TN +216 », and is still named by the country's full name.
+    await expect(country.locator('[data-short]')).toHaveText(/TN\s\S*\+216/);
+    await expect(country).toHaveAccessibleName(/Tunisie/);
 
     await country.click();
     await page.getByTestId('field-phone-country-search').fill('France');

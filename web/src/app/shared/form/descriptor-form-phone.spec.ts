@@ -139,9 +139,14 @@ describe('DescriptorForm with a phone field', () => {
     it("starts on the company's country and hands on the number in international form", async () => {
       const host = await open('');
 
-      // Two boxes (ruled after 16:53): the country by its flag, its name and its code, then the local number.
+      // Two boxes (ruled after 16:53): the country, then the local number. Closed, the country's box shows its flag, its
+      // ISO code and its calling code, « 🇫🇷 FR +33 » (ruled 2026-10-29), and is still named by the country's full name.
+      const shown = byTestId('field-phone-country')!.querySelector('[data-short]')!.textContent!;
+      expect(shown).toBe('\u{1F1EB}\u{1F1F7} FR ⁦+33⁩');
       expect(picked()).toContain('France');
-      expect(picked()).toContain('+33');
+      byTestId('field-phone-country')!.click();
+      await settle();
+      expect(byTestId('field-phone-country-FR')!.textContent).toContain('France');
       await typeIn('06 12 34 56 78');
       expect(host.form.controls['phone'].value).toBe('+33 6 12 34 56 78');
     });

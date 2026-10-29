@@ -53,6 +53,13 @@ export interface SelectOption {
   hint?: string;
   /** The language the second line is in, when the label's `lang` is another. */
   hintLang?: string;
+  /**
+   * What the closed box shows of the chosen option instead of its label, where the label is too long to sit there: a
+   * phone's country as « 🇹🇳 TN +216 ». The search also reads it, and the box stays named by `shortSpoken`.
+   */
+  short?: string;
+  /** What the box is named by beside `short`, read but not shown: the full name the short text stands for. */
+  shortSpoken?: string;
 }
 
 /**
@@ -170,7 +177,14 @@ function fold(text: string): string {
                 [style.background-color]="'var(--twes-status-' + tone + '-dot)'"
               ></span>
             }
-            <span class="twes-value" dir="auto">{{ chosen()[0].label }}</span>
+            @if (chosen()[0].short; as short) {
+              <!-- value-direction: a name in the screen's language, read and not shown -->
+              <span class="sr-only">{{ chosen()[0].shortSpoken ?? chosen()[0].label }}</span
+              >&ngsp;
+              <span class="twes-value" dir="auto" data-short>{{ short }}</span>
+            } @else {
+              <span class="twes-value" dir="auto">{{ chosen()[0].label }}</span>
+            }
             @if (chosen()[0].triggerCount !== false && hasCount(chosen()[0].count)) {
               <app-count-badge
                 data-trigger-count
@@ -395,7 +409,10 @@ export class Select implements ControlValueAccessor {
     return words === ''
       ? this.items()
       : this.items().filter(
-          (option) => fold(option.label).includes(words) || fold(option.hint ?? '').includes(words),
+          (option) =>
+            fold(option.label).includes(words) ||
+            fold(option.hint ?? '').includes(words) ||
+            fold(option.short ?? '').includes(words),
         );
   });
 
