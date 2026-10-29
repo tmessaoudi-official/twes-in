@@ -476,6 +476,7 @@ describe('AuthApi', () => {
     name: 'Work laptop',
     createdAt: '2026-09-15T10:00:00+00:00',
     lastUsedAt: null,
+    discoverable: false,
   };
 
   it('fetches creation options, registers the credential and lists the passkeys', async () => {

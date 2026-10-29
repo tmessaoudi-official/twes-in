@@ -574,6 +574,7 @@ describe('AuthFacade', () => {
     name: 'Work laptop',
     createdAt: '2026-09-15T10:00:00+00:00',
     lastUsedAt: null,
+    discoverable: true,
   };
 
   it('lists the passkeys, or the refusal', async () => {

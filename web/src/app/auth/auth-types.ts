@@ -236,6 +236,8 @@ export interface PasskeySummary {
   name: string;
   createdAt: string;
   lastUsedAt: string | null;
+  /** whether it lives on the device and can sign in alone, as the browser said when it made it; null when it said nothing */
+  discoverable: boolean | null;
 }
 
 export type PasskeysOutcome =

@@ -38,6 +38,7 @@
       "passkey_adding": "Waiting for your device…",
       "passkey_remove": "Remove",
       "passkey_remove_label": "Remove the passkey {{name}}",
+      "passkey_not_alone": "It confirms it is you after the password, but cannot sign you in alone: add a new one from this device, which will keep it and sign you in with no password.",
       "passkey_remove_title": "Remove this passkey?",
       "passkey_remove_message": "“{{name}}” will no longer sign you in. To use it again, you will add it again.",
       "keep": "Keep",

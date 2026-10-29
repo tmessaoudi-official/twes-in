@@ -370,6 +370,7 @@ function toPasskey(passkey: Passkey): PasskeySummary {
     name: passkey.name,
     createdAt: passkey.createdAt,
     lastUsedAt: passkey.lastUsedAt,
+    discoverable: passkey.discoverable,
   };
 }
 

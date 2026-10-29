@@ -313,6 +313,7 @@ describe('TwoFactorPage', () => {
     name: 'Work laptop',
     createdAt: '2026-09-15T10:00:00+00:00',
     lastUsedAt: null,
+    discoverable: true,
   };
 
   async function addPasskey(rendered: Awaited<ReturnType<typeof render>>, name: string) {
@@ -940,7 +941,15 @@ describe('TwoFactorPage', () => {
         passkeySignIn: false,
         passkeySignInAllowed: false,
       },
-      [{ id: 'p1', name: 'Work laptop', createdAt: '2026-10-01T09:00:00+00:00', lastUsedAt: null }],
+      [
+        {
+          id: 'p1',
+          name: 'Work laptop',
+          createdAt: '2026-10-01T09:00:00+00:00',
+          lastUsedAt: null,
+          discoverable: true,
+        },
+      ],
     );
     facade.regenerateRecoveryCodesWithPasskey.mockResolvedValue({ ok: true, recoveryCodes: ['x'] });
 
@@ -1010,6 +1019,30 @@ describe('TwoFactorPage', () => {
         return Promise.resolve({ ok: true });
       });
     }
+
+    it('says which passkey cannot sign in alone, and how to make one that can', async () => {
+      const older: PasskeySummary = { ...laptop, id: 'p0', name: 'Old key', discoverable: false };
+      const unsaid: PasskeySummary = { ...laptop, id: 'p2', name: 'Phone', discoverable: null };
+      const rendered = await render(ready, [older, laptop, unsaid]);
+
+      const rows = rendered.fixture.nativeElement.querySelectorAll(
+        '[data-testid="two-factor-passkey"]',
+      );
+      expect(rows).toHaveLength(3);
+      expect(
+        rows[0].querySelector('[data-testid="two-factor-passkey-not-alone"]')?.textContent,
+      ).toContain('auth.two_factor.passkey_not_alone');
+      expect(rows[1].querySelector('[data-testid="two-factor-passkey-not-alone"]')).toBeNull();
+      expect(rows[2].querySelector('[data-testid="two-factor-passkey-not-alone"]')).toBeNull();
+    });
+
+    it('says nothing of it where the installation offers no sign-in with a passkey alone', async () => {
+      const older: PasskeySummary = { ...laptop, id: 'p0', name: 'Old key', discoverable: false };
+      const rendered = await render({ ...ready, passkeySignInAllowed: false }, [older]);
+
+      expect(rendered.query('two-factor-passkey')).not.toBeNull();
+      expect(rendered.query('two-factor-passkey-not-alone')).toBeNull();
+    });
 
     it('switches it on once who is at the screen is proven, says so, and offers to switch it off', async () => {
       const rendered = await render(ready, [laptop]);

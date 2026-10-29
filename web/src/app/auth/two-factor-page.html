@@ -288,9 +288,17 @@
           <ul class="flex flex-col gap-1">
             @for (passkey of passkeys(); track passkey.id) {
               <li class="flex items-center justify-between gap-2" data-testid="two-factor-passkey">
-                <span data-testid="two-factor-passkey-name-label"
-                  ><bdi>{{ passkey.name }}</bdi></span
-                >
+                <div class="flex min-w-0 flex-col">
+                  <span data-testid="two-factor-passkey-name-label"
+                    ><bdi>{{ passkey.name }}</bdi></span
+                  >
+                  <!-- Only where a passkey alone may sign in here: elsewhere what it cannot do changes nothing. -->
+                  @if (passkey.discoverable === false && passkeySignIn() !== null) {
+                    <span class="text-sm opacity-80" data-testid="two-factor-passkey-not-alone">
+                      {{ 'auth.two_factor.passkey_not_alone' | translate }}
+                    </span>
+                  }
+                </div>
                 <button
                   mat-button
                   type="button"

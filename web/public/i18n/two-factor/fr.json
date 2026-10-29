@@ -38,6 +38,7 @@
       "passkey_adding": "En attente de votre appareil…",
       "passkey_remove": "Supprimer",
       "passkey_remove_label": "Supprimer la clé d’accès {{name}}",
+      "passkey_not_alone": "Elle confirme que c’est vous après le mot de passe, mais ne vous connecte pas seule : ajoutez-en une nouvelle depuis cet appareil, qui la gardera et vous connectera sans mot de passe.",
       "passkey_remove_title": "Supprimer cette clé d’accès ?",
       "passkey_remove_message": "La clé « {{name}} » ne permettra plus de se connecter. Pour s’en servir à nouveau, il faudra l’ajouter de nouveau.",
       "keep": "Garder",
