@@ -155,7 +155,8 @@
       "invitation": {
         "sent": "sent an invitation",
         "accepted": "accepted the invitation",
-        "withdrawn": "withdrew an invitation"
+        "withdrawn": "withdrew an invitation",
+        "expired": "an invitation ran out unanswered"
       },
       "setting": {
         "changed": "changed a setting",

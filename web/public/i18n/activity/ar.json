@@ -155,7 +155,8 @@
       "invitation": {
         "sent": "أرسل دعوة",
         "accepted": "قبل الدعوة",
-        "withdrawn": "سحب دعوة"
+        "withdrawn": "سحب دعوة",
+        "expired": "انتهت صلاحية دعوة دون رد"
       },
       "setting": {
         "changed": "غيّر إعدادًا",

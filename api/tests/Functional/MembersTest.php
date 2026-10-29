@@ -10,10 +10,12 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
+use App\Shared\Application\RealtimePublisher;
 use App\Tenancy\Application\Invitation\TellRunOutInvitations;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
+use App\Tests\Support\RecordingRealtimePublisher;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
@@ -150,6 +152,30 @@ final class MembersTest extends ApiTestCase
 
         self::assertSame([], $this->toldOf(TellRunOutInvitations::EXPIRED), 'the company is no longer theirs to hear of');
         self::assertSame(1, $this->rowCount('SELECT COUNT(*) FROM invitation WHERE run_out_told_at IS NOT NULL'), 'and it is not asked again');
+        self::assertSame(1, $this->rowCount("SELECT COUNT(*) FROM audit_log WHERE action = 'invitation.expired'"), 'the company still hears it ran out');
+    }
+
+    /** A members page left open turns the invitation « expirée » as it runs out: the run says it to the company as a change of it. */
+    public function testAnInvitationRunningOutIsSaidToItsCompanyAsAChangeOfIt(): void
+    {
+        $this->adminSignedIn();
+        $this->postJson($this->path(), ['email' => 'late@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $connection = $this->em()->getConnection();
+        $connection->executeStatement("UPDATE invitation SET expires_at = expires_at - INTERVAL '8 days'");
+        $id = $connection->fetchOne("SELECT id FROM invitation WHERE email = 'late@twes.local'");
+        // A kernel of its own, as the worker's, whose live changes the recorder hears.
+        static::ensureKernelShutdown();
+        $publisher = new RecordingRealtimePublisher();
+        static::getContainer()->set(RealtimePublisher::class, $publisher);
+
+        self::assertSame(1, static::getContainer()->get(TellRunOutInvitations::class)->handle());
+
+        $row = $this->em()->getConnection()->fetchAssociative("SELECT entity_type, entity_id, actor_user_id, company_id FROM audit_log WHERE action = 'invitation.expired'");
+        self::assertSame(['entity_type' => 'invitation', 'entity_id' => $id, 'actor_user_id' => null, 'company_id' => $this->company->getId()->toRfc4122()], $row);
+        $said = array_values(array_filter($publisher->pushed, static fn (array $push): bool => 'invitation.expired' === ($push['data']['action'] ?? null)));
+        self::assertContains('company:'.$this->company->getId()->toRfc4122(), array_column($said, 'channel'));
+        self::assertSame(['invitation', $id], [$said[0]['data']['kind'] ?? null, $said[0]['data']['id'] ?? null]);
     }
 
     /** An owner who typed the address wrong takes the invitation back: its link stops working, and the list forgets it. */

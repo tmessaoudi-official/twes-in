@@ -46,7 +46,6 @@ use App\Shared\Application\DomainEvents;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Closing\TellClosedCompaniesNearRemoval;
 use App\Tenancy\Application\Invitation\MailInvitation;
-use App\Tenancy\Application\Invitation\TellRunOutInvitations;
 use App\Tenancy\Application\Member\LiftMemberLock;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Application\Seed\SeedPlatform;
@@ -110,7 +109,6 @@ final class CommandsAndQueriesTest extends TestCase
         BuildSandbox::class => 'its company is opened by OpenSandboxCompany, which records it, and the demo data is written through the use cases, which record theirs',
         RemindLateInvoices::class => 'a scheduled run with no actor: the stage it records stops it telling twice and is staged as a live change, its notification is the signal, and a late fee it drafts goes through ManageInvoices, which audits it',
         ResealSecondFactors::class => 'the same secrets under a new key, run on the console with the service stopped, which no person changes; the runbook is its record',
-        TellRunOutInvitations::class => 'a scheduled run with no actor: it marks the invitation told, which no person changes, and its notification is the signal',
         TellLapsingSubscriptions::class => 'a scheduled run with no actor: it marks the end of covered time told, outside the terms and their version, and its notification is the signal',
         TellClosedCompaniesNearRemoval::class => 'a scheduled run with no actor: it marks the company told, outside its version, and its notification is the signal',
         StockMoveFailures::class => 'a stock move that failed after its document was kept, with no actor: it is logged, told to the stock keepers and staged as a live change; moving it again or saying it settled is audited',

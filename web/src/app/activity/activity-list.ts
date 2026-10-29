@@ -179,6 +179,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'invitation.sent',
   'invitation.accepted',
   'invitation.withdrawn',
+  'invitation.expired',
   'setting.changed',
   'setting.reset',
   'module.enabled',
