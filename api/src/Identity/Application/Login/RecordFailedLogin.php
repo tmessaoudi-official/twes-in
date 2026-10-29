@@ -19,6 +19,7 @@ use App\Identity\Application\Mfa\SecondFactorLockout;
 use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\UserRepository;
+use App\Shared\Application\RealtimeCuts;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -41,6 +42,7 @@ final readonly class RecordFailedLogin implements DeclaresAuditActions
         private AuditTrail $audit,
         private SecurityNotices $notices,
         private AccountChanges $accounts,
+        private RealtimeCuts $cuts,
         private Transactions $transactions,
         private ClockInterface $clock,
         #[Autowire(param: 'app.auth.lock_after_failures')]
@@ -71,6 +73,8 @@ final readonly class RecordFailedLogin implements DeclaresAuditActions
                 $change = SecondFactorLockout::WRONG_CODE === $attempt->reason ? SecurityChange::SecondFactorLocked : SecurityChange::AccountLocked;
                 $this->notices->tell($user->getId(), $change, until: $user->getLockedUntil());
                 $this->accounts->said($user->getId(), AccountChanges::LOCKED);
+                // Whoever guessed may hold a connection: it is closed, and only a session that still stands renews it.
+                $this->cuts->cut($user->getId());
             }
         }
 

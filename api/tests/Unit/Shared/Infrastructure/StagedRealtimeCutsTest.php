@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Infrastructure;
 
+use App\Shared\Application\RealtimeSessions;
 use App\Shared\Infrastructure\Realtime\StagedRealtimeCuts;
 use App\Tests\Support\RecordingRealtimePublisher;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -28,7 +29,23 @@ final class StagedRealtimeCutsTest extends TestCase
     protected function setUp(): void
     {
         $this->publisher = new RecordingRealtimePublisher();
-        $this->cuts = new StagedRealtimeCuts($this->publisher);
+        $this->cuts = new StagedRealtimeCuts($this->publisher, self::sessions(Uuid::v7(), []));
+    }
+
+    /** @param list<Uuid> $held the sessions that account holds, and no other account any */
+    private static function sessions(Uuid $user, array $held): RealtimeSessions
+    {
+        return new class($user, $held) implements RealtimeSessions {
+            /** @param list<Uuid> $held */
+            public function __construct(private Uuid $user, private array $held)
+            {
+            }
+
+            public function of(Uuid $userId): array
+            {
+                return $userId->equals($this->user) ? $this->held : [];
+            }
+        };
     }
 
     public function testACutWaitsForTheOutermostCommitThenClosesEachPersonOnce(): void
@@ -44,6 +61,26 @@ final class StagedRealtimeCutsTest extends TestCase
         $this->cuts->commit();
 
         self::assertSame([$nadia->toRfc4122()], $this->publisher->disconnected);
+    }
+
+    /** An account is closed whole, each session's subject and its own; a session alone is closed alone, and nobody else's. */
+    public function testAnAccountIsClosedSessionBySessionAndASessionAlone(): void
+    {
+        $nadia = Uuid::v7();
+        $laptop = Uuid::v7();
+        $phone = Uuid::v7();
+        $sami = Uuid::v7();
+        $kept = Uuid::v7();
+        $this->cuts = new StagedRealtimeCuts($this->publisher, self::sessions($nadia, [$laptop, $phone]));
+
+        $this->cuts->begin();
+        $this->cuts->cut($nadia);
+        $this->cuts->cutSession($sami, $kept);
+        $this->cuts->cutSession($nadia, $phone);
+        $this->cuts->commit();
+
+        $n = $nadia->toRfc4122();
+        self::assertSame([$n, $n.'.'.$laptop->toRfc4122(), $n.'.'.$phone->toRfc4122(), $sami->toRfc4122().'.'.$kept->toRfc4122()], $this->publisher->disconnected);
     }
 
     public function testARolledBackUnitClosesNothingAndACutOutsideAUnitIsDropped(): void

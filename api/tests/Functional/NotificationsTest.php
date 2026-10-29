@@ -225,7 +225,10 @@ final class NotificationsTest extends ApiTestCase
         self::assertSame(HmacJwt::signature($header.'.'.$payload, $key), $signature);
         $claims = json_decode(HmacJwt::base64UrlDecode($payload), true, 8, \JSON_THROW_ON_ERROR);
         self::assertIsArray($claims);
-        self::assertSame($this->owner->getId()->toRfc4122(), $claims['sub']);
+        // The session's own subject, so its sign-out or its end closes its connections and no other's.
+        $session = $this->em()->getConnection()->fetchOne('SELECT id FROM user_session WHERE user_id = ?', [$this->owner->getId()->toRfc4122()]);
+        self::assertIsString($session);
+        self::assertSame($this->owner->getId()->toRfc4122().'.'.$session, $claims['sub']);
         self::assertSame(['user:'.$this->owner->getId()->toRfc4122(), 'company:'.$this->company->getId()->toRfc4122()], $claims['channels']);
         self::assertIsString($body['expiresAt']);
     }

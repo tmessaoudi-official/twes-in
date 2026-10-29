@@ -167,9 +167,10 @@ parameters:
     app.webauthn.origins: '%env(csv:APP_WEBAUTHN_ORIGINS)%'
     # Realtime notifications through Centrifugo (docs/SPEC.md § 7, 2026-09-13). The token key signs the browser's
     # connection token and is the same secret Centrifugo holds as client.token.hmac_secret_key; the API key
-    # authorises publishing through its HTTP API. The token is short-lived: the browser asks for a new one.
+    # authorises publishing through its HTTP API. The token is short-lived: the browser asks for a new one, which a
+    # session ended no longer gets, so a connection that escaped its close hears at most this many seconds more.
     app.realtime.token_key: '%env(REALTIME_TOKEN_KEY)%'
-    app.realtime.token_lifetime: 900
+    app.realtime.token_lifetime: 120
     app.realtime.api_url: '%env(REALTIME_API_URL)%'
     app.realtime.api_key: '%env(REALTIME_API_KEY)%'
     app.realtime.push_enabled: true

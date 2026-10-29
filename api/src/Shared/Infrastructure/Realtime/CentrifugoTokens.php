@@ -34,7 +34,7 @@ final readonly class CentrifugoTokens implements RealtimeTokens
         }
     }
 
-    public function issue(Uuid $userId, ?Uuid $workingCompanyId, bool $platformOperator = false): RealtimeToken
+    public function issue(Uuid $userId, ?Uuid $workingCompanyId, bool $platformOperator = false, ?Uuid $sessionId = null): RealtimeToken
     {
         $channels = ['user:'.$userId->toRfc4122()];
         if (null !== $workingCompanyId) {
@@ -44,7 +44,7 @@ final readonly class CentrifugoTokens implements RealtimeTokens
             $channels[] = self::PLATFORM;
         }
 
-        return $this->issueFor($userId->toRfc4122(), $channels);
+        return $this->issueFor(RealtimeSubjects::of($userId, $sessionId), $channels);
     }
 
     public function issueFor(string $subject, array $channels): RealtimeToken

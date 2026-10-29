@@ -78,6 +78,8 @@ final class SessionEndsSaidTest extends ApiTestCase
         $this->getJson('/api/auth/me');
         self::assertResponseIsSuccessful();
 
+        [$other, $here] = $this->sessionsOf($nadia);
+
         $this->sendJson('DELETE', '/api/auth/sessions', server: ['HTTP_X_TAB' => 'tab-here']);
 
         self::assertResponseIsSuccessful();
@@ -85,7 +87,50 @@ final class SessionEndsSaidTest extends ApiTestCase
         self::assertStringNotContainsString('"session"', $answered, 'the tab that asked is not told what it did');
         self::assertSame([$this->sessionEnded('tab-here')], $this->saidTo($nadia));
         self::assertSame([], $this->sessionsSaidElsewhere($nadia), 'no company and nobody else hears it');
-        self::assertSame([], $this->publisher->disconnected);
+        self::assertSame([$this->subject($nadia, $other)], $this->publisher->disconnected, 'the other session\'s connections closed, this one\'s kept');
+        self::assertNotContains($this->subject($nadia, $here), $this->publisher->disconnected);
+    }
+
+    /** Signing out closes that session's connections, and nobody else's: not the account's other sessions, not another account's. */
+    public function testSigningOutClosesThatSessionsConnectionsAlone(): void
+    {
+        $this->createUser('mallory@acme.test', self::PASSWORD);
+        $this->login('mallory@acme.test', self::PASSWORD);
+        $this->getJson('/api/auth/me');
+        $this->client->getCookieJar()->clear();
+        $nadia = $this->createUser('nadia@acme.test', self::PASSWORD);
+        $this->login('nadia@acme.test', self::PASSWORD);
+        $this->getJson('/api/auth/me');
+        $this->client->getCookieJar()->clear();
+        $this->login('nadia@acme.test', self::PASSWORD);
+        $this->getJson('/api/auth/me');
+        [, $here] = $this->sessionsOf($nadia);
+
+        $this->postJson('/api/auth/logout', null);
+
+        self::assertSame([$this->subject($nadia, $here)], $this->publisher->disconnected);
+    }
+
+    /**
+     * Wrong guesses that lock a password close every connection of that account, each session's, and nobody else's:
+     * whoever reconnects asks a new token through a session that still stands.
+     */
+    public function testAPasswordLockClosesEveryConnectionOfThatAccountAlone(): void
+    {
+        $this->createUser('mallory@acme.test', self::PASSWORD);
+        $this->login('mallory@acme.test', self::PASSWORD);
+        $this->getJson('/api/auth/me');
+        $this->client->getCookieJar()->clear();
+        $nadia = $this->createUser('nadia@acme.test', self::PASSWORD);
+        $this->login('nadia@acme.test', self::PASSWORD);
+        $this->getJson('/api/auth/me');
+        $this->client->getCookieJar()->clear();
+        $after = static::getContainer()->getParameter('app.auth.lock_after_failures');
+        for ($i = 0; $i < $after; ++$i) {
+            $this->login('nadia@acme.test', 'not-the-password');
+        }
+
+        self::assertSame($this->everySubjectOf($nadia), $this->publisher->disconnected);
     }
 
     /** A new password ends every session, this one too, however the account ends them: said and closed alike. */
@@ -95,11 +140,13 @@ final class SessionEndsSaidTest extends ApiTestCase
         $this->login('nadia@acme.test', self::PASSWORD);
         self::assertResponseIsSuccessful();
 
+        $this->getJson('/api/auth/me');
+
         $this->sendJson('PUT', '/api/auth/password', ['currentPassword' => self::PASSWORD, 'newPassword' => 'another-long-password']);
 
         self::assertResponseIsSuccessful();
         self::assertSame([$this->sessionEnded()], $this->saidTo($nadia));
-        self::assertSame([$nadia->getId()->toRfc4122()], $this->publisher->disconnected);
+        self::assertSame($this->everySubjectOf($nadia), $this->publisher->disconnected);
     }
 
     /**
@@ -142,6 +189,26 @@ final class SessionEndsSaidTest extends ApiTestCase
         self::assertResponseIsSuccessful();
 
         return $operator;
+    }
+
+    /** @return list<string> the account's sessions as recorded, oldest first */
+    private function sessionsOf(User $user): array
+    {
+        $ids = $this->em()->getConnection()->fetchFirstColumn('SELECT id FROM user_session WHERE user_id = ? ORDER BY created_at, id', [$user->getId()->toRfc4122()]);
+
+        return array_map(static fn (mixed $id): string => \is_string($id) ? $id : throw new \LogicException('A session id is a string.'), $ids);
+    }
+
+    /** What Centrifugo knows a session's connections by. */
+    private function subject(User $user, string $session): string
+    {
+        return $user->getId()->toRfc4122().'.'.$session;
+    }
+
+    /** @return list<string> the account's own subject, for a token issued with no session recorded, then each session's */
+    private function everySubjectOf(User $user): array
+    {
+        return [$user->getId()->toRfc4122(), ...array_map(fn (string $session): string => $this->subject($user, $session), $this->sessionsOf($user))];
     }
 
     private function accountPath(User $user, string $action): string

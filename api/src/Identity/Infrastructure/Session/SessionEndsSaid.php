@@ -21,10 +21,11 @@ use Doctrine\ORM\Events;
 /**
  * Says a session ended to its person's open screens at once, whatever ended it: a new security stamp ends every
  * session of the account (an operator's « Terminer les sessions » or « Désactiver », a new password, factors replaced,
- * a deletion asked), a session marked revoked ends that one (« Déconnecter les autres »). Each screen asks again
- * whether its own still stands; when every session ended, the person's realtime connection is closed too
- * (docs/SPEC.md § 7, 2026-10-27 21:37). Read from what is flushed, so a new way of ending a session is said with no
- * call to remember; one flushed outside Transactions::run() (a sign-out) is not, as no change is said there.
+ * a deletion asked), a session marked revoked ends that one (« Déconnecter les autres », a sign-out). Each screen
+ * asks again whether its own still stands, and the realtime connections of what ended are closed with it: every
+ * session's when the stamp changed, that session's alone when one was revoked, and nobody else's. Read from what is
+ * flushed, so a new way of ending a session is said with no call to remember; one flushed outside Transactions::run()
+ * is not, as no change is said there.
  */
 #[AsDoctrineListener(event: Events::onFlush)]
 final readonly class SessionEndsSaid
@@ -45,6 +46,7 @@ final readonly class SessionEndsSaid
                 $this->cuts->cut($entity->getId());
             } elseif ($entity instanceof UserSession && self::revokedNow($work->getEntityChangeSet($entity))) {
                 $this->said($entity->getUser());
+                $this->cuts->cutSession($entity->getUser()->getId(), $entity->getId());
             }
         }
     }

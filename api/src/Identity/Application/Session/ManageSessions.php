@@ -93,11 +93,13 @@ final readonly class ManageSessions implements DeclaresAuditActions
         return array_map(static fn (UserSession $session): SessionEntry => new SessionEntry($session, $session->isFor($currentSessionId)), $live);
     }
 
-    /** The session signed out: its record ends with it. */
+    /** The session signed out: its record ends with it, in a unit of its own, so its connections are closed when it is stored. */
     public function signedOut(UserSession $session): void
     {
-        $session->revoke($this->clock->now());
-        $this->sessions->save($session);
+        $this->transactions->run(function () use ($session): void {
+            $session->revoke($this->clock->now());
+            $this->sessions->save($session);
+        });
     }
 
     /** Ends one of the person's other sessions; false when there is none such, or it is the one asking. */

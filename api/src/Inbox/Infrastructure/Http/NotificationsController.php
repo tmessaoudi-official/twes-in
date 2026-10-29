@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Inbox\Infrastructure\Http;
 
+use App\Identity\Application\Session\ManageSessions;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Inbox\Application\InboxItemNotFound;
 use App\Inbox\Application\NotificationCentre;
@@ -19,6 +20,7 @@ use App\Tenancy\Application\Session\DescribeWorkingContext;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Requirement\Requirement;
@@ -37,6 +39,7 @@ final readonly class NotificationsController
         private DescribeWorkingContext $workingContext,
         private Security $security,
         private CompanyEntry $entry,
+        private ManageSessions $sessions,
     ) {
     }
 
@@ -86,7 +89,7 @@ final readonly class NotificationsController
 
     /** A new token for every connection and every company switch: the channels follow the session. */
     #[Route('/api/me/realtime-token', name: 'api_me_realtime_token', methods: ['GET'])]
-    public function realtimeToken(): JsonResponse
+    public function realtimeToken(Request $request): JsonResponse
     {
         $userId = $this->currentUserId();
         // The session only names a company: it is heard while the user is still its member and it is open to them, so
@@ -98,7 +101,10 @@ final readonly class NotificationsController
             && !$this->entry->awaitsProof($userId, Uuid::fromString($context->companyId));
         $companyId = $heard ? Uuid::fromString($context->companyId) : null;
         // An operator works in no company of their own, and hears what /platform shows on the platform's channel.
-        $token = $this->tokens->issue($userId, $companyId, $this->security->isGranted(SecurityUser::ROLE_PLATFORM_OPERATOR));
+        // Bound to the session asking, so its sign-out or its end closes this connection and nobody else's. Read from the
+        // record itself: on the first request after a sign-in it was written after the listener that hands it on ran.
+        $session = $request->hasSession() ? $this->sessions->recorded($request->getSession()->getId()) : null;
+        $token = $this->tokens->issue($userId, $companyId, $this->security->isGranted(SecurityUser::ROLE_PLATFORM_OPERATOR), $session?->getId());
 
         return new JsonResponse(['token' => $token->token, 'expiresAt' => $token->expiresAt->format(\DATE_ATOM)]);
     }

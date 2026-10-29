@@ -20,7 +20,8 @@ interface RealtimeTokens
 {
     public const string PLATFORM = 'platform';
 
-    public function issue(Uuid $userId, ?Uuid $workingCompanyId, bool $platformOperator = false): RealtimeToken;
+    /** @param Uuid|null $sessionId the session asking, whose end closes this connection; null when none is recorded */
+    public function issue(Uuid $userId, ?Uuid $workingCompanyId, bool $platformOperator = false, ?Uuid $sessionId = null): RealtimeToken;
 
     /**
      * A token for a connection that is not a person's: a paired phone hears its pairing's channel alone.

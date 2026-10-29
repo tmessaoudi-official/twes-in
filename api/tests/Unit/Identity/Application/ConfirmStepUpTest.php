@@ -145,7 +145,7 @@ final class ConfirmStepUpTest extends TestCase
 
     public function testALockedAccountIsRefusedEvenTheRightPasswordUntilTheLockEnds(): void
     {
-        $failures = new RecordFailedLogin($this->users, new InMemoryAuditTrail(), new RecordedSecurityNotices(), new \App\Identity\Application\Account\AccountChanges(new \App\Tests\Support\InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), new \App\Tests\Support\FakeTransactions(), $this->clock, 5, 'PT15M');
+        $failures = new RecordFailedLogin($this->users, new InMemoryAuditTrail(), new RecordedSecurityNotices(), new \App\Identity\Application\Account\AccountChanges(new \App\Tests\Support\InMemoryMemberships(), new \App\Tests\Support\RecordingLiveChanges()), new \App\Tests\Support\RecordingRealtimeCuts(), new \App\Tests\Support\FakeTransactions(), $this->clock, 5, 'PT15M');
         for ($i = 0; $i < 5; ++$i) {
             $failures->handle(new FailedLoginAttempt($this->user->getId(), 'someone@example.test', 'test', true));
         }
