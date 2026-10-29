@@ -143,6 +143,29 @@ final class StepUpTest extends ApiTestCase
         self::assertSame(2, $this->audited('auth.step_up'));
     }
 
+    /** A locked password cannot prove who is at the screen; a passkey still can, as it still signs in. */
+    public function testOnALockedPasswordAPasskeyStillConfirmsAndThePasswordDoesNot(): void
+    {
+        $authenticator = new FakeAuthenticator();
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+        $this->postJson('/api/auth/mfa/passkeys/options', null);
+        $creation = $this->json();
+        $this->postJson('/api/auth/mfa/passkeys', ['name' => 'Laptop', 'credential' => $authenticator->register($creation)]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->em()->getConnection()->executeStatement(
+            'UPDATE "user" SET failed_login_count = 5, locked_until = ? WHERE email = ?',
+            [(new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s'), 'someone@twes.local'],
+        );
+
+        $this->postJson(self::STEP_UP, ['password' => self::PASSWORD]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the right password, locked');
+
+        $this->postJson(self::PASSKEY, ['credential' => $authenticator->assert($this->passkeyOptions())]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
     public function testAnAccountWithoutAPasskeyIsToldSoWhenItAsksForOptions(): void
     {
         $this->createUser('plain@twes.local', self::PASSWORD);

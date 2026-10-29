@@ -337,6 +337,33 @@ final class SecondFactorTest extends ApiTestCase
     }
 
     /**
+     * Wrong codes lock the password, which a recovery code then still gets past: ten characters of a 31-letter alphabet
+     * are out of a guesser's reach, unlike the million six-digit codes the lock is there for, and the owner whose own
+     * slips set the lock needs a way in. The lock stays for the six digits and the password.
+     */
+    public function testARecoveryCodeStillCompletesTheLoginOnALockedPasswordWhileTheCodeStaysRefused(): void
+    {
+        $codes = $this->enrolledUser('someone@twes.local');
+        $this->login('someone@twes.local', self::PASSWORD);
+        // Set here rather than by five wrong codes, which would also spend the verify limiter's five: the limiter paces a
+        // recovery code as it paces any guess, and its window is not what this case is about.
+        $this->em()->getConnection()->executeStatement(
+            'UPDATE "user" SET failed_login_count = 5, locked_until = ? WHERE email = ?',
+            [(new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s'), 'someone@twes.local'],
+        );
+        $this->postJson('/api/auth/mfa/verify', ['code' => $this->currentCode()]);
+        self::assertSame('account_locked', $this->stringAt($this->json(), 'error'), 'six digits stay refused on the lock');
+
+        $this->postJson('/api/auth/mfa/verify', ['code' => $codes[0]]);
+
+        self::assertResponseIsSuccessful();
+        $this->getJson('/api/auth/me');
+        self::assertResponseIsSuccessful();
+        $locked = $this->em()->getConnection()->fetchOne('SELECT locked_until > now() FROM "user" WHERE email = ?', ['someone@twes.local']);
+        self::assertTrue($locked, 'the password stays locked after the way in');
+    }
+
+    /**
      * Enrols a user the way the use cases will, and hands back the raw recovery codes.
      *
      * @return list<string>

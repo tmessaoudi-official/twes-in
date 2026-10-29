@@ -78,7 +78,8 @@ final readonly class MfaController
 
         // Checked before the limiter, not after: both budgets are five, so a lock tested second would answer
         // too_many_attempts on the very request that ought to say the account is locked.
-        if ($this->lockout->locked($userId)) {
+        $code = self::codeIn($request);
+        if ($this->lockout->refuses($userId, $code)) {
             return new JsonResponse(['error' => 'account_locked'], Response::HTTP_UNAUTHORIZED);
         }
 
@@ -87,7 +88,7 @@ final readonly class MfaController
         }
 
         try {
-            $user = $this->verify->handle($userId, self::codeIn($request));
+            $user = $this->verify->handle($userId, $code);
         } catch (SecondFactorRefused) {
             $this->lockout->recordWrongCode($userId);
 

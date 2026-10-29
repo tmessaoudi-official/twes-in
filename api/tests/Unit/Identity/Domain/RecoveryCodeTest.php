@@ -59,4 +59,15 @@ final class RecoveryCodeTest extends TestCase
         self::assertCount(10, $set);
         self::assertCount(10, array_unique(array_map(static fn (RecoveryCode $c): string => $c->raw, $set)));
     }
+
+    /** The lock lets a recovery code past and refuses six digits, so the shape must tell them apart and nothing else. */
+    public function testOnlyARecoveryCodesShapeIsTakenForOne(): void
+    {
+        self::assertTrue(RecoveryCode::isShaped(RecoveryCode::generate()->raw));
+        self::assertTrue(RecoveryCode::isShaped(" ABCDE-FGH23\u{a0}"), 'as typed back off paper');
+        self::assertFalse(RecoveryCode::isShaped('123456'));
+        self::assertFalse(RecoveryCode::isShaped('abcdefgh23'), 'no dash');
+        self::assertFalse(RecoveryCode::isShaped('abcde-fghi1'), 'i and 1 are not in the alphabet');
+        self::assertFalse(RecoveryCode::isShaped('abcde-fgh23x'));
+    }
 }

@@ -230,10 +230,11 @@ final class PasskeyTest extends ApiTestCase
     }
 
     /**
-     * A lock set while the second factor is owed (wrong codes count toward it) holds for a passkey as for a code: the
-     * password was already right, so saying it is locked tells nothing a guesser did not know.
+     * The lock is the password's: wrong guesses stop whoever is guessing a secret, and a passkey cannot be guessed. So a
+     * passkey owed as the second factor still signs in on a locked password, and the lock stays as it was, or a guesser
+     * would be handed a fresh budget each time the owner signed in.
      */
-    public function testALockSetWhileTheSecondFactorIsOwedHoldsForAPasskeyToo(): void
+    public function testAPasskeyStillSignsInOnALockedPasswordAndTheLockStays(): void
     {
         $authenticator = new FakeAuthenticator();
         $this->withPasskey('someone@twes.local', $authenticator);
@@ -241,17 +242,19 @@ final class PasskeyTest extends ApiTestCase
         $this->login('someone@twes.local', self::PASSWORD);
         self::assertTrue($this->boolAt($this->json(), 'mfaRequired'));
         $request = $this->requestOptions();
+        $lockedUntil = (new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s');
         $this->em()->getConnection()->executeStatement(
             'UPDATE "user" SET failed_login_count = 5, locked_until = ? WHERE email = ?',
-            [(new \DateTimeImmutable('+15 minutes'))->format('Y-m-d H:i:s'), 'someone@twes.local'],
+            [$lockedUntil, 'someone@twes.local'],
         );
 
         $this->postJson('/api/auth/mfa/passkey-login', ['credential' => $authenticator->assert($request)]);
 
-        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
-        self::assertSame('account_locked', $this->stringAt($this->json(), 'error'));
+        self::assertResponseIsSuccessful();
         $this->getJson('/api/auth/me');
-        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertResponseIsSuccessful();
+        $row = $this->em()->getConnection()->fetchAssociative('SELECT failed_login_count, locked_until FROM "user" WHERE email = ?', ['someone@twes.local']);
+        self::assertSame(['failed_login_count' => 5, 'locked_until' => $lockedUntil], $row, 'the password stays locked, its guesses still counted');
     }
 
     public function testAPasskeyLoginSharesTheBudgetOfFiveAttempts(): void

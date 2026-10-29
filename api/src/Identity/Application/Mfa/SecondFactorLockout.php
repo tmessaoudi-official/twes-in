@@ -12,17 +12,18 @@ namespace App\Identity\Application\Mfa;
 use App\Identity\Application\Login\FailedLoginAttempt;
 use App\Identity\Application\Login\RecordFailedLogin;
 use App\Identity\Domain\Repository\UserRepository;
+use App\Identity\Domain\ValueObject\RecoveryCode;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The account lockout as the second factor sees it.
+ * The password's lock as the second factor sees it.
  *
  * A rate limiter paces guesses, it never stops them: six digits with a step of leeway is three codes in a
  * million, which a patient attacker holding the password reaches in a year of the limiter's own budget. So a
- * wrong code counts towards the same lockout a wrong password does, and a locked account is refused at the
- * place the guess is made — `UserChecker` never runs on these endpoints, because by design no session exists
- * yet (docs/SPEC.md § 8 row 22, review S6).
+ * wrong code counts towards the same lock a wrong password does, and a six-digit code is refused on it at the
+ * place the guess is made, since no session exists there yet to be checked (review S6). A passkey cannot be
+ * guessed, so it meets no lock, and a recovery code gets past it (`refuses`).
  */
 final readonly class SecondFactorLockout
 {
@@ -34,6 +35,16 @@ final readonly class SecondFactorLockout
         private RecordFailedLogin $recordFailedLogin,
         private ClockInterface $clock,
     ) {
+    }
+
+    /**
+     * Whether the lock refuses this code at the second step. A recovery code still gets past a locked password: ten
+     * characters of a 31-letter alphabet are out of a guesser's reach, unlike the million six-digit codes the lock is
+     * there for, and the owner whose own slips set it needs a way in.
+     */
+    public function refuses(Uuid $userId, string $code): bool
+    {
+        return !RecoveryCode::isShaped($code) && $this->locked($userId);
     }
 
     /** Whether this account is locked right now. An account that no longer exists is not locked; it simply fails later. */

@@ -18,7 +18,6 @@ use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\Mfa\Passkey\RegisterPasskey;
 use App\Identity\Application\Mfa\Passkey\RemovePasskey;
 use App\Identity\Application\Mfa\RegenerateRecoveryCodesWithPasskey;
-use App\Identity\Application\Mfa\SecondFactorLockout;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Domain\Model\Passkey;
 use App\Identity\Domain\Repository\PasskeyRepository;
@@ -65,7 +64,6 @@ final readonly class PasskeyController
         private FinishPasskeyLogin $finishLogin,
         private RegenerateRecoveryCodesWithPasskey $regenerateRecoveryCodes,
         private SecondFactorLogin $secondFactorLogin,
-        private SecondFactorLockout $lockout,
     ) {
     }
 
@@ -160,12 +158,6 @@ final readonly class PasskeyController
 
         if (null === $userId) {
             return new JsonResponse(['error' => 'mfa_not_pending'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        // A lock set while this second factor was owed (wrong codes count toward it) holds here as at /mfa/verify: the
-        // password was right, so saying so tells nothing new, and the sign-in itself would refuse a locked account.
-        if ($this->lockout->locked($userId)) {
-            return new JsonResponse(['error' => 'account_locked'], Response::HTTP_UNAUTHORIZED);
         }
 
         if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {

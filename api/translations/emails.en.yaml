@@ -190,15 +190,15 @@ security_notice:
         heading: 'Sign-in factors reset'
         body: 'Whoever runs your installation removed your account’s second factors (authenticator app, recovery codes and, where asked, passkeys) and ended all your sessions. At your next sign-in with your password, you will set up a new one.'
     account_locked:
-        heading: 'Account locked'
-        body: 'Your account was locked after several wrong passwords or codes: nobody can sign in to it for now, not even with the right password.'
+        heading: 'Password locked'
+        body: 'Your password was locked after several wrong passwords or codes: nobody can sign in with it for now, not even when it is the right one.'
     locked_until: 'It stays locked until %moment% (time zone %zone%).'
     unlock: 'To unlock it now, choose a new password with “Forgot password”: the link is sent to this address.'
     locked_not_you: 'If this was not you trying, someone is guessing your password: choose one you use nowhere else, and turn on two-step verification.'
     code_locked_not_you: 'If it was not you, your password is known to someone else: change it now with “Forgot password”, and use it nowhere else.'
     second_factor_locked:
-        heading: 'Account locked after wrong codes'
-        body: 'Your account was locked after several wrong verification codes, typed after the right password: nobody can sign in to it for now.'
+        heading: 'Password locked after wrong codes'
+        body: 'Your password was locked after several wrong verification codes, typed after the right password: nobody can sign in with it for now.'
     operator_deactivated:
         heading: 'Account deactivated'
         body: 'The person who runs your installation deactivated your account and ended all your sessions: it can no longer be used to sign in. If you think this is a mistake, contact them.'

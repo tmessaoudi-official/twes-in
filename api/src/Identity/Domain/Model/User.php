@@ -178,6 +178,7 @@ class User
         return $this->lockedUntil;
     }
 
+    /** Whether the password is locked: wrong passwords and six-digit codes lock it, a passkey and a recovery code pass. */
     public function isLockedAt(\DateTimeImmutable $now): bool
     {
         return null !== $this->lockedUntil && $this->lockedUntil > $now;
@@ -211,10 +212,16 @@ class User
         $this->touch($now);
     }
 
+    /**
+     * A sign-in on a locked password, by a passkey or a recovery code, leaves the lock and its count as they are: lifting
+     * them would hand whoever is guessing the password a fresh budget each time its owner signs in.
+     */
     public function recordSuccessfulLogin(\DateTimeImmutable $now): void
     {
-        $this->failedLoginCount = 0;
-        $this->lockedUntil = null;
+        if (!$this->isLockedAt($now)) {
+            $this->failedLoginCount = 0;
+            $this->lockedUntil = null;
+        }
         $this->lastLoginAt = $now;
         $this->touch($now);
     }

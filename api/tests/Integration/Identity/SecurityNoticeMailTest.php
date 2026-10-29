@@ -87,7 +87,7 @@ final class SecurityNoticeMailTest extends KernelTestCase
         $mail = $this->lastMail();
         $html = (string) $mail->getHtmlBody();
 
-        self::assertSame('Sécurité de votre compte twes-in : Compte verrouillé', str_replace("\u{a0}", ' ', (string) $mail->getSubject()));
+        self::assertSame('Sécurité de votre compte twes-in : Mot de passe verrouillé', str_replace("\u{a0}", ' ', (string) $mail->getSubject()));
         self::assertStringContainsString('jusqu’au 25/10/2026 14:30 (fuseau horaire Africa/Tunis)', $html);
         self::assertStringContainsString('Mot de passe oublié', $html);
         self::assertStringNotContainsString('il n’y a rien à faire', $html);

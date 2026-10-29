@@ -16,7 +16,7 @@ use Symfony\Component\Security\Http\Event\CheckPassportEvent;
  * Tells a deactivated account why it is refused, once the password is known to be right and before any second factor is
  * asked for. Between `CheckCredentialsListener` (0) and `SecondFactorListener` (-100): earlier, a wrong password would
  * hear the account's state; later, a deactivated account would be asked for its code first. A locked account never gets
- * here: `UserChecker::checkPreAuth` refuses it before the password, as a wrong password is refused.
+ * here: `RefuseALockedPassword` refuses its password before comparing it, as a wrong password is refused.
  */
 #[AsEventListener(priority: -50)]
 final readonly class AccountStateAfterPassword

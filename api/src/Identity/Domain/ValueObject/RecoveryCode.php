@@ -59,7 +59,23 @@ final readonly class RecoveryCode
     /** Normalises the way a person types it back: off paper, capitalised, with a stray space. */
     public static function hashOf(string $raw): string
     {
-        return hash('sha256', strtolower(TypedText::trimmed($raw)));
+        return hash('sha256', self::normalised($raw));
+    }
+
+    /**
+     * Whether what was typed has a recovery code's shape, two groups of the alphabet joined by a dash, which no six-digit
+     * code has.
+     */
+    public static function isShaped(string $raw): bool
+    {
+        $letters = preg_quote(self::ALPHABET, '/');
+
+        return 1 === preg_match('/\A['.$letters.']{'.self::GROUP.'}-['.$letters.']{'.self::GROUP.'}\z/', self::normalised($raw));
+    }
+
+    private static function normalised(string $raw): string
+    {
+        return strtolower(TypedText::trimmed($raw));
     }
 
     private static function group(): string
