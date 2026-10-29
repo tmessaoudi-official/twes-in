@@ -101,6 +101,8 @@ notification:
         data_check_failed: 'Contrôle des données en échec'
         support_access_granted: 'Accès du support ouvert'
         support_access_ended: 'Accès du support fermé'
+        membership_role_changed: 'Rôle changé'
+        membership_removed: 'Retrait d’une entreprise'
         signup_awaiting_approval: 'Entreprise en attente d’approbation'
     types:
         invitation_accepted: '%display_name% a rejoint l’entreprise.'
@@ -124,6 +126,8 @@ notification:
         data_check_failed: 'Le contrôle « %label% » a trouvé des anomalies dans les données de %company% (nombre d’anomalies : %count%). Le détail est dans les journaux du serveur.'
         support_access_granted: '%by% a ouvert %company% au support de la plateforme, en lecture seule, jusqu’au %until%.'
         support_access_ended: '%by% a fermé l’accès du support de la plateforme à %company%.'
+        membership_role_changed: 'Votre rôle dans %company% est maintenant « %label% » : ce que vous pouvez y voir et y faire a changé.'
+        membership_removed: 'Vous ne faites plus partie de %company% : vous n’y avez plus accès. Pour y revenir, demandez à l’un de ses propriétaires de vous inviter à nouveau.'
         signup_awaiting_approval: '%company% (%email%) s’est inscrite et attend votre approbation dans la page de la plateforme.'
     open: 'Ouvrir %product%'
     why: 'Vous recevez cet e-mail parce que « %kind% » vous est aussi envoyé par e-mail.'
@@ -222,3 +226,9 @@ modules:
     whatsapp: 'Envoi par WhatsApp'
     works: 'Travaux'
     zakat: 'Zakat'
+roles:
+    owner: 'propriétaire'
+    admin: 'administrateur'
+    member: 'membre'
+    clerk: 'caissier / vendeur'
+    accountant: 'comptable (lecture seule)'

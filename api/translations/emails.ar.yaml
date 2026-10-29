@@ -102,6 +102,8 @@ notification:
         data_check_failed: 'فشل التثبّت من البيانات'
         support_access_granted: 'فُتح وصول الدعم'
         support_access_ended: 'أُغلق وصول الدعم'
+        membership_role_changed: 'تغيّر الدور'
+        membership_removed: 'إزالة من شركة'
         signup_awaiting_approval: 'شركة في انتظار الموافقة'
     types:
         invitation_accepted: 'انضمّ %display_name% إلى الشركة.'
@@ -125,6 +127,8 @@ notification:
         data_check_failed: 'وجد التثبّت « %label% » خللًا في بيانات %company% (عدد حالات الخلل: %count%). التفاصيل في سجلات الخادم.'
         support_access_granted: 'فتح %by% شركة %company% لدعم المنصّة، للقراءة فقط، إلى غاية %until%.'
         support_access_ended: 'أغلق %by% وصول دعم المنصّة إلى %company%.'
+        membership_role_changed: 'أصبح دورك في %company% الآن «%label%»: تغيّر ما يمكنك رؤيته وفعله فيها.'
+        membership_removed: 'لم تعد عضوًا في %company% ولم يعد بإمكانك الوصول إليها. للعودة، اطلب من أحد مالكيها دعوتك من جديد.'
         signup_awaiting_approval: 'سجّلت %company% (%email%) وهي في انتظار موافقتك في صفحة المنصّة.'
     open: 'فتح %product%'
     why: 'تصلك هذه الرسالة لأن « %kind% » يُرسل إليك أيضًا بالبريد الإلكتروني.'
@@ -223,3 +227,9 @@ modules:
     whatsapp: 'الإرسال عبر واتساب'
     works: 'الأشغال'
     zakat: 'الزكاة'
+roles:
+    owner: 'المالك'
+    admin: 'مسؤول'
+    member: 'عضو'
+    clerk: 'أمين صندوق / بائع'
+    accountant: 'محاسب (قراءة فقط)'

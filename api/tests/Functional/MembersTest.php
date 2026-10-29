@@ -223,6 +223,69 @@ final class MembersTest extends ApiTestCase
         $this->sendJson('PUT', $this->rolePath($clerk), ['role' => Role::ADMIN]);
         self::assertResponseIsSuccessful();
         self::assertSame(1, $this->rowCount("SELECT COUNT(*) FROM audit_log WHERE action = 'membership.role_changed'"), 'the same role again changes nothing');
+        self::assertSame(1, $this->rowCount("SELECT COUNT(*) FROM inbox_item WHERE type = 'membership.role_changed'"), 'nor tells anything');
+    }
+
+    public function testThePersonWhoseRoleChangedIsToldTheNewOneInTheirCompany(): void
+    {
+        // Their rights changed under them: a screen they used may be gone, or a new one there, and nobody said so.
+        $this->createUser('owner@twes.local', 'password-1234', $this->company);
+        $clerk = $this->createUser('clerk@twes.local', 'password-1234', $this->company, ['sale.write'], Role::CLERK);
+        $this->signInAs('owner@twes.local');
+
+        $this->sendJson('PUT', $this->rolePath($clerk), ['role' => Role::ADMIN]);
+        self::assertResponseIsSuccessful();
+
+        $told = $this->toldOf('membership.role_changed');
+        self::assertCount(1, $told, 'the person alone, not the owner who changed it');
+        self::assertSame($clerk->getId()->toRfc4122(), $told[0]['recipient_id']);
+        self::assertSame($this->company->getId()->toRfc4122(), $told[0]['company_id'], 'told in the company it is about, so it leaves with their membership');
+        self::assertSame(['company' => 'Acme', 'label' => Role::ADMIN, 'label_key' => 'roles.admin'], $told[0]['payload'], 'a built-in role is named in the reader’s language');
+
+        $this->customRole('barista');
+        $this->sendJson('PUT', $this->rolePath($clerk), ['role' => 'barista']);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['company' => 'Acme', 'label' => 'barista'], $this->toldOf('membership.role_changed')[1]['payload'], 'the company’s own role by the name it gave it');
+    }
+
+    public function testThePersonRemovedIsToldTheyNoLongerBelongToTheCompany(): void
+    {
+        $joiner = $this->createUser('joiner@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
+        $this->adminSignedIn();
+
+        $this->sendJson('DELETE', $this->path().'/'.$joiner->getId()->toRfc4122());
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        $told = $this->toldOf('membership.removed');
+        self::assertCount(1, $told, 'the person alone');
+        self::assertSame($joiner->getId()->toRfc4122(), $told[0]['recipient_id']);
+        // About the account: a company's notice is shown only to its members, which they no longer are.
+        self::assertNull($told[0]['company_id']);
+        self::assertSame(['company' => 'Acme'], $told[0]['payload']);
+
+        $this->client->getCookieJar()->clear();
+        $this->login('joiner@twes.local', 'password-1234');
+        $this->getJson('/api/me/notifications');
+        self::assertResponseIsSuccessful();
+        $items = $this->arrayAt($this->json(), 'items');
+        self::assertSame(['membership.removed'], array_column($items, 'type'), 'their bell still says it');
+    }
+
+    /** @return list<array{recipient_id: string, company_id: ?string, payload: array<mixed>}> */
+    private function toldOf(string $type): array
+    {
+        $rows = $this->em()->getConnection()->fetchAllAssociative('SELECT recipient_id, company_id, payload FROM inbox_item WHERE type = ? ORDER BY created_at, id', [$type]);
+
+        return array_map(static function (array $row): array {
+            self::assertIsString($row['recipient_id']);
+            self::assertTrue(null === $row['company_id'] || \is_string($row['company_id']));
+            self::assertIsString($row['payload']);
+            $payload = json_decode($row['payload'], true, 8, \JSON_THROW_ON_ERROR);
+            self::assertIsArray($payload);
+            ksort($payload);
+
+            return ['recipient_id' => $row['recipient_id'], 'company_id' => $row['company_id'], 'payload' => $payload];
+        }, $rows);
     }
 
     /** What an admin may not grant or remove, they may not change either. */

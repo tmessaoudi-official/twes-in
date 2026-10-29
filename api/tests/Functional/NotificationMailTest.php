@@ -131,6 +131,27 @@ final class NotificationMailTest extends ApiTestCase
         self::assertStringContainsString('عروض الأسعار', $bodies['other@twes.local']);
     }
 
+    public function testARoleChangedIsNamedInItsReadersLanguageAndARemovalNamesTheCompany(): void
+    {
+        $fr = $this->member('lea@twes.local', 'fr', 'clerk', ['company.read']);
+        $ar = $this->member('sami@twes.local', 'ar', 'clerk', null);
+        $en = $this->member('jo@twes.local', 'en', 'clerk', null);
+        $gone = $this->member('gone@twes.local', 'fr', 'clerk', null);
+        $changed = ['company' => 'Acme', 'label' => 'admin', 'label_key' => 'roles.admin'];
+        $this->tell($fr, 'membership.role_changed', $changed);
+        $this->tell($ar, 'membership.role_changed', $changed);
+        $this->tell($en, 'membership.role_changed', ['company' => 'Acme', 'label' => 'barista']);
+        // A removal is about the account: the person is no longer a member of the company it names.
+        $this->notifications()->publish(new Notification('user:'.$gone->getId()->toRfc4122(), 'membership.removed', ['company' => 'Acme']));
+        self::assertSame(4, $this->deliverQueued());
+
+        $bodies = $this->bodiesTo();
+        self::assertStringContainsString("Votre rôle dans Acme est maintenant «\u{a0}administrateur\u{a0}»", $bodies['lea@twes.local']);
+        self::assertStringContainsString('«مسؤول»', $bodies['sami@twes.local']);
+        self::assertStringContainsString('Your role in Acme is now “barista”', $bodies['jo@twes.local'], 'the company’s own role by its name');
+        self::assertStringContainsString("Vous ne faites plus partie de Acme\u{a0}: vous n’y avez plus accès.", $bodies['gone@twes.local']);
+    }
+
     public function testADayAndAMomentAreWrittenAsTheReaderChoseAndEachReaderInTurnGetsTheirOwn(): void
     {
         $owner = $this->member('owner@twes.local', 'fr', Role::OWNER, ['*']);

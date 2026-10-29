@@ -24,6 +24,7 @@ use App\Tenancy\Domain\ValueObject\Permission;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryMemberships;
+use App\Tests\Support\InMemoryNotifications;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -45,7 +46,7 @@ final class RemoveMemberTest extends TestCase
         $this->memberships = new InMemoryMemberships();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $this->remove = new RemoveMember($this->memberships, new RoleBounds($this->memberships), $this->audit, new MockClock('2026-09-09 10:00:00'), $transactions);
+        $this->remove = new RemoveMember($this->memberships, new RoleBounds($this->memberships), $this->audit, new MockClock('2026-09-09 10:00:00'), $transactions, new InMemoryNotifications());
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->owner = new Role(Role::OWNER, [Permission::WILDCARD]);
         $this->member = new Role(Role::MEMBER, ['company.read']);

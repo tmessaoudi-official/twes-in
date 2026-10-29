@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Shared\Application\Notification;
+use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
@@ -37,6 +39,7 @@ final readonly class ChangeMemberRole implements DeclaresAuditActions
         private RoleBounds $bounds,
         private AuditTrail $audit,
         private Transactions $transactions,
+        private Notifications $notifications,
     ) {
     }
 
@@ -74,6 +77,16 @@ final readonly class ChangeMemberRole implements DeclaresAuditActions
                 $actorUserId,
                 ['user_id' => $userId->toRfc4122(), 'from' => $from->getName(), 'to' => $role->getName()],
                 $companyId,
+            ));
+
+            // Their rights changed under them: told in the company, so the notice leaves with their membership. A
+            // built-in role is named in the reader's language, the company's own by the name it gave it.
+            $this->notifications->publish(new Notification(
+                'user:'.$userId->toRfc4122(),
+                self::ROLE_CHANGED,
+                ['company' => $membership->getCompany()->getName(), 'label' => $role->getName()]
+                    + ($role->isBuiltIn() ? ['label_key' => 'roles.'.$role->getName()] : []),
+                $companyId->toRfc4122(),
             ));
         });
     }

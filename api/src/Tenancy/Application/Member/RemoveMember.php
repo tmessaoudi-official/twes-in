@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Shared\Application\Notification;
+use App\Shared\Application\Notifications;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
@@ -36,6 +38,7 @@ final readonly class RemoveMember implements DeclaresAuditActions
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private Notifications $notifications,
     ) {
     }
 
@@ -70,6 +73,10 @@ final readonly class RemoveMember implements DeclaresAuditActions
                 ['user_id' => $userId->toRfc4122(), 'role' => $membership->getRole()->getName(), 'at' => $this->clock->now()->format(\DATE_ATOM)],
                 $companyId,
             ));
+
+            // About the account rather than the company: a company's notice is shown to its members only, which they
+            // no longer are, and they would otherwise find the company gone from their list with no word why.
+            $this->notifications->publish(new Notification('user:'.$userId->toRfc4122(), self::REMOVED, ['company' => $membership->getCompany()->getName()]));
         });
     }
 

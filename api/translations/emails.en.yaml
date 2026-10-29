@@ -100,6 +100,8 @@ notification:
         data_check_failed: 'Data check failed'
         support_access_granted: 'Support access opened'
         support_access_ended: 'Support access closed'
+        membership_role_changed: 'Role changed'
+        membership_removed: 'Removed from a company'
         signup_awaiting_approval: 'Company waiting for approval'
     types:
         invitation_accepted: '%display_name% joined the company.'
@@ -123,6 +125,8 @@ notification:
         data_check_failed: 'The check “%label%” found something wrong in the data of %company% (problems found: %count%). The detail is in the server’s logs.'
         support_access_granted: '%by% opened %company% to the platform’s support, read-only, until %until%.'
         support_access_ended: '%by% closed the platform support’s access to %company%.'
+        membership_role_changed: 'Your role in %company% is now “%label%”: what you may see and do there has changed.'
+        membership_removed: 'You are no longer a member of %company% and can no longer reach it. To return, ask one of its owners to invite you again.'
         signup_awaiting_approval: '%company% (%email%) signed up and waits for your approval on the platform page.'
     open: 'Open %product%'
     why: 'You receive this e-mail because « %kind% » is also sent to you by e-mail.'
@@ -221,3 +225,9 @@ modules:
     whatsapp: 'WhatsApp sending'
     works: 'Works'
     zakat: 'Zakat'
+roles:
+    owner: 'owner'
+    admin: 'administrator'
+    member: 'member'
+    clerk: 'cashier / seller'
+    accountant: 'accountant (read-only)'
