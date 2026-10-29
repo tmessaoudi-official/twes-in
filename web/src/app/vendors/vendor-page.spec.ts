@@ -347,6 +347,13 @@ describe('VendorPage', () => {
     expect(facade.createVendor).not.toHaveBeenCalled();
   });
 
+  // A vendor's phone is read by its address's country as the API reads it (ruled 2026-10-29).
+  it("starts the phone's country on the vendor's own country", async () => {
+    vendor.set({ ...sotumag, address: { ...sotumag.address, countryCode: 'MA' } });
+    await open('v1');
+    expect(q('field-phone-country')?.textContent).toContain('+212');
+  });
+
   it('revises an existing vendor and says so, or says why not', async () => {
     vendor.set(sotumag);
     await open('v1');

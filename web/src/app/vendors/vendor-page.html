@@ -78,6 +78,7 @@
                 <app-descriptor-form
                   [descriptor]="descriptor"
                   [form]="form"
+                  phoneCountryFrom="countryCode"
                   [updated]="sync.updated()"
                   [conflicts]="sync.conflicts()"
                   (resolved)="sync.resolve(form, $event)"

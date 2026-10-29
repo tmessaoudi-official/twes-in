@@ -277,4 +277,69 @@ describe('DescriptorForm with a phone field', () => {
       expect(picked()).toContain('+212');
     });
   });
+
+  // A customer's or a vendor's phone is read by the record's own country, its address's, as the API reads it, and by the
+  // company's when the record names none (ruled 2026-10-29).
+  describe('on a record naming its own country', () => {
+    beforeEach(() => configure([{ provide: Session, useClass: FrenchCompany }]));
+
+    async function openRecord(phone: string, countryCode: string): Promise<RecordHost> {
+      const recordFixture = TestBed.createComponent(RecordHost);
+      fixture = recordFixture as unknown as ComponentFixture<Host>;
+      recordFixture.componentInstance.form = buildFormGroup(recordDescriptor, {
+        phone,
+        countryCode,
+      });
+      await settle();
+      return recordFixture.componentInstance;
+    }
+
+    it("starts on the record's country, and on the company's when it names none", async () => {
+      await openRecord('', 'TN');
+      expect(picked()).toContain('+216');
+
+      fixture.destroy();
+      await openRecord('', '');
+      expect(picked()).toContain('+33');
+    });
+
+    it('follows the country the record is given while no number is typed, and reads it by that country', async () => {
+      const host = await openRecord('', '');
+      expect(picked()).toContain('+33');
+
+      host.form.controls['countryCode'].setValue('tn');
+      await settle();
+      expect(picked()).toContain('+216');
+      await typeIn('71 234 567');
+      expect(host.form.controls['phone'].value).toBe('+216 71 234 567');
+    });
+  });
 });
+
+const recordDescriptor: FormDescriptor = {
+  id: 'vendor',
+  sections: [
+    {
+      id: 'contact',
+      title: 'Contact',
+      fields: [
+        { id: 'phone', label: 'Téléphone', kind: 'tel', maxLength: 40 },
+        { id: 'countryCode', label: 'Pays', kind: 'text', maxLength: 2 },
+      ],
+    },
+  ],
+};
+
+@Component({
+  imports: [DescriptorForm],
+  template: `<app-descriptor-form
+    [descriptor]="descriptor"
+    [form]="form"
+    phoneCountryFrom="countryCode"
+    testId="vendor-form"
+  />`,
+})
+class RecordHost {
+  readonly descriptor = recordDescriptor;
+  form = buildFormGroup(recordDescriptor, { phone: '', countryCode: '' });
+}

@@ -78,6 +78,7 @@
                 <app-descriptor-form
                   [descriptor]="descriptor"
                   [form]="form"
+                  phoneCountryFrom="billingCountryCode"
                   testId="customer-form"
                   #mainForm
                   [readOnly]="!editable()"
@@ -144,6 +145,7 @@
                     <app-descriptor-form
                       [descriptor]="contactDescriptor"
                       [form]="contactForm"
+                      [phoneCountryOf]="contactPhoneCountry()"
                       [updated]="contactSync.updated()"
                       [conflicts]="contactSync.conflicts()"
                       (resolved)="contactSync.resolve(contactForm, $event)"

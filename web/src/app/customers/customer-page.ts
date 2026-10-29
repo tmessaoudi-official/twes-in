@@ -236,6 +236,11 @@ export class CustomerPage {
     ],
   }));
   protected readonly contactDescriptor = CONTACT_FORM;
+  /** A contact's phone is read by its customer's billing country, as the API reads it; by the company's when none. */
+  protected readonly contactPhoneCountry = computed(() => {
+    const code = this.current()?.billingAddress.countryCode ?? '';
+    return code === '' ? null : code;
+  });
   protected readonly contactTestId = (row: ContactRow): string => `contact-${row.email ?? row.id}`;
   protected readonly contactEditing = signal<ContactRow | 'new' | null>(null);
   protected readonly contactForm = computed(() => {

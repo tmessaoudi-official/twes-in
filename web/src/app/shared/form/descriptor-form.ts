@@ -144,15 +144,28 @@ export class DescriptorForm {
    */
   readonly phoneCountryOf = input<string | null>(null);
   /**
+   * The field holding the record's own country, a customer's billing address or a vendor's: its phone is read by that
+   * country while it names one, as the API reads it, and by the default above when it names none.
+   */
+  readonly phoneCountryFrom = input<string | null>(null);
+  /**
    * A button drawn under a phone field, per field id, that fills it from elsewhere: WhatsApp's « Même numéro que le
    * téléphone ». An input like `pickers`, since a descriptor is data and an action a function; the field stays editable.
    */
   readonly fieldActions = input<Readonly<Record<string, FieldAction>>>({});
 
   private readonly session = inject(Session, { optional: true });
-  protected readonly phoneCountry = computed(
-    () => this.phoneCountryOf() ?? this.session?.me()?.company?.countryCode ?? '',
-  );
+  protected readonly phoneCountry = computed(() => {
+    const from = this.phoneCountryFrom();
+    if (from !== null) {
+      this.revision();
+      const own: unknown = this.form().controls[from]?.value;
+      if (typeof own === 'string' && /^[A-Za-z]{2}$/.test(own.trim())) {
+        return own.trim().toUpperCase();
+      }
+    }
+    return this.phoneCountryOf() ?? this.session?.me()?.company?.countryCode ?? '';
+  });
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the messages. */
   private readonly revision = signal(0);

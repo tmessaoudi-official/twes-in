@@ -720,6 +720,23 @@ describe('CustomerPage', () => {
     expect(successToasts()).toContain('customers.saved');
   });
 
+  // A customer's phone, and its contacts', are read by its billing country as the API reads them (ruled 2026-10-29).
+  it("starts the phone's country on the customer's billing country, and its contacts' too", async () => {
+    customer.set({
+      ...carthage,
+      billingAddress: { ...carthage.billingAddress, countryCode: 'MA' },
+    });
+    await open('k1');
+    expect(q('field-phone-country')?.textContent).toContain('+212');
+
+    await openTab('Contacts');
+    q('contact-add')!.click();
+    await settle();
+    expect(
+      q('contact-form')?.querySelector('[data-testid="field-phone-country"]')?.textContent,
+    ).toContain('+212');
+  });
+
   it("says a refusal of a contact's save under its field", async () => {
     customer.set(carthage);
     await open('k1');
