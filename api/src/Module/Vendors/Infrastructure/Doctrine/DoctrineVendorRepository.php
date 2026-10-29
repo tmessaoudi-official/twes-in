@@ -93,7 +93,7 @@ final readonly class DoctrineVendorRepository implements VendorRepository
         }
 
         /** @var list<Vendor> $vendors */
-        $vendors = $query->orderBy('v.number', 'ASC')->setMaxResults($limit)->getQuery()->getResult();
+        $vendors = $query->orderBy('v.number', \SortDirection::Ascending)->setMaxResults($limit)->getQuery()->getResult();
 
         return $vendors;
     }

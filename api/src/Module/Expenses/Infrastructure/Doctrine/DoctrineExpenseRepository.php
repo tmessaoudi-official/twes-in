@@ -65,7 +65,7 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
             ->andWhere('e.status = :paid')->setParameter('paid', ExpenseStatus::Paid)
             ->andWhere('e.paidOn >= :from')->setParameter('from', $from, Types::DATE_IMMUTABLE)
             ->andWhere('e.paidOn < :until')->setParameter('until', $until, Types::DATE_IMMUTABLE)
-            ->orderBy('e.paidOn', 'ASC')->addOrderBy('e.createdAt', 'ASC')->addOrderBy('e.id', 'ASC')
+            ->orderBy('e.paidOn', \SortDirection::Ascending)->addOrderBy('e.createdAt', \SortDirection::Ascending)->addOrderBy('e.id', \SortDirection::Ascending)
             ->getQuery()->getResult();
 
         return $expenses;
@@ -92,8 +92,8 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
         // so it is the default rather than the tie-break, which would name the same column twice. An expense carries
         // no number, so what settles a tie is when it was filed, then its id, which is unique and never empty.
         $order = [] === $search->order ? ['date' => 'desc'] : $search->order;
-        ListOrder::apply($query, $order, self::SORTED_BY, ['vendor', 'category'], 'e.createdAt', 'DESC')
-            ->addOrderBy('e.id', 'DESC')
+        ListOrder::apply($query, $order, self::SORTED_BY, ['vendor', 'category'], 'e.createdAt', \SortDirection::Descending)
+            ->addOrderBy('e.id', \SortDirection::Descending)
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
         $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);

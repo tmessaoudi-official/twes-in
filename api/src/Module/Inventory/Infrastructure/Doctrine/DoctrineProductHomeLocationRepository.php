@@ -33,7 +33,7 @@ final readonly class DoctrineProductHomeLocationRepository implements ProductHom
             ->andWhere('h.company = :company')
             ->setParameter('product', $productId)
             ->setParameter('company', $companyId)
-            ->orderBy('e.code', 'ASC')->addOrderBy('h.position', 'ASC')
+            ->orderBy('e.code', \SortDirection::Ascending)->addOrderBy('h.position', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 
@@ -88,7 +88,7 @@ final readonly class DoctrineProductHomeLocationRepository implements ProductHom
             ->andWhere('p.isActive = true')
             ->setParameter('locations', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $locationIds), ArrayParameterType::STRING)
             ->setParameter('company', $companyId)
-            ->orderBy('l.code', 'ASC')->addOrderBy('p.reference', 'ASC')
+            ->orderBy('l.code', \SortDirection::Ascending)->addOrderBy('p.reference', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 

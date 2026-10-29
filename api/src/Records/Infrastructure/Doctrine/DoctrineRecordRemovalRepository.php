@@ -50,8 +50,8 @@ final readonly class DoctrineRecordRemovalRepository implements RecordRemovalRep
             ->setParameter('company', $companyId, 'uuid')
             ->setParameter('pending', RemovalState::Pending->value)
             ->setParameter('subjects', $subjects)
-            ->orderBy('r.removedAt', 'DESC')
-            ->addOrderBy('r.id', 'DESC')
+            ->orderBy('r.removedAt', \SortDirection::Descending)
+            ->addOrderBy('r.id', \SortDirection::Descending)
             ->getQuery()
             ->getResult();
 

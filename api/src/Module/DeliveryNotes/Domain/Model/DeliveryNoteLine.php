@@ -84,7 +84,7 @@ class DeliveryNoteLine implements CompanyOwned
 
     /** @var Collection<int, DeliveryNoteLineTax> */
     #[ORM\OneToMany(targetEntity: DeliveryNoteLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $taxes;
 
     /** @internal a line is written by DeliveryNote */

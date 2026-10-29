@@ -29,8 +29,8 @@ final readonly class DoctrineVenueAreaRepository implements VenueAreaRepository
             ->join('a.establishment', 'e')
             ->where('a.company = :company')
             ->setParameter('company', $companyId)
-            ->addOrderBy('e.code', 'ASC')
-            ->addOrderBy('a.level', 'ASC')
+            ->addOrderBy('e.code', \SortDirection::Ascending)
+            ->addOrderBy('a.level', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 

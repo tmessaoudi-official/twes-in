@@ -155,11 +155,11 @@ final readonly class DoctrineProductRepository implements ProductRepository
         $code = $this->matchWords($query, $companyId, TypedText::trimmed($words));
         if (null !== $code) {
             // A scan is exact, so the product it names is the first offered: that is what lets Enter take it.
-            $query->addSelect('CASE WHEN p.id = :code THEN 0 ELSE 1 END AS HIDDEN exact')->orderBy('exact', 'ASC');
+            $query->addSelect('CASE WHEN p.id = :code THEN 0 ELSE 1 END AS HIDDEN exact')->orderBy('exact', \SortDirection::Ascending);
         }
 
         /** @var list<Product> $products */
-        $products = $query->addOrderBy('p.reference', 'ASC')->setMaxResults($limit)->getQuery()->getResult();
+        $products = $query->addOrderBy('p.reference', \SortDirection::Ascending)->setMaxResults($limit)->getQuery()->getResult();
 
         return $products;
     }
@@ -207,7 +207,7 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->select('p')->from(Product::class, 'p')
             ->where('p.company = :company')->setParameter('company', $companyId, 'uuid')
             ->andWhere(self::NAMED)->setParameter('name', $name)
-            ->orderBy('p.reference', 'ASC')
+            ->orderBy('p.reference', \SortDirection::Ascending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();

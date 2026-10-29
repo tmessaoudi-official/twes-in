@@ -51,8 +51,8 @@ final readonly class DoctrinePurchaseOrderRepository implements PurchaseOrderRep
     {
         $query = $this->filtered($companyId, $search)->select('o');
         // A draft has no number and no issue day, so neither can settle a tie: the newest first, and the id last.
-        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'expectedOn'], 'o.createdAt', 'DESC')
-            ->addOrderBy('o.id', 'DESC')
+        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'expectedOn'], 'o.createdAt', \SortDirection::Descending)
+            ->addOrderBy('o.id', \SortDirection::Descending)
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
         $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);

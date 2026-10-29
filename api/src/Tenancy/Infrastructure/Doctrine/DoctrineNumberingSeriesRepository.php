@@ -31,8 +31,8 @@ final readonly class DoctrineNumberingSeriesRepository implements NumberingSerie
             ->join('s.establishment', 'e')
             ->where('s.company = :company')
             ->setParameter('company', $companyId, 'uuid')
-            ->orderBy('e.code', 'ASC')
-            ->addOrderBy('s.documentType', 'ASC')
+            ->orderBy('e.code', \SortDirection::Ascending)
+            ->addOrderBy('s.documentType', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 

@@ -74,7 +74,7 @@ final readonly class DoctrineAttachmentRepository implements AttachmentRepositor
         $rows = $this->entityManager->createQueryBuilder()
             ->select('a.entityId', 'IDENTITY(a.file) AS fileId')->from(Attachment::class, 'a')
             ->where('a.entityType = :type')->andWhere('a.entityId IN (:ids)')->andWhere('a.removedAt IS NULL')
-            ->orderBy('a.createdAt', 'DESC')->addOrderBy('a.id', 'DESC')
+            ->orderBy('a.createdAt', \SortDirection::Descending)->addOrderBy('a.id', \SortDirection::Descending)
             ->setParameter('type', $entityType)
             ->setParameter('ids', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $entityIds), ArrayParameterType::STRING)
             ->getQuery()->getResult();

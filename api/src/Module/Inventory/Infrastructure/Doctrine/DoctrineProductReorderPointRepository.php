@@ -31,7 +31,7 @@ final readonly class DoctrineProductReorderPointRepository implements ProductReo
             ->andWhere('p.company = :company')
             ->setParameter('product', $productId)
             ->setParameter('company', $companyId)
-            ->orderBy('e.code', 'ASC')
+            ->orderBy('e.code', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 

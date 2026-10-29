@@ -45,7 +45,7 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
             ->select('c', 'g', 'r')->from(Customer::class, 'c')
             ->leftJoin('c.group', 'g')->join('c.taxRegime', 'r')
             ->where('c.company = :company')->setParameter('company', $companyId, 'uuid')
-            ->orderBy('c.number', 'ASC')
+            ->orderBy('c.number', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 
@@ -160,7 +160,7 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
         }
 
         /** @var list<Customer> $customers */
-        $customers = $query->orderBy('c.number', 'ASC')->setMaxResults($limit)->getQuery()->getResult();
+        $customers = $query->orderBy('c.number', \SortDirection::Ascending)->setMaxResults($limit)->getQuery()->getResult();
 
         return $customers;
     }

@@ -66,7 +66,7 @@ final readonly class DoctrinePaymentDeclarationRepository implements PaymentDecl
         $declarations = $this->entityManager->createQueryBuilder()
             ->select('d', 'c')->from(PaymentDeclaration::class, 'd')->join('d.company', 'c')
             ->where('d.status = :status')->setParameter('status', DeclarationStatus::Declared->value)
-            ->orderBy('d.declaredAt', 'ASC')
+            ->orderBy('d.declaredAt', \SortDirection::Ascending)
             ->getQuery()->getResult();
 
         return $declarations;

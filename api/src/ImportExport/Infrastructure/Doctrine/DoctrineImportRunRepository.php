@@ -35,8 +35,8 @@ final readonly class DoctrineImportRunRepository implements ImportRunRepository
             ->setParameter('company', $companyId, 'uuid')
             ->setParameter('subject', $subject)
             ->setParameter('hash', $contentHash)
-            ->orderBy('r.at', 'DESC')
-            ->addOrderBy('r.id', 'DESC')
+            ->orderBy('r.at', \SortDirection::Descending)
+            ->addOrderBy('r.id', \SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -55,8 +55,8 @@ final readonly class DoctrineImportRunRepository implements ImportRunRepository
             ->andWhere('r.pairing IS NOT NULL')
             ->setParameter('company', $companyId, 'uuid')
             ->setParameter('subject', $subject)
-            ->orderBy('r.at', 'DESC')
-            ->addOrderBy('r.id', 'DESC')
+            ->orderBy('r.at', \SortDirection::Descending)
+            ->addOrderBy('r.id', \SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -126,8 +126,8 @@ final readonly class DoctrineImportRunRepository implements ImportRunRepository
             ->setParameter('company', $companyId, 'uuid')
             ->setParameter('subjects', $subjects)
             ->setParameter('since', $since)
-            ->orderBy('r.at', 'DESC')
-            ->addOrderBy('r.id', 'DESC')
+            ->orderBy('r.at', \SortDirection::Descending)
+            ->addOrderBy('r.id', \SortDirection::Descending)
             ->getQuery()
             ->getResult();
 

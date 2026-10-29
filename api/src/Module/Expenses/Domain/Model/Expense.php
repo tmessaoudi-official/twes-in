@@ -93,12 +93,12 @@ class Expense implements CompanyOwned
 
     /** @var Collection<int, ExpenseLine> */
     #[ORM\OneToMany(targetEntity: ExpenseLine::class, mappedBy: 'expense', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $lines;
 
     /** @var Collection<int, ExpenseTax> */
     #[ORM\OneToMany(targetEntity: ExpenseTax::class, mappedBy: 'expense', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $taxes;
 
     /** What the rates come to, as the bill prints them. */

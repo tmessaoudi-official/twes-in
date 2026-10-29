@@ -127,7 +127,7 @@ class Quote implements CompanyOwned
 
     /** @var Collection<int, QuoteLine> */
     #[ORM\OneToMany(targetEntity: QuoteLine::class, mappedBy: 'quote', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $lines;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]

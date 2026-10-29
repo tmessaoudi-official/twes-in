@@ -142,7 +142,7 @@ class DeliveryNote implements CompanyOwned
 
     /** @var Collection<int, DeliveryNoteLine> */
     #[ORM\OneToMany(targetEntity: DeliveryNoteLine::class, mappedBy: 'deliveryNote', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $lines;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]

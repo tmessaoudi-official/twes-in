@@ -56,8 +56,8 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
         $query = $this->filtered($companyId, $search)->select('n', 'c');
         // A draft has no number and no issue day, so neither can settle a tie: the newest first, and the id last,
         // which is unique and never empty.
-        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'deliveryDate'], 'n.createdAt', 'DESC')
-            ->addOrderBy('n.id', 'DESC')
+        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'deliveryDate'], 'n.createdAt', \SortDirection::Descending)
+            ->addOrderBy('n.id', \SortDirection::Descending)
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
         $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);

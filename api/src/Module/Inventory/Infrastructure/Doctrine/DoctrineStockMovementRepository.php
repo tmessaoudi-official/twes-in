@@ -228,8 +228,8 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->from(StockMovement::class, 'm')
             ->where('m.product = :product')
             ->andWhere('m.costTyped = true')
-            ->orderBy('m.at', 'DESC')
-            ->addOrderBy('m.id', 'DESC')
+            ->orderBy('m.at', \SortDirection::Descending)
+            ->addOrderBy('m.id', \SortDirection::Descending)
             ->setMaxResults(1)
             ->setParameter('product', $product->getId(), 'uuid')
             ->getQuery()
@@ -324,8 +324,8 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         self::narrowToWords($query, $search->text);
         // `id` breaks the tie: two movements of the same moment are common, and a page boundary that falls between
         // them would otherwise show one row twice and hide another.
-        ListOrder::apply($query, $search->order, self::MOVEMENTS_SORTED, [], 'm.at', 'DESC')
-            ->addOrderBy('m.id', 'DESC')
+        ListOrder::apply($query, $search->order, self::MOVEMENTS_SORTED, [], 'm.at', \SortDirection::Descending)
+            ->addOrderBy('m.id', \SortDirection::Descending)
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
         // Counted apart: every join reaches one row, so a movement counts once with no DISTINCT over every id, and the
@@ -601,10 +601,10 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->setFirstResult($page->offset())->setMaxResults($page->size);
         $this->onTheSum($rows, $search, $companyId);
         foreach ($search->order as $sort => $direction) {
-            $rows->addOrderBy(self::SORTED_BY[$sort] ?? throw new \InvalidArgumentException("This list is not sorted by $sort."), $direction);
+            $rows->addOrderBy(self::SORTED_BY[$sort] ?? throw new \InvalidArgumentException("This list is not sorted by $sort."), ListOrder::direction($direction));
         }
         // Three keys settle every tie, because one row is one triple of them; a lot's code is unique within its product.
-        $rows->addOrderBy('p.reference', 'ASC')->addOrderBy('l.code', 'ASC')->addOrderBy('lt.code', 'ASC');
+        $rows->addOrderBy('p.reference', \SortDirection::Ascending)->addOrderBy('l.code', \SortDirection::Ascending)->addOrderBy('lt.code', \SortDirection::Ascending);
 
         // How many rows the list holds is how many pairs the grouping makes, which no COUNT here can say in one
         // number: PostgreSQL cannot count a pair of uuids as one value, and a paginator counting an aggregate counts

@@ -28,7 +28,7 @@ final readonly class DoctrineProductPhotoRepository implements ProductPhotoRepos
             ->select('p')->from(ProductPhoto::class, 'p')
             ->where('p.product = :product')->andWhere('p.company = :company')->andWhere('p.removedAt IS NULL')
             // A photo put back keeps its place, which another may have taken meanwhile: the older one comes first.
-            ->orderBy('p.position', 'ASC')->addOrderBy('p.createdAt', 'ASC')->addOrderBy('p.id', 'ASC')
+            ->orderBy('p.position', \SortDirection::Ascending)->addOrderBy('p.createdAt', \SortDirection::Ascending)->addOrderBy('p.id', \SortDirection::Ascending)
             ->setParameter('product', $productId, 'uuid')->setParameter('company', $companyId, 'uuid')
             ->getQuery()->getResult();
 

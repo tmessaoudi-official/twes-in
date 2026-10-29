@@ -34,8 +34,8 @@ final readonly class DoctrineDemoMailRepository implements DemoMailRepository
             ->from(DemoMail::class, 'm')
             ->where('IDENTITY(m.sandbox) = :sandbox')
             ->setParameter('sandbox', $sandboxId, 'uuid')
-            ->orderBy('m.capturedAt', 'DESC')
-            ->addOrderBy('m.id', 'DESC')
+            ->orderBy('m.capturedAt', \SortDirection::Descending)
+            ->addOrderBy('m.id', \SortDirection::Descending)
             ->getQuery()
             ->getResult();
 

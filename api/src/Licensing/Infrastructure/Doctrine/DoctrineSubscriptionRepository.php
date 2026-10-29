@@ -71,7 +71,7 @@ final readonly class DoctrineSubscriptionRepository implements SubscriptionRepos
             ->select('s', 'c')->from(Subscription::class, 's')->join('s.company', 'c')
             ->where('s.trialEndsAt IS NULL OR s.trialEndsAt <= :by')
             ->andWhere('s.paidUntil IS NULL OR s.paidUntil <= :by')
-            ->orderBy('s.id', 'ASC')
+            ->orderBy('s.id', \SortDirection::Ascending)
             ->setParameter('by', $by, Types::DATETIMETZ_IMMUTABLE)
             ->getQuery()
             ->setHint(Query::HINT_REFRESH, true)

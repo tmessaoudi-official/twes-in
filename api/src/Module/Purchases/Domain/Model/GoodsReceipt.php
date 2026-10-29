@@ -70,7 +70,7 @@ class GoodsReceipt implements CompanyOwned
 
     /** @var Collection<int, GoodsReceiptLine> */
     #[ORM\OneToMany(targetEntity: GoodsReceiptLine::class, mappedBy: 'receipt', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $lines;
 
     /**

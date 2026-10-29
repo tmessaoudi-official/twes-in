@@ -56,8 +56,8 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         $query = $this->filtered($companyId, $search)->select('i', 'c');
         // A draft has no number, so the number cannot settle a tie the way a product's reference does: the newest
         // first, and the id last, which is unique and never null.
-        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'dueDate'], 'i.createdAt', 'DESC')
-            ->addOrderBy('i.id', 'DESC')
+        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'dueDate'], 'i.createdAt', \SortDirection::Descending)
+            ->addOrderBy('i.id', \SortDirection::Descending)
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
         // Nothing is fetch-joined, so the count is COUNT(i.id): the default output walker counts a SELECT DISTINCT of every
@@ -252,8 +252,8 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ->setParameter('company', $companyId, 'uuid')
             ->setParameter('invoice', InvoiceType::Invoice->value)
             ->setParameter('cancelled', InvoiceStatus::Cancelled->value)
-            ->orderBy('i.createdAt', 'DESC')
-            ->addOrderBy('i.id', 'DESC')
+            ->orderBy('i.createdAt', \SortDirection::Descending)
+            ->addOrderBy('i.id', \SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();

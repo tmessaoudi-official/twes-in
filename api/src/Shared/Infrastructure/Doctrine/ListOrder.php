@@ -24,21 +24,34 @@ final class ListOrder
      *                                                              expression and the condition under which it is empty, where DQL
      *                                                              orders by an expression it cannot test for null (a CASE)
      * @param list<string>                                $nullable the sort keys whose column may be empty
-     * @param 'ASC'|'DESC'                                $tieFirst which end of the tie-break comes first: a list whose own order is
+     * @param \SortDirection                              $tieFirst which end of the tie-break comes first: a list whose own order is
      *                                                              newest-first settles ties that way too
      */
-    public static function apply(QueryBuilder $query, array $order, array $columns, array $nullable, string $tieBreak, string $tieFirst = 'ASC'): QueryBuilder
+    public static function apply(QueryBuilder $query, array $order, array $columns, array $nullable, string $tieBreak, \SortDirection $tieFirst = \SortDirection::Ascending): QueryBuilder
     {
         foreach ($order as $sort => $direction) {
             $column = $columns[$sort] ?? throw new \InvalidArgumentException("This list is not sorted by $sort.");
             [$column, $empty] = \is_array($column) ? $column : [$column, "$column IS NULL"];
             if (\in_array($sort, $nullable, true)) {
                 $alias = 'empty_'.$sort;
-                $query->addSelect("CASE WHEN $empty THEN 1 ELSE 0 END AS HIDDEN $alias")->addOrderBy($alias, 'ASC');
+                $query->addSelect("CASE WHEN $empty THEN 1 ELSE 0 END AS HIDDEN $alias")->addOrderBy($alias, \SortDirection::Ascending);
             }
-            $query->addOrderBy($column, $direction);
+            $query->addOrderBy($column, self::direction($direction));
         }
 
         return $query->addOrderBy($tieBreak, $tieFirst);
+    }
+
+    /**
+     * The direction a request asked for, said as Doctrine takes it.
+     *
+     * @param 'asc'|'desc' $asked
+     */
+    public static function direction(string $asked): \SortDirection
+    {
+        return match ($asked) {
+            'asc' => \SortDirection::Ascending,
+            'desc' => \SortDirection::Descending,
+        };
     }
 }

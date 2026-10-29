@@ -63,7 +63,7 @@ final readonly class DoctrineStockLocationRepository implements StockLocationRep
             ->join('s.area', 'a')
             ->where('l.company = :company')
             ->setParameter('company', $companyId)
-            ->orderBy('l.code', 'ASC')
+            ->orderBy('l.code', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 

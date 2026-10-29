@@ -45,7 +45,7 @@ class ExpenseLine implements CompanyOwned
 
     /** @var Collection<int, ExpenseLineTax> */
     #[ORM\OneToMany(targetEntity: ExpenseLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $taxes;
 
     /**

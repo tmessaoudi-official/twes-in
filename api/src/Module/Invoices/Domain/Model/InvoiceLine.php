@@ -120,7 +120,7 @@ class InvoiceLine implements CompanyOwned
 
     /** @var Collection<int, InvoiceLineTax> */
     #[ORM\OneToMany(targetEntity: InvoiceLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $taxes;
 
     /** @internal a line is written by Invoice */

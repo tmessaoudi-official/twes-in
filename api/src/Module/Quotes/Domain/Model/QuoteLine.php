@@ -70,7 +70,7 @@ class QuoteLine implements CompanyOwned
 
     /** @var Collection<int, QuoteLineTax> */
     #[ORM\OneToMany(targetEntity: QuoteLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $taxes;
 
     /** @internal a line is written by Quote */

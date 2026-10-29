@@ -93,12 +93,12 @@ class PurchaseOrder implements CompanyOwned
 
     /** @var Collection<int, PurchaseOrderLine> */
     #[ORM\OneToMany(targetEntity: PurchaseOrderLine::class, mappedBy: 'order', cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC'])]
+    #[ORM\OrderBy(['position' => \SortDirection::Ascending])]
     private Collection $lines;
 
     /** @var Collection<int, GoodsReceipt> */
     #[ORM\OneToMany(targetEntity: GoodsReceipt::class, mappedBy: 'order', cascade: ['persist'])]
-    #[ORM\OrderBy(['receivedOn' => 'ASC', 'createdAt' => 'ASC'])]
+    #[ORM\OrderBy(['receivedOn' => \SortDirection::Ascending, 'createdAt' => \SortDirection::Ascending])]
     private Collection $receipts;
 
     /**

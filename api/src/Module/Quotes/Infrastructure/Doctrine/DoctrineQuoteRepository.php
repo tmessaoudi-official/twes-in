@@ -51,8 +51,8 @@ final readonly class DoctrineQuoteRepository implements QuoteRepository
         $query = $this->filtered($companyId, $search)->select('q', 'c');
         // A draft has no number and no issue day, so neither can settle a tie: the newest first, and the id last,
         // which is unique and never empty.
-        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'validUntil'], 'q.createdAt', 'DESC')
-            ->addOrderBy('q.id', 'DESC')
+        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'validUntil'], 'q.createdAt', \SortDirection::Descending)
+            ->addOrderBy('q.id', \SortDirection::Descending)
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
         $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);

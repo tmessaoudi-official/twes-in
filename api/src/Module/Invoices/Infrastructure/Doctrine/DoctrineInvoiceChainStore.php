@@ -75,7 +75,7 @@ final readonly class DoctrineInvoiceChainStore implements InvoiceChainStore
         /** @var Invoice|null $head */
         $head = $this->of($series)
             ->andWhere('i.chainPosition IS NOT NULL')
-            ->orderBy('i.chainPosition', 'DESC')
+            ->orderBy('i.chainPosition', \SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()->getOneOrNullResult();
 
