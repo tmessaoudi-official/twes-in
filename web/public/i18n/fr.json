@@ -826,7 +826,10 @@
       "colour": "Saisissez une couleur au format #rrggbb, par exemple #1f6feb."
     },
     "email_typo": "Vouliez-vous dire :",
-    "phone": { "country": "Indicatif du pays" },
+    "phone": {
+      "country": "Indicatif du pays",
+      "hint": "Le numéro sans l’indicatif, que donne le pays choisi à côté (exemple : {{example}})."
+    },
     "leave": {
       "title": "Quitter sans enregistrer ?",
       "message": "Vos modifications seront perdues.",

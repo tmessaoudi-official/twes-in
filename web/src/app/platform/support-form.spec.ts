@@ -18,6 +18,17 @@ const rules: PlatformSupportRules = {
 };
 
 describe('« Contact du support »', () => {
+  // The phone field says itself what it asks for, the local number with an example of the country picked (row 252):
+  // a hint of the form's own would say again the country code the picker beside it gives.
+  it('leaves the phone and WhatsApp hints to the phone field, and keeps the others', () => {
+    const fields = supportForm(rules).sections[0]!.fields;
+    const hint = (id: string) => fields.find((field) => field.id === id)?.hint;
+    expect(hint('phone')).toBeUndefined();
+    expect(hint('whatsapp')).toBeUndefined();
+    expect(hint('email')).toBe('platform.support.email_hint');
+    expect(hint('status_url')).toBe('platform.support.status_url_hint');
+  });
+
   // The hint under a channel and its refusal offer an example a person copies, its groups kept apart by no-break
   // spaces (« +216 20 123 456 »), and in Arabic a direction mark before it: the field takes it as copied.
   it.each([

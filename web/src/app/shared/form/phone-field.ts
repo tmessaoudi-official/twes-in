@@ -22,7 +22,7 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { phoneCountries, phoneValue, readPhone, samePhone } from './phone-numbers';
+import { phoneCountries, phoneExample, phoneValue, readPhone, samePhone } from './phone-numbers';
 import { RefusedField } from './refused-field';
 import { Select, type SelectOption } from './select';
 
@@ -78,9 +78,11 @@ let nextId = 0;
       @if (error() !== '') {
         <!-- value-direction: a sentence in the screen's language, read in the screen's direction -->
         <mat-error [attr.data-testid]="errorTestId() || null">{{ error() }}</mat-error>
-      } @else if (hint() !== '') {
+      } @else if (shownHint() !== '') {
         <!-- value-direction: a sentence in the screen's language, read in the screen's direction -->
-        <mat-hint>{{ hint() }}</mat-hint>
+        <mat-hint [attr.data-testid]="testId() ? testId() + '-hint' : null">{{
+          shownHint()
+        }}</mat-hint>
       }
     </mat-form-field>
   `,
@@ -98,6 +100,8 @@ export class PhoneField implements ControlValueAccessor {
 
   protected readonly countryLabelId = `app-phone-field-${nextId++}-country`;
   protected readonly countryControl = new FormControl<string>('', { nonNullable: true });
+  /** The country picked, as a signal: the control is set without events when a value is read in. */
+  private readonly picked = signal('');
   protected readonly local = signal('');
   protected readonly disabled = signal(false);
   /** What the form opened on: handed back when the same number is typed again. */
@@ -109,6 +113,22 @@ export class PhoneField implements ControlValueAccessor {
 
   private readonly translate = inject(TranslateService);
   private readonly language = toSignal(this.translate.onLangChange, { initialValue: null });
+
+  /**
+   * What is said under the number while nothing is refused: the form's own hint, else what the box asks for, the
+   * number without its code, with an example of the country picked, isolated left to right so its groups keep their
+   * order on an Arabic screen.
+   */
+  protected readonly shownHint = computed(() => {
+    if (this.hint() !== '') return this.hint();
+    this.language();
+    const example = phoneExample(this.picked());
+    return example === ''
+      ? ''
+      : (this.translate.instant('form.phone.hint', {
+          example: `\u2066${example}\u2069`,
+        }) as string);
+  });
 
   protected readonly countryOptions = computed<readonly SelectOption[]>(() => {
     this.language();
@@ -129,12 +149,16 @@ export class PhoneField implements ControlValueAccessor {
       untracked(() => {
         if (!this.read || this.countryControl.value === '' || this.local() === '') {
           this.countryControl.setValue(country, { emitEvent: false });
+          this.picked.set(country);
         }
       });
     });
-    this.countryControl.valueChanges.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe(() => {
-      if (this.local() !== '') this.emit();
-    });
+    this.countryControl.valueChanges
+      .pipe(takeUntilDestroyed(inject(DestroyRef)))
+      .subscribe((country) => {
+        this.picked.set(country);
+        if (this.local() !== '') this.emit();
+      });
   }
 
   protected typed(event: Event): void {
@@ -155,6 +179,7 @@ export class PhoneField implements ControlValueAccessor {
     );
     this.read = this.opened !== '';
     this.countryControl.setValue(read.country, { emitEvent: false });
+    this.picked.set(read.country);
     this.local.set(read.local);
   }
 

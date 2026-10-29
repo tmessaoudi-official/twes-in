@@ -131,6 +131,14 @@ export function phoneRefusal(value: string): FieldError | null {
   return { key: 'import.rejections.invalid_phone' };
 }
 
+/**
+ * A number of a country as a person there types it without the code (« 20 123 456 », « 06 12 34 56 78 »): what the
+ * local box asks for, offered under it. The numbering plans' own example, never one of ours; empty for no country.
+ */
+export function phoneExample(country: string): string {
+  return isCountry(country) ? (getExampleNumber(country, examples)?.formatNational() ?? '') : '';
+}
+
 /** Whether two values name the same number, however each was written; a value that does not parse names none. */
 export function samePhone(a: string, b: string): boolean {
   const first = international(plain(a));

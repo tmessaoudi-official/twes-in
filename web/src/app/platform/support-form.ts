@@ -34,7 +34,8 @@ export function supportForm(rules: PlatformSupportRules | null): FormDescriptor 
         fields: SUPPORT_CHANNELS.map((channel) => ({
           id: channel,
           label: `platform.support.${channel}`,
-          hint: `platform.support.${channel}_hint`,
+          // A phone's field says itself what it asks for, with an example of the country picked beside it.
+          ...(KINDS[channel] === 'tel' ? {} : { hint: `platform.support.${channel}_hint` }),
           kind: KINDS[channel],
           ...(rules === null ? {} : settingRules(rules[channel])),
         })),

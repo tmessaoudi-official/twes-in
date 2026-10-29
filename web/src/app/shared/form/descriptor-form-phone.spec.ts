@@ -18,7 +18,13 @@ import { PLATFORM_PHONE_COUNTRY } from './phone-country';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
-      form: { optional: 'facultatif', phone: { country: 'Indicatif du pays' } },
+      form: {
+        optional: 'facultatif',
+        phone: {
+          country: 'Indicatif du pays',
+          hint: 'Le numéro sans l’indicatif, que donne le pays choisi à côté (exemple\u00a0: {{example}}).',
+        },
+      },
       import: {
         rejections: {
           phone_length:
@@ -169,6 +175,42 @@ describe('DescriptorForm with a phone field', () => {
 
       expect(host.form.controls['phone'].hasError('phone')).toBe(true);
       expect(byTestId('field-error-phone')?.textContent).toMatch(/exemple : \+33 /);
+    });
+
+    // What the field asks for is the local number: the hint says so with an example of the country picked, isolated so
+    // its groups keep their order on an Arabic screen, and the example as copied is a number the field takes.
+    it('says under the number what it asks for, with an example of the country picked, which it takes', async () => {
+      const host = await open('');
+      const hint = (): string => byTestId('field-phone-hint')?.textContent ?? '';
+
+      expect(hint()).toContain('sans l’indicatif');
+      expect(hint()).toContain('exemple : ⁦06 12 34 56 78⁩');
+
+      byTestId('field-phone-country')!.click();
+      await settle();
+      byTestId('field-phone-country-TN')!.click();
+      await settle();
+      expect(hint()).toContain('⁦20 123 456⁩');
+      await typeIn(hint().match(/⁦(.*)⁩/)![1]!);
+      expect(host.form.controls['phone'].valid).toBe(true);
+      expect(host.form.controls['phone'].value).toBe('+216 20 123 456');
+    });
+
+    it('keeps the hint a form declares for its field', async () => {
+      fixture = TestBed.createComponent(Host);
+      const declared: FormDescriptor = {
+        ...descriptor,
+        sections: [
+          {
+            ...descriptor.sections[0]!,
+            fields: [{ id: 'phone', label: 'Téléphone', kind: 'tel', hint: 'Le standard' }],
+          },
+        ],
+      };
+      (fixture.componentInstance as { descriptor: FormDescriptor }).descriptor = declared;
+      fixture.componentInstance.form = buildFormGroup(declared, { phone: '' });
+      await settle();
+      expect(byTestId('field-phone-hint')?.textContent).toContain('Le standard');
     });
 
     it('writes the number again under another country picked', async () => {
