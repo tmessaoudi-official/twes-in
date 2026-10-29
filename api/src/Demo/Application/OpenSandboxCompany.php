@@ -65,9 +65,11 @@ final readonly class OpenSandboxCompany implements DeclaresAuditActions
             }
 
             $locale = $catalogue->locale ?? throw new \LogicException('A catalogue company names the language it prints in.');
+            $currency = $catalogue->currency ?? throw new \LogicException('A catalogue company names its currency.');
+            $timezone = $catalogue->timezone ?? throw new \LogicException('A catalogue company names its time zone.');
             $owner = new User(Email::fromString("demo-$mark@example.com"), 'Démo', $locale, $now);
             $this->users->save($owner);
-            $company = new Company($name, $catalogue->countryCode, $catalogue->currency, $locale, $catalogue->timezone, $now);
+            $company = new Company($name, $catalogue->countryCode, $currency, $locale, $timezone, $now);
             $this->companies->save($company);
             $this->provision->handle($company);
             $role = $this->roles->builtIn(Role::OWNER) ?? throw new \LogicException('The owner role is seeded at every start.');

@@ -1454,6 +1454,37 @@ describe('PlatformPage', () => {
     }
   });
 
+  // One list of countries, the presets' as the platform's country setting offers them, and no country written in the
+  // screen: a new company starts on the country the platform is set to.
+  it("starts a new company on the platform's country, offering the presets' countries alone", async () => {
+    country.set({ key: 'platform.country', value: 'FR', choices: ['FR', 'MA', 'TN'] });
+    const { fixture, query } = await render('/?tab=companies');
+
+    query<HTMLButtonElement>('platform-company-new')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const name = query<HTMLInputElement>('platform-company-name')!;
+    name.value = 'Globex';
+    name.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('platform-company-country')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const offered = Array.from(
+      document.body.querySelectorAll('[data-testid^="platform-company-country-option-"]'),
+    ).map((option) => option.getAttribute('data-testid')!.slice(-2));
+    expect(offered).toEqual(['FR', 'MA', 'TN']);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const owner = query<HTMLInputElement>('platform-company-owner')!;
+    owner.value = 'nadia@example.test';
+    owner.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('platform-company-create')!.click();
+    await fixture.whenStable();
+
+    expect(facade.openCompany).toHaveBeenCalledWith('Globex', 'FR', 'nadia@example.test');
+  });
+
   it('opens a company from its name, country and first owner, and says the invitation went out', async () => {
     const { fixture, query } = await render('/?tab=companies');
 

@@ -7,9 +7,7 @@ import type { FieldValue } from '../shared/form/form-types';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { PlatformApi, PlatformRefused } from './platform-api';
 import {
-  COMPANY_COUNTRIES,
   type AccountAction,
-  type CompanyCountry,
   type FailedMessagesRead,
   type ModuleDemandRow,
   type PlatformAccountRow,
@@ -252,22 +250,17 @@ export class PlatformFacade {
   }
 
   /**
-   * Opens a company with what a company in its country starts with, then invites its first owner. A company opened
+   * Opens a company in its country, which starts it with its preset's currency, language and zone, then invites its
+   * first owner. A company opened
    * whose invitation is refused still exists, so the lists are read again whenever the opening went through.
    */
-  async openCompany(
-    name: string,
-    countryCode: CompanyCountry,
-    ownerEmail: string,
-  ): Promise<boolean> {
+  async openCompany(name: string, countryCode: string, ownerEmail: string): Promise<boolean> {
     this.refusedSignal.set({ at: 'new-company', refusals: [] });
     return this.state.marked(async () => {
       this.state.clearError();
       let opened = false;
       try {
-        const companyId = await this.proven(() =>
-          this.api.createCompany({ name, countryCode, ...COMPANY_COUNTRIES[countryCode] }),
-        );
+        const companyId = await this.proven(() => this.api.createCompany({ name, countryCode }));
         opened = true;
         await this.proven(() => this.api.inviteOwner(companyId, ownerEmail));
         return true;

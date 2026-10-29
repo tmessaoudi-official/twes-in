@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ListQuery } from '../shared/list/list-types';
-import { ACCOUNTS_LIST, accountSearch, COMPANIES_LIST, companySearch } from './platform-forms';
+import { ACCOUNTS_LIST, accountSearch, companiesListOf, companySearch } from './platform-forms';
+
+const COMPANIES_LIST = companiesListOf(['FR', 'TN']);
 
 const query = (over: Partial<ListQuery>): ListQuery => ({
   query: '',
@@ -55,7 +57,7 @@ describe('the platform lists', () => {
     expect(
       companySearch(
         query({
-          filters: { status: 'gone', country: 'ZZ' },
+          filters: { status: 'gone', country: 'tunisie' },
           sort: { column: 'owners', direction: 'asc' },
         }),
       ),
@@ -111,6 +113,18 @@ describe('the platform lists', () => {
       key: 'active',
       direction: 'asc',
     });
+  });
+
+  // The country filter offers the countries the platform's setting offers, the presets', each named by its texts.
+  it('offers the countries it is given as the companies list country filter, and no others', () => {
+    const filter = companiesListOf(['FR', 'MA', 'TN']).filters?.find(
+      (each) => each.id === 'country',
+    );
+    expect(filter?.options).toEqual([
+      { value: 'FR', label: 'platform.companies.countries.FR' },
+      { value: 'MA', label: 'platform.companies.countries.MA' },
+      { value: 'TN', label: 'platform.companies.countries.TN' },
+    ]);
   });
 
   // Both APIs read their words in a name (and an address the list does not show): each list draws its search.

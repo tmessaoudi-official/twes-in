@@ -60,7 +60,8 @@ final readonly class CreateCompany implements DeclaresAuditActions
                 throw new CompanyNameTaken(\sprintf('A company named "%s" already exists.', $request->name));
             }
 
-            // A company's fiscal preset is its country's: read before the company exists, as its language may come from it.
+            // A company's fiscal preset is its country's: read before the company exists, as its currency, language and zone may
+            // come from it.
             $preset = strtoupper($request->countryCode);
             if (!$this->presets->has($preset)) {
                 throw new NoFiscalPreset(\sprintf('There is no fiscal preset for %s yet, so a company there could not invoice.', $preset));
@@ -68,9 +69,9 @@ final readonly class CreateCompany implements DeclaresAuditActions
             $company = Company::pending(
                 $request->name,
                 $request->countryCode,
-                $request->currency,
+                $request->currency ?? $this->presets->get($preset)->currency,
                 $request->locale ?? $this->presets->get($preset)->documentLanguages[0] ?? throw new \LogicException(\sprintf('The %s preset names no language its documents print in.', $preset)),
-                $request->timezone,
+                $request->timezone ?? $this->presets->get($preset)->timezone,
                 $this->clock->now(),
             );
             $this->companies->save($company);

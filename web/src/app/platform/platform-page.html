@@ -515,10 +515,10 @@
                   <app-select
                     [label]="'platform.companies.country' | translate"
                     [labelInside]="true"
-                    [options]="countryOptions"
+                    [options]="countryOptions()"
                     [translateLabels]="true"
                     [ngModel]="companyCountry()"
-                    (ngModelChange)="companyCountry.set(chosen($event))"
+                    (ngModelChange)="companyCountry.set($event)"
                     [ngModelOptions]="{ standalone: true }"
                     testId="platform-company-country"
                   />
@@ -702,7 +702,7 @@
           }
 
           <app-data-list
-            [descriptor]="companiesList"
+            [descriptor]="companiesList()"
             [rows]="companies()"
             [loading]="platform.busy()"
             [failed]="platform.error() !== null"

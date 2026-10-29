@@ -10,6 +10,7 @@ disagree, both are cited and the preset's choice is stated.
 | Rule | Preset | Source | Status |
 |---|---|---|---|
 | The dinar (TND) has three decimals (1 dinar = 1000 millimes) | `currency: TND`, `minor_unit: 3` | ISO 4217; Unicode CLDR through Symfony Intl (`Currencies::getFractionDigits('TND')` = 3) | unvalidated |
+| A company there starts in Tunisia's one time zone, which its days and dates turn in (not a fiscal rule: what a company opened by an operator starts with, changed in its profile) | `timezone: Africa/Tunis` | IANA time zone database, `zone1970.tab` (TN: Africa/Tunis, the only zone) | unvalidated |
 
 ## 1a. Keeping records
 

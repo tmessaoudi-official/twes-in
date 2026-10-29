@@ -64,6 +64,11 @@ final readonly class PresetReader
         if (!Currencies::exists($currency)) {
             $this->refuse('currency', "\"$currency\" is not an ISO 4217 currency");
         }
+        // The zone a company there starts in: an IANA identifier PHP knows, never an offset that ignores summer time.
+        $timezone = $this->string($config, 'timezone', 'timezone');
+        if (!\in_array($timezone, \DateTimeZone::listIdentifiers(), true)) {
+            $this->refuse('timezone', "\"$timezone\" is not an IANA time zone");
+        }
         $minorUnit = $this->int($config, 'minor_unit', 'minor_unit');
         if (Currencies::getFractionDigits($currency) !== $minorUnit) {
             $this->refuse('minor_unit', "$currency has ".Currencies::getFractionDigits($currency)." decimals, not $minorUnit");
@@ -93,6 +98,7 @@ final readonly class PresetReader
             $this->establishment($this->node($config, 'establishment', 'establishment')),
             $this->int($config, 'retention_years', 'retention_years'),
             StampOnCorrection::from($this->string($this->node($config, 'corrections', 'corrections'), 'stamp', 'corrections.stamp')),
+            $timezone,
             $this->settings($config),
             $this->invoiceFields($config),
         );

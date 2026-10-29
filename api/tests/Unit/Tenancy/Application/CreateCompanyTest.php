@@ -85,6 +85,14 @@ final class CreateCompanyTest extends TestCase
         self::assertSame(ShippedFiscalPresets::presets()->get('TN')->documentLanguages[0], $company->getLocale());
     }
 
+    public function testACompanyGivenNoCurrencyOrZoneTakesItsPresets(): void
+    {
+        $company = $this->create->handle(new NewCompany('Acme', 'fr', null, null, null), null);
+
+        $preset = ShippedFiscalPresets::presets()->get('FR');
+        self::assertSame([$preset->currency, $preset->timezone], [$company->getCurrency(), $company->getTimezone()]);
+    }
+
     public function testACompanyGivenALanguageKeepsIt(): void
     {
         $company = $this->create->handle(new NewCompany('Acme', 'TN', 'TND', 'en', 'Africa/Tunis'), null);

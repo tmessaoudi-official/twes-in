@@ -32,6 +32,7 @@ final readonly class FiscalPreset
      * @param PresetEstablishment            $establishment      how the country codes a company's establishments
      * @param int                            $retentionYears     how many years every record is kept
      * @param StampOnCorrection              $stampOnCorrection  what a credit note does with the stamp its invoice charged
+     * @param string                         $timezone           the zone a company there starts in (an IANA identifier)
      * @param array<string, mixed>           $settings           the defaults the country gives settings, by key
      * @param PresetInvoiceFields            $invoiceFields      what the country's law adds to an invoice
      */
@@ -52,6 +53,7 @@ final readonly class FiscalPreset
         public PresetEstablishment $establishment,
         public int $retentionYears,
         public StampOnCorrection $stampOnCorrection,
+        public string $timezone,
         public array $settings = [],
         public PresetInvoiceFields $invoiceFields = new PresetInvoiceFields(),
     ) {

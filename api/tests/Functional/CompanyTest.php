@@ -55,6 +55,24 @@ final class CompanyTest extends ApiTestCase
     }
 
     /**
+     * The country's preset says the currency a company there keeps its books in and the zone its days turn in: the
+     * platform page sends the name and the country alone, so no list of countries lives in the screen.
+     */
+    public function testACompanyOpenedWithItsCountryAloneTakesItsPresetsCurrencyAndZone(): void
+    {
+        $this->operatorSignedIn();
+
+        foreach (['TN', 'FR'] as $country) {
+            $this->postJson('/api/companies', ['name' => 'Acme '.$country, 'countryCode' => $country]);
+
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            $preset = ShippedFiscalPresets::presets()->get($country);
+            self::assertSame([$preset->currency, $preset->timezone], [$this->json()['currency'], $this->json()['timezone']], $country);
+        }
+        self::assertSame(['Africa/Tunis', 'Europe/Paris'], [ShippedFiscalPresets::presets()->get('TN')->timezone, ShippedFiscalPresets::presets()->get('FR')->timezone]);
+    }
+
+    /**
      * A company prints in the language it was opened with from its first document, and changes it as any setting: the
      * value is the company's own from the start, not the installation's default it would otherwise fall back on.
      */

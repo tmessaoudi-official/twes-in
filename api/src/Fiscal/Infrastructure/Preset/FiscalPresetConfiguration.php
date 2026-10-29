@@ -38,6 +38,7 @@ final class FiscalPresetConfiguration implements ConfigurationInterface
         $root->children()
             ->scalarNode('country')->isRequired()->cannotBeEmpty()->end()
             ->scalarNode('currency')->isRequired()->cannotBeEmpty()->end()
+            ->scalarNode('timezone')->isRequired()->cannotBeEmpty()->end()
             ->integerNode('minor_unit')->isRequired()->min(0)->max(4)->end()
             ->integerNode('retention_years')->isRequired()->min(1)->max(30)->end()
             ->arrayNode('document_languages')->isRequired()->requiresAtLeastOneElement()->scalarPrototype()->end()->end()

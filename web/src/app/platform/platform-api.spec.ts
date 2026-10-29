@@ -300,12 +300,7 @@ describe('PlatformApi', () => {
   });
 
   it('opens a company and answers its identifier, or names a taken name', async () => {
-    const company = {
-      name: 'Globex',
-      countryCode: 'TN',
-      currency: 'TND',
-      timezone: 'Africa/Tunis',
-    };
+    const company = { name: 'Globex', countryCode: 'TN' };
     const opened = api.createCompany(company);
     const request = http.expectOne('/api/companies');
     expect(request.request.method).toBe('POST');
@@ -624,12 +619,7 @@ describe('PlatformApi', () => {
       .flush({ error: 'step_up_required' }, { status: 403, statusText: 'Forbidden' });
     await expect(approving).rejects.toEqual(new PlatformRefused('step_up_required'));
 
-    const creating = api.createCompany({
-      name: 'Acme',
-      countryCode: 'TN',
-      currency: 'TND',
-      timezone: 'Africa/Tunis',
-    });
+    const creating = api.createCompany({ name: 'Acme', countryCode: 'TN' });
     http
       .expectOne('/api/companies')
       .flush(

@@ -56,14 +56,12 @@ import { companyActions, suspendQuestion } from './platform-actions';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { membershipRoleLabel } from './membership-role';
 import { PlatformFacade } from './platform-facade';
-import { ACCOUNTS_LIST, accountSearch, COMPANIES_LIST, companySearch } from './platform-forms';
+import { ACCOUNTS_LIST, accountSearch, companiesListOf, companySearch } from './platform-forms';
 import {
-  COMPANY_COUNTRIES,
   companyStatusShown,
   PLATFORM_TABS,
   type AccountAction,
   type PlatformAccountRow,
-  type CompanyCountry,
   type PlatformCompanyRow,
   type PlatformTab,
   type PlatformSwitch,
@@ -265,10 +263,15 @@ export class PlatformPage implements OnInit {
     suspend: (company) => void this.suspend(company),
     busy: () => this.busy(),
   });
-  protected readonly companiesList: ListDescriptor<PlatformCompanyRow> = {
-    ...COMPANIES_LIST,
+  /** The countries the platform's country setting offers, the fiscal presets', by content: a save reads the same. */
+  private readonly presetCountries = computed(() => this.platform.country()?.choices ?? [], {
+    equal: (a, b) => a.join() === b.join(),
+  });
+  /** The companies list, its country filter offering the countries the platform's country setting offers. */
+  protected readonly companiesList = computed<ListDescriptor<PlatformCompanyRow>>(() => ({
+    ...companiesListOf(this.presetCountries()),
     actions: onRows(this.companyRecordActions),
-  };
+  }));
   /** The open sheet's actions: its bar draws them, and the keys, Ctrl K and the « ? » sheet offer them. */
   protected readonly sheetActions = computed(() =>
     onRecord(this.companyRecordActions, this.opened(), this.busy()),
@@ -506,20 +509,23 @@ export class PlatformPage implements OnInit {
   protected readonly error = this.platform.error;
   protected readonly accounts = this.platform.accounts;
   protected readonly companies = this.platform.companies;
-  protected readonly countries = Object.keys(COMPANY_COUNTRIES) as CompanyCountry[];
   protected readonly companyName = signal('');
-  protected readonly companyCountry = signal<CompanyCountry>('TN');
+  /** A new company's country, which starts on the platform's own until another is picked. */
+  protected readonly companyCountry = linkedSignal(() => this.platform.country()?.value ?? '');
   protected readonly ownerEmail = signal('');
   /** The address the last invitation went to, once it went. */
   /** What is typed in each company's owner field, by company. */
   protected readonly ownerEmails = signal<Readonly<Record<string, string>>>({});
   protected readonly subscription = this.platform.subscription;
   protected readonly openedSubscription = this.platform.openedSubscription;
-  protected readonly countryOptions: SelectOption[] = this.countries.map((code) => ({
-    value: code,
-    label: `platform.companies.countries.${code}`,
-    testId: `platform-company-country-option-${code}`,
-  }));
+  /** The countries a company may be opened in: those the platform's country setting offers, the fiscal presets'. */
+  protected readonly countryOptions = computed<SelectOption[]>(() =>
+    this.presetCountries().map((code) => ({
+      value: code,
+      label: `platform.companies.countries.${code}`,
+      testId: `platform-company-country-option-${code}`,
+    })),
+  );
   protected readonly subscriptionDescriptor = subscriptionForm();
   /** The terms in the open panel, which start from what the company holds, or a month where it holds none. */
   protected readonly subscriptionGroup = signal<DescriptorFormGroup>(
@@ -792,10 +798,6 @@ export class PlatformPage implements OnInit {
     const value = this.typed(event);
     this.forget('email');
     this.ownerEmails.update((typed) => ({ ...typed, [companyId]: value }));
-  }
-
-  protected chosen(value: string): CompanyCountry {
-    return this.countries.find((code) => code === value) ?? 'TN';
   }
 
   protected typed(event: Event): string {

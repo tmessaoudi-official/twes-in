@@ -15,10 +15,12 @@ final readonly class NewCompany
     public function __construct(
         public string $name,
         public string $countryCode,
-        public string $currency,
+        /** Null: its country's fiscal preset's. */
+        public ?string $currency,
         /** Null: the first language its country's fiscal preset prints in. */
         public ?string $locale,
-        public string $timezone,
+        /** Null: the zone its country's fiscal preset starts a company in. */
+        public ?string $timezone,
     ) {
     }
 }

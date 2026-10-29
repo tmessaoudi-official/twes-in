@@ -54,10 +54,11 @@ final class CompanyResource
     #[Groups([self::READ, self::WRITE])]
     public string $countryCode = '';
 
-    #[Assert\NotBlank(groups: ['create'])]
+    /** Left out on create: the currency its country's fiscal preset keeps the books in. */
+    #[Assert\NotBlank(allowNull: true, groups: ['create'])]
     #[Assert\Currency(groups: ['create'])]
     #[Groups([self::READ, self::WRITE])]
-    public string $currency = '';
+    public ?string $currency = null;
 
     /** Left out on create: the first language the country's fiscal preset prints in. */
     #[Assert\NotBlank(allowNull: true, groups: ['create'])]
@@ -65,10 +66,11 @@ final class CompanyResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $locale = null;
 
-    #[Assert\NotBlank(groups: ['create'])]
+    /** Left out on create: the zone its country's fiscal preset starts a company in. */
+    #[Assert\NotBlank(allowNull: true, groups: ['create'])]
     #[Assert\Timezone(groups: ['create'])]
     #[Groups([self::READ, self::WRITE])]
-    public string $timezone = '';
+    public ?string $timezone = null;
 
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]

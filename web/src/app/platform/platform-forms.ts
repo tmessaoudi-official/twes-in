@@ -3,7 +3,6 @@
 import { filterValues } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
-  COMPANY_COUNTRIES,
   COMPANY_STATUSES,
   companyStatusShown,
   type PlatformAccountRow,
@@ -27,82 +26,85 @@ const ACCOUNT_SORT_KEYS: Readonly<
 
 /**
  * The platform's companies, a page at a time: the API searches, filters and sorts them, so every column that sorts
- * names a key the API knows. Opening one links to the list itself with the company named, which shows its sheet.
+ * names a key the API knows. Opening one links to the list itself with the company named, which shows its sheet. Its
+ * country filter offers the countries given: those the platform's country setting offers, the fiscal presets'.
  */
-export const COMPANIES_LIST: ListDescriptor<PlatformCompanyRow> = {
-  id: 'platform-companies',
-  rowId: (row) => row.id,
-  pageSizes: [25, 50, 100],
-  defaultSort: { column: 'name', direction: 'asc' },
-  link: () => [],
-  linkQuery: (row) => ({ company: row.id }),
-  linkColumn: 'name',
-  columns: [
-    {
-      id: 'name',
-      label: `${COMPANY_FIELDS}.name`,
-      value: (row) => row.name,
-      sortable: true,
-      hideable: false,
-      // The API's `q` reads the name and its owners' addresses: this column holds the list's search box.
-      filterable: true,
-    },
-    {
-      id: 'country',
-      label: `${COMPANY_FIELDS}.country`,
-      value: (row) => row.countryCode,
-      sortable: true,
-      width: 90,
-    },
-    {
-      id: 'status',
-      priority: 'high',
-      label: `${COMPANY_FIELDS}.status`,
-      value: (row) => companyStatusShown(row),
-      sortable: true,
-      width: 140,
-    },
-    {
-      id: 'owners',
-      label: `${COMPANY_FIELDS}.owners`,
-      value: (row) => row.owners.join(', '),
-    },
-    {
-      id: 'subscription',
-      label: `${COMPANY_FIELDS}.subscription`,
-      value: (row) => row.subscription?.stage ?? '',
-    },
-    {
-      id: 'created',
-      label: `${COMPANY_FIELDS}.created`,
-      value: (row) => row.createdAt.slice(0, 10),
-      sortable: true,
-      width: 120,
-    },
-  ],
-  filters: [
-    {
-      id: 'status',
-      label: `${COMPANY_FIELDS}.status`,
-      multiple: true,
-      value: (row) => companyStatusShown(row),
-      options: COMPANY_STATUSES.map((status) => ({
-        value: status,
-        label: `platform.companies.statuses.${status}`,
-      })),
-    },
-    {
-      id: 'country',
-      label: `${COMPANY_FIELDS}.country`,
-      multiple: true,
-      value: (row) => row.countryCode,
-      options: Object.keys(COMPANY_COUNTRIES).map((code) => ({
-        value: code,
-        label: `platform.companies.countries.${code}`,
-      })),
-    },
-  ],
-};
+export function companiesListOf(countries: readonly string[]): ListDescriptor<PlatformCompanyRow> {
+  return {
+    id: 'platform-companies',
+    rowId: (row) => row.id,
+    pageSizes: [25, 50, 100],
+    defaultSort: { column: 'name', direction: 'asc' },
+    link: () => [],
+    linkQuery: (row) => ({ company: row.id }),
+    linkColumn: 'name',
+    columns: [
+      {
+        id: 'name',
+        label: `${COMPANY_FIELDS}.name`,
+        value: (row) => row.name,
+        sortable: true,
+        hideable: false,
+        // The API's `q` reads the name and its owners' addresses: this column holds the list's search box.
+        filterable: true,
+      },
+      {
+        id: 'country',
+        label: `${COMPANY_FIELDS}.country`,
+        value: (row) => row.countryCode,
+        sortable: true,
+        width: 90,
+      },
+      {
+        id: 'status',
+        priority: 'high',
+        label: `${COMPANY_FIELDS}.status`,
+        value: (row) => companyStatusShown(row),
+        sortable: true,
+        width: 140,
+      },
+      {
+        id: 'owners',
+        label: `${COMPANY_FIELDS}.owners`,
+        value: (row) => row.owners.join(', '),
+      },
+      {
+        id: 'subscription',
+        label: `${COMPANY_FIELDS}.subscription`,
+        value: (row) => row.subscription?.stage ?? '',
+      },
+      {
+        id: 'created',
+        label: `${COMPANY_FIELDS}.created`,
+        value: (row) => row.createdAt.slice(0, 10),
+        sortable: true,
+        width: 120,
+      },
+    ],
+    filters: [
+      {
+        id: 'status',
+        label: `${COMPANY_FIELDS}.status`,
+        multiple: true,
+        value: (row) => companyStatusShown(row),
+        options: COMPANY_STATUSES.map((status) => ({
+          value: status,
+          label: `platform.companies.statuses.${status}`,
+        })),
+      },
+      {
+        id: 'country',
+        label: `${COMPANY_FIELDS}.country`,
+        multiple: true,
+        value: (row) => row.countryCode,
+        options: countries.map((code) => ({
+          value: code,
+          label: `platform.companies.countries.${code}`,
+        })),
+      },
+    ],
+  };
+}
 
 /** What the API is asked for the page of companies the list shows. */
 export function companySearch(query: ListQuery): PlatformCompanySearch {
@@ -114,7 +116,8 @@ export function companySearch(query: ListQuery): PlatformCompanySearch {
     itemsPerPage: query.pageSize,
     q: query.query,
     statuses: COMPANY_STATUSES.filter((known) => statuses.includes(known)),
-    countryCodes: Object.keys(COMPANY_COUNTRIES).filter((code) => countries.includes(code)),
+    // A country as the API names one, an ISO code; one with no company there finds none.
+    countryCodes: countries.filter((code) => /^[A-Z]{2}$/.test(code)),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };

@@ -10,6 +10,7 @@ disagree, both are cited and the preset's choice is stated.
 | Rule | Preset | Source | Status |
 |---|---|---|---|
 | The euro (EUR) has two decimals | `currency: EUR`, `minor_unit: 2` | ISO 4217; Unicode CLDR through Symfony Intl | unvalidated |
+| A company there starts in metropolitan France's time zone, which its days and dates turn in (not a fiscal rule: what a company opened by an operator starts with; one overseas changes its zone in its profile) | `timezone: Europe/Paris` | IANA time zone database, `zone1970.tab` (FR: Europe/Paris for metropolitan France; the overseas departments have zones of their own) | unvalidated |
 
 ## 1a. Keeping records
 

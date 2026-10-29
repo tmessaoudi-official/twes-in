@@ -147,7 +147,8 @@ describe('PlatformFacade', () => {
     expect(facade.busy()).toBe(false);
   });
 
-  it("opens a company with its country's currency, language and time zone, then invites its first owner", async () => {
+  // The country's preset gives the currency, the language and the zone on the API's side: the screen holds no list of them.
+  it('opens a company from its name and country alone, then invites its first owner', async () => {
     await facade.load();
     await facade.loadCompanies(LIST);
     const opened = { ...row, id: 'c9', name: 'Globex' };
@@ -157,12 +158,7 @@ describe('PlatformFacade', () => {
 
     expect(await facade.openCompany('Globex', 'FR', 'nadia@example.test')).toBe(true);
 
-    expect(api.createCompany).toHaveBeenCalledWith({
-      name: 'Globex',
-      countryCode: 'FR',
-      currency: 'EUR',
-      timezone: 'Europe/Paris',
-    });
+    expect(api.createCompany).toHaveBeenCalledWith({ name: 'Globex', countryCode: 'FR' });
     expect(api.inviteOwner).toHaveBeenCalledWith('c9', 'nadia@example.test');
     expect(facade.companies()).toEqual([row, opened]);
     expect(facade.companiesTotal()).toBe(2);

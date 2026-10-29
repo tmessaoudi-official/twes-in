@@ -215,23 +215,13 @@ export type PlatformTab = (typeof PLATFORM_TABS)[number];
 export type AccountAction = 'end-sessions' | 'deactivate' | 'reactivate' | 'unlock';
 
 /**
- * What a company is opened with; the currency and time zone follow its country. Its language is left to the API,
- * which takes the first one its country's fiscal preset prints in.
+ * What a company is opened with: its name and its country, one of those the platform's country setting offers (the
+ * fiscal presets'). Its currency, language and time zone are left to the API, which takes its country's preset's.
  */
 export interface NewCompany {
   readonly name: string;
   readonly countryCode: string;
-  readonly currency: string;
-  readonly timezone: string;
 }
-
-/** The countries a company may be opened in: those with a fiscal preset, each with what a company there starts with. */
-export const COMPANY_COUNTRIES = {
-  TN: { currency: 'TND', timezone: 'Africa/Tunis' },
-  FR: { currency: 'EUR', timezone: 'Europe/Paris' },
-} as const;
-
-export type CompanyCountry = keyof typeof COMPANY_COUNTRIES;
 
 /**
  * Gone (the company or account no longer exists), an operator deactivating their own account, a company name

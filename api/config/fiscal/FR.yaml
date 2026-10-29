@@ -3,6 +3,8 @@
 # change a rule there first, with its source, then here. Validated by App\Fiscal\Infrastructure\Preset.
 country: FR
 currency: EUR
+# The zone a company there starts in (docs/fiscal/FR.md § 1): metropolitan France's, the IANA identifier.
+timezone: Europe/Paris
 minor_unit: 2
 # Years every record is kept, counted to the end of a closed-down company's last year (docs/fiscal § 1a).
 retention_years: 10

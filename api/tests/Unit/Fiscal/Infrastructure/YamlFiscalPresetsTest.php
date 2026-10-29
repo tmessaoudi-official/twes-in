@@ -57,6 +57,7 @@ final class YamlFiscalPresetsTest extends TestCase
         $tn = $presets->get('TN');
         self::assertSame('TN', $tn->country);
         self::assertSame('TND', $tn->currency);
+        self::assertSame('Africa/Tunis', $tn->timezone);
         self::assertSame(3, $tn->minorUnit);
         self::assertSame(RoundingPoint::PerRateGroup, $tn->vatRoundingPoint);
         self::assertSame(TaxBasis::Exclusive, $tn->taxBasis);
@@ -223,6 +224,8 @@ final class YamlFiscalPresetsTest extends TestCase
         yield 'an exemption code without its VAT category' => ['customer_tax_regimes.1.vat_exemption_code', 'VATEX-EU-G', 'vat_category'];
         yield 'a minor unit the currency does not have' => ['minor_unit', 2, 'minor_unit'];
         yield 'a currency that does not exist' => ['currency', 'XXQ', 'currency'];
+        yield 'a time zone that does not exist' => ['timezone', 'Mars/Olympus', 'timezone'];
+        yield 'an offset where a zone is named' => ['timezone', '+01:00', 'timezone'];
         yield 'a file named for another country' => ['country', 'FR', 'country'];
         yield 'a unit with more decimals than a quantity holds' => ['units.0.decimals', 4, 'decimals'];
         yield 'a unit code used twice' => ['units.1.code', 'C62', 'C62'];
