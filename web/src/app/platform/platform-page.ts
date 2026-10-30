@@ -411,7 +411,10 @@ export class PlatformPage implements OnInit {
     return saved === null ? null : untracked(() => buildFormGroup(descriptor, saved));
   });
   private readonly supportForm = viewChild<DescriptorForm>('supportForm');
-  /** The support's numbers are the platform's, read by its country whatever company the operator has open. */
+  /**
+   * The platform's country: the support's numbers are read by it whatever company the operator has open, and a new
+   * company starts on it.
+   */
   protected readonly platformPhoneCountry = computed(() => this.platform.country()?.value ?? '');
   /** WhatsApp is often the phone's own number: one press copies it, and the field stays the operator's to change. */
   protected readonly supportActions: Readonly<Record<string, FieldAction>> = {
@@ -528,8 +531,12 @@ export class PlatformPage implements OnInit {
   protected readonly accounts = this.platform.accounts;
   protected readonly companies = this.platform.companies;
   protected readonly companyName = signal('');
-  /** A new company's country, which starts on the platform's own until another is picked. */
-  protected readonly companyCountry = linkedSignal(() => this.platform.country()?.value ?? '');
+  /**
+   * A new company's country, which starts on the platform's own until another is picked. Its source is a `computed`,
+   * which notifies only when the country itself changes: every settings read hands a new object holding the same one,
+   * and a `linkedSignal` reading that object put the operator's pick back to the platform's on each read.
+   */
+  protected readonly companyCountry = linkedSignal(() => this.platformPhoneCountry());
   protected readonly ownerEmail = signal('');
   /** The address the last invitation went to, once it went. */
   /** What is typed in each company's owner field, by company. */

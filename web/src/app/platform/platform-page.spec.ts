@@ -1530,6 +1530,36 @@ describe('PlatformPage', () => {
     expect(facade.openCompany).toHaveBeenCalledWith('Globex', 'FR', 'nadia@example.test');
   });
 
+  // Every settings read hands the platform's country as a new object, the same value inside.
+  it('keeps the country picked for a new company when the settings are read again', async () => {
+    const { fixture, query } = await render('/?tab=companies');
+
+    query<HTMLButtonElement>('platform-company-new')!.click();
+    await fixture.whenStable();
+    const name = query<HTMLInputElement>('platform-company-name')!;
+    name.value = 'Globex';
+    name.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('platform-company-country')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    document.body
+      .querySelector<HTMLElement>('[data-testid="platform-company-country-option-FR"]')!
+      .click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    country.set({ ...countryState });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const owner = query<HTMLInputElement>('platform-company-owner')!;
+    owner.value = 'nadia@example.test';
+    owner.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('platform-company-create')!.click();
+    await fixture.whenStable();
+
+    expect(facade.openCompany).toHaveBeenCalledWith('Globex', 'FR', 'nadia@example.test');
+  });
+
   it('opens a company from its name, country and first owner, and says the invitation went out', async () => {
     const { fixture, query } = await render('/?tab=companies');
 
