@@ -209,4 +209,15 @@ describe('QuotesFacade', () => {
     expect(await facade.pickProducts('c1', { words: 'tour' })).toEqual([]);
     expect(facade.error()).toBe('not_found');
   });
+
+  // An open quote still names its customer when its row cannot be read: a failure is not "nobody found".
+  it('reads the customers an open quote names, and answers a failed read with null, saying why', async () => {
+    api.pickCustomers.mockResolvedValueOnce([]);
+    expect(await facade.readCustomers('c1', ['k1'])).toEqual([]);
+    expect(api.pickCustomers).toHaveBeenCalledWith('c1', { ids: ['k1'] });
+
+    api.pickCustomers.mockRejectedValueOnce(new QuotesRefused('network'));
+    expect(await facade.readCustomers('c1', ['k1'])).toBeNull();
+    expect(facade.error()).toBe('network');
+  });
 });

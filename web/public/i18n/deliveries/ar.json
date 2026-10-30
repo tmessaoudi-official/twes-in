@@ -1,4 +1,8 @@
 {
+  "documents": {
+    "customer_unread": "تعذّرت قراءة حريف هذه الوثيقة. أعد قراءته قبل الحفظ.",
+    "customer_reread": "أعد قراءة الحريف"
+  },
   "deliveries": {
     "of_quote": "يسلّم عرض السعر",
     "quote_unnumbered": "عرض سعر دون رقم",

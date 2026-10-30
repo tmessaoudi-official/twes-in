@@ -185,6 +185,11 @@ describe('QuotePage', () => {
     pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
     ),
+    // The open quote's customer, read as the picker's rows are; null is a failed read.
+    readCustomers: vi.fn(
+      async (companyId: string, ids: readonly string[]): Promise<CustomerOption[] | null> =>
+        facade.pickCustomers(companyId, { ids }),
+    ),
     pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
     ),
@@ -407,6 +412,26 @@ describe('QuotePage', () => {
     expect(facade.revise.mock.calls[0]![2]).toEqual(expect.objectContaining({ customerId: 'k1' }));
     await settle();
     expect(q('quote-customer-error')).toBeNull();
+  });
+
+  // A failed read is said as one, never as a quote naming nobody, and the customer can be read again.
+  it('says the customer it names could not be read, saves nothing until it is read again, then saves', async () => {
+    facade.readCustomers.mockResolvedValueOnce(null);
+    quote.set(draft);
+    await open('q1');
+
+    expect(q('quote-customer-unread')?.textContent).toContain('documents.customer_unread');
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.revise).not.toHaveBeenCalled();
+    expect(q('quote-customer-error')).toBeNull();
+    expect(document.activeElement).toBe(q('quote-customer-reread'));
+
+    q('quote-customer-reread')!.click();
+    await vi.waitFor(() => expect(q('quote-customer-unread')).toBeNull());
+    q('document-action-save')!.click();
+    await vi.waitFor(() => expect(facade.revise).toHaveBeenCalledTimes(1));
+    expect(facade.revise.mock.calls[0]![2]).toEqual(expect.objectContaining({ customerId: 'k1' }));
   });
 
   it('marks a draft sent only once asked, with the lines shown saved first', async () => {

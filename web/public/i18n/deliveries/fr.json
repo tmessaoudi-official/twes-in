@@ -1,4 +1,8 @@
 {
+  "documents": {
+    "customer_unread": "Le client de ce document n’a pas pu être lu. Relisez-le avant d’enregistrer.",
+    "customer_reread": "Relire le client"
+  },
   "deliveries": {
     "of_quote": "Livre le devis",
     "quote_unnumbered": "un devis sans numéro",

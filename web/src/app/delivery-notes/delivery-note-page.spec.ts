@@ -203,6 +203,11 @@ describe('DeliveryNotePage', () => {
     pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
     ),
+    // The open note's customer, read as the picker's rows are; null is a failed read.
+    readCustomers: vi.fn(
+      async (companyId: string, ids: readonly string[]): Promise<CustomerOption[] | null> =>
+        facade.pickCustomers(companyId, { ids }),
+    ),
     pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
     ),
@@ -653,6 +658,26 @@ describe('DeliveryNotePage', () => {
       'document-planned-mailing',
       'document-planned-whatsapp',
     ]);
+  });
+
+  // A failed read is said as one, never as a note naming nobody, and the customer can be read again.
+  it('says the customer it names could not be read, saves nothing until it is read again, then saves', async () => {
+    facade.readCustomers.mockResolvedValueOnce(null);
+    note.set(draft);
+    await open('n1');
+
+    expect(q('delivery-note-customer-unread')?.textContent).toContain('documents.customer_unread');
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.revise).not.toHaveBeenCalled();
+    expect(q('delivery-note-customer-error')).toBeNull();
+    expect(document.activeElement).toBe(q('delivery-note-customer-reread'));
+
+    q('delivery-note-customer-reread')!.click();
+    await vi.waitFor(() => expect(q('delivery-note-customer-unread')).toBeNull());
+    q('document-action-save')!.click();
+    await vi.waitFor(() => expect(facade.revise).toHaveBeenCalledTimes(1));
+    expect(facade.revise.mock.calls[0]![2]).toEqual(expect.objectContaining({ customerId: 'k1' }));
   });
 
   // An open note's customer is read after the note: a save pressed before it lands waits for it.

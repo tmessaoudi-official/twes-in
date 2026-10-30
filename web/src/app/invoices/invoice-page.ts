@@ -543,6 +543,11 @@ export class InvoicePage {
   private customerRead: Promise<void> | null = null;
   /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
   protected readonly customerMissing = signal(false);
+  /** Set while the customer the open document names could not be read: said under the picker, which offers it again. */
+  protected readonly customerUnread = signal(false);
+  private readonly customerReread = viewChild('customerReread', {
+    read: ElementRef<HTMLButtonElement>,
+  });
   /** What the API refused the customer for (deactivated, merged into another), said under its picker. */
   protected readonly customerRefused = signal<FieldError | null>(null);
   /** What the API refused the document's taxes for, said under them. */
@@ -1119,29 +1124,45 @@ export class InvoicePage {
       const companyId = this.company()?.id;
       const current = this.current();
       if (!companyId || current === undefined || current === null) return;
-      const customerId = current.customerId;
-      const read = untracked(async () => {
-        if (this.customer()?.id !== customerId) {
-          const known = this.knownCustomers.get(customerId);
-          const [found] = known
-            ? [known]
-            : await this.facade.pickCustomers(companyId, { ids: [customerId] });
-          if (found) this.knownCustomers.set(found.id, found);
-          this.customer.set(found ?? null);
-        }
-        // What the document itself is charged, or — where it named nothing — what this customer would be.
-        const options = this.options();
-        this.documentTaxes.set(
-          current.documentTaxComponentIds ??
-            (options === null ? [] : defaultDocumentTaxes(options, this.customer())),
-        );
-      });
-      this.customerRead = read;
-      const done = (): void => {
-        if (this.customerRead === read) this.customerRead = null;
-      };
-      void read.then(done, done);
+      untracked(() => this.readCustomerOf(companyId, current));
     });
+  }
+
+  /** The customer the open document names, read again after a read that failed. */
+  protected rereadCustomer(): void {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    if (companyId && current) this.readCustomerOf(companyId, current);
+  }
+
+  /**
+   * Reads the row of the customer the document names, kept in `customerRead` while under way. A read that fails leaves
+   * the document naming its customer: it is said as unread, with a way to read it again, never as nobody named.
+   */
+  private readCustomerOf(companyId: string, current: InvoiceRow): void {
+    const customerId = current.customerId;
+    const read = (async () => {
+      if (this.customer()?.id !== customerId) {
+        const known = this.knownCustomers.get(customerId);
+        const found = known ? [known] : await this.facade.readCustomers(companyId, [customerId]);
+        this.customerUnread.set(found === null);
+        if (found === null) return;
+        const [named] = found;
+        if (named) this.knownCustomers.set(named.id, named);
+        this.customer.set(named ?? null);
+      }
+      // What the document itself is charged, or — where it named nothing — what this customer would be.
+      const options = this.options();
+      this.documentTaxes.set(
+        current.documentTaxComponentIds ??
+          (options === null ? [] : defaultDocumentTaxes(options, this.customer())),
+      );
+    })();
+    this.customerRead = read;
+    const done = (): void => {
+      if (this.customerRead === read) this.customerRead = null;
+    };
+    void read.then(done, done);
   }
 
   /** Naming another customer charges the document what that customer would be charged, and discounts its lines so. */
@@ -1151,6 +1172,8 @@ export class InvoicePage {
     if (customer?.id !== this.customer()?.id) this.receiver()?.controls.contactId.setValue(null);
     this.customer.set(customer);
     this.customerMissing.set(customer === null);
+    // A customer picked is named by the person: the one the page could not read no longer matters.
+    if (customer !== null) this.customerUnread.set(false);
     this.customerRefused.set(null);
     if (this.error() === 'customer_unavailable') this.facade.clearError();
     const options = this.options();
@@ -1329,6 +1352,11 @@ export class InvoicePage {
     const form = this.form();
     const lines = this.lines();
     if (form === null || lines === null || this.busy()) return null;
+    if (this.customerUnread()) {
+      // The document names a customer this page could not read: the press is answered by the way to read it again.
+      this.customerReread()?.nativeElement.focus();
+      return null;
+    }
     const customerId = this.customer()?.id ?? '';
     this.customerMissing.set(customerId === '');
     const receiver = this.receiverAsked() ? this.receiver() : null;

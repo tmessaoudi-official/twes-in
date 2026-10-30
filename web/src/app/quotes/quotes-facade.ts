@@ -103,6 +103,19 @@ export class QuotesFacade implements LineCatalogue {
     return this.pick(() => this.api.pickCustomers(companyId, asked));
   }
 
+  /**
+   * The customers an open quote names, by id. Null when the read failed, said in `error` as a pick's is: the quote
+   * still names its customer, so a failure must not read as nobody named.
+   */
+  async readCustomers(companyId: string, ids: readonly string[]): Promise<CustomerOption[] | null> {
+    try {
+      return await this.api.pickCustomers(companyId, { ids });
+    } catch (error) {
+      this.state.fail(error);
+      return null;
+    }
+  }
+
   async pickProducts(companyId: string, asked: PickAsked): Promise<ProductOption[]> {
     return this.pick(() => this.api.pickProducts(companyId, asked));
   }

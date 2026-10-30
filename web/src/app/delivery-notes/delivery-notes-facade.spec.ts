@@ -287,4 +287,16 @@ describe('DeliveryNotesFacade', () => {
     expect(await facade.left('c1', 'n1')).toBeNull();
     expect(facade.error()).toBe('conflict');
   });
+
+  // An open note still names its customer when its row cannot be read: a failure is not "nobody found".
+  it('reads the customers an open note names, and answers a failed read with null, saying why', async () => {
+    const pickCustomers = vi.fn().mockResolvedValueOnce([]);
+    Object.assign(api, { pickCustomers });
+    expect(await facade.readCustomers('c1', ['k1'])).toEqual([]);
+    expect(pickCustomers).toHaveBeenCalledWith('c1', { ids: ['k1'] });
+
+    pickCustomers.mockRejectedValueOnce(new DeliveryNotesRefused('network'));
+    expect(await facade.readCustomers('c1', ['k1'])).toBeNull();
+    expect(facade.error()).toBe('network');
+  });
 });

@@ -291,6 +291,11 @@ describe('InvoicePage', () => {
     pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
     ),
+    // The open document's customer, read as the picker's rows are; null is a failed read.
+    readCustomers: vi.fn(
+      async (companyId: string, ids: readonly string[]): Promise<CustomerOption[] | null> =>
+        facade.pickCustomers(companyId, { ids }),
+    ),
     productPrice: vi.fn(),
     receivers: vi.fn<(companyId: string, customerId: string) => Promise<ReceiverContact[]>>(
       async () => [],
@@ -535,6 +540,26 @@ describe('InvoicePage', () => {
     expect(facade.revise.mock.calls[0]![2]).toEqual(expect.objectContaining({ customerId: 'k1' }));
     await settle();
     expect(q('invoice-customer-error')).toBeNull();
+  });
+
+  // A failed read is said as one, never as a document naming nobody, and the customer can be read again.
+  it('says the customer it names could not be read, saves nothing until it is read again, then saves', async () => {
+    facade.readCustomers.mockResolvedValueOnce(null);
+    invoice.set(draft);
+    await open('i1');
+
+    expect(q('invoice-customer-unread')?.textContent).toContain('documents.customer_unread');
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.revise).not.toHaveBeenCalled();
+    expect(q('invoice-customer-error')).toBeNull();
+    expect(document.activeElement).toBe(q('invoice-customer-reread'));
+
+    q('invoice-customer-reread')!.click();
+    await vi.waitFor(() => expect(q('invoice-customer-unread')).toBeNull());
+    q('document-action-save')!.click();
+    await vi.waitFor(() => expect(facade.revise).toHaveBeenCalledTimes(1));
+    expect(facade.revise.mock.calls[0]![2]).toEqual(expect.objectContaining({ customerId: 'k1' }));
   });
 
   it('asks for the customer under the heading of its own section', async () => {

@@ -463,6 +463,11 @@ export class DeliveryNotePage {
   private customerRead: Promise<void> | null = null;
   /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
   protected readonly customerMissing = signal(false);
+  /** Set while the customer the open note names could not be read: said under the picker, which offers it again. */
+  protected readonly customerUnread = signal(false);
+  private readonly customerReread = viewChild('customerReread', {
+    read: ElementRef<HTMLButtonElement>,
+  });
   /** What the API refused the customer for (deactivated, merged into another), said under its picker. */
   protected readonly customerRefused = signal<FieldError | null>(null);
   protected readonly searchCustomers = async (words: string): Promise<readonly PickOption[]> => {
@@ -919,31 +924,49 @@ export class DeliveryNotePage {
       const companyId = this.company()?.id;
       const current = this.current();
       if (!companyId || current === undefined || current === null) return;
-      const customerId = current.customerId;
-      const read = untracked(async () => {
-        if (this.customer()?.id === customerId) return;
-        const known = this.knownCustomers.get(customerId);
-        const [found] = known
-          ? [known]
-          : await this.facade.pickCustomers(companyId, { ids: [customerId] });
-        if (found) this.knownCustomers.set(found.id, found);
-        this.customer.set(found ?? null);
-      });
-      this.customerRead = read;
-      const done = (): void => {
-        if (this.customerRead === read) this.customerRead = null;
-      };
-      void read.then(done, done);
+      untracked(() => this.readCustomerOf(companyId, current));
     });
   }
 
   /** The taxes a line offers follow the customer named in the header. */
+  /** The customer the open note names, read again after a read that failed. */
+  protected rereadCustomer(): void {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    if (companyId && current) this.readCustomerOf(companyId, current);
+  }
+
+  /**
+   * Reads the row of the customer the note names, kept in `customerRead` while under way. A read that fails leaves the
+   * note naming its customer: it is said as unread, with a way to read it again, never as nobody named.
+   */
+  private readCustomerOf(companyId: string, current: DeliveryNoteRow): void {
+    const customerId = current.customerId;
+    const read = (async () => {
+      if (this.customer()?.id === customerId) return;
+      const known = this.knownCustomers.get(customerId);
+      const found = known ? [known] : await this.facade.readCustomers(companyId, [customerId]);
+      this.customerUnread.set(found === null);
+      if (found === null) return;
+      const [named] = found;
+      if (named) this.knownCustomers.set(named.id, named);
+      this.customer.set(named ?? null);
+    })();
+    this.customerRead = read;
+    const done = (): void => {
+      if (this.customerRead === read) this.customerRead = null;
+    };
+    void read.then(done, done);
+  }
+
   protected chooseCustomer(option: PickOption | null): void {
     const customer = option === null ? null : (this.knownCustomers.get(option.id) ?? null);
     // A contact is the customer's: named for another, it stays as a name typed.
     if (customer?.id !== this.customer()?.id) this.receiver()?.controls.contactId.setValue(null);
     this.customer.set(customer);
     this.customerMissing.set(customer === null);
+    // A customer picked is named by the person: the one the page could not read no longer matters.
+    if (customer !== null) this.customerUnread.set(false);
     this.customerRefused.set(null);
   }
 
@@ -1282,6 +1305,11 @@ export class DeliveryNotePage {
     const form = this.form();
     const lines = this.lines();
     if (form === null || lines === null || this.busy()) return null;
+    if (this.customerUnread()) {
+      // The note names a customer this page could not read: the press is answered by the way to read it again.
+      this.customerReread()?.nativeElement.focus();
+      return null;
+    }
     const customerId = this.customer()?.id ?? '';
     this.customerMissing.set(customerId === '');
     const receiver = this.receiverAsked() ? this.receiver() : null;

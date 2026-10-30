@@ -68,6 +68,19 @@ export class DeliveryNotesFacade {
     return this.pick(() => this.api.pickCustomers(companyId, asked));
   }
 
+  /**
+   * The customers an open note names, by id. Null when the read failed, said in `error` as a pick's is: the note still
+   * names its customer, so a failure must not read as nobody named.
+   */
+  async readCustomers(companyId: string, ids: readonly string[]): Promise<CustomerOption[] | null> {
+    try {
+      return await this.api.pickCustomers(companyId, { ids });
+    } catch (error) {
+      this.state.fail(error);
+      return null;
+    }
+  }
+
   /** What the product sells at for that customer and quantity; null where the price cannot be read. */
   productPrice(
     companyId: string,

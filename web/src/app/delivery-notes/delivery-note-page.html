@@ -197,6 +197,26 @@
                       {{ 'delivery_notes.form.customer_required' | translate }}
                     </p>
                   }
+                  @if (customerUnread()) {
+                    <div class="flex flex-wrap items-center gap-2 px-2">
+                      <p
+                        role="alert"
+                        class="text-xs text-error"
+                        data-testid="delivery-note-customer-unread"
+                      >
+                        {{ 'documents.customer_unread' | translate }}
+                      </p>
+                      <button
+                        #customerReread
+                        mat-button
+                        type="button"
+                        data-testid="delivery-note-customer-reread"
+                        (click)="rereadCustomer()"
+                      >
+                        {{ 'documents.customer_reread' | translate }}
+                      </button>
+                    </div>
+                  }
                   @if (customerRefused(); as refused) {
                     <p
                       role="alert"

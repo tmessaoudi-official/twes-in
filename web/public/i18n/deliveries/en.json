@@ -1,4 +1,8 @@
 {
+  "documents": {
+    "customer_unread": "This document’s customer could not be read. Read it again before saving.",
+    "customer_reread": "Read the customer again"
+  },
   "deliveries": {
     "of_quote": "Delivers the quote",
     "quote_unnumbered": "an unnumbered quote",
