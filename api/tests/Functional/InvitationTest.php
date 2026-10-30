@@ -110,6 +110,10 @@ final class InvitationTest extends ApiTestCase
         $this->postJson('/api/invitations/'.$token.'/accept', []);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['value_required', []], $this->refusalOf('displayName'), 'said on the first field left empty');
+        $this->postJson('/api/invitations/'.$token.'/accept', ['displayName' => 'New Person']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['value_required', []], $this->refusalOf('password'));
         self::assertNull($this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('stranger@twes.local')]));
         $this->getJson('/api/invitations/'.$token);
         self::assertResponseIsSuccessful();

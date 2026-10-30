@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Invitation\AcceptInvitation;
 use App\Tenancy\Application\Invitation\AcceptRequest;
 use App\Tenancy\Application\Invitation\AccountDetailsRequired;
@@ -21,7 +22,6 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 /** @implements ProcessorInterface<InvitationResource, InvitationResource> */
@@ -51,9 +51,10 @@ final readonly class AcceptInvitationProcessor implements ProcessorInterface
         } catch (InvitationNotUsable $unusable) {
             throw new NotFoundHttpException('That invitation cannot be used.', $unusable);
         } catch (AccountDetailsRequired $missing) {
-            throw new UnprocessableEntityHttpException($missing->getMessage(), $missing);
+            // Said on the first field left empty, as a form reads a refusal, never as a refused password.
+            throw DomainRule::refused(null === $data->displayName ? 'displayName' : 'password', $missing->getMessage(), 'value_required', [], $missing);
         } catch (PasswordBreached $breached) {
-            throw new UnprocessableEntityHttpException($breached->getMessage(), $breached);
+            throw DomainRule::refused('password', $breached->getMessage(), 'breached', [], $breached);
         }
 
         $resource = new InvitationResource();

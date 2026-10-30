@@ -9,6 +9,7 @@ import type {
 } from '../api/types.gen';
 import type { InvitationError, InvitationOffer } from './invitation-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { refusalsIn } from '../shared/form/field-refusals';
 
 export class InvitationRefused extends Error {
   constructor(readonly code: InvitationError) {
@@ -75,8 +76,11 @@ function codeOf(error: unknown): InvitationError {
   switch (error.status) {
     case 404:
       return 'not_usable';
+    // A refusal names its field: only one of the password is a refused password (a missing name is not).
     case 422:
-      return 'password_refused';
+      return refusalsIn(error.error).some((refusal) => refusal.field === 'password')
+        ? 'password_refused'
+        : 'invalid';
     // The link's budget: tried too often from here, which waiting puts right.
     case 429:
       return 'too_many';

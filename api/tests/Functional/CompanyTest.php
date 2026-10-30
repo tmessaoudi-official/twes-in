@@ -54,6 +54,17 @@ final class CompanyTest extends ApiTestCase
         self::assertSame(ShippedFiscalPresets::presets()->get('TN')->documentLanguages[0], $this->json()['locale']);
     }
 
+    /** A country twes-in has no fiscal rules for yet is refused on its field, as the screen reads a refusal. */
+    public function testACountryWithNoPresetIsRefusedOnItsField(): void
+    {
+        $this->operatorSignedIn();
+
+        $this->postJson('/api/companies', ['name' => 'Acme DE', 'countryCode' => 'DE']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['invalid_value', []], $this->refusalOf('countryCode'));
+    }
+
     /**
      * The country's preset says the currency a company there keeps its books in and the zone its days turn in: the
      * platform page sends the name and the country alone, so no list of countries lives in the screen.

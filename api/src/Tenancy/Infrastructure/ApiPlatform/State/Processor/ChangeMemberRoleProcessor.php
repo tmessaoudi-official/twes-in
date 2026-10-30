@@ -25,7 +25,6 @@ use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -56,7 +55,7 @@ final readonly class ChangeMemberRoleProcessor implements ProcessorInterface
         } catch (NotAMember $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (UnknownRole $unknown) {
-            throw new UnprocessableEntityHttpException($unknown->getMessage(), $unknown);
+            throw DomainRule::refused('role', $unknown->getMessage(), 'invalid_value', [], $unknown);
         } catch (LastOwner $last) {
             throw DomainRule::conflict('role', $last->getMessage(), 'last_owner', [], $last);
         } catch (RoleNotManageable $refused) {

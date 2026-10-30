@@ -62,16 +62,24 @@ describe('InvitationApi', () => {
   });
 
   it('keeps a link that is gone, a refused password and anything else apart', async () => {
-    for (const [status, code] of [
-      [404, 'not_usable'],
-      [422, 'password_refused'],
-      [400, 'invalid'],
+    const on = (field: string) => ({
+      violations: [{ propertyPath: field, message: 'm', payload: { reason: 'value_required' } }],
+    });
+    for (const [status, body, code] of [
+      [404, {}, 'not_usable'],
+      [422, on('password'), 'password_refused'],
+      // A refusal of anything but the password, a missing name among them, is no refused password.
+      [422, on('displayName'), 'invalid'],
+      [422, {}, 'invalid'],
+      [400, {}, 'invalid'],
     ] as const) {
       const read = api.offer('t'.repeat(64));
       http
         .expectOne(`/api/invitations/${'t'.repeat(64)}`)
-        .flush({}, { status, statusText: String(status) });
-      await expect(read, String(status)).rejects.toEqual(new InvitationRefused(code));
+        .flush(body, { status, statusText: String(status) });
+      await expect(read, `${status} ${JSON.stringify(body)}`).rejects.toEqual(
+        new InvitationRefused(code),
+      );
     }
   });
 });

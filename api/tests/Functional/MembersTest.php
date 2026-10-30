@@ -401,6 +401,7 @@ final class MembersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'not a member here');
         $this->sendJson('PUT', $this->rolePath($plain), ['role' => 'emperor']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['invalid_value', []], $this->refusalOf('role'), 'said on its field, as the screen reads a refusal');
 
         $this->signInAs('plain@twes.local');
         $this->sendJson('PUT', $this->rolePath($plain), ['role' => Role::OWNER]);
