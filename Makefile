@@ -310,6 +310,7 @@ in-gate-licences:
 	bash scripts/gates/pastes-kept-whole.sh
 	bash scripts/gates/numbers-as-typed.sh
 	bash scripts/gates/dialog-content-layout.sh
+	bash scripts/gates/dialog-content-layout.sh --element mat-card-content
 	bash scripts/gates/value-direction.sh
 	bash scripts/gates/scrollers-contain.sh
 	bash scripts/gates/outcomes-as-toasts.sh

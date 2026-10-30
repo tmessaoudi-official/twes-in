@@ -69,27 +69,29 @@
       />
     }
     <mat-card>
-      <mat-card-content class="flex flex-col">
-        @if (asView()) {
-          <app-record-view
-            [descriptor]="descriptor"
-            [values]="form.getRawValue()"
-            [picked]="viewPicked()"
-            testId="purchase-order-view"
-          />
-        } @else {
-          <app-descriptor-form
-            [descriptor]="descriptor"
-            [form]="form"
-            [pickers]="{ vendorId: { search: searchVendors, value: vendorShown() } }"
-            testId="purchase-order-form"
-            [readOnly]="!editable()"
-            [updated]="sync.updated()"
-            [conflicts]="sync.conflicts()"
-            (resolved)="sync.resolve(form, $event)"
-            (submitted)="save()"
-          />
-        }
+      <mat-card-content>
+        <div class="flex flex-col">
+          @if (asView()) {
+            <app-record-view
+              [descriptor]="descriptor"
+              [values]="form.getRawValue()"
+              [picked]="viewPicked()"
+              testId="purchase-order-view"
+            />
+          } @else {
+            <app-descriptor-form
+              [descriptor]="descriptor"
+              [form]="form"
+              [pickers]="{ vendorId: { search: searchVendors, value: vendorShown() } }"
+              testId="purchase-order-form"
+              [readOnly]="!editable()"
+              [updated]="sync.updated()"
+              [conflicts]="sync.conflicts()"
+              (resolved)="sync.resolve(form, $event)"
+              (submitted)="save()"
+            />
+          }
+        </div>
       </mat-card-content>
     </mat-card>
   }
@@ -203,83 +205,87 @@
   @if (current(); as order) {
     @if (order.totalNet !== null) {
       <mat-card data-testid="purchase-order-totals">
-        <mat-card-content class="flex flex-col gap-2">
-          <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
-            <dt class="font-semibold">
-              {{ 'purchases.fields.totalNet' | translate }} (<bdi>{{ company()?.currency }}</bdi
-              >)
-            </dt>
-            <dd class="text-end font-semibold" data-testid="purchase-order-total">
-              {{ order.totalNet | amount: order.currencyScale }}
-            </dd>
-          </dl>
-          <p class="text-xs opacity-70">{{ 'purchases.totals_as_saved' | translate }}</p>
+        <mat-card-content>
+          <div class="flex flex-col gap-2">
+            <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
+              <dt class="font-semibold">
+                {{ 'purchases.fields.totalNet' | translate }} (<bdi>{{ company()?.currency }}</bdi
+                >)
+              </dt>
+              <dd class="text-end font-semibold" data-testid="purchase-order-total">
+                {{ order.totalNet | amount: order.currencyScale }}
+              </dd>
+            </dl>
+            <p class="text-xs opacity-70">{{ 'purchases.totals_as_saved' | translate }}</p>
+          </div>
         </mat-card-content>
       </mat-card>
     }
     @if (receipts().length > 0) {
       <mat-card data-testid="purchase-order-receipts">
-        <mat-card-content class="flex flex-col gap-3">
-          <h2 class="text-xl font-semibold">{{ 'purchases.receipts.title' | translate }}</h2>
-          <ul class="flex flex-col gap-3">
-            @for (receipt of receipts(); track receipt.id) {
-              <li
-                class="flex flex-col gap-1"
-                [attr.data-testid]="'purchase-order-receipt-' + receipt.id"
-              >
-                <p class="twes-dot-list font-medium">
-                  <span>{{
-                    'purchases.receipts.on' | translate: { day: (receipt.receivedOn | day) }
-                  }}</span>
-                  @if (receipt.supplierReference) {
-                    <span
-                      ><bdi>{{ receipt.supplierReference }}</bdi></span
-                    >
-                  }
-                  @if (receipt.receivedBy; as receivedBy) {
-                    <span
-                      [attr.data-testid]="'purchase-order-receipt-' + receipt.id + '-received-by'"
-                      >{{ 'receivers.received_by' | translate }}
-                      <bdi>{{ receivedBy.name }}</bdi></span
-                    >
-                  }
-                </p>
-                @if (receiverCorrectable(receipt)) {
-                  <div>
-                    <button
-                      mat-button
-                      type="button"
-                      [disabled]="busy()"
-                      (click)="correctReceiver(receipt)"
-                      [attr.data-testid]="
-                        'purchase-order-receipt-' + receipt.id + '-correct-receiver'
-                      "
-                    >
-                      {{ 'purchases.receipts.correct_receiver' | translate }}
-                    </button>
-                  </div>
-                }
-                <ul class="flex flex-col gap-0.5 text-sm text-on-surface-variant">
-                  @for (line of receipt.lines; track $index) {
-                    <li class="twes-dot-list">
+        <mat-card-content>
+          <div class="flex flex-col gap-3">
+            <h2 class="text-xl font-semibold">{{ 'purchases.receipts.title' | translate }}</h2>
+            <ul class="flex flex-col gap-3">
+              @for (receipt of receipts(); track receipt.id) {
+                <li
+                  class="flex flex-col gap-1"
+                  [attr.data-testid]="'purchase-order-receipt-' + receipt.id"
+                >
+                  <p class="twes-dot-list font-medium">
+                    <span>{{
+                      'purchases.receipts.on' | translate: { day: (receipt.receivedOn | day) }
+                    }}</span>
+                    @if (receipt.supplierReference) {
                       <span
-                        ><bdi>{{ line.of?.productReference }}</bdi></span
+                        ><bdi>{{ receipt.supplierReference }}</bdi></span
                       >
+                    }
+                    @if (receipt.receivedBy; as receivedBy) {
                       <span
-                        >{{ plain(line.quantity) | amount: null }}
-                        <bdi>{{ line.of?.unitName }}</bdi></span
+                        [attr.data-testid]="'purchase-order-receipt-' + receipt.id + '-received-by'"
+                        >{{ 'receivers.received_by' | translate }}
+                        <bdi>{{ receivedBy.name }}</bdi></span
                       >
-                      @if (line.lotCode) {
+                    }
+                  </p>
+                  @if (receiverCorrectable(receipt)) {
+                    <div>
+                      <button
+                        mat-button
+                        type="button"
+                        [disabled]="busy()"
+                        (click)="correctReceiver(receipt)"
+                        [attr.data-testid]="
+                          'purchase-order-receipt-' + receipt.id + '-correct-receiver'
+                        "
+                      >
+                        {{ 'purchases.receipts.correct_receiver' | translate }}
+                      </button>
+                    </div>
+                  }
+                  <ul class="flex flex-col gap-0.5 text-sm text-on-surface-variant">
+                    @for (line of receipt.lines; track $index) {
+                      <li class="twes-dot-list">
                         <span
-                          ><bdi>{{ line.lotCode }}</bdi></span
+                          ><bdi>{{ line.of?.productReference }}</bdi></span
                         >
-                      }
-                    </li>
-                  }
-                </ul>
-              </li>
-            }
-          </ul>
+                        <span
+                          >{{ plain(line.quantity) | amount: null }}
+                          <bdi>{{ line.of?.unitName }}</bdi></span
+                        >
+                        @if (line.lotCode) {
+                          <span
+                            ><bdi>{{ line.lotCode }}</bdi></span
+                          >
+                        }
+                      </li>
+                    }
+                  </ul>
+                </li>
+              }
+            </ul>
+          </div>
         </mat-card-content>
       </mat-card>
     }

@@ -25,4 +25,11 @@ d=$(repo); printf '<mat-dialog-content class="flex"></mat-dialog-content>\n' > "
 out=$(bash "$GATE" --root "$d" --min 1 2>&1); check "specs are not read" $? 0 "$out" "OK — 1 mat-dialog-content"
 out=$(bash "$GATE" --root "$d" --min 2 2>&1); check "fewer than the floor is a failure, not a pass" $? 1 "$out" "fewer than the 2 expected"
 d=$(repo); out=$(bash "$GATE" --root "$d" 2>&1); check "an empty tree is below the default floor" $? 1 "$out" "0 mat-dialog-content found"
+d=$(repo); printf '<mat-card><mat-card-content class="flex flex-col gap-2">\n</mat-card-content></mat-card>\n<mat-dialog-content></mat-dialog-content>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --element mat-card-content --min 1 2>&1); check "a card's content laid out on itself is caught" $? 1 "$out" "1 mat-card-content laid out on itself"
+out=$(bash "$GATE" --root "$d" --min 1 2>&1); check "the dialog reading still reads dialogs alone" $? 0 "$out" "OK — 1 mat-dialog-content"
+d=$(repo); printf '<mat-card-content class="flex-1"><div class="flex flex-col gap-2"></div></mat-card-content>\n<div mat-card-content class="md:flex-none"></div>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --element mat-card-content --min 2 2>&1); check "a host sized among its siblings lays nothing out, and the attribute form is counted" $? 0 "$out" "OK — 2 mat-card-content"
+d=$(repo); out=$(bash "$GATE" --root "$d" --element mat-card-content 2>&1); check "a card reading has its own floor" $? 1 "$out" "0 mat-card-content found, fewer than the 90 expected"
+out=$(bash "$GATE" --root "$d" --element mat-tab 2>&1); check "an element it does not know is refused" $? 2 "$out" "unknown element mat-tab"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

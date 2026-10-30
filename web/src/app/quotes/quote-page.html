@@ -96,72 +96,74 @@
     }
     @if (descriptor(); as descriptor) {
       <mat-card>
-        <mat-card-content class="flex flex-col">
-          @if (asView()) {
-            <app-record-view
-              [descriptor]="descriptor"
-              [values]="form.getRawValue()"
-              [picked]="viewPicked()"
-              [lead]="viewLead()"
-              testId="quote-view"
-            />
-          } @else {
-            <app-descriptor-form
-              [descriptor]="descriptor"
-              [form]="form"
-              testId="quote-form"
-              leadIn="parties"
-              [readOnly]="!editable()"
-              [updated]="sync.updated()"
-              [conflicts]="sync.conflicts()"
-              (resolved)="sync.resolve(form, $event)"
-              (submitted)="save()"
-            >
-              <div formLead class="flex flex-col gap-1.5">
-                <label class="twes-field-label" for="quote-customer-input">
-                  {{ 'quotes.fields.customerId' | translate }}
-                </label>
-                <app-pick-field
-                  [label]="'quotes.fields.customerId' | translate"
-                  testId="quote-customer"
-                  [labelInside]="false"
-                  inputId="quote-customer-input"
-                  [search]="searchCustomers"
-                  [value]="customerShown()"
-                  [disabled]="!editable()"
-                  [noneFoundLabel]="'quotes.form.no_customer_found' | translate"
-                  [hint]="'quotes.form.customer_hint' | translate"
-                  (picked)="chooseCustomer($event)"
-                />
-                @if (customerMissing()) {
-                  <p
-                    role="alert"
-                    class="px-2 text-xs text-error"
-                    data-testid="quote-customer-error"
-                  >
-                    {{ 'quotes.form.customer_required' | translate }}
-                  </p>
-                }
-                @if (customerRefused(); as refused) {
-                  <p
-                    role="alert"
-                    class="px-2 text-xs text-error"
-                    data-testid="quote-customer-refused"
-                  >
-                    {{ refused.key | translate: refused.params }}
-                  </p>
-                } @else if (error() === 'customer_unavailable') {
-                  <p
-                    role="alert"
-                    class="px-2 text-xs text-error"
-                    data-testid="quote-customer-refused"
-                  >
-                    {{ 'quotes.errors.customer_unavailable' | translate }}
-                  </p>
-                }
-              </div>
-            </app-descriptor-form>
-          }
+        <mat-card-content>
+          <div class="flex flex-col">
+            @if (asView()) {
+              <app-record-view
+                [descriptor]="descriptor"
+                [values]="form.getRawValue()"
+                [picked]="viewPicked()"
+                [lead]="viewLead()"
+                testId="quote-view"
+              />
+            } @else {
+              <app-descriptor-form
+                [descriptor]="descriptor"
+                [form]="form"
+                testId="quote-form"
+                leadIn="parties"
+                [readOnly]="!editable()"
+                [updated]="sync.updated()"
+                [conflicts]="sync.conflicts()"
+                (resolved)="sync.resolve(form, $event)"
+                (submitted)="save()"
+              >
+                <div formLead class="flex flex-col gap-1.5">
+                  <label class="twes-field-label" for="quote-customer-input">
+                    {{ 'quotes.fields.customerId' | translate }}
+                  </label>
+                  <app-pick-field
+                    [label]="'quotes.fields.customerId' | translate"
+                    testId="quote-customer"
+                    [labelInside]="false"
+                    inputId="quote-customer-input"
+                    [search]="searchCustomers"
+                    [value]="customerShown()"
+                    [disabled]="!editable()"
+                    [noneFoundLabel]="'quotes.form.no_customer_found' | translate"
+                    [hint]="'quotes.form.customer_hint' | translate"
+                    (picked)="chooseCustomer($event)"
+                  />
+                  @if (customerMissing()) {
+                    <p
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      data-testid="quote-customer-error"
+                    >
+                      {{ 'quotes.form.customer_required' | translate }}
+                    </p>
+                  }
+                  @if (customerRefused(); as refused) {
+                    <p
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      data-testid="quote-customer-refused"
+                    >
+                      {{ refused.key | translate: refused.params }}
+                    </p>
+                  } @else if (error() === 'customer_unavailable') {
+                    <p
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      data-testid="quote-customer-refused"
+                    >
+                      {{ 'quotes.errors.customer_unavailable' | translate }}
+                    </p>
+                  }
+                </div>
+              </app-descriptor-form>
+            }
+          </div>
         </mat-card-content>
       </mat-card>
     }
@@ -257,29 +259,31 @@
   @if (current(); as quote) {
     @if (deposits().length > 0) {
       <mat-card data-testid="quote-deposits">
-        <mat-card-content class="flex flex-col gap-2">
-          <h2 class="text-xl font-semibold">{{ 'quotes.deposits.title' | translate }}</h2>
-          <ul class="flex flex-col gap-1 tabular-nums">
-            @for (deposit of deposits(); track deposit.invoiceId; let i = $index) {
-              <li
-                class="flex flex-wrap items-center justify-between gap-2"
-                [attr.data-testid]="'quote-deposit-' + i"
-              >
-                @if (mayReadInvoices()) {
-                  <a [routerLink]="['/invoices', deposit.invoiceId]" class="underline">{{
-                    deposit.number ?? ('quotes.deposits.draft' | translate)
-                  }}</a>
-                } @else {
-                  <span>{{ deposit.number ?? ('quotes.deposits.draft' | translate) }}</span>
-                }
-                <span class="text-sm text-on-surface-variant">{{
-                  'invoices.statuses.' + deposit.status | translate
-                }}</span>
-                <span class="ms-auto font-semibold">{{ deposit.total | amount: scale() }}</span>
-              </li>
-            }
-          </ul>
-          <p class="text-xs opacity-70">{{ 'quotes.deposits.hint' | translate }}</p>
+        <mat-card-content>
+          <div class="flex flex-col gap-2">
+            <h2 class="text-xl font-semibold">{{ 'quotes.deposits.title' | translate }}</h2>
+            <ul class="flex flex-col gap-1 tabular-nums">
+              @for (deposit of deposits(); track deposit.invoiceId; let i = $index) {
+                <li
+                  class="flex flex-wrap items-center justify-between gap-2"
+                  [attr.data-testid]="'quote-deposit-' + i"
+                >
+                  @if (mayReadInvoices()) {
+                    <a [routerLink]="['/invoices', deposit.invoiceId]" class="underline">{{
+                      deposit.number ?? ('quotes.deposits.draft' | translate)
+                    }}</a>
+                  } @else {
+                    <span>{{ deposit.number ?? ('quotes.deposits.draft' | translate) }}</span>
+                  }
+                  <span class="text-sm text-on-surface-variant">{{
+                    'invoices.statuses.' + deposit.status | translate
+                  }}</span>
+                  <span class="ms-auto font-semibold">{{ deposit.total | amount: scale() }}</span>
+                </li>
+              }
+            </ul>
+            <p class="text-xs opacity-70">{{ 'quotes.deposits.hint' | translate }}</p>
+          </div>
         </mat-card-content>
       </mat-card>
     }
@@ -332,59 +336,61 @@
     }
 
     <mat-card data-testid="quote-attachments-card">
-      <mat-card-content class="flex flex-col gap-4">
-        <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
-          <h2 class="text-xl font-semibold">{{ 'quotes.attachments.title' | translate }}</h2>
-          @if (mayWrite()) {
-            <app-file-drop
-              class="w-full max-w-sm"
-              [label]="'quotes.attachments.add' | translate"
-              accept="application/pdf,image/png,image/jpeg,image/webp"
-              [maxBytes]="maxBytes"
-              [disabled]="busy()"
-              testId="quote-attach"
-              (picked)="upload($event)"
-            />
+      <mat-card-content>
+        <div class="flex flex-col gap-4">
+          <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
+            <h2 class="text-xl font-semibold">{{ 'quotes.attachments.title' | translate }}</h2>
+            @if (mayWrite()) {
+              <app-file-drop
+                class="w-full max-w-sm"
+                [label]="'quotes.attachments.add' | translate"
+                accept="application/pdf,image/png,image/jpeg,image/webp"
+                [maxBytes]="maxBytes"
+                [disabled]="busy()"
+                testId="quote-attach"
+                (picked)="upload($event)"
+              />
+            }
+          </div>
+          <p class="text-sm text-on-surface-variant">{{ 'quotes.attachments.hint' | translate }}</p>
+          @if (attachments().length === 0) {
+            <p data-testid="quote-attachments-empty">{{ 'quotes.attachments.none' | translate }}</p>
+          } @else {
+            <ul class="flex flex-col gap-2" data-testid="quote-attachments">
+              @for (attachment of attachments(); track attachment.id) {
+                <li
+                  class="flex flex-wrap items-center justify-between gap-2"
+                  [attr.data-testid]="'quote-attachment-' + attachment.name"
+                >
+                  <a
+                    [href]="attachmentUrl(attachment)"
+                    target="_blank"
+                    rel="noopener"
+                    class="underline"
+                    ><bdi>{{ attachment.name }}</bdi></a
+                  >
+                  <span class="text-sm text-on-surface-variant">
+                    {{ kilobytes(attachment.size) }} KB · {{ attachment.createdAt | moment }}
+                  </span>
+                  @if (mayWrite()) {
+                    <button
+                      mat-button
+                      type="button"
+                      (click)="detach(attachment)"
+                      [disabled]="busy()"
+                      [attr.data-testid]="'quote-detach-' + attachment.name"
+                      [attr.aria-label]="
+                        'quotes.attachments.remove' | translate: { name: attachment.name }
+                      "
+                    >
+                      {{ 'quotes.attachments.remove_short' | translate }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
           }
         </div>
-        <p class="text-sm text-on-surface-variant">{{ 'quotes.attachments.hint' | translate }}</p>
-        @if (attachments().length === 0) {
-          <p data-testid="quote-attachments-empty">{{ 'quotes.attachments.none' | translate }}</p>
-        } @else {
-          <ul class="flex flex-col gap-2" data-testid="quote-attachments">
-            @for (attachment of attachments(); track attachment.id) {
-              <li
-                class="flex flex-wrap items-center justify-between gap-2"
-                [attr.data-testid]="'quote-attachment-' + attachment.name"
-              >
-                <a
-                  [href]="attachmentUrl(attachment)"
-                  target="_blank"
-                  rel="noopener"
-                  class="underline"
-                  ><bdi>{{ attachment.name }}</bdi></a
-                >
-                <span class="text-sm text-on-surface-variant">
-                  {{ kilobytes(attachment.size) }} KB · {{ attachment.createdAt | moment }}
-                </span>
-                @if (mayWrite()) {
-                  <button
-                    mat-button
-                    type="button"
-                    (click)="detach(attachment)"
-                    [disabled]="busy()"
-                    [attr.data-testid]="'quote-detach-' + attachment.name"
-                    [attr.aria-label]="
-                      'quotes.attachments.remove' | translate: { name: attachment.name }
-                    "
-                  >
-                    {{ 'quotes.attachments.remove_short' | translate }}
-                  </button>
-                }
-              </li>
-            }
-          </ul>
-        }
       </mat-card-content>
     </mat-card>
   }

@@ -288,63 +288,67 @@
 
   @if (current(); as expense) {
     <mat-card>
-      <mat-card-content class="flex flex-col gap-4">
-        <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
-          <h2 class="text-xl font-semibold">{{ 'expenses.attachments.title' | translate }}</h2>
-          @if (mayWrite()) {
-            <app-file-drop
-              class="w-full max-w-sm"
-              [label]="'expenses.attachments.add' | translate"
-              accept="application/pdf,image/png,image/jpeg,image/webp"
-              [maxBytes]="maxBytes"
-              [disabled]="busy()"
-              testId="expense-attach"
-              (picked)="upload($event)"
-            />
+      <mat-card-content>
+        <div class="flex flex-col gap-4">
+          <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
+            <h2 class="text-xl font-semibold">{{ 'expenses.attachments.title' | translate }}</h2>
+            @if (mayWrite()) {
+              <app-file-drop
+                class="w-full max-w-sm"
+                [label]="'expenses.attachments.add' | translate"
+                accept="application/pdf,image/png,image/jpeg,image/webp"
+                [maxBytes]="maxBytes"
+                [disabled]="busy()"
+                testId="expense-attach"
+                (picked)="upload($event)"
+              />
+            }
+          </div>
+          <p class="text-sm text-on-surface-variant">
+            {{ 'expenses.attachments.hint' | translate }}
+          </p>
+          @if (attachments().length === 0) {
+            <p data-testid="expense-attachments-empty">
+              {{ 'expenses.attachments.none' | translate }}
+            </p>
+          } @else {
+            <ul class="flex flex-col gap-2" data-testid="expense-attachments">
+              @for (attachment of attachments(); track attachment.id) {
+                <li
+                  class="flex flex-wrap items-center justify-between gap-2"
+                  [attr.data-testid]="'expense-attachment-' + attachment.name"
+                >
+                  <a
+                    [href]="attachmentUrl(attachment)"
+                    target="_blank"
+                    rel="noopener"
+                    class="underline"
+                    [attr.data-testid]="'expense-attachment-open-' + attachment.name"
+                  >
+                    <bdi>{{ attachment.name }}</bdi>
+                  </a>
+                  <span class="text-sm text-on-surface-variant">
+                    {{ kilobytes(attachment.size) }} KB · {{ attachment.createdAt | moment }}
+                  </span>
+                  @if (mayWrite() && expense.status === 'draft') {
+                    <button
+                      mat-button
+                      type="button"
+                      (click)="detach(attachment)"
+                      [disabled]="busy()"
+                      [attr.data-testid]="'expense-detach-' + attachment.name"
+                      [attr.aria-label]="
+                        'expenses.attachments.remove' | translate: { name: attachment.name }
+                      "
+                    >
+                      {{ 'expenses.attachments.remove_short' | translate }}
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
           }
         </div>
-        <p class="text-sm text-on-surface-variant">{{ 'expenses.attachments.hint' | translate }}</p>
-        @if (attachments().length === 0) {
-          <p data-testid="expense-attachments-empty">
-            {{ 'expenses.attachments.none' | translate }}
-          </p>
-        } @else {
-          <ul class="flex flex-col gap-2" data-testid="expense-attachments">
-            @for (attachment of attachments(); track attachment.id) {
-              <li
-                class="flex flex-wrap items-center justify-between gap-2"
-                [attr.data-testid]="'expense-attachment-' + attachment.name"
-              >
-                <a
-                  [href]="attachmentUrl(attachment)"
-                  target="_blank"
-                  rel="noopener"
-                  class="underline"
-                  [attr.data-testid]="'expense-attachment-open-' + attachment.name"
-                >
-                  <bdi>{{ attachment.name }}</bdi>
-                </a>
-                <span class="text-sm text-on-surface-variant">
-                  {{ kilobytes(attachment.size) }} KB · {{ attachment.createdAt | moment }}
-                </span>
-                @if (mayWrite() && expense.status === 'draft') {
-                  <button
-                    mat-button
-                    type="button"
-                    (click)="detach(attachment)"
-                    [disabled]="busy()"
-                    [attr.data-testid]="'expense-detach-' + attachment.name"
-                    [attr.aria-label]="
-                      'expenses.attachments.remove' | translate: { name: attachment.name }
-                    "
-                  >
-                    {{ 'expenses.attachments.remove_short' | translate }}
-                  </button>
-                }
-              </li>
-            }
-          </ul>
-        }
       </mat-card-content>
     </mat-card>
   }

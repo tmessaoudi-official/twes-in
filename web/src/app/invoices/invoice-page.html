@@ -174,92 +174,94 @@
     }
     @if (descriptor(); as descriptor) {
       <mat-card>
-        <mat-card-content class="flex flex-col">
-          @if (asView()) {
-            <!-- It no longer changes, so it is read rather than filled in (design review finding 3). -->
-            <app-record-view
-              [descriptor]="descriptor"
-              [values]="form.getRawValue()"
-              [picked]="viewPicked()"
-              [lead]="viewLead()"
-              testId="invoice-view"
-            />
-          } @else {
-            <app-descriptor-form
-              [descriptor]="descriptor"
-              [form]="form"
-              testId="invoice-form"
-              leadIn="parties"
-              [readOnly]="!editable()"
-              [updated]="sync.updated()"
-              [conflicts]="sync.conflicts()"
-              (resolved)="sync.resolve(form, $event)"
-              (submitted)="save()"
-            >
-              <div formLead class="flex flex-col gap-1.5">
-                <label class="twes-field-label" for="invoice-customer-input">
-                  {{ 'invoices.fields.customerId' | translate }}
-                </label>
-                <app-pick-field
-                  [label]="'invoices.fields.customerId' | translate"
-                  testId="invoice-customer"
-                  [labelInside]="false"
-                  inputId="invoice-customer-input"
-                  [search]="searchCustomers"
-                  [value]="customerShown()"
-                  [disabled]="!editable() || customerLock() !== null"
-                  [noneFoundLabel]="'invoices.form.no_customer_found' | translate"
-                  [hint]="customerLock() ?? 'invoices.form.customer_hint' | translate"
-                  (picked)="chooseCustomer($event)"
-                />
-                @if (customerMissing()) {
-                  <p
-                    role="alert"
-                    class="px-2 text-xs text-error"
-                    data-testid="invoice-customer-error"
-                  >
-                    {{ 'invoices.form.customer_required' | translate }}
-                  </p>
-                }
-                @if (customerRefused(); as refused) {
-                  <p
-                    role="alert"
-                    class="px-2 text-xs text-error"
-                    data-testid="invoice-customer-refused"
-                  >
-                    {{ refused.key | translate: refused.params }}
-                  </p>
-                } @else if (error() === 'customer_unavailable') {
-                  <p
-                    role="alert"
-                    class="px-2 text-xs text-error"
-                    data-testid="invoice-customer-refused"
-                  >
-                    {{ 'invoices.errors.customer_unavailable' | translate }}
-                  </p>
-                }
-              </div>
-            </app-descriptor-form>
-            @if (receiverAsked() ? receiver() : null; as receiver) {
-              <div
-                class="max-w-md pt-4"
-                [class.twes-field-updated]="sync.updated().has('receivedBy')"
+        <mat-card-content>
+          <div class="flex flex-col">
+            @if (asView()) {
+              <!-- It no longer changes, so it is read rather than filled in (design review finding 3). -->
+              <app-record-view
+                [descriptor]="descriptor"
+                [values]="form.getRawValue()"
+                [picked]="viewPicked()"
+                [lead]="viewLead()"
+                testId="invoice-view"
+              />
+            } @else {
+              <app-descriptor-form
+                [descriptor]="descriptor"
+                [form]="form"
+                testId="invoice-form"
+                leadIn="parties"
+                [readOnly]="!editable()"
+                [updated]="sync.updated()"
+                [conflicts]="sync.conflicts()"
+                (resolved)="sync.resolve(form, $event)"
+                (submitted)="save()"
               >
-                @if (sync.conflicts().some(isReceiverConflict)) {
-                  <app-part-conflict
-                    field="receivedBy"
-                    message="live.receiver_conflict"
-                    (resolved)="sync.resolve(form, $event)"
+                <div formLead class="flex flex-col gap-1.5">
+                  <label class="twes-field-label" for="invoice-customer-input">
+                    {{ 'invoices.fields.customerId' | translate }}
+                  </label>
+                  <app-pick-field
+                    [label]="'invoices.fields.customerId' | translate"
+                    testId="invoice-customer"
+                    [labelInside]="false"
+                    inputId="invoice-customer-input"
+                    [search]="searchCustomers"
+                    [value]="customerShown()"
+                    [disabled]="!editable() || customerLock() !== null"
+                    [noneFoundLabel]="'invoices.form.no_customer_found' | translate"
+                    [hint]="customerLock() ?? 'invoices.form.customer_hint' | translate"
+                    (picked)="chooseCustomer($event)"
                   />
-                }
-                <app-receiver-field
-                  [form]="receiver"
-                  [contacts]="receiverContacts()"
-                  testId="invoice-receiver"
-                />
-              </div>
+                  @if (customerMissing()) {
+                    <p
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      data-testid="invoice-customer-error"
+                    >
+                      {{ 'invoices.form.customer_required' | translate }}
+                    </p>
+                  }
+                  @if (customerRefused(); as refused) {
+                    <p
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      data-testid="invoice-customer-refused"
+                    >
+                      {{ refused.key | translate: refused.params }}
+                    </p>
+                  } @else if (error() === 'customer_unavailable') {
+                    <p
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      data-testid="invoice-customer-refused"
+                    >
+                      {{ 'invoices.errors.customer_unavailable' | translate }}
+                    </p>
+                  }
+                </div>
+              </app-descriptor-form>
+              @if (receiverAsked() ? receiver() : null; as receiver) {
+                <div
+                  class="max-w-md pt-4"
+                  [class.twes-field-updated]="sync.updated().has('receivedBy')"
+                >
+                  @if (sync.conflicts().some(isReceiverConflict)) {
+                    <app-part-conflict
+                      field="receivedBy"
+                      message="live.receiver_conflict"
+                      (resolved)="sync.resolve(form, $event)"
+                    />
+                  }
+                  <app-receiver-field
+                    [form]="receiver"
+                    [contacts]="receiverContacts()"
+                    testId="invoice-receiver"
+                  />
+                </div>
+              }
             }
-          }
+          </div>
         </mat-card-content>
       </mat-card>
     }

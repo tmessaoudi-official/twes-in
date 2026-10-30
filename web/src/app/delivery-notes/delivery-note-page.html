@@ -148,97 +148,99 @@
     }
     @if (descriptor(); as descriptor) {
       <mat-card>
-        <mat-card-content class="flex flex-col">
-          @if (asView()) {
-            <!-- It no longer changes, so it is read rather than filled in (design review finding 3). -->
-            <app-record-view
-              [descriptor]="descriptor"
-              [values]="form.getRawValue()"
-              [picked]="viewPicked()"
-              [lead]="viewLead()"
-              testId="delivery-note-view"
-            />
-          } @else {
-            <app-descriptor-form
-              [descriptor]="descriptor"
-              [form]="form"
-              testId="delivery-note-form"
-              leadIn="parties"
-              trailIn="delivery_address"
-              [readOnly]="!editable()"
-              [updated]="sync.updated()"
-              [conflicts]="sync.conflicts()"
-              (resolved)="sync.resolve(form, $event)"
-              (submitted)="save()"
-            >
-              <div formLead class="flex flex-col gap-1.5">
-                <label class="twes-field-label" for="delivery-note-customer-input">
-                  {{ 'delivery_notes.fields.customerId' | translate }}
-                </label>
-                <app-pick-field
-                  [label]="'delivery_notes.fields.customerId' | translate"
-                  testId="delivery-note-customer"
-                  [labelInside]="false"
-                  inputId="delivery-note-customer-input"
-                  [search]="searchCustomers"
-                  [value]="customerShown()"
-                  [disabled]="!editable()"
-                  [noneFoundLabel]="'delivery_notes.form.no_customer_found' | translate"
-                  [hint]="'delivery_notes.form.customer_hint' | translate"
-                  (picked)="chooseCustomer($event)"
-                />
-                @if (customerMissing()) {
-                  <p
-                    role="alert"
-                    class="px-2 text-xs text-error"
-                    data-testid="delivery-note-customer-error"
-                  >
-                    {{ 'delivery_notes.form.customer_required' | translate }}
-                  </p>
-                }
-                @if (customerRefused(); as refused) {
-                  <p
-                    role="alert"
-                    class="px-2 text-xs text-error"
-                    data-testid="delivery-note-customer-refused"
-                  >
-                    {{ refused.key | translate: refused.params }}
-                  </p>
-                }
-              </div>
-              @if (editable() && customerAddress()) {
-                <button
-                  formTrail
-                  mat-stroked-button
-                  type="button"
-                  data-testid="delivery-note-copy-customer-address"
-                  (click)="copyCustomerAddress()"
-                >
-                  <mat-icon aria-hidden="true">content_copy</mat-icon>
-                  {{ 'delivery_notes.form.copy_customer_address' | translate }}
-                </button>
-              }
-            </app-descriptor-form>
-            @if (receiverAsked() ? receiver() : null; as receiver) {
-              <div
-                class="max-w-md pt-4"
-                [class.twes-field-updated]="sync.updated().has('receivedBy')"
+        <mat-card-content>
+          <div class="flex flex-col">
+            @if (asView()) {
+              <!-- It no longer changes, so it is read rather than filled in (design review finding 3). -->
+              <app-record-view
+                [descriptor]="descriptor"
+                [values]="form.getRawValue()"
+                [picked]="viewPicked()"
+                [lead]="viewLead()"
+                testId="delivery-note-view"
+              />
+            } @else {
+              <app-descriptor-form
+                [descriptor]="descriptor"
+                [form]="form"
+                testId="delivery-note-form"
+                leadIn="parties"
+                trailIn="delivery_address"
+                [readOnly]="!editable()"
+                [updated]="sync.updated()"
+                [conflicts]="sync.conflicts()"
+                (resolved)="sync.resolve(form, $event)"
+                (submitted)="save()"
               >
-                @if (sync.conflicts().some(isReceiverConflict)) {
-                  <app-part-conflict
-                    field="receivedBy"
-                    message="live.receiver_conflict"
-                    (resolved)="sync.resolve(form, $event)"
+                <div formLead class="flex flex-col gap-1.5">
+                  <label class="twes-field-label" for="delivery-note-customer-input">
+                    {{ 'delivery_notes.fields.customerId' | translate }}
+                  </label>
+                  <app-pick-field
+                    [label]="'delivery_notes.fields.customerId' | translate"
+                    testId="delivery-note-customer"
+                    [labelInside]="false"
+                    inputId="delivery-note-customer-input"
+                    [search]="searchCustomers"
+                    [value]="customerShown()"
+                    [disabled]="!editable()"
+                    [noneFoundLabel]="'delivery_notes.form.no_customer_found' | translate"
+                    [hint]="'delivery_notes.form.customer_hint' | translate"
+                    (picked)="chooseCustomer($event)"
                   />
+                  @if (customerMissing()) {
+                    <p
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      data-testid="delivery-note-customer-error"
+                    >
+                      {{ 'delivery_notes.form.customer_required' | translate }}
+                    </p>
+                  }
+                  @if (customerRefused(); as refused) {
+                    <p
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      data-testid="delivery-note-customer-refused"
+                    >
+                      {{ refused.key | translate: refused.params }}
+                    </p>
+                  }
+                </div>
+                @if (editable() && customerAddress()) {
+                  <button
+                    formTrail
+                    mat-stroked-button
+                    type="button"
+                    data-testid="delivery-note-copy-customer-address"
+                    (click)="copyCustomerAddress()"
+                  >
+                    <mat-icon aria-hidden="true">content_copy</mat-icon>
+                    {{ 'delivery_notes.form.copy_customer_address' | translate }}
+                  </button>
                 }
-                <app-receiver-field
-                  [form]="receiver"
-                  [contacts]="receiverContacts()"
-                  testId="delivery-note-receiver"
-                />
-              </div>
+              </app-descriptor-form>
+              @if (receiverAsked() ? receiver() : null; as receiver) {
+                <div
+                  class="max-w-md pt-4"
+                  [class.twes-field-updated]="sync.updated().has('receivedBy')"
+                >
+                  @if (sync.conflicts().some(isReceiverConflict)) {
+                    <app-part-conflict
+                      field="receivedBy"
+                      message="live.receiver_conflict"
+                      (resolved)="sync.resolve(form, $event)"
+                    />
+                  }
+                  <app-receiver-field
+                    [form]="receiver"
+                    [contacts]="receiverContacts()"
+                    testId="delivery-note-receiver"
+                  />
+                </div>
+              }
             }
-          }
+          </div>
         </mat-card-content>
       </mat-card>
     }
@@ -281,30 +283,34 @@
 
   @if (shownTotals(); as note) {
     <mat-card data-testid="delivery-note-totals">
-      <mat-card-content class="flex flex-col gap-2">
-        <h2 class="text-xl font-semibold">{{ 'delivery_notes.totals.title' | translate }}</h2>
-        <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
-          <dt>{{ 'delivery_notes.totals.subtotal' | translate }}</dt>
-          <dd class="text-end">{{ note.subtotalNet | amount: scale() }}</dd>
-          @for (tax of note.taxes; track tax.code + '|' + tax.rate) {
-            <dt>
-              {{ taxName()(tax.code, tax.rate) ?? tax.code + ' ' + (tax.rate | amount: 0) + ' %' }}
-            </dt>
-            <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
-          }
-          <dt>{{ 'delivery_notes.totals.total_tax' | translate }}</dt>
-          <dd class="text-end">{{ note.totalTax | amount: scale() }}</dd>
-          <dt class="font-semibold">{{ 'delivery_notes.totals.total' | translate }}</dt>
-          <dd class="text-end font-semibold" data-testid="delivery-note-total">
-            {{ note.total | amount: scale() }}
-          </dd>
-        </dl>
-        <p class="text-xs opacity-70" data-testid="delivery-note-totals-note">
-          {{
-            (note.live ? 'document_figures.as_typed' : 'delivery_notes.totals.as_saved')
-              | translate: { currency: options()?.currency }
-          }}
-        </p>
+      <mat-card-content>
+        <div class="flex flex-col gap-2">
+          <h2 class="text-xl font-semibold">{{ 'delivery_notes.totals.title' | translate }}</h2>
+          <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
+            <dt>{{ 'delivery_notes.totals.subtotal' | translate }}</dt>
+            <dd class="text-end">{{ note.subtotalNet | amount: scale() }}</dd>
+            @for (tax of note.taxes; track tax.code + '|' + tax.rate) {
+              <dt>
+                {{
+                  taxName()(tax.code, tax.rate) ?? tax.code + ' ' + (tax.rate | amount: 0) + ' %'
+                }}
+              </dt>
+              <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
+            }
+            <dt>{{ 'delivery_notes.totals.total_tax' | translate }}</dt>
+            <dd class="text-end">{{ note.totalTax | amount: scale() }}</dd>
+            <dt class="font-semibold">{{ 'delivery_notes.totals.total' | translate }}</dt>
+            <dd class="text-end font-semibold" data-testid="delivery-note-total">
+              {{ note.total | amount: scale() }}
+            </dd>
+          </dl>
+          <p class="text-xs opacity-70" data-testid="delivery-note-totals-note">
+            {{
+              (note.live ? 'document_figures.as_typed' : 'delivery_notes.totals.as_saved')
+                | translate: { currency: options()?.currency }
+            }}
+          </p>
+        </div>
       </mat-card-content>
     </mat-card>
   }
