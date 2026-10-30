@@ -39,6 +39,7 @@ final class ModuleOwnershipTest extends TestCase
         $second = self::declaration('Twice', 'Infrastructure', 'SecondModule', 'twice_second');
 
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('declares two modules, twice_first and twice_second.');
         new ModuleOwnership([$first, $second]);
     }
 

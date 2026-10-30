@@ -385,19 +385,21 @@ final class DeliveryNoteTest extends TestCase
         $issued = $pdf($this->company);
 
         foreach ([
-            'a draft' => fn () => $draft->attachPdf($pdf($this->company)),
-            'another company\'s file' => fn () => $note->attachPdf($pdf($this->globex)),
-        ] as $case => $attempt) {
+            'a draft' => [fn () => $draft->attachPdf($pdf($this->company)), 'Only a numbered delivery note keeps the PDF'],
+            'another company\'s file' => [fn () => $note->attachPdf($pdf($this->globex)), 'keeps a file of its own company'],
+        ] as $case => [$attempt, $said]) {
             try {
                 $attempt();
                 self::fail("$case was attached");
-            } catch (\LogicException) {
+            } catch (\LogicException $refused) {
+                self::assertStringContainsString($said, $refused->getMessage(), $case);
             }
         }
 
         $note->attachPdf($issued);
         self::assertSame($issued, $note->getPdfFile());
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('already keeps the PDF it was issued with');
         $note->attachPdf($pdf($this->company));
     }
 

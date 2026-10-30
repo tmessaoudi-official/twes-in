@@ -193,6 +193,7 @@ final class ManageProductsTest extends TestCase
     public function testAReferenceIsTakenOnlyInsideTheTransactionThatStoresItsProduct(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('A reference is taken inside the transaction that stores its product.');
         $this->references->take($this->company, null);
     }
 

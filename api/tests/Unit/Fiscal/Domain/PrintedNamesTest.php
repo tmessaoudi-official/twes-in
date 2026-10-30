@@ -36,6 +36,7 @@ final class PrintedNamesTest extends TestCase
         $names = new PrintedNames(['C62' => 'unité'], []);
 
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The document keeps no name for its unit KGM.');
         $names->unit($this->unit('KGM'));
     }
 

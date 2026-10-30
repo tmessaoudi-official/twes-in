@@ -58,6 +58,7 @@ final class ListLimitTest extends TestCase
     public function testALimitBelowOneIsRefusedAtStart(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('app.list_limits gives document.lines a limit of 0: a list holds at least one entry.');
 
         new ParameterListLimits(['document.lines' => 0]);
     }

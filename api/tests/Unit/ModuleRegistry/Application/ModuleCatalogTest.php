@@ -35,8 +35,8 @@ final class ModuleCatalogTest extends TestCase
             try {
                 new ModuleManifest($key, 'modules.x');
                 self::fail("$key was accepted.");
-            } catch (\LogicException) {
-                self::addToAssertionCount(1);
+            } catch (\LogicException $refused) {
+                self::assertSame("A module key is lowercase letters, digits and underscores, starting with a letter: $key.", $refused->getMessage());
             }
         }
         self::assertSame('delivery_notes', (new ModuleManifest('delivery_notes', 'modules.delivery_notes'))->key);
@@ -48,12 +48,12 @@ final class ModuleCatalogTest extends TestCase
         self::assertSame('v1', (new ModuleManifest('quotes', 'modules.quotes', planned: 'v1'))->planned);
         self::assertSame('later', (new ModuleManifest('zakat', 'modules.zakat', planned: 'later'))->planned);
         self::assertNull((new ModuleManifest('customers', 'modules.customers'))->planned);
-        foreach ([['soon', []], ['v1', ['quote.read']]] as [$planned, $permissions]) {
+        foreach ([['soon', [], 'A planned module is expected in'], ['v1', ['quote.read'], 'A planned module has no resources yet']] as [$planned, $permissions, $said]) {
             try {
                 new ModuleManifest('quotes', 'modules.quotes', [], $permissions, $planned);
                 self::fail("$planned with ".\count($permissions).' permissions was accepted.');
-            } catch (\LogicException) {
-                self::addToAssertionCount(1);
+            } catch (\LogicException $refused) {
+                self::assertStringContainsString($said, $refused->getMessage());
             }
         }
     }
@@ -83,6 +83,7 @@ final class ModuleCatalogTest extends TestCase
     public function testAModuleThatShipsReplacesItsPlannedEntryRatherThanJoiningIt(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The module quotes is declared twice.');
         new ModuleCatalog(
             self::declared(new ModuleManifest('quotes', 'modules.quotes')),
             new PlannedModules([new ModuleManifest('quotes', 'modules.quotes', planned: 'v1')]),
@@ -92,18 +93,21 @@ final class ModuleCatalogTest extends TestCase
     public function testAKeyIsDeclaredOnce(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The module customers is declared twice.');
         new ModuleCatalog(self::declared(new ModuleManifest('customers', 'a'), new ModuleManifest('customers', 'b')));
     }
 
     public function testAModuleDoesNotDependOnItself(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The dependencies of customers form a cycle: customers → customers.');
         new ModuleCatalog(self::declared(new ModuleManifest('customers', 'a', ['customers'])));
     }
 
     public function testADependencyIsADeclaredModule(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The module invoices depends on customers, which is not declared.');
         new ModuleCatalog(self::declared(new ModuleManifest('invoices', 'a', ['customers'])));
     }
 
@@ -118,6 +122,7 @@ final class ModuleCatalogTest extends TestCase
         self::assertCount(4, $shared->all());
 
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('form a cycle');
         new ModuleCatalog(self::declared(
             new ModuleManifest('customers', 'a', ['invoices']),
             new ModuleManifest('products', 'b', ['customers']),

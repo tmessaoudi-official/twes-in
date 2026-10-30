@@ -221,6 +221,7 @@ final class StockMovementTest extends TestCase
         self::assertSame([StockMovementKind::Out, '-3.000', StockMovement::SOURCE_DELIVERY_NOTE, $noteId, null], [$out->getKind(), $out->getQuantity(), $out->getSourceType(), $out->getSourceId(), $out->getRecordedBy()]);
         self::assertSame([StockMovementKind::In, '3.000', StockMovement::SOURCE_DELIVERY_NOTE, $noteId, $this->laptop, $this->site], [$back->getKind(), $back->getQuantity(), $back->getSourceType(), $back->getSourceId(), $back->getProduct(), $back->getLocation()]);
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Only what a delivery note took out is returned.');
         StockMovement::returnOf(StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now), $this->now);
     }
 

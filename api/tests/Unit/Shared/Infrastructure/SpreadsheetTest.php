@@ -433,6 +433,7 @@ final class SpreadsheetTest extends TestCase
         })();
 
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('a row mapping went wrong');
         (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Csv, $rows);
     }
 

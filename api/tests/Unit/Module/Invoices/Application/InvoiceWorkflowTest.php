@@ -360,6 +360,7 @@ final class InvoiceWorkflowTest extends TestCase
         $foreign = Uuid::v7();
         $this->quotes->quote($this->globex, $foreign, '1000.000');
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('A deposit is drawn from a quote of its own company.');
         $this->workflow->issue($this->company, $this->deposit($customer, $foreign, '1')->getId(), null);
     }
 

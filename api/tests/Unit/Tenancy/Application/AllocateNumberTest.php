@@ -61,7 +61,8 @@ final class AllocateNumberTest extends TestCase
         try {
             $this->allocate->allocate($this->company, $this->head, 'delivery_note');
             self::fail('A number was taken with no transaction to store its document in.');
-        } catch (\LogicException) {
+        } catch (\LogicException $refused) {
+            self::assertSame('A number is taken inside the transaction that stores its document.', $refused->getMessage());
         }
 
         self::assertSame(1, $this->deliveryNotes()->getNextNumber());

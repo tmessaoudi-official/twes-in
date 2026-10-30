@@ -161,6 +161,7 @@ final class DocumentCalculatorTest extends TestCase
     public function testWhatIsLeftOfATaxIsRefusedOnADocumentEnteredTaxIncluded(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('What is left of a tax is given to a correction entered net of tax only.');
         (new DocumentCalculator())->calculate(new DocumentInput(3, true, TaxBasis::Inclusive, RoundingPoint::PerRateGroup, [new LineInput('1', '39.669', null, [$this->vat('19')])], taxesLeft: ['TVA' => '6.333']));
     }
 

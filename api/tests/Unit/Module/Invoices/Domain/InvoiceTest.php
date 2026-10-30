@@ -269,6 +269,7 @@ final class InvoiceTest extends TestCase
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine(), $this->pieceLine()], [], $this->now);
 
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Figures for 1 lines were given to an invoice of 2.');
         $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($invoice)), fn (Invoice $i) => $this->figures(), $this->now);
     }
 

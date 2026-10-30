@@ -184,6 +184,7 @@ final class InboxNotificationsTest extends TestCase
     public function testAnUnknownRecipientIsAContradictionNotASilentDrop(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('who does not exist');
 
         $this->notifications()->publish(new Notification('user:'.Uuid::v7()->toRfc4122(), 'membership.added'));
     }
@@ -203,6 +204,7 @@ final class InboxNotificationsTest extends TestCase
     public function testAnUnknownCompanyIsAContradictionNotASilentDrop(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('was published to company');
 
         $this->notifications()->publish(new Notification('company:'.Uuid::v7()->toRfc4122(), 'invitation.accepted'));
     }

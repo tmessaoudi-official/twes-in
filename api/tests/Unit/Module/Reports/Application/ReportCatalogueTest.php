@@ -75,12 +75,14 @@ final class ReportCatalogueTest extends TestCase
     public function testAReportDeclaredTwiceIsAFault(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The report takings is declared twice.');
         new ReportCatalogue([self::report('takings'), self::report('takings')], $this->modules);
     }
 
     public function testAReportKeyIsLowercaseWordsJoinedByDashes(): void
     {
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('A report is named in lowercase words joined by dashes: Takings_Day.');
         new ReportCatalogue([self::report('Takings_Day')], $this->modules);
     }
 

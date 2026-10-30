@@ -118,6 +118,7 @@ final class ProductPriceReviewTest extends TestCase
         $product = $this->product('18.462', '12');
 
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('No price waits for a review on this product.');
         $product->adjustPriceToReview(3, $this->now);
     }
 
@@ -168,6 +169,7 @@ final class ProductPriceReviewTest extends TestCase
         self::assertSame(['18.4620', '13.0000', null], [$product->getDetails()->unitPriceNet, $product->getDetails()->costPrice, $product->priceReview()], 'the price as it was, under the cost the receipt left: kept, as « Garder le prix » would');
 
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('No price followed its cost on this product since it was last set.');
         $product->restoreFollowedPrice($this->now);
     }
 
@@ -182,6 +184,7 @@ final class ProductPriceReviewTest extends TestCase
 
         self::assertFalse($product->mayRestoreFollowedPrice());
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('No price followed its cost on this product since it was last set.');
         $product->restoreFollowedPrice($this->now);
     }
 

@@ -132,6 +132,7 @@ final class ManagePaymentsTest extends TestCase
         $this->invoices->transactions = new FakeTransactions();
 
         $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('An invoice is locked inside a transaction.');
         $this->payments->record($this->company, $invoice->getId(), new PaymentDetails(new \DateTimeImmutable('2026-09-21'), '10', PaymentMethod::Card), null);
     }
 

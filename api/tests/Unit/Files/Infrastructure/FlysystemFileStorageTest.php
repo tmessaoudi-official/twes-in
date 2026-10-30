@@ -55,7 +55,8 @@ final class FlysystemFileStorageTest extends TestCase
         try {
             $this->storage->write('companies/c1/f1', 'second');
             self::fail('a stored file was overwritten');
-        } catch (\LogicException) {
+        } catch (\LogicException $kept) {
+            self::assertStringContainsString('companies/c1/f1 already holds a file', $kept->getMessage());
         }
         self::assertSame('first', $this->storage->read('companies/c1/f1'));
     }
