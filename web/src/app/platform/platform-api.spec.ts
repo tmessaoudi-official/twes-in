@@ -39,7 +39,12 @@ describe('PlatformApi', () => {
     createdAt: '2026-09-15T10:00:00+00:00',
     owners: ['nadia@example.test'],
     ownerInvitations: [
-      { email: 'late@example.test', expiresAt: '2026-10-01T10:00:00+00:00', expired: true },
+      {
+        id: 'i1',
+        email: 'late@example.test',
+        expiresAt: '2026-10-01T10:00:00+00:00',
+        expired: true,
+      },
     ],
     opened: false,
     subscription: null,
@@ -326,6 +331,14 @@ describe('PlatformApi', () => {
       .expectOne('/api/platform/companies/c1/owners')
       .flush({}, { status: 409, statusText: 'Conflict' });
     await expect(already).rejects.toMatchObject({ code: 'already_member' });
+  });
+
+  it('withdraws an owner invitation by its company and its identifier', async () => {
+    const withdrawn = api.withdrawOwnerInvitation('c/1', 'i/1');
+    const request = http.expectOne('/api/platform/companies/c%2F1/owner-invitations/i%2F1');
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await withdrawn;
   });
 
   it('approves and rejects a company by its identifier', async () => {

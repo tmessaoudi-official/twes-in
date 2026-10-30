@@ -183,6 +183,54 @@ final class PlatformOwnersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
     }
 
+    /**
+     * An owner invited at a mistyped address is taken back from the platform: its link stops working at once, before the
+     * wrong person can join as owner, and the withdrawal is audited as the operator's.
+     */
+    public function testAnOperatorWithdrawsAnOwnerInvitationAndItsLinkStopsWorking(): void
+    {
+        $company = $this->pendingCompany();
+        $operator = $this->signedInAsOperator();
+        $this->postJson($this->ownersOf($company), ['email' => 'nadia@gmial.test']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $token = $this->tokenOfTheLastMail();
+
+        $invitation = $this->ownerInvitationsOf($company)[0] ?? [];
+        self::assertSame('nadia@gmial.test', $invitation['email'] ?? null);
+        self::assertIsString($invitation['id'] ?? null, 'the platform view names each invitation');
+        $this->sendJson('DELETE', $this->ownerInvitation($company, $invitation['id']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame([], $this->ownerInvitationsOf($company));
+        self::assertSame(
+            [['company_id' => $company->getId()->toRfc4122(), 'actor_user_id' => $operator->getId()->toRfc4122()]],
+            $this->em()->getConnection()->fetchAllAssociative("SELECT company_id, actor_user_id FROM audit_log WHERE action = 'invitation.withdrawn'"),
+        );
+        $this->client->getCookieJar()->clear();
+        $this->getJson('/api/invitations/'.$token);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /** The platform takes back an owner's invitation only: a member's is the company's to withdraw, and reads as none. */
+    public function testThePlatformWithdrawsNoInvitationButAnOwners(): void
+    {
+        $company = $this->createCompany('Initech');
+        $this->createUser('boss@initech.test', self::PASSWORD, $company, ['*'], Role::OWNER);
+        $this->login('boss@initech.test', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+        $this->postJson('/api/companies/'.$company->getId()->toRfc4122().'/members', ['email' => 'clerk@initech.test', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $memberInvitation = $this->em()->getConnection()->fetchOne('SELECT id FROM invitation WHERE company_id = ?', [$company->getId()->toRfc4122()]);
+        self::assertIsString($memberInvitation);
+        $this->client->getCookieJar()->clear();
+        $this->signedInAsOperator();
+
+        $this->sendJson('DELETE', $this->ownerInvitation($company, $memberInvitation));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame([$memberInvitation], $this->em()->getConnection()->fetchFirstColumn('SELECT id FROM invitation WHERE company_id = ?', [$company->getId()->toRfc4122()]), 'the member invitation stands');
+    }
+
     private function signedInAsOperator(): User
     {
         $operator = $this->createUser('op@twes.local', self::PASSWORD, operator: true);
@@ -206,6 +254,26 @@ final class PlatformOwnersTest extends ApiTestCase
     private function ownersOf(Company $company): string
     {
         return '/api/platform/companies/'.$company->getId()->toRfc4122().'/owners';
+    }
+
+    private function ownerInvitation(Company $company, string $invitationId): string
+    {
+        return '/api/platform/companies/'.$company->getId()->toRfc4122().'/owner-invitations/'.$invitationId;
+    }
+
+    /** @return list<array<array-key, mixed>> the company's owner invitations as the platform lists them */
+    private function ownerInvitationsOf(Company $company): array
+    {
+        $this->getJson('/api/platform/companies');
+        self::assertResponseIsSuccessful();
+        foreach ($this->jsonList() as $row) {
+            if (($row['id'] ?? null) === $company->getId()->toRfc4122()) {
+                self::assertIsArray($row['ownerInvitations']);
+
+                return array_values(array_filter($row['ownerInvitations'], \is_array(...)));
+            }
+        }
+        self::fail('the company is not on the platform list');
     }
 
     private function tokenOfTheLastMail(): string

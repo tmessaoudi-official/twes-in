@@ -178,6 +178,7 @@ class StaticLoader implements TranslateLoader {
           no_owner: 'Aucun propriétaire.',
           owner_invitation_open:
             'Invitation de propriétaire envoyée à {{email}}, valable jusqu’au {{day}}.',
+          withdraw_owner: 'Retirer',
           owner_invitation_expired:
             'L’invitation de propriétaire envoyée à {{email}} a expiré le {{day}} : invitez de nouveau.',
           statuses: {
@@ -390,6 +391,7 @@ describe('PlatformPage', () => {
     companies,
     openCompany: vi.fn(),
     inviteOwner: vi.fn(),
+    withdrawOwnerInvitation: vi.fn(),
     accounts,
     signup,
     support: support.asReadonly(),
@@ -775,8 +777,18 @@ describe('PlatformPage', () => {
         status: 'active',
         owners: [],
         ownerInvitations: [
-          { email: 'open@example.test', expiresAt: '2026-10-30T10:00:00+00:00', expired: false },
-          { email: 'late@example.test', expiresAt: '2026-10-01T10:00:00+00:00', expired: true },
+          {
+            id: 'i1',
+            email: 'open@example.test',
+            expiresAt: '2026-10-30T10:00:00+00:00',
+            expired: false,
+          },
+          {
+            id: 'i2',
+            email: 'late@example.test',
+            expiresAt: '2026-10-01T10:00:00+00:00',
+            expired: true,
+          },
         ],
       },
     ]);
@@ -790,6 +802,47 @@ describe('PlatformPage', () => {
     expect(late.textContent).toContain('envoyée à late@example.test a expiré le 01/10/2026');
     expect(late.textContent).toContain('invitez de nouveau.');
     expect(late.classList).toContain('text-error');
+  });
+
+  // An owner invited at a mistyped address is taken back from the sheet, and the toast offers to send it again.
+  it('withdraws an owner invitation from the sheet, and its undo invites the same address again', async () => {
+    companies.set([
+      {
+        ...row,
+        status: 'active',
+        owners: [],
+        ownerInvitations: [
+          {
+            id: 'i1',
+            email: 'nadia@gmial.test',
+            expiresAt: '2026-10-30T10:00:00+00:00',
+            expired: false,
+          },
+        ],
+      },
+    ]);
+    facade.withdrawOwnerInvitation.mockResolvedValue(true);
+    facade.inviteOwner.mockResolvedValue(true);
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+
+    const withdraw = query<HTMLButtonElement>('withdraw-owner-invitation-nadia@gmial.test')!;
+    expect(withdraw.textContent?.trim()).toBe('Retirer');
+    withdraw.click();
+    await fixture.whenStable();
+
+    expect(facade.withdrawOwnerInvitation).toHaveBeenCalledWith('c1', 'i1');
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+    expect(said).toEqual([
+      expect.objectContaining({
+        key: 'platform.companies.owner_withdrawn',
+        params: { email: 'nadia@gmial.test' },
+        effect: 'corrigeable',
+      }),
+    ]);
+    said[0].action?.run();
+    await vi.waitFor(() =>
+      expect(facade.inviteOwner).toHaveBeenCalledWith('c1', 'nadia@gmial.test'),
+    );
   });
 
   it('offers a suspended company its access back, and no second suspension', async () => {

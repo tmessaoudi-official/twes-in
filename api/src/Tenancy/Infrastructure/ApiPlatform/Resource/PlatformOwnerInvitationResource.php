@@ -11,10 +11,12 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\Resource;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Post;
 use App\Shared\Infrastructure\Validation\ContactRule;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\InviteOwnerProcessor;
+use App\Tenancy\Infrastructure\ApiPlatform\State\Processor\WithdrawOwnerInvitationProcessor;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -34,6 +36,14 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: ['groups' => [self::READ]],
             denormalizationContext: ['groups' => [self::WRITE]],
             validationContext: ['groups' => ['invite']],
+        ),
+        // An owner invited at a mistyped address is taken back before that address can join as owner.
+        new Delete(
+            uriTemplate: '/platform/companies/{companyId}/owner-invitations/{invitationId}',
+            name: 'platform_company_owner_invitation_withdraw',
+            processor: WithdrawOwnerInvitationProcessor::class,
+            security: 'is_granted("platform.company.create")',
+            read: false,
         ),
     ],
 )]

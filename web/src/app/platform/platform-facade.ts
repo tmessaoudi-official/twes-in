@@ -294,6 +294,19 @@ export class PlatformFacade {
     );
   }
 
+  /** The list read again drops the invitation's line from the sheet. */
+  async withdrawOwnerInvitation(companyId: string, invitationId: string): Promise<boolean> {
+    const at = `owner:${companyId}`;
+    this.refusedSignal.set({ at, refusals: [] });
+    return this.state.write(
+      async () => {
+        await this.proven(() => this.api.withdrawOwnerInvitation(companyId, invitationId));
+        await this.readCompanies();
+      },
+      { failed: this.refusedAt(at) },
+    );
+  }
+
   approve(companyId: string): Promise<boolean> {
     return this.decide(() => this.api.approve(companyId));
   }

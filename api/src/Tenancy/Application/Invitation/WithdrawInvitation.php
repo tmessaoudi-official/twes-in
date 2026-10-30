@@ -18,6 +18,7 @@ use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Member\RoleBounds;
 use App\Tenancy\Application\Member\RoleNotManageable;
 use App\Tenancy\Domain\Model\Invitation;
+use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\Repository\InvitationRepository;
 use Symfony\Component\Uid\Uuid;
 
@@ -51,8 +52,25 @@ final readonly class WithdrawInvitation implements DeclaresAuditActions
     /** @throws InvitationNotFound|RoleNotManageable */
     public function handle(Uuid $companyId, Uuid $invitationId, ?Uuid $actorUserId): void
     {
-        $this->transactions->run(function () use ($companyId, $invitationId, $actorUserId): void {
-            $invitation = $this->bounded($companyId, $invitationId, $actorUserId);
+        $this->withdraw($companyId, $invitationId, $actorUserId, null);
+    }
+
+    /**
+     * The platform's withdrawal of an owner's invitation, which an operator sent to a mistyped address: the platform
+     * invites nobody but owners, so another role's invitation is the company's to withdraw and reads as none here.
+     *
+     * @throws InvitationNotFound|RoleNotManageable
+     */
+    public function handleOwnerInvitation(Uuid $companyId, Uuid $invitationId, Uuid $operatorUserId): void
+    {
+        $this->withdraw($companyId, $invitationId, $operatorUserId, Role::OWNER);
+    }
+
+    /** @throws InvitationNotFound|RoleNotManageable */
+    private function withdraw(Uuid $companyId, Uuid $invitationId, ?Uuid $actorUserId, ?string $onlyRole): void
+    {
+        $this->transactions->run(function () use ($companyId, $invitationId, $actorUserId, $onlyRole): void {
+            $invitation = $this->bounded($companyId, $invitationId, $actorUserId, $onlyRole);
 
             $this->invitations->remove($invitation);
 
@@ -73,10 +91,11 @@ final readonly class WithdrawInvitation implements DeclaresAuditActions
      *
      * @throws InvitationNotFound|RoleNotManageable
      */
-    private function bounded(Uuid $companyId, Uuid $invitationId, ?Uuid $actorUserId): Invitation
+    private function bounded(Uuid $companyId, Uuid $invitationId, ?Uuid $actorUserId, ?string $onlyRole = null): Invitation
     {
         $invitation = $this->invitations->ofId($invitationId);
-        if (null === $invitation || !$invitation->getCompany()->getId()->equals($companyId) || null !== $invitation->getAcceptedAt()) {
+        if (null === $invitation || !$invitation->getCompany()->getId()->equals($companyId) || null !== $invitation->getAcceptedAt()
+            || (null !== $onlyRole && $onlyRole !== $invitation->getRoleName())) {
             throw new InvitationNotFound(\sprintf('No open invitation %s here.', $invitationId->toRfc4122()));
         }
         // A role deleted since leaves the invitation its name alone, and nothing to bound.

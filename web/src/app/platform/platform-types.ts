@@ -40,6 +40,8 @@ export interface PlatformSubscriptionRow extends SubscriptionTerms {
 
 /** An owner invitation sent to a company, as its row says it. */
 export interface PlatformOwnerInvitation {
+  /** What the sheet withdraws it by. */
+  readonly id: string;
   readonly email: string;
   readonly expiresAt: string;
   readonly expired: boolean;

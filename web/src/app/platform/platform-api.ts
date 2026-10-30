@@ -98,6 +98,17 @@ export class PlatformApi {
     }, 'already_member');
   }
 
+  /** Takes back an owner invitation nobody used: its link then answers that it no longer exists. */
+  withdrawOwnerInvitation(companyId: string, invitationId: string): Promise<void> {
+    return this.guard(async () => {
+      await firstValueFrom(
+        this.http.delete(
+          `/api/platform/companies/${encodeURIComponent(companyId)}/owner-invitations/${encodeURIComponent(invitationId)}`,
+        ),
+      );
+    });
+  }
+
   approve(companyId: string): Promise<PlatformCompanyRow> {
     return this.decide(companyId, 'approve');
   }
@@ -435,6 +446,7 @@ function toRow(read: PlatformCompanyPlatformCompanyRead): PlatformCompanyRow {
     createdAt: read.createdAt ?? '',
     owners: read.owners ?? [],
     ownerInvitations: (read.ownerInvitations ?? []).map((invitation) => ({
+      id: invitation.id,
       email: invitation.email,
       expiresAt: invitation.expiresAt,
       expired: invitation.expired,

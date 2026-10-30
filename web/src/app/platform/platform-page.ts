@@ -818,6 +818,24 @@ export class PlatformPage implements OnInit {
     }
   }
 
+  /** An invitation sent to a mistyped address is taken back before that address can join; the undo sends it again. */
+  protected async withdrawOwner(
+    company: { readonly id: string },
+    invitation: { readonly id: string; readonly email: string },
+  ): Promise<void> {
+    if (await this.platform.withdrawOwnerInvitation(company.id, invitation.id)) {
+      this.feedback.effect(
+        'platform.companies.owner_withdrawn',
+        { email: invitation.email },
+        'corrigeable',
+        {
+          key: 'platform.companies.undo',
+          run: () => void this.platform.inviteOwner(company.id, invitation.email),
+        },
+      );
+    }
+  }
+
   /** Puts the cursor in the field a refusal was said under; a company's name may hold any character, so no selector. */
   private focus(testId: string): void {
     const fields = this.host.nativeElement.querySelectorAll<HTMLInputElement>('input[data-testid]');

@@ -99,6 +99,7 @@ describe('PlatformFacade', () => {
     companies: vi.fn(),
     createCompany: vi.fn(),
     inviteOwner: vi.fn(),
+    withdrawOwnerInvitation: vi.fn(),
     subscription: vi.fn(),
     setSubscription: vi.fn(),
     stopSubscription: vi.fn(),
@@ -194,6 +195,17 @@ describe('PlatformFacade', () => {
     api.inviteOwner.mockRejectedValue(new PlatformRefused('already_member'));
     expect(await facade.inviteOwner('c1', 'nadia@example.test')).toBe(false);
     expect(facade.error()).toBe('already_member');
+  });
+
+  it('withdraws an owner invitation and reads the page shown again, so its line goes', async () => {
+    await facade.load();
+    await facade.loadCompanies(LIST);
+    api.withdrawOwnerInvitation.mockResolvedValue(undefined);
+    api.companies.mockClear();
+
+    expect(await facade.withdrawOwnerInvitation('c1', 'i1')).toBe(true);
+    expect(api.withdrawOwnerInvitation).toHaveBeenCalledWith('c1', 'i1');
+    expect(api.companies).toHaveBeenCalledWith(LIST);
   });
 
   it('loads the overview: the waiting companies, the switches, the counts, the demand and what failed', async () => {

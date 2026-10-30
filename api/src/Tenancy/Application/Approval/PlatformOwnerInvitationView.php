@@ -13,6 +13,8 @@ namespace App\Tenancy\Application\Approval;
 final readonly class PlatformOwnerInvitationView
 {
     public function __construct(
+        /** What the platform names it by to withdraw it. */
+        public string $id,
         public string $email,
         /** ISO 8601 */
         public string $expiresAt,

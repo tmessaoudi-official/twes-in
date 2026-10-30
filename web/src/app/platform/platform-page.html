@@ -604,21 +604,32 @@
                         {{ 'platform.companies.no_owner' | translate }}
                       }
                     </span>
-                    @for (invitation of company.ownerInvitations; track invitation.email) {
-                      <span
-                        class="text-sm"
-                        [class.text-error]="invitation.expired"
-                        [attr.data-testid]="'owner-invitation-' + invitation.email"
-                      >
-                        {{
-                          (invitation.expired
-                            ? 'platform.companies.owner_invitation_expired'
-                            : 'platform.companies.owner_invitation_open'
-                          )
-                            | translate
-                              : { email: invitation.email, day: invitation.expiresAt | day }
-                        }}
-                      </span>
+                    @for (invitation of company.ownerInvitations; track invitation.id) {
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span
+                          class="text-sm"
+                          [class.text-error]="invitation.expired"
+                          [attr.data-testid]="'owner-invitation-' + invitation.email"
+                        >
+                          {{
+                            (invitation.expired
+                              ? 'platform.companies.owner_invitation_expired'
+                              : 'platform.companies.owner_invitation_open'
+                            )
+                              | translate
+                                : { email: invitation.email, day: invitation.expiresAt | day }
+                          }}
+                        </span>
+                        <button
+                          mat-button
+                          type="button"
+                          (click)="withdrawOwner(company, invitation)"
+                          [disabled]="busy()"
+                          [attr.data-testid]="'withdraw-owner-invitation-' + invitation.email"
+                        >
+                          {{ 'platform.companies.withdraw_owner' | translate }}
+                        </button>
+                      </div>
                     }
                     @if (company.subscription; as standing) {
                       <p class="text-sm" [attr.data-testid]="'standing-' + company.name">

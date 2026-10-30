@@ -52,6 +52,9 @@
       "no_owner": "Aucun propriétaire.",
       "owner_invitation_open": "Invitation de propriétaire envoyée à {{email}}, valable jusqu’au {{day}}.",
       "owner_invitation_expired": "L’invitation de propriétaire envoyée à {{email}} a expiré le {{day}} : invitez de nouveau.",
+      "withdraw_owner": "Retirer",
+      "owner_withdrawn": "L’invitation de propriétaire envoyée à {{email}} est retirée. Son lien ne fonctionne plus.",
+      "undo": "Annuler",
       "actions": {
         "label": "Actions sur l’entreprise",
         "approve": "Approuver",
