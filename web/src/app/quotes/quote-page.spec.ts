@@ -384,6 +384,31 @@ describe('QuotePage', () => {
     expect(q('line-0-stock')).toBeNull();
   });
 
+  // An open quote's customer is read after the quote: a save pressed before it lands waits for it.
+  it('saves a draft pressed before its customer is read once it is, never asking for one', async () => {
+    let customerRead: () => void = () => undefined;
+    const usual = facade.pickCustomers.getMockImplementation()!;
+    onTestFinished(() => void facade.pickCustomers.mockImplementation(usual));
+    facade.pickCustomers.mockImplementation(async (_companyId: string, asked: PickAsked) => {
+      if (!('ids' in asked)) return customers;
+      await new Promise<void>((resolve) => (customerRead = resolve));
+      return customers.filter((each) => asked.ids.includes(each.id));
+    });
+    quote.set(draft);
+    await open('q1');
+
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.revise).not.toHaveBeenCalled();
+    expect(q('quote-customer-error')).toBeNull();
+
+    customerRead();
+    await vi.waitFor(() => expect(facade.revise).toHaveBeenCalledTimes(1));
+    expect(facade.revise.mock.calls[0]![2]).toEqual(expect.objectContaining({ customerId: 'k1' }));
+    await settle();
+    expect(q('quote-customer-error')).toBeNull();
+  });
+
   it('marks a draft sent only once asked, with the lines shown saved first', async () => {
     quote.set(draft);
     await open('q1');

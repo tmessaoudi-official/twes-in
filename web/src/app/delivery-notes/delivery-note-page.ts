@@ -455,6 +455,12 @@ export class DeliveryNotePage {
   });
   /** Every customer any picker here has answered, so what is chosen can be found again from the option's id. */
   private readonly knownCustomers = new Map<string, CustomerOption>();
+  /**
+   * The read of the customer an open note names while it is under way, which lands after the note: every caller of
+   * `collect()` waits for it first, or a save pressed meanwhile is refused as naming nobody and sends nothing. Null
+   * once read, so that nothing waits a turn for no reason.
+   */
+  private customerRead: Promise<void> | null = null;
   /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
   protected readonly customerMissing = signal(false);
   /** What the API refused the customer for (deactivated, merged into another), said under its picker. */
@@ -914,7 +920,7 @@ export class DeliveryNotePage {
       const current = this.current();
       if (!companyId || current === undefined || current === null) return;
       const customerId = current.customerId;
-      untracked(async () => {
+      const read = untracked(async () => {
         if (this.customer()?.id === customerId) return;
         const known = this.knownCustomers.get(customerId);
         const [found] = known
@@ -923,6 +929,11 @@ export class DeliveryNotePage {
         if (found) this.knownCustomers.set(found.id, found);
         this.customer.set(found ?? null);
       });
+      this.customerRead = read;
+      const done = (): void => {
+        if (this.customerRead === read) this.customerRead = null;
+      };
+      void read.then(done, done);
     });
   }
 
@@ -944,6 +955,7 @@ export class DeliveryNotePage {
 
   protected async save(): Promise<void> {
     const companyId = this.company()?.id;
+    if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
     if (!companyId || input === null) return;
     const id = this.id();
@@ -1038,6 +1050,7 @@ export class DeliveryNotePage {
   protected async validate(): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
+    if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
     const kind = kindAmong(this.actions(), 'validate');
@@ -1067,6 +1080,7 @@ export class DeliveryNotePage {
   protected async validateAndDeliver(): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
+    if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
     const kind = kindAmong(this.actions(), 'validate-deliver');

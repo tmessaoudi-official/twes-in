@@ -375,6 +375,12 @@ export class QuotePage {
     return picked;
   });
   private readonly knownCustomers = new Map<string, CustomerOption>();
+  /**
+   * The read of the customer an open quote names while it is under way, which lands after the quote: every caller
+   * of `collect()` waits for it first, or a save pressed meanwhile is refused as naming nobody and sends nothing.
+   * Null once read, so that nothing waits a turn for no reason.
+   */
+  private customerRead: Promise<void> | null = null;
   /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
   protected readonly customerMissing = signal(false);
   /** What the API refused the customer for (deactivated, merged into another), said under its picker. */
@@ -637,7 +643,7 @@ export class QuotePage {
       const current = this.current();
       if (!companyId || current === undefined || current === null) return;
       const customerId = current.customerId;
-      untracked(async () => {
+      const read = untracked(async () => {
         if (this.customer()?.id === customerId) return;
         const known = this.knownCustomers.get(customerId);
         const [found] = known
@@ -646,6 +652,11 @@ export class QuotePage {
         if (found) this.knownCustomers.set(found.id, found);
         this.customer.set(found ?? null);
       });
+      this.customerRead = read;
+      const done = (): void => {
+        if (this.customerRead === read) this.customerRead = null;
+      };
+      void read.then(done, done);
     });
     // Waits for the new quote and its options only, then forgets the customer from the address.
     effect(() => {
@@ -686,6 +697,7 @@ export class QuotePage {
 
   protected async save(): Promise<void> {
     const companyId = this.company()?.id;
+    if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
     if (!companyId || input === null) return;
     const id = this.id();
@@ -744,6 +756,7 @@ export class QuotePage {
   protected async send(): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
+    if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
     // Read before sending: once sent, the screen declares what a sent quote offers.

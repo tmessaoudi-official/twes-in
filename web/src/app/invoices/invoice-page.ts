@@ -535,6 +535,12 @@ export class InvoicePage {
   });
   /** Every customer any picker here has answered, so what is chosen can be found again from the option's id. */
   private readonly knownCustomers = new Map<string, CustomerOption>();
+  /**
+   * The read of the customer an open document names while it is under way, which lands after the document: every
+   * caller of `collect()` waits for it first, or a save pressed meanwhile is refused as naming nobody and sends
+   * nothing. Null once read, so that nothing waits a turn for no reason.
+   */
+  private customerRead: Promise<void> | null = null;
   /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
   protected readonly customerMissing = signal(false);
   /** What the API refused the customer for (deactivated, merged into another), said under its picker. */
@@ -739,6 +745,7 @@ export class InvoicePage {
     if (this.changes() === 0) return true;
     const companyId = this.company()?.id;
     const id = this.id();
+    if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
     if (!companyId || id === null || input === null) return false;
     if ((await this.facade.revise(companyId, id, input, this.sync.version())) === null) {
@@ -1113,7 +1120,7 @@ export class InvoicePage {
       const current = this.current();
       if (!companyId || current === undefined || current === null) return;
       const customerId = current.customerId;
-      untracked(async () => {
+      const read = untracked(async () => {
         if (this.customer()?.id !== customerId) {
           const known = this.knownCustomers.get(customerId);
           const [found] = known
@@ -1129,6 +1136,11 @@ export class InvoicePage {
             (options === null ? [] : defaultDocumentTaxes(options, this.customer())),
         );
       });
+      this.customerRead = read;
+      const done = (): void => {
+        if (this.customerRead === read) this.customerRead = null;
+      };
+      void read.then(done, done);
     });
   }
 
@@ -1168,6 +1180,7 @@ export class InvoicePage {
 
   protected async save(): Promise<void> {
     const companyId = this.company()?.id;
+    if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
     if (!companyId || input === null) return;
     const id = this.id();
@@ -1194,6 +1207,7 @@ export class InvoicePage {
   protected async issue(): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
+    if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
     // Read before issuing: once issued, the screen declares what an issued document offers.

@@ -512,6 +512,31 @@ describe('InvoicePage', () => {
     expect(q('invoice-title')?.getAttribute('aria-hidden')).toBeNull();
   });
 
+  // An open document's customer is read after the document: a save pressed before it lands waits for it.
+  it('saves a draft pressed before its customer is read once it is, never asking for one', async () => {
+    let customerRead: () => void = () => undefined;
+    const usual = facade.pickCustomers.getMockImplementation()!;
+    onTestFinished(() => void facade.pickCustomers.mockImplementation(usual));
+    facade.pickCustomers.mockImplementation(async (_companyId: string, asked: PickAsked) => {
+      if (!('ids' in asked)) return customers;
+      await new Promise<void>((resolve) => (customerRead = resolve));
+      return customers.filter((each) => asked.ids.includes(each.id));
+    });
+    invoice.set(draft);
+    await open('i1');
+
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.revise).not.toHaveBeenCalled();
+    expect(q('invoice-customer-error')).toBeNull();
+
+    customerRead();
+    await vi.waitFor(() => expect(facade.revise).toHaveBeenCalledTimes(1));
+    expect(facade.revise.mock.calls[0]![2]).toEqual(expect.objectContaining({ customerId: 'k1' }));
+    await settle();
+    expect(q('invoice-customer-error')).toBeNull();
+  });
+
   it('asks for the customer under the heading of its own section', async () => {
     await open(undefined);
     q('document-action-save')!.click();
