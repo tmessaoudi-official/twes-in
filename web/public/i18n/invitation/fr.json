@@ -13,6 +13,7 @@
     "errors": {
       "not_usable": "Ce lien n’est plus valable. Demandez une nouvelle invitation.",
       "password_refused": "Ce mot de passe a été vu dans une fuite de données. Choisissez-en un autre.",
+      "role_gone": "Le rôle de cette invitation n’existe plus dans l’entreprise. Demandez une nouvelle invitation.",
       "invalid": "Demande invalide.",
       "network": "Impossible de joindre le serveur.",
       "too_many": "Trop de tentatives avec ce lien : réessayez dans quelques minutes."

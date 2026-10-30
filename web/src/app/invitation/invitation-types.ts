@@ -21,4 +21,4 @@ export interface InvitationOffer {
  * the API answers those identically on purpose, and the page must not pretend to tell them apart.
  */
 export type InvitationError =
-  'not_usable' | 'password_refused' | 'too_many' | 'invalid' | 'network';
+  'not_usable' | 'password_refused' | 'role_gone' | 'too_many' | 'invalid' | 'network';

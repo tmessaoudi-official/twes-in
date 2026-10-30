@@ -68,6 +68,8 @@ describe('InvitationApi', () => {
     for (const [status, body, code] of [
       [404, {}, 'not_usable'],
       [422, on('password'), 'password_refused'],
+      // The role the invitation was sent for has gone since: asking again is the way on.
+      [422, on('role'), 'role_gone'],
       // A refusal of anything but the password, a missing name among them, is no refused password.
       [422, on('displayName'), 'invalid'],
       [422, {}, 'invalid'],

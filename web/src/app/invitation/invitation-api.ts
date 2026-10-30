@@ -76,11 +76,15 @@ function codeOf(error: unknown): InvitationError {
   switch (error.status) {
     case 404:
       return 'not_usable';
-    // A refusal names its field: only one of the password is a refused password (a missing name is not).
-    case 422:
-      return refusalsIn(error.error).some((refusal) => refusal.field === 'password')
-        ? 'password_refused'
-        : 'invalid';
+    // A refusal names its field: only one of the password is a refused password (a missing name is not), and one of
+    // the role says the role it was sent for has gone since, which asking again puts right.
+    case 422: {
+      const fields = refusalsIn(error.error).map((refusal) => refusal.field);
+      if (fields.includes('password')) {
+        return 'password_refused';
+      }
+      return fields.includes('role') ? 'role_gone' : 'invalid';
+    }
     // The link's budget: tried too often from here, which waiting puts right.
     case 429:
       return 'too_many';

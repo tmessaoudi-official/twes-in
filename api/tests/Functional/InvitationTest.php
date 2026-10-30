@@ -119,6 +119,23 @@ final class InvitationTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    /**
+     * The role an invitation was sent for can go between the deletion's check and the acceptance (nothing locks the
+     * invitation's row): the person accepting is told the role has gone and to ask again, and no account is made.
+     */
+    public function testAnInvitationWhoseRoleHasGoneIsRefusedOnItsRoleAndMakesNoAccount(): void
+    {
+        $token = $this->inviteAndReadTheToken();
+        $this->signOut();
+        $this->em()->getConnection()->executeStatement('UPDATE invitation SET role_id = NULL WHERE company_id = ?', [$this->company->getId()->toRfc4122()]);
+
+        $this->postJson('/api/invitations/'.$token.'/accept', ['displayName' => 'New Person', 'password' => self::PASSWORD]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['role_gone', []], $this->refusalOf('role'));
+        self::assertNull($this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('stranger@twes.local')]));
+    }
+
     public function testAnUnknownLinkIsNotFound(): void
     {
         $this->getJson('/api/invitations/'.str_repeat('a', 64));

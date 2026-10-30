@@ -429,6 +429,7 @@ final class MembersTest extends ApiTestCase
         $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => 'emperor']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['invalid_value', []], $this->refusalOf('role'), 'said on the role chosen');
     }
 
     public function testSomebodyIsInvitedAtTheCompanysOwnRole(): void

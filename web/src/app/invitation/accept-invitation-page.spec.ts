@@ -29,7 +29,11 @@ class StaticLoader implements TranslateLoader {
         password: 'Mot de passe',
         password_hint: '{{min}} caractères',
         password_too_short: 'Au moins {{min}} caractères.',
-        errors: { too_many: 'Trop de tentatives avec ce lien : réessayez dans quelques minutes.' },
+        errors: {
+          too_many: 'Trop de tentatives avec ce lien : réessayez dans quelques minutes.',
+          role_gone:
+            'Le rôle de cette invitation n’existe plus dans l’entreprise. Demandez une nouvelle invitation.',
+        },
         submit: 'Créer mon compte',
         journal:
           'Ce que vous ferez chez {{company}} sera inscrit dans son journal d’activité. Voir',
@@ -187,6 +191,17 @@ describe('AcceptInvitationPage', () => {
       'Trop de tentatives avec ce lien : réessayez dans quelques minutes.',
     );
     expect(byTestId('invitation-password')).toBeNull();
+    expect(byTestId('invitation-back')?.getAttribute('href')).toBe('/login');
+  });
+
+  it('says the role it was sent for has gone and to ask for a new invitation', async () => {
+    invitation.load.mockResolvedValue(null);
+    failed.set('role_gone');
+    await render(null);
+
+    expect(byTestId('invitation-error')?.textContent?.trim()).toBe(
+      'Le rôle de cette invitation n’existe plus dans l’entreprise. Demandez une nouvelle invitation.',
+    );
     expect(byTestId('invitation-back')?.getAttribute('href')).toBe('/login');
   });
 

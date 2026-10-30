@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\StepUp\RecentProof;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Invitation\InviteRequest;
 use App\Tenancy\Application\Invitation\InviteToCompany;
 use App\Tenancy\Application\Member\AlreadyAMember;
@@ -23,7 +24,6 @@ use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * One endpoint for "put this address in this company", and it always sends an invitation: nobody becomes a member
@@ -50,7 +50,7 @@ final readonly class InviteMemberProcessor implements ProcessorInterface
         } catch (AlreadyAMember $already) {
             throw new ConflictHttpException($already->getMessage(), $already);
         } catch (UnknownRole $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+            throw DomainRule::refused('role', $refused->getMessage(), 'invalid_value', [], $refused);
         } catch (RoleNotManageable $refused) {
             throw new AccessDeniedHttpException($refused->getMessage(), $refused);
         }

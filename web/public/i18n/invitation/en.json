@@ -13,6 +13,7 @@
     "errors": {
       "not_usable": "That link is no longer valid. Ask for a new invitation.",
       "password_refused": "That password has appeared in a data breach. Choose another one.",
+      "role_gone": "The role this invitation was sent for no longer exists in the company. Ask for a new invitation.",
       "invalid": "Invalid request.",
       "network": "The server could not be reached.",
       "too_many": "Too many attempts with this link: try again in a few minutes."

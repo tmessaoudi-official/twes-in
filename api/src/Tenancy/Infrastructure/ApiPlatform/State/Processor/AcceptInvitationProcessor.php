@@ -17,6 +17,7 @@ use App\Tenancy\Application\Invitation\AcceptRequest;
 use App\Tenancy\Application\Invitation\AccountDetailsRequired;
 use App\Tenancy\Application\Invitation\InvitationNotUsable;
 use App\Tenancy\Application\Invitation\PasswordBreached;
+use App\Tenancy\Application\Member\UnknownRole;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\InvitationResource;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -55,6 +56,10 @@ final readonly class AcceptInvitationProcessor implements ProcessorInterface
             throw DomainRule::refused(null === $data->displayName ? 'displayName' : 'password', $missing->getMessage(), 'value_required', [], $missing);
         } catch (PasswordBreached $breached) {
             throw DomainRule::refused('password', $breached->getMessage(), 'breached', [], $breached);
+        } catch (UnknownRole $gone) {
+            // The role was deleted after the link was sent: the person accepting cannot choose another, so they are
+            // told it has gone and to ask again, rather than joining at a role nobody chose.
+            throw DomainRule::refused('role', $gone->getMessage(), 'role_gone', [], $gone);
         }
 
         $resource = new InvitationResource();
