@@ -359,6 +359,18 @@ describe('DescriptorForm with a phone field', () => {
       await typeIn('71 234 567');
       expect(host.form.controls['phone'].value).toBe('+216 71 234 567');
     });
+
+    // The form runs top to bottom: the phone comes before the address whose country is its default.
+    it('keeps the country a number was typed under when the record is given another one after', async () => {
+      const host = await openRecord('', '');
+      await typeIn('6 12 34 56 78');
+      expect(host.form.controls['phone'].value).toBe('+33 6 12 34 56 78');
+
+      host.form.controls['countryCode'].setValue('tn');
+      await settle();
+      expect(picked()).toContain('+33');
+      expect(host.form.controls['phone'].value).toBe('+33 6 12 34 56 78');
+    });
   });
 });
 

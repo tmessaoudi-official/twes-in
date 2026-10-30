@@ -124,8 +124,6 @@ export class PhoneField implements ControlValueAccessor, Validator {
   protected readonly disabled = signal(false);
   /** What the form opened on: handed back when the same number is typed again. */
   private opened = '';
-  /** Whether a value was read in, after which the picker follows it rather than the default country. */
-  private read = false;
   private changed: (value: string) => void = () => undefined;
   protected onTouched: () => void = () => undefined;
 
@@ -166,11 +164,13 @@ export class PhoneField implements ControlValueAccessor, Validator {
   });
 
   constructor() {
-    // An empty field starts on the default country, which may arrive after the form: the session is read late.
+    // An empty field starts on the default country, which may arrive after the form: the session is read late. Once a
+    // number is there, read in or typed, the picker stays on the country it was written under: a record's country set
+    // after the phone (the address below it) must not move the picker under digits the value keeps for another one.
     effect(() => {
       const country = this.country();
       untracked(() => {
-        if (!this.read || this.countryControl.value === '' || this.local() === '') {
+        if (this.countryControl.value === '' || this.local() === '') {
           this.countryControl.setValue(country, { emitEvent: false });
           this.picked.set(country);
         }
@@ -213,7 +213,6 @@ export class PhoneField implements ControlValueAccessor, Validator {
       this.opened,
       untracked(() => this.country()),
     );
-    this.read = this.opened !== '';
     this.countryControl.setValue(read.country, { emitEvent: false });
     this.picked.set(read.country);
     this.local.set(read.local);
