@@ -266,6 +266,43 @@ describe('TwoFactorPage', () => {
     await settle(rendered.fixture);
   }
 
+  // An app shows its code in two groups, and a paste can bring a direction mark: the code is its six digits.
+  describe.each(['123 456', '‎123456'])('a code typed « %s »', (typed) => {
+    it('confirms the enrolment as its six digits', async () => {
+      const rendered = await render({
+        enrolled: false,
+        required: true,
+        totp: false,
+        passkeys: 0,
+        recoveryCodes: 0,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      });
+      facade.confirmTotpEnrolment.mockResolvedValue({ ok: false, error: 'invalid_code' });
+
+      await submitCode(rendered, typed);
+
+      expect(facade.confirmTotpEnrolment).toHaveBeenCalledExactlyOnceWith('123456');
+    });
+
+    it('renews the recovery codes as its six digits', async () => {
+      const rendered = await render({
+        enrolled: true,
+        required: false,
+        totp: true,
+        passkeys: 0,
+        recoveryCodes: 10,
+        passkeySignIn: false,
+        passkeySignInAllowed: false,
+      });
+      facade.regenerateRecoveryCodes.mockResolvedValue({ ok: false, error: 'invalid_code' });
+
+      await regenerate(rendered, typed);
+
+      expect(facade.regenerateRecoveryCodes).toHaveBeenCalledExactlyOnceWith('123456');
+    });
+  });
+
   it('gives an account with an authenticator a new set of recovery codes against a current code', async () => {
     const rendered = await render({
       enrolled: true,
@@ -561,6 +598,20 @@ describe('TwoFactorPage', () => {
         ?.dispatchEvent(new Event('submit'));
       await settle(rendered.fixture);
     }
+
+    it.each(['123 456', '‎123456'])(
+      'confirms a code typed « %s » as its six digits',
+      async (typed) => {
+        const rendered = await render(lone);
+        facade.confirmTotpReplacement.mockResolvedValue({ ok: false, error: 'invalid_code' });
+        rendered.query<HTMLButtonElement>('two-factor-app-replace')?.click();
+        await settle(rendered.fixture);
+
+        await replaceWith(rendered, typed);
+
+        expect(facade.confirmTotpReplacement).toHaveBeenCalledExactlyOnceWith('123456');
+      },
+    );
 
     it('moves an account whose only factor it is to a new app, never removing the one in force', async () => {
       const rendered = await render(lone);

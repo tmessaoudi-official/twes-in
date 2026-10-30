@@ -120,6 +120,15 @@ describe('CompanyProofDialog', () => {
     expect(proof.enterWithPassword).toHaveBeenCalledExactlyOnceWith('c2', 'secret', '123456');
   });
 
+  it('reads a code pasted with a direction mark as its six digits, as every code field does', async () => {
+    await open({ ...password, code: true });
+    type('company-proof-password', 'secret');
+    type('company-proof-code', '‎123 456');
+    await submit();
+
+    expect(proof.enterWithPassword).toHaveBeenCalledExactlyOnceWith('c2', 'secret', '123456');
+  });
+
   it('says a refusal and stays open, so a mistyped answer is tried again', async () => {
     proof.enterWithPassword.mockResolvedValue('code_refused');
     await open({ ...password, code: true });

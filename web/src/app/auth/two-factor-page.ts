@@ -28,6 +28,7 @@ import { SignedOutLayout } from './signed-out-layout';
 import { MfaLockout } from './mfa-lockout';
 import { lengthSaidOf } from '../shared/form/length-said';
 import { Feedback } from '../shared/feedback/feedback';
+import { typedCode } from '../shared/form/typed-code';
 
 /**
  * Two-step verification for the signed-in account: an authenticator app, passkeys, and the recovery codes behind both.
@@ -140,7 +141,7 @@ export class TwoFactorPage {
     }
     this.submitting.set(true);
     this.error.set(null);
-    const outcome = await this.auth.confirmTotpEnrolment(this.form.controls.code.value.trim());
+    const outcome = await this.auth.confirmTotpEnrolment(typedCode(this.form.controls.code.value));
     this.submitting.set(false);
     this.form.reset();
     if (outcome.ok) {
@@ -158,7 +159,7 @@ export class TwoFactorPage {
     this.submitting.set(true);
     this.error.set(null);
     const outcome = await this.auth.regenerateRecoveryCodes(
-      this.regenerateForm.controls.code.value.trim(),
+      typedCode(this.regenerateForm.controls.code.value),
     );
     this.submitting.set(false);
     this.regenerateForm.reset();
@@ -293,7 +294,7 @@ export class TwoFactorPage {
     this.submitting.set(true);
     this.replaceError.set(null);
     const outcome = await this.auth.confirmTotpReplacement(
-      this.replaceForm.controls.code.value.trim(),
+      typedCode(this.replaceForm.controls.code.value),
     );
     this.submitting.set(false);
     this.replaceForm.reset();

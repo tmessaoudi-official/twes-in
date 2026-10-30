@@ -464,6 +464,20 @@ describe('LoginPage', () => {
     expect(navigate).toHaveBeenCalledWith('/');
   });
 
+  // An app shows its code in two groups, and a paste can bring a direction mark: the code is its six digits whatever
+  // was typed around and between them, as everywhere a code is asked.
+  it.each(['123 456', '‎123456', '123 456‏'])('sends « %s » as its six digits', async (typed) => {
+    const rendered = await render();
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    await passThePassword(rendered);
+
+    await submitCode(rendered, typed);
+    const request = rendered.http.expectOne({ method: 'POST', url: '/api/auth/mfa/verify' });
+    expect(request.request.body).toEqual({ code: '123456' });
+    request.flush(me);
+    await settle(rendered.fixture);
+  });
+
   it('says why the code is asked for, and that a recovery code works too', async () => {
     const rendered = await render();
     await passThePassword(rendered);

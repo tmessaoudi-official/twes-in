@@ -12,6 +12,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { CompanyEntryProof, type EntryAsked, type EntryOutcome } from './company-entry-proof';
 import { PasswordToggle } from '../form/password-toggle';
 import { signInAddress } from '../session/return-to';
+import { typedCode } from '../form/typed-code';
 
 /**
  * The step-up's question for entering a company: the password, the authenticator code beside it where the company
@@ -140,7 +141,7 @@ export class CompanyProofDialog {
       this.problem.set('refused');
       return;
     }
-    const code = this.code.value.replace(/\s/g, '');
+    const code = typedCode(this.code.value);
     if (this.asked.code && code === '') {
       this.problem.set('code_refused');
       return;

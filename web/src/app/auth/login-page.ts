@@ -31,6 +31,7 @@ import { SignedOutLayout } from './signed-out-layout';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { returnAddress } from '../shared/session/return-to';
 import { onTypedText, typedText } from '../shared/form/typed-text';
+import { typedCode } from '../shared/form/typed-code';
 
 /** What the browser answers on its own, before the API hears anything. */
 const BROWSER_REFUSALS: readonly LoginError[] = [
@@ -252,7 +253,9 @@ export class LoginPage {
     }
     this.submitting.set(true);
     this.error.set(null);
-    const outcome = await this.auth.verifySecondFactor(this.codeForm.controls.code.value.trim());
+    const outcome = await this.auth.verifySecondFactor(
+      typedCode(this.codeForm.controls.code.value),
+    );
     this.submitting.set(false);
     if (outcome.status === 'signed_in') {
       await this.router.navigateByUrl(returnAddress(this.returnTo()) ?? '/');
