@@ -32,7 +32,7 @@
         "unchanged": "Choisissez un mot de passe différent de l’actuel.",
         "breached": "Ce mot de passe apparaît dans une fuite de données : choisissez-en un autre.",
         "mismatch": "Les deux saisies du nouveau mot de passe ne sont pas les mêmes.",
-        "too_many": "Trop d’essais. Réessayez dans quelques minutes.",
+        "too_many": "Trop d’essais. {{retry}}",
         "network": "Le serveur ne répond pas. Réessayez.",
         "refused": "Le mot de passe n’a pas pu être changé."
       }

@@ -32,6 +32,7 @@ import { PasswordToggle } from '../shared/form/password-toggle';
 import { returnAddress } from '../shared/session/return-to';
 import { onTypedText, typedText } from '../shared/form/typed-text';
 import { typedCode } from '../shared/form/typed-code';
+import { SpentBudget } from '../shared/errors/spent-budget';
 
 /** What the browser answers on its own, before the API hears anything. */
 const BROWSER_REFUSALS: readonly LoginError[] = [
@@ -58,6 +59,8 @@ const BROWSER_REFUSALS: readonly LoginError[] = [
 })
 export class LoginPage {
   private readonly auth = inject(AuthFacade);
+  /** When a spent budget may be tried again, which its refusal says. */
+  protected readonly budget = inject(SpentBudget);
   private readonly router = inject(Router);
 
   protected readonly form = new FormGroup({

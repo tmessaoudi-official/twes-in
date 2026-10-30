@@ -26,6 +26,7 @@ use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Infrastructure\Security\PendingSecondFactor;
 use App\Identity\Infrastructure\Security\SecondFactorLogin;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Identity\Infrastructure\Security\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -163,8 +164,9 @@ final readonly class PasskeyController
 
         // Spent before the passkey is checked, so parallel attempts cannot outrun the budget; one that holds gives it back.
         $attempts = $this->mfaVerifyLimiter->create($userId->toRfc4122());
-        if (!$attempts->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $attempts->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         $options = $this->challenges->take(self::LOGIN, $userId);
@@ -206,8 +208,9 @@ final readonly class PasskeyController
         $userId = $this->currentUserId();
 
         $attempts = $this->mfaVerifyLimiter->create($userId->toRfc4122());
-        if (!$attempts->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $attempts->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         $options = $this->challenges->take(self::RECOVERY, $userId);

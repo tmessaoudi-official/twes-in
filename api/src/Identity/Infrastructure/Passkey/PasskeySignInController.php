@@ -17,6 +17,7 @@ use App\Identity\Application\Mfa\Passkey\PasskeyRefused;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Infrastructure\Security\SecondFactorLogin;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Identity\Infrastructure\Security\SpentBudget;
 use App\Identity\Infrastructure\Security\UserChecker;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -64,8 +65,9 @@ final readonly class PasskeySignInController
     #[Route('/api/auth/passkey-sign-in', name: 'api_auth_passkey_sign_in', methods: ['POST'])]
     public function signIn(Request $request): Response
     {
-        if (!$this->limiter->create($request->getClientIp() ?? 'unknown')->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $this->limiter->create($request->getClientIp() ?? 'unknown')->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
         // Taken before anything is checked, so a failed attempt spends the challenge as surely as a successful one.
         $options = $this->challenges->take(self::SIGN_IN, null);

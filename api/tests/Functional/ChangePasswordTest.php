@@ -93,6 +93,7 @@ final class ChangePasswordTest extends ApiTestCase
 
         $this->sendJson('PUT', self::PATH, ['currentPassword' => self::PASSWORD, 'newPassword' => self::NEXT]);
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS, 'the right one does not get round the limit');
+        $this->assertTheWaitIsSaid(300);
     }
 
     /** Audit 2026-10-06, D-4: as at the sign-in, a wrong current password counts toward the account's lockout. */

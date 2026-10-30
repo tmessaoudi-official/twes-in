@@ -32,7 +32,7 @@
         "unchanged": "Choose a password different from the current one.",
         "breached": "This password appears in a data breach: choose another.",
         "mismatch": "The two entries of the new password differ.",
-        "too_many": "Too many attempts. Try again in a few minutes.",
+        "too_many": "Too many attempts. {{retry}}",
         "network": "The server is not answering. Try again.",
         "refused": "The password could not be changed."
       }

@@ -29,6 +29,7 @@ import { MfaLockout } from './mfa-lockout';
 import { lengthSaidOf } from '../shared/form/length-said';
 import { Feedback } from '../shared/feedback/feedback';
 import { typedCode } from '../shared/form/typed-code';
+import { SpentBudget } from '../shared/errors/spent-budget';
 
 /**
  * Two-step verification for the signed-in account: an authenticator app, passkeys, and the recovery codes behind both.
@@ -54,6 +55,8 @@ import { typedCode } from '../shared/form/typed-code';
 })
 export class TwoFactorPage {
   private readonly auth = inject(AuthFacade);
+  /** When a spent budget may be tried again, which its refusal says. */
+  protected readonly budget = inject(SpentBudget);
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly stepUp = inject(StepUp);

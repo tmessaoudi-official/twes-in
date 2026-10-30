@@ -61,6 +61,7 @@ final class StepUpTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->postJson(self::STEP_UP, ['password' => self::PASSWORD]);
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS, 'the right password is not a way round the budget, nor a new sign-in');
+        $this->assertTheWaitIsSaid(300);
     }
 
     public function testRightAnswersGiveBackWhatTheySpentSoATypoIsStillAnswered(): void

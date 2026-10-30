@@ -36,9 +36,18 @@ final class LoginFailureHandler implements AuthenticationFailureHandlerInterface
             // The password was right and one step is left, so this is not a refusal: 200, and the SPA asks
             // for the code. No session exists yet either way (ruling of 2026-09-10).
             $exception instanceof SecondFactorRequired => new JsonResponse(['mfaRequired' => true]),
-            $exception instanceof TooManyLoginAttemptsAuthenticationException => new JsonResponse(['error' => self::TOO_MANY_ATTEMPTS], Response::HTTP_TOO_MANY_REQUESTS),
+            // Symfony's login throttling says its wait in whole minutes, the window it is spent for.
+            $exception instanceof TooManyLoginAttemptsAuthenticationException => SpentBudget::answerIn(self::secondsOf($exception)),
             $exception instanceof CustomUserMessageAccountStatusException => new JsonResponse(['error' => $exception->getMessageKey()], Response::HTTP_UNAUTHORIZED),
             default => new JsonResponse(['error' => self::INVALID_CREDENTIALS], Response::HTTP_UNAUTHORIZED),
         };
+    }
+
+    /** The wait the throttle names, in seconds; null when it names none. */
+    private static function secondsOf(TooManyLoginAttemptsAuthenticationException $tooMany): ?int
+    {
+        $minutes = $tooMany->getMessageData()['%minutes%'] ?? null;
+
+        return \is_int($minutes) && $minutes > 0 ? $minutes * 60 : null;
     }
 }

@@ -33,7 +33,7 @@
       "invalid_credentials": "Adresse e-mail ou mot de passe incorrect.",
       "account_locked": "Compte verrouillé après trop de tentatives. Réessayez dans quelques minutes.",
       "account_disabled": "Ce compte est désactivé.",
-      "too_many_attempts": "Trop de tentatives. Réessayez plus tard.",
+      "too_many_attempts": "Trop de tentatives. {{retry}}",
       "authentication_required": "Veuillez vous connecter.",
       "csrf_token_missing": "La page a expiré, rechargez-la puis réessayez.",
       "csrf_token_invalid": "La page a expiré, rechargez-la puis réessayez.",
@@ -3339,7 +3339,7 @@
     "cancel": "Fermer",
     "errors": {
       "refused": "Ce n’est pas le bon mot de passe.",
-      "too_many": "Trop de tentatives : réessayez dans quelques minutes.",
+      "too_many": "Trop de tentatives. {{retry}}",
       "no_passkey": "Aucune clé d’accès n’a pu être utilisée.",
       "network": "Le serveur ne répond pas : réessayez."
     },

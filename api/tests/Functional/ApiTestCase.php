@@ -412,6 +412,15 @@ abstract class ApiTestCase extends WebTestCase
         return $page;
     }
 
+    /** A spent budget says when it may be tried again: `Retry-After` in whole seconds, within the budget's window. */
+    protected function assertTheWaitIsSaid(int $atMost): void
+    {
+        $wait = $this->client->getResponse()->headers->get('Retry-After');
+        self::assertNotNull($wait, 'a spent budget says when to come back');
+        self::assertMatchesRegularExpression('/^[1-9]\d*$/', $wait);
+        self::assertLessThanOrEqual($atMost, (int) $wait);
+    }
+
     /** @return array<string, mixed> */
     protected function json(): array
     {

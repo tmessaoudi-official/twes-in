@@ -243,6 +243,7 @@ final class PasskeySignInTest extends ApiTestCase
             $this->postJson(self::SIGN_IN, ['credential' => ['id' => 'nothing']]);
 
             self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+            $this->assertTheWaitIsSaid(900);
         } finally {
             static::getContainer()->get('limiter.passkey_sign_in')->create('127.0.0.1')->reset();
         }

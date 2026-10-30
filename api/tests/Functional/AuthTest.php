@@ -201,6 +201,7 @@ final class AuthTest extends ApiTestCase
         $this->login('ghost@example.test', 'wrong');
 
         self::assertResponseStatusCodeSame(429);
+        $this->assertTheWaitIsSaid(900);
         self::assertSame(['error' => 'too_many_attempts'], $this->json());
     }
 

@@ -198,6 +198,7 @@ final class AuthenticatorReplacementTest extends ApiTestCase
         $this->postJson(self::CONFIRM, ['code' => $this->codeOf($secret)]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(300);
         self::assertSame(['error' => 'too_many_attempts'], $this->json());
         self::assertSame(0, $this->audited('auth.totp_replaced'));
     }

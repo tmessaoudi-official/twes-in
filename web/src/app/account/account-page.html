@@ -106,7 +106,7 @@
                       } @else if (passwordProblemAt() === 'new') {
                         <mat-error data-testid="account-password-new-error">{{
                           'account.password.problems.' + passwordProblem()
-                            | translate: { min: passwordMin() }
+                            | translate: { min: passwordMin(), retry: budget.retry() }
                         }}</mat-error>
                       }
                     </mat-form-field>
@@ -149,7 +149,8 @@
                       data-testid="account-password-problem"
                     >
                       {{
-                        'account.password.problems.' + problem | translate: { min: passwordMin() }
+                        'account.password.problems.' + problem
+                          | translate: { min: passwordMin(), retry: budget.retry() }
                       }}
                     </p>
                   }

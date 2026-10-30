@@ -2,6 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import {
@@ -12,6 +13,7 @@ import {
 import { of } from 'rxjs';
 import type { DemoAvailability, Me } from '../api/types.gen';
 import { LoginPage } from './login-page';
+import { SpentBudget } from '../shared/errors/spent-budget';
 import { PasskeyClient } from './passkey-client';
 import { provideStillAppearance } from '../shared/testing/appearance';
 import { provideQuietBuild } from '../shared/testing/build';
@@ -53,6 +55,7 @@ class StaticLoader implements TranslateLoader {
           invalid_credentials: 'Identifiants incorrects',
           account_disabled: 'Compte désactivé',
           invalid_code: 'Code incorrect',
+          too_many_attempts: 'Trop de tentatives. {{retry}}',
           mfa_not_pending: 'Reconnectez-vous',
           network: 'Serveur injoignable',
           invalid_passkey: 'Clé refusée',
@@ -104,7 +107,11 @@ describe('LoginPage', () => {
     offersUnderTheField: vi.fn(() => Promise.resolve(false)),
   };
 
+  // When a spent budget may be tried again, as SpentBudget words it from the API's answer.
+  const budget = { retry: signal('') };
+
   beforeEach(async () => {
+    budget.retry.set('');
     passkeyClient.get.mockReset();
     passkeyClient.supported.mockReset().mockReturnValue(true);
     passkeyClient.elsewhere.mockReset().mockReturnValue(null);
@@ -117,6 +124,7 @@ describe('LoginPage', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: PasskeyClient, useValue: passkeyClient },
+        { provide: SpentBudget, useValue: budget },
         provideStillAppearance(),
         provideQuietFeedback(),
         provideTranslateService({
@@ -504,6 +512,24 @@ describe('LoginPage', () => {
     expect(rendered.query('login-error')?.textContent).toContain('Code incorrect');
     expect(rendered.query<HTMLInputElement>('mfa-code')?.value).toBe('');
     expect(rendered.query('mfa-form')).not.toBeNull();
+  });
+
+  it('says when the code may be tried again once its budget is spent', async () => {
+    const rendered = await render();
+    await passThePassword(rendered);
+    await submitCode(rendered, '000000');
+    budget.retry.set('Réessayez à 14:32.');
+    rendered.http
+      .expectOne('/api/auth/mfa/verify')
+      .flush(
+        { error: 'too_many_attempts' },
+        { status: 429, statusText: 'Too Many Requests', headers: { 'Retry-After': '120' } },
+      );
+    await settle(rendered.fixture);
+
+    expect(rendered.query('login-error')?.textContent?.trim()).toBe(
+      'Trop de tentatives. Réessayez à 14:32.',
+    );
   });
 
   it('goes back to the password when the half-finished login has expired', async () => {

@@ -270,6 +270,7 @@ final class PasskeyTest extends ApiTestCase
 
         $this->postJson('/api/auth/mfa/passkey-login', ['credential' => (new FakeAuthenticator())->assert($this->requestOptions())]);
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(300);
     }
 
     public function testAddingOrRemovingAPasskeyWaitsForAFreshProofOfWhoIsAtTheScreen(): void
@@ -443,6 +444,7 @@ final class PasskeyTest extends ApiTestCase
         // The sixth attempt is refused unread, however good; and none of the five replaced anything.
         $this->postJson(self::RECOVERY, ['credential' => $authenticator->assert($this->recoveryOptions())]);
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(300);
         self::assertSame(0, $this->audited('auth.recovery_codes_regenerated'));
     }
 

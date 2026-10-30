@@ -13,6 +13,7 @@ import { CompanyEntryProof, type EntryAsked, type EntryOutcome } from './company
 import { PasswordToggle } from '../form/password-toggle';
 import { signInAddress } from '../session/return-to';
 import { typedCode } from '../form/typed-code';
+import { SpentBudget } from '../errors/spent-budget';
 
 /**
  * The step-up's question for entering a company: the password, the authenticator code beside it where the company
@@ -83,7 +84,7 @@ import { typedCode } from '../form/typed-code';
               {{
                 (key === 'code_refused' || key === 'passkey_required'
                   ? 'company_proof.errors.'
-                  : 'step_up.errors.') + key | translate
+                  : 'step_up.errors.') + key | translate: { retry: budget.retry() }
               }}
             </p>
           }
@@ -127,6 +128,8 @@ import { typedCode } from '../form/typed-code';
 export class CompanyProofDialog {
   protected readonly ref = inject<MatDialogRef<CompanyProofDialog, boolean>>(MatDialogRef);
   protected readonly proof = inject(CompanyEntryProof);
+  /** When a spent budget may be tried again, which its refusal says. */
+  protected readonly budget = inject(SpentBudget);
   private readonly router = inject(Router);
   protected readonly asked = inject<EntryAsked>(MAT_DIALOG_DATA);
   protected readonly password = new FormControl('', { nonNullable: true });

@@ -177,6 +177,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(300);
         self::assertSame(['error' => 'too_many_attempts'], $this->json());
         $this->signOut();
         $this->login('someone@twes.local', self::PASSWORD);

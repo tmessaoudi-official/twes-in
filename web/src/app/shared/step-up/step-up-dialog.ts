@@ -12,6 +12,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { type StepUpOutcome, StepUpProof } from './step-up-proof';
 import { PasswordToggle } from '../form/password-toggle';
 import { signInAddress } from '../session/return-to';
+import { SpentBudget } from '../errors/spent-budget';
 
 /** What the dialog is opened with: the translation key of the sentence saying why it asks. */
 export interface StepUpReason {
@@ -58,7 +59,7 @@ export interface StepUpReason {
           </mat-form-field>
           @if (problem(); as key) {
             <p role="alert" class="text-error" data-testid="step-up-error">
-              {{ 'step_up.errors.' + key | translate }}
+              {{ 'step_up.errors.' + key | translate: { retry: budget.retry() } }}
             </p>
           }
         </div>
@@ -89,6 +90,8 @@ export interface StepUpReason {
 export class StepUpDialog {
   protected readonly ref = inject<MatDialogRef<StepUpDialog, boolean>>(MatDialogRef);
   protected readonly proof = inject(StepUpProof);
+  /** When a spent budget may be tried again, which its refusal says. */
+  protected readonly budget = inject(SpentBudget);
   private readonly router = inject(Router);
   /** Why the proof is asked for, as a translation key: leaving customer view unless the caller says otherwise. */
   protected readonly intro =

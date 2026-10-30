@@ -81,7 +81,7 @@
               </div>
               @if (replaceError(); as errorCode) {
                 <p role="alert" class="twes-auth-error" data-testid="two-factor-replace-error">
-                  {{ 'auth.errors.' + errorCode | translate }}
+                  {{ 'auth.errors.' + errorCode | translate: { retry: budget.retry() } }}
                 </p>
               }
               <div class="flex flex-wrap gap-2">
@@ -140,7 +140,7 @@
               </div>
               @if (error(); as errorCode) {
                 <p role="alert" class="twes-auth-error" data-testid="two-factor-error">
-                  {{ 'auth.errors.' + errorCode | translate }}
+                  {{ 'auth.errors.' + errorCode | translate: { retry: budget.retry() } }}
                 </p>
               }
               <button
@@ -174,7 +174,7 @@
             }
             @if (removeError(); as errorCode) {
               <p role="alert" class="twes-auth-error" data-testid="two-factor-app-remove-error">
-                {{ 'auth.errors.' + errorCode | translate }}
+                {{ 'auth.errors.' + errorCode | translate: { retry: budget.retry() } }}
               </p>
             }
             <button
@@ -189,7 +189,7 @@
             </button>
             @if (replaceError(); as errorCode) {
               <p role="alert" class="twes-auth-error" data-testid="two-factor-replace-error">
-                {{ 'auth.errors.' + errorCode | translate }}
+                {{ 'auth.errors.' + errorCode | translate: { retry: budget.retry() } }}
               </p>
             }
           }
@@ -233,7 +233,7 @@
             </div>
             @if (error(); as errorCode) {
               <p role="alert" class="twes-auth-error" data-testid="two-factor-error">
-                {{ 'auth.errors.' + errorCode | translate }}
+                {{ 'auth.errors.' + errorCode | translate: { retry: budget.retry() } }}
               </p>
             }
             <button
@@ -270,7 +270,7 @@
           </button>
         } @else if (error(); as errorCode) {
           <p role="alert" class="twes-auth-error" data-testid="two-factor-error">
-            {{ 'auth.errors.' + errorCode | translate }}
+            {{ 'auth.errors.' + errorCode | translate: { retry: budget.retry() } }}
           </p>
         }
       </section>
@@ -332,7 +332,7 @@
         }
         @if (passkeyError(); as errorCode) {
           <p role="alert" class="twes-auth-error" data-testid="two-factor-passkey-error">
-            {{ 'auth.errors.' + errorCode | translate }}
+            {{ 'auth.errors.' + errorCode | translate: { retry: budget.retry() } }}
           </p>
         }
         @if (passkeysSupported()) {

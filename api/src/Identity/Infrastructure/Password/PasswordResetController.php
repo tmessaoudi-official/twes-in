@@ -13,6 +13,7 @@ use App\Identity\Application\Password\NewPasswordRefused;
 use App\Identity\Application\Password\ResetLinkNotUsable;
 use App\Identity\Application\Password\ResetPassword;
 use App\Identity\Domain\ValueObject\Email;
+use App\Identity\Infrastructure\Security\SpentBudget;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -44,8 +45,9 @@ final readonly class PasswordResetController
     #[Route('/api/auth/password/forgot', name: 'api_auth_password_forgot', methods: ['POST'])]
     public function forgot(Request $request): Response
     {
-        if (!$this->clientLimiter->create($request->getClientIp() ?? '')->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $this->clientLimiter->create($request->getClientIp() ?? '')->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         $body = self::body($request);
@@ -65,8 +67,9 @@ final readonly class PasswordResetController
     #[Route('/api/auth/password/reset', name: 'api_auth_password_reset', methods: ['POST'])]
     public function reset(Request $request): Response
     {
-        if (!$this->useLimiter->create($request->getClientIp() ?? '')->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $this->useLimiter->create($request->getClientIp() ?? '')->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         $body = self::body($request);

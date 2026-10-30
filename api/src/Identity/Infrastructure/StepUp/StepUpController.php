@@ -16,6 +16,7 @@ use App\Identity\Application\StepUp\StepUpExhausted;
 use App\Identity\Application\StepUp\StepUpRefused;
 use App\Identity\Infrastructure\Passkey\PasskeyChallenges;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Identity\Infrastructure\Security\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -54,8 +55,9 @@ final readonly class StepUpController
 
         // Spent before the password is checked, so parallel guesses cannot outrun the budget; a right one gives it back.
         $attempts = $this->limiter->create($userId->toRfc4122());
-        if (!$attempts->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $attempts->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         $password = self::body($request)['password'] ?? null;
@@ -94,8 +96,9 @@ final readonly class StepUpController
         $userId = $this->currentUserId();
 
         $attempts = $this->limiter->create($userId->toRfc4122());
-        if (!$attempts->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $attempts->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         // Taken before anything is checked, so a failed attempt spends the challenge as surely as a successful one.

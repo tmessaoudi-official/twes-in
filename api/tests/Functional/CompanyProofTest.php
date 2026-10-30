@@ -103,6 +103,25 @@ final class CompanyProofTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
 
+    public function testFiveWrongProofsHoldTheRightOneBackAndSayWhenToComeBack(): void
+    {
+        $this->memberOfBoth();
+
+        // A session ends after a few wrong answers of its own, so the guesses are spread over sign-ins, as a guesser would.
+        for ($guess = 0; $guess < 5; ++$guess) {
+            $this->postJson($this->proof($this->second), ['password' => 'guess-'.$guess]);
+            if (Response::HTTP_UNAUTHORIZED === $this->client->getResponse()->getStatusCode()) {
+                $this->login(self::EMAIL, self::PASSWORD);
+            }
+        }
+        $this->login(self::EMAIL, self::PASSWORD);
+        $this->postJson($this->proof($this->second), ['password' => self::PASSWORD]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertSame('too_many_attempts', $this->json()['error'] ?? null);
+        $this->assertTheWaitIsSaid(300);
+    }
+
     public function testACompanyOfSomeoneElseIsStillNoSuchCompany(): void
     {
         $this->memberOfBoth();

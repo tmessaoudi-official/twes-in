@@ -12,6 +12,7 @@ namespace App\Identity\Infrastructure\Password;
 use App\Identity\Application\Password\ChangePassword;
 use App\Identity\Application\Password\NewPasswordRefused;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Identity\Infrastructure\Security\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -47,8 +48,9 @@ final readonly class ChangePasswordController
         // Spent before the current password is checked, so parallel guesses cannot outrun the budget; a change that
         // goes through gives it back.
         $attempts = $this->limiter->create($account->getId()->toRfc4122());
-        if (!$attempts->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $attempts->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         $body = json_decode($request->getContent(), true);

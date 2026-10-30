@@ -62,6 +62,7 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { RefusedField } from '../shared/form/refused-field';
 import { PasswordRule, shorterThanRule } from '../shared/password/password-rule';
+import { SpentBudget } from '../shared/errors/spent-budget';
 
 /** Why a key typed in Préférences was not kept: the shell's own reasons, or another action has it already. */
 type KeyRefusal = ShellKeyRefusal | 'taken';
@@ -114,6 +115,8 @@ const PASSWORD_PROBLEM_FIELDS: Readonly<
 })
 export class AccountPage implements OnInit {
   protected readonly theme = inject(ThemeFacade);
+  /** When a spent budget may be tried again, which its refusal says. */
+  protected readonly budget = inject(SpentBudget);
   protected readonly language = inject(LanguageFacade);
   private readonly company = inject(CompanyFacade);
   private readonly auth = inject(AuthFacade);

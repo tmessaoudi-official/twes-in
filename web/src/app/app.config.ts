@@ -36,6 +36,7 @@ import { companyProofInterceptor } from './shared/company-proof/company-proof-in
 import { customerScreenInterceptor } from './shared/customer-view/customer-screen-interceptor';
 import { supportReadOnlyInterceptor } from './shared/support/support-read-only-interceptor';
 import { demoRefusedInterceptor } from './shared/demo/demo-refused-interceptor';
+import { spentBudgetInterceptor } from './shared/errors/spent-budget-interceptor';
 import { csrfInterceptor } from './auth/csrf-interceptor';
 import { PasskeyClient } from './auth/passkey-client';
 import { ApiSettings } from './shared/settings/api-settings';
@@ -79,6 +80,8 @@ export const appConfig: ApplicationConfig = {
         customerScreenInterceptor,
         supportReadOnlyInterceptor,
         demoRefusedInterceptor,
+        // Before the screen reads a spent budget's refusal: when to come back.
+        spentBudgetInterceptor,
       ]),
       withNoXsrfProtection(),
     ),

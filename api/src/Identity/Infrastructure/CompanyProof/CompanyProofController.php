@@ -14,6 +14,7 @@ use App\Identity\Application\CompanyProof\ProveCompanyEntry;
 use App\Identity\Application\StepUp\StepUpExhausted;
 use App\Identity\Infrastructure\Passkey\PasskeyChallenges;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Identity\Infrastructure\Security\SpentBudget;
 use App\Tenancy\Application\Member\NotAMember;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -49,8 +50,9 @@ final readonly class CompanyProofController
     {
         $userId = $this->currentUserId();
         $attempts = $this->limiter->create($userId->toRfc4122());
-        if (!$attempts->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $attempts->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
         $body = self::body($request);
         $password = $body['password'] ?? null;
@@ -80,8 +82,9 @@ final readonly class CompanyProofController
     {
         $userId = $this->currentUserId();
         $attempts = $this->limiter->create($userId->toRfc4122());
-        if (!$attempts->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $attempts->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
         // Taken before anything is checked, so a failed attempt spends the challenge as surely as a successful one.
         $options = $this->challenges->take(self::PURPOSE, $userId);

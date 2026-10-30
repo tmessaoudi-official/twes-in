@@ -33,7 +33,7 @@
       "invalid_credentials": "Wrong email address or password.",
       "account_locked": "Account locked after too many attempts. Try again in a few minutes.",
       "account_disabled": "This account is disabled.",
-      "too_many_attempts": "Too many attempts. Try again later.",
+      "too_many_attempts": "Too many attempts. {{retry}}",
       "authentication_required": "Please sign in.",
       "csrf_token_missing": "The page has expired; reload it and try again.",
       "csrf_token_invalid": "The page has expired; reload it and try again.",
@@ -3339,7 +3339,7 @@
     "cancel": "Close",
     "errors": {
       "refused": "That is not the right password.",
-      "too_many": "Too many attempts: try again in a few minutes.",
+      "too_many": "Too many attempts. {{retry}}",
       "no_passkey": "No passkey could be used.",
       "network": "The server is not answering: try again."
     },

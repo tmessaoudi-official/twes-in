@@ -27,6 +27,7 @@ use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Infrastructure\Security\PendingSecondFactor;
 use App\Identity\Infrastructure\Security\SecondFactorLogin;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Identity\Infrastructure\Security\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -86,8 +87,9 @@ final readonly class MfaController
 
         // Spent before the code is checked, so parallel guesses cannot outrun the budget; a right code gives it back.
         $attempts = $this->mfaVerifyLimiter->create($userId->toRfc4122());
-        if (!$attempts->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $attempts->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         try {
@@ -131,8 +133,9 @@ final readonly class MfaController
     public function confirm(Request $request): JsonResponse
     {
         $userId = $this->currentUserId();
-        if (!$this->mfaConfirmLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $this->mfaConfirmLimiter->create($userId->toRfc4122())->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         try {
@@ -189,8 +192,9 @@ final readonly class MfaController
     public function confirmReplacement(Request $request): JsonResponse
     {
         $userId = $this->currentUserId();
-        if (!$this->mfaConfirmLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $this->mfaConfirmLimiter->create($userId->toRfc4122())->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         try {
@@ -218,8 +222,9 @@ final readonly class MfaController
         }
 
         $attempts = $this->mfaVerifyLimiter->create($userId->toRfc4122());
-        if (!$attempts->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $attempts->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         try {
