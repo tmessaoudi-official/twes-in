@@ -111,6 +111,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   TLS checks off), and ends with the line the developer runs on
   the PC: `land.sh /stack/projects/twes-in <branch>` (claude-code-setup), which re-signs every commit as the developer,
   strips any trailer and fast-forwards master. No tag, no release, no deploy from the cloud.
+  The session must have **claude-code-setup selected as a second repository**: without it nothing installs the framework
+  or sets `CCS_EXTRA_CA_FILE`, so `make check` fails on the proxy's certificate (`SELF_SIGNED_CERT_IN_CHAIN`). If
+  `docker info` fails, follow `claude-code-setup/cloud/machine-notes.md` to restart the daemon; if it still fails, say
+  which gate legs did not run and leave the verdict to CI.
 
 ## Where things live
 
