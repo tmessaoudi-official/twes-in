@@ -56,6 +56,20 @@ describe('PlatformLegalFacade', () => {
     expect(facade.failed()).toBe(false);
   });
 
+  it("reads the platform's country again and leaves the identity and its versions as read", async () => {
+    await facade.load();
+    api.identity.mockResolvedValueOnce({
+      values: { 'publisher.name': 'twes SARL' },
+      versions: { 'publisher.name': 3 },
+      country: 'TN',
+    });
+
+    await facade.rereadCountry();
+
+    expect(facade.country()).toBe('TN');
+    expect(facade.identity()).toEqual({ 'publisher.name': 'twes' });
+  });
+
   it('changes nothing when the operator does not give the proof', async () => {
     stepUp.request.mockReset().mockResolvedValue(false);
     await facade.load();

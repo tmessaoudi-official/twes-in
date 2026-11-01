@@ -229,7 +229,7 @@ final class NotificationsTest extends ApiTestCase
         $session = $this->em()->getConnection()->fetchOne('SELECT id FROM user_session WHERE user_id = ?', [$this->owner->getId()->toRfc4122()]);
         self::assertIsString($session);
         self::assertSame($this->owner->getId()->toRfc4122().'.'.$session, $claims['sub']);
-        self::assertSame(['user:'.$this->owner->getId()->toRfc4122(), 'company:'.$this->company->getId()->toRfc4122()], $claims['channels']);
+        self::assertSame(['user:'.$this->owner->getId()->toRfc4122(), 'installation', 'company:'.$this->company->getId()->toRfc4122()], $claims['channels']);
         self::assertIsString($body['expiresAt']);
     }
 
@@ -240,7 +240,7 @@ final class NotificationsTest extends ApiTestCase
         $operator = $this->createUser('operator@twes.local', 'password-1234', operator: true);
         $this->login('operator@twes.local', 'password-1234');
 
-        self::assertSame(['user:'.$operator->getId()->toRfc4122(), 'platform'], $this->realtimeChannels());
+        self::assertSame(['user:'.$operator->getId()->toRfc4122(), 'installation', 'platform'], $this->realtimeChannels());
 
         $this->client->getCookieJar()->clear();
         $this->login('owner@twes.local', 'password-1234');
@@ -252,7 +252,7 @@ final class NotificationsTest extends ApiTestCase
         $this->login('owner@twes.local', 'password-1234');
         $this->em()->getConnection()->executeStatement('DELETE FROM membership WHERE user_id = ? AND company_id = ?', [$this->owner->getId()->toRfc4122(), $this->company->getId()->toRfc4122()]);
 
-        self::assertSame(['user:'.$this->owner->getId()->toRfc4122()], $this->realtimeChannels());
+        self::assertSame(['user:'.$this->owner->getId()->toRfc4122(), 'installation'], $this->realtimeChannels());
     }
 
     public function testAMemberOfASuspendedCompanyNoLongerHearsIt(): void
@@ -260,7 +260,7 @@ final class NotificationsTest extends ApiTestCase
         $this->login('owner@twes.local', 'password-1234');
         $this->em()->getConnection()->executeStatement("UPDATE company SET status = 'suspended' WHERE id = ?", [$this->company->getId()->toRfc4122()]);
 
-        self::assertSame(['user:'.$this->owner->getId()->toRfc4122()], $this->realtimeChannels());
+        self::assertSame(['user:'.$this->owner->getId()->toRfc4122(), 'installation'], $this->realtimeChannels());
     }
 
     /** Read in the shell until its retention ends, a closed company's members hear its owner reopen it elsewhere. */
@@ -269,7 +269,7 @@ final class NotificationsTest extends ApiTestCase
         $this->login('owner@twes.local', 'password-1234');
         $this->em()->getConnection()->executeStatement("UPDATE company SET status = 'closed' WHERE id = ?", [$this->company->getId()->toRfc4122()]);
 
-        self::assertSame(['user:'.$this->owner->getId()->toRfc4122(), 'company:'.$this->company->getId()->toRfc4122()], $this->realtimeChannels());
+        self::assertSame(['user:'.$this->owner->getId()->toRfc4122(), 'installation', 'company:'.$this->company->getId()->toRfc4122()], $this->realtimeChannels());
     }
 
     public function testNobodyGetsARealtimeTokenSignedOut(): void

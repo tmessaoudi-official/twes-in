@@ -13,3 +13,16 @@ export async function announceSaved(
   TestBed.inject(LiveChanges).receive({ type: 'changed', kind, id, action, actor, origin: null });
   await new Promise((resolve) => setTimeout(resolve, LIVE_BATCH_MS + 10));
 }
+
+/** Announces, as the installation's channel would, that an operator moved the platform's own settings. */
+export async function announcePlatformSettingMoved(): Promise<void> {
+  TestBed.inject(LiveChanges).receive({
+    type: 'changed',
+    kind: 'platform_setting',
+    id: null,
+    action: 'platform_setting.changed',
+    actor: null,
+    origin: null,
+  });
+  await new Promise((resolve) => setTimeout(resolve, LIVE_BATCH_MS + 10));
+}

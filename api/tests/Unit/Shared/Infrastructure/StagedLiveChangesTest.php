@@ -12,6 +12,7 @@ namespace App\Tests\Unit\Shared\Infrastructure;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
 use App\Shared\Application\LiveChange;
+use App\Shared\Application\RealtimeTokens;
 use App\Shared\Infrastructure\Realtime\StagedLiveChanges;
 use App\Tests\Support\InMemoryUsers;
 use App\Tests\Support\RecordingRealtimePublisher;
@@ -196,6 +197,29 @@ final class StagedLiveChangesTest extends TestCase
 
         self::assertSame(['user:'.$this->nadia->getId()->toRfc4122()], array_column($this->publisher->pushed, 'channel'));
         self::assertSame([], $this->changes->saidHere());
+    }
+
+    /**
+     * A platform setting moved is said to every person on the installation's channel, which every person's token
+     * carries, operators included: by kind alone, naming no record and no one, and not again on the platform's channel
+     * though /platform shows it. The tab that changed it is named so it hears itself once, through its answer.
+     */
+    public function testWhatIsSaidToEveryoneReachesTheInstallationsChannelAloneByKindAlone(): void
+    {
+        $changes = new StagedLiveChanges($this->publisher, $this->users, $this->requests, ['platform_setting']);
+        $request = new Request();
+        $request->headers->set('X-Tab', 'tab-op');
+        $this->requests->push($request);
+        $changes->begin();
+        $changes->stage(LiveChange::everyone('platform_setting', 'platform_setting.changed'));
+        $changes->commit();
+        $this->requests->pop();
+
+        self::assertSame([[
+            'channel' => RealtimeTokens::INSTALLATION,
+            'data' => ['type' => 'changed', 'kind' => 'platform_setting', 'id' => null, 'action' => 'platform_setting.changed', 'actor' => null, 'origin' => 'tab-op'],
+        ]], $this->publisher->pushed);
+        self::assertSame([['kind' => 'platform_setting', 'id' => null, 'action' => 'platform_setting.changed']], $changes->saidHere());
     }
 
     public function testTheTabThatMadeTheChangeIsNamedSoItCanIgnoreItsOwnEchoAndAnUnreadableTabIsNot(): void

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Realtime;
 
 use App\Identity\Infrastructure\ApiPlatform\Output\MeFactory;
+use App\Settings\Application\ChangeSettings;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -33,5 +34,17 @@ final class SessionKindsTest extends TestCase
 
         self::assertGreaterThanOrEqual(7, \count($kinds));
         self::assertSame($kinds, $listed);
+    }
+
+    /**
+     * The platform's phone policy is in the session (`phonesOutsideRanges`), so an open form hears an operator move it.
+     * The bare `setting` kind is every person's presentation choice and every company setting: hearing it would read
+     * the session again on each.
+     */
+    public function testThePlatformsSettingsMoveTheSessionAndNoOtherSettingDoes(): void
+    {
+        self::assertContains(ChangeSettings::PLATFORM_KIND, MeFactory::CHANGED_BY);
+        self::assertSame(ChangeSettings::platformSettingMoved()->kind, ChangeSettings::PLATFORM_KIND);
+        self::assertNotContains(ChangeSettings::ENTITY_TYPE, MeFactory::CHANGED_BY);
     }
 }

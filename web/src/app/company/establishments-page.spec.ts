@@ -27,7 +27,7 @@ import { EstablishmentsPage } from './establishments-page';
 import { ArticleSettings } from '../products/article-settings-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
-import { announceSaved } from '../shared/testing/live';
+import { announcePlatformSettingMoved, announceSaved } from '../shared/testing/live';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
@@ -341,6 +341,15 @@ describe('EstablishmentsPage', () => {
       expect.objectContaining({ name: 'Siège social', city: 'Sfax' }),
       2,
     );
+  });
+
+  it('reads the establishments again when the platform moves its settings', async () => {
+    facade.loadEstablishments.mockClear();
+
+    await announcePlatformSettingMoved();
+    await settle();
+
+    expect(facade.loadEstablishments).toHaveBeenCalledWith('c1');
   });
 
   it('takes into the open form what another person saved on the same establishment', async () => {

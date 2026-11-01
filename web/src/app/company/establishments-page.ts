@@ -177,8 +177,9 @@ export class EstablishmentsPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
+      // The platform's phone policy words each establishment's « À vérifier » line, which the API works out on read.
       this.live.reloadOn(
-        ['establishment'],
+        ['establishment', 'platform_setting'],
         () => this.facade.loadEstablishments(companyId),
         this.destroyRef,
       );

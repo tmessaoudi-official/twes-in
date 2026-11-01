@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Settings\Application;
 
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\InvalidSettingValue;
+use App\Settings\Application\PhoneSettings;
 use App\Settings\Application\PresentationSettings;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
@@ -20,11 +21,13 @@ use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
 use App\Settings\Domain\Event\PersonalSettingChanged;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\LiveChange;
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\RecordingDomainEvents;
+use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -38,14 +41,15 @@ final class ChangeSettingsTest extends TestCase
     private SettingContext $context;
     private Uuid $userId;
     private RecordingDomainEvents $events;
+    private RecordingLiveChanges $liveChanges;
 
     protected function setUp(): void
     {
         $this->settings = new InMemorySettings();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
-        $catalog = new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
-        $this->change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, $this->events = new RecordingDomainEvents($transactions), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()));
+        $catalog = new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new PhoneSettings()]);
+        $this->change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, $this->events = new RecordingDomainEvents($transactions), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), $this->liveChanges = new RecordingLiveChanges($transactions));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->userId = Uuid::v7();
         $this->context = new SettingContext($this->company, Uuid::v7(), $this->userId);
@@ -62,6 +66,27 @@ final class ChangeSettingsTest extends TestCase
     }
 
     /** What a person chooses for themselves can matter outside the settings (their language, which their mails read). */
+    /**
+     * A platform setting moved is said to every person, by kind alone, set or reset, so each open tab reads the session
+     * again (the phone policy its fields judge by); a company's or a person's own choice is not.
+     */
+    public function testAPlatformSettingMovedIsSaidToEveryoneAndNoOtherLevelIs(): void
+    {
+        $platform = new SettingContext();
+        $this->change->change($platform, PhoneSettings::OUTSIDE_RANGES, SettingLevel::Platform, PhoneSettings::KEEP, $this->userId);
+        $this->change->change($platform, PhoneSettings::OUTSIDE_RANGES, SettingLevel::Platform, PhoneSettings::KEEP, $this->userId);
+        $this->change->change($this->context, 'presentation.density', SettingLevel::Company, 'compact', $this->userId);
+        $this->change->change($this->context, 'presentation.language', SettingLevel::User, 'en', $this->userId);
+        $this->change->reset($platform, PhoneSettings::OUTSIDE_RANGES, SettingLevel::Platform, $this->userId);
+
+        self::assertEquals(
+            [ChangeSettings::platformSettingMoved(), ChangeSettings::platformSettingMoved()],
+            $this->liveChanges->staged,
+            'the same value again moves nothing',
+        );
+        self::assertEquals(LiveChange::everyone('platform_setting', 'platform_setting.changed'), ChangeSettings::platformSettingMoved());
+    }
+
     public function testAPersonsOwnChoiceIsToldOnceCommittedAndASharedOneIsNot(): void
     {
         $this->change->change($this->context, 'presentation.language', SettingLevel::User, 'en', $this->userId);

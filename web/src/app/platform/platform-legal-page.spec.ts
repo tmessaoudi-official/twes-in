@@ -20,6 +20,7 @@ import type { LegalLanguage } from '../shared/legal/legal-api';
 import { LEGAL_PAGES, type LegalPage } from '../shared/legal/legal-pages';
 import { Session, type SessionState } from '../shared/session/session';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
+import { announcePlatformSettingMoved } from '../shared/testing/live';
 import { PlatformLegalFacade } from './platform-legal-facade';
 import { PlatformLegalPage } from './platform-legal-page';
 import type { LegalStatusRow, LegalVersionRow } from './platform-legal-types';
@@ -124,6 +125,7 @@ describe('PlatformLegalPage', () => {
     identityRefusals: ReturnType<typeof signal<readonly FieldRefusal[]>>;
     country: ReturnType<typeof signal<string | null>>;
     load: ReturnType<typeof vi.fn>;
+    rereadCountry: ReturnType<typeof vi.fn>;
     saveIdentity: ReturnType<typeof vi.fn>;
     open: ReturnType<typeof vi.fn>;
     write: ReturnType<typeof vi.fn>;
@@ -194,6 +196,7 @@ describe('PlatformLegalPage', () => {
       identityRefusals: signal<readonly FieldRefusal[]>([]),
       country: signal<string | null>('TN'),
       load: vi.fn(async () => undefined),
+      rereadCountry: vi.fn(async () => undefined),
       saveIdentity: vi.fn(async () => 'saved'),
       open: vi.fn(async (page: string, language: string) => {
         facade.versions.set(histories[`${page}.${language}`] ?? []);
@@ -251,6 +254,21 @@ describe('PlatformLegalPage', () => {
   });
 
   // Languages grow: one row per page whatever their number, the chosen language's status and what waits in the others.
+  it("reads the platform's country again when another operator moves it, keeping the identity typed", async () => {
+    await render();
+    const name = q('legal-identity-publisher.name') as HTMLInputElement;
+    name.value = 'twes SARL';
+    name.dispatchEvent(new Event('input'));
+    await settle();
+
+    await announcePlatformSettingMoved();
+    await settle();
+
+    expect(facade.rereadCountry).toHaveBeenCalledTimes(1);
+    expect(facade.load).toHaveBeenCalledTimes(1);
+    expect((q('legal-identity-publisher.name') as HTMLInputElement).value).toBe('twes SARL');
+  });
+
   it('lists every page with where it stands in the chosen language, the screen one first', async () => {
     facade.overview.set(
       overviewWith({

@@ -45,11 +45,11 @@ final readonly class MeFactory
     /**
      * The kinds of change whose writes move what this answers: a company's status, closing, logo or required second
      * factor, a membership or role and its permissions, a module switched, a subscription's standing and the payments
-     * declared towards it, a support grant. The shell reads the session again on each (`SESSION_KINDS`,
-     * web/src/app/shared/session/session-kinds.ts, which `SessionKindsTest` holds to this list): a field added here
-     * names the kind its writer says.
+     * declared towards it, a support grant, the platform's own settings (its phone policy). The shell reads the session
+     * again on each (`SESSION_KINDS`, web/src/app/shared/session/session-kinds.ts, which `SessionKindsTest` holds to
+     * this list): a field added here names the kind its writer says.
      */
-    public const array CHANGED_BY = ['company', 'membership', 'module', 'payment_declaration', 'role', 'subscription', 'support_grant'];
+    public const array CHANGED_BY = ['company', 'membership', 'module', 'payment_declaration', 'platform_setting', 'role', 'subscription', 'support_grant'];
 
     public function __construct(
         private UserRepository $users,

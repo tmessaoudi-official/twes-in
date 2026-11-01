@@ -248,7 +248,7 @@ final class CompanyProofTest extends ApiTestCase
         $waiting = $this->bell($this->second);
         $this->enter($this->second);
 
-        self::assertSame(['user:'.$this->user->getId()->toRfc4122()], $this->channels());
+        self::assertSame(['user:'.$this->user->getId()->toRfc4122(), 'installation'], $this->channels());
         $this->getJson('/api/me/notifications');
         self::assertSame([$this->first->getId()->toRfc4122()], array_column($this->arrayAt($this->json(), 'items'), 'companyId'));
         $this->getJson('/api/me/notifications/unread-by-company');
@@ -262,7 +262,7 @@ final class CompanyProofTest extends ApiTestCase
         $this->postJson($this->proof($this->second), ['password' => self::PASSWORD]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
 
-        self::assertSame(['user:'.$this->user->getId()->toRfc4122(), 'company:'.$this->second->getId()->toRfc4122()], $this->channels());
+        self::assertSame(['user:'.$this->user->getId()->toRfc4122(), 'installation', 'company:'.$this->second->getId()->toRfc4122()], $this->channels());
         $this->getJson('/api/me/notifications');
         self::assertCount(2, $this->arrayAt($this->json(), 'items'));
         self::assertSame(1, $this->json()['unread'], 'the first company\'s was read, the second\'s waited');

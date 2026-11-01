@@ -126,6 +126,7 @@ export class PhoneField implements ControlValueAccessor, Validator {
   private opened = '';
   private changed: (value: string) => void = () => undefined;
   protected onTouched: () => void = () => undefined;
+  private validatorChanged: () => void = () => undefined;
 
   private readonly translate = inject(TranslateService);
   private readonly session = inject(Session, { optional: true });
@@ -175,6 +176,14 @@ export class PhoneField implements ControlValueAccessor, Validator {
           this.picked.set(country);
         }
       });
+    });
+    // The platform's policy moved by an operator while the form is open (the session read again on `platform_setting`):
+    // the number typed is judged again by it, with no keystroke. Only a move: a form opening judges nothing twice.
+    let policy: string | undefined;
+    effect(() => {
+      const now = this.session?.me()?.phonesOutsideRanges ?? 'refuse';
+      if (policy !== undefined && policy !== now) untracked(() => this.validatorChanged());
+      policy = now;
     });
     this.countryControl.valueChanges
       .pipe(takeUntilDestroyed(inject(DestroyRef)))
@@ -241,6 +250,10 @@ export class PhoneField implements ControlValueAccessor, Validator {
 
   registerOnTouched(fn: () => void): void {
     this.onTouched = fn;
+  }
+
+  registerOnValidatorChange(fn: () => void): void {
+    this.validatorChanged = fn;
   }
 
   setDisabledState(disabled: boolean): void {

@@ -16,8 +16,9 @@ export const SPENT_BUDGET_TEXTS = 'spent-budget';
  */
 @Injectable({ providedIn: 'root' })
 export class SpentBudget {
-  private readonly translate = inject(TranslateService);
-  // Read only once a budget is spent: a screen that never meets one needs neither, nor what they need.
+  // Everything is read only once a budget is spent: a screen that never meets one needs none of it. The texts service
+  // above all: this is built by an interceptor, which the texts' own request runs through while that service is still
+  // being built, so asking for it here stopped the application at start on a cycle (NG0200, app-config.spec.ts).
   private readonly injector = inject(Injector);
   private readonly until = signal<string | null>(null);
   private readonly worded = signal(false);
@@ -27,7 +28,7 @@ export class SpentBudget {
     const at = this.until();
     if (at === null || !this.worded()) return '';
     return String(
-      this.translate.instant('spent_budget.retry_at', {
+      this.injector.get(TranslateService).instant('spent_budget.retry_at', {
         time: this.injector.get(FormatFacade).time(at),
       }),
     );

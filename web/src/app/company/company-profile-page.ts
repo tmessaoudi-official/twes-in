@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   OnInit,
   signal,
@@ -17,6 +18,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { companyLogoUrl } from './company-api';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { liveRecord } from '../shared/form/live-record';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
@@ -120,6 +122,16 @@ export class CompanyProfilePage implements OnInit {
   constructor() {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45).
     inject(ScreenActions).declare(this.recordActions);
+    // The platform's phone policy words the « À vérifier » line, which the API works out on every read: the saved
+    // profile is read again, what is typed stays, as the form is keyed on the company alone.
+    inject(LiveChanges).reloadOn(
+      ['platform_setting'],
+      async () => {
+        const companyId = this.company()?.id;
+        if (companyId && this.mayManage()) await this.facade.load(companyId);
+      },
+      inject(DestroyRef),
+    );
   }
 
   async ngOnInit(): Promise<void> {

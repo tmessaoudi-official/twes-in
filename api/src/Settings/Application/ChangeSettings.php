@@ -21,6 +21,8 @@ use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Settings\Domain\ValueObject\SettingDefinition;
 use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Shared\Application\DomainEvents;
+use App\Shared\Application\LiveChange;
+use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Phones\TypedPhones;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
@@ -37,6 +39,7 @@ final readonly class ChangeSettings implements DeclaresAuditActions
     public const string ENTITY_TYPE = 'setting';
     public const string CHANGED = 'setting.changed';
     public const string RESET = 'setting.reset';
+    public const string PLATFORM_KIND = 'platform_setting';
 
     public function __construct(
         private SettingCatalog $catalog,
@@ -47,7 +50,17 @@ final readonly class ChangeSettings implements DeclaresAuditActions
         private Transactions $transactions,
         private DomainEvents $events,
         private TypedPhones $phones,
+        private LiveChanges $liveChanges,
     ) {
+    }
+
+    /**
+     * What the platform's own settings now say reaches every signed-in screen (a phone's policy decides what a form
+     * takes): said to everyone by kind alone, never its key or its value, which a screen reads again under its rights.
+     */
+    public static function platformSettingMoved(): LiveChange
+    {
+        return LiveChange::everyone(self::PLATFORM_KIND, self::PLATFORM_KIND.'.changed');
     }
 
     /**
@@ -219,6 +232,9 @@ final readonly class ChangeSettings implements DeclaresAuditActions
         }
         $changes = ['key' => $setting->getKey(), 'level' => $address->level->value];
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $setting->getId(), $action, $actorUserId, $changes, $address->company?->getId()));
+        if (SettingLevel::Platform === $address->level) {
+            $this->liveChanges->stage(self::platformSettingMoved());
+        }
     }
 
     public function auditActions(): array

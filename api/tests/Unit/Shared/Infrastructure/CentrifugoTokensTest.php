@@ -35,13 +35,14 @@ final class CentrifugoTokensTest extends TestCase
         self::assertEquals(new \DateTimeImmutable('2026-09-13T10:15:00+00:00'), $issued->expiresAt);
     }
 
-    public function testWithoutAWorkingCompanyOnlyThePersonalChannelIsListed(): void
+    /** Every person hears the installation's channel, which says a platform setting moved and nothing of anyone. */
+    public function testWithoutAWorkingCompanyThePersonalAndTheInstallationsChannelsAreListed(): void
     {
         $user = Uuid::v7();
 
         $claims = self::claimsOf($this->tokens(900)->issue($user, null)->token);
 
-        self::assertSame(['user:'.$user->toRfc4122()], $claims['channels']);
+        self::assertSame(['user:'.$user->toRfc4122(), 'installation'], $claims['channels']);
     }
 
     public function testTheWorkingCompanyAddsItsChannel(): void
@@ -51,7 +52,7 @@ final class CentrifugoTokensTest extends TestCase
 
         $claims = self::claimsOf($this->tokens(900)->issue($user, $company)->token);
 
-        self::assertSame(['user:'.$user->toRfc4122(), 'company:'.$company->toRfc4122()], $claims['channels']);
+        self::assertSame(['user:'.$user->toRfc4122(), 'installation', 'company:'.$company->toRfc4122()], $claims['channels']);
     }
 
     public function testAnOperatorAlsoHearsThePlatformWhereverTheyWork(): void
@@ -59,9 +60,9 @@ final class CentrifugoTokensTest extends TestCase
         $user = Uuid::v7();
         $company = Uuid::v7();
 
-        self::assertSame(['user:'.$user->toRfc4122(), 'platform'], self::claimsOf($this->tokens(900)->issue($user, null, true)->token)['channels']);
+        self::assertSame(['user:'.$user->toRfc4122(), 'installation', 'platform'], self::claimsOf($this->tokens(900)->issue($user, null, true)->token)['channels']);
         self::assertSame(
-            ['user:'.$user->toRfc4122(), 'company:'.$company->toRfc4122(), 'platform'],
+            ['user:'.$user->toRfc4122(), 'installation', 'company:'.$company->toRfc4122(), 'platform'],
             self::claimsOf($this->tokens(900)->issue($user, $company, true)->token)['channels'],
         );
     }

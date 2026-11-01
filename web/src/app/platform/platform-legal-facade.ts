@@ -52,6 +52,14 @@ export class PlatformLegalFacade {
   }
 
   /**
+   * The platform's country again, which another operator may have moved: the identity being typed and the versions it
+   * was read at stay as they are, so a save still finds out what another operator saved since.
+   */
+  async rereadCountry(): Promise<void> {
+    await this.run(async () => this.countrySignal.set((await this.api.identity()).country), true);
+  }
+
+  /**
    * Saves every placeholder changed, together or not at all. `saved_since`: another operator saved one of them since it
    * was read, nothing was kept, and the identity is read again so the form shows what is saved. `refused`: the API
    * refused a field, nothing was kept, and `identityRefusals` says which and why.

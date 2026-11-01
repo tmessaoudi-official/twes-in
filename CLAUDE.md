@@ -786,6 +786,11 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   is read by `MailDirectionTest`, a resource's shape by `OpenApiTest`, a French text by `i18n-parity.spec.ts`. Before
   gating, also run every test that `git grep -l`s the changed directory or resource name; drop 2 went red three times on
   them (2026-10-28), an hour a cycle under load 20 (the API suite took 37 to 52 minutes).
+- `make gate` never boots the application: six cherry-picked fixes went green through it while the app stopped at start
+  on NG0200 (an interceptor built `SpentBudget`, which asked for `TranslateService`, whose texts request runs the
+  interceptors), every text a key and every e2e red. `app-config.spec.ts` now builds the real `appConfig` and asks that the
+  texts request leaves; an interceptor reads what needs the texts lazily, through `Injector`. Before landing work built
+  elsewhere, run one e2e on an image of the result (2026-11-01).
 - `flock` serves its waiters in no order: the main session's gate waited 76 minutes behind builder runs. While
   `/tmp/twes-in-gate.main-first` exists builders start no locked run; they run `make check` and the tests importing
   their files (at most 3 workers), and the full gate runs once per integrated batch. Before handing a builder a row,

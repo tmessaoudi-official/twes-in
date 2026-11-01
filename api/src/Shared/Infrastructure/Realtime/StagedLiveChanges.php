@@ -32,7 +32,9 @@ use Symfony\Contracts\Service\ResetInterface;
  * request from a tab said is kept for its answer (`LiveChangesAnswer`), and its own screens hear it there. The kinds
  * /platform shows (`app.realtime.platform_kinds`) are said on the platform's channel too, to operators who work in no
  * company, by kind, record and action alone, when they are a company's or an account's: who did it, and every other
- * kind, stay the company's, and one said to its actor alone stays theirs.
+ * kind, stay the company's, and one said to its actor alone stays theirs. A change said to everyone goes to the
+ * installation's channel alone, which every person's token carries, operators' included, so it is not said again on the
+ * platform's.
  */
 final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetInterface
 {
@@ -63,7 +65,7 @@ final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetIn
         if (0 === $this->depth) {
             return;
         }
-        $key = implode('|', [$change->companyId?->toRfc4122(), $change->forUserId?->toRfc4122(), $change->actorUserId?->toRfc4122(), $change->kind, $change->id?->toRfc4122(), $change->action]);
+        $key = implode('|', [$change->toEveryone ? 'everyone' : '', $change->companyId?->toRfc4122(), $change->forUserId?->toRfc4122(), $change->actorUserId?->toRfc4122(), $change->kind, $change->id?->toRfc4122(), $change->action]);
         $this->staged[$key] ??= $change;
     }
 
@@ -125,7 +127,7 @@ final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetIn
 
     private function groupOf(LiveChange $change): string
     {
-        return implode('|', [$change->companyId?->toRfc4122(), $change->forUserId?->toRfc4122(), $change->actorUserId?->toRfc4122(), $change->kind, $change->action]);
+        return implode('|', [$change->toEveryone ? 'everyone' : '', $change->companyId?->toRfc4122(), $change->forUserId?->toRfc4122(), $change->actorUserId?->toRfc4122(), $change->kind, $change->action]);
     }
 
     /**
@@ -135,6 +137,7 @@ final class StagedLiveChanges implements LiveChanges, StagedUntilCommit, ResetIn
     private function publish(LiveChange $change, array &$names, ?int $count = null): void
     {
         $channel = match (true) {
+            $change->toEveryone => RealtimeTokens::INSTALLATION,
             null !== $change->companyId => 'company:'.$change->companyId->toRfc4122(),
             null !== $change->forUserId => 'user:'.$change->forUserId->toRfc4122(),
             null !== $change->actorUserId => 'user:'.$change->actorUserId->toRfc4122(),

@@ -51,7 +51,8 @@ final class HeardKindsTest extends KernelTestCase
 
     /**
      * Each kind the API says, by the file saying it: a literal or a class constant handed to an audit entry or a live
-     * change, a venue's typed record, an erasure's live kind, a record subject's table.
+     * change (by `new` or a named constructor, `LiveChange::everyone`), a venue's typed record, an erasure's live kind, a
+     * record subject's table.
      *
      * @return array<string, string>
      */
@@ -68,7 +69,7 @@ final class HeardKindsTest extends KernelTestCase
         $said = [];
         foreach ($files as $file) {
             $source = (string) file_get_contents($file);
-            preg_match_all("/new (?:LiveChange|AuditEntry)\\(\\s*('[a-z_]+'|\\w+::[A-Z_]+),/", $source, $handed);
+            preg_match_all("/(?:new (?:LiveChange|AuditEntry)|LiveChange::\\w+)\\(\\s*('[a-z_]+'|\\w+::[A-Z_]+),/", $source, $handed);
             preg_match_all('/\$this->record\(\s*(self::[A-Z_]+_TYPE),/', $source, $typed);
             foreach ([...$handed[1], ...$typed[1]] as $argument) {
                 if (str_starts_with($argument, "'")) {

@@ -24,7 +24,7 @@ import {
   successToasts,
 } from '../shared/testing/feedback';
 import { Feedback } from '../shared/feedback/feedback';
-import { announceSaved } from '../shared/testing/live';
+import { announcePlatformSettingMoved, announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -373,6 +373,20 @@ describe('CompanyProfilePage', () => {
     profileSignal.set({ ...profile, identifierFields: [...profile.identifierFields] });
     await settle();
 
+    expect((q('field-legalName') as HTMLInputElement).value).toBe('Demo SARL');
+  });
+
+  it('reads the profile again when the platform moves its settings, keeping what is typed', async () => {
+    await open();
+    const legalName = q('field-legalName') as HTMLInputElement;
+    legalName.value = 'Demo SARL';
+    legalName.dispatchEvent(new Event('input'));
+    facade.load.mockClear();
+
+    await announcePlatformSettingMoved();
+    await settle();
+
+    expect(facade.load).toHaveBeenCalledWith('c1');
     expect((q('field-legalName') as HTMLInputElement).value).toBe('Demo SARL');
   });
 

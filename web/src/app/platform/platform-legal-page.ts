@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   linkedSignal,
   type OnInit,
@@ -35,6 +36,7 @@ import {
 } from '../shared/legal/legal-api';
 import { LegalMarkdown } from '../shared/legal/legal-markdown';
 import { LEGAL_PAGES, type LegalPage } from '../shared/legal/legal-pages';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { PlatformLegalFacade } from './platform-legal-facade';
 import type { LegalStatusRow, LegalVersionRow } from './platform-legal-types';
 
@@ -236,6 +238,14 @@ export class PlatformLegalPage implements OnInit {
 
   constructor() {
     inject(UnsavedChanges).declare(this.unsaved);
+    // The phones start on the platform's country, which another operator may move while this page is open: only the
+    // country is read again, never the identity being typed. The legal texts are read when a page is opened: only the
+    // operators write them, and the platform's channel does not say them.
+    inject(LiveChanges).reloadOn(
+      ['platform_setting'],
+      () => this.facade.rereadCountry(),
+      inject(DestroyRef),
+    );
   }
 
   ngOnInit(): void {

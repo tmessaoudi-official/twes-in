@@ -300,6 +300,37 @@ describe('DescriptorForm with a phone field', () => {
       expect(host.form.controls['phone'].value).toBe('+33 7 00 00 00 00');
     });
 
+    // The operator may switch the policy while a form is open: the tab reads the session again and the field judges again.
+    it('takes a number it refused once the platform keeps such numbers, with no keystroke', async () => {
+      configure([{ provide: Session, useClass: FrenchCompany }]);
+      const host = await open('');
+      await typeIn('07 00 00 00 00');
+      expect(host.form.controls['phone'].hasError('phone')).toBe(true);
+
+      const session = TestBed.inject(Session) as FrenchCompany;
+      session.me.update((me) => (me === null ? me : { ...me, phonesOutsideRanges: 'keep' }));
+      await settle();
+
+      expect(host.form.controls['phone'].valid).toBe(true);
+      expect(byTestId('field-error-phone')).toBeNull();
+    });
+
+    it('judges nothing again as a form opens, only when the policy moves', async () => {
+      configure([{ provide: Session, useClass: FrenchCompany }]);
+      fixture = TestBed.createComponent(Host);
+      const form = buildFormGroup(descriptor, { phone: '' });
+      fixture.componentInstance.form = form;
+      const statuses: string[] = [];
+      form.statusChanges.subscribe((status) => statuses.push(status));
+      await settle();
+      expect(statuses).toEqual([]);
+
+      const session = TestBed.inject(Session) as FrenchCompany;
+      session.me.update((me) => (me === null ? me : { ...me, user: { id: 'u1' } }));
+      await settle();
+      expect(statuses).toEqual([]);
+    });
+
     it('leaves one the record already holds as it is', async () => {
       configure([{ provide: Session, useClass: FrenchCompany }]);
       const host = await open('+33700000000');
