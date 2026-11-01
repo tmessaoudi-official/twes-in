@@ -60,5 +60,17 @@ d=$(project '    gzip_comp_level 6;' fr en)
 mkdir -p "$d/web/public/i18n/account"; heavy "$d/web/public/i18n/account/fr.json" 2; printf '{"a": 1}\n' > "$d/web/public/i18n/account/en.json"
 size=$(gzip -c -6 "$d/web/public/i18n/account/fr.json" | wc -c)
 out=$(SCREEN_TEXTS_BUDGET=$((size + 10)) bash "$GATE" --root "$d" 2>&1); check "a page's own texts past 98 % warn too" $? 0 "$out" "WARN — account/fr.json $size B"
+# The reserve (stable-release S0.14): below the ruled budget, a line no change crosses unless the gate's reserve is
+# raised with its reason in docs/SPEC.md § 7; the warning comes at 98 % of the reserve, before it reds.
+d=$(project '    gzip_comp_level 6;' fr en)
+heavy "$d/web/public/i18n/fr.json" 2
+size=$(gzip -c -6 "$d/web/public/i18n/fr.json" | wc -c)
+out=$(SCREEN_TEXTS_BUDGET=$((size * 2)) SCREEN_TEXTS_RESERVE=$((size - 1)) bash "$GATE" --root "$d" 2>&1)
+check "a file past the reserve, though within the budget: refused, naming the reserve" $? 1 "$out" "reserve"
+check "  and the file" 0 0 "$out" "fr.json: $size B"
+out=$(SCREEN_TEXTS_BUDGET=$((size * 2)) SCREEN_TEXTS_RESERVE=$((size + 10)) bash "$GATE" --root "$d" 2>&1)
+check "a file past 98 % of the reserve passes with a warning" $? 0 "$out" "WARN — fr.json $size B"
+out=$(SCREEN_TEXTS_BUDGET=$((size * 2)) SCREEN_TEXTS_RESERVE=$((size * 2 + 1)) bash "$GATE" --root "$d" 2>&1)
+check "a reserve above the budget: refused, the budget is the ruled wall" $? 1 "$out" "reserve"
 echo "$pass passed, $fail failed"
 ((fail == 0))
