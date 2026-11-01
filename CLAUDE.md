@@ -800,3 +800,7 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   `/tmp/twes-in-gate.main-first` exists builders start no locked run; they run `make check` and the tests importing
   their files (at most 3 workers), and the full gate runs once per integrated batch. Before handing a builder a row,
   read `git log master..<branch>` of every builder: rows 199, 200 and 213 were built twice the same day.
+- A numbering series' row lock already serializes two sales of one kind, so a race of two notes cannot tell whether the
+  stock's own lock is held: race a delivery note against an invoice (two series) to prove it (2026-11-01, S1.2).
+- A container compiled without debug is never checked against the source, and `bin/console` reads no test bootstrap:
+  the race harness clears its cache with `APP_CACHE_DIR` passed in, or racers boot the last run's container (2026-11-01).

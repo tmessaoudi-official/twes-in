@@ -40,13 +40,14 @@ $kernel->boot();
 // The test container, as a kernel test reads it: a step reaches the private services a use case is built from.
 $container = $kernel->getContainer()->get('test.service_container');
 $connection = $container->get('doctrine.dbal.default_connection');
-// A contested lock fails the racer after this long rather than hanging the race: the harness counts it as a failure.
-$connection->executeStatement("SET lock_timeout = '5s'");
-$connection->executeStatement("SET statement_timeout = '60s'");
 usleep(1000 * (int) $delayMs);
 // The barrier: the race holds it exclusively; every racer queues for it shared, so all go the moment it is released.
 $connection->executeQuery('SELECT pg_advisory_lock_shared(?, ?)', [(int) $barrierClass, (int) $barrierObject]);
 $connection->executeQuery('SELECT pg_advisory_unlock_shared(?, ?)', [(int) $barrierClass, (int) $barrierObject]);
+// After the barrier, whose wait is as long as the slowest racer's boot: from here a contested lock fails the racer after
+// this long rather than hanging the race, and the harness counts it as a failure.
+$connection->executeStatement("SET lock_timeout = '5s'");
+$connection->executeStatement("SET statement_timeout = '60s'");
 
 try {
     $named = [];
