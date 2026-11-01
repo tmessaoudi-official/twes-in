@@ -34,6 +34,17 @@ freeze=${TWES_RELEASE_FREEZE:-2026.12.20-2027.01.10}
 ! git -C "$root" rev-parse -q --verify "refs/tags/$tag" >/dev/null || refuse "$tag exists; a release tag is never moved"
 key=${TWES_RELEASE_KEY:-$(git -C "$root" config --get user.signingkey || true)}
 [[ -n "$key" ]] || refuse "no signing key: set git's user.signingkey, or TWES_RELEASE_KEY, to the key shops have pinned"
+# A release is a tag signed with the key the shops pin (infra/onprem/release-key.asc); a tag signed with any other is no
+# release a shop takes: a rehearsal's (update-rehearsal.sh, onprem-check.sh, each with a key of its own run). What a
+# release rests on (the signatures, the proofs, the freeze) is asked of the first alone.
+pinned_file=$root/infra/onprem/release-key.asc
+[[ -s "$pinned_file" ]] || refuse "no infra/onprem/release-key.asc: nothing tells a release from a rehearsal"
+pinned=$(home=$(mktemp -d) && GNUPGHOME=$home gpg --batch --quiet --import "$pinned_file" 2>/dev/null \
+  && GNUPGHOME=$home gpg --batch --with-colons --list-keys | awk -F: '$1 == "fpr" { print $10 }'; GNUPGHOME=$home gpgconf --kill all 2>/dev/null; rm -rf "$home")
+# A key this keyring does not hold lists nothing and fails: no fingerprint, so no release; git's signing refuses it below.
+signing=$(gpg --batch --with-colons --list-secret-keys "$key" 2>/dev/null | awk -F: '$1 == "fpr" { print $10; exit }') || signing=
+is_release=no
+[[ -n "$signing" ]] && grep -qxF -e "$signing" <<<"$pinned" && is_release=yes
 revision=$(git -C "$root" rev-parse -q --verify "$commit^{commit}") || refuse "$commit names no commit of this clone (git fetch first)"
 # Master's lane, or the maintenance lane: a patch for the shops while master carries work not ready to ship, on
 # release/<YYYY.MM.DD> grown from that day's release tag, the patch tag dated after it (docs/RUNBOOK.md « Patch a release »).
@@ -53,6 +64,7 @@ if ! git -C "$root" merge-base --is-ancestor "$revision" refs/remotes/origin/mas
   echo "tag-release: maintenance lane $lane from $base" >&2
 fi
 
+if [[ "$is_release" == yes ]]; then
 # The freeze: by the tag's own date and by today's, so a tag named outside it is not made inside it either.
 [[ "$freeze" =~ ^([0-9]{4}\.[0-9]{2}\.[0-9]{2})-([0-9]{4}\.[0-9]{2}\.[0-9]{2})$ ]] || refuse "TWES_RELEASE_FREEZE=$freeze is not YYYY.MM.DD-YYYY.MM.DD"
 from=${BASH_REMATCH[1]} to=${BASH_REMATCH[2]}
@@ -75,6 +87,9 @@ missing=()
 [[ -f "$root/var/claude/gates/proofs/onprem-$tree.ok" ]] || missing+=("onprem-check (make onprem-check on a clean checkout of $revision)")
 if ((${#missing[@]})) && [[ -z "$unrehearsed" ]]; then
   refuse "tree ${tree:0:12} of $revision was not proved by $(IFS=';'; echo "${missing[*]}" | sed 's/;/ nor by /'): run them, or say why with --unrehearsed <why>"
+fi
+else
+  echo "tag-release: ${signing:-$key} is not the release key the shops pin: a rehearsal's tag, no shop takes it, so the signatures, the proofs and the freeze are not asked" >&2
 fi
 
 # Each image's label and digest are read from the registry itself, its manifest and its configuration, never by pulling
@@ -99,6 +114,7 @@ for i in "${!parts[@]}"; do
   lines+=("TWES_${part^^}_IMAGE=$prefix/twes-in-$part@$digest")
 done
 
+[[ "$is_release" == yes ]] || lines+=("REHEARSAL=signed with ${signing:-$key}, not the pinned release key")
 [[ -z "$unrehearsed" ]] || lines+=("UNREHEARSED=$unrehearsed")
 [[ -z "$hotfix" ]] || lines+=("HOTFIX=$hotfix")
 git -C "$root" tag -s -u "$key" "$tag" "$revision" -F - <<EOF || refuse "git could not sign $tag with $key: is that key in this keyring, and its agent answering?"

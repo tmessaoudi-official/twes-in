@@ -16,6 +16,9 @@ export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 export GNUPGHOME=$TMPDIR/gnupg; mkdir -m 700 "$GNUPGHOME"
 gpg --batch --quiet --pinentry-mode loopback --passphrase '' --quick-gen-key 'twes release <release@twes.test>' ed25519 sign never
 KEY=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" { print $10; exit }')
+# A rehearsal's key (update-rehearsal.sh, onprem-check.sh make one each run): no shop pins it.
+gpg --batch --quiet --pinentry-mode loopback --passphrase '' --quick-gen-key 'a rehearsal <rehearsal@twes.test>' ed25519 sign never
+REHEARSAL=$(gpg --batch --with-colons --list-secret-keys rehearsal@twes.test | awk -F: '$1 == "fpr" { print $10; exit }')
 
 # A commit signed by the release key, as every commit on master is.
 signed_commit() { git -C "$1/repo" -c user.signingkey="$KEY" -c commit.gpgsign=true commit -qm "$2"; }
@@ -31,8 +34,9 @@ proven() {
 # imagetools, as the real one does, and answers nothing else: a pull would fail the case.
 fixture() {
   local d; d=$(mktemp -d)
-  mkdir -p "$d/repo/scripts/release" "$d/bin"
+  mkdir -p "$d/repo/scripts/release" "$d/repo/infra/onprem" "$d/bin"
   cp "$SCRIPT" "$d/repo/scripts/release/"
+  gpg --batch --armor --export "$KEY" > "$d/repo/infra/onprem/release-key.asc"
   git -C "$d/repo" init -q -b master && git -C "$d/repo" add -A && signed_commit "$d" one
   git -C "$d/repo" update-ref refs/remotes/origin/master HEAD
   proven "$d" HEAD
@@ -183,6 +187,17 @@ out=$(tag_release "$d" v2026.10.20.1); check "a patch never pushed to its releas
 d=$(fixture); lane "$d"; echo q > "$d/repo/q"; git -C "$d/repo" add -A; git -C "$d/repo" commit -qm unsigned-patch
 git -C "$d/repo" update-ref refs/remotes/origin/release/2026.10.13 HEAD; proven "$d" HEAD
 out=$(tag_release "$d" v2026.10.20.1); check "an unsigned commit on the lane: refused as on master" $? 1 "$out" "unsigned"
+
+# A tag signed with a key no shop pins is no release a shop takes: a rehearsal's. What a release rests on is asked of
+# the pinned key alone, so update-rehearsal.sh and onprem-check.sh tag their own commits with their own key.
+d=$(fixture); rm -rf "$d/repo/var/claude/gates/proofs"; echo r > "$d/repo/r"; git -C "$d/repo" add -A; git -C "$d/repo" commit -qm unsigned
+git -C "$d/repo" update-ref refs/remotes/origin/master HEAD
+out=$(tag_release "$d" v2026.12.24.1 TWES_RELEASE_KEY="$REHEARSAL"); check "a rehearsal's key, unproved, unsigned commits, in the freeze: tagged" $? 0 "$out" "made and verified"
+check "  saying no shop takes it, so nothing of a release is asked" 0 0 "$out" "not the release key the shops pin"
+check "  and its message says so" 0 0 "$(message "$d" v2026.12.24.1)" "REHEARSAL="
+d=$(fixture); rm -f "$d/repo/infra/onprem/release-key.asc"; git -C "$d/repo" add -A; signed_commit "$d" no-key
+git -C "$d/repo" update-ref refs/remotes/origin/master HEAD; proven "$d" HEAD
+out=$(tag_release "$d" v2026.10.13.1); check "no pinned key in the checkout: refused, nothing tells a release from a rehearsal" $? 1 "$out" "release-key.asc"
 
 echo "tag-release.test: $pass passed, $fail failed"
 ((fail == 0))
