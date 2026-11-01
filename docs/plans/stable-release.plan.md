@@ -37,12 +37,28 @@ Read-only maps: `var/claude/hardening-map/`.
 - [2026-11-01 10:14] AGREED: the developer switched on autonomous mode, keep-going, unattended (allow) and confident picks before the final effort was shown (his instruction: « start implementing and keep going »); the 20:33 sequence is shortened accordingly: implementation starts with P0, and the final plan, its effort and the identity page are presented when the background workflow returns.
 
 ## Formal Plan
-<!-- written at Phase 4 approval -->
+Until `var/claude/hardening-map/plan-final.md` (in progress) is copied here, the authority is the P0-P9 rows of
+`var/claude/hardening-map/plan-draft.md` trimmed by the 2026-10-31 20:55 scope split. P0 is listed in Status below.
 
 ## Status
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
+| S0.1 | Snapshot everything unshipped into refs/recovery (stable-start-20261101 59d21138; nb2-20261030, r32-next, nb1 kept) | S | done | - | - |
+| S0.2 | Copy the 2026-10-25..31 rulings into SPEC § 7, stamped; supersede 2026-10-27 01:03, rescope FC#177/178 | S | todo | - | docs/SPEC.md |
+| S0.3 | Land FC#264-266, 268, 269, 277 by cherry-pick (6 unique patches, all %G?=G), the RecordVersions exemption and the plan diff; ar.json 61,405 B of 61,440 | M | doing | - | api/** web/** docs/plans/** |
+| S0.4 | Finish and land FC#276 (platform_setting live kind) from refs/recovery/nb2-20261030 | M | todo | - | api/src/** web/src/app/** web/e2e/** |
+| S0.5 | Status-block truth across every plan and SPEC § 8 | M | todo | - | docs/** TODO.md |
+| S0.6 | Remove landed worktrees and branches, keeping refs/recovery | S | todo | - | - |
+| S0.7 | Settings texts part out of the main fr/en/ar files (ar has 35 B left) | M | todo | - | web/public/i18n/** web/src/app/settings/** |
+| S0.8 | Release-evidence gates in tag-release.sh and additive-migrations.sh | M | todo | - | scripts/release/** scripts/gates/** |
+| S0.9 | Flake and budget classes as gates (limiters, settled reads, test clock, docs run lines) | M | todo | - | api/tests/** scripts/gates/** |
+| S0.10 | ASSUMED marking page: 304 picks published, artifact UqoJRxiEXufS3BeJ53GUdP db marks; read back before the tag | S | done | - | - |
+| S0.11 | Values upgrade: new values filled from infra/onprem/values.defaults before compose config | M | todo | - | scripts/deploy/** infra/onprem/** |
+| S0.12 | snapshot-gate refuses a non-main tree while main-first exists (landed alone) | S | todo | - | scripts/gate/** |
+| S0.13 | StatefulServicesTest: every stateful service resets or is listed | M | todo | - | api/tests/** |
+| S0.14 | Budget reserve measured and enforced | S | todo | - | web/angular.json scripts/gates/** |
+| S0.15 | Baseline release proofs: update rehearsal and onprem-check legs with markers | M | todo | - | scripts/onprem/** scripts/release/** Makefile |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
