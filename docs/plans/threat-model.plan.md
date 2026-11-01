@@ -72,17 +72,17 @@ real publish workflow.
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | W1 request handling, platform roles | M | done | 5f811c55 | api/src/** api/tests/** |
-| 2 | W2 sign-in and session | L | done | 7bbc6c26 | api/** web/** infra/** docs/START.md |
-| 3 | W3 tenancy and data | L | doing | 2064cc30 | api/** infra/postgres/** compose*.yaml scripts/** |
-| 3a | W3 journal functions and the 12-month purge | M | done | 02e51a98 | api/migrations/** api/src/Audit/** api/tests/** |
-| 3b | W3 « Mon compte » texts loaded with their page | M | done | 23bafd76 | web/** scripts/gates/** |
-| 3c | W3 account deletion API | L | done | 9c50a361 | api/src/Identity/** api/tests/** |
-| 3d | W3 company closing API | L | done | 965a8d53 | api/src/Tenancy/** api/config/fiscal/** docs/fiscal/** |
-| 3e | W3 account deletion screen, the danger kind, the platform delays | M | done | 5fc6584c | web/** docs/** |
+| 1 | W1 request handling, platform roles | M | done | 2f15af5e1 | api/src/** api/tests/** |
+| 2 | W2 sign-in and session | L | done | 3d0ae7846 | api/** web/** infra/** docs/START.md |
+| 3 | W3 tenancy and data | L | doing | 2f1f01d57 | api/** infra/postgres/** compose*.yaml scripts/** |
+| 3a | W3 journal functions and the 12-month purge | M | done | ed273d809 | api/migrations/** api/src/Audit/** api/tests/** |
+| 3b | W3 « Mon compte » texts loaded with their page | M | done | 592789372 | web/** scripts/gates/** |
+| 3c | W3 account deletion API | L | done | 8324c706a | api/src/Identity/** api/tests/** |
+| 3d | W3 company closing API | L | done | 1fc93e16d | api/src/Tenancy/** api/config/fiscal/** docs/fiscal/** |
+| 3e | W3 account deletion screen, the danger kind, the platform delays | M | done | 2bdc03806 | web/** docs/** |
 | 3f | W3 company closing and erasure screens (typed name, définitif à terme), after round 0 | M | todo | - | web/** |
-| 4 | W4 realtime, PDF, web | L | todo | - | api/** web/** infra/** compose*.yaml |
-| 5 | W5 delivery and operations | L | todo | - | .github/** scripts/** infra/** compose*.yaml |
+| 4 | W4 realtime, PDF, web. Landed under other rows: the realtime connection closed with its session (e5eb8cb5f), Gotenberg shut in (62deb9ee1), link tokens out of every Caddy log (token-free-logs.test.sh). Left: Permissions-Policy, COOP and CORP, the tab header bound to its session, the client-errors cap at the edge. | L | doing | - | api/** web/** infra/** compose*.yaml |
+| 5 | W5 delivery and operations. Landed under other rows: every action pinned by SHA and every workflow's token least-privilege (b8279554c), third-party images by digest (release-overlay.sh). Left: a heartbeat token per line, SMTP TLS required, the GlitchTip sign-in limit, the P3 items; release signing is W6, moved to the next release. | L | doing | - | .github/** scripts/** infra/** compose*.yaml |
 | 6 | W6 invoice signing key | L | todo | - | api/src/** api/tests/** |
 | 7 | THREAT-MODEL.md + docs | M | todo | - | docs/** CLAUDE.md |
 <!-- /progress-block -->

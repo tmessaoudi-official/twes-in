@@ -217,7 +217,7 @@ Every step is on `docs/release-28-update-day.md`, with its exact commands.
 
 - [ ] Tagged once CI's run on the landed commit is green on every job, `publish` included (§ 1), and the tag pushed.
 - [ ] At the shop: `twes update` ended « updated to v2026.10.27.1 », and the checks of § 4 passed.
-- [ ] The backup alert's two files sent (§ 5): its fix waits for them, ready on branch `bkp`.
+- [ ] The backup alert's two files sent (§ 5): its fix has landed since (`1b320689b`); the files still say whether it holds at the shop.
 - [ ] The field test's table filled and sent (§ 6): it decides whether the shop's installation gets a name.
 - [ ] The « Nouveautés » shown to the staff (§ 7).
 

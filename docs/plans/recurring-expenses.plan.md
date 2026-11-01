@@ -44,10 +44,10 @@ SPEC § 8 row 179 (size L). Rulings: SPEC § 7 2026-10-11 01:24, 2026-10-15 17:3
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | Shared Schedule + Recurrence | M | done | 3b7dfd9a | api/src/Shared/Domain/** |
-| 2 | Recurring expenses API | L | done | 15d3a9db | api/src/Module/RecurringExpenses/**, api/src/Module/Expenses/** |
-| 3 | Recurring expenses web | L | done | 9b919fde | web/src/app/recurring-expenses/**, web/src/app/shared/schedule/** |
-| 4 | Recurring invoices widened | M | done | 6fe36b37 | api/src/Module/Recurring/**, web/src/app/recurring/** |
+| 1 | Shared Schedule + Recurrence | M | done | 5a72d906b | api/src/Shared/Domain/** |
+| 2 | Recurring expenses API | L | done | b8b9854d7 | api/src/Module/RecurringExpenses/**, api/src/Module/Expenses/** |
+| 3 | Recurring expenses web | L | done | 0eac09cc7 | web/src/app/recurring-expenses/**, web/src/app/shared/schedule/** |
+| 4 | Recurring invoices widened | M | done | 4eb873735 | api/src/Module/Recurring/**, web/src/app/recurring/** |
 | 5 | Move or skip one occurrence (parked as row 331) | M | deferred | - | - |
 <!-- /progress-block -->
 ### Blocked

@@ -319,7 +319,7 @@ what a short drop did not send (the bad-network standard, § 7 2026-10-13 16:52)
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 0 | Round 0: the instruments (inventory, gallery, timings, axe, route × role matrix) | L | done | 5f0b6440 | scripts/** var/claude/maturity/** |
+| 0 | Round 0: the instruments (inventory, gallery, timings, axe, route × role matrix) | L | done | 1afec5ead | scripts/** var/claude/maturity/** |
 | 1 | Rounds to maturity + unified artifact | L | doing | - | var/claude/maturity/** |
 | 1a | Round 2 instruments: throttled and offline gallery runs, a dependency-down run (§ 7 2026-10-16 22:03) | M | todo | - | scripts/** var/claude/maturity/** |
 | 2 | Developer rules the proposals | M | todo | - | - |

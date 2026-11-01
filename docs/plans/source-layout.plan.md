@@ -71,12 +71,12 @@ Work in flight is rebased on the new paths only after the move of its context la
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | SourceLayoutTest, red first | M | done | 419c0077 | api/tests/Architecture/** |
-| 2 | The class mover, dry run first | M | done | 419c0077 | scripts/refactor/** |
-| 3 | The oracle: OpenAPI and router byte-identical | S | done | 419c0077 | scripts/refactor/** |
-| 4 | Move context by context | L | done | 8217b242 | api/src/** api/tests/** |
-| 5 | Docs and the expertise refresh | S | done | 1d6a0beb | CLAUDE.md docs/** .claude/** |
-| 6 | List stance gate | M | done | e209cd8f | scripts/gates/** web/src/app/** |
+| 1 | SourceLayoutTest, red first | M | done | 9cc8d34c5 | api/tests/Architecture/** |
+| 2 | The class mover, dry run first | M | done | 9cc8d34c5 | scripts/refactor/** |
+| 3 | The oracle: OpenAPI and router byte-identical | S | done | 9cc8d34c5 | scripts/refactor/** |
+| 4 | Move context by context | L | done | a7cfa485d | api/src/** api/tests/** |
+| 5 | Docs and the expertise refresh | S | done | 5667ffd97 | CLAUDE.md docs/** .claude/** |
+| 6 | List stance gate | M | done | 1017da7ed | scripts/gates/** web/src/app/** |
 | 7 | List × action matrix for ruling (ruled § 7 2026-10-16 17:17) | S | done | - | var/claude/** |
 | 8 | Ruled bulk actions | L | doing | - | api/src/** web/src/app/** |
 | 9 | Lens 54 in round 2's brief; lens 55 folded into the tool-by-tool audit (§ 7 2026-10-16 17:25) | S | todo | - | docs/plans/** var/claude/** |

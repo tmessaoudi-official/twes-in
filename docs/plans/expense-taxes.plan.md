@@ -75,12 +75,12 @@ CI. Rollback: the migration's `down()` keeps the first line's tax.
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | Expense amount lines and taxes through the calculator | L | done | d1eddad0 | api/src/Module/Expenses/** api/migrations/** |
-| 2 | Withholding base without fixed charges; TEJ operation per VAT rate | M | done | d1eddad0 | api/src/Module/Expenses/** |
-| 3 | Purchase entries, VAT summary and CSV per tax | M | done | d1eddad0 | api/src/Module/AccountingExport/** api/src/Module/Expenses/** |
-| 4 | Web form, list and detail; e2e | L | done | e57149ab | web/src/app/expenses/** web/e2e/** |
-| 5 | Docs and SPEC row | S | done | - | docs/** |
-| 6 | L-614: the bill typed taxes included, each net worked out | M | done | adcc1e3a | web/src/app/expenses/** web/e2e/** |
+| 1 | Expense amount lines and taxes through the calculator | L | done | 8138d8141 | api/src/Module/Expenses/** api/migrations/** |
+| 2 | Withholding base without fixed charges; TEJ operation per VAT rate | M | done | 8138d8141 | api/src/Module/Expenses/** |
+| 3 | Purchase entries, VAT summary and CSV per tax | M | done | 8138d8141 | api/src/Module/AccountingExport/** api/src/Module/Expenses/** |
+| 4 | Web form, list and detail; e2e | L | done | 5b310dbe0 | web/src/app/expenses/** web/e2e/** |
+| 5 | Docs and SPEC row | S | done | 88d7480de | docs/** |
+| 6 | L-614: the bill typed taxes included, each net worked out | M | done | b3c0e1798 | web/src/app/expenses/** web/e2e/** |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input

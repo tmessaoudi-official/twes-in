@@ -48,11 +48,11 @@ is out and held.
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | PHP packages | M | done | 45a5e43f | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
-| 2 | npm packages (zxing-wasm apart) | M | done | 16a2593d | web/package.json web/package-lock.json infra/web/tools.Dockerfile THIRD-PARTY-NOTICES.md |
-| 3 | zxing-wasm | S | done | 775e4d9a | web/package.json web/package-lock.json web/src/third-party/** |
-| 4 | Docker images | M | done | 3d0767f9 | compose*.yaml infra/** |
-| 6 | axe 4.14's Label in Name on master | S | done | 9b0f9d05 | web/src/** web/e2e/** web/public/i18n/** |
+| 1 | PHP packages | M | done | dca1b5e27 | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
+| 2 | npm packages (zxing-wasm apart) | M | done | 25adca69a | web/package.json web/package-lock.json infra/web/tools.Dockerfile THIRD-PARTY-NOTICES.md |
+| 3 | zxing-wasm | S | done | 454f5d108 | web/package.json web/package-lock.json web/src/third-party/** |
+| 4 | Docker images | M | done | 9f62df7c9 | compose*.yaml infra/** |
+| 6 | axe 4.14's Label in Name on master | S | done | efe7c9783 | web/src/** web/e2e/** web/public/i18n/** |
 | 5 | GitHub Actions | S | done | - | .github/workflows/** |
 <!-- /progress-block -->
 ### Blocked
