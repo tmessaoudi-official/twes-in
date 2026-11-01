@@ -92,6 +92,27 @@ final readonly class CompanyGuard
     }
 
     /**
+     * The company a member acts in under the first of these permissions their role grants, judged then as
+     * companyForActing judges it: for an action whose subject is known only once the company is read (a restore from the
+     * bin), which asks every permission that could allow it, and then the one its subject needs.
+     *
+     * @param list<string> $permissions
+     *
+     * @throws NotFoundHttpException     when the company is absent or the role grants none of them
+     * @throws AccessDeniedHttpException as companyForActing does
+     */
+    public function companyForActingUnderAny(Uuid $companyId, array $permissions): Company
+    {
+        $company = $this->companies->ofId($companyId);
+        $granted = null === $company ? null : array_find($permissions, fn (string $permission): bool => $this->roleGrants($company, $permission));
+        if (null === $granted) {
+            throw new NotFoundHttpException('No such company.');
+        }
+
+        return $this->companyForActing($companyId, $granted);
+    }
+
+    /**
      * Whether the caller holds the permission in the company: what a response offers them. Enforcing is companyForActing's.
      * A company that is not active is closed to its members, pending an operator's approval or suspended by one, and
      * answers them as it answers a stranger; the session still describes it, which is how the application explains why.

@@ -22,6 +22,7 @@ import {
   type ProductOption,
   type TaxFamily,
   DELIVERY_NOTE_STATUS_TONES,
+  invoicedUndelivered,
 } from './delivery-notes-types';
 import {
   LOT_CODE_LENGTH,
@@ -139,8 +140,8 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
     {
       id: 'deliveryDate',
       label: `${FIELDS}.deliveryDate`,
-      value: (row) => row.deliveryDate ?? '',
-      shown: (row) => row.deliveryDate !== null,
+      value: (row) => (invoicedUndelivered(row) ? '' : (row.deliveryDate ?? '')),
+      shown: (row) => row.deliveryDate !== null || invoicedUndelivered(row),
       sortable: true,
       width: 150,
     },

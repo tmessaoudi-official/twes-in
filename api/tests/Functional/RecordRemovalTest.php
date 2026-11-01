@@ -271,6 +271,41 @@ final class RecordRemovalTest extends ApiTestCase
         self::assertSame('removal_final', $this->json()['error']);
     }
 
+    /**
+     * A role that may delete vendors and not read the company takes its delete back as it made it: the toast's
+     * « Annuler » asks what the delete asked, never `company.read`.
+     */
+    public function testWhoeverMayDeleteMayPutBackWithoutReadingTheCompany(): void
+    {
+        $this->createUser('clerk@twes.local', 'password-1234', $this->company, ['vendor.read', 'vendor.write'], 'clerk');
+        $this->login('clerk@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
+        $removal = $this->removed('F-001');
+
+        $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('restored', $this->json()['state']);
+        self::assertSame(1, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM vendor WHERE number = ?', ['F-001']));
+    }
+
+    /**
+     * Writing something the bin may hold reaches the restore, never another subject's delete: whoever writes customers
+     * and not vendors meets the 404 a stranger would on a vendor's, which stays pending.
+     */
+    public function testWritingAnotherSubjectPutsNothingBack(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $removal = $this->removed('F-001');
+        $this->createUser('counter@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()) ?? $this->company, ['customer.read', 'customer.write'], 'counter');
+        $this->login('counter@twes.local', 'password-1234');
+
+        $this->postJson($this->path('record-removals/'.$removal.'/restore'), null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame('pending', $this->em()->getConnection()->fetchOne('SELECT state FROM record_removal WHERE id = ?', [$removal]));
+    }
+
     /** The page lists only what the person may write: a removal of vendors stays out of reach of whoever may not. */
     public function testThePageShowsOnlyWhatThePersonMayRestore(): void
     {

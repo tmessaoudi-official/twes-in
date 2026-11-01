@@ -63,6 +63,7 @@ import {
   type DeliveryNoteInput,
   type DeliveryNoteRow,
   deliversInvoice,
+  invoicedUndelivered,
   type ProductOption,
   type TaxFamily,
 } from './delivery-notes-types';
@@ -668,6 +669,8 @@ export class DeliveryNotePage {
   protected readonly canInvoice = computed(() => this.invoiceable(this.current()));
   /** Whether the note hands over an issued invoice's goods, which it says: it moves no stock and is never invoiced. */
   protected readonly deliversInvoice = computed(() => deliversInvoice(this.current()));
+  /** What the header says instead of a delivery day, as the list does. */
+  protected readonly invoicedUndelivered = invoicedUndelivered;
   /**
    * The products the saved note names, each once and in its order, which the stock map lights to say where to pick
    * them; none where the stock is not kept or not readable here, so the action is offered only where it can answer,

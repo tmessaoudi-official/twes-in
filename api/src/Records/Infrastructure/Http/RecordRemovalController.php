@@ -134,7 +134,10 @@ final readonly class RecordRemovalController
     #[Route('/api/companies/{companyId}/record-removals/{removalId}/restore', name: 'api_record_removal_restore', methods: ['POST'])]
     public function restore(string $companyId, string $removalId): Response
     {
-        $company = $this->company($companyId);
+        // Whoever may delete takes it back as they deleted it, reading the company or not: the company is reached under
+        // any write permission the bin could need, and this removal's own is asked once it is read.
+        $writes = array_values(array_unique(array_map(static fn (RecordSubject $subject): string => $subject->writePermission, array_values($this->catalogue->subjects()))));
+        $company = $this->guard->companyForActingUnderAny(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), $writes);
         $id = CompanyPath::identifier(['removalId' => $removalId], 'removalId');
         // What an import's undo took is put back whole, in this request.
         $this->time->lift();
