@@ -72,8 +72,8 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S0.11 | Values upgrade: new values filled from infra/onprem/values.defaults before compose config | M | done | 283efa6f1 | scripts/deploy/** infra/onprem/** |
 | S0.12 | snapshot-gate refuses a non-main tree while main-first exists (landed alone); test 41 passed, check removed: 2 fail | S | done | 864136fa2 | scripts/gate/** |
 | S0.13 | StatefulServicesTest: every stateful service resets or is listed | M | done | 2ce561bfd | api/tests/** |
-| S0.14 | Budget reserve measured and enforced (first page: 975 kB error, 965 kB warning, measured 960.45 kB, under the 1 MB wall; texts: reserve 59,392 B under the 61,440 B budget, ar 57,468 B) | S | todo | - | web/angular.json scripts/gates/** |
-| S0.15 | Baseline release proofs: update rehearsal and onprem-check legs with markers | M | todo | - | scripts/onprem/** scripts/release/** Makefile |
+| S0.14 | Budget reserve measured and enforced (first page: 975 kB error, 965 kB warning, measured 960.45 kB, under the 1 MB wall; texts: reserve 59,392 B under the 61,440 B budget, ar 57,468 B) | S | done | 3f5a7e4b4 | web/angular.json scripts/gates/** |
+| S0.15 | Baseline release proofs: update rehearsal and onprem-check legs with markers (baseline proved on tree a3fce7c9: the rehearsal from v2026.10.30.1 on the shop's files, 0 refused, nothing lost, and onprem-check; the evidence gates refused every rehearsal's own tag until 9e637df92; the legs come with the P2 rows that build what they test) | M | doing | 9e637df92 | scripts/onprem/** scripts/release/** Makefile |
 | S0.16 | Maintenance lane for patch tags | S | done | 283efa6f1 | scripts/release/tag-release.sh, scripts/onprem/twes, scripts/tests/twes.test.sh, scripts/release/tests/* |
 | S0.17 | Start steps never abort the start | M | done | 283efa6f1 | infra/api/docker-entrypoint.sh, api/src/Tenancy/Infrastructure/Console/ConvergePlatformCommand.php, api/src/Shared/Infrastructure/Http/HealthController.php, api/tests/Functional/StartStepsTest.php |
 | S0.E | P0 phase-end lens and legs | S | todo | - | - |

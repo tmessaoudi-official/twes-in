@@ -268,7 +268,7 @@ if [[ "$(sql "SELECT count(*) FROM information_schema.columns WHERE table_name =
   [[ "$(sql "SELECT count(*) FROM company WHERE status = 'active' AND approved_at IS NULL")" == 0 ]] || fail "an active company was left with no approval moment"
 fi
 grown=$(LC_ALL=C join -t '|' "$WORK/before.txt" "$WORK/after.txt" | awk -F'|' '$3 != $2 { printf "%s %s→%s, ", $1, $2, $3 }')
-step "nothing lost: ${grown:-no table changed}$products_after products listed, the operator signs in"
+step "nothing lost: ${grown:-no table changed, }$products_after products listed, the operator signs in"
 
 # The proof tag-release.sh asks for, keyed on the candidate's tree: the same tree committed and signed later keeps it.
 proof_tree=$(git -C "$root" rev-parse "$to_commit^{tree}")
