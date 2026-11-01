@@ -42,7 +42,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-notices
+.PHONY: stress playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -398,6 +398,12 @@ gate-web-static: web-tools-image
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate:static'
 gate-web-tests: web-tools-image
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate:tests'
+
+stress:        ## the race tests (api/tests/Concurrency) on their own database, twes_test_stress; never beside a gate (its lock)
+stress: tools-image
+	docker compose up -d --wait --no-recreate postgres
+	( flock -n 9 || { echo "make stress: a gate holds /tmp/twes-in-gate.lock; wait for it, never side by side" >&2; exit 3; }; \
+	  $(TOOLS) sh -c 'cd api && php tests/Concurrency/Support/prepare.php && vendor/bin/phpunit -c phpunit.stress.xml' ) 9>/tmp/twes-in-gate.lock
 
 test-api: tools-image
 	docker compose up -d --wait --no-recreate postgres

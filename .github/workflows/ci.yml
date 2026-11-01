@@ -72,6 +72,9 @@ jobs:
       # Starts the compose postgres service and runs the gate in the tools image: the same PostgreSQL 18 and PHP 8.5 as
       # the stack, never the runner's.
       - run: make gate-api
+      # The race tests (api/tests/Concurrency): racers in processes of their own, released together, on a database of
+      # their own; outside the suite, whose per-test transaction would hide what each racer commits.
+      - run: make stress
 
   # WHY: lint, formatting, the component tests, and the production build the web image is made from. Needs
   # the api job's OpenAPI artifact: the gate starts by generating the TypeScript types from it.

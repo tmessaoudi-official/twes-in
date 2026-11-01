@@ -458,6 +458,7 @@ make gate-api         # php-cs-fixer, PHPStan, PHPUnit against the twes_test dat
 make gate-web         # regenerate the API types, lint, format, unit tests, production build
 make gate             # the three above
 make gate-stamps      # the Decisions Log stamps alone, as the decision-stamps workflow checks a push touching only docs/SPEC.md
+make stress           # the race tests (api/tests/Concurrency) on their own database, twes_test_stress, as CI's api job runs them
 make e2e              # Playwright against the running stack (make up first)
 ```
 
@@ -477,6 +478,15 @@ make check FIX=1      # the same, php-cs-fixer, prettier and eslint rewriting wh
 - Never run it beside a gate: both clear and warm `api/var/cache`. It reads its own tools' tallies, so a spec that
   Vitest skipped or a PHPUnit that ran nothing fails it, though the tool exited 0. Like a bare `ng test`, it needs the
   icon font generated once on a fresh clone (below).
+
+`make stress` runs the race tests: a step run by K racers, each a PHP process with its own kernel and connection, held
+at a barrier (an advisory lock the race holds, every racer asks for shared) until PostgreSQL shows all K waiting, then
+released together (`api/tests/Concurrency/Support/Race.php`). A deadlock (40P01) and a lock wait past five seconds
+(55P03) are failures of their own kind. The racers commit for real, so they run outside the suite and its per-test
+transaction, on `twes_test_stress`, made anew, migrated and granted by `tests/Concurrency/Support/prepare.php`; any other
+database is refused. It takes the gate's lock (`/tmp/twes-in-gate.lock`): never beside a gate. `make check` formats and
+analyses a race test but leaves it to `make stress`. `HarnessTest` proves the harness: a lost update without a lock in
+every round, though the racers start 300 ms apart, none with `FOR UPDATE`, and a deadlock reported as one.
 
 `make mutants SPEC=<file>` asks whether a test notices its guarantee broken (`scripts/mutants/mutants.sh`, whose header
 says how a spec reads: a name, the file, the test, the text and its replacement). Each mutant is written in, its test

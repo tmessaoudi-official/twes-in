@@ -30,6 +30,11 @@ absent "a PHP source alone runs no test" "$out" "api-test"
 out=$(plan "$d" api/src/Money/Sum.php api/tests/Unit/SumTest.php)
 check "a PHP test is run" $? 0 "$out" "api-test tests/Unit/SumTest.php"
 absent "a test given silences the untested line" "$out" "api-untested"
+mkdir -p "$d/api/tests/Concurrency"; echo x > "$d/api/tests/Concurrency/RaceTest.php"
+out=$(plan "$d" api/tests/Concurrency/RaceTest.php)
+check "a race test is formatted and analysed" $? 0 "$out" "api-format tests/Concurrency/RaceTest.php"
+check "  and left to make stress, on its own database" 0 0 "$out" "api-stress tests/Concurrency/RaceTest.php"
+absent "  never run by the suite's PHPUnit" "$out" "api-test"
 
 out=$(plan "$d" web/src/app/x/x-page.ts)
 check "a web source is formatted and linted" $? 0 "$out" $'web-format src/app/x/x-page.ts\nweb-lint src/app/x/x-page.ts'

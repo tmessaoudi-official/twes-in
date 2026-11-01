@@ -19,7 +19,7 @@ words() { (($# > 1)) || return 0; local name=$1; shift; local IFS=' '; local -a 
 
 plan() {
   local f rel spec
-  local -a api_fmt=() api_test=() api_src=() web_fmt=() web_lint=() web_test=() web_e2e=() unchecked=()
+  local -a api_fmt=() api_test=() api_stress=() api_src=() web_fmt=() web_lint=() web_test=() web_e2e=() unchecked=()
   for f in "$@"; do
     f=${f#"$root/"}; f=${f#./}
     if [[ "$f" =~ [[:space:]\'\"\$\`\\] ]]; then echo "check: refused a path with a space, a quote or a shell character: $f" >&2; return 2; fi
@@ -28,7 +28,9 @@ plan() {
       api/vendor/*|api/var/*) unchecked+=("$f") ;;
       api/*.php)
         rel=${f#api/}; api_fmt+=("$rel")
-        [[ "$rel" == tests/*Test.php ]] && api_test+=("$rel")
+        # A race test runs only on its own database, through make stress (phpunit.stress.xml): never the suite's PHPUnit.
+        if [[ "$rel" == tests/Concurrency/* ]]; then api_stress+=("$rel")
+        elif [[ "$rel" == tests/*Test.php ]]; then api_test+=("$rel"); fi
         [[ "$rel" == src/* ]] && api_src+=("$rel") ;;
       # What web/.prettierignore leaves out is left out here too.
       web/node_modules/*|web/dist/*|web/.angular/*|web/src/app/api/*|web/test-results/*|web/playwright-report/*|web/package-lock.json)
@@ -48,6 +50,7 @@ plan() {
   words api-format "${api_fmt[@]}"
   ((${#api_fmt[@]})) && echo api-stan
   words api-test "${api_test[@]}"
+  words api-stress "${api_stress[@]}"
   ((${#api_test[@]})) || words api-untested "${api_src[@]}"
   words web-format "${web_fmt[@]}"
   words web-lint "${web_lint[@]}"
@@ -110,6 +113,8 @@ api() {
     step phpunit tally_phpunit api vendor/bin/phpunit "${test[@]}"
   fi
   ((${#untested[@]})) && echo "api: no test file given, PHPUnit not run for ${untested[*]} (name the tests in FILES)"
+  local -a stress; read -ra stress <<<"$(bucket "$p" api-stress)"
+  ((${#stress[@]})) && echo "api: race tests left to make stress, on their own database: ${stress[*]}"
   summary api
 }
 

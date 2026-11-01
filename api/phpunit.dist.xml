@@ -22,6 +22,8 @@
     <testsuites>
         <testsuite name="Project Test Suite">
             <directory>tests</directory>
+            <!-- Racers commit for real on a database of their own, which DAMA's per-test transaction would hide: make stress, phpunit.stress.xml. -->
+            <exclude>tests/Concurrency</exclude>
         </testsuite>
     </testsuites>
 
