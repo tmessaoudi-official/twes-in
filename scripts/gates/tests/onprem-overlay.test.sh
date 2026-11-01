@@ -12,7 +12,8 @@ check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo 
 project() {
   local d f; d=$(mktemp -d)
   mkdir -p "$d/infra/onprem" "$d/infra/lan"
-  for f in compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-local.yaml compose.backup-offsite.yaml compose.onprem.yaml infra/onprem/Caddyfile infra/lan/Caddyfile; do
+  mkdir -p "$d/scripts/deploy"
+  for f in compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-local.yaml compose.backup-offsite.yaml compose.onprem.yaml infra/onprem/Caddyfile infra/lan/Caddyfile infra/onprem/values.defaults scripts/deploy/new-instance.sh; do
     cp "$ROOT/$f" "$d/$f"
   done
   echo "$d"
@@ -86,6 +87,22 @@ d=$(project); edit "$d/infra/lan/Caddyfile" '/intermediate_lifetime/d'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a phone door's intermediate left at seven days is named" $? 1 "$out" "infra/lan/Caddyfile's intermediate lasts seven days"
 d=$(project); edit "$d/compose.yaml" '/^  lan:$/,/^    environment:$/{s|rm -rf /data/caddy/certificates/local && ||}'
 out=$(bash "$GATE" --root "$d" 2>&1); check "a phone door keeping its old leaves is named" $? 1 "$out" "development's phone door (lan) does not make its intermediate"
+
+# A shop updates with the values file its install wrote: what the files now require is written by that installer, or
+# filled in by deploy.sh from infra/onprem/values.defaults.
+d=$(project); edit "$d/compose.onprem.yaml" '/^  MAILER_SENDER: /a\  SHOP_GREETING: "${SHOP_GREETING:?set it}"'
+out=$(bash "$GATE" --root "$d" 2>&1); check "a value required that no installer writes and no default fills is named" $? 1 "$out" "SHOP_GREETING"
+echo 'SHOP_GREETING=Bonjour' >> "$d/infra/onprem/values.defaults"
+out=$(bash "$GATE" --root "$d" 2>&1); [[ "$out" != *SHOP_GREETING* ]]; check "  the same value given a default is not" $? 0 "$out" ""
+# The installer a shop ran is the release's, not the tree's: a secret this tree's installer makes is still missing from
+# every shop installed before it.
+d=$(project); edit "$d/scripts/deploy/new-instance.sh" '/^MONITOR_HEARTBEAT_TOKEN=/d'
+( cd "$d" && export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 && git init -q -b master && git add -A \
+  && git -c user.name=t -c user.email=t@t commit -qm r && git tag v2026.10.30.1 ) >/dev/null
+git -C "$d" show HEAD:scripts/deploy/new-instance.sh >/dev/null
+cp "$ROOT/scripts/deploy/new-instance.sh" "$d/scripts/deploy/new-instance.sh"
+out=$(bash "$GATE" --root "$d" 2>&1); check "a secret the last release's installer never wrote is named, though this tree's writes it" $? 1 "$out" "MONITOR_HEARTBEAT_TOKEN"
+check "  with the release it reads" 0 0 "$out" "v2026.10.30.1"
 
 echo "onprem-overlay gate: $pass passed, $fail failed"
 ((fail == 0))

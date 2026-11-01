@@ -7,9 +7,13 @@
 # Refuses anything but a clean checkout, since the images copy the working tree as it is, and an image holding a
 # .env.local or a .git directory, which the tree's .dockerignore files should have kept out.
 # Writes the release (the three images by their digests and the commit) to <release file> for deploy.sh.
-# Usage: publish.sh <registry prefix, such as ghcr.io/owner> <release file>
+# --no-master, for a patch on a release's own branch (the maintenance lane, docs/RUNBOOK.md « Patch a release »):
+# published by its sha for its tag to name, :master, which staging follows, neither read nor moved.
+# Usage: publish.sh [--no-master] <registry prefix, such as ghcr.io/owner> <release file>
 set -euo pipefail
-[[ $# -eq 2 ]] || { echo "Usage: publish.sh <registry prefix> <release file>" >&2; exit 2; }
+moves_master=yes
+[[ "${1:-}" == --no-master ]] && { moves_master=no; shift; }
+[[ $# -eq 2 ]] || { echo "Usage: publish.sh [--no-master] <registry prefix> <release file>" >&2; exit 2; }
 prefix=${1%/} release=$2
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 refuse() { echo "publish: refused — $*" >&2; exit 1; }
@@ -60,6 +64,7 @@ done
   echo "TWES_DATABASE_IMAGE=${digest[database]}"
 } > "$release"
 echo "publish: $release written"
+[[ "$moves_master" == yes ]] || { echo "publish: :master left where it is (--no-master: a release's own branch)"; exit 0; }
 
 # A :master naming a commit this checkout does not hold (a shallow clone, a rewritten history) is not followed: kept.
 current=''

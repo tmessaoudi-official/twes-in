@@ -24,12 +24,31 @@ final readonly class DoctrineDeepHealthReader implements DeepHealthReader
         #[Autowire('%kernel.project_dir%')] private string $projectDirectory,
         /** Set by compose.backup.yaml, the layer that ships the write-ahead log off-site. */
         #[Autowire(env: 'bool:BACKUP_EXPECTED')] private bool $backupExpected,
+        #[Autowire('%app.health.start_steps_directory%')] private string $startStepsDirectory,
     ) {
     }
 
     public function read(): HealthReadings
     {
-        return new HealthReadings($this->failedMessages(), $this->oldestWaitingSeconds(), $this->diskFree(), $this->archiving());
+        return new HealthReadings($this->failedMessages(), $this->oldestWaitingSeconds(), $this->diskFree(), $this->archiving(), $this->failedStartSteps());
+    }
+
+    /**
+     * The start steps this container's start could not run (infra/api/docker-entrypoint.sh keeps each as
+     * <step>.failed): their names alone, what they said stays in the file and the container's log.
+     *
+     * @return list<string>
+     */
+    private function failedStartSteps(): array
+    {
+        $marks = glob($this->startStepsDirectory.'/*.failed');
+        if (false === $marks) {
+            throw new \RuntimeException(\sprintf('The start steps under %s cannot be listed.', $this->startStepsDirectory));
+        }
+        $names = array_map(static fn (string $mark): string => basename($mark, '.failed'), $marks);
+        sort($names);
+
+        return $names;
     }
 
     private function failedMessages(): int

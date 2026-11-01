@@ -53,11 +53,20 @@ values=(LAN_HOST=$LAN POSTGRES_PASSWORD=gate-postgres POSTGRES_APP_PASSWORD=gate
 bucket=(BACKUP_S3_ENDPOINT=e BACKUP_S3_BUCKET=b BACKUP_S3_REGION=r BACKUP_S3_KEY=k BACKUP_S3_SECRET=s)
 shop=(compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-local.yaml compose.onprem.yaml)
 offsite=(compose.yaml compose.prod.yaml compose.backup.yaml compose.backup-local.yaml compose.backup-offsite.yaml compose.onprem.yaml)
-for f in "${offsite[@]}" infra/onprem/Caddyfile; do
+for f in "${offsite[@]}" infra/onprem/Caddyfile infra/onprem/values.defaults scripts/deploy/new-instance.sh; do
   [[ -f "$root/$f" ]] || problem "found no $f"
 done
 ((${#problems[@]})) && finish
-env_file=$(mktemp); trap 'rm -f "$env_file"' EXIT
+# What deploy.sh fills in on an update (infra/onprem/values.defaults) is in every shop's values once it has updated.
+defaulted=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+  [[ -z "$line" || "$line" == \#* ]] && continue
+  if [[ ! "$line" =~ ^([A-Z][A-Z0-9_]*)=(.*)$ ]]; then problem "infra/onprem/values.defaults: '$line' is not NAME=value"; continue; fi
+  defaulted+=("${BASH_REMATCH[1]}")
+  [[ "${BASH_REMATCH[2]}" == generate:* ]] && values+=("${BASH_REMATCH[1]}=gate-generated") || values+=("$line")
+done < "$root/infra/onprem/values.defaults"
+installer_dir=$(mktemp -d)
+env_file=$(mktemp); trap 'rm -f "$env_file"; rm -rf "$installer_dir"' EXIT
 compose() { # layers (a name of an array), then the values
   local -n layers=$1; shift
   local args=() layer
@@ -175,4 +184,29 @@ if [[ -f "$root/infra/lan/Caddyfile" ]]; then
   remade "$development" lan "development's phone door (lan)"
 fi
 grep -qE '^[[:space:]]*@root path /root.crt$' "$caddy" || problem "infra/onprem/Caddyfile does not hand out its root certificate at /root.crt"
+
+# carried: a shop updates with the values file its install wrote, so every value the files require and every secret
+# they mount is one the newest release's installer wrote, or one values.defaults fills in. Before any release, the
+# tree's installer is the one a shop runs. LAN_HOST is the twes script's, read at each start.
+release=$(git -C "$root" describe --tags --abbrev=0 --match 'v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*' HEAD 2>/dev/null)
+if [[ -n "$release" ]]; then
+  git -C "$root" show "$release:scripts/deploy/new-instance.sh" > "$installer_dir/new-instance.sh" 2>/dev/null \
+    || problem "the release $release has no scripts/deploy/new-instance.sh to read a shop's values from"
+  installer="the installer of $release"
+else
+  cp "$root/scripts/deploy/new-instance.sh" "$installer_dir/new-instance.sh"; installer="this tree's installer"
+fi
+if bash "$installer_dir/new-instance.sh" --onprem "$installer_dir/shop.env" >/dev/null 2>&1; then
+  written=$(grep -oE '^[A-Z][A-Z0-9_]*=' "$installer_dir/shop.env" | tr -d '=')
+  needed=$(for f in "${offsite[@]}"; do grep -oE '\$\{[A-Z_][A-Z0-9_]*:\?' "$root/$f"; done | sed 's/^\${//; s/:?$//')
+  for entry in "${SECRETS[@]}"; do needed+=$'\n'"${entry%%:*}"; done
+  for name in $(sort -u <<<"$needed"); do
+    [[ "$name" == LAN_HOST ]] && continue
+    grep -qxF -e "$name" <<<"$written" && continue
+    printf '%s\n' "${defaulted[@]}" | grep -qxF -e "$name" && continue
+    problem "$name is required, but $installer never wrote it and infra/onprem/values.defaults does not fill it: a shop updating would stop on it (add NAME=value or NAME=generate:<length> there)"
+  done
+else
+  problem "$installer did not run (bash new-instance.sh --onprem <file>), so no shop's values could be read"
+fi
 finish

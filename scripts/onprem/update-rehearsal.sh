@@ -270,4 +270,9 @@ fi
 grown=$(LC_ALL=C join -t '|' "$WORK/before.txt" "$WORK/after.txt" | awk -F'|' '$3 != $2 { printf "%s %s→%s, ", $1, $2, $3 }')
 step "nothing lost: ${grown:-no table changed}$products_after products listed, the operator signs in"
 
+# The proof tag-release.sh asks for, keyed on the candidate's tree: the same tree committed and signed later keeps it.
+proof_tree=$(git -C "$root" rev-parse "$to_commit^{tree}")
+mkdir -p "$root/var/claude/gates/proofs"
+printf 'update-rehearsal OK %s from %s to %s\n' "$(date -Iseconds)" "$A" "$to_commit" > "$root/var/claude/gates/proofs/rehearsal-$proof_tree.ok"
 printf 'update-rehearsal: OK — %s with the shop'"'"'s files updated to %s (%s) in %ss in all\n' "$A" "$B" "$to_commit" "$(($(date +%s) - started))"
+echo "update-rehearsal: proof written for tree ${proof_tree:0:12}: var/claude/gates/proofs/rehearsal-$proof_tree.ok"

@@ -81,5 +81,14 @@ check "a :master on a commit master no longer follows is kept" "$code" 0 "$out" 
 check "  and the run warns of it, naming the way to move it" "$code" 0 "$out" "::warning title="
 check "  with make point-master" "$code" 0 "$out" "make point-master COMMIT="
 
+# The maintenance lane: a patch on release/<date> is published by its sha for its tag to name, and never moves :master,
+# which staging follows.
+d=$(fixture); head=$(git -C "$d/repo" rev-parse HEAD)
+out=$(cd "$d/repo" && env CALLS="$d/calls" PATH="$d/bin:$PATH" bash scripts/release/publish.sh --no-master registry.invalid/twes "$d/release.env" 2>&1)
+check "a patch is published by its sha and written down" "$?" 0 "$(cat "$d/release.env" 2>/dev/null)" "TWES_REVISION=$head"
+check "  its sha tags pushed" 0 0 "$(cat "$d/calls")" "twes-in-api:sha-$head"
+! grep -q ":master" "$d/calls"; check "  :master neither read nor moved" "$?" 0 "$(cat "$d/calls")" ""
+check "  and the run says so" 0 0 "$out" ":master left where it is"
+
 echo "publish.test: $pass passed, $fail failed"
 ((fail == 0))

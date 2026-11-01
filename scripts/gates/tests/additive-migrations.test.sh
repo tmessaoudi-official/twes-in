@@ -77,4 +77,33 @@ out=$(run "$d"); check "a missing api/migrations is refused, not skipped" $? 1 "
 d=$(mktemp -d); mkdir -p "$d/api/migrations"
 out=$(run "$d"); check "outside a git repository it is refused, not skipped" $? 1 "$out" "not a git"
 
+# A migration the release holds is never edited: a shop that ran it keeps what it did, the edit runs nowhere.
+d=$(repo released); migration "$d/api/migrations/Version20261001000000.php" "$(sql 'CREATE TABLE invoice (id UUID NOT NULL, note TEXT, PRIMARY KEY(id))')" "$(sql 'DROP TABLE invoice')"
+git -C "$d" add -A
+out=$(run "$d"); check "a migration the release holds, edited since: refused" $? 1 "$out" "Version20261001000000.php differs from v2026.10.20.1"
+
+# A statement written over several lines is read whole, and reported where it starts.
+d=$(repo released); since "$d" "        \$this->addSql('ALTER TABLE invoice
+            DROP note');"
+out=$(run "$d"); check "a drop written on the next line of its statement: refused" $? 1 "$out" "Version20261021000000.php:11"
+d=$(repo released); since "$d" "        \$this->addSql('ALTER TABLE invoice
+            ADD note VARCHAR(255) DEFAULT NULL');"
+out=$(run "$d"); check "  an addition over two lines passes" $? 0 "$out" "OK"
+
+# A new rule on a table the release before writes to refuses what it writes.
+for statement in 'ALTER TABLE invoice ADD CONSTRAINT chk_total CHECK (total >= 0)' 'ALTER TABLE invoice ADD CHECK (total >= 0)' \
+  'ALTER TABLE invoice ADD CONSTRAINT uniq_number UNIQUE (number)' 'CREATE UNIQUE INDEX uniq_number ON invoice (number)'; do
+  d=$(repo released); since "$d" "$(sql 'CREATE TABLE note (id UUID NOT NULL, PRIMARY KEY(id))')
+$(sql "$statement")"
+  out=$(run "$d"); check "refused on a table the release holds: $statement" $? 1 "$out" "Version20261021000000.php:12"
+done
+d=$(repo released); since "$d" "$(sql 'CREATE TABLE note (id UUID NOT NULL, n INT, PRIMARY KEY(id))')
+$(sql 'ALTER TABLE note ADD CONSTRAINT chk_n CHECK (n >= 0)')
+$(sql 'CREATE UNIQUE INDEX uniq_n ON note (n)')"
+out=$(run "$d"); check "  a rule on a table made since the release passes" $? 0 "$out" "OK"
+
+# The update migrates all or nothing, in one transaction, which CONCURRENTLY cannot join: never, whatever the line says.
+d=$(repo released); since "$d" "$(sql 'CREATE INDEX CONCURRENTLY idx_note ON invoice (id)'); // contract: faster"
+out=$(run "$d"); check "CONCURRENTLY: refused, even with a reason" $? 1 "$out" "CONCURRENTLY"
+
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

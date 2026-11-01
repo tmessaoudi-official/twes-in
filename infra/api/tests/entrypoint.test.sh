@@ -15,6 +15,9 @@ mkdir -p "$TMPDIR/bin"
 cat > "$TMPDIR/bin/php" <<'EOF'
 #!/usr/bin/env bash
 echo "console ${2%% *}" >> "$TMPDIR/ran"
+# FAIL_STEP names a step that fails, as a seal-chain over a row it cannot read would.
+[[ -n "${FAIL_STEP:-}" && "$2" == "$FAIL_STEP" ]] && { echo "In SealChain.php line 42: the chain broke at FA-2026-0412"; exit 1; }
+exit 0
 EOF
 # What the official image's own entrypoint is handed, written down instead of run.
 cat > "$TMPDIR/bin/docker-php-entrypoint" <<'EOF'
@@ -23,7 +26,7 @@ echo "started $*" >> "$TMPDIR/ran"
 EOF
 chmod +x "$TMPDIR/bin/"*
 
-start() { (rm -f "$TMPDIR/ran" && PATH="$TMPDIR/bin:$PATH" DATABASE_URL=postgresql://stand-in "$@" 2>&1); }
+start() { (rm -f "$TMPDIR/ran" && PATH="$TMPDIR/bin:$PATH" DATABASE_URL=postgresql://stand-in TWES_START_STEPS_DIR="$TMPDIR/steps" "$@" 2>&1); }
 ran() { cat "$TMPDIR/ran" 2>/dev/null; }
 steps="app:modules:announce-arrivals app:platform:converge app:legal:seed-drafts app:invoices:seal-chain"
 
@@ -49,6 +52,19 @@ check "  asking the console nothing" 0 0 "$(ran | grep -c '^console' || true)" "
 start env -u TWES_RELEASE_STEPS sh "$HERE/docker-entrypoint.sh" sh -c true >/dev/null
 check "a shell starts untouched" $? 0 "$(ran)" "started sh -c true"
 check "  asking the console nothing" 0 0 "$(ran | grep -c '^console' || true)" "0"
+
+# A start step that fails never stops the start: the server answers, and the deep health names the step that failed
+# (var/start-steps/<step>.failed, read by DoctrineDeepHealthReader) until a later start runs it through.
+out=$(start env -u TWES_RELEASE_STEPS FAIL_STEP=app:invoices:seal-chain sh "$HERE/docker-entrypoint.sh" frankenphp run)
+check "a step that fails: the server starts all the same" $? 0 "$(ran | tail -n 1)" "started frankenphp run"
+check "  the steps after it still run" 0 0 "$(ran)" "console app:invoices:seal-chain"
+check "  what failed is said in the log" 0 0 "$out" "app:invoices:seal-chain failed"
+check "  and kept for the deep health, with its last lines" 0 0 "$(cat "$TMPDIR/steps/app:invoices:seal-chain.failed" 2>&1)" "the chain broke at FA-2026-0412"
+out=$(start env -u TWES_RELEASE_STEPS FAIL_STEP=app:platform:converge sh "$HERE/docker-entrypoint.sh" frankenphp run)
+check "an early step that fails: the later ones run" $? 0 "$(ran)" "console app:legal:seed-drafts"
+start env -u TWES_RELEASE_STEPS sh "$HERE/docker-entrypoint.sh" frankenphp run >/dev/null
+[[ ! -e "$TMPDIR/steps/app:invoices:seal-chain.failed" && ! -e "$TMPDIR/steps/app:platform:converge.failed" ]]
+check "a later start that runs them through clears what was kept" $? 0 "" ""
 
 echo "entrypoint: $pass passed, $fail failed"
 ((fail == 0))

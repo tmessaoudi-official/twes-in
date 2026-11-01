@@ -75,7 +75,11 @@ Untried end to end; `tag-release.sh`, `point-master.sh` and `deploy.sh --release
 2. On your machine, in the main checkout: `git fetch origin`, then
    `make release-tag TAG=v<YYYY.MM.DD.N> COMMIT=<commit>` (`scripts/release/tag-release.sh`; without `COMMIT`, HEAD).
    It refuses a commit master does not hold, a commit whose three images were never published, images that say they
-   were built from another commit, and a tag that exists; it writes the three digests into the annotated tag, signs it
+   were built from another commit, and a tag that exists. It also refuses a commit whose tree the update rehearsal and
+   `make onprem-check` have not proved (each writes `var/claude/gates/proofs/<rehearsal|onprem>-<tree>.ok` when it
+   passes, so the same tree re-signed keeps its proofs), any commit since the last release tag without a good
+   signature, and a tag dated in, or made during, the year-end freeze (`TWES_RELEASE_FREEZE`, 2026.12.20-2027.01.10 by
+   default). `UNREHEARSED=<why>` and `HOTFIX=<why>` let one through, and the tag's message says why. It writes the three digests into the annotated tag, signs it
    with your git `user.signingkey` (or `TWES_RELEASE_KEY`), which shops verify before taking it, and verifies it once
    made. It reads each image's label and digest from the registry without pulling it (`docker buildx imagetools`, a
    few seconds an image, one line each). The date is the day you tag, `.N` that day's count of releases.
@@ -133,6 +137,28 @@ not verify against the key that shop pinned. Nothing changed there. Check the ta
 did not make means someone could push to the repository: rotate the token or key that let them, delete the tag
 (`git push origin :refs/tags/v<…>`), and tell the shops. A tag you made with another key: tag again with the right one,
 under the next number.
+
+## Patch a release
+
+Tried in the scripts' own tests (`scripts/release/tests/tag-release.test.sh`, `publish.test.sh`,
+`scripts/tests/twes.test.sh`: a signed patch tag on a release's branch is made, published without moving `:master`, and
+taken by `twes update` with none of master's work since). Untried with GHCR and a shop.
+
+For a fix the shops need while master carries work not ready to ship (a hotfix, the finance law's values of a new year):
+
+1. A branch named for the release it patches, grown from its tag: `git switch -c release/2026.10.30 v2026.10.30.1`. The
+   fix goes on it as signed commits (cherry-picked from master where it landed there first), then `git push origin
+   release/2026.10.30`. CI runs on it as on master, and its `publish` job pushes the images by commit only
+   (`publish.sh --no-master`): `:master`, which staging follows, stays on master's newest.
+2. The proofs, on the branch's commit: `make update-rehearsal FILES=… FROM=v2026.10.30.1 TO=<the patch commit>` and
+   `make onprem-check` from a clean checkout of it, as for any release.
+3. The tag, dated after the release it patches: `make release-tag TAG=v2026.12.15.1 COMMIT=<the patch commit>`.
+   `tag-release.sh` takes a commit `origin/master` does not hold only when an `origin/release/<YYYY.MM.DD>` branch holds
+   it and grows from that day's release tag, and says « maintenance lane release/… from v… ». Inside the year-end freeze
+   it also wants `--hotfix <why>`. Push the tag; each shop takes it as its newest by its policy.
+
+The next release from master is tagged later, so it sorts after the patch, and a shop on the patch takes it as any other
+update. The patch's own commits come back to master by cherry-pick if master does not hold them yet.
 
 ## Roll back
 
@@ -383,7 +409,7 @@ The monitor check proves the readings, not the alerts (`make monitor-check`).
 |---|---|---|
 | Site | the edge does not answer, or its certificate has under two weeks left | the machine, then `docker compose … logs edge` (Let's Encrypt renewals) |
 | Site, 502 or 504 | the edge answers but the api does not | `docker compose … logs web`: a request's line ends `upstream="<address>" <status> <connect time>`, « - » for no connection (nginx writes no error line about a request: it would carry a link's token), then `logs api` |
-| Traitements | `/api/health/deep` answered 503 | its body names the failing part: the queue (above), the disk (above), the archive (the bucket) |
+| Traitements | `/api/health/deep` answered 503 | its body names the failing part: the queue (above), the disk (above), the archive (the bucket), or `startSteps`: a start step that failed (`readings.failedStartSteps` names it; `docker compose exec api cat var/start-steps/<step>.failed` shows what it said; the server started without it, and the next start runs it again) |
 | Base / Copie / Relecture | a backup step did not report in time | `docker compose … logs backup`; run the step by hand, `… exec backup twes-backup diff` (or `copy`, `verify`) |
 | Suivi des erreurs | GlitchTip itself is down | the monitor's machine |
 

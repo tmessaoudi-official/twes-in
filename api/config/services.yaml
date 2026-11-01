@@ -191,6 +191,9 @@ parameters:
     # less than this share of the disk under the stored files left free.
     app.health.oldest_waiting_seconds: 600
     app.health.disk_free_minimum: 0.2
+    # Where the api's start keeps a start step that failed (infra/api/docker-entrypoint.sh, TWES_START_STEPS_DIR), which
+    # the deep health names until a later start runs it through.
+    app.health.start_steps_directory: '%kernel.project_dir%/var/start-steps'
     # What a person may attach to a record (docs/SPEC.md § 7, 2026-09-15): a document or a picture of one, read from its
     # bytes. nginx's client_max_body_size and PHP's upload_max_filesize/post_max_size sit just above the size.
     app.files.upload_max_bytes: 10485760

@@ -158,9 +158,9 @@ update-rehearsal:  ## the update a shop will take (docs/RUNBOOK.md « Release to
 staging-check:  ## the staging check (docs/RUNBOOK.md): the working tree published to a local registry by publish.sh, followed by staging-follow.sh into a staging of its own, every container proved to run its digest with nothing built, then redeployed from the recorded release after its images were removed; its own compose project (twes-staging-check), removed at the end
 	bash scripts/staging/staging-check.sh
 
-release-tag:   ## the signed release tag of a commit master published (docs/RUNBOOK.md « Promote »): make release-tag TAG=vYYYY.MM.DD.N [COMMIT=<sha>, HEAD by default] [REGISTRY=…]; tagged and verified here, never pushed: it prints the push
+release-tag:   ## the signed release tag of a commit master published (docs/RUNBOOK.md « Promote »): make release-tag TAG=vYYYY.MM.DD.N [COMMIT=<sha>, HEAD by default] [REGISTRY=…] [UNREHEARSED=<why>] [HOTFIX=<why>]; refused without the rehearsal and onprem-check proofs of its tree, over an unsigned commit, or in the year-end freeze; tagged and verified here, never pushed: it prints the push
 	@[ -n "$(TAG)" ] || { echo "make release-tag TAG=vYYYY.MM.DD.N [COMMIT=<sha>]" >&2; exit 2; }
-	bash scripts/release/tag-release.sh $(REGISTRY) $(TAG) $(or $(COMMIT),HEAD)
+	bash scripts/release/tag-release.sh $(if $(UNREHEARSED),--unrehearsed "$(UNREHEARSED)") $(if $(HOTFIX),--hotfix "$(HOTFIX)") $(REGISTRY) $(TAG) $(or $(COMMIT),HEAD)
 point-master:  ## :master moved to a commit master published, either way (docs/RUNBOOK.md « Point :master »): make point-master COMMIT=<sha> [REGISTRY=…]; staging follows it, shops never read it
 	@[ -n "$(COMMIT)" ] || { echo "make point-master COMMIT=<sha>" >&2; exit 2; }
 	bash scripts/release/point-master.sh $(REGISTRY) $(COMMIT)
@@ -279,6 +279,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/language-literals.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/logical-direction.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/additive-migrations.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/signed-commits.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/xml-reads.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/decision-stamps.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/screen-texts-budget.test.sh
@@ -359,6 +360,7 @@ in-gate-licences:
 	bash scripts/gates/language-literals.sh
 	bash scripts/gates/logical-direction.sh
 	bash scripts/gates/additive-migrations.sh
+	bash scripts/gates/signed-commits.sh
 	bash scripts/gates/xml-reads.sh
 	bash scripts/gates/decision-stamps.sh
 	bash scripts/gates/screen-texts-budget.sh

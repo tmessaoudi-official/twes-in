@@ -26,7 +26,7 @@ final class DeepHealthTest extends TestCase
 
         self::assertTrue($verdict['ok']);
         self::assertSame([], $verdict['failing']);
-        self::assertSame(['failedMessages' => 0, 'oldestWaitingSeconds' => null, 'diskFree' => 0.55, 'archiving' => 'working'], $verdict['readings']);
+        self::assertSame(['failedMessages' => 0, 'oldestWaitingSeconds' => null, 'diskFree' => 0.55, 'archiving' => 'working', 'failedStartSteps' => []], $verdict['readings']);
     }
 
     /** @return iterable<string, array{HealthReadings, list<string>}> */
@@ -38,6 +38,7 @@ final class DeepHealthTest extends TestCase
         yield 'archiving that fails' => [new HealthReadings(0, null, 0.5, Archiving::Failing), ['archiving']];
         yield 'archiving switched off where backups run' => [new HealthReadings(0, null, 0.5, Archiving::Off), ['archiving']];
         yield 'nothing ever archived where backups run' => [new HealthReadings(0, null, 0.5, Archiving::NeverArchived), ['archiving']];
+        yield 'a start step that failed: the server started without it' => [new HealthReadings(0, null, 0.5, Archiving::Working, ['app:invoices:seal-chain']), ['startSteps']];
         yield 'everything at once, each named' => [new HealthReadings(2, 9000, 0.01, Archiving::Failing), ['failedMessages', 'oldestWaiting', 'diskFree', 'archiving']];
     }
 
@@ -49,6 +50,13 @@ final class DeepHealthTest extends TestCase
 
         self::assertFalse($verdict['ok']);
         self::assertSame($failing, $verdict['failing']);
+    }
+
+    public function testTheFailedStartStepsAreNamedInTheReadings(): void
+    {
+        $verdict = self::judge(new HealthReadings(0, null, 0.5, Archiving::Working, ['app:platform:converge', 'app:invoices:seal-chain']));
+
+        self::assertSame(['app:platform:converge', 'app:invoices:seal-chain'], $verdict['readings']['failedStartSteps']);
     }
 
     public function testTheLimitsThemselvesStillPass(): void

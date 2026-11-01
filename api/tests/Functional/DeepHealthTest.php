@@ -62,6 +62,27 @@ final class DeepHealthTest extends WebTestCase
         self::assertSame('not expected', $body['readings']['archiving']);
     }
 
+    /** A start step that failed (infra/api/docker-entrypoint.sh keeps it as <step>.failed) is named until a start runs it. */
+    public function testAStartStepThatFailedIsReported(): void
+    {
+        $client = self::client();
+        $directory = self::getContainer()->getParameter('app.health.start_steps_directory');
+        $mark = $directory.'/app:invoices:seal-chain.failed';
+        if (!is_dir($directory)) {
+            mkdir($directory, 0o775, true);
+        }
+        file_put_contents($mark, "the chain broke\n");
+        try {
+            $body = self::read($client);
+        } finally {
+            unlink($mark);
+        }
+
+        self::assertResponseStatusCodeSame(503);
+        self::assertSame(['startSteps'], $body['failing']);
+        self::assertSame(['app:invoices:seal-chain'], $body['readings']['failedStartSteps']);
+    }
+
     public function testAMessageThatFailedForGoodIsReported(): void
     {
         $client = self::client();

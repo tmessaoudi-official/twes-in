@@ -19,6 +19,8 @@ final readonly class HealthReadings
         /** The free share of the disk the stored files are on, 0 to 1. */
         public float $diskFree,
         public Archiving $archiving,
+        /** @var list<string> the start steps that failed at this container's start, by command name */
+        public array $failedStartSteps = [],
     ) {
     }
 }

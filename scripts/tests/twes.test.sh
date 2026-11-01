@@ -115,6 +115,11 @@ origin() {
   cp "$HERE/deploy/new-instance.sh" "$w/scripts/deploy/new-instance.sh"; cp "$TMPDIR/release-key.asc" "$w/infra/onprem/release-key.asc"
   git -C "$w" init -q -b master && git -C "$w" add -A && git -C "$w" commit -qm one && sign "$w" "$OLD"
   echo two > "$w/two"; git -C "$w" add -A && git -C "$w" commit -qm two && sign "$w" "$NEW" "${SIGN_NEW:-dev}"
+  # PATCH: a patch on the old release's own branch (the maintenance lane), tagged after the newest, master left as it is.
+  if [[ -n "${PATCH:-}" ]]; then
+    git -C "$w" checkout -q -b "release/${OLD:1:10}" "$OLD"; echo patch > "$w/patch"; git -C "$w" add -A
+    git -C "$w" commit -qm patch && sign "$w" "$PATCH"; git -C "$w" checkout -q master
+  fi
   git clone -q --bare "$w" "$w.git"; echo "$w.git"
 }
 shop() { # the clone, and its values beside it under its own folder
@@ -330,6 +335,11 @@ d=$(shop)
 out=$(twes "$d" update); check "a first install takes the newest release" $? 0 "$out" "updated to $NEW"
 [[ "$(at_tag "$d")" == "$NEW" ]]; check "  checked out at its tag" $? 0 "$(at_tag "$d")" ""
 [[ "$(deployed)" != *"before-update"* ]]; check "  with nothing to back up before it" $? 0 "$(deployed)" ""
+
+d=$(PATCH=v2026.10.22.1 installed)
+out=$(BACKUP_LABEL=$LABEL twes "$d" update); check "a patch tagged on a release's own branch, master's newest left behind, is taken" $? 0 "$out" "updated to v2026.10.22.1"
+[[ "$(at_tag "$d")" == v2026.10.22.1 && ! -e "$d/twes-in/two" && -e "$d/twes-in/patch" ]]
+check "  checked out at the patch, with none of master's work since its base" $? 0 "$(at_tag "$d"); $(ls "$d/twes-in")" ""
 
 d=$(installed)
 out=$(BACKUP_LABEL=$LABEL twes "$d" update); check "an update to the newest release" $? 0 "$out" "updated to $NEW"

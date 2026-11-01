@@ -252,4 +252,8 @@ code=$(deep); [[ "$code" == 200 ]] || fail "$A after refusing $C answers its dee
 [[ "$(sql "SELECT count(*) FROM inbox_item WHERE type = 'installation.update_refused'")" == 1 ]] || fail "the operator was not told of the refused $C in the application"
 step "$C unsigned: refused before anything moved, told"
 
+# The proof tag-release.sh asks for, keyed on the tree checked: the same tree committed and signed later keeps it.
+mkdir -p "$root/var/claude/gates/proofs"
+printf 'onprem-check OK %s snapshot %s\n' "$(date -Iseconds)" "$snapshot" > "$root/var/claude/gates/proofs/onprem-$tree.ok"
 printf 'onprem-check: OK — installed, rolled back, restored and an unsigned release refused in %ss in all\n' "$(($(date +%s) - started))"
+echo "onprem-check: proof written for tree ${tree:0:12}: var/claude/gates/proofs/onprem-$tree.ok"

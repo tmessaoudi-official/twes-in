@@ -286,5 +286,32 @@ out=$(COMPOSE_PROJECT_NAME=twes-staging-check DEPLOY_EXTRA_FILES=/x/a.yaml run "
 d=$(repo); e=$(envfile)
 out=$(COMPOSE_PROJECT_NAME=twes-staging-check DEPLOY_EXTRA_FILES=/x/a.yaml run "$d" --build "$e"); check "  nor a built one" $? 1 "$out" "DEPLOY_EXTRA_FILES"
 
+# An update hands the new deploy.sh the shop's OLD values file: what this release adds is filled in from
+# infra/onprem/values.defaults before compose reads it, the file backed up first, a secret generated where marked.
+defaults_repo() { # the defaults' lines
+  local d; d=$(repo); mkdir -p "$d/infra/onprem"; printf '%s\n' "$1" > "$d/infra/onprem/values.defaults"
+  git -C "$d" add -A; git -C "$d" commit -qm defaults; git -C "$d" tag -f v2026.10.12.1 >/dev/null
+  annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"; echo "$d"
+}
+d=$(defaults_repo $'# What a shop says when nobody set it.\nSHOP_GREETING=Bonjour\nNEW_KEY=generate:32'); e=$(onprem_values)
+out=$(SECRETS=NEW_KEY run "$d" --release "$e"); check "a value the old file lacks is filled from the release's defaults" $? 0 "$out" "running"
+check "  the default as written" 0 0 "$(cat "$e")" "SHOP_GREETING=Bonjour"
+check "  a secret marked generate, made here" 0 0 "$(grep -cE '^NEW_KEY=[A-Za-z0-9]{32}$' "$e")" "1"
+check "  said in the output" 0 0 "$out" "NEW_KEY"
+check "  the file backed up first, readable by its owner alone" 0 0 "$(stat -c %a "$e".before-* 2>&1)" "600"
+check "  the backup the file as it was" 0 0 "$(grep -c NEW_KEY "$e".before-* 2>&1)" "0"
+check "  the file still its owner's alone" 0 0 "$(stat -c %a "$e")" "600"
+before=$(sha256sum < "$e")
+out=$(SECRETS=NEW_KEY run "$d" --release "$e"); check "  run again: nothing to fill" $? 0 "$out" "running"
+check "  the file unchanged, the secret not made twice" 0 0 "$(sha256sum < "$e")" "$before"
+d=$(defaults_repo 'SHOP_GREETING=Bonjour'); e=$(onprem_values $'SHOP_GREETING=Salut\n')
+out=$(run "$d" --release "$e"); check "a value the shop set is never replaced" $? 0 "$out" "running"
+check "  it stays its own" 0 0 "$(grep -c '^SHOP_GREETING=' "$e"):$(grep '^SHOP_GREETING=' "$e")" "1:SHOP_GREETING=Salut"
+d=$(defaults_repo 'SIGNING_MASTER_KEY=generate:64'); e=$(onprem_values)
+out=$(run "$d" --release "$e"); check "a master key is never generated on an update: refused" $? 1 "$out" "SIGNING_MASTER_KEY"
+d=$(defaults_repo 'SHOP_GREETING=Bonjour'); e=$(onprem_values); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
+run "$d" --compose "$e" ps >/dev/null
+check "a command that makes no container writes nothing to the values" 0 0 "$(grep -c SHOP_GREETING "$e")" "0"
+
 echo "deploy: $pass passed, $fail failed"
 ((fail == 0))

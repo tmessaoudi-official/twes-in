@@ -23,7 +23,7 @@ final readonly class DeepHealth
     ) {
     }
 
-    /** @return array{ok: bool, failing: list<string>, readings: array<string, mixed>} */
+    /** @return array{ok: bool, failing: list<string>, readings: array{failedMessages: int, oldestWaitingSeconds: ?int, diskFree: float, archiving: string, failedStartSteps: list<string>}} */
     public function judge(HealthReadings $readings): array
     {
         $failing = [];
@@ -40,6 +40,10 @@ final readonly class DeepHealth
             $failing[] = 'archiving';
         }
 
+        if ([] !== $readings->failedStartSteps) {
+            $failing[] = 'startSteps';
+        }
+
         return [
             'ok' => [] === $failing,
             'failing' => $failing,
@@ -48,6 +52,7 @@ final readonly class DeepHealth
                 'oldestWaitingSeconds' => $readings->oldestWaitingSeconds,
                 'diskFree' => $readings->diskFree,
                 'archiving' => $readings->archiving->value,
+                'failedStartSteps' => $readings->failedStartSteps,
             ],
         ];
     }

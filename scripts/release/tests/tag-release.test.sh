@@ -17,6 +17,14 @@ export GNUPGHOME=$TMPDIR/gnupg; mkdir -m 700 "$GNUPGHOME"
 gpg --batch --quiet --pinentry-mode loopback --passphrase '' --quick-gen-key 'twes release <release@twes.test>' ed25519 sign never
 KEY=$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" { print $10; exit }')
 
+# A commit signed by the release key, as every commit on master is.
+signed_commit() { git -C "$1/repo" -c user.signingkey="$KEY" -c commit.gpgsign=true commit -qm "$2"; }
+# The rehearsal's and onprem-check's markers for a commit's tree, as update-rehearsal.sh and onprem-check.sh write them.
+proven() {
+  local tree; tree=$(git -C "$1/repo" rev-parse "$2^{tree}")
+  mkdir -p "$1/repo/var/claude/gates/proofs"
+  for kind in rehearsal onprem; do echo "$kind OK" > "$1/repo/var/claude/gates/proofs/$kind-$tree.ok"; done
+}
 # A checkout whose origin/master holds its HEAD, and a docker that answers from the environment: LABEL_REV the commit
 # every image says it was built from (HEAD when unset), MISSING a part the registry has no image of, NO_BUILDX a docker
 # without buildx, DIGEST_SAYS what the registry gives in place of a digest. It reads the registry through buildx's
@@ -25,8 +33,9 @@ fixture() {
   local d; d=$(mktemp -d)
   mkdir -p "$d/repo/scripts/release" "$d/bin"
   cp "$SCRIPT" "$d/repo/scripts/release/"
-  git -C "$d/repo" init -q -b master && git -C "$d/repo" add -A && git -C "$d/repo" commit -qm one
+  git -C "$d/repo" init -q -b master && git -C "$d/repo" add -A && signed_commit "$d" one
   git -C "$d/repo" update-ref refs/remotes/origin/master HEAD
+  proven "$d" HEAD
   cat > "$d/bin/docker" <<'EOF'
 #!/usr/bin/env bash
 echo "docker $*" >> "$CALLS"
@@ -42,9 +51,10 @@ EOF
   chmod +x "$d/bin/docker"
   echo "$d"
 }
-tag_release() { # dir, tag, then extra environment
+FLAGS=()
+tag_release() { # dir, tag, then extra environment (FLAGS: options before the arguments)
   local d=$1 tag=$2; shift 2
-  (cd "$d/repo" && env CALLS="$d/calls" PATH="$d/bin:$PATH" LABEL_REV="$(git rev-parse HEAD)" TWES_RELEASE_KEY="$KEY" "$@" bash scripts/release/tag-release.sh registry.invalid/o "$tag" 2>&1)
+  (cd "$d/repo" && env CALLS="$d/calls" PATH="$d/bin:$PATH" LABEL_REV="$(git rev-parse HEAD)" TWES_RELEASE_KEY="$KEY" TWES_TODAY=2026.10.13 "$@" bash scripts/release/tag-release.sh "${FLAGS[@]}" registry.invalid/o "$tag" 2>&1)
 }
 message() { git -C "$1/repo" for-each-ref --format='%(contents)' "refs/tags/$2"; }
 
@@ -73,9 +83,9 @@ out=$(tag_release "$d" v2026.10.13.1 TWES_RELEASE_KEY=0000000000000000); check "
 git -C "$d/repo" rev-parse -q --verify refs/tags/v2026.10.13.1 >/dev/null; check "  and no tag is left" $? 1 "" ""
 
 d=$(fixture); first=$(git -C "$d/repo" rev-parse HEAD)
-echo x > "$d/repo/x"; git -C "$d/repo" add -A; git -C "$d/repo" commit -qm two
+echo x > "$d/repo/x"; git -C "$d/repo" add -A; signed_commit "$d" two
 git -C "$d/repo" update-ref refs/remotes/origin/master HEAD
-out=$(cd "$d/repo" && env CALLS="$d/calls" PATH="$d/bin:$PATH" LABEL_REV="$first" TWES_RELEASE_KEY="$KEY" bash scripts/release/tag-release.sh registry.invalid/o v2026.10.13.2 "${first:0:8}" 2>&1)
+out=$(cd "$d/repo" && env CALLS="$d/calls" PATH="$d/bin:$PATH" LABEL_REV="$first" TWES_RELEASE_KEY="$KEY" TWES_TODAY=2026.10.13 bash scripts/release/tag-release.sh registry.invalid/o v2026.10.13.2 "${first:0:8}" 2>&1)
 check "an older commit master holds is tagged by name, HEAD elsewhere" $? 0 "$out" "made and verified at $first"
 check "  the tag points at that commit" 0 0 "$(git -C "$d/repo" rev-parse 'v2026.10.13.2^{commit}')" "$first"
 check "  its message names that commit" 0 0 "$(message "$d" v2026.10.13.2)" "TWES_REVISION=$first"
@@ -112,6 +122,67 @@ out=$(tag_release "$d" v2026.10.13.1 LABEL_REV="$(printf 'c%.0s' {1..40})"); che
 
 d=$(fixture)
 out=$(cd "$d/repo" && bash scripts/release/tag-release.sh registry.invalid/o 2>&1); check "the registry and the tag must be named" $? 2 "$out" "Usage"
+
+# What a release rests on: the rehearsal and onprem-check proved this very tree, every commit since the last release
+# is signed, and no tag is made in the year-end freeze but a hotfix.
+d=$(fixture); rm -rf "$d/repo/var/claude/gates/proofs"
+out=$(tag_release "$d" v2026.10.13.1); check "no proof of the rehearsal or onprem-check for this tree: refused" $? 1 "$out" "update-rehearsal"
+git -C "$d/repo" rev-parse -q --verify refs/tags/v2026.10.13.1 >/dev/null; check "  and no tag is left" $? 1 "" ""
+d=$(fixture); rm -f "$d/repo/var/claude/gates/proofs/onprem-"*
+out=$(tag_release "$d" v2026.10.13.1); check "the rehearsal proved but not onprem-check: refused" $? 1 "$out" "onprem-check"
+d=$(fixture); tree=$(git -C "$d/repo" rev-parse 'HEAD^{tree}'); rm -rf "$d/repo/var/claude/gates/proofs"
+mkdir -p "$d/repo/var/claude/gates/proofs"; for k in rehearsal onprem; do echo ok > "$d/repo/var/claude/gates/proofs/$k-$(printf 'a%.0s' {1..40}).ok"; done
+out=$(tag_release "$d" v2026.10.13.1); check "proofs of another tree prove nothing for this one: refused" $? 1 "$out" "${tree:0:12}"
+d=$(fixture); rm -rf "$d/repo/var/claude/gates/proofs"
+FLAGS=(--unrehearsed "the 2027 values alone, rehearsed by hand"); out=$(tag_release "$d" v2026.10.13.1); FLAGS=()
+check "unproved, but said why: tagged" $? 0 "$out" "made and verified"
+check "  and the tag's message says why" 0 0 "$(message "$d" v2026.10.13.1)" "UNREHEARSED=the 2027 values alone"
+
+d=$(fixture); tag_release "$d" v2026.10.13.1 >/dev/null
+echo y > "$d/repo/y"; git -C "$d/repo" add -A; git -C "$d/repo" commit -qm unsigned
+git -C "$d/repo" update-ref refs/remotes/origin/master HEAD; proven "$d" HEAD
+out=$(tag_release "$d" v2026.10.14.1); check "an unsigned commit since the last release: refused" $? 1 "$out" "unsigned"
+check "  naming it" 0 0 "$out" "$(git -C "$d/repo" rev-parse --short HEAD)"
+d=$(fixture); tag_release "$d" v2026.10.13.1 >/dev/null
+echo y > "$d/repo/y"; git -C "$d/repo" add -A; signed_commit "$d" signed
+git -C "$d/repo" update-ref refs/remotes/origin/master HEAD; proven "$d" HEAD
+out=$(tag_release "$d" v2026.10.14.1); check "every commit since the last release signed: tagged" $? 0 "$out" "made and verified"
+
+d=$(fixture)
+out=$(tag_release "$d" v2026.12.24.1); check "a tag dated in the year-end freeze: refused" $? 1 "$out" "freeze"
+out=$(tag_release "$d" v2026.10.13.1 TWES_TODAY=2027.01.05); check "a tag made during the freeze, whatever its name: refused" $? 1 "$out" "freeze"
+out=$(tag_release "$d" v2027.01.11.1 TWES_TODAY=2027.01.11); check "the day after the freeze: tagged" $? 0 "$out" "made and verified"
+d=$(fixture)
+FLAGS=(--hotfix "a sale refused at the till"); out=$(tag_release "$d" v2026.12.24.1); FLAGS=()
+check "a hotfix in the freeze, said why: tagged" $? 0 "$out" "made and verified"
+check "  and the tag's message says why" 0 0 "$(message "$d" v2026.12.24.1)" "HOTFIX=a sale refused at the till"
+d=$(fixture)
+out=$(tag_release "$d" v2026.12.24.1 TWES_RELEASE_FREEZE=2026.12.26-2027.01.02); check "the freeze is a parameter" $? 0 "$out" "made and verified"
+
+# The maintenance lane: a patch for the shops while master carries work not ready to ship. Its commits sit on
+# release/<the release's date>, which grows from that release's tag; the patch tag is dated after it.
+lane() { # dir: a release tagged, master moved on, a patch committed on release/2026.10.13 and published there
+  tag_release "$1" v2026.10.13.1 >/dev/null
+  echo m > "$1/repo/m"; git -C "$1/repo" add -A; signed_commit "$1" master-work
+  git -C "$1/repo" update-ref refs/remotes/origin/master HEAD
+  git -C "$1/repo" checkout -q -b release/2026.10.13 v2026.10.13.1
+  echo p > "$1/repo/p"; git -C "$1/repo" add -A; signed_commit "$1" patch
+  git -C "$1/repo" update-ref refs/remotes/origin/release/2026.10.13 HEAD; proven "$1" HEAD
+}
+d=$(fixture); lane "$d"
+out=$(tag_release "$d" v2026.10.20.1); check "a patch on release/<date>, grown from that release's tag: tagged" $? 0 "$out" "made and verified"
+check "  saying its lane and its base" 0 0 "$out" "release/2026.10.13 from v2026.10.13.1"
+check "  the tag at the patch, not at master" 0 0 "$(git -C "$d/repo" rev-parse 'v2026.10.20.1^{commit}')" "$(git -C "$d/repo" rev-parse HEAD)"
+d=$(fixture); lane "$d"
+out=$(tag_release "$d" v2026.10.13.2); check "a patch tag dated on or before its base: refused" $? 1 "$out" "after v2026.10.13.1"
+d=$(fixture); lane "$d"; git -C "$d/repo" update-ref -d refs/remotes/origin/release/2026.10.13
+git -C "$d/repo" update-ref refs/remotes/origin/release/2026.10.14 HEAD
+out=$(tag_release "$d" v2026.10.20.1); check "a release branch named for no release tag it grows from: refused" $? 1 "$out" "origin/master does not hold"
+d=$(fixture); lane "$d"; git -C "$d/repo" update-ref -d refs/remotes/origin/release/2026.10.13
+out=$(tag_release "$d" v2026.10.20.1); check "a patch never pushed to its release branch: refused" $? 1 "$out" "origin/master does not hold"
+d=$(fixture); lane "$d"; echo q > "$d/repo/q"; git -C "$d/repo" add -A; git -C "$d/repo" commit -qm unsigned-patch
+git -C "$d/repo" update-ref refs/remotes/origin/release/2026.10.13 HEAD; proven "$d" HEAD
+out=$(tag_release "$d" v2026.10.20.1); check "an unsigned commit on the lane: refused as on master" $? 1 "$out" "unsigned"
 
 echo "tag-release.test: $pass passed, $fail failed"
 ((fail == 0))

@@ -81,6 +81,43 @@ if [[ "$mode" == --compose ]]; then
   creates=no
   for word in "$@"; do [[ "$word" == up || "$word" == run || "$word" == create ]] && { creates=yes; break; }; done
 fi
+# A shop's update runs this release's deploy.sh with the values file its first install wrote: a value this release adds
+# would stop compose (`:?`) or mount an empty secret. infra/onprem/values.defaults names each one, `NAME=value` or
+# `NAME=generate:<length>` for a random secret made here; a name the file already gives is never touched. The file is
+# copied aside first, readable by its owner alone. A master key is never generated: it encrypts what is already stored,
+# and a new one would lock it out, so it is refused for the developer to set.
+defaults=$root/infra/onprem/values.defaults
+if [[ "$creates" == yes && "$(value TWES_INSTALL)" == onprem && -f "$defaults" ]]; then
+  missing=()
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    [[ "$line" =~ ^([A-Z][A-Z0-9_]*)=(.*)$ ]] || refuse "infra/onprem/values.defaults: '$line' is not NAME=value"
+    name=${BASH_REMATCH[1]} given=${BASH_REMATCH[2]}
+    grep -q "^$name=" "$values" && continue
+    [[ "$given" == generate:* && "$name" == *_MASTER_KEY ]] \
+      && refuse "$values give no $name, and a master key is never generated on an update: set the installation's own, from the password manager"
+    [[ "$given" != generate:* || "${given#generate:}" =~ ^[1-9][0-9]*$ ]] \
+      || refuse "infra/onprem/values.defaults: $name=$given: generate takes a length"
+    missing+=("$name=$given")
+  done < "$defaults"
+  if ((${#missing[@]})); then
+    backup="$values.before-$(date +%Y%m%d%H%M%S)"
+    (umask 077 && cp "$values" "$backup") || refuse "cannot copy $values aside before filling it"
+    chmod 600 "$backup"
+    [[ -z "$(tail -c 1 "$values")" ]] || echo >> "$values"
+    echo "# Added by deploy.sh on $(date -u +%Y-%m-%dT%H:%MZ) from the release's infra/onprem/values.defaults." >> "$values"
+    for pair in "${missing[@]}"; do
+      name=${pair%%=*} given=${pair#*=}
+      if [[ "$given" == generate:* ]]; then
+        length=${given#generate:} given=''
+        while ((${#given} < length)); do given+=$(head -c 4096 /dev/urandom | LC_ALL=C tr -dc 'A-Za-z0-9'); done
+        given=${given:0:length}
+      fi
+      echo "$name=$given" >> "$values"
+      echo "deploy: $values gave no $name; filled from the release's defaults (the file as it was: $backup)"
+    done
+  fi
+fi
 if [[ "$creates" == yes ]]; then
   merged=$(cd "$root" && docker compose --env-file "$values" "${files[@]}" config 2>&1) \
     || refuse "docker compose cannot read this installation's files with $values: $merged"

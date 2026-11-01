@@ -827,7 +827,7 @@ if possible: `infra/monitor/compose.yaml`, three services behind a Caddy edge of
 - **Gatus** reads the instance every minute, shows the public status page and alerts by mail and Telegram after three
   failed reads in a row, then again once the line is back. Its lines (`infra/monitor/gatus.yaml`): the site answering
   over a certificate with two weeks left at least; `/api/health/deep` read with `MONITOR_TOKEN` (the queue, the files
-  volume's free space and the database's archiving, 503 when one fails); the error tracker itself; and the backups'
+  volume's free space, the database's archiving and the start steps the api could not run, 503 when one fails); the error tracker itself; and the backups'
   heartbeats, which each step of `twes-backup` posts when it ends: `Base` (nightly, 26 hours), `Copie` (nightly, 26
   hours) and `Relecture` (weekly, 8 days). Silence past a heartbeat's interval raises the alert. The page is public, so
   every line hides its address, host, port, conditions and errors, and no alert names a customer.
@@ -1011,7 +1011,7 @@ warning until Caddy next checked them.
 | Command | What it does |
 |---|---|
 | `twes start` | waits for Docker (five minutes), reads this computer's address, starts the release deployed here again; nothing is fetched, so a morning without the internet still opens |
-| `twes update` | the newest release tag, once its signature verifies: the database and the files backed up first, the release deployed by digest, its deep health read through the edge; unhealthy, the release before it is started again on the new schema and the developer told; cut short (the computer switched off, a task's time limit), what it was doing is written down first (`state/update-in-progress`), and the next `start` or `tick` takes the shop back the same way |
+| `twes update` | the newest release tag, once its signature verifies: the database and the files backed up first, the release deployed by digest (a value the release needs that the shop's values file lacks filled in first from `infra/onprem/values.defaults`, a secret marked `generate:` made there, the file copied aside as `<file>.before-<moment>`; a master key is never made, the update refused until it is set), its deep health read through the edge; unhealthy, the release before it is started again on the new schema and the developer told; cut short (the computer switched off, a task's time limit), what it was doing is written down first (`state/update-in-progress`), and the next `start` or `tick` takes the shop back the same way |
 | `twes policy auto 13:00-14:00` | updates applied by `tick` inside that daily window, in the shop's time, never just after a start, a release that failed here never retried by itself |
 | `twes policy notify` / `off` | a release out is told to each company's owners in the application, or nothing |
 | `twes offsite on` / `off` | the hourly off-site copy of the backups, once the bucket's values are given |
