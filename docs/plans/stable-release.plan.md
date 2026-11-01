@@ -64,13 +64,13 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S0.4 | Finish and land FC#276 (platform_setting live kind) from refs/recovery/nb2-20261030; applied clean, make check green, contracts 39 OK, sabotage of the stage caught | M | done | 0ff600fcf | api/src/** web/src/app/** web/e2e/** |
 | S0.5 | Status-block truth across every plan and SPEC § 8 | M | done | - | docs/** TODO.md |
 | S0.6 | Remove landed worktrees and branches, keeping refs/recovery | S | done | - | - |
-| S0.7 | Settings texts part out of the main fr/en/ar files (ar has 35 B left) | M | todo | - | web/public/i18n/** web/src/app/settings/** |
+| S0.7 | Settings texts part out of the main fr/en/ar files (ar has 35 B left) | M | done | 2ce561bfd | web/public/i18n/** web/src/app/settings/** |
 | S0.8 | Release-evidence gates in tag-release.sh and additive-migrations.sh | M | done | 283efa6f1 | scripts/release/** scripts/gates/** |
-| S0.9 | Flake and budget classes as gates (limiters, settled reads, test clock, docs run lines) | M | todo | - | api/tests/** scripts/gates/** |
+| S0.9 | Flake and budget classes as gates (limiters, settled reads, test clock, docs run lines) | M | done | 2ce561bfd | api/tests/** scripts/gates/** |
 | S0.10 | ASSUMED marking page: 304 picks published, artifact UqoJRxiEXufS3BeJ53GUdP db marks; read back before the tag | S | done | - | - |
 | S0.11 | Values upgrade: new values filled from infra/onprem/values.defaults before compose config | M | done | 283efa6f1 | scripts/deploy/** infra/onprem/** |
 | S0.12 | snapshot-gate refuses a non-main tree while main-first exists (landed alone); test 41 passed, check removed: 2 fail | S | done | 864136fa2 | scripts/gate/** |
-| S0.13 | StatefulServicesTest: every stateful service resets or is listed | M | todo | - | api/tests/** |
+| S0.13 | StatefulServicesTest: every stateful service resets or is listed | M | done | 2ce561bfd | api/tests/** |
 | S0.14 | Budget reserve measured and enforced | S | todo | - | web/angular.json scripts/gates/** |
 | S0.15 | Baseline release proofs: update rehearsal and onprem-check legs with markers | M | todo | - | scripts/onprem/** scripts/release/** Makefile |
 | S0.16 | Maintenance lane for patch tags | S | done | 283efa6f1 | scripts/release/tag-release.sh, scripts/onprem/twes, scripts/tests/twes.test.sh, scripts/release/tests/* |
