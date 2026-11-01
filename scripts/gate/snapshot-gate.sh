@@ -7,18 +7,31 @@
 # Usage: snapshot-gate.sh run             gate the staged tree; exits as the gate did, 3 when another gate is running
 #        snapshot-gate.sh commit <msg>    commit the last green tree onto HEAD, which must be where its snapshot began
 #        snapshot-gate.sh inside          the gate itself, as the worktree runs it (the default SNAPSHOT_GATE_CMD)
-# SNAPSHOT_GATE_CMD replaces the gate (its tests do), SNAPSHOT_GATE_LOCK the lock every heavy run of this tree shares.
+# SNAPSHOT_GATE_CMD replaces the gate (its tests do), SNAPSHOT_GATE_LOCK the lock every heavy run of this tree shares,
+# SNAPSHOT_GATE_MAIN_FIRST the mark that holds every builder's gate back while the main session's batch goes first.
+# Exit 3: another gate is running, or the main session goes first.
 set -uo pipefail
 root=$(git rev-parse --show-toplevel) || exit 2
 cd "$root" || exit 2
 records=$root/var/claude/gates
 worktree=$root/.claude/worktrees/gate
 lock=${SNAPSHOT_GATE_LOCK:-/tmp/twes-in-gate.lock}
+# While this mark exists the main session's batch goes first: flock serves its waiters in no order, and the main gate
+# once waited 76 minutes behind builders' runs. A builder's worktree then runs make check and its own tests instead.
+main_first=${SNAPSHOT_GATE_MAIN_FIRST:-/tmp/twes-in-gate.main-first}
 
 refuse() { echo "snapshot-gate: $1" >&2; exit "${2:-2}"; }
 
+# The main tree is the repository itself; a builder works in a linked worktree, whose git directory is not the common one.
+is_main_tree() {
+  [[ "$(git rev-parse --path-format=absolute --git-dir)" == "$(git rev-parse --path-format=absolute --git-common-dir)" ]]
+}
+
 run() {
   local tree snap code log
+  if [[ -e "$main_first" ]] && ! is_main_tree; then
+    refuse "the main session goes first while $main_first exists: run make check and the tests of your files, and gate once it is gone" 3
+  fi
   mkdir -p "$records"
   exec 9> "$lock"
   flock -n 9 || refuse "a gate is running (lock $lock); wait for it, never two side by side" 3

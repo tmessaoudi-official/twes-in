@@ -126,6 +126,22 @@ exec 9>&-
 same "a second gate while one runs is refused" "$code" 3
 has "the refusal says a gate is running" "$out" "running"
 
+# The main session's batch goes first: while its mark exists, a builder's worktree starts no gate (flock serves its
+# waiters in no order, and the main gate once waited 76 minutes behind builders). The main tree is never held back.
+d=$(repo); git -C "$d" add -A; mark="$d/../$(basename "$d").main-first"
+git -C "$d" worktree add -q "$d/../$(basename "$d")-builder" -b builder
+b="$d/../$(basename "$d")-builder"; echo built > "$b/a.txt"; git -C "$b" add a.txt
+touch "$mark"
+out=$(cd "$b" && SNAPSHOT_GATE_MAIN_FIRST="$mark" SNAPSHOT_GATE_LOCK="$b.lock" SNAPSHOT_GATE_CMD="exit 0" bash scripts/gate/snapshot-gate.sh run 2>&1); code=$?
+same "a builder's gate is refused while the main session goes first" "$code" 3
+has "the refusal names the mark to wait for" "$out" "$mark"
+out=$(cd "$d" && SNAPSHOT_GATE_MAIN_FIRST="$mark" SNAPSHOT_GATE_LOCK="$d.lock" SNAPSHOT_GATE_CMD="exit 0" bash scripts/gate/snapshot-gate.sh run 2>&1); code=$?
+same "the main tree gates while its own mark exists" "$code" 0
+rm -f "$mark"
+out=$(cd "$b" && SNAPSHOT_GATE_MAIN_FIRST="$mark" SNAPSHOT_GATE_LOCK="$b.lock" SNAPSHOT_GATE_CMD="exit 0" bash scripts/gate/snapshot-gate.sh run 2>&1); code=$?
+same "a builder gates once the mark is gone" "$code" 0
+git -C "$d" worktree remove --force "$b"
+
 # A worktree's API tests must never recreate the live stack's database container: compose would, its bind mount
 # naming another path. Every start of it, by the gate, make check or make mutants, leaves a running one as it is.
 starts=("$MAKEFILE" "$HERE/../../check/check.sh" "$HERE/../../mutants/mutants.sh")

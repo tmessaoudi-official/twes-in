@@ -514,6 +514,12 @@ make commit-gated MSG=<message file>       # commits exactly the last green tree
   when the signature fails (a locked key): unlock it and run it again.
 - The worktree is kept between runs, so `vendor/`, `node_modules/` and the caches are installed once; the first run
   takes a few minutes more. `make e2e` still runs here, alone: the live stack serves this tree.
+- While `/tmp/twes-in-gate.main-first` exists, the main session's batch goes first: a builder's worktree (any linked
+  worktree) is refused with exit 3 and runs `make check` and the tests of its files instead; the main tree gates as
+  usual. The main session makes the mark with `touch` and removes it once its batch has landed.
+- Should the script itself be broken, the manual path is the one it takes: `tree=$(git write-tree)` once the gate is green
+  on that tree, `commit=$(git commit-tree -S "$tree" -p HEAD -F <message file>)`, then
+  `git update-ref refs/heads/master "$commit" "$(git rev-parse HEAD)"`, and `git log --format=%G? -1` reads `G`.
 
 - **Stage new files before running the gates** (`git add`): the SPDX and executable-bit gates read `git ls-files`.
 - After changing an API resource, run `make tools CMD='cd api && bin/console cache:clear && bin/console cache:pool:clear --all'`
