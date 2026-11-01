@@ -37,7 +37,8 @@ if (!is_array($arguments) || !is_a($step, RaceStep::class, true)) {
 
 $kernel = new Kernel('test', false);
 $kernel->boot();
-$container = $kernel->getContainer();
+// The test container, as a kernel test reads it: a step reaches the private services a use case is built from.
+$container = $kernel->getContainer()->get('test.service_container');
 $connection = $container->get('doctrine.dbal.default_connection');
 // A contested lock fails the racer after this long rather than hanging the race: the harness counts it as a failure.
 $connection->executeStatement("SET lock_timeout = '5s'");

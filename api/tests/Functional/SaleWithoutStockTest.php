@@ -18,6 +18,7 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Tenancy\Domain\Model\Company;
@@ -123,6 +124,35 @@ final class SaleWithoutStockTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    /**
+     * Refused, a sale takes its stock out inside its own transaction; a line no lot holds is still sold and told to whoever
+     * keeps the stock, once: by that take-out when it moved the rest, by the move after the commit when it moved nothing.
+     */
+    public function testRefusedASaleTellsTheKeepersOnceOfALineNoLotHolds(): void
+    {
+        $this->signedIn(self::SELLING);
+        $this->set(static fn (Company $c): SettingAddress => SettingAddress::company($c), 'refuse');
+        $this->received('2');
+        $customerId = $this->customer();
+        $glue = $this->lotTracked();
+        $told = [];
+        foreach (['delivery-notes' => '/validate', 'invoices' => '/issue'] as $resource => $act) {
+            foreach ([[['productId' => $this->laptopId, 'quantity' => '1'], ['productId' => $glue, 'quantity' => '1']], [['productId' => $glue, 'quantity' => '1']]] as $lines) {
+                $id = 'invoices' === $resource ? $this->draftInvoice($customerId, '1', $lines) : $this->draftNote($customerId, '1', $lines);
+                $this->postJson($this->path($resource, $id).$act, null);
+                self::assertResponseIsSuccessful($resource);
+                $told[] = $this->stringAt($this->json(), 'number');
+            }
+        }
+
+        $notices = $this->em()->getConnection()->fetchFirstColumn(
+            "SELECT payload->>'number' FROM inbox_item WHERE type IN ('stock.delivery_note_lines_left_out', 'stock.invoice_lines_left_out') ORDER BY payload->>'number'",
+        );
+        sort($told);
+        self::assertSame($told, $notices, 'each sale told once');
+        self::assertSame(['0.000'], array_column($this->levels(), 'quantity'), 'the laptops moved under the lock');
+    }
+
     public function testToConfirmASaleIsAskedThenTakenOnceConfirmed(): void
     {
         $this->signedIn([...self::SELLING, self::SELL_SHORT]);
@@ -189,6 +219,22 @@ final class SaleWithoutStockTest extends ApiTestCase
         self::assertNotNull($company);
         $this->em()->persist(new Setting($address($company), self::KEY, $answer, new \DateTimeImmutable()));
         $this->em()->flush();
+    }
+
+    /** A product kept by lots, none received: what a sale takes of it is in no lot, so it is said and never moved. */
+    private function lotTracked(): string
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId());
+        self::assertNotNull($piece);
+        $now = new \DateTimeImmutable();
+        $glue = Product::create($company, 'ART-020', new ProductDetails('Colle', null, ProductKind::Goods, '5'), $piece, null, [], $now);
+        $glue->track(ProductTracking::Lot, $now);
+        $this->em()->persist($glue);
+        $this->em()->flush();
+
+        return $glue->getId()->toRfc4122();
     }
 
     private function received(string $quantity): void

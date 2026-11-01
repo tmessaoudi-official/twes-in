@@ -21,4 +21,17 @@ interface SaleStock
 {
     /** @param list<SoldLine> $lines */
     public function shortfall(Company $company, Uuid $establishmentId, ?Uuid $roleId, array $lines): Shortfall;
+
+    /**
+     * Where the rule refuses a sale beyond the stock, or asks it confirmed, the sale takes its stock out here, inside the
+     * document's own transaction, once it has its number: under the stock's locks, the shortfall read again there, so two
+     * sales of the last unit at the same moment cannot both pass, as they do on `shortfall`'s read alone. A refusal rolls
+     * the number back with the rest. Where the rule allows any sale nothing is taken here: the stock moves once the
+     * document is committed, and a move that fails then is told rather than refusing what was sold.
+     *
+     * @param list<SoldLine> $lines
+     *
+     * @throws ShortOfStock
+     */
+    public function takeOut(Company $company, Uuid $establishmentId, ShortSaleConsent $consent, SoldDocument $document, array $lines): void;
 }

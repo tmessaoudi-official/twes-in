@@ -91,11 +91,34 @@ final readonly class MoveStockForDeliveryNotes
     }
 
     /**
+     * A sale taken out inside its document's own transaction (SaleStock::takeOut), where its rule refuses or asks confirmed a
+     * sale beyond the stock: `$refuse` is handed what the lines take short, read again once every place they leave from is
+     * locked, and throws to refuse the sale before anything is written. What is written then is what the move after the
+     * commit would write; that move finds it and takes nothing more, so what it left out is answered here to be told. When
+     * it wrote nothing, the move after the commit takes it all again and tells it: nothing is answered, nothing told twice.
+     *
+     * @param list<SoldLine>                  $lines
+     * @param \Closure(list<ShortLine>): void $refuse
+     *
+     * @return list<string> why a line of a product whose stock is kept moved nothing
+     */
+    public function soldUnderLocks(string $sourceType, Uuid $sourceId, Uuid $companyId, Uuid $establishmentId, array $lines, \Closure $refuse): array
+    {
+        $delivered = array_map(static fn (SoldLine $line): DeliveredQuantity => new DeliveredQuantity($line->productId, $line->quantity, $line->unitId, $line->lotCode), $lines);
+
+        $skipped = $this->takeOut($sourceType, $sourceId, $companyId, $establishmentId, $delivered, fn () => $refuse($this->shortOf($companyId, $establishmentId, $lines)));
+
+        // Nothing written: the move after the commit runs again, finds the same lines in no lot and says so itself.
+        return [] === $this->movements->ofSource($sourceType, $sourceId, $companyId) ? [] : $skipped;
+    }
+
+    /**
      * @param list<DeliveredQuantity> $lines
+     * @param (\Closure(): void)|null $underLocks run once the places are locked, before anything is written
      *
      * @return list<string>
      */
-    private function takeOut(string $sourceType, Uuid $sourceId, Uuid $companyId, Uuid $establishmentId, array $lines): array
+    private function takeOut(string $sourceType, Uuid $sourceId, Uuid $companyId, Uuid $establishmentId, array $lines, ?\Closure $underLocks = null): array
     {
         if (!$this->modules->isEnabled($companyId, self::MODULE) || [] !== $this->movements->ofSource($sourceType, $sourceId, $companyId)) {
             return [];
@@ -120,7 +143,7 @@ final readonly class MoveStockForDeliveryNotes
         // The company's day decides which lots have expired: a lot used by today still leaves today, wherever the server is.
         $today = $now->setTimezone(new \DateTimeZone($establishment->getCompany()->getTimezone()));
 
-        return $this->transactions->run(function () use ($establishment, $companyId, $out, $sourceType, $sourceId, $now, $today, $skipped): array {
+        return $this->transactions->run(function () use ($establishment, $companyId, $out, $sourceType, $sourceId, $now, $today, $skipped, $underLocks): array {
             $default = $this->locations->defaultOf($establishment);
             $products = [];
             foreach ($out as [$product]) {
@@ -142,6 +165,9 @@ final readonly class MoveStockForDeliveryNotes
             // Asked again under the locks: another run of the same document that held them first has moved the stock.
             if ([] !== $this->movements->ofSource($sourceType, $sourceId, $companyId)) {
                 return [];
+            }
+            if (null !== $underLocks) {
+                $underLocks();
             }
             $written = [];
             $taking = [];
@@ -193,7 +219,8 @@ final readonly class MoveStockForDeliveryNotes
      * Each product the lines would take more of than the places it leaves from hold, as the move itself would share it
      * out: short where a movement it would write leaves its place below zero, which is what « Sorties sans stock » lists
      * afterwards. Only a product kept without lots or serial numbers: those leave from their lots, and what no lot holds
-     * is said and never moved. Read without the move's locks, so two sales made at the same moment may both pass.
+     * is said and never moved. Read without the move's locks where the rule allows any sale; where it refuses or asks, it is
+     * read again under them, inside the sale's transaction (soldUnderLocks), so two sales of the last unit cannot both pass.
      *
      * @param list<SoldLine> $lines
      *

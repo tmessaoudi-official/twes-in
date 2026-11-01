@@ -26,7 +26,8 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * when the credit note is, from the invoice's own sale or from the delivery notes it was built from. The document is
  * already committed, so nothing here throws: a line that moved no stock, or a move that failed, is logged and told to the
  * people who keep the company's stock. A credit note takes nothing out, and an invoice takes nothing a delivery note
- * already handed over.
+ * already handed over. Where « Sortie sans stock enregistré » refuses or asks, the sale was taken out inside the issue,
+ * under the stock's locks (SaleStock::takeOut): this move finds it and takes nothing more.
  */
 #[AsEventListener(event: InvoiceIssued::class)]
 final readonly class MoveStockOnInvoices

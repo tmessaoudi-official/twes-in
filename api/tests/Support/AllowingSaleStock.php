@@ -11,7 +11,9 @@ namespace App\Tests\Support;
 
 use App\Shared\Application\ShortSales\SaleStock;
 use App\Shared\Application\ShortSales\Shortfall;
+use App\Shared\Application\ShortSales\ShortSaleConsent;
 use App\Shared\Application\ShortSales\ShortSaleRule;
+use App\Shared\Application\ShortSales\SoldDocument;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
@@ -21,5 +23,10 @@ final readonly class AllowingSaleStock implements SaleStock
     public function shortfall(Company $company, Uuid $establishmentId, ?Uuid $roleId, array $lines): Shortfall
     {
         return new Shortfall(ShortSaleRule::Allow);
+    }
+
+    /** Allowed, nothing is taken inside the transaction: the stock moves once the document is committed. */
+    public function takeOut(Company $company, Uuid $establishmentId, ShortSaleConsent $consent, SoldDocument $document, array $lines): void
+    {
     }
 }

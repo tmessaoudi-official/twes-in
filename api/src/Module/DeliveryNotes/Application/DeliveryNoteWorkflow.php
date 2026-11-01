@@ -33,6 +33,7 @@ use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Application\ShortSales\SaleStock;
 use App\Shared\Application\ShortSales\ShortOfStock;
 use App\Shared\Application\ShortSales\ShortSaleConsent;
+use App\Shared\Application\ShortSales\SoldDocument;
 use App\Shared\Application\ShortSales\SoldLine;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\ValueObject\Receiver;
@@ -200,7 +201,8 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         }
         $this->chargedByItsRegimes($company, $note);
         $this->stillDeliverable($company, $note);
-        $this->stockedEnough($company, $note, $consent ?? new ShortSaleConsent());
+        $consent ??= new ShortSaleConsent();
+        $sold = $this->stockedEnough($company, $note, $consent);
         $allocated = $this->numbers->allocate($company, $note->getEstablishment(), self::DOCUMENT_TYPE);
         if ($this->notes->numberTaken($company->getId(), $allocated->number)) {
             throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()));
@@ -210,6 +212,9 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         $note->validate($allocated->number, $allocated->issueDate, $printing, $this->names->now($company, $printing->language, $units), $this->clock->now(), $receiver, DeliveryNoteSettings::receiverRule($this->settings, $note));
         $this->totals->checked($note);
         $this->notes->save($note);
+        // The read above answers at once and takes no lock; what decides is read again under the stock's locks here, so
+        // two notes taking the last unit at the same moment cannot both pass. A refusal rolls the number back.
+        $this->stock->takeOut($company, $note->getEstablishment()->getId(), $consent, new SoldDocument(false, $note->getId(), $allocated->number), $sold);
         $this->record($company, $note, self::VALIDATED, ['number' => $allocated->number], $actorUserId);
 
         return $note;
@@ -235,9 +240,11 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
      * « Sortie sans stock enregistré », read before the series: a sale its rule refuses, or one it asks confirmed that
      * nobody who may confirmed, takes no number and moves nothing. A draft is never asked: its line stays red until then.
      *
+     * @return list<SoldLine> what the note sells, which SaleStock::takeOut takes out under the stock's locks once it is numbered
+     *
      * @throws ShortOfStock
      */
-    private function stockedEnough(Company $company, DeliveryNote $note, ShortSaleConsent $consent): void
+    private function stockedEnough(Company $company, DeliveryNote $note, ShortSaleConsent $consent): array
     {
         $lines = [];
         foreach ($note->getLines() as $index => $line) {
@@ -250,6 +257,8 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
         if (null !== $refused) {
             throw $refused;
         }
+
+        return $lines;
     }
 
     /**

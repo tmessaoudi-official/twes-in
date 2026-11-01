@@ -47,6 +47,7 @@ use App\Shared\Application\DomainEvents;
 use App\Shared\Application\ShortSales\SaleStock;
 use App\Shared\Application\ShortSales\ShortOfStock;
 use App\Shared\Application\ShortSales\ShortSaleConsent;
+use App\Shared\Application\ShortSales\SoldDocument;
 use App\Shared\Application\ShortSales\SoldLine;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Numbering\AllocateNumber;
@@ -148,9 +149,8 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             $vatOnDebits = $fields->offersVatOnDebits() ? $company->getProfile()->vatOnDebits : null;
             // Before the series: a document refused for a mention it cannot print takes no number.
             $mentions = $this->mentions->forIssue($company, $customer, $type, $language, $operations);
-            if (InvoiceType::Invoice === $type) {
-                $this->stockedEnough($company, $invoice, $consent ?? new ShortSaleConsent());
-            }
+            $consent ??= new ShortSaleConsent();
+            $sold = InvoiceType::Invoice === $type ? $this->stockedEnough($company, $invoice, $consent) : [];
             $allocated = $this->numbers->allocate($company, $invoice->getEstablishment(), $type->value);
             if ($this->invoices->numberTaken($company->getId(), $type, $allocated->number)) {
                 throw new InvoiceNumberTaken(\sprintf('The number %s is already on another document of this company: give the %s series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $type->value, $invoice->getEstablishment()->getCode()));
@@ -191,6 +191,10 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
                 ? ($excessTo ?? throw new InvalidInvoice('excessTo', \sprintf('%s of this credit note was already paid: say whether it goes to the customer\'s credit balance or is refunded.', $excess), 'excess_to', ['amount' => $excess]))
                 : null;
             $this->invoices->save($invoice);
+            // The read before the series answers at once and takes no lock; what decides is read again under the stock's
+            // locks here, so two invoices taking the last unit at the same moment cannot both pass. A refusal rolls the
+            // number back.
+            $this->stock->takeOut($company, $invoice->getEstablishment()->getId(), $consent, new SoldDocument(true, $invoice->getId(), $allocated->number), $sold);
             // Still holding the series: it takes the place after the last one issued, and whatever an earlier release
             // issued unsealed is chained before it.
             $this->chains->series(new ChainSeries($company->getId(), $invoice->getEstablishment()->getId(), $type));
@@ -255,9 +259,12 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
      * note handed over left stock with that note. A sale its rule refuses, or one it asks confirmed that nobody who may
      * confirmed, takes no number and moves nothing; a draft is never asked.
      *
+     * @return list<SoldLine> what the invoice sells of its own lines, which SaleStock::takeOut takes out under the stock's
+     *                        locks once it is numbered
+     *
      * @throws ShortOfStock
      */
-    private function stockedEnough(Company $company, Invoice $invoice, ShortSaleConsent $consent): void
+    private function stockedEnough(Company $company, Invoice $invoice, ShortSaleConsent $consent): array
     {
         $lines = [];
         foreach ($invoice->getLines() as $index => $line) {
@@ -269,6 +276,8 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
         if (null !== $refused) {
             throw $refused;
         }
+
+        return $lines;
     }
 
     /**

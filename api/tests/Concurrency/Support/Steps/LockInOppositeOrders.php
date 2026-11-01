@@ -11,12 +11,12 @@ namespace App\Tests\Concurrency\Support\Steps;
 
 use App\Tests\Concurrency\Support\RaceStep;
 use Doctrine\DBAL\Connection;
-use Psr\Container\ContainerInterface;
+use Symfony\Bundle\FrameworkBundle\Test\TestContainer;
 
 /** Two racers lock the counter's two rows in opposite orders: PostgreSQL breaks the cycle by failing one with 40P01. */
 final class LockInOppositeOrders implements RaceStep
 {
-    public function run(ContainerInterface $container, int $index, array $arguments): mixed
+    public function run(TestContainer $container, int $index, array $arguments): mixed
     {
         $connection = $container->get('doctrine.dbal.default_connection');
         [$first, $second] = 0 === $index % 2 ? [1, 2] : [2, 1];

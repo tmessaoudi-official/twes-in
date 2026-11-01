@@ -12,7 +12,7 @@ namespace App\Tests\Concurrency\Support\Steps;
 use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tests\Concurrency\Support\RaceStep;
 use Doctrine\DBAL\Connection;
-use Psr\Container\ContainerInterface;
+use Symfony\Bundle\FrameworkBundle\Test\TestContainer;
 
 /**
  * The harness's own race: read a counter, think a moment, write it plus one. Without a lock two racers read the same
@@ -20,7 +20,7 @@ use Psr\Container\ContainerInterface;
  */
 final class IncrementCounter implements RaceStep
 {
-    public function run(ContainerInterface $container, int $index, array $arguments): mixed
+    public function run(TestContainer $container, int $index, array $arguments): mixed
     {
         $connection = $container->get('doctrine.dbal.default_connection');
         $lock = true === ($arguments['locked'] ?? false) ? ' FOR UPDATE' : '';

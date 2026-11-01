@@ -22,6 +22,9 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * Moves stock when a delivery note is validated or cancelled. The note is already committed, so nothing here throws
  * (docs/SPEC.md § 7, 2026-09-16): a line that moved no stock, or a move that failed, is logged and told to the people
  * who keep the company's stock, and `app:stock:replay-delivery-note` moves a failed note again.
+ *
+ * Where « Sortie sans stock enregistré » refuses or asks, the sale was taken out inside the validation, under the stock's
+ * locks (SaleStock::takeOut): this move finds it and takes nothing more.
  */
 #[AsEventListener(event: DeliveryNoteValidated::class, method: 'onValidated')]
 #[AsEventListener(event: DeliveryNoteCancelled::class, method: 'onCancelled')]

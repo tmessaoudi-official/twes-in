@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Concurrency\Support;
 
-use Psr\Container\ContainerInterface;
+use Symfony\Bundle\FrameworkBundle\Test\TestContainer;
 
 /**
  * What one racer does once the barrier lets every racer go at once. It runs in a process of its own, on a booted test
@@ -20,5 +20,5 @@ use Psr\Container\ContainerInterface;
 interface RaceStep
 {
     /** @param array<string, mixed> $arguments */
-    public function run(ContainerInterface $container, int $index, array $arguments): mixed;
+    public function run(TestContainer $container, int $index, array $arguments): mixed;
 }
