@@ -92,7 +92,11 @@ out=$(run "$d"); check "  an addition over two lines passes" $? 0 "$out" "OK"
 
 # A new rule on a table the release before writes to refuses what it writes.
 for statement in 'ALTER TABLE invoice ADD CONSTRAINT chk_total CHECK (total >= 0)' 'ALTER TABLE invoice ADD CHECK (total >= 0)' \
-  'ALTER TABLE invoice ADD CONSTRAINT uniq_number UNIQUE (number)' 'CREATE UNIQUE INDEX uniq_number ON invoice (number)'; do
+  'ALTER TABLE invoice ADD CONSTRAINT uniq_number UNIQUE (number)' 'CREATE UNIQUE INDEX uniq_number ON invoice (number)' \
+  'ALTER TABLE invoice ADD CONSTRAINT fk_customer FOREIGN KEY (customer_id) REFERENCES customer (id)' \
+  'ALTER TABLE invoice ADD CONSTRAINT one_open EXCLUDE USING gist (customer_id WITH =)' \
+  'CREATE TRIGGER invoice_guard BEFORE INSERT ON invoice FOR EACH ROW EXECUTE FUNCTION guard()' \
+  'CREATE OR REPLACE CONSTRAINT TRIGGER invoice_late AFTER UPDATE ON invoice FOR EACH ROW EXECUTE FUNCTION guard()'; do
   d=$(repo released); since "$d" "$(sql 'CREATE TABLE note (id UUID NOT NULL, PRIMARY KEY(id))')
 $(sql "$statement")"
   out=$(run "$d"); check "refused on a table the release holds: $statement" $? 1 "$out" "Version20261021000000.php:12"
@@ -101,6 +105,9 @@ d=$(repo released); since "$d" "$(sql 'CREATE TABLE note (id UUID NOT NULL, n IN
 $(sql 'ALTER TABLE note ADD CONSTRAINT chk_n CHECK (n >= 0)')
 $(sql 'CREATE UNIQUE INDEX uniq_n ON note (n)')"
 out=$(run "$d"); check "  a rule on a table made since the release passes" $? 0 "$out" "OK"
+d=$(repo released); since "$d" "$(sql 'ALTER TABLE invoice ADD customer_id UUID DEFAULT NULL')
+$(sql 'ALTER TABLE invoice ADD CONSTRAINT fk_customer FOREIGN KEY (customer_id) REFERENCES customer (id) NOT DEFERRABLE INITIALLY IMMEDIATE')"
+out=$(run "$d"); check "  a foreign key on a column added in the same migration passes: the release before leaves it null" $? 0 "$out" "OK"
 
 # The update migrates all or nothing, in one transaction, which CONCURRENTLY cannot join: never, whatever the line says.
 d=$(repo released); since "$d" "$(sql 'CREATE INDEX CONCURRENTLY idx_note ON invoice (id)'); // contract: faster"

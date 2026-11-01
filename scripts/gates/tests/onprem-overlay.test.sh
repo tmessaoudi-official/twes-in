@@ -103,6 +103,22 @@ git -C "$d" show HEAD:scripts/deploy/new-instance.sh >/dev/null
 cp "$ROOT/scripts/deploy/new-instance.sh" "$d/scripts/deploy/new-instance.sh"
 out=$(bash "$GATE" --root "$d" 2>&1); check "a secret the last release's installer never wrote is named, though this tree's writes it" $? 1 "$out" "MONITOR_HEARTBEAT_TOKEN"
 check "  with the release it reads" 0 0 "$out" "v2026.10.30.1"
+# Every release's installer, not the newest alone: a shop installed at an older release, or at a patch off master's
+# history, keeps the values that installer wrote.
+d=$(project); edit "$d/scripts/deploy/new-instance.sh" '/^MONITOR_HEARTBEAT_TOKEN=/d'
+( cd "$d" && export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 && git init -q -b master && git add -A \
+  && git -c user.name=t -c user.email=t@t commit -qm r && git tag v2026.10.29.1 ) >/dev/null
+cp "$ROOT/scripts/deploy/new-instance.sh" "$d/scripts/deploy/new-instance.sh"
+( cd "$d" && export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 && git add -A \
+  && git -c user.name=t -c user.email=t@t commit -qm s && git tag v2026.10.30.1 ) >/dev/null
+out=$(bash "$GATE" --root "$d" 2>&1); check "a secret an older release's installer never wrote is named, though the newest writes it" $? 1 "$out" "v2026.10.29.1"
+d=$(project)
+( cd "$d" && export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 && git init -q -b master && git add -A \
+  && git -c user.name=t -c user.email=t@t commit -qm r && git tag v2026.10.29.1 && git checkout -q -b release/2026.10.29 ) >/dev/null
+edit "$d/scripts/deploy/new-instance.sh" '/^MONITOR_HEARTBEAT_TOKEN=/d'
+( cd "$d" && export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 && git add -A && git -c user.name=t -c user.email=t@t commit -qm p \
+  && git tag v2026.10.31.1 && git checkout -q master ) >/dev/null
+out=$(bash "$GATE" --root "$d" 2>&1); check "  and a patch's off master's history" $? 1 "$out" "v2026.10.31.1"
 
 echo "onprem-overlay gate: $pass passed, $fail failed"
 ((fail == 0))

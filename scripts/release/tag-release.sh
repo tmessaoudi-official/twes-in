@@ -83,10 +83,14 @@ for day in "${tag:1:10}" "$today"; do
   fi
 done
 
-# Signed: a commit on master without the developer's good signature is a way round the signing the shops rely on.
+# Signed: a commit on master without the developer's good signature is a way round the signing the shops rely on. The
+# rule is signed-commits.sh's: a good signature (G, or U for a key this keyring holds but never marked trusted) by the
+# pinned key's fingerprint, whatever other key this keyring trusts.
 last=$(git -C "$root" describe --tags --abbrev=0 --match 'v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*' "$revision" 2>/dev/null || true)
-unsigned=$(git -C "$root" log --format='%h %G?' "${last:+$last..}$revision" | awk '$2 != "G" { print $1 }' | tr '\n' ' ')
-[[ -z "$unsigned" ]] || refuse "unsigned or unverified commits since ${last:-the first commit}: $unsigned(git log --format='%h %G? %s' to read them)"
+unsigned=$(git -C "$root" log --format='%h %G? %GF' "${last:+$last..}$revision" | while read -r sha status signer; do
+  [[ ( "$status" == G || "$status" == U ) && -n "$signer" ]] && grep -qxF -e "$signer" <<<"$pinned" || printf '%s ' "$sha"
+done)
+[[ -z "$unsigned" ]] || refuse "commits since ${last:-the first commit} not signed by the pinned release key: $unsigned(git log --format='%h %G? %GF %s' to read them)"
 
 # Proved: the rehearsal on the shop's own files and onprem-check, each on this very tree.
 tree=$(git -C "$root" rev-parse "$revision^{tree}")

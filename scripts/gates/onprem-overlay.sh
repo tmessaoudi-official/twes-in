@@ -186,27 +186,36 @@ fi
 grep -qE '^[[:space:]]*@root path /root.crt$' "$caddy" || problem "infra/onprem/Caddyfile does not hand out its root certificate at /root.crt"
 
 # carried: a shop updates with the values file its install wrote, so every value the files require and every secret
-# they mount is one the newest release's installer wrote, or one values.defaults fills in. Before any release, the
+# they mount is one every release's installer wrote, or one values.defaults fills in. Before any release, the
 # tree's installer is the one a shop runs. LAN_HOST is the twes script's, read at each start.
-release=$(git -C "$root" describe --tags --abbrev=0 --match 'v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*' HEAD 2>/dev/null)
-if [[ -n "$release" ]]; then
-  git -C "$root" show "$release:scripts/deploy/new-instance.sh" > "$installer_dir/new-instance.sh" 2>/dev/null \
-    || problem "the release $release has no scripts/deploy/new-instance.sh to read a shop's values from"
-  installer="the installer of $release"
-else
-  cp "$root/scripts/deploy/new-instance.sh" "$installer_dir/new-instance.sh"; installer="this tree's installer"
-fi
-if bash "$installer_dir/new-instance.sh" --onprem "$installer_dir/shop.env" >/dev/null 2>&1; then
+# Every release's installer is read, a patch's off master's history too: a shop keeps the values file the release it
+# was installed at wrote, whatever it updated to since.
+releases=$(git -C "$root" tag --list 'v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*' --sort=v:refname 2>/dev/null)
+needed=$(for f in "${offsite[@]}"; do grep -oE '\$\{[A-Z_][A-Z0-9_]*:\?' "$root/$f"; done | sed 's/^\${//; s/:?$//')
+for entry in "${SECRETS[@]}"; do needed+=$'\n'"${entry%%:*}"; done
+carried() { # the installer's label: every value it lacks that no default fills is named
+  rm -f "$installer_dir/shop.env"
+  if ! bash "$installer_dir/new-instance.sh" --onprem "$installer_dir/shop.env" >/dev/null 2>&1; then
+    problem "$1 did not run (bash new-instance.sh --onprem <file>), so no shop's values could be read"; return
+  fi
+  local written name
   written=$(grep -oE '^[A-Z][A-Z0-9_]*=' "$installer_dir/shop.env" | tr -d '=')
-  needed=$(for f in "${offsite[@]}"; do grep -oE '\$\{[A-Z_][A-Z0-9_]*:\?' "$root/$f"; done | sed 's/^\${//; s/:?$//')
-  for entry in "${SECRETS[@]}"; do needed+=$'\n'"${entry%%:*}"; done
   for name in $(sort -u <<<"$needed"); do
     [[ "$name" == LAN_HOST ]] && continue
     grep -qxF -e "$name" <<<"$written" && continue
     printf '%s\n' "${defaulted[@]}" | grep -qxF -e "$name" && continue
-    problem "$name is required, but $installer never wrote it and infra/onprem/values.defaults does not fill it: a shop updating would stop on it (add NAME=value or NAME=generate:<length> there)"
+    problem "$name is required, but $1 never wrote it and infra/onprem/values.defaults does not fill it: a shop updating would stop on it (add NAME=value or NAME=generate:<length> there)"
   done
+}
+if [[ -n "$releases" ]]; then
+  while IFS= read -r release; do
+    if git -C "$root" show "$release:scripts/deploy/new-instance.sh" > "$installer_dir/new-instance.sh" 2>/dev/null; then
+      carried "the installer of $release"
+    else
+      problem "the release $release has no scripts/deploy/new-instance.sh to read a shop's values from"
+    fi
+  done <<<"$releases"
 else
-  problem "$installer did not run (bash new-instance.sh --onprem <file>), so no shop's values could be read"
+  cp "$root/scripts/deploy/new-instance.sh" "$installer_dir/new-instance.sh"; carried "this tree's installer"
 fi
 finish

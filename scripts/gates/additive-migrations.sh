@@ -8,9 +8,10 @@
 # stopped reading what it removes, and its line says so: `// contract: <why the release before no longer reads it>`.
 # Before the first release there is nothing to roll back to, and every migration may still reshape the schema.
 # Every method but down() is read, so a helper up() calls is judged too, and a new rule whose table is a placeholder or a
-# variable is refused, since it cannot be read. A migration the release holds is never edited nor deleted, a statement is read whole however many lines it takes, a new CHECK
-# or UNIQUE on a table the release holds contracts too (the release before writes rows it would refuse), and CONCURRENTLY
-# is refused outright: the update runs every migration in one transaction, which it cannot join.
+# variable is refused, since it cannot be read. A migration the release holds is never edited nor deleted, a statement is
+# read whole however many lines it takes, a new CHECK, UNIQUE, EXCLUDE, trigger, or foreign key on columns it does not
+# add, on a table the release holds contracts too (the release before writes rows it would refuse), and CONCURRENTLY is
+# refused outright: the update runs every migration in one transaction, which it cannot join.
 # Usage: additive-migrations.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -69,16 +70,27 @@ judge() { # file, line, the statement as written
       && ! grep -qE '\bDEFAULT\b|\bADD[[:space:]]+(CONSTRAINT[[:space:]]+[^[:space:]]+[[:space:]]+)?CHECK\b' <<<"$statement"; }; then
     problems+=("api/migrations/$file:$n: ${code:0:110}"); return
   fi
-  # A new CHECK or UNIQUE on a table the release before writes to refuses what it writes.
+  # A new CHECK, UNIQUE, EXCLUDE or trigger on a table the release before writes to refuses what it writes; a foreign key
+  # too, unless its columns are added in the same migration, which the release before leaves null.
   table=''
-  if grep -qE '\bALTER[[:space:]]+TABLE\b.*\bADD[[:space:]]+(CONSTRAINT[[:space:]]+[^[:space:]]+[[:space:]]+)?(CHECK|UNIQUE)\b' <<<"$statement"; then
+  if grep -qE '\bALTER[[:space:]]+TABLE\b.*\bADD[[:space:]]+(CONSTRAINT[[:space:]]+[^[:space:]]+[[:space:]]+)?(CHECK|UNIQUE|EXCLUDE)\b' <<<"$statement"; then
     table=$(sed -nE 's/.*\bALTER[[:space:]]+TABLE[[:space:]]+(IF[[:space:]]+EXISTS[[:space:]]+)?(ONLY[[:space:]]+)?"?([A-Z_][A-Z0-9_]*).*/\3/p' <<<"$statement")
+  elif [[ "$statement" =~ ADD[[:space:]]+(CONSTRAINT[[:space:]]+[^[:space:]]+[[:space:]]+)?FOREIGN[[:space:]]+KEY[[:space:]]*\(([^\)]*)\) ]] \
+    && grep -qE '\bALTER[[:space:]]+TABLE\b' <<<"$statement"; then
+    local column added=yes
+    for column in ${BASH_REMATCH[2]//,/ }; do
+      column=${column//\"/}
+      grep -qiE "\\bADD[[:space:]]+(COLUMN[[:space:]]+)?\"?${column}\"?[[:space:]]" "$root/api/migrations/$file" || added=no
+    done
+    [[ "$added" == yes ]] || table=$(sed -nE 's/.*\bALTER[[:space:]]+TABLE[[:space:]]+(IF[[:space:]]+EXISTS[[:space:]]+)?(ONLY[[:space:]]+)?"?([A-Z_][A-Z0-9_]*).*/\3/p' <<<"$statement")
+  elif grep -qE '\bCREATE[[:space:]]+(OR[[:space:]]+REPLACE[[:space:]]+)?(CONSTRAINT[[:space:]]+)?TRIGGER\b' <<<"$statement"; then
+    table=$(sed -nE 's/.*\bON[[:space:]]+(ONLY[[:space:]]+)?"?([A-Z_][A-Z0-9_]*).*/\2/p' <<<"$statement")
   elif grep -qE '\bCREATE[[:space:]]+UNIQUE[[:space:]]+INDEX\b' <<<"$statement"; then
     table=$(sed -nE 's/.*\bON[[:space:]]+(ONLY[[:space:]]+)?"?([A-Z_][A-Z0-9_]*).*/\2/p' <<<"$statement")
   fi
   # A rule whose table is a placeholder or a variable (sprintf, a loop) cannot be read, so it is refused: write it out.
   if grep -qE '\bALTER[[:space:]]+TABLE[[:space:]]+(IF[[:space:]]+EXISTS[[:space:]]+)?(ONLY[[:space:]]+)?[%$]|\bON[[:space:]]+(ONLY[[:space:]]+)?[%$]' <<<"$statement" \
-    && grep -qE '\bADD[[:space:]]+(CONSTRAINT[[:space:]]+[^[:space:]]+[[:space:]]+)?(CHECK|UNIQUE)\b|\bCREATE[[:space:]]+UNIQUE[[:space:]]+INDEX\b' <<<"$statement"; then
+    && grep -qE '\bADD[[:space:]]+(CONSTRAINT[[:space:]]+[^[:space:]]+[[:space:]]+)?(CHECK|UNIQUE|EXCLUDE|FOREIGN[[:space:]]+KEY)\b|\bCREATE[[:space:]]+(UNIQUE[[:space:]]+INDEX|(OR[[:space:]]+REPLACE[[:space:]]+)?(CONSTRAINT[[:space:]]+)?TRIGGER)\b' <<<"$statement"; then
     problems+=("api/migrations/$file:$n: a new rule whose table is not written out, which this gate cannot judge: ${code:0:90}"); return
   fi
   if [[ -n "$table" && "$new_tables" != *" ${table,,} "* ]]; then

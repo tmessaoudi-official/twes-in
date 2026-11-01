@@ -146,8 +146,18 @@ check "  and the tag's message says why" 0 0 "$(message "$d" v2026.10.13.1)" "UN
 d=$(fixture); tag_release "$d" v2026.10.13.1 >/dev/null
 echo y > "$d/repo/y"; git -C "$d/repo" add -A; git -C "$d/repo" commit -qm unsigned
 git -C "$d/repo" update-ref refs/remotes/origin/master HEAD; proven "$d" HEAD
-out=$(tag_release "$d" v2026.10.14.1); check "an unsigned commit since the last release: refused" $? 1 "$out" "unsigned"
+out=$(tag_release "$d" v2026.10.14.1); check "an unsigned commit since the last release: refused" $? 1 "$out" "not signed by the pinned"
 check "  naming it" 0 0 "$out" "$(git -C "$d/repo" rev-parse --short HEAD)"
+# One rule with signed-commits.sh: signed by the pinned key, whatever else this keyring trusts.
+d=$(fixture); tag_release "$d" v2026.10.13.1 >/dev/null
+echo y > "$d/repo/y"; git -C "$d/repo" add -A; git -C "$d/repo" -c user.signingkey="$REHEARSAL" -c commit.gpgsign=true commit -qm other-key
+git -C "$d/repo" update-ref refs/remotes/origin/master HEAD; proven "$d" HEAD
+out=$(tag_release "$d" v2026.10.14.1); check "a commit signed by another key this keyring trusts: refused" $? 1 "$out" "$(git -C "$d/repo" rev-parse --short HEAD)"
+d=$(fixture); gpg --batch --quiet --import-ownertrust <<<"$KEY:2:" 2>/dev/null
+tag_release "$d" v2026.10.13.1 >/dev/null; echo y > "$d/repo/y"; git -C "$d/repo" add -A; signed_commit "$d" pinned-untrusted
+git -C "$d/repo" update-ref refs/remotes/origin/master HEAD; proven "$d" HEAD
+out=$(tag_release "$d" v2026.10.14.1); check "a commit by the pinned key this keyring does not mark trusted: tagged, as the gate reads it" $? 0 "$out" "made and verified"
+gpg --batch --quiet --import-ownertrust <<<"$KEY:6:" 2>/dev/null
 d=$(fixture); tag_release "$d" v2026.10.13.1 >/dev/null
 echo y > "$d/repo/y"; git -C "$d/repo" add -A; signed_commit "$d" signed
 git -C "$d/repo" update-ref refs/remotes/origin/master HEAD; proven "$d" HEAD
@@ -188,7 +198,7 @@ d=$(fixture); lane "$d"; git -C "$d/repo" update-ref -d refs/remotes/origin/rele
 out=$(tag_release "$d" v2026.10.20.1); check "a patch never pushed to its release branch: refused" $? 1 "$out" "origin/master does not hold"
 d=$(fixture); lane "$d"; echo q > "$d/repo/q"; git -C "$d/repo" add -A; git -C "$d/repo" commit -qm unsigned-patch
 git -C "$d/repo" update-ref refs/remotes/origin/release/2026.10.13 HEAD; proven "$d" HEAD
-out=$(tag_release "$d" v2026.10.20.1); check "an unsigned commit on the lane: refused as on master" $? 1 "$out" "unsigned"
+out=$(tag_release "$d" v2026.10.20.1); check "an unsigned commit on the lane: refused as on master" $? 1 "$out" "not signed by the pinned"
 
 # A tag signed with a key no shop pins is no release a shop takes: a rehearsal's. What a release rests on is asked of
 # the pinned key alone, so update-rehearsal.sh and onprem-check.sh tag their own commits with their own key.
