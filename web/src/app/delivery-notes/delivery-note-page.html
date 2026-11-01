@@ -32,7 +32,7 @@
               >{{ 'delivery_notes.fields.deliveryDate' | translate }}
               {{ note.deliveredAt | moment: company()?.timezone }}</span
             >
-          } @else if (note.status === 'invoiced') {
+          } @else if (invoicedUndelivered(note)) {
             <!-- Invoiced at the counter before the goods left: nothing says they have. -->
             <span data-testid="delivery-note-not-delivered">{{
               'delivery_notes.not_delivered' | translate

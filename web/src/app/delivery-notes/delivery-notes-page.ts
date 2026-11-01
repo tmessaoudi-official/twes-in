@@ -44,6 +44,7 @@ import {
   DELIVERY_NOTE_STATUS_STAGES,
   type DeliveryNoteSearch,
   type DeliveryNoteStatus,
+  invoicedUndelivered,
 } from './delivery-notes-types';
 
 /** The delivery notes of the company being worked in. */
@@ -99,6 +100,8 @@ export class DeliveryNotesPage implements OnInit {
     withdrawn(DELIVERY_NOTE_STATUS_STAGES[status]);
   protected readonly toneOf = (status: DeliveryNoteStatus): StatusTone =>
     DELIVERY_NOTE_STATUS_TONES[status];
+  /** An invoiced note whose goods nobody recorded leaving says so where its delivery day would be. */
+  protected readonly undelivered = (row: DeliveryNoteListRow): boolean => invoicedUndelivered(row);
   protected readonly rows = computed(() => deliveryNoteListRows(this.facade.notes()));
   protected readonly scale = computed(() => this.facade.options()?.currencyScale ?? null);
   protected readonly total = this.facade.total;

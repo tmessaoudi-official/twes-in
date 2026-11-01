@@ -189,6 +189,16 @@ export function deliversInvoice(note: Pick<DeliveryNoteRow, 'lines'> | null | un
   return (note?.lines ?? []).some((line) => (line.sourceInvoiceLineId ?? '') !== '');
 }
 
+/**
+ * Invoiced at the counter before the goods left: nothing says they have, and the day expected is not the day they came.
+ * What the note's page and the list say instead of a delivery day.
+ */
+export function invoicedUndelivered(
+  note: Pick<DeliveryNoteRow, 'status' | 'deliveredAt'>,
+): boolean {
+  return note.status === 'invoiced' && note.deliveredAt === null;
+}
+
 export interface DeliveryNoteRow {
   id: string;
   /** The version read, which a revision sends back; one saved since is refused as `record_changed`. */

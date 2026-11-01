@@ -36,7 +36,8 @@ class StaticLoader implements TranslateLoader {
     return of({
       delivery_notes: {
         draft: 'Brouillon',
-        statuses: { draft: 'Brouillon', validated: 'Validé' },
+        statuses: { draft: 'Brouillon', validated: 'Validé', invoiced: 'Facturé' },
+        not_delivered: 'Livraison non enregistrée',
         errors: { network: 'Le serveur est injoignable.' },
       },
     });
@@ -74,12 +75,14 @@ const numbered: DeliveryNoteRow = {
 describe('DeliveryNotesPage', () => {
   const error = signal<DeliveryNotesError | null>(null);
   const statusCounts = signal<DeliveryNoteStatusCounts | null>(null);
+  const listed: readonly DeliveryNoteRow[] = [
+    numbered,
+    { ...numbered, id: 'n2', number: null, status: 'draft', recordedCustomerName: null },
+  ];
+  const notes = signal<readonly DeliveryNoteRow[]>(listed);
   const facade = {
     busy: signal(false).asReadonly(),
-    notes: signal<readonly DeliveryNoteRow[]>([
-      numbered,
-      { ...numbered, id: 'n2', number: null, status: 'draft', recordedCustomerName: null },
-    ]).asReadonly(),
+    notes: notes.asReadonly(),
     options: signal<DeliveryNoteOptions | null>({
       currency: 'TND',
       currencyScale: 3,
@@ -116,6 +119,7 @@ describe('DeliveryNotesPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    notes.set(listed);
     facade.loadListContext.mockReset().mockResolvedValue(undefined);
     facade.loadPage.mockReset().mockResolvedValue(undefined);
     facade.loadStatusCounts.mockReset().mockResolvedValue(undefined);
@@ -178,6 +182,27 @@ describe('DeliveryNotesPage', () => {
     const tone = (testId: string) =>
       q(testId)?.querySelector('app-status-badge')?.getAttribute('data-tone');
     expect([tone('delivery-note-n1'), tone('delivery-note-n2')]).toEqual(['info', 'neutral']);
+  });
+
+  // Invoiced at the counter before the goods left: the list says so, as the note's page does, rather than the day
+  // expected, which would read as the day they arrived.
+  it('says « Livraison non enregistrée » on an invoiced note never delivered, the day on one delivered', async () => {
+    notes.set([
+      { ...numbered, id: 'n3', status: 'invoiced', deliveryDate: '2026-09-20', deliveredAt: null },
+      {
+        ...numbered,
+        id: 'n4',
+        status: 'invoiced',
+        deliveryDate: '2026-09-18',
+        deliveredAt: '2026-09-18T09:00:00+00:00',
+      },
+    ]);
+    await settle();
+    const delivery = (testId: string) =>
+      (q(testId)?.querySelector('[data-column="deliveryDate"]')?.textContent ?? '').trim();
+
+    expect(delivery('delivery-note-n3')).toBe('Livraison non enregistrée');
+    expect(delivery('delivery-note-n4')).toBe('18/09/2026');
   });
 
   it('offers a new note to a writer only', async () => {
