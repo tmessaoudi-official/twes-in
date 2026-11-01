@@ -234,6 +234,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/onprem-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/secrets-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/action-pins.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/release-lane.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/e2e-environment.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/release-overlay.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/release/tests/publish.test.sh
@@ -325,6 +326,7 @@ in-gate-licences:
 	bash scripts/gates/onprem-overlay.sh
 	bash scripts/gates/secrets-overlay.sh
 	bash scripts/gates/action-pins.sh
+	bash scripts/gates/release-lane.sh
 	bash scripts/gates/e2e-environment.sh
 	bash scripts/gates/release-overlay.sh
 	bash scripts/gates/monitor-config.sh

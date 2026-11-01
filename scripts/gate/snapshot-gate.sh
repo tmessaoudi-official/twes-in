@@ -8,7 +8,8 @@
 #        snapshot-gate.sh commit <msg>    commit the last green tree onto HEAD, which must be where its snapshot began
 #        snapshot-gate.sh inside          the gate itself, as the worktree runs it (the default SNAPSHOT_GATE_CMD)
 # SNAPSHOT_GATE_CMD replaces the gate (its tests do), SNAPSHOT_GATE_LOCK the lock every heavy run of this tree shares,
-# SNAPSHOT_GATE_MAIN_FIRST the mark that holds every builder's gate back while the main session's batch goes first.
+# SNAPSHOT_GATE_MAIN_FIRST the mark that holds every builder's gate back while the main session's batch goes first,
+# SNAPSHOT_GATE_WAIT=1 waiting for the lock rather than refusing.
 # Exit 3: another gate is running, or the main session goes first.
 set -uo pipefail
 root=$(git rev-parse --show-toplevel) || exit 2
@@ -34,7 +35,13 @@ run() {
   fi
   mkdir -p "$records"
   exec 9> "$lock"
-  flock -n 9 || refuse "a gate is running (lock $lock); wait for it, never two side by side" 3
+  # SNAPSHOT_GATE_WAIT=1 waits for the lock instead: builders' short runs queue on it back to back, and a gate refusing
+  # at once never finds it free.
+  if [[ "${SNAPSHOT_GATE_WAIT:-}" == 1 ]]; then
+    flock 9 || refuse "the lock $lock could not be taken"
+  else
+    flock -n 9 || refuse "a gate is running (lock $lock); wait for it, never two side by side" 3
+  fi
   tree=$(git write-tree) || refuse "the index cannot be written as a tree: is a merge unfinished?"
   snap=$(git commit-tree "$tree" -p HEAD -m "gate snapshot of $tree") || refuse "the snapshot commit could not be made"
   if [[ -e "$worktree/.git" ]]; then

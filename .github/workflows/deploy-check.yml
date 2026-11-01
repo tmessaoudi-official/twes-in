@@ -10,7 +10,7 @@ on:
     - cron: "47 3 * * 1"
   workflow_dispatch:
   push:
-    branches: [master]
+    branches: [master, 'release/**']
     paths:
       - compose.yaml
       - compose.prod.yaml

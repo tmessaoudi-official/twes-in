@@ -126,6 +126,18 @@ exec 9>&-
 same "a second gate while one runs is refused" "$code" 3
 has "the refusal says a gate is running" "$out" "running"
 
+# Asked to wait, the gate takes the lock once the run holding it ends, rather than refusing: builders' short runs queue on
+# the lock back to back, and a gate refusing at once never found it free.
+d=$(repo); git -C "$d" add -A
+lock="$d/../$(basename "$d").lock"
+( flock 9; sleep 1 ) 9> "$lock" &
+holder=$!
+until [[ -e "$lock" ]] && ! flock -n "$lock" true; do :; done
+out=$(SNAPSHOT_GATE_WAIT=1 gate "$d" run); code=$?
+wait "$holder"
+same "a gate asked to wait runs once the lock is free" "$code" 0
+[[ -f "$d/seen" ]] && ok "the waiting gate gated the snapshot" || ko "the waiting gate gated the snapshot" "$out"
+
 # The main session's batch goes first: while its mark exists, a builder's worktree starts no gate (flock serves its
 # waiters in no order, and the main gate once waited 76 minutes behind builders). The main tree is never held back.
 d=$(repo); git -C "$d" add -A; mark="$d/../$(basename "$d").main-first"

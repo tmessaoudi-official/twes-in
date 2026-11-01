@@ -527,6 +527,8 @@ make commit-gated MSG=<message file>       # commits exactly the last green tree
 - While `/tmp/twes-in-gate.main-first` exists, the main session's batch goes first: a builder's worktree (any linked
   worktree) is refused with exit 3 and runs `make check` and the tests of its files instead; the main tree gates as
   usual. The main session makes the mark with `touch` and removes it once its batch has landed.
+- A gate refuses at once (exit 3) while another heavy run holds the lock. `SNAPSHOT_GATE_WAIT=1 make gate-snapshot`
+  waits for it instead, as builders' short runs, queued on the lock back to back, would otherwise never leave it free.
 - Should the script itself be broken, the manual path is the one it takes: `tree=$(git write-tree)` once the gate is green
   on that tree, `commit=$(git commit-tree -S "$tree" -p HEAD -F <message file>)`, then
   `git update-ref refs/heads/master "$commit" "$(git rev-parse HEAD)"`, and `git log --format=%G? -1` reads `G`.
@@ -1021,7 +1023,7 @@ warning until Caddy next checked them.
 | Command | What it does |
 |---|---|
 | `twes start` | waits for Docker (five minutes), reads this computer's address, starts the release deployed here again; nothing is fetched, so a morning without the internet still opens |
-| `twes update` | the newest release tag, once its signature verifies: the database and the files backed up first, the release deployed by digest (a value the release needs that the shop's values file lacks filled in first from `infra/onprem/values.defaults`, a secret marked `generate:` made there, the file copied aside as `<file>.before-<moment>`; a master key is never made, the update refused until it is set), its deep health read through the edge; unhealthy, the release before it is started again on the new schema and the developer told; cut short (the computer switched off, a task's time limit), what it was doing is written down first (`state/update-in-progress`), and the next `start` or `tick` takes the shop back the same way |
+| `twes update` | the newest release tag, once its signature verifies: the database and the files backed up first, the release deployed by digest (a value the release needs that the shop's values file lacks filled in first from `infra/onprem/values.defaults`, a secret marked `generate:` made there, the file copied aside as `<file>.before-<moment>`; a master key is never made, the update refused until it is set), its deep health read through the edge; unhealthy, the release before it is started again on the new schema and the developer told, but where only a start step failed (`startSteps`), the update is kept and the developer and the operators told which step, since it runs again at the next start (docs/SPEC.md § 7, F13); cut short (the computer switched off, a task's time limit), what it was doing is written down first (`state/update-in-progress`), and the next `start` or `tick` takes the shop back the same way |
 | `twes policy auto 13:00-14:00` | updates applied by `tick` inside that daily window, in the shop's time, never just after a start, a release that failed here never retried by itself |
 | `twes policy notify` / `off` | a release out is told to each company's owners in the application, or nothing |
 | `twes offsite on` / `off` | the hourly off-site copy of the backups, once the bucket's values are given |

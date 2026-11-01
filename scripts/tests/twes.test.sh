@@ -85,7 +85,7 @@ case "$url" in
   */api/health/deep)
     tag=$(git -C "$TWES_ROOT" describe --exact-match --tags HEAD 2>/dev/null)
     reads=$(($(cat "$TMPDIR/health.reads" 2>/dev/null || echo 0) + 1)); echo "$reads" > "$TMPDIR/health.reads"
-    if [[ -n "${ALL_BAD:-}" || "$tag" == "${BAD:-none}" ]] || ((reads <= ${HEALTH_FAILS:-0})); then if [[ -n "${STEP_FAILS:-}" ]]; then echo '{"status":"failing","failing":["startSteps"],"readings":{"failedStartSteps":["app:invoices:seal-chain","app:platform:converge"],"oldestWaitingSeconds":0}}' > "$out"; else echo '{"status":"failing","failing":["queue"]}' > "$out"; fi; printf 503
+    if [[ -n "${ALL_BAD:-}" || "$tag" == "${BAD:-none}" ]] || ((reads <= ${HEALTH_FAILS:-0})); then if [[ "${STEP_FAILS:-}" == mixed ]]; then echo '{"status":"failing","failing":["queue","startSteps"],"readings":{"failedStartSteps":["app:invoices:seal-chain"],"oldestWaitingSeconds":0}}' > "$out"; elif [[ -n "${STEP_FAILS:-}" ]]; then echo '{"status":"failing","failing":["startSteps"],"readings":{"failedStartSteps":["app:invoices:seal-chain","app:platform:converge"],"oldestWaitingSeconds":0}}' > "$out"; else echo '{"status":"failing","failing":["queue"]}' > "$out"; fi; printf 503
     else echo '{"status":"ok","failing":[]}' > "$out"; printf 200; fi ;;
   smtp*) cp "$upload" "$TMPDIR/mail.eml"; cp "$netrc" "$TMPDIR/mail.netrc"; echo "$url" > "$TMPDIR/mail.url"; exit "${MAIL_EXIT:-0}" ;;
 esac
@@ -363,9 +363,19 @@ out=$(BACKUP_LABEL=$LABEL twes "$d" update); check "a newest tag that does not g
 check "  the developer told" 0 0 "$(subject)" "v2026.10.22.1"
 check "  and the operators, naming the release kept" 0 0 "$(told)" "installation.update_behind version=v2026.10.22.1 running=$NEW"
 
+# A start step that fails only warns (docs/SPEC.md § 7, F13): it runs again at the next start, and a rollback would cost
+# the shop the update and a restore over the new schema.
 d=$(installed)
-out=$(STEP_FAILS=1 BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" update); check "a release whose start step failed is rolled back" $? 1 "$out" "starting $OLD again"
+out=$(STEP_FAILS=1 BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" update); check "a release whose only failure is a start step is kept" $? 0 "$out" "updated to $NEW"
+[[ "$(at_tag "$d")" == "$NEW" ]]; check "  the new release running" $? 0 "$(at_tag "$d")" ""
+[[ "$(deployed)" != *--again* ]]; check "  nothing started again on the old schema" $? 0 "$(deployed)" ""
 check "  the developer told which steps failed" 0 0 "$(mailed)" "startSteps (app:invoices:seal-chain, app:platform:converge)"
+check "  and the operators" 0 0 "$(told)" "installation.unhealthy check=startSteps (app:invoices:seal-chain, app:platform:converge)"
+! grep -qsx "$NEW" "$d/etc/state/failed-releases"; check "  not written down as a failed release" $? 0 "" ""
+out=$(STEP_FAILS=1 ALL_BAD=1 twes "$d" tick); [[ "$(told)" != *installation.unhealthy* ]]; check "  the next tick tells it no second time" $? 0 "$(told)" ""
+
+d=$(installed)
+out=$(STEP_FAILS=mixed BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" update); check "a start step failing beside another check: rolled back" $? 1 "$out" "starting $OLD again"
 
 d=$(installed)
 out=$(BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" update); check "an unhealthy release is rolled back" $? 1 "$out" "starting $OLD again"

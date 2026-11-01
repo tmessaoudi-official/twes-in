@@ -5,7 +5,8 @@
 #                                  nothing fetched, so a morning without the internet still opens
 #   twes update                    the newest release tag: the database and the files backed up first (their label kept),
 #                                  the release deployed by digest, its deep health read through the edge; unhealthy,
-#                                  the release it left is started again on the current schema and the developer told
+#                                  the release it left is started again on the current schema and the developer told;
+#                                  only a start step failing is told and the update kept, the step run at the next start
 #   twes policy auto HH:MM-HH:MM   updates applied by tick inside that daily window, in the shop's time
 #   twes policy notify | off       the owners told in the app that a release is out, or nothing
 #   twes offsite on | off          the off-site copy of the backups (its bucket's values given first)
@@ -261,6 +262,14 @@ deep_health() {
     echo "$failing"
   else echo "api ($code)"; fi
   return 1
+}
+
+# Whether the deep health read whose verdict is $1 failed on the start steps alone, every other check passing: the
+# application answers, and only what its start ran once went wrong. The verdict is read first: an edge that did not answer
+# leaves an older reading in health.json.
+only_start_steps() {
+  [[ "$1" == startSteps* ]] || return 1
+  [[ "$(sed -n 's/.*"failing":\[\([^]]*\)\].*/\1/p' "$state/health.json")" == '"startSteps"' ]]
 }
 
 # --- Commands ----------------------------------------------------------------------------------------------------------
@@ -635,10 +644,21 @@ update() {
   [[ -z "$previous" ]] || printf '%s %s %s\n' "$newest" "$previous" "$label" > "$state/update-in-progress"
   step
   git -C "$root" checkout --quiet --detach "$newest"
-  if LAN_HOST=$address bash "$deploy" --release "$values" && { step; failure=$(deep_health 18); }; then
+  failure=''
+  if LAN_HOST=$address bash "$deploy" --release "$values" && { step; failure=$(deep_health 18) || only_start_steps "$failure"; }; then
     rm -f "$state/update-in-progress"
     step_end
     say "updated to $newest"
+    if [[ -n "$failure" ]]; then
+      # A start step that failed only warns (docs/SPEC.md § 7, F13): it runs again at the next start, while a rollback
+      # would cost the shop its update and a restore over the new schema. The episode is written down as tick writes
+      # its own, so the next tick does not tell it again.
+      echo "$failure" > "$state/unhealthy"
+      say "a start step failed ($failure): the update is kept, the step runs again at the next start"
+      alert installation.unhealthy "Mise à jour vers $newest faite, une étape de démarrage en échec ($failure)" \
+        "La mise à jour vers $newest est faite et l'application répond, mais une étape de démarrage a échoué : $failure. Elle sera reprise au prochain démarrage ; la mise à jour n'a pas été annulée." \
+        "check=$failure"
+    fi
     if [[ -f "$state/failed-releases" ]]; then
       awk -v t="$newest" '$0 != t' "$state/failed-releases" > "$state/failed-releases.new"
       mv -f "$state/failed-releases.new" "$state/failed-releases"
