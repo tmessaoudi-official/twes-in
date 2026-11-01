@@ -85,7 +85,7 @@ case "$url" in
   */api/health/deep)
     tag=$(git -C "$TWES_ROOT" describe --exact-match --tags HEAD 2>/dev/null)
     reads=$(($(cat "$TMPDIR/health.reads" 2>/dev/null || echo 0) + 1)); echo "$reads" > "$TMPDIR/health.reads"
-    if [[ -n "${ALL_BAD:-}" || "$tag" == "${BAD:-none}" ]] || ((reads <= ${HEALTH_FAILS:-0})); then echo '{"status":"failing","failing":["queue"]}' > "$out"; printf 503
+    if [[ -n "${ALL_BAD:-}" || "$tag" == "${BAD:-none}" ]] || ((reads <= ${HEALTH_FAILS:-0})); then if [[ -n "${STEP_FAILS:-}" ]]; then echo '{"status":"failing","failing":["startSteps"],"readings":{"failedStartSteps":["app:invoices:seal-chain","app:platform:converge"],"oldestWaitingSeconds":0}}' > "$out"; else echo '{"status":"failing","failing":["queue"]}' > "$out"; fi; printf 503
     else echo '{"status":"ok","failing":[]}' > "$out"; printf 200; fi ;;
   smtp*) cp "$upload" "$TMPDIR/mail.eml"; cp "$netrc" "$TMPDIR/mail.netrc"; echo "$url" > "$TMPDIR/mail.url"; exit "${MAIL_EXIT:-0}" ;;
 esac
@@ -354,6 +354,18 @@ check "  and the health read through the edge with the token from a file, never 
 grep -q "$(awk -F= '$1=="MONITOR_TOKEN"{print $2}' "$d/etc/install.env")" "$TMPDIR/curl.calls"; check "  (the token is in no argument)" $? 1 "" ""
 out=$(BACKUP_LABEL=$LABEL twes "$d" update); check "up to date: nothing done" $? 0 "$out" "up to date: $NEW"
 [[ "$out" != *"[1/"* ]]; check "  and no step said" $? 0 "$out" ""
+
+# A patch tagged after a release it does not hold would take that release's shops back onto older code: refused there.
+d=$(PATCH=v2026.10.22.1 installed); git -C "$d/twes-in" checkout -q --detach "$NEW"
+echo "t deployed $(git -C "$d/twes-in" rev-parse HEAD) release" >> "$d/etc/releases/history"
+out=$(BACKUP_LABEL=$LABEL twes "$d" update); check "a newest tag that does not grow from the release running: refused" $? 1 "$out" "v2026.10.22.1"
+[[ "$(at_tag "$d")" == "$NEW" ]]; check "  the release running kept" $? 0 "$(at_tag "$d")" ""
+check "  the developer told" 0 0 "$(subject)" "v2026.10.22.1"
+check "  and the operators, naming the release kept" 0 0 "$(told)" "installation.update_behind version=v2026.10.22.1 running=$NEW"
+
+d=$(installed)
+out=$(STEP_FAILS=1 BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" update); check "a release whose start step failed is rolled back" $? 1 "$out" "starting $OLD again"
+check "  the developer told which steps failed" 0 0 "$(mailed)" "startSteps (app:invoices:seal-chain, app:platform:converge)"
 
 d=$(installed)
 out=$(BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" update); check "an unhealthy release is rolled back" $? 1 "$out" "starting $OLD again"

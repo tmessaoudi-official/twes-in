@@ -229,6 +229,7 @@ describe('installation notifications', () => {
       'installation.rolled_back': 'undo',
       'installation.update_failed': 'error',
       'installation.update_refused': 'block',
+      'installation.update_behind': 'history',
       'installation.unhealthy': 'sync_problem',
       'installation.backup_failed': 'cloud_off',
       'installation.backup_stopped': 'cloud_off',

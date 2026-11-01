@@ -7,7 +7,8 @@
 # dropped (the release before inserts without the column). A contraction belongs to a later release than the one that
 # stopped reading what it removes, and its line says so: `// contract: <why the release before no longer reads it>`.
 # Before the first release there is nothing to roll back to, and every migration may still reshape the schema.
-# A migration the release holds is never edited, a statement is read whole however many lines it takes, a new CHECK
+# Every method but down() is read, so a helper up() calls is judged too, and a new rule whose table is a placeholder or a
+# variable is refused, since it cannot be read. A migration the release holds is never edited nor deleted, a statement is read whole however many lines it takes, a new CHECK
 # or UNIQUE on a table the release holds contracts too (the release before writes rows it would refuse), and CONCURRENTLY
 # is refused outright: the update runs every migration in one transaction, which it cannot join.
 # Usage: additive-migrations.sh [--root DIR]
@@ -15,13 +16,15 @@ set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 release_tags='v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*'
-contracting='\b(DROP[[:space:]]+(TABLE|VIEW|COLUMN)|RENAME|SET[[:space:]]+NOT[[:space:]]+NULL|DROP[[:space:]]+DEFAULT)\b|\bALTER[[:space:]]+(COLUMN[[:space:]]+)?[A-Za-z_"]+[[:space:]]+TYPE\b|\bALTER[[:space:]]+TABLE[[:space:]]+[^[:space:]]+[[:space:]]+DROP[[:space:]]+[A-Za-z_"]+'"'"'\)'
+contracting='\b(DROP[[:space:]]+(TABLE|VIEW|COLUMN)|RENAME|SET[[:space:]]+NOT[[:space:]]+NULL|SET[[:space:]]+DATA[[:space:]]+TYPE|DROP[[:space:]]+DEFAULT)\b|\bALTER[[:space:]]+(COLUMN[[:space:]]+)?[A-Za-z_"]+[[:space:]]+TYPE\b|\bALTER[[:space:]]+TABLE[[:space:]]+[^[:space:]]+[[:space:]]+DROP[[:space:]]+[A-Za-z_"]+'"'"'\)'
 # Dropping an index or a constraint, or a NOT NULL, loosens what the release before may write; it never contracts.
 loosening='DROP[[:space:]]+(INDEX|CONSTRAINT|NOT[[:space:]]+NULL|TRIGGER)\b'
 
 [[ -d "$root/api/migrations" ]] || { echo "additive-migrations: FAIL — found no api/migrations under $root"; exit 1; }
 git -C "$root" rev-parse --git-dir >/dev/null 2>&1 || { echo "additive-migrations: FAIL — $root is not a git repository: the release tags are read from it"; exit 1; }
-release=$(git -C "$root" tag --list "$release_tags" --sort=-v:refname | head -n 1)
+# The newest release this commit descends from, as signed-commits.sh, onprem-overlay.sh and tag-release.sh read it: a
+# patch on a release's own branch is judged against its base, never against what master released since.
+release=$(git -C "$root" tag --merged HEAD --list "$release_tags" --sort=-v:refname | head -n 1)
 if [[ -z "$release" ]]; then
   echo "additive-migrations: OK — no release yet, so nothing runs an older one: every migration may still reshape the schema"
   exit 0
@@ -30,8 +33,10 @@ fi
 problems=()
 released=$(git -C "$root" ls-tree -r --name-only "$release" -- api/migrations)
 # A migration the release holds is never edited: a shop that ran it keeps what it did, and the edit runs nowhere.
+# Nor deleted: a shop that ran it holds a version this release no longer knows.
 while IFS= read -r held; do
-  [[ -n "$held" && -f "$root/$held" ]] || continue
+  [[ -n "$held" ]] || continue
+  [[ -f "$root/$held" ]] || { problems+=("$held is gone since $release: a released migration is never deleted, a shop ran it"); continue; }
   git -C "$root" show "$release:$held" | cmp -s - "$root/$held" \
     || problems+=("$held differs from $release: a released migration is never edited; write a new one")
 done <<<"$released"
@@ -60,7 +65,8 @@ judge() { # file, line, the statement as written
   statement=$(sed -E "s/$loosening//g" <<<"$statement")
   # A NOT NULL column added with no default: the release before inserts rows without it, which are refused.
   if grep -qE "$contracting" <<<"$statement" \
-    || { grep -qE '\bALTER[[:space:]]+TABLE\b.*\bADD\b.*\bNOT[[:space:]]+NULL\b' <<<"$statement" && ! grep -qE '\bDEFAULT\b|\bCHECK\b' <<<"$statement"; }; then
+    || { grep -qE '\bALTER[[:space:]]+TABLE\b.*\bADD\b.*\bNOT[[:space:]]+NULL\b' <<<"$statement" \
+      && ! grep -qE '\bDEFAULT\b|\bADD[[:space:]]+(CONSTRAINT[[:space:]]+[^[:space:]]+[[:space:]]+)?CHECK\b' <<<"$statement"; }; then
     problems+=("api/migrations/$file:$n: ${code:0:110}"); return
   fi
   # A new CHECK or UNIQUE on a table the release before writes to refuses what it writes.
@@ -69,6 +75,11 @@ judge() { # file, line, the statement as written
     table=$(sed -nE 's/.*\bALTER[[:space:]]+TABLE[[:space:]]+(IF[[:space:]]+EXISTS[[:space:]]+)?(ONLY[[:space:]]+)?"?([A-Z_][A-Z0-9_]*).*/\3/p' <<<"$statement")
   elif grep -qE '\bCREATE[[:space:]]+UNIQUE[[:space:]]+INDEX\b' <<<"$statement"; then
     table=$(sed -nE 's/.*\bON[[:space:]]+(ONLY[[:space:]]+)?"?([A-Z_][A-Z0-9_]*).*/\2/p' <<<"$statement")
+  fi
+  # A rule whose table is a placeholder or a variable (sprintf, a loop) cannot be read, so it is refused: write it out.
+  if grep -qE '\bALTER[[:space:]]+TABLE[[:space:]]+(IF[[:space:]]+EXISTS[[:space:]]+)?(ONLY[[:space:]]+)?[%$]|\bON[[:space:]]+(ONLY[[:space:]]+)?[%$]' <<<"$statement" \
+    && grep -qE '\bADD[[:space:]]+(CONSTRAINT[[:space:]]+[^[:space:]]+[[:space:]]+)?(CHECK|UNIQUE)\b|\bCREATE[[:space:]]+UNIQUE[[:space:]]+INDEX\b' <<<"$statement"; then
+    problems+=("api/migrations/$file:$n: a new rule whose table is not written out, which this gate cannot judge: ${code:0:90}"); return
   fi
   if [[ -n "$table" && "$new_tables" != *" ${table,,} "* ]]; then
     problems+=("api/migrations/$file:$n: a new rule on ${table,,}, which the release before writes to: ${code:0:90}")
@@ -80,11 +91,13 @@ for path in "${since[@]}"; do
   n=0 inside=0 pending='' start=0
   while IFS= read -r line || [[ -n "$line" ]]; do
     n=$((n + 1))
-    if [[ "$line" =~ function[[:space:]]+up[[:space:]]*\( ]]; then inside=1; continue; fi
-    if [[ "$line" =~ function[[:space:]]+[a-zA-Z_]+[[:space:]]*\( ]]; then
-      # A statement still open when up() ends is judged as read, never dropped unseen.
+    # Every method but down() is read as up(): a helper up() calls migrates as up() does, and down() is the way back.
+    if [[ "$line" =~ function[[:space:]]+([a-zA-Z_]+)[[:space:]]*\( ]]; then
+      # A statement still open when a method ends is judged as read, never dropped unseen.
       [[ -n "$pending" ]] && judge "$file" "$start" "$pending"
-      inside=0 pending=''
+      pending=''
+      [[ "${BASH_REMATCH[1]}" == down ]] && inside=0 || inside=1
+      continue
     fi
     ((inside)) || continue
     code=${line#"${line%%[![:space:]]*}"}

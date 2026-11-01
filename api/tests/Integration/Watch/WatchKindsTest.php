@@ -36,10 +36,33 @@ final class WatchKindsTest extends KernelTestCase
         self::assertGreaterThanOrEqual(9, \count($read), 'the declarations are read');
         self::assertSame($read, $heard);
         $said = array_keys(static::getContainer()->get(RecordCatalogue::class)->subjects());
+        // A kind is said by an entity type, or handed to a live change by `new` or a named constructor
+        // (`LiveChange::everyone`), as a literal or a constant, read as HeardKindsTest reads them.
+        $files = [];
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root.'/api/src', \FilesystemIterator::SKIP_DOTS)) as $file) {
             if ($file instanceof \SplFileInfo && 'php' === $file->getExtension()) {
-                preg_match_all("/ENTITY_TYPE = '([a-z_]+)'|new LiveChange\\('([a-z_]+)'/", (string) file_get_contents($file->getPathname()), $kinds);
-                $said = [...$said, ...array_filter([...$kinds[1], ...$kinds[2]])];
+                $files[$file->getPathname()] = (string) file_get_contents($file->getPathname());
+            }
+        }
+        $constants = [];
+        foreach ($files as $path => $source) {
+            preg_match_all("/const string ([A-Z_]+) = '([^']*)'/", $source, $found, \PREG_SET_ORDER);
+            foreach ($found as [, $name, $value]) {
+                $constants[basename($path, '.php').'::'.$name] = $value;
+            }
+        }
+        foreach ($files as $path => $source) {
+            preg_match_all("/ENTITY_TYPE = '([a-z_]+)'/", $source, $types);
+            preg_match_all("/(?:new LiveChange|LiveChange::\\w+)\\(\\s*('[a-z_]+'|\\w+::[A-Z_]+)/", $source, $handed);
+            $said = [...$said, ...$types[1]];
+            foreach ($handed[1] as $argument) {
+                if (str_starts_with($argument, "'")) {
+                    $said[] = trim($argument, "'");
+                    continue;
+                }
+                [$class, $name] = explode('::', $argument);
+                $class = 'self' === $class || 'static' === $class ? basename($path, '.php') : $class;
+                $said[] = $constants["$class::$name"] ?? '';
             }
         }
         foreach ($read as $kind) {

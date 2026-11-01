@@ -75,6 +75,7 @@ check "  one line per image as it is read" 0 0 "$out" "[1/3] twes-in-api:sha-${h
 check "  saying which comes next" 0 0 "$out" "next: twes-in-web"
 check "  and the last" 0 0 "$out" "[3/3] twes-in-database"
 check "  and says how to push it, which it never does itself" 0 0 "$out" "git push origin v2026.10.13.1"
+check "  once staging has run it" 0 0 "$out" "once staging has run this commit"
 ! grep -q "push" "$d/calls"; check "  and pushes nothing to the registry" $? 0 "$(cat "$d/calls")" ""
 
 d=$(fixture)
@@ -176,6 +177,7 @@ lane() { # dir: a release tagged, master moved on, a patch committed on release/
 d=$(fixture); lane "$d"
 out=$(tag_release "$d" v2026.10.20.1); check "a patch on release/<date>, grown from that release's tag: tagged" $? 0 "$out" "made and verified"
 check "  saying its lane and its base" 0 0 "$out" "release/2026.10.13 from v2026.10.13.1"
+check "  the push it says asks no staging run, staging following master alone" 0 0 "$(grep -c 'staging has run' <<<"$out"):$(grep -c 'git push origin v2026.10.20.1' <<<"$out")" "0:1"
 check "  the tag at the patch, not at master" 0 0 "$(git -C "$d/repo" rev-parse 'v2026.10.20.1^{commit}')" "$(git -C "$d/repo" rev-parse HEAD)"
 d=$(fixture); lane "$d"
 out=$(tag_release "$d" v2026.10.13.2); check "a patch tag dated on or before its base: refused" $? 1 "$out" "after v2026.10.13.1"
@@ -199,5 +201,14 @@ d=$(fixture); rm -f "$d/repo/infra/onprem/release-key.asc"; git -C "$d/repo" add
 git -C "$d/repo" update-ref refs/remotes/origin/master HEAD; proven "$d" HEAD
 out=$(tag_release "$d" v2026.10.13.1); check "no pinned key in the checkout: refused, nothing tells a release from a rehearsal" $? 1 "$out" "release-key.asc"
 
+# A patch is for the shops still on its base: once master released after it, the patch would sort above that release
+# and carry its shops back onto older code, so the lane refuses it and says to patch master instead.
+d=$(fixture); lane "$d"; git -C "$d/repo" tag v2026.10.15.1 master
+out=$(tag_release "$d" v2026.10.20.1); check "a patch while master has released after its base: refused, naming that release" $? 1 "$out" "v2026.10.15.1"
+check "  saying to patch master" 0 0 "$out" "master"
+
+d=$(fixture); lane "$d"; root_commit=$(git -C "$d/repo" rev-list --max-parents=0 HEAD)
+git -C "$d/repo" tag v2026.10.11.1 "$(git -C "$d/repo" commit-tree "$root_commit^{tree}" -p "$root_commit" -m "another lane's patch")"
+out=$(tag_release "$d" v2026.10.20.1); check "an older release the patch does not hold is no reason to refuse it" $? 0 "$out" "made and verified"
 echo "tag-release.test: $pass passed, $fail failed"
 ((fail == 0))

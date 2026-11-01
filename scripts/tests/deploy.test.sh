@@ -307,6 +307,11 @@ check "  the file unchanged, the secret not made twice" 0 0 "$(sha256sum < "$e")
 d=$(defaults_repo 'SHOP_GREETING=Bonjour'); e=$(onprem_values $'SHOP_GREETING=Salut\n')
 out=$(run "$d" --release "$e"); check "a value the shop set is never replaced" $? 0 "$out" "running"
 check "  it stays its own" 0 0 "$(grep -c '^SHOP_GREETING=' "$e"):$(grep '^SHOP_GREETING=' "$e")" "1:SHOP_GREETING=Salut"
+for given in 'export SHOP_GREETING=Salut' '  SHOP_GREETING=Salut' 'SHOP_GREETING='; do
+  d=$(defaults_repo 'SHOP_GREETING=Bonjour'); e=$(onprem_values "$given"$'\n')
+  out=$(run "$d" --release "$e"); check "a value the shop gave as '$given' is never filled again" $? 0 "$out" "running"
+  check "  its line the only one" 0 0 "$(grep -c 'SHOP_GREETING=' "$e")" "1"
+done
 d=$(defaults_repo 'SIGNING_MASTER_KEY=generate:64'); e=$(onprem_values)
 out=$(run "$d" --release "$e"); check "a master key is never generated on an update: refused" $? 1 "$out" "SIGNING_MASTER_KEY"
 d=$(defaults_repo 'SHOP_GREETING=Bonjour'); e=$(onprem_values); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"

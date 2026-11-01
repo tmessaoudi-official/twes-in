@@ -30,6 +30,8 @@ commit() { # dir, key or "none"
   if [[ "$2" == none ]]; then git -C "$1" commit -qm unsigned; else git -C "$1" -c user.signingkey="$2" -c commit.gpgsign=true commit -qm signed; fi
 }
 # The gate reads the pinned key into a keyring of its own, as CI has no other: run it with an empty GNUPGHOME.
+# The branch CI or a cloud session runs on decides how unsigned commits are read: a case names its own.
+unset GITHUB_REF_NAME CLAUDE_CODE_REMOTE
 run() { GNUPGHOME= bash "$GATE" --root "$1" 2>&1; }
 echo "signed-commits gate"
 
@@ -59,5 +61,20 @@ d=$(repo); commit "$d" "$KEY"; echo s >> "$d/f"; git -C "$d" add -A
 snap=$(git -C "$d" commit-tree "$(git -C "$d" write-tree)" -p HEAD -m "gate snapshot of 0000000000000000000000000000000000000000")
 git -C "$d" worktree add -q --detach "$d/.claude/worktrees/gate" "$snap"
 out=$(run "$d/.claude/worktrees/gate"); check "a commit in the gate worktree naming another tree than its own: refused" $? 1 "$out" "${snap:0:7}"
+d=$(repo); commit "$d" "$KEY"; echo s >> "$d/f"; git -C "$d" add -A
+snap=$(git -C "$d" commit-tree "$(git -C "$d" write-tree)" -p HEAD -m "gate snapshot of $(git -C "$d" write-tree)")
+git -C "$d" worktree add -q --detach "$d/elsewhere/gate" "$snap"
+out=$(run "$d/elsewhere/gate"); check "a worktree merely named gate, outside .claude/worktrees: refused" $? 1 "$out" "${snap:0:7}"
+
+# A cloud session cannot sign: its branch is re-signed by land.sh on the developer's machine before master takes it. On
+# such a branch, or in such a session, the unsigned commits are listed as pending that, never passed as signed; on
+# master, a release's lane, or with no branch named, they are refused.
+d=$(repo); commit "$d" none
+out=$(GITHUB_REF_NAME=claude/fix-x run "$d"); check "a cloud branch's unsigned commit: pending land.sh, not refused" $? 0 "$out" "pending land.sh"
+check "  never said signed" 0 0 "$out" "$(git -C "$d" rev-parse --short HEAD)"
+out=$(CLAUDE_CODE_REMOTE=true run "$d"); check "a cloud session's unsigned commit: pending land.sh" $? 0 "$out" "pending land.sh"
+out=$(GITHUB_REF_NAME=master run "$d"); check "on master: refused" $? 1 "$out" "not signed"
+out=$(GITHUB_REF_NAME=release/2026.10.30 run "$d"); check "on a release's lane: refused" $? 1 "$out" "not signed"
+out=$(GITHUB_REF_NAME=master CLAUDE_CODE_REMOTE=true run "$d"); check "on master even from a cloud session: refused" $? 1 "$out" "not signed"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

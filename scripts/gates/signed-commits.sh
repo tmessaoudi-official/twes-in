@@ -19,9 +19,11 @@ fingerprints=$(gpg --batch --with-colons --list-keys | awk -F: '$1 == "fpr" { pr
 
 # The snapshot gate (scripts/gate/snapshot-gate.sh) gates the index as a commit of its own, unsigned since a gate never
 # waits on a key, in its worktree alone; what lands is that tree, signed by make commit-gated. There, and only there, a
-# HEAD saying it is the snapshot of its own tree is read as its parent's history. CI's checkout is no such worktree.
+# HEAD saying it is the snapshot of its own tree is read as its parent's history. CI's checkout is no such worktree, and
+# a worktree is that one by where it sits, .claude/worktrees/gate, and by being a linked worktree, not by its name alone.
 end=HEAD snapshot=''
-if [[ "$(git -C "$root" rev-parse --absolute-git-dir)" == */worktrees/gate \
+if [[ "$(git -C "$root" rev-parse --show-toplevel)" == */.claude/worktrees/gate \
+  && "$(git -C "$root" rev-parse --absolute-git-dir)" != "$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)" \
   && "$(git -C "$root" log -1 --format=%s HEAD)" == "gate snapshot of $(git -C "$root" rev-parse 'HEAD^{tree}')" ]]; then
   end=HEAD^ snapshot=" (the snapshot gate's own commit $(git -C "$root" rev-parse --short HEAD) read as its parent)"
 fi
@@ -40,6 +42,16 @@ while read -r sha status signer; do
   fi
 done < <(git -C "$root" -c gpg.program=gpg log --format='%h %G? %GF' "$range")
 
+# A cloud session cannot sign (CLAUDE.md « A cloud session »): its branch is re-signed by land.sh on the developer's
+# machine before master takes it. There, its unsigned commits are listed as pending that, never said signed. Master, a
+# release's lane and a run naming no branch are held strictly; compose hands the tools container both variables.
+branch=${GITHUB_REF_NAME:-}
+if ((${#bad[@]})) && [[ "$branch" != master && "$branch" != release/* ]] \
+  && [[ -n "$branch" || "${CLAUDE_CODE_REMOTE:-}" == true ]]; then
+  printf 'signed-commits: PENDING — %d commit(s) since %s not yet signed by the pinned release key, pending land.sh'"'"'s re-signing on %s: %s\n' \
+    "${#bad[@]}" "${release:-the first commit}" "${branch:-this cloud session}" "${bad[*]}"
+  exit 0
+fi
 if ((${#bad[@]})); then
   printf 'signed-commits: FAIL — %d commit(s) since %s not signed by the pinned release key: %s (git log --format="%%h %%G? %%GF %%s" to read them)\n' \
     "${#bad[@]}" "${release:-the first commit}" "${bad[*]}"

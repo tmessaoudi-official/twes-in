@@ -1,3 +1,4 @@
 # What a shop's values file may lack after an update, read by scripts/deploy/deploy.sh before compose: NAME=value,
 # or NAME=generate:<length> for a random secret made on the shop's machine. Never a master key (deploy.sh refuses one).
+# A name the shop's file already gives, even empty, is left as it is: only a name it lacks is filled.
 # scripts/gates/onprem-overlay.sh requires here every value the files need that the last release's installer did not write.

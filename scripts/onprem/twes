@@ -252,7 +252,14 @@ deep_health() {
     ((tries > 0)) || break
     sleep "${TWES_HEALTH_PAUSE:-10}"
   done
-  if [[ "$code" == 503 ]]; then sed -n 's/.*"failing":\[\([^]]*\)\].*/\1/p' "$state/health.json" | tr -d '"'; else echo "api ($code)"; fi
+  if [[ "$code" == 503 ]]; then
+    # A start step that failed is named, not only « startSteps »: which one decides what the developer looks at.
+    local failing steps
+    failing=$(sed -n 's/.*"failing":\[\([^]]*\)\].*/\1/p' "$state/health.json" | tr -d '"')
+    steps=$(sed -n 's/.*"failedStartSteps":\[\([^]]*\)\].*/\1/p' "$state/health.json" | tr -d '"' | sed 's/,/, /g')
+    [[ -z "$steps" ]] || failing=$(sed "s/\bstartSteps\b/startSteps ($steps)/" <<<"$failing")
+    echo "$failing"
+  else echo "api ($code)"; fi
   return 1
 }
 
@@ -585,6 +592,17 @@ update() {
     say "$newest was refused here: it is applied only by hand (twes update), once its signature verifies"; return 0
   fi
   verified "$newest" "$current" || return 1
+  # A patch on a release's own branch, tagged after a release it does not hold, would take this shop back onto older
+  # code on its newer schema: refused, and told, as a tag that does not verify is (scripts/release/tag-release.sh refuses
+  # to make one; this holds whatever made it).
+  if [[ -n "$previous" ]] && ! git -C "$root" merge-base --is-ancestor "$previous" "refs/tags/$newest"; then
+    listed "$newest" refused-releases || echo "$newest" >> "$state/refused-releases"
+    alert installation.update_behind "Mise à jour refusée : $newest ne suit pas ${current:-la version en place}" \
+      "La mise à jour vers $newest a été refusée : elle ne contient pas ${current:-la version en place}, qui tourne ici, et la prendre ramènerait ce commerce à un code plus ancien sur un schéma plus récent. Rien n'a été changé. Publiez le correctif depuis master." \
+      "version=$newest" "running=${current:-${previous:0:12}}"
+    say "refused: $newest does not grow from ${current:-the release running}: taking it would go back to older code"
+    return 1
+  fi
   # Counted from here, once there is something to do; an install's steps after the release follow.
   local plan=()
   if [[ -n "$previous" ]]; then

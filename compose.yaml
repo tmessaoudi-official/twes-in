@@ -270,6 +270,10 @@ services:
     environment:
       HOME: /tmp
       IN_TOOLS: "1"
+      # The branch CI runs on and whether this is a cloud session: signed-commits.sh holds master and a release's lane to
+      # the pinned signature, and lists a cloud branch's commits as pending land.sh's re-signing.
+      GITHUB_REF_NAME: "${GITHUB_REF_NAME:-}"
+      CLAUDE_CODE_REMOTE: "${CLAUDE_CODE_REMOTE:-}"
       HOST_REPO: "${HOST_REPO:-${PWD}}"
       HOST_UID: "${HOST_UID:-1000}"
       HOST_GID: "${HOST_GID:-1000}"

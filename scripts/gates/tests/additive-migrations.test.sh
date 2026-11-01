@@ -106,4 +106,30 @@ out=$(run "$d"); check "  a rule on a table made since the release passes" $? 0 
 d=$(repo released); since "$d" "$(sql 'CREATE INDEX CONCURRENTLY idx_note ON invoice (id)'); // contract: faster"
 out=$(run "$d"); check "CONCURRENTLY: refused, even with a reason" $? 1 "$out" "CONCURRENTLY"
 
+# Found by the P0 phase lens: other spellings of a contraction, and statements whose table is not written out.
+for statement in 'ALTER TABLE invoice ALTER COLUMN note SET DATA TYPE SMALLINT' 'ALTER TABLE invoice ADD b INT NOT NULL CHECK (b > 0)'; do
+  d=$(repo released); since "$d" "$(sql "$statement")"
+  out=$(run "$d"); check "refused after a release: $statement" $? 1 "$out" "Version20261021000000.php:11"
+done
+d=$(repo released); since "$d" "$(sql 'ALTER TABLE invoice ADD CONSTRAINT positive CHECK (total > 0) NOT VALID')"
+out=$(run "$d"); check "a CHECK constraint on a held table is a new rule, not a NOT NULL column" $? 1 "$out" "a new rule on invoice"
+d=$(repo released); since "$d" "        \$this->addSql(sprintf('ALTER TABLE %s ADD CONSTRAINT u UNIQUE (a)', 'invoice'));"
+out=$(run "$d"); check "a new rule whose table is not written out: refused, it cannot be read" $? 1 "$out" "not written out"
+d=$(repo released); since "$d" '        foreach (['"'"'invoice'"'"'] as $t) {
+            $this->addSql("ALTER TABLE $t ADD CONSTRAINT c CHECK (a > 0)");
+        }'
+out=$(run "$d"); check "  nor one built from a variable in a loop" $? 1 "$out" "not written out"
+d=$(repo released); since "$d" "        \$this->dropOld();"
+printf '%s\n' '<?php' 'final class Version20261021000000 extends AbstractMigration' '{' '    public function up(Schema $schema): void' '    {' '        $this->dropOld();' '    }' '' '    private function dropOld(): void' '    {' "        \$this->addSql('ALTER TABLE invoice DROP COLUMN a');" '    }' '' '    public function down(Schema $schema): void' '    {' "        \$this->addSql('ALTER TABLE invoice DROP COLUMN b');" '    }' '}' > "$d/api/migrations/Version20261021000000.php"; git -C "$d" add -A
+out=$(run "$d"); check "a contraction in a helper up() calls: refused" $? 1 "$out" "Version20261021000000.php:11"
+check "  while down()'s own drops stay the way back" 0 0 "$out" "1 statement(s)"
+d=$(repo released); git -C "$d" rm -q api/migrations/Version20261001000000.php; mkdir -p "$d/api/migrations"; since "$d" "$(sql 'CREATE TABLE note (id UUID NOT NULL)')"
+out=$(run "$d"); check "a released migration deleted: refused, a shop ran it" $? 1 "$out" "Version20261001000000.php"
+# The release a commit is judged against is the newest it descends from: a patch on a release's own branch is not
+# judged against what master released since.
+d=$(repo released); git -C "$d" checkout -q -b other; echo x > "$d/x"; git -C "$d" add -A; git -C "$d" commit -qm other
+git -C "$d" tag -a v2026.10.30.1 -m elsewhere; git -C "$d" checkout -q master
+since "$d" "$(sql 'ALTER TABLE invoice ADD note VARCHAR(255) DEFAULT NULL')"
+out=$(run "$d"); check "judged against the newest release HEAD descends from, not the newest by name" $? 0 "$out" "since v2026.10.20.1"
+
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

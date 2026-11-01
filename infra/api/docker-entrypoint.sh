@@ -10,18 +10,21 @@ set -e
 # said is printed, kept as <step>.failed for the deep health (/api/health/deep names it, DoctrineDeepHealthReader), and
 # the start goes on. A later start that runs it through clears it.
 steps_dir=${TWES_START_STEPS_DIR:-var/start-steps}
+# Its output is printed as it comes, so a long seal-chain does not read as a hang; sh has no PIPESTATUS, so the step's
+# own status travels through a file beside its output.
 start_step() {
 	name=$1
 	shift
-	if said="$("$@" 2>&1)"; then
-		[ -z "$said" ] || printf '%s\n' "$said"
+	out=$(mktemp)
+	{ "$@" 2>&1; echo $? > "$out.status"; } | tee "$out"
+	if [ "$(cat "$out.status")" = 0 ]; then
 		rm -f "$steps_dir/$name.failed"
 	else
-		printf '%s\n' "$said"
 		echo "The start step $name failed; the server starts all the same and /api/health/deep names it."
 		mkdir -p "$steps_dir"
-		printf '%s\n' "$said" | tail -n 20 > "$steps_dir/$name.failed"
+		tail -n 20 "$out" > "$steps_dir/$name.failed"
 	fi
+	rm -f "$out" "$out.status"
 }
 
 if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then

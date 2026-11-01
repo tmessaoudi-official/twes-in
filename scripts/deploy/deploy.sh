@@ -83,7 +83,7 @@ if [[ "$mode" == --compose ]]; then
 fi
 # A shop's update runs this release's deploy.sh with the values file its first install wrote: a value this release adds
 # would stop compose (`:?`) or mount an empty secret. infra/onprem/values.defaults names each one, `NAME=value` or
-# `NAME=generate:<length>` for a random secret made here; a name the file already gives is never touched. The file is
+# `NAME=generate:<length>` for a random secret made here; a name the file already gives, even empty, is never touched. The file is
 # copied aside first, readable by its owner alone. A master key is never generated: it encrypts what is already stored,
 # and a new one would lock it out, so it is refused for the developer to set.
 defaults=$root/infra/onprem/values.defaults
@@ -93,7 +93,9 @@ if [[ "$creates" == yes && "$(value TWES_INSTALL)" == onprem && -f "$defaults" ]
     [[ -z "$line" || "$line" == \#* ]] && continue
     [[ "$line" =~ ^([A-Z][A-Z0-9_]*)=(.*)$ ]] || refuse "infra/onprem/values.defaults: '$line' is not NAME=value"
     name=${BASH_REMATCH[1]} given=${BASH_REMATCH[2]}
-    grep -q "^$name=" "$values" && continue
+    # Given is given, even empty, indented or exported by a hand edit: filling it again would append a second line, which
+    # the env file reads last, and replace a shop's own secret with a new one.
+    grep -qE "^[[:space:]]*(export[[:space:]]+)?$name=" "$values" && continue
     [[ "$given" == generate:* && "$name" == *_MASTER_KEY ]] \
       && refuse "$values give no $name, and a master key is never generated on an update: set the installation's own, from the password manager"
     [[ "$given" != generate:* || "${given#generate:}" =~ ^[1-9][0-9]*$ ]] \

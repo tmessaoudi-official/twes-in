@@ -61,6 +61,14 @@ if ! git -C "$root" merge-base --is-ancestor "$revision" refs/remotes/origin/mas
   done < <(git -C "$root" for-each-ref --format='%(refname)' refs/remotes/origin/release/)
   [[ -n "$lane" ]] || refuse "origin/master does not hold $revision, nor does a release/<YYYY.MM.DD> branch grown from that day's release tag: only what master or a release's own branch published is released (git fetch, then check out such a commit)"
   [[ "${tag:1:10}" > "${base:1:10}" ]] || refuse "$tag patches $base on $lane: a patch tag is dated after $base, so every shop's newest tag is the patch"
+  # Shops take the newest tag by name (scripts/onprem/twes): a release made since the base that the patch does not hold
+  # would be left for the patch, older code on its newer schema. A patch is for the shops still on its base alone.
+  newer=''
+  while IFS= read -r other; do
+    [[ "$other" == "$base" ]] && break
+    git -C "$root" merge-base --is-ancestor "refs/tags/$other" "$revision" || { newer=$other; break; }
+  done < <(git -C "$root" tag --list 'v[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*' --sort=-v:refname)
+  [[ -z "$newer" ]] || refuse "$newer was released after $base and $lane does not hold it: shops on $newer would take the patch and go back to older code; patch master instead, and tag it from there"
   echo "tag-release: maintenance lane $lane from $base" >&2
 fi
 
@@ -125,4 +133,10 @@ EOF
 git -C "$root" verify-tag "$tag" >/dev/null 2>&1 || { git -C "$root" tag -d "$tag" >/dev/null; refuse "$tag did not verify once signed, and was removed"; }
 echo "tag-release: $tag made and verified at $revision${base:+ on $lane from $base}, naming:"
 printf '  %s\n' "${lines[@]:1}"
-echo "Push it, once staging has run this commit: git push origin $tag"
+# Staging follows master's :master image alone (publish.sh --no-master leaves it for a lane): a patch rests on the
+# shops' proofs read above instead, and on CI's run of its branch.
+if [[ -n "$base" ]]; then
+  echo "Push it, once CI is green on $lane (staging follows master, never a patch): git push origin $tag"
+else
+  echo "Push it, once staging has run this commit: git push origin $tag"
+fi
