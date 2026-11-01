@@ -278,6 +278,19 @@ creates under a unique key, moves a state, sets, the session's own, reads, keeps
 exactly those that add; a create is not held to a key until ruled (§ 7). Concurrency between two requests holding the
 same key is argued from PostgreSQL's row locks, not certified by execution.
 
+**Two writes at once** (stable-release plan S1.3). A number is taken under its series row's lock (`AllocateNumber`), a
+product reference under its company counter's (`ProductReferences`, the row made by `ON CONFLICT DO NOTHING` on first
+use), both held until the document or product is stored, so writes made at the same moment take 1..N, each once, none
+skipped; `make stress` races every workflow that numbers (`NumberingRaceTest`, `CodesRaceTest`). Where two writes still
+meet in the database (a typed number both took, which a unique index holds once; a deadlock; a lock waited on past its
+timeout), the transaction is rolled back and, when the request committed nothing before it (`CommittedWork`),
+`BusyListener` answers 409 `/problems/busy` with `Retry-After: 1` and no SQL text, unless the use case said it first in
+its own words; after a commit it stays the error it is, since sent again what committed would be made twice. The web's
+`busyInterceptor` (`shared/errors/`) sends such a request once more after its wait (1 s when none is named), unseen,
+and says the second refusal in a toast that `saidAlready` tells the screen not to repeat. The listener is certified by
+its unit test and the races by `make stress`; no test yet drives a real clash through API Platform's renderer to read
+the answer's body and header.
+
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,
 money, tax rate); they are stored through custom DBAL types or embeddables, Doctrine's documented ways.
