@@ -69,7 +69,7 @@ final class DeliveryNoteCreditTest extends ApiTestCase
     {
         $this->setLimit('1200');
         $this->issueInvoice('1000');
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         // 100 left on account: an invoice paid in full and that much more paid beyond it, owing nothing more.
         $paid = $this->issueInvoice('10');
         $this->getJson($this->companyPath().'/invoices/'.$paid);

@@ -54,7 +54,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
     public function testAnInvoiceDraftedFromNotesCopiesTheirLinesAndIssuingItInvoicesThem(): void
     {
         $this->signedIn();
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $first = $this->validatedNote(['customerReference' => 'PO-7', 'lines' => [
             ['productId' => $this->productId, 'quantity' => '2'],
             ['description' => 'Transport', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '30', 'taxComponentIds' => [$this->taxId('TVA19')]],

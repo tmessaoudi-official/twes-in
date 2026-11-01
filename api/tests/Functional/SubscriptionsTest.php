@@ -215,7 +215,7 @@ final class SubscriptionsTest extends ApiTestCase
         self::assertNotNull($held, 'read as the request would');
         $this->em()->getConnection()->executeStatement('UPDATE subscription SET version = version + 1, grace_days = 4 WHERE company_id = ?', [$id]);
 
-        $terms = new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Month), null, new \DateTimeImmutable('+30 days'), null, null, 6);
+        $terms = new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Month), null, self::dayAsDate($company, '+30 days'), null, null, 6);
         static::getContainer()->get(ManageSubscriptions::class)->set($company->getId(), $terms, $operator->getId(), 2);
 
         self::assertSame([6, 3], [$this->em()->getConnection()->fetchOne('SELECT grace_days FROM subscription WHERE company_id = ?', [$id]), $this->seen($company)]);
@@ -484,6 +484,7 @@ final class SubscriptionsTest extends ApiTestCase
     /** A day in the company's timezone, counted from today. */
     private function daysFromToday(int $days): string
     {
+        // test-clock: the company's day: createCompany makes every company of this file Tunisian, and the helper has none at hand
         return new \DateTimeImmutable('today', new \DateTimeZone('Africa/Tunis'))->modify(\sprintf('%+d days', $days))->format('Y-m-d');
     }
 

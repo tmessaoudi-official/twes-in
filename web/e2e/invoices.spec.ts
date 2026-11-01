@@ -365,12 +365,14 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.getByTestId('confirm-run').click();
     await expect(page.getByTestId('document-action-issue')).toHaveCount(0);
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
+    await expect(page.getByTestId('invoice-title')).toHaveText(/\d{4}/);
     const invoiceNumber = ((await page.getByTestId('invoice-title').textContent()) ?? '').trim();
     expect(invoiceNumber).toMatch(/\d{4}/);
     // An issued invoice's lines are read, never fields drawn disabled.
     await expect(page.getByTestId('line-0-quantity')).toHaveText('2');
     await expect(page.getByTestId('line-0-net')).toHaveText('1 000,000');
     await expect(page.getByTestId('invoice-lines').locator('input')).toHaveCount(0);
+    await expect(page.getByTestId('invoice-amount-due')).not.toBeEmpty();
     const due = ((await page.getByTestId('invoice-amount-due').textContent()) ?? '').trim();
     expect(await wcagViolations(page)).toEqual([]);
 
@@ -506,6 +508,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(page).toHaveURL(/\/invoices\?.*open=/);
     await expect(page.getByTestId('invoice-sheet-title')).toHaveText(invoiceNumber);
     // The same amount the record showed, whatever the locale does with its separators.
+    await expect(page.getByTestId('invoice-sheet-due')).not.toBeEmpty();
     const sheetDue = (await page.getByTestId('invoice-sheet-due').textContent()) ?? '';
     expect(sheetDue.replace(/\D/g, '')).toContain(due.replace(/\D/g, ''));
     await expect(page.getByTestId('invoices-table')).toBeVisible();
@@ -606,9 +609,9 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
       };
     });
     const digits = (value: string): string => value.replace(/\D/g, '');
-    expect(digits((await page.getByTestId('home-outstanding').textContent()) ?? '')).toContain(
-      digits(summary.outstanding),
-    );
+    await expect
+      .poll(async () => digits((await page.getByTestId('home-outstanding').textContent()) ?? ''))
+      .toContain(digits(summary.outstanding));
     await expect(page.getByTestId(`home-month-${summary.today.slice(0, 7)}`)).toHaveAttribute(
       'data-current',
       'true',
@@ -644,6 +647,9 @@ test(
     await page.goto('/invoices/new');
     await expect(page.getByTestId('line-0')).toBeVisible();
 
+    await expect(page.getByTestId('line-0').locator('.mat-mdc-text-field-wrapper')).not.toHaveCount(
+      0,
+    );
     const gaps = await page
       .getByTestId('line-0')
       .locator('.mat-mdc-text-field-wrapper')

@@ -144,7 +144,7 @@ final class CustomerScreenPromotionsTest extends ApiTestCase
      */
     private function today(): \DateTimeImmutable
     {
-        return $this->today ??= new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()));
+        return $this->today ??= self::dayAsDate($this->company);
     }
 
     /** @param list<string> $ids */

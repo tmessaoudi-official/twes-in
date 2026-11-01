@@ -99,6 +99,7 @@ test('an account switched on signs in with its passkey alone, and with nothing o
   await page.getByTestId('user-menu').click();
   await page.getByTestId('two-factor-link').click();
   await proveIfAsked(page, NEW_PASSWORD, page.getByTestId('two-factor-secret'));
+  await expect(page.getByTestId('two-factor-secret')).not.toBeEmpty();
   const secret = (await page.getByTestId('two-factor-secret').innerText()).replace(/\s/g, '');
   await expect(page.getByTestId('two-factor-passkey-sign-in-needs')).toBeVisible();
   await page.getByTestId('two-factor-code').fill(totp(secret));

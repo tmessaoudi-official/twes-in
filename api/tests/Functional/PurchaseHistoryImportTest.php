@@ -79,7 +79,7 @@ final class PurchaseHistoryImportTest extends ApiTestCase
     public function testADayThatCannotBeIsKeptAsNoDayAndSaidSo(): void
     {
         $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
-        $future = (new \DateTimeImmutable('+2 years'))->format('Y-m-d');
+        $future = self::dayOf($this->company, '+2 years');
 
         $this->import(self::HEADER."P-1,F-001,0202-09-30,3,1,4.137\nP-1,F-001,2025-13-45,3,1,4.137\nP-1,F-001,{$future},3,1,4.137\n");
 

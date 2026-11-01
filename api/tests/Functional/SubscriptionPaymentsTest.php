@@ -510,6 +510,7 @@ final class SubscriptionPaymentsTest extends ApiTestCase
 
     private function inMonths(int $months): string
     {
+        // test-clock: the company's day: createCompany makes every company of this file Tunisian, and the helper has none at hand
         return new \DateTimeImmutable('now', new \DateTimeZone('Africa/Tunis'))->modify(\sprintf('+%d months', $months))->format('Y-m-d');
     }
 
@@ -524,6 +525,7 @@ final class SubscriptionPaymentsTest extends ApiTestCase
      */
     private function today(): \DateTimeImmutable
     {
+        // test-clock: the company's day: createCompany makes every company of this file Tunisian, and the helper has none at hand
         return $this->today ??= new \DateTimeImmutable('today', new \DateTimeZone('Africa/Tunis'));
     }
 

@@ -75,6 +75,7 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   await expect(page).toHaveURL(/\/two-factor$/);
   await prove(page, NEW_PASSWORD);
   await expect(page.getByTestId('two-factor-qr').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('two-factor-secret')).not.toBeEmpty();
   const secret = (await page.getByTestId('two-factor-secret').innerText()).replace(/\s/g, '');
   await expectAccessible(page, 'two-factor, scan');
   await page.screenshot({ path: test.info().outputPath('two-factor-scan.png'), fullPage: true });
@@ -226,6 +227,7 @@ test('a company that requires two-step verification sends its owner to set it up
   await page.goto('/');
   await expect(page).toHaveURL(/\/two-factor$/);
 
+  await expect(page.getByTestId('two-factor-secret')).not.toBeEmpty();
   const secret = (await page.getByTestId('two-factor-secret').innerText()).replace(/\s/g, '');
   await page.getByTestId('two-factor-code').fill(totp(secret));
   await page.getByTestId('two-factor-submit').click();
@@ -323,6 +325,7 @@ test('an account moves its authenticator to a new app, proving itself with its p
   await expect(page.getByTestId('greeting')).toContainText('New Phone');
   await page.goto('/two-factor');
   await prove(page, NEW_PASSWORD);
+  await expect(page.getByTestId('two-factor-secret')).not.toBeEmpty();
   const oldSecret = (await page.getByTestId('two-factor-secret').innerText()).replace(/\s/g, '');
   await page.getByTestId('two-factor-code').fill(totp(oldSecret));
   await page.getByTestId('two-factor-submit').click();
@@ -344,6 +347,7 @@ test('an account moves its authenticator to a new app, proving itself with its p
   await page.getByTestId('two-factor-app-replace').click();
   await proveIfAsked(page, NEW_PASSWORD, page.getByTestId('two-factor-replace-qr'));
   await expect(page.getByTestId('two-factor-replace-qr').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('two-factor-replace-secret')).not.toBeEmpty();
   const newSecret = (await page.getByTestId('two-factor-replace-secret').innerText()).replace(
     /\s/g,
     '',

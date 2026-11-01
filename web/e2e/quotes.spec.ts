@@ -400,6 +400,7 @@ test('an accepted quote is delivered by a note, which names it, and is no longer
     const quoteUrl = await acceptedQuote(page, customerNumber, `Livraison ${run}`);
     await page.goto(quoteUrl);
     await expect(page.getByTestId('quote-status')).toContainText(/Accepté|Accepted/);
+    await expect(page.getByTestId('quote-title')).toHaveText(/DEV-\d{4}-(\d{2}-)?\d{5}/);
     const quoteNumber = (await page.getByTestId('quote-title').textContent())?.trim() ?? '';
     expect(quoteNumber).not.toBe('');
     await expect(page.getByTestId('document-action-invoice')).toBeVisible();

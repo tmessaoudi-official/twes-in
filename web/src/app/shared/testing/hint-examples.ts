@@ -6,6 +6,9 @@ import fr from '../../../../public/i18n/fr.json';
 import arPlatform from '../../../../public/i18n/platform/ar.json';
 import enPlatform from '../../../../public/i18n/platform/en.json';
 import frPlatform from '../../../../public/i18n/platform/fr.json';
+import arSettings from '../../../../public/i18n/settings/ar.json';
+import enSettings from '../../../../public/i18n/settings/en.json';
+import frSettings from '../../../../public/i18n/settings/fr.json';
 import arRefusals from '../../../../public/i18n/settings-refusals/ar.json';
 import enRefusals from '../../../../public/i18n/settings-refusals/en.json';
 import frRefusals from '../../../../public/i18n/settings-refusals/fr.json';
@@ -16,9 +19,9 @@ export type HintKind = 'phone' | 'iban' | 'support_phone' | 'whatsapp' | 'late_f
 
 /** The texts an example may sit in, each language's files together. */
 const TEXTS: Readonly<Record<string, readonly unknown[]>> = {
-  fr: [fr, frPlatform, frRefusals],
-  en: [en, enPlatform, enRefusals],
-  ar: [ar, arPlatform, arRefusals],
+  fr: [fr, frPlatform, frSettings, frRefusals],
+  en: [en, enPlatform, enSettings, enRefusals],
+  ar: [ar, arPlatform, arSettings, arRefusals],
 };
 
 const PHONE = /\p{Cf}*\+[0-9][0-9\p{Zs}().-]*[0-9]/gu;

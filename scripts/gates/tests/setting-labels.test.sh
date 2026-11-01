@@ -102,6 +102,26 @@ code=$?
 check "a fully labelled tree passes" "$code" 0 "$out" "3 settings, 1 platform numbers, 2 choices and 2 chain headings"
 
 # The operators' page draws every whole-number platform setting by its declared label, as its delays.
+# The labels may sit in a texts part (web/public/i18n/<part>/<lang>.json), which the screens drawing them open: the
+# settings' words moved there to give the main files room under the screen texts budget.
+in_part() {
+  local d=$1 language
+  for language in fr en; do
+    mkdir -p "$d/web/public/i18n/settings"
+    mv "$d/web/public/i18n/$language.json" "$d/web/public/i18n/settings/$language.json"
+    printf '{"app": {"name": "twes-in"}}\n' > "$d/web/public/i18n/$language.json"
+  done
+}
+d=$(repo) && translations "$d" && in_part "$d"
+out=$(gate --root "$d" 2>&1)
+code=$?
+check "labels in a texts part count" "$code" 0 "$out" "3 settings, 1 platform numbers, 2 choices and 2 chain headings"
+
+d=$(repo) && translations "$d" label && in_part "$d"
+out=$(gate --root "$d" 2>&1)
+code=$?
+check "a label in neither the main file nor a part fails" "$code" 1 "$out" "settings.shop.colour"
+
 d=$(repo) && translations "$d" platform
 out=$(gate --root "$d" 2>&1)
 code=$?

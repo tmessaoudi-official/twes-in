@@ -50,7 +50,7 @@ final class WatchTest extends ApiTestCase
         $this->company = $this->createCompany('Quincaillerie');
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         $this->establishmentId = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0]->getId()->toRfc4122();
-        $this->today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $this->today = self::dayOf($this->company);
 
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);

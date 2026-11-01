@@ -1,0 +1,322 @@
+{
+  "settings": {
+    "platform": {
+      "account_deletion_days": "Days before a deleted account is erased",
+      "demo_enabled": "Demo open to visitors, through Try the demo",
+      "demo_sandboxes_max": "Most demos at the same time",
+      "import_max_rows": "Most rows in one imported file",
+      "company_reopen_days": "Days a closed company can be reopened",
+      "licensing_grace_days": "Days of grace after a subscription ends",
+      "licensing_hold_days": "Days of access while a payment is confirmed",
+      "passkey_sign_in": "Sign-in with a passkey alone"
+    },
+    "intro": "The company's defaults. A customer, a product or a document may still say otherwise.",
+    "no_company": "Choose a company first.",
+    "forbidden": "Changing the company's settings needs the settings permission.",
+    "saved": "The settings were saved.",
+    "chains": {
+      "parties": "Customers and documents",
+      "articles": "Products",
+      "presentation": "Appearance",
+      "venue": "Stock plan"
+    },
+    "document": {
+      "payment_terms_days": "Payment terms (days)",
+      "language": "Document language",
+      "printed_notes": "Notes printed on documents",
+      "how_to_pay": "Print how to pay on invoices (IBAN, BIC, number to quote)",
+      "amount_in_words": "Write the total out in words on documents",
+      "savings_line": "Print under the totals what the discounts save (“You save …”)",
+      "paid_stamp": "Stamp what became of the invoice on its up-to-date copy (« Paid », « Settled », « Partly paid »)",
+      "names_as_issued": "Print copies with the unit and tax names of the day they were issued (otherwise, today’s)",
+      "late_payment_rate": "Late payment penalty rate",
+      "late_payment_rate_hint": "Printed where the law asks for it, for example « three times the legal interest rate ».",
+      "exemption_reference": "VAT exemption provision",
+      "exemption_reference_hint": "Printed for an exempt customer, for example « article 261-4-4° du CGI ».",
+      "layout": "Document layout",
+      "accent": "Document accent colour",
+      "logo_width": "Logo width (mm)",
+      "logo_height": "Logo height (mm)",
+      "logo_keep_proportions": "The logo keeps its proportions",
+      "watermark_intensity": "Watermark strength",
+      "watermark_copies": "Watermark copies",
+      "watermark_spread": "Watermark layout",
+      "watermark_spread_hint": "No effect while it prints once."
+    },
+    "credit": {
+      "limit": "Customer credit limit",
+      "limit_hint": "0: none. Beyond it, a notification says so after the invoice that passes it."
+    },
+    "article": {
+      "default_unit": "Default unit",
+      "stock_tracking": "Track stock",
+      "traceability": "Traceability of a new product",
+      "show_price_excl_tax": "Also show the price without tax to what faces a customer",
+      "reference_format": "Format of generated references",
+      "reference_format_hint": "Letters, digits and . _ / - around exactly one {SEQ} or {SEQ:n} (n digits): ART-{SEQ:5} gives ART-00042. A category may have its own; the number comes from one counter for the company.",
+      "price_on_cost_change": "Price after a new cost",
+      "price_on_cost_change_hint": "When a receipt changes a product’s cost price under its selling price: offer to adjust the price (the margin shows until someone decides), keep the price, or keep the margin."
+    },
+    "stock": {
+      "cost_on_receive": "What a stock receipt does to a product's cost",
+      "sale_without_stock": "Sale without recorded stock"
+    },
+    "customer_screen": {
+      "show_stock": "Say on the customer screen whether a product is in stock or not"
+    },
+    "watch": {
+      "late_after_days": "Late flag (days)",
+      "unsold_after_days": "Unsold flag (days)",
+      "lot_expiry_days": "Watch: a lot is flagged this many days before its expiry date",
+      "lead_days": "Watch: restocking lead time (days) under which stock running out is flagged",
+      "late_after_days_hint": "In “To watch”, a customer is flagged when an invoice is this many days late.",
+      "unsold_after_days_hint": "In “To watch”, a product is flagged when it has not sold for this many days."
+    },
+    "aged_balance": {
+      "first_days": "Aged balance: end of the 1st bracket (days)",
+      "second_days": "Aged balance: end of the 2nd bracket (days)",
+      "third_days": "Aged balance: end of the 3rd bracket (days)"
+    },
+    "delivery_note": {
+      "show_prices": "Show prices on delivery notes",
+      "reception_block": "Print the receipt block (date and time, name, signature and stamp, reservations)",
+      "receiver": "Name who received the goods"
+    },
+    "invoice": {
+      "receiver": "Name who received, on invoices",
+      "receiver_hint": "On an invoice handing the goods over itself, with no delivery note."
+    },
+    "presentation": {
+      "accent": "Accent colour",
+      "scheme": "Colour scheme",
+      "density": "Density",
+      "sidebar": "Sidebar",
+      "sidebar_settings": "Settings menu",
+      "plan_labels": "Plan labels",
+      "language": "Language",
+      "date_format": "Date format",
+      "number_format": "Number format",
+      "show_coming": "Show what is coming",
+      "scan_feedback": "Beep and buzz on each scan",
+      "scan_recount_ms": "Camera scan: delay before a code counts again (ms)",
+      "shortcuts": "Keyboard shortcuts",
+      "folded_sections": "Folded menu sections",
+      "settings_list": "Settings list",
+      "stock_map_view": "Stock map view",
+      "page_size": "Rows per page",
+      "passkey_entry": "Enter with a passkey"
+    },
+    "choices": {
+      "stock": {
+        "cost_on_receive": {
+          "suggest": "Offer the choice at each receipt",
+          "average": "Apply the weighted average",
+          "last": "Apply the cost of the last receipt",
+          "manual": "Never change the cost"
+        },
+        "sale_without_stock": {
+          "allow": "Allow and flag",
+          "confirm": "Confirm",
+          "refuse": "Refuse"
+        }
+      },
+      "article": {
+        "traceability": {
+          "none": "Not followed",
+          "lot": "By lot",
+          "serial": "By serial number"
+        },
+        "price_on_cost_change": {
+          "offer": "Offer to adjust the price",
+          "keep": "Keep the price",
+          "follow": "Keep the margin"
+        }
+      },
+      "document": {
+        "layout": {
+          "classic": "Classic",
+          "modern": "Modern",
+          "compact": "Compact"
+        },
+        "watermark_intensity": {
+          "discreet": "Discreet (10%)",
+          "normal": "Normal (14%)",
+          "marked": "Marked (22%)"
+        },
+        "watermark_copies": {
+          "1": "Once a page",
+          "3": "3 times a page",
+          "6": "6 times a page",
+          "12": "12 times a page"
+        },
+        "watermark_spread": {
+          "grouped": "Grouped on the diagonal",
+          "spread": "Spread over the whole page"
+        }
+      },
+      "presentation": {
+        "scheme": {
+          "auto": "Automatic",
+          "light": "Light",
+          "dark": "Dark"
+        },
+        "density": {
+          "comfortable": "Comfortable",
+          "compact": "Compact"
+        },
+        "sidebar": {
+          "expanded": "Expanded",
+          "rail": "Icons only"
+        },
+        "sidebar-settings": {
+          "expanded": "Expanded",
+          "rail": "Icons only"
+        },
+        "plan-labels": {
+          "code": "Code",
+          "name": "Name",
+          "both": "Both"
+        },
+        "date-format": {
+          "auto": "As the language writes it",
+          "dmy": "31/12/2026",
+          "mdy": "12/31/2026",
+          "ymd": "2026-12-31",
+          "dmy-dots": "31.12.2026"
+        },
+        "number-format": {
+          "auto": "As the language writes it",
+          "space-comma": "1 234,56",
+          "dot-comma": "1.234,56",
+          "comma-dot": "1,234.56"
+        },
+        "settings-list": {
+          "expanded": "Expanded",
+          "rail": "Icons only"
+        },
+        "stock-map-view": {
+          "plan": "2D plan",
+          "volume": "3D volume"
+        },
+        "page-size": {
+          "auto": "As the list offers",
+          "10": "10",
+          "25": "25",
+          "50": "50",
+          "100": "100",
+          "200": "200"
+        }
+      },
+      "delivery_note": {
+        "receiver": {
+          "off": "Never",
+          "optional": "When wished",
+          "required": "Always, at delivery"
+        }
+      },
+      "invoice": {
+        "receiver": {
+          "off": "Never",
+          "optional": "When wished",
+          "required": "Always, at issue"
+        }
+      },
+      "quote": {
+        "receiver": {
+          "off": "Never",
+          "optional": "When wished",
+          "required": "Always, at the answer"
+        }
+      },
+      "purchase_receipt": {
+        "receiver": {
+          "off": "Never",
+          "optional": "When wished",
+          "required": "Always, at receipt"
+        }
+      }
+    },
+    "overrides": {
+      "title": "Values set for the company",
+      "intro": "Resetting a value returns it to the default.",
+      "reset": "Reset",
+      "reset_done": "{{label}} takes the value from the level above again.",
+      "undo": "Undo",
+      "put_back": "{{label}} has its value back."
+    },
+    "errors": {
+      "invalid": "Nothing was saved: correct the fields marked.",
+      "not_found": "Setting not found.",
+      "network": "The server could not be reached."
+    },
+    "venue": {
+      "shape": {
+        "rack": {
+          "width": "Rack — width (m)",
+          "depth": "Rack — depth (m)"
+        },
+        "zone": {
+          "width": "Zone — width (m)",
+          "depth": "Zone — depth (m)"
+        },
+        "aisle": {
+          "width": "Aisle — width (m)",
+          "depth": "Aisle — depth (m)"
+        },
+        "dock": {
+          "width": "Dock — width (m)",
+          "depth": "Dock — depth (m)"
+        }
+      },
+      "structure": {
+        "wall": {
+          "length": "Wall — length (m)",
+          "thickness": "Wall — thickness (m)",
+          "height": "Wall — ceiling height (m)"
+        },
+        "door": {
+          "width": "Door — width (m)",
+          "height": "Door — height (m)"
+        },
+        "post": {
+          "side": "Post — side (m)"
+        },
+        "dock": {
+          "width": "Dock door — width (m)",
+          "height": "Dock door — height (m)"
+        }
+      }
+    },
+    "coming": {
+      "title": "Coming",
+      "intro": "The settings of the modules to come, in words: nothing is there to choose yet.",
+      "more": "More about {{module}}"
+    },
+    "quote": {
+      "validity_days": "How long a quote binds (days)",
+      "signature_block": "Print the “Agreed” block (date, name, signature) on quotes",
+      "receiver": "Name who accepted or refused a quote"
+    },
+    "activity": {
+      "retention_months": "How long the activity journal is kept (months, 12 to 36)"
+    },
+    "reminders": {
+      "enabled": "Reminders of late invoices",
+      "enabled_hint": "When an invoice reaches a stage of the calendar, the people who issue invoices are told it is time to remind the customer. Nothing is sent to the customer.",
+      "stages": "Reminder stages (days late)",
+      "stages_hint": "Up to five numbers separated by commas, for example 7, 15, 30.",
+      "hour": "Reminder hour",
+      "hour_hint": "From this hour each day, the stages reached are recorded."
+    },
+    "late_fees": {
+      "enabled": "Late fees",
+      "enabled_hint": "When an invoice reaches a reminder stage, a late fee is prepared as a draft invoice for the customer. Nothing is issued without you.",
+      "tiers": "Fee per reminder stage",
+      "tiers_hint": "An amount or a percentage of what is still owed for each stage, separated by semicolons, for example 5; 10; 2%. A stage left empty costs nothing. No amount is proposed by default."
+    },
+    "purchase_receipt": {
+      "receiver": "Name who received purchases",
+      "receiver_hint": "At each receipt of an order to a vendor, a member of the company or a name typed."
+    }
+  }
+}

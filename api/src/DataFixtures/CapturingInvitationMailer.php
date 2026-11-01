@@ -15,6 +15,7 @@ use App\Tenancy\Infrastructure\Mail\SymfonyInvitationMailer;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 use Symfony\Component\DependencyInjection\Attribute\AutowireDecorated;
 use Symfony\Component\DependencyInjection\Attribute\When;
+use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * Remembers where each invitation mail pointed, and still sends it.
@@ -30,11 +31,14 @@ use Symfony\Component\DependencyInjection\Attribute\When;
  * It decorates the ADAPTER by name, not the port: a second class implementing the port removes the single
  * implementation Symfony auto-aliases the interface to, so decorating the interface leaves nothing to decorate.
  * `services.yaml` therefore aliases the port to the adapter explicitly, and that alias resolves to this.
+ *
+ * The development api mails every invitation through this too, and keeps one kernel for many requests: what was mailed
+ * is forgotten after each, as the fixtures read it within the one run that mailed it.
  */
 #[When('dev')]
 #[When('test')]
 #[AsDecorator(SymfonyInvitationMailer::class)]
-final class CapturingInvitationMailer implements InvitationMailer
+final class CapturingInvitationMailer implements InvitationMailer, ResetInterface
 {
     /** @var array<string, string> the accept URL last mailed to each address */
     private array $sent = [];
@@ -60,5 +64,10 @@ final class CapturingInvitationMailer implements InvitationMailer
         $token = basename((string) parse_url($url, \PHP_URL_PATH));
 
         return '' !== $token ? $token : throw new \RuntimeException(\sprintf('The invitation mailed to %s carried no token: %s', $email, $url));
+    }
+
+    public function reset(): void
+    {
+        $this->sent = [];
     }
 }

@@ -183,8 +183,6 @@ test('a bill at 19 % with FODEC and at 7 %, with the stamp, is entered as it is 
 }) => {
   test.setTimeout(60_000);
   const run = Date.now().toString(36).toUpperCase();
-  const figures = async (testId: string): Promise<string> =>
-    ((await page.getByTestId(testId).textContent()) ?? '').replace(/\s/g, '');
   await signIn(page);
   await inACompany(page, CSRF);
   await page.goto('/expenses/new');
@@ -208,17 +206,17 @@ test('a bill at 19 % with FODEC and at 7 %, with the stamp, is entered as it is 
     created = page.url().split('/').at(-1) ?? null;
     // 1000 + FODEC 10 + VAT 19 % of 1010 + 200 + VAT 7 % of 200 + the stamp.
     await expect(page.getByTestId('expense-gross')).toContainText('416,900');
-    expect(await figures('expense-tax-TVA19')).toContain('191,900');
-    expect(await figures('expense-tax-FODEC')).toContain('10,000');
-    expect(await figures('expense-tax-TVA7')).toContain('14,000');
-    expect(await figures('expense-tax-TIMBRE')).toContain('1,000');
+    await expect(page.getByTestId('expense-tax-TVA19')).toContainText('191,900');
+    await expect(page.getByTestId('expense-tax-FODEC')).toContainText('10,000');
+    await expect(page.getByTestId('expense-tax-TVA7')).toContainText('14,000');
+    await expect(page.getByTestId('expense-tax-TIMBRE')).toContainText('1,000');
 
     // The supplier printed a millime more at 7 %: kept, and what twes-in works out is shown beside it.
     await page.getByTestId('bill-printed-TVA7').fill('14,001');
     await page.getByTestId('record-save').click();
     await expect(page.getByTestId('expense-gross')).toContainText('416,901');
-    expect(await figures('expense-tax-TVA7')).toContain('14,001');
-    expect(await figures('expense-tax-TVA7')).toContain('14,000');
+    await expect(page.getByTestId('expense-tax-TVA7')).toContainText('14,001');
+    await expect(page.getByTestId('expense-tax-TVA7')).toContainText('14,000');
     expect(await wcagViolations(page)).toEqual([]);
 
     // Asks nothing: the draft goes to « Récemment supprimés », and the toast offers it back.

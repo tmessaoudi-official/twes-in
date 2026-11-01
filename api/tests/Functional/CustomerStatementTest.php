@@ -98,7 +98,7 @@ final class CustomerStatementTest extends ApiTestCase
         $this->getJson($this->path());
         self::assertTrue($this->json()['overCreditLimit'], '1300 owed passes a limit of 1200.500');
         // Money the customer left on account is theirs against what they owe (audit 2026-10-06, E-10).
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $this->onAccount('99.499', $today);
         $this->getJson($this->path());
         self::assertTrue($this->json()['overCreditLimit'], '1300 owed less 99.499 on account is 1200.501, still past 1200.500');
@@ -119,7 +119,7 @@ final class CustomerStatementTest extends ApiTestCase
         $january = $this->issue('1300');
         $this->em()->getConnection()->executeStatement("UPDATE invoice SET issue_date = '2026-01-10' WHERE id = :id", ['id' => $january]);
         $this->onAccount('100', '2026-01-20');
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $this->onAccount('500', $today);
 
         $this->getJson($this->path().'?from=2026-01-01&to=2026-01-31');
@@ -285,7 +285,7 @@ final class CustomerStatementTest extends ApiTestCase
         $other = $this->customer('CLI-0002', 'Autre')->getId()->toRfc4122();
         $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $this->setLimit('100', Uuid::fromString($this->customerId));
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->setTime(0, 0);
+        $today = self::dayAsDate($this->company);
         $late = $this->issue('80');
         $this->pay($late, '30');
         $older = $this->issue('20');
@@ -400,7 +400,7 @@ final class CustomerStatementTest extends ApiTestCase
 
     private function pay(string $invoiceId, string $amount): void
     {
-        $this->postJson($this->companyPath().'/invoices/'.$invoiceId.'/payments', ['date' => (new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone())))->format('Y-m-d'), 'amount' => $amount, 'method' => 'transfer']);
+        $this->postJson($this->companyPath().'/invoices/'.$invoiceId.'/payments', ['date' => self::dayOf($this->company), 'amount' => $amount, 'method' => 'transfer']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
     }
 

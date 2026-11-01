@@ -123,7 +123,7 @@ abstract class ApiTestCase extends WebTestCase
      */
     protected static function apiNow(): string
     {
-        return new \DateTimeImmutable('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+        return new \DateTimeImmutable('now', new \DateTimeZone('UTC'))->format('Y-m-d H:i:s'); // test-clock: the API's own clock, as it stamps
     }
 
     /**
@@ -134,6 +134,12 @@ abstract class ApiTestCase extends WebTestCase
     protected static function dayOf(Company $company, string $shift = 'today'): string
     {
         return new \DateTimeImmutable($shift, new \DateTimeZone($company->getTimezone()))->format('Y-m-d');
+    }
+
+    /** The same day as dayOf, at midnight in the company's zone, for a test that moves it on or hands it to the domain. */
+    protected static function dayAsDate(Company $company, string $shift = 'today'): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable(self::dayOf($company, $shift), new \DateTimeZone($company->getTimezone()));
     }
 
     /**

@@ -352,7 +352,7 @@ final class InvoicesTest extends ApiTestCase
     public function testAnIssuerNumbersAnInvoiceWithoutGapsAndItThenAnswersWhatIssuingWrote(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $number = static fn (int $sequence): string => \sprintf('FAC-%s-%s-%05d', substr($today, 0, 4), substr($today, 5, 2), $sequence);
         $inDays = static fn (int $days): string => new \DateTimeImmutable($today)->modify("+$days days")->format('Y-m-d');
         $this->postJson($this->path(), $this->invoice(['paymentTermsDays' => 45, 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
@@ -510,7 +510,7 @@ final class InvoicesTest extends ApiTestCase
     public function testAnUpToDateCopyStampsAPartPaymentWithWhatIsLeftAndTheDayOnlyWhenTheCompanyAsks(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()));
+        $today = self::dayAsDate($this->company);
         $id = $this->issuedInvoice();
         $this->postJson($this->path($id).'/payments', ['date' => $today->format('Y-m-d'), 'amount' => '1', 'method' => 'cash', 'reference' => null, 'notes' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -686,7 +686,7 @@ final class InvoicesTest extends ApiTestCase
     public function testAPaymentHolderRecordsAndDeletesPaymentsAndTheInvoiceSaysWhatIsStillDue(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $id = $this->issuedInvoice();
         $due = $this->stringAt($this->json(), 'amountDue');
         self::assertIsNumeric($due);
@@ -745,7 +745,7 @@ final class InvoicesTest extends ApiTestCase
     public function testDuplicatingADocumentGivesANewDraftCarryingWhatWasTypedAndNothingItEarned(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
-        $supply = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->modify('-40 days')->format('Y-m-d');
+        $supply = self::dayOf($this->company, '-40 days');
         $this->postJson($this->path(), $this->invoice([
             'supplyDate' => $supply,
             'customerReference' => 'BC-77',
@@ -794,7 +794,7 @@ final class InvoicesTest extends ApiTestCase
     {
         $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $number = static fn (int $sequence): string => \sprintf('AV-%s-%s-%05d', substr($today, 0, 4), substr($today, 5, 2), $sequence);
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
         $id = $this->stringAt($this->json(), 'id');
@@ -949,7 +949,7 @@ final class InvoicesTest extends ApiTestCase
     public function testPaymentsNeedPaymentWriteAndStayInTheirCompany(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $id = $this->issuedInvoice();
 
         $this->postJson($this->path($id).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash']);
@@ -969,7 +969,7 @@ final class InvoicesTest extends ApiTestCase
     public function testAChequeDatedAheadIsReceivedDepositedAndCashedIntoAPaymentWhileTheInvoiceStaysDue(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $ahead = new \DateTimeImmutable($today)->modify('+40 days')->format('Y-m-d');
         $id = $this->issuedInvoice();
         $due = $this->stringAt($this->json(), 'amountDue');
@@ -1024,7 +1024,7 @@ final class InvoicesTest extends ApiTestCase
     public function testAChequeCashedOnAnInvoiceOtherMoneyCoveredPaysWhatIsLeftAndPutsTheRestOnAccount(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write', 'customer.read']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $id = $this->issuedInvoice();
         $due = $this->stringAt($this->json(), 'amountDue');
         self::assertIsNumeric($due);
@@ -1061,7 +1061,7 @@ final class InvoicesTest extends ApiTestCase
     {
         // company.read, as every role holds it: putting back reads the company's removals.
         $this->signedIn(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $id = $this->issuedInvoice();
         $due = $this->stringAt($this->json(), 'amountDue');
         $instruments = $this->path($id).'/instruments';
@@ -1100,7 +1100,7 @@ final class InvoicesTest extends ApiTestCase
         // The cap is checked when an instrument is received; the bin put one back without it, so the portfolio could
         // hold two cheques for one debt.
         $this->signedIn(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $id = $this->issuedInvoice();
         $due = $this->stringAt($this->json(), 'amountDue');
         $instruments = $this->path($id).'/instruments';
@@ -1133,7 +1133,7 @@ final class InvoicesTest extends ApiTestCase
     public function testInstrumentsNeedPaymentWriteToChangeAndStayInTheirCompany(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $id = $this->issuedInvoice();
 
         $this->postJson($this->path($id).'/instruments', ['kind' => 'check', 'amount' => '1', 'dueOn' => $today]);
@@ -1156,7 +1156,7 @@ final class InvoicesTest extends ApiTestCase
     public function testThePortfolioListsTheCompanysInstrumentsByDueDayNarrowedByStatusAndPagedInItsOwnCompany(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $near = new \DateTimeImmutable($today)->modify('+2 days')->format('Y-m-d');
         $far = new \DateTimeImmutable($today)->modify('+10 days')->format('Y-m-d');
         $id = $this->issuedInvoice();
@@ -1324,7 +1324,7 @@ final class InvoicesTest extends ApiTestCase
         $globex = $this->createCompany('Globex');
         $this->createUser('summary-reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $id = $this->issuedInvoice();
         $total = $this->stringAt($this->json(), 'amountDue');
         self::assertIsNumeric($total);
@@ -1394,7 +1394,7 @@ final class InvoicesTest extends ApiTestCase
         // database: a due day in the past is exactly what the list asks about.
         $this->em()->getConnection()->executeStatement(
             'UPDATE invoice SET due_date = :due WHERE id = :id',
-            ['due' => (new \DateTimeImmutable('-3 days'))->format('Y-m-d'), 'id' => $overdueId],
+            ['due' => self::dayOf($this->company, '-3 days'), 'id' => $overdueId],
         );
         // A draft has no number and no customer snapshot: it is the row the searchable text cannot cover.
         $this->postJson($this->path(), $this->invoice([
@@ -1469,7 +1469,7 @@ final class InvoicesTest extends ApiTestCase
         $overdueId = $this->issuedInvoice();
         $this->em()->getConnection()->executeStatement(
             'UPDATE invoice SET due_date = :due WHERE id = :id',
-            ['due' => (new \DateTimeImmutable('-3 days'))->format('Y-m-d'), 'id' => $overdueId],
+            ['due' => self::dayOf($this->company, '-3 days'), 'id' => $overdueId],
         );
         $this->postJson($this->path(), $this->invoice([
             'customerId' => $other,
@@ -1483,7 +1483,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame(3, $this->json()['all']);
         self::assertSame(['draft' => 1, 'issued' => 2, 'partially_paid' => 0, 'paid' => 0, 'cancelled' => 0, 'overdue' => 1], $this->json()['statuses']);
 
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         foreach (['', 'q=carthage', 'q=BC-4242', 'documentType=credit_note', 'customerId='.$other, 'customerId[]='.$other.'&customerId[]='.$this->customerId, 'documentType[]=invoice&documentType[]=credit_note', 'issueDate[from]='.$today, 'totalGross[min]=0', 'dueDate[to]='.$today] as $filters) {
             $this->getJson($this->companyPath().'/invoice-status-counts?'.$filters);
             self::assertResponseIsSuccessful($filters);
@@ -1521,7 +1521,7 @@ final class InvoicesTest extends ApiTestCase
     public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         // A product per document, so the identity map cannot hide a read per row; made before the first request,
         // which reboots the kernel and leaves the company detached.
         $products = [];

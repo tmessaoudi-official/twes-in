@@ -248,6 +248,7 @@ test.describe('the drawn stock map', () => {
       // drawn by the form below.
       const rackShape = page.getByTestId('stock-shape-rack');
       await expect(rackShape).toBeVisible();
+      await expect(rackShape).toContainText(/[\d.,]+\s*×\s*[\d.,]+/);
       const offered = ((await rackShape.textContent()) ?? '').match(/([\d.,]+)\s*×\s*([\d.,]+)/);
       if (offered === null) throw new Error('the palette does not say what size it poses');
       await rackShape.click();
@@ -510,6 +511,7 @@ test.describe('the drawn stock map', () => {
       await expect(page.getByTestId('stock-repeat-save')).toBeEnabled();
 
       // The preview the person is about to accept, read straight off the plan as it now stands.
+      // settled-read: the repeat preview is drawn in the same pass as the dialog the person accepts: what it shows is read once
       const previewed = await page
         .locator('[data-testid^="stock-repeat-preview-"]')
         .evaluateAll((nodes) =>
@@ -636,6 +638,7 @@ test.describe('the drawn stock map', () => {
       // tool posing a constant instead of the company's own door would disagree with its own label here.
       const doorTool = page.getByTestId('stock-structure-tool-door');
       await expect(doorTool).toBeVisible();
+      await expect(doorTool).toContainText(/[\d.,]+\s*×\s*[\d.,]+/);
       const offered = ((await doorTool.textContent()) ?? '').match(/([\d.,]+)\s*×\s*([\d.,]+)/);
       if (offered === null) throw new Error('the door tool does not say what size it poses');
       await doorTool.click();

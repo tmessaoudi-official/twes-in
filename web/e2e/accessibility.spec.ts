@@ -399,6 +399,7 @@ test(
     const delays = page.getByTestId('platform-delays');
     await expect(delays.locator('input')).not.toHaveCount(0);
     expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
+    await expect(delays.locator('mat-form-field')).not.toHaveCount(0);
     const cut = await delays.locator('mat-form-field').evaluateAll((fields) =>
       fields
         .map((field) => ({

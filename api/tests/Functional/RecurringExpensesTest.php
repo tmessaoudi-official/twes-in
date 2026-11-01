@@ -407,7 +407,7 @@ final class RecurringExpensesTest extends ApiTestCase
      */
     private function today(): \DateTimeImmutable
     {
-        return $this->today ??= new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        return $this->today ??= self::dayAsDate($this->company);
     }
 
     private function lastDayOfThisMonth(): string

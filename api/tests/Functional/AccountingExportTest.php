@@ -230,7 +230,7 @@ final class AccountingExportTest extends ApiTestCase
 
     private function today(): string
     {
-        return new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        return self::dayOf($this->company);
     }
 
     private function taxId(string $code): string

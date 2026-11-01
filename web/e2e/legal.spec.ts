@@ -274,6 +274,7 @@ test.describe('on a phone', { tag: '@phone' }, () => {
     // A labelled cell laid out as flex made every word run and every language name an item of its own, spread
     // between the label and the cell's end: « 2 à    English    et    العربية ». Pieces sharing a line sit one
     // space apart.
+    // settled-read: every row is drawn at once from one answer, the first shown above: the read is of their layout
     const spread = await cells.evaluateAll((all) => {
       const pieces = (cell: Element): DOMRect[][] =>
         [...cell.childNodes]

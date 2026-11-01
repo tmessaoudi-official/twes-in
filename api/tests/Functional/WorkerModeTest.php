@@ -9,10 +9,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\DataFixtures\CapturingInvitationMailer;
 use App\Shared\Application\Effect;
 use App\Shared\Infrastructure\Doctrine\CompanyFilter;
 use App\Shared\Infrastructure\Effects\EffectsAnswer;
 use App\Shared\Infrastructure\Effects\StagedEffects;
+use App\Tenancy\Application\Invitation\InvitationMail;
 use App\Texts\Application\TextsInForce;
 use App\Texts\Domain\Model\TextOverride;
 use App\Texts\Domain\ValueObject\TextAddress;
@@ -50,6 +52,21 @@ final class WorkerModeTest extends ApiTestCase
         $this->client->request('GET', '/api/health');
 
         self::assertFalse($this->client->getResponse()->headers->has(EffectsAnswer::HEADER), 'an effect outlived its request');
+    }
+
+    /** Where an invitation mailed during one request pointed is not kept for the next, whoever makes it. */
+    public function testTheInvitationsMailedInOneRequestAreForgottenByTheNext(): void
+    {
+        $this->client->disableReboot();
+        $this->client->request('GET', '/api/health');
+        $mailed = static::getContainer()->get(CapturingInvitationMailer::class);
+        $mailed->send(new InvitationMail('invited@twes.local', 'Acme', 'Vendeur', null, 'https://twes.local/invitations/token-1', 'fr', 'Africa/Tunis', new \DateTimeImmutable(self::apiNow())->modify('+7 days')));
+        self::assertSame('token-1', $mailed->tokenFor('invited@twes.local'));
+
+        $this->client->request('GET', '/api/health');
+
+        $this->expectExceptionMessage('No invitation was mailed to invited@twes.local.');
+        static::getContainer()->get(CapturingInvitationMailer::class)->tokenFor('invited@twes.local');
     }
 
     /** A company's wording read for one request's mail or document is read again for the next, never kept from it. */

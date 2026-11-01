@@ -105,7 +105,7 @@ final class QuotesTest extends ApiTestCase
     public function testSendingNumbersTheQuoteFromItsOwnSeriesAndBindsItsPriceForTheCustomersDays(): void
     {
         $this->signedIn(self::WRITER);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()));
+        $today = self::dayAsDate($this->company);
         $number = static fn (int $sequence): string => \sprintf('DEV-%s-%05d', $today->format('Y-m'), $sequence);
 
         $first = $this->draft();
@@ -221,7 +221,7 @@ final class QuotesTest extends ApiTestCase
 
         $this->postJson($this->path($accepted).'/accept', ['answeredOn' => null]);
         self::assertResponseIsSuccessful();
-        self::assertSame(['accepted', new \DateTimeImmutable('now', new \DateTimeZone('Africa/Tunis'))->format('Y-m-d')], [$this->json()['status'], $this->json()['answeredOn']]);
+        self::assertSame(['accepted', self::dayOf($this->company)], [$this->json()['status'], $this->json()['answeredOn']]);
 
         $this->postJson($this->path($refused).'/refuse', ['answeredOn' => '2000-01-01', 'refusalReason' => 'Trop cher.']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'before its issue day');

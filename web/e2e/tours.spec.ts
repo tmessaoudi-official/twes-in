@@ -17,6 +17,7 @@ test('every guide the palette offers runs from its first step to its last', asyn
   await page.getByTestId('command-input').fill('guide');
   const lines = page.locator('[data-testid^="command-guide-"]');
   await expect(lines.first()).toBeVisible();
+  // settled-read: the palette draws its filtered list in one pass: the first guide shown means every guide is
   const guides = await lines.evaluateAll((options) =>
     options.map((option) => option.getAttribute('data-testid') ?? ''),
   );
@@ -39,6 +40,7 @@ test('every guide the palette offers runs from its first step to its last', asyn
       await expect(page.locator('[data-tour-active]'), `${guide}, step ${step}`).toBeVisible();
       await expect(page.getByTestId('tour-title')).toBeFocused();
       const next = page.getByTestId('tour-next');
+      await expect(next).not.toBeEmpty();
       const last = (await next.textContent())?.trim() === 'Terminer';
       await next.click();
       if (last) break;

@@ -44,7 +44,7 @@ final class TejDeclarationTest extends ApiTestCase
         ), new \DateTimeImmutable());
         $this->em()->persist($this->vendor);
         $this->em()->flush();
-        $this->today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $this->today = self::dayAsDate($this->company);
     }
 
     public function testTheMonthsWithholdingsDownloadAsTheFileNamedAfterTheMatriculeAndTheMonth(): void

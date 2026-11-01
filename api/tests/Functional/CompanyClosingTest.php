@@ -146,7 +146,7 @@ final class CompanyClosingTest extends ApiTestCase
         $this->closeDown();
 
         $body = $this->json();
-        $year = (int) (new \DateTimeImmutable('now', new \DateTimeZone('Africa/Tunis')))->format('Y');
+        $year = (int) substr(self::dayOf($this->company), 0, 4);
         self::assertSame(($year + 10).'-12-31', $this->stringAt($body, 'retainUntil'), 'Tunisia keeps every document ten years');
         self::assertEqualsWithDelta((new \DateTimeImmutable('+7 days'))->getTimestamp(), (new \DateTimeImmutable($this->stringAt($body, 'reopenUntil')))->getTimestamp(), 60);
         self::assertSame(Company::STATUS_CLOSED, $this->companyStatus());
@@ -192,6 +192,7 @@ final class CompanyClosingTest extends ApiTestCase
         $tell = static::getContainer()->get(TellClosedCompaniesNearRemoval::class);
         self::assertSame(0, $tell->handle(), 'years ahead');
 
+        // test-clock: the removal notice counts from the application clock's own day, UTC, not a company's
         $soon = (new \DateTimeImmutable('today', new \DateTimeZone('UTC')))->modify('+10 days')->format('Y-m-d');
         $this->em()->getConnection()->executeStatement('UPDATE company SET retain_until = ? WHERE id = ?', [$soon, $this->company->getId()->toRfc4122()]);
         $version = $this->em()->getConnection()->fetchOne('SELECT version FROM company WHERE id = ?', [$this->company->getId()->toRfc4122()]);
@@ -206,6 +207,7 @@ final class CompanyClosingTest extends ApiTestCase
         self::assertSame($this->company->getId()->toRfc4122(), $told[0]['company_id']);
         self::assertSame(['company' => 'Acme', 'retain_until' => $soon], json_decode($this->stringAt($told[0], 'payload'), true, 4, \JSON_THROW_ON_ERROR));
 
+        // test-clock: the removal notice counts from the application clock's own day, UTC, not a company's
         $yesterday = (new \DateTimeImmutable('today', new \DateTimeZone('UTC')))->modify('-1 day')->format('Y-m-d');
         $this->em()->getConnection()->executeStatement('UPDATE company SET retain_until = ?, removal_told_at = NULL WHERE id = ?', [$yesterday, $this->company->getId()->toRfc4122()]);
         self::assertSame(0, $tell->handle(), 'not on the night it goes');

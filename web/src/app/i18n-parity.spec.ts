@@ -80,6 +80,18 @@ import frSchedule from '../../public/i18n/schedule/fr.json';
 import arFormRefusals from '../../public/i18n/form-refusals/ar.json';
 import enFormRefusals from '../../public/i18n/form-refusals/en.json';
 import frFormRefusals from '../../public/i18n/form-refusals/fr.json';
+import arHome from '../../public/i18n/home/ar.json';
+import enHome from '../../public/i18n/home/en.json';
+import frHome from '../../public/i18n/home/fr.json';
+import arList from '../../public/i18n/list/ar.json';
+import enList from '../../public/i18n/list/en.json';
+import frList from '../../public/i18n/list/fr.json';
+import arRefusals from '../../public/i18n/refusals/ar.json';
+import enRefusals from '../../public/i18n/refusals/en.json';
+import frRefusals from '../../public/i18n/refusals/fr.json';
+import arSettings from '../../public/i18n/settings/ar.json';
+import enSettings from '../../public/i18n/settings/en.json';
+import frSettings from '../../public/i18n/settings/fr.json';
 import arSettingsRefusals from '../../public/i18n/settings-refusals/ar.json';
 import enSettingsRefusals from '../../public/i18n/settings-refusals/en.json';
 import frSettingsRefusals from '../../public/i18n/settings-refusals/fr.json';
@@ -140,6 +152,11 @@ const parts: Record<string, Record<string, unknown>> = {
   'not-allowed': { fr: frNotAllowed, en: enNotAllowed, ar: arNotAllowed },
   schedule: { fr: frSchedule, en: enSchedule, ar: arSchedule },
   'form-refusals': { fr: frFormRefusals, en: enFormRefusals, ar: arFormRefusals },
+  settings: { fr: frSettings, en: enSettings, ar: arSettings },
+  // Declared before their first texts, so the screens that write them next find their part ready.
+  home: { fr: frHome, en: enHome, ar: arHome },
+  list: { fr: frList, en: enList, ar: arList },
+  refusals: { fr: frRefusals, en: enRefusals, ar: arRefusals },
   'settings-refusals': { fr: frSettingsRefusals, en: enSettingsRefusals, ar: arSettingsRefusals },
   'stock-count': { fr: frStockCount, en: enStockCount, ar: arStockCount },
   'stock-moves': { fr: frStockMoves, en: enStockMoves, ar: arStockMoves },

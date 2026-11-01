@@ -78,6 +78,7 @@ test('on a laptop a list gives way only its columns of low priority', async ({ p
       await page.evaluate(() => document.fonts.ready);
       await page.getByTestId('list-columns').click();
       await expect(page.getByTestId('list-columns-reset'), path).toBeVisible();
+      // settled-read: the chooser is open (its reset shown), which draws its squeezed entries with it; none is an answer too
       const squeezed = await page
         .locator('[data-testid^="list-column-squeezed-"]')
         .evaluateAll((entries) =>
@@ -271,6 +272,7 @@ test.describe('no list cuts a value', () => {
       const squeezedNow = async (): Promise<string[]> => {
         await page.getByTestId('list-columns').click();
         await expect(page.getByTestId('list-columns-reset')).toBeVisible();
+        // settled-read: the chooser is open (its reset shown), which draws its squeezed entries with it; none is an answer too
         const squeezed = await page
           .locator('[data-testid^="list-column-squeezed-"]')
           .evaluateAll((entries) =>

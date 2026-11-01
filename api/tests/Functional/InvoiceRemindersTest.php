@@ -322,7 +322,7 @@ final class InvoiceRemindersTest extends ApiTestCase
     private function runAt(string $time): void
     {
         $zone = new \DateTimeZone($this->company->getTimezone());
-        Clock::set(new MockClock(new \DateTimeImmutable('today '.$time, $zone)));
+        Clock::set(new MockClock(new \DateTimeImmutable(self::dayOf($this->company).' '.$time, $zone)));
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
         static::getContainer()->get(RemindLateInvoices::class)->handle($company);
     }
@@ -360,7 +360,7 @@ final class InvoiceRemindersTest extends ApiTestCase
 
     private function dueDaysAgo(string $invoiceId, int $days): void
     {
-        $day = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()))->modify(\sprintf('-%d days', $days));
+        $day = self::dayAsDate($this->company)->modify(\sprintf('-%d days', $days));
         $this->em()->getConnection()->executeStatement('UPDATE invoice SET due_date = :day WHERE id = :id', ['day' => $day->format('Y-m-d'), 'id' => $invoiceId]);
     }
 
@@ -400,7 +400,7 @@ final class InvoiceRemindersTest extends ApiTestCase
 
     private function pay(string $invoiceId, string $amount): void
     {
-        $this->postJson($this->companyPath().'/invoices/'.$invoiceId.'/payments', ['date' => new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d'), 'amount' => $amount, 'method' => 'transfer']);
+        $this->postJson($this->companyPath().'/invoices/'.$invoiceId.'/payments', ['date' => self::dayOf($this->company), 'amount' => $amount, 'method' => 'transfer']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
     }
 

@@ -38,16 +38,27 @@ choices_floor=${SETTING_CHOICES_FLOOR:-38}
 # losing any one file's reds.
 platform_floor=${SETTING_PLATFORM_FLOOR:-5}
 
-# One key, one language: present, a string, and not blank. The dots are nesting, as ngx-translate reads them.
+# One key, one language: present, a string, and not blank, in the language's file or in one of its texts parts
+# (web/public/i18n/<part>/<language>.json, shared/i18n/texts-part.ts), which the screens drawing a setting open: the
+# settings' words live in the `settings` part, out of the file every screen waits for. The dots are nesting, as
+# ngx-translate reads them.
 labelled() {
-  KEY="$1" FILE="$2" python3 -c '
-import json, os, sys
-node = json.load(open(os.environ["FILE"], encoding="utf-8"))
-for part in os.environ["KEY"].split("."):
-    if not isinstance(node, dict) or part not in node:
-        sys.exit(1)
-    node = node[part]
-sys.exit(0 if isinstance(node, str) and node.strip() else 1)
+  KEY="$1" DIR="$2" LANGUAGE="$3" python3 -c '
+import glob, json, os, sys
+files = [os.path.join(os.environ["DIR"], os.environ["LANGUAGE"] + ".json"),
+         *sorted(glob.glob(os.path.join(os.environ["DIR"], "*", os.environ["LANGUAGE"] + ".json")))]
+for file in files:
+    if not os.path.isfile(file):
+        continue
+    node = json.load(open(file, encoding="utf-8"))
+    for part in os.environ["KEY"].split("."):
+        if not isinstance(node, dict) or part not in node:
+            node = None
+            break
+        node = node[part]
+    if isinstance(node, str) and node.strip():
+        sys.exit(0)
+sys.exit(1)
 '
 }
 
@@ -159,20 +170,20 @@ mapfile -t languages < <(jq -r '.languages[]? | select(.interface == true) | .ta
 
 missing=()
 for language in "${languages[@]}"; do
-  file="$root/web/public/i18n/$language.json"
+  texts="$root/web/public/i18n"
   for key in "${keys[@]}" "${platform_keys[@]}"; do
-    labelled "$key" "$file" || missing+=("$language: $key")
+    labelled "$key" "$texts" "$language" || missing+=("$language: $key")
   done
   for chain in "${chains[@]}"; do
-    labelled "settings.chains.$chain" "$file" || missing+=("$language: settings.chains.$chain")
+    labelled "settings.chains.$chain" "$texts" "$language" || missing+=("$language: settings.chains.$chain")
   done
   for choice in "${choices[@]}"; do
-    labelled "$choice" "$file" || missing+=("$language: $choice")
+    labelled "$choice" "$texts" "$language" || missing+=("$language: $choice")
   done
 done
 
 if ((${#missing[@]})); then
-  printf 'setting-labels: FAIL — %d label(s) missing (add them to web/public/i18n/<lang>.json):\n' "${#missing[@]}"
+  printf 'setting-labels: FAIL — %d label(s) missing (add them to web/public/i18n/settings/<lang>.json):\n' "${#missing[@]}"
   printf '  %s\n' "${missing[@]}"
   exit 1
 fi

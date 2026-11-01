@@ -52,6 +52,7 @@ import { STOCK_COUNT_TEXTS } from './inventory/stock-count-texts';
 import { RECORDS_TEXTS } from './shared/records/records-texts';
 import { DELIVERIES_TEXTS } from './shared/documents/deliveries-texts';
 import { SCHEDULE_TEXTS } from './shared/schedule/schedule-texts';
+import { SETTINGS_TEXTS } from './shared/settings/settings-texts';
 import { ACTIVITY_TEXTS } from './activity/activity-texts';
 
 export const routes: Routes = [
@@ -173,7 +174,7 @@ export const routes: Routes = [
     path: 'account',
     title: 'account.title',
     canMatch: [closedCompanyMatch],
-    ...textsPart('account', textsOpened(MFA_LOCKOUT_TEXTS)),
+    ...textsPart('account', textsOpened(MFA_LOCKOUT_TEXTS), textsOpened(SETTINGS_TEXTS)),
     loadComponent: () => import('./account/closed-account-page').then((m) => m.ClosedAccountPage),
   },
   {
@@ -220,7 +221,7 @@ export const routes: Routes = [
         // « Mon compte »: the person's own account, apart from any company (docs/SPEC.md § 7, 2026-09-25 17:22).
         path: 'account',
         title: 'account.title',
-        ...textsPart('account', textsOpened(MFA_LOCKOUT_TEXTS)),
+        ...textsPart('account', textsOpened(MFA_LOCKOUT_TEXTS), textsOpened(SETTINGS_TEXTS)),
         loadComponent: () => import('./account/account-page').then((m) => m.AccountPage),
       },
       {
@@ -263,13 +264,18 @@ export const routes: Routes = [
           moduleGuard(CUSTOMERS_MODULE),
           permissionGuard(CUSTOMERS_COMMANDS, '/customers/new'),
           textsOpened(CHECK_TEXTS),
+          textsOpened(SETTINGS_TEXTS),
         ],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
       },
       {
         path: 'customers/groups',
         title: 'nav.customer_groups',
-        canActivate: [moduleGuard(CUSTOMERS_MODULE), permissionGuard(CUSTOMERS_NAV, '/customers')],
+        canActivate: [
+          moduleGuard(CUSTOMERS_MODULE),
+          permissionGuard(CUSTOMERS_NAV, '/customers'),
+          textsOpened(SETTINGS_TEXTS),
+        ],
         loadComponent: () =>
           import('./customers/customer-groups-page').then((m) => m.CustomerGroupsPage),
       },
@@ -281,6 +287,7 @@ export const routes: Routes = [
           permissionGuard(CUSTOMERS_NAV, '/customers'),
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
+          textsOpened(SETTINGS_TEXTS),
         ],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
       },
@@ -312,6 +319,7 @@ export const routes: Routes = [
           moduleGuard(PRODUCTS_MODULE),
           permissionGuard(PRODUCTS_COMMANDS, '/products/new'),
           textsOpened(CHECK_TEXTS),
+          textsOpened(SETTINGS_TEXTS),
         ],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
@@ -322,6 +330,7 @@ export const routes: Routes = [
           moduleGuard(PRODUCTS_MODULE),
           permissionGuard(PRODUCTS_NAV, '/products'),
           textsOpened(RECORDS_TEXTS),
+          textsOpened(SETTINGS_TEXTS),
         ],
         loadComponent: () =>
           import('./products/product-categories-page').then((m) => m.ProductCategoriesPage),
@@ -334,6 +343,7 @@ export const routes: Routes = [
           permissionGuard(PRODUCTS_NAV, '/products'),
           textsOpened(RECORDS_TEXTS),
           textsOpened(CHECK_TEXTS),
+          textsOpened(SETTINGS_TEXTS),
         ],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
@@ -682,8 +692,9 @@ export const routes: Routes = [
         // The platform's operators run signup and decide on the companies waiting for approval here.
         path: 'platform',
         title: 'platform.title',
-        // The operators' texts are read on their two pages only: they load with them (the screen texts budget).
-        ...textsPart('platform', operatorGuard),
+        // The operators' texts are read on their two pages only: they load with them (the screen texts budget). Its
+        // demo and « Bientôt » switches are labelled by their settings, whose words are opened with them.
+        ...textsPart('platform', operatorGuard, textsOpened(SETTINGS_TEXTS)),
         loadComponent: () => import('./platform/platform-page').then((m) => m.PlatformPage),
       },
       {
@@ -733,6 +744,7 @@ export const routes: Routes = [
             canActivate: [
               permissionGuard(SETTINGS_NAV, '/company/roles'),
               textsOpened(ROLES_TEXTS),
+              textsOpened(SETTINGS_TEXTS),
             ],
             loadComponent: () => import('./company/roles-page').then((m) => m.RolesPage),
           },
@@ -762,7 +774,7 @@ export const routes: Routes = [
           {
             path: 'settings',
             title: 'nav.settings',
-            canActivate: [permissionGuard(SETTINGS_NAV, '/settings')],
+            canActivate: [permissionGuard(SETTINGS_NAV, '/settings'), textsOpened(SETTINGS_TEXTS)],
             loadComponent: () => import('./settings/settings-page').then((m) => m.SettingsPage),
           },
           {
@@ -818,6 +830,7 @@ export const routes: Routes = [
             canActivate: [
               permissionGuard(SETTINGS_NAV, '/company/establishments'),
               textsOpened(CHECK_TEXTS),
+              textsOpened(SETTINGS_TEXTS),
             ],
             loadComponent: () =>
               import('./company/establishments-page').then((m) => m.EstablishmentsPage),
@@ -831,7 +844,10 @@ export const routes: Routes = [
           {
             path: 'company/documents',
             title: 'nav.document_templates',
-            canActivate: [permissionGuard(SETTINGS_NAV, '/company/documents')],
+            canActivate: [
+              permissionGuard(SETTINGS_NAV, '/company/documents'),
+              textsOpened(SETTINGS_TEXTS),
+            ],
             loadComponent: () =>
               import('./company/document-design-page').then((m) => m.DocumentDesignPage),
           },

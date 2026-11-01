@@ -690,7 +690,7 @@ final class PurchaseOrdersTest extends ApiTestCase
 
     private function today(): string
     {
-        return new \DateTimeImmutable('now', new \DateTimeZone('Africa/Tunis'))->format('Y-m-d');
+        return self::dayOf($this->company);
     }
 
     private function companyPath(): string

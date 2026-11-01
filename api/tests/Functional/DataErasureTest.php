@@ -365,7 +365,7 @@ final class DataErasureTest extends ApiTestCase
 
         $model = $this->invoice();
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('the company vanished');
-        static::getContainer()->get(ManageRecurringInvoices::class)->create($company, Uuid::fromString($model), new Schedule(ScheduleUnit::Month, 1, ScheduleAnchor::Date, 1), new \DateTimeImmutable('first day of next month'), null, null);
+        static::getContainer()->get(ManageRecurringInvoices::class)->create($company, Uuid::fromString($model), new Schedule(ScheduleUnit::Month, 1, ScheduleAnchor::Date, 1), self::dayAsDate($company, 'first day of next month'), null, null);
 
         $gone = $this->quote();
         $kept = $this->quote();

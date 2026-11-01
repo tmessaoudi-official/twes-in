@@ -42,6 +42,7 @@ test('a receipt names who received the goods, shows it, puts it right and is fou
     await name.click();
     const offered = page.getByTestId('receive-receiver-contact');
     await expect(offered.first()).toBeVisible();
+    await expect(offered.first()).not.toBeEmpty();
     const member = (await offered.first().innerText()).trim();
     await offered.first().click();
     await expect(name).toHaveValue(member);

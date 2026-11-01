@@ -92,6 +92,7 @@ test('a value cut short in Arabic keeps its start in sight', async ({ page }, te
   }
   await page.screenshot({ path: testInfo.outputPath('customers-rtl-cut.png'), fullPage: false });
 
+  // settled-read: the row is drawn (one row, its first value shown): the read is of its boxes once the presses are done
   const cut = await row.locator('td .twes-value').evaluateAll((boxes) =>
     boxes
       .filter((box) => box.scrollWidth > box.clientWidth)
@@ -226,6 +227,7 @@ test('the screens a shop opens first pass WCAG in Arabic', async ({ page }) => {
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     expect(await wcagViolations(page), route).toEqual([]);
     // What is typed reads the way it is written: no field here reads in the screen's direction instead.
+    // settled-read: the page is at rest (its title shown, the axe scan above waits for it): a page with no field reads []
     const fields = await page
       .locator('input:not([type=checkbox]):not([type=radio]), textarea')
       .evaluateAll((all) => all.map((field) => getComputedStyle(field).unicodeBidi));

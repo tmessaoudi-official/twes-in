@@ -240,7 +240,7 @@ signing in, the deep health green). Untried on a shop's Windows computer.
 
 A shop's update backs up first and keeps that backup's label; when the update and its own rollback both fail, the mail
 to `ALERT_EMAIL` carries the commands below, filled in. `twes restore-commands` prints them again at any time, for the
-last update made there. They may be pasted as one block: each restore reads no input (`< /dev/null`), since `docker
+last update made there. They may be pasted as one block: each restore reads no input (`< /dev/null`), since `docker <!-- run-input: the command named in prose, as the reason; nobody pastes it -->
 compose run` would otherwise take the lines after it as its own and they would never run. On the shop's computer, in the
 checkout:
 

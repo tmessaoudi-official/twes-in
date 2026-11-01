@@ -29,6 +29,7 @@ test(
       await page.goto('/invoices/new');
       await expect(page.getByTestId('line-0-description')).toBeVisible();
       await page.getByTestId('phone-pair').click();
+      await expect(page.getByTestId('phone-pair-url')).toHaveText(/\/pair#[0-9a-f]{64}/);
       const url = (await page.getByTestId('phone-pair-url').textContent())?.trim() ?? '';
       expect(url).toMatch(/\/pair#[0-9a-f]{64}$/);
       await expect(page.getByTestId('phone-pair-status')).toContainText('En attente du téléphone');
@@ -108,6 +109,7 @@ test('a link is claimed by one phone only', { tag: '@phone' }, async ({ page, br
   try {
     await page.goto('/');
     await page.getByTestId('phone-pair').click();
+    await expect(page.getByTestId('phone-pair-url')).toHaveText(/\/pair#[0-9a-f]{64}/);
     const url = (await page.getByTestId('phone-pair-url').textContent())?.trim() ?? '';
 
     const one = await first.newPage();
@@ -139,6 +141,7 @@ test(
       await page.getByRole('tab', { name: 'Photos' }).click();
       await expect(page.getByTestId('product-photos-none')).toBeVisible();
       await page.getByTestId('phone-pair').click();
+      await expect(page.getByTestId('phone-pair-url')).toHaveText(/\/pair#[0-9a-f]{64}/);
       const url = (await page.getByTestId('phone-pair-url').textContent())?.trim() ?? '';
       const screen = await phone.newPage();
       await screen.goto(url);

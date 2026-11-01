@@ -268,7 +268,7 @@ final class DeliveryNotesTest extends ApiTestCase
     public function testAValidatorNumbersANoteWithoutGapsAndItThenOnlyMovesForward(): void
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $number = static fn (int $sequence): string => \sprintf('BL-%s-%s-%05d', substr($today, 0, 4), substr($today, 5, 2), $sequence);
         $id = $this->draftWithALine();
 
@@ -329,8 +329,7 @@ final class DeliveryNotesTest extends ApiTestCase
     public function testADeliveryTakesTheTimeItHappenedOnTheCompanysClock(): void
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
-        $zone = new \DateTimeZone($this->company->getTimezone());
-        $today = new \DateTimeImmutable('now', $zone)->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $id = $this->draftWithALine();
         $this->postJson($this->path($id).'/validate', null);
 
@@ -338,7 +337,7 @@ final class DeliveryNotesTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         self::assertSame(
-            [$today, new \DateTimeImmutable($today.' 00:00', $zone)->setTimezone(new \DateTimeZone('UTC'))->format(\DATE_ATOM)],
+            [$today, new \DateTimeImmutable($today, new \DateTimeZone($this->company->getTimezone()))->setTimezone(new \DateTimeZone('UTC'))->format(\DATE_ATOM)],
             [$this->json()['deliveryDate'], $this->json()['deliveredAt']],
         );
 
@@ -352,7 +351,7 @@ final class DeliveryNotesTest extends ApiTestCase
     public function testAValidatorValidatesAndDeliversADraftInOneStep(): void
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         $id = $this->draftWithALine();
 
         $this->postJson($this->path($id).'/validate-and-deliver', []);
@@ -903,10 +902,9 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertCount(1, $this->jsonList());
         self::assertSame(2, $this->jsonPage()['totalItems']);
 
-        $zone = new \DateTimeZone($this->company->getTimezone());
-        $today = new \DateTimeImmutable('now', $zone)->format('Y-m-d');
-        $tomorrow = new \DateTimeImmutable('tomorrow', $zone)->format('Y-m-d');
-        $yesterday = new \DateTimeImmutable('yesterday', $zone)->format('Y-m-d');
+        $today = self::dayOf($this->company);
+        $tomorrow = self::dayOf($this->company, 'tomorrow');
+        $yesterday = self::dayOf($this->company, 'yesterday');
 
         foreach ([
             // Combined (docs/SPEC.md § 7, 2026-10-06): the values of one filter are OR'd, different filters AND'd.
@@ -972,7 +970,7 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertSame(3, $this->json()['all']);
         self::assertSame(['draft' => 1, 'validated' => 1, 'delivered' => 0, 'cancelled' => 1, 'invoiced' => 0], $this->json()['statuses']);
 
-        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $today = self::dayOf($this->company);
         foreach (['', 'q=carthage', 'q=BC-7788', 'customerId='.$other, 'status=draft', 'customerId[]='.$other.'&customerId[]='.$this->customerId, 'issueDate[from]='.$today, 'deliveryDate[to]=2026-09-19'] as $filters) {
             $this->getJson($this->companyPath().'/delivery-note-status-counts?'.$filters);
             self::assertResponseIsSuccessful($filters);

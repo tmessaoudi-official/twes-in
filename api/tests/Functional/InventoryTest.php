@@ -198,7 +198,7 @@ final class InventoryTest extends ApiTestCase
         $this->em()->persist($vendor);
         $this->em()->flush();
         $siteId = $this->defaultLocationId();
-        $day = new \DateTimeImmutable('yesterday')->format('Y-m-d');
+        $day = self::dayOf($this->company, 'yesterday');
         $document = ['vendorId' => $vendor->getId()->toRfc4122(), 'supplierReference' => ' BL-77 ', 'receivedOn' => $day];
 
         $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $siteId, 'quantity' => '3', ...$document]);
@@ -225,7 +225,7 @@ final class InventoryTest extends ApiTestCase
 
         foreach ([
             'vendorId' => ['vendorId' => Uuid::v7()->toRfc4122()],
-            'receivedOn' => ['receivedOn' => new \DateTimeImmutable('tomorrow +1 day')->format('Y-m-d')],
+            'receivedOn' => ['receivedOn' => self::dayOf($this->company, 'tomorrow +1 day')],
             'supplierReference' => ['supplierReference' => str_repeat('x', 61)],
         ] as $field => $named) {
             $this->postJson($this->path('stock-movements'), [...$receive, ...$named]);
@@ -1164,7 +1164,7 @@ final class InventoryTest extends ApiTestCase
         $laptop->track(ProductTracking::Lot, new \DateTimeImmutable());
         $this->em()->flush();
         $site = $this->defaultLocationId();
-        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $today = self::dayAsDate($this->company);
         foreach ([['LATER', '+60 days', '5'], ['SOON', '+10 days', '2']] as [$code, $offset, $quantity]) {
             $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => $quantity, 'lotCode' => $code, 'lotExpiresOn' => $today->modify($offset)->format('Y-m-d')]);
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $code);
@@ -1198,7 +1198,7 @@ final class InventoryTest extends ApiTestCase
         $laptop->track(ProductTracking::Lot, new \DateTimeImmutable());
         $this->em()->flush();
         $site = $this->defaultLocationId();
-        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $today = self::dayAsDate($this->company);
         foreach ([['LATER', '+60 days', '5'], ['SOON', '+10 days', '2'], ['EXPIRED', '-3 days', '4']] as [$code, $offset, $quantity]) {
             $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => $quantity, 'lotCode' => $code, 'lotExpiresOn' => $today->modify($offset)->format('Y-m-d')]);
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $code);
@@ -1558,7 +1558,7 @@ final class InventoryTest extends ApiTestCase
         $this->moved(['operation' => 'count', 'locationId' => $site, 'quantity' => '8']);
         $this->moved(['operation' => 'loss', 'locationId' => $rack, 'quantity' => '1', 'reason' => 'broken', 'note' => null]);
         $this->moved(['operation' => 'loss', 'locationId' => $site, 'quantity' => '1', 'reason' => 'stolen', 'note' => null]);
-        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company()->getTimezone()));
+        $today = self::dayAsDate($this->company());
         $day = static fn (string $shift): string => $today->modify($shift)->format('Y-m-d');
         // Newest first: what each movement is, by the source and the quantity it wrote.
         $read = fn (): array => array_map(fn (array $row): string => $this->stringAt($row, 'sourceType').' '.$this->stringAt($row, 'quantity'), $this->jsonList());
@@ -1676,7 +1676,7 @@ final class InventoryTest extends ApiTestCase
         $this->em()->flush();
         $this->sendJson('PUT', '/api/companies/'.$company->getId()->toRfc4122().'/products/'.$this->laptopId, ['version' => 1, 'reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true, 'tracking' => 'lot']);
         self::assertResponseIsSuccessful();
-        $today = new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone()));
+        $today = self::dayAsDate($company);
         $day = static fn (string $shift): string => $today->modify($shift)->format('Y-m-d');
         foreach ([
             ['productId' => $this->laptopId, 'locationId' => $site, 'quantity' => '3', 'lotCode' => 'L-OLD', 'lotExpiresOn' => $day('-1 day')],

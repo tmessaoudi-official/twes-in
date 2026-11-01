@@ -590,7 +590,7 @@ final class CustomerMergeTest extends ApiTestCase
             self::assertStringContainsString('The customer C-002 was merged into C-001', $this->stringAt($this->json(), 'detail'), $documents);
         }
 
-        $this->postJson($this->path('recurring-invoices'), ['modelInvoiceId' => $model, 'unit' => 'month', 'every' => 1, 'anchor' => 'date', 'monthDay' => 1, 'startsOn' => new \DateTimeImmutable('first day of next month')->format('Y-m-d'), 'endsOn' => null]);
+        $this->postJson($this->path('recurring-invoices'), ['modelInvoiceId' => $model, 'unit' => 'month', 'every' => 1, 'anchor' => 'date', 'monthDay' => 1, 'startsOn' => self::dayOf($this->company, 'first day of next month'), 'endsOn' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
         self::assertSame('Carthage Conseil', $this->json()['customerName'] ?? null, 'a recurring invoice of its model is drafted for the customer kept');
     }

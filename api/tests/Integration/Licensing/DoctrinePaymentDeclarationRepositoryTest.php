@@ -46,7 +46,7 @@ final class DoctrinePaymentDeclarationRepositoryTest extends KernelTestCase
     {
         return new PaymentDeclaration(
             $company,
-            new DeclaredPayment('600.000', 'TND', PaymentMethod::Cash, new \DateTimeImmutable('yesterday')),
+            new DeclaredPayment('600.000', 'TND', PaymentMethod::Cash, new \DateTimeImmutable('2026-10-15')),
             Uuid::v7(),
             new \DateTimeImmutable(),
         );

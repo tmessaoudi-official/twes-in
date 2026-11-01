@@ -338,7 +338,7 @@ final class ExpensesTest extends ApiTestCase
     public function testRecordingNeedsACategoryAndFreezesTheExpenseWhichIsThenPaidOnADayThatHappened(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);
-        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $today = self::dayAsDate($this->company);
         $this->postJson($this->path(), $this->expense(['date' => $today->modify('-10 days')->format('Y-m-d')]));
         $id = $this->stringAt($this->json(), 'id');
 
@@ -380,7 +380,7 @@ final class ExpensesTest extends ApiTestCase
     {
         $this->signedIn(['expense.read', 'expense.write']);
         $category = $this->category('Carburant');
-        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $today = self::dayAsDate($this->company);
         $first = $today->modify('first day of this month');
         // The first of a month is always inside the days compared; two years back is inside neither.
         $made = function (\DateTimeImmutable $day, string $net, bool $record) use ($category): string {
@@ -417,7 +417,7 @@ final class ExpensesTest extends ApiTestCase
     {
         // docs/SPEC.md § 7, 2026-09-24 11:40 (RPT-09): the TN preset's RS1, 1 % from 1 000 TND taxes included.
         $this->signedIn(['expense.read', 'expense.write']);
-        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $today = self::dayAsDate($this->company);
         $recorded = function (string $net): string {
             $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Fournitures '.$net), 'lines' => $this->line($net)]));
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
@@ -461,7 +461,7 @@ final class ExpensesTest extends ApiTestCase
     public function testATejOperationIsSaidWhenPayingOrGivenAfterwardsAndTheOptionsOfferTheCodes(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);
-        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $today = self::dayAsDate($this->company);
         $this->getJson($this->companyPath().'/expense-options');
         $codes = $this->arrayAt($this->json(), 'withholdingOperationCodes');
         self::assertCount(47, $codes);
@@ -506,7 +506,7 @@ final class ExpensesTest extends ApiTestCase
     public function testATejOperationIsRefusedOnItsFieldOutsideTunisiaWhetherPaidOrClassifiedAfter(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);
-        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $today = self::dayAsDate($this->company);
         $recorded = function (): string {
             $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Achats '.bin2hex(random_bytes(3))), 'lines' => $this->line('1000')]));
             $id = $this->stringAt($this->json(), 'id');
@@ -991,7 +991,7 @@ final class ExpensesTest extends ApiTestCase
         $id = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path($id).'/record', null);
         self::assertResponseIsSuccessful();
-        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $today = self::dayAsDate($this->company);
         $this->postJson($this->path($id).'/pay', ['paymentMethod' => $method, 'paidOn' => $today->format('Y-m-d')] + (null === $rate ? [] : ['withholdingRate' => $rate]));
         self::assertResponseIsSuccessful();
     }

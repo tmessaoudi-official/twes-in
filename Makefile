@@ -283,6 +283,9 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/xml-reads.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/decision-stamps.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/screen-texts-budget.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/e2e-settled-reads.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/test-clock.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/docs-run-lines.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/build-version.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/move-classes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/refactor/tests/layout-order.test.sh
@@ -364,6 +367,9 @@ in-gate-licences:
 	bash scripts/gates/xml-reads.sh
 	bash scripts/gates/decision-stamps.sh
 	bash scripts/gates/screen-texts-budget.sh
+	bash scripts/gates/e2e-settled-reads.sh
+	bash scripts/gates/test-clock.sh
+	bash scripts/gates/docs-run-lines.sh
 
 gate-api:      ## the postgres service is started for it (the tests need a real database)
 gate-api: tools-image

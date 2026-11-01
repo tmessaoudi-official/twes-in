@@ -164,6 +164,7 @@ test('a column moves without dragging, and the order survives a reload', async (
   await page.getByTestId('list-column-up-role').click();
   // Read in the chooser, which lists every column in its order: on a narrow card the last may give way for width.
   const order = () =>
+    // settled-read: its result is read through expect.poll below, which retries it until it holds
     page
       .locator('[data-testid^="list-column-toggle-"]')
       .evaluateAll((toggles) => toggles.map((toggle) => toggle.getAttribute('data-testid')));
@@ -373,6 +374,7 @@ test('a list wider than its page keeps each header over its own column', async (
   await resize.focus();
   for (let step = 0; step < 30; step++) await resize.press('ArrowRight');
   await expect(page.getByTestId('list-header-name')).toHaveCSS('width', widened);
+  // settled-read: the header row is drawn (its first header shown) and the widening holds (toHaveCSS): its geometry is read once
   const boxes = await headers.evaluateAll((cells) =>
     cells.map((cell) => {
       const box = cell.getBoundingClientRect();

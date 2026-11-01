@@ -149,6 +149,7 @@ test(
     await signIn(page);
     const bar = page.getByTestId('bottom-bar');
     await expect(bar).toBeVisible();
+    // settled-read: the bar is drawn whole from the nav manifest, shown above: the read is of its items as laid out
     const tabs = await bar.locator(':scope > a, :scope > button').evaluateAll((items) =>
       items.map((item) => {
         const pill = item.querySelector('.mat-icon')!.getBoundingClientRect();

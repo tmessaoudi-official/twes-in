@@ -47,5 +47,18 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "a page's own texts over the budget 
 d=$(project '    gzip_comp_level 6;' fr en)
 mkdir -p "$d/web/public/i18n/account"; printf '{"a": 1}\n' > "$d/web/public/i18n/account/fr.json"
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page's texts missing a language are named: its page would show keys" $? 1 "$out" "account/en.json"
+# Past 98 % of the budget a file still passes, but says so, before the next text written in it reds a gate. The fixture
+# measures the file as the gate does and sets the budget around it, rather than guessing a byte count.
+d=$(project '    gzip_comp_level 6;' fr en)
+heavy "$d/web/public/i18n/fr.json" 2
+size=$(gzip -c -6 "$d/web/public/i18n/fr.json" | wc -c)
+out=$(SCREEN_TEXTS_BUDGET=$((size + 10)) bash "$GATE" --root "$d" 2>&1); check "a file past 98 % of the budget passes with a warning naming it" $? 0 "$out" "WARN — fr.json $size B"
+out=$(SCREEN_TEXTS_BUDGET=$((size * 2)) bash "$GATE" --root "$d" 2>&1); code=$?
+[[ "$out" == *WARN* ]] && code=9
+check "a file well within the budget warns of nothing" "$code" 0 "$out" "OK — 2 languages"
+d=$(project '    gzip_comp_level 6;' fr en)
+mkdir -p "$d/web/public/i18n/account"; heavy "$d/web/public/i18n/account/fr.json" 2; printf '{"a": 1}\n' > "$d/web/public/i18n/account/en.json"
+size=$(gzip -c -6 "$d/web/public/i18n/account/fr.json" | wc -c)
+out=$(SCREEN_TEXTS_BUDGET=$((size + 10)) bash "$GATE" --root "$d" 2>&1); check "a page's own texts past 98 % warn too" $? 0 "$out" "WARN — account/fr.json $size B"
 echo "$pass passed, $fail failed"
 ((fail == 0))
