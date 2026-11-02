@@ -78,6 +78,69 @@ export function formatAmount(
   return negative ? `${minus}${shown}` : shown;
 }
 
+/** What a signed figure is: a percentage (« +6,2 % ») or a plain figure in the screen's number format (« −3,100 »). */
+export type SignedUnit = 'percent' | 'figure';
+
+/**
+ * A change as a person reads it, its sign always written: an explicit « + », a true minus (U+2212), none for no change,
+ * decided after rounding so « −0,04 » at one decimal reads « 0,0 », never « −0,0 ». The digits are the decimal string's
+ * own, rounded half away from zero at the scale without a float; a percentage takes the language's percent sign and
+ * spacing. The language's direction marks are kept, as an amount keeps them, so a figure handed to a sentence keeps
+ * its sign on its left in Arabic; a template still draws it in `<bdi dir="ltr">`. What is not a decimal shows as it came.
+ */
+export function formatSigned(
+  value: string,
+  scale: number,
+  locale: string,
+  style: NumberStyle = 'auto',
+  unit: SignedUnit = 'percent',
+): string {
+  if (!DECIMAL.test(value)) return value;
+  const { negative, digits } = roundedAt(value, scale);
+  const shown = formatAmount(digits, scale, locale, style);
+  const { prefix, suffix } =
+    unit === 'percent' ? percentAffixes(locale) : { prefix: '', suffix: '' };
+  const figure = `${prefix}${shown}${suffix}`;
+  if (/^0+(?:\.0+)?$/.test(digits)) return figure;
+  const marks = numberFormat(locale).minus.replace(/[-\u2212]/g, '');
+  return `${marks}${negative ? '\u2212' : '+'}${figure}`;
+}
+
+/** A decimal string rounded half away from zero at the scale, its sign apart: digits and BigInt, never a float. */
+function roundedAt(value: string, scale: number): { negative: boolean; digits: string } {
+  const negative = value.startsWith('-');
+  const [integer = '0', fraction = ''] = (negative ? value.slice(1) : value).split('.');
+  let units = BigInt(integer + fraction.padEnd(scale, '0').slice(0, scale));
+  if ((fraction[scale] ?? '0') >= '5') units += 1n;
+  const written = units.toString().padStart(scale + 1, '0');
+  const digits = scale === 0 ? written : `${written.slice(0, -scale)}.${written.slice(-scale)}`;
+  return { negative, digits };
+}
+
+const percentForms = new Map<string, { prefix: string; suffix: string }>();
+
+/** What a language writes around a percentage's digits (« 6,2 % », « 6.2% »), read once from its own format. */
+function percentAffixes(locale: string): { prefix: string; suffix: string } {
+  let known = percentForms.get(locale);
+  if (known === undefined) {
+    const parts = new Intl.NumberFormat(locale, { style: 'percent' }).formatToParts(0.5);
+    const first = parts.findIndex((part) => part.type === 'integer');
+    const last = parts.map((part) => part.type).lastIndexOf('integer');
+    known = {
+      prefix: parts
+        .slice(0, first)
+        .map((part) => part.value)
+        .join(''),
+      suffix: parts
+        .slice(last + 1)
+        .map((part) => part.value)
+        .join(''),
+    };
+    percentForms.set(locale, known);
+  }
+  return known;
+}
+
 interface NumberFormat {
   /** The integer part's digits, grouped. */
   group: (digits: string) => string;

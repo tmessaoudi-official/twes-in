@@ -12,6 +12,7 @@ import {
   formatYearMonth,
   formatLocale,
   formatMoment,
+  formatSigned,
   formatTime,
   parseDay,
   todayIn,
@@ -310,5 +311,45 @@ describe('a chosen format', () => {
     expect(formatMoment(moment, 'en', 'Africa/Tunis', 'ymd')).toBe('2026-09-13 23:30');
     expect(formatMoment(moment, 'fr', 'Asia/Tokyo', 'dmy-dots')).toBe('14.09.2026 07:30');
     expect(formatMoment(moment, 'fr', 'UTC', 'auto')).toBe(formatMoment(moment, 'fr', 'UTC'));
+  });
+});
+
+describe('formatSigned', () => {
+  it('prints the sign of a change before it, a true minus or an explicit plus, in the language’s percent', () => {
+    expect(spaced(formatSigned('6.2', 1, 'fr-TN', 'auto', 'percent'))).toBe('+6,2 %');
+    expect(spaced(formatSigned('-3.1', 1, 'fr-TN', 'auto', 'percent'))).toBe('\u22123,1 %');
+    expect(formatSigned('6.2', 1, 'en-TN', 'auto', 'percent')).toBe('+6.2%');
+    expect(formatSigned('-3.1', 1, 'en-TN', 'auto', 'percent')).toBe('\u22123.1%');
+  });
+
+  // The language's marks are kept, as an amount keeps them: the sign stays on the figure's left even where no <bdi>
+  // can hold it, a figure handed to a sentence.
+  it('keeps the sign and the percent in place in a language read right to left', () => {
+    expect(formatSigned('6.2', 1, 'ar-TN', 'auto', 'percent')).toBe('\u200e+6,2\u200e%\u200e');
+    expect(formatSigned('-3.1', 1, 'ar-TN', 'auto', 'percent')).toBe(
+      '\u200e\u22123,1\u200e%\u200e',
+    );
+  });
+
+  it('writes a plain figure without a percent, grouped as an amount is', () => {
+    expect(spaced(formatSigned('-1250.5', 3, 'fr-TN', 'auto', 'figure'))).toBe('\u22121 250,500');
+    expect(formatSigned('1250.5', 3, 'fr-TN', 'comma-dot', 'figure')).toBe('+1,250.500');
+  });
+
+  it('rounds the decimal string half away from zero at the scale, the sign decided after', () => {
+    expect(formatSigned('6.25', 1, 'en', 'auto', 'percent')).toBe('+6.3%');
+    expect(formatSigned('-6.25', 1, 'en', 'auto', 'percent')).toBe('\u22126.3%');
+    expect(formatSigned('9.96', 1, 'en', 'auto', 'percent')).toBe('+10.0%');
+    expect(formatSigned('-0.04', 1, 'en', 'auto', 'percent')).toBe('0.0%');
+  });
+
+  it('gives no sign to no change', () => {
+    expect(spaced(formatSigned('0', 1, 'fr-TN', 'auto', 'percent'))).toBe('0,0 %');
+    expect(formatSigned('-0.000', 0, 'en', 'auto', 'figure')).toBe('0');
+  });
+
+  it('shows what is not a decimal as it came', () => {
+    expect(formatSigned('abc', 1, 'fr', 'auto', 'percent')).toBe('abc');
+    expect(formatSigned('', 1, 'fr', 'auto', 'percent')).toBe('');
   });
 });

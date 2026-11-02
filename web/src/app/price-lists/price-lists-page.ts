@@ -518,7 +518,12 @@ export class PriceListsPage implements OnInit {
       value === null ? '—' : `${this.format.decimal((Math.round(value * 10) / 10).toFixed(1))} %`;
     const params = {
       shelf: this.format.amount(figures.shelf, null),
-      change: percent(figures.changePercent),
+      // float: a ratio worked out on screen, rounded to what is shown. A change keeps its sign written, and the
+      // formatter's marks keep it on the figure's left in Arabic, where a sentence holds no <bdi>.
+      change:
+        figures.changePercent === null
+          ? '—'
+          : this.format.signed(figures.changePercent.toFixed(1), 1),
       cost: figures.cost === null ? '' : this.format.amount(figures.cost, null),
       margin: percent(figures.marginPercent),
     };

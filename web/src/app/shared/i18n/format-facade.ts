@@ -10,7 +10,9 @@ import {
   formatDay,
   formatLocale,
   formatMoment,
+  formatSigned,
   formatTime,
+  type SignedUnit,
 } from './format';
 import { LanguageFacade } from './language-facade';
 
@@ -46,6 +48,11 @@ export class FormatFacade {
 
   time(value: string, timeZone?: string): string {
     return formatTime(value, this.locale(), timeZone);
+  }
+
+  /** A change with its sign always written (« +6,2 % », « −3,1 % »); a template draws it in `<bdi dir="ltr">`. */
+  signed(value: string, scale: number, unit: SignedUnit = 'percent'): string {
+    return formatSigned(value, scale, this.locale(), this.numberFormat(), unit);
   }
 
   /** A decimal field's text: the chosen or the locale's decimal separator, never grouped. */

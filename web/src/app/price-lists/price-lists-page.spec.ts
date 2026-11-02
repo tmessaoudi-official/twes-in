@@ -712,6 +712,23 @@ describe('PriceListsPage', () => {
       expect(row.controls.unitPriceNet.value).toBe('700');
     });
 
+    it('writes the change from the current price with its sign, a true minus or an explicit plus', async () => {
+      figures.set(new Map([['p1', { unitPriceNet: '890.0000', costPrice: null }]]));
+      const { page, row, settle, query } = await withARow();
+      row.controls.unitPriceNet.setValue('700');
+      page.chooseProduct(row, stylo);
+      await settle();
+
+      expect(query('price-row-0-figures')?.textContent?.replace(/\s/g, ' ')).toContain(
+        '\u221221,3 %',
+      );
+
+      row.controls.unitPriceNet.setValue('1000');
+      await settle();
+
+      expect(query('price-row-0-figures')?.textContent?.replace(/\s/g, ' ')).toContain('+12,4 %');
+    });
+
     it('warns when the price is under the cost, and only then', async () => {
       figures.set(new Map([['p1', { unitPriceNet: '890.0000', costPrice: '534.0000' }]]));
       const { page, row, settle, query } = await withARow();

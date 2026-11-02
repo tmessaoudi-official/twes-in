@@ -8,37 +8,59 @@ check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo 
 repo() { local d; d=$(mktemp -d); git -C "$d" init -q; mkdir -p "$d/web/src/app/x"; echo "$d"; }
 echo "value-direction gate"
 d=$(repo); printf '<td class="truncate"><span class="twes-value" dir="auto">{{ row.name }}</span></td>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 2>&1); check "a value in its own box passes" $? 0 "$out" "OK — 1 twes-value"
+out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 --min-read 0 2>&1); check "a value in its own box passes" $? 0 "$out" "OK — 1 twes-value"
 printf '<span class="grow truncate">{{ shape.name }}</span>\n' > "$d/web/src/app/x/b.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 2>&1); check "a typed value cut by truncate is caught, by file and line" $? 1 "$out" "web/src/app/x/b.html:1 {{ shape.name }}"
+out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 --min-read 0 2>&1); check "a typed value cut by truncate is caught, by file and line" $? 1 "$out" "web/src/app/x/b.html:1 {{ shape.name }}"
 d=$(repo); printf '\n<span\n  class="block truncate"\n  data-testid="n"\n>{{\n  current.name\n}}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 2>&1); check "a tag and a value spread over lines are caught at the tag's line" $? 1 "$out" "a.html:2 {{ current.name }}"
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a tag and a value spread over lines are caught at the tag's line" $? 1 "$out" "a.html:2 {{ current.name }}"
 d=$(repo); printf '<span class="truncate">{{ current()?.name ?? (%s | translate) }}</span>\n' "'company.choose'" > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 2>&1); check "a value that falls back on a text is still a value" $? 1 "$out" "a.html:1"
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a value that falls back on a text is still a value" $? 1 "$out" "a.html:1"
 d=$(repo); printf '<span class="truncate">{{ %s + company.role | translate }}</span>\n<span class="truncate">{{ %s | translate: { n: 2 } }}</span>\n' "'roles.'" "'x.y'" > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 2>&1); check "a text of the screen's own reads its way and passes" $? 0 "$out" "OK — 0 twes-value"
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a text of the screen's own reads its way and passes" $? 0 "$out" "OK — 0 twes-value"
 d=$(repo); printf '<span class="twes-value">{{ row.name }}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 2>&1); check "a twes-value without dir=auto is caught" $? 1 "$out" "without dir=\"auto\""
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a twes-value without dir=auto is caught" $? 1 "$out" "without dir=\"auto\""
 d=$(repo); printf '<span class="twes-value" dir="ltr">{{ row.name }}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 2>&1); check "a twes-value with a direction forced is caught too" $? 1 "$out" "a.html:1 <span>"
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a twes-value with a direction forced is caught too" $? 1 "$out" "a.html:1 <span>"
 d=$(repo); printf "@Component({ template: \`<span class=\"truncate\">{{ chosen().label }}</span>\` })\nexport class A {}\n" > "$d/web/src/app/x/a.ts"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 2>&1); check "an inline template in a component is read too" $? 1 "$out" "web/src/app/x/a.ts:1 {{ chosen().label }}"
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "an inline template in a component is read too" $? 1 "$out" "web/src/app/x/a.ts:1 {{ chosen().label }}"
 d=$(repo); printf '<span class="truncate">{{ row.name }}</span>\n' > "$d/web/src/app/x/a.spec.ts"; printf '<span class="twes-value" dir="auto">{{ a }}</span>\n' > "$d/web/src/app/x/b.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 2>&1); check "specs are not read" $? 0 "$out" "OK — 1 twes-value"
+out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 --min-read 0 2>&1); check "specs are not read" $? 0 "$out" "OK — 1 twes-value"
 d=$(repo); printf '<span class="truncate">Total {{ n }}</span>\n<span class="truncate-x">{{ n | amount: 3 }}</span>\n<span class="twes-value" dir="auto">{{ a }}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 2>&1); check "a text around a value and a class merely named like it are left alone" $? 0 "$out" "OK — 1 twes-value"
-out=$(bash "$GATE" --root "$d" --min 2 --min-isolated 0 2>&1); check "fewer than the floor is a failure, not a pass" $? 1 "$out" "fewer than the 2 expected"
+out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 --min-read 0 2>&1); check "a text around a value and a class merely named like it are left alone" $? 0 "$out" "OK — 1 twes-value"
+out=$(bash "$GATE" --root "$d" --min 2 --min-isolated 0 --min-read 0 2>&1); check "fewer than the floor is a failure, not a pass" $? 1 "$out" "fewer than the 2 expected"
 d=$(repo); out=$(bash "$GATE" --root "$d" 2>&1); check "an empty tree is below the default floor" $? 1 "$out" "0 twes-value found"
 d=$(repo); printf '<tr>\n  <td>{{ tax.name }}</td>\n</tr>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 2>&1); check "a value standing alone outside a bdi is caught, by file and line" $? 1 "$out" "a.html:2 <td> {{ tax.name }}"
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a value standing alone outside a bdi is caught, by file and line" $? 1 "$out" "a.html:2 <td> {{ tax.name }}"
 d=$(repo); printf '<td><bdi>{{ tax.name }}</bdi></td>\n<p dir="auto">{{ note }}</p>\n<span class="twes-value" dir="auto">{{ a }}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 3 2>&1); check "a value in a bdi, a dir=auto box or a twes-value is counted as reading its own way" $? 0 "$out" "and 3 value standing alone"
+out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 3 --min-read 0 2>&1); check "a value in a bdi, a dir=auto box or a twes-value is counted as reading its own way" $? 0 "$out" "and 3 value standing alone"
 d=$(repo); printf '<span>{{ total | amount: 3 }}</span>\n<span>{{ due | day }}</span>\n<mat-icon>{{ action.icon }}</mat-icon>\n<kbd>{{ key }}</kbd>\n<span>{{ %s | translate }}</span>\n<span>Total {{ n }}</span>\n' "'a.b'" > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 2>&1); check "a figure, an icon, a key cap, a screen text and a value inside a sentence are left alone" $? 0 "$out" "OK — 0 twes-value and 0"
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a figure, an icon, a key cap, a screen text and a value inside a sentence are left alone" $? 0 "$out" "OK — 0 twes-value and 0"
 d=$(repo); printf '<span>{{ place.code }} · {{ place.name }}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 2>&1); check "two values with only a separator between them are caught too" $? 1 "$out" "a.html:1 <span> {{ place.code place.name }}"
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "two values with only a separator between them are caught too" $? 1 "$out" "a.html:1 <span> {{ place.code place.name }}"
 d=$(repo); printf '<!-- value-direction: a count, which has no letter to turn -->\n<span>{{ n }}</span>\n@if (shown()) {\n  <p>{{ x }}</p>\n}\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 2>&1); check "a value whose line says why, and only that one, is left alone" $? 1 "$out" "a.html:4 <p> {{ x }}"
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a value whose line says why, and only that one, is left alone" $? 1 "$out" "a.html:4 <p> {{ x }}"
 d=$(repo); printf '<span><bdi>{{ a }}</bdi></span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
-out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 2 2>&1); check "fewer values reading their own way than the floor is a failure" $? 1 "$out" "1 value standing alone in its own box, fewer than the 2 expected"
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 2 --min-read 0 2>&1); check "fewer values reading their own way than the floor is a failure" $? 1 "$out" "1 value standing alone in its own box, fewer than the 2 expected"
+d=$(repo); printf '<span>{{ row.change | percent: %s }}</span>\n' "'1.1-1'" > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "Angular's percent pipe is refused, by file and line" $? 1 "$out" "a.html:1 | percent"
+d=$(repo); printf "const shown = new Intl.NumberFormat('fr', {\n  signDisplay: 'always',\n}).format(x);\n" > "$d/web/src/app/x/a.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a signDisplay is refused wherever it is" $? 1 "$out" "a.ts:2 signDisplay"
+d=$(repo); printf '<p>Evolution <bdi>+{{ month.change }}</bdi></p>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a plus written before a value is a hand-built sign" $? 1 "$out" "a.html:1 +{{"
+d=$(repo); printf '<p>Evolution <bdi>{{ change > 0 ? %s : %s }}{{ change }}</bdi></p>\n' "'+'" "''" > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a plus built inside an interpolation is a hand-built sign" $? 1 "$out" "hand-built"
+d=$(repo); printf '<p>Evolution <bdi dir="ltr">{{ month.change | signed: 1 }}</bdi></p>\n' > "$d/web/src/app/x/a.html"; printf "if (typed.startsWith('+')) return \`+\${code}\`;\nconst keys = { '+': zoomIn };\n" > "$d/web/src/app/x/b.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 1 2>&1); check "a signed figure in a left-to-right bdi passes, and a plus in code is no template" $? 0 "$out" "1 signed figure"
+d=$(repo); printf '<p>Evolution <span>{{ month.change | signed: 1 }}</span></p>\n<p>Avant <bdi>{{ previous | signed: 1 }}</bdi></p>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); rc=$?; check "a signed figure outside a left-to-right bdi is refused" $rc 1 "$out" "2 signed figure"
+check "  ... each by file and line" $rc 1 "$out" "a.html:2 <bdi>"
+d=$(repo); printf '<span class="twes-value" dir="auto">{{ note.number }} · {{ note.issueDate | day }}</span>\n<span\n  class="twes-value"\n  dir="auto"\n>{{ a }}&nbsp;&middot;&nbsp;<b>{{ b }}</b></span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); rc=$?; check "a twes-value holding a joined value is refused, written either way" $rc 1 "$out" "a.html:2 <span>"
+check "  ... the first one too" $rc 1 "$out" "a.html:1 <span>"
+d=$(repo); printf '<span class="flex"><bdi>{{ note.number }}</bdi> · <bdi>{{ note.issueDate | day }}</bdi></span>\n<span class="twes-value" dir="auto">{{ a }}<span class="twes-value" dir="auto">{{ b }}</span></span> · <bdi>{{ c }}</bdi>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "each part in its own bdi, the separator outside its box, passes" $? 0 "$out" "OK"
+d=$(repo); printf '<!-- value-direction: a calling code, which a phone number writes with its plus -->\n<span>+{{ code }}</span>\n<span>+{{ other }}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 0 --min-isolated 0 --min-read 0 2>&1); check "a hand-built sign whose line says why, and only that one, is left alone" $? 1 "$out" "a.html:3 +{{"
+d=$(repo); printf '<span class="twes-value" dir="auto">{{ a }}</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" --min 1 --min-isolated 0 --min-read 2 2>&1); check "fewer interpolations read than the floor is a failure" $? 1 "$out" "1 interpolation read, fewer than the 2 expected"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
