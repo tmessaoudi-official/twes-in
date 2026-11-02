@@ -1,5 +1,7 @@
 <app-signed-out-layout>
-  <h1 data-testid="stop-mail-title">{{ 'notification_stop.title' | translate }}</h1>
+  <h1 class="text-title" data-testid="stop-mail-title">
+    {{ 'notification_stop.title' | translate }}
+  </h1>
 
   @if (done()) {
     <p role="status" data-testid="stop-mail-done">{{ 'notification_stop.done' | translate }}</p>

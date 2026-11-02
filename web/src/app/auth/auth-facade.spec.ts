@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { computed } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
@@ -210,6 +211,41 @@ describe('AuthFacade', () => {
     await facade.refresh();
     expect(facade.isAuthenticated()).toBe(true);
     expect(facade.me()?.modules).toEqual(['customers', 'invoices']);
+  });
+
+  // A re-read on focus (the file picker closing) that brings back the same session must not wake every page reading it:
+  // the import page cleared the file just chosen when its company read as changed.
+  it('refresh() keeps what did not change as the same objects, so nothing reading them hears a change', async () => {
+    api.me.mockResolvedValueOnce(owner);
+    await facade.load();
+    const company = computed(() => facade.me()?.company ?? null);
+    const before = { me: facade.me(), company: company() };
+
+    api.me.mockResolvedValueOnce(structuredClone(owner));
+    await facade.refresh();
+    expect(facade.me()).toBe(before.me);
+    expect(company()).toBe(before.company);
+
+    api.me.mockResolvedValueOnce({ ...structuredClone(owner), modules: ['customers', 'invoices'] });
+    await facade.refresh();
+    expect(facade.me()).not.toBe(before.me);
+    expect(facade.me()?.modules).toEqual(['customers', 'invoices']);
+    expect(company()).toBe(before.company);
+  });
+
+  it('refresh() hands a company that changed as a new object', async () => {
+    api.me.mockResolvedValueOnce(owner);
+    await facade.load();
+    const before = facade.me()?.company;
+
+    const changed = structuredClone(owner);
+    api.me.mockResolvedValueOnce({
+      ...changed,
+      company: { ...changed.company, name: 'Demo renamed' },
+    });
+    await facade.refresh();
+    expect(facade.me()?.company).not.toBe(before);
+    expect(facade.me()?.company?.name).toBe('Demo renamed');
   });
 
   it('login() keeps the signed-in state, or reports the API error code', async () => {

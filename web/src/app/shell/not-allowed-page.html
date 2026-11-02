@@ -1,5 +1,5 @@
 <section class="flex max-w-2xl flex-col gap-4 p-4" data-testid="not-allowed-page">
-  <h1 class="text-2xl font-semibold">{{ 'titles.not_allowed' | translate }}</h1>
+  <h1 class="text-title">{{ 'titles.not_allowed' | translate }}</h1>
   @if (declaration(); as declaration) {
     <p data-testid="not-allowed-reason">
       @switch (refusal()) {

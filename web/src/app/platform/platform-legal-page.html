@@ -9,14 +9,14 @@
       <span>{{ 'platform.title' | translate }}</span>
     </a>
   </p>
-  <h1 class="text-2xl font-semibold">{{ 'platform.legal.title' | translate }}</h1>
+  <h1 class="text-title">{{ 'platform.legal.title' | translate }}</h1>
   <p>{{ 'platform.legal.intro' | translate }}</p>
   @if (facade.failed()) {
     <p role="alert" data-testid="legal-failed">{{ 'platform.legal.failed' | translate }}</p>
   }
 
   <section class="flex flex-col gap-3" aria-labelledby="legal-identity-title">
-    <h2 id="legal-identity-title" class="text-xl font-semibold">
+    <h2 id="legal-identity-title" class="text-heading">
       {{ 'platform.legal.identity.title' | translate }}
     </h2>
     <p class="max-w-prose text-sm">{{ 'platform.legal.identity.intro' | translate }}</p>
@@ -87,7 +87,7 @@
   <section class="flex flex-col gap-3" aria-labelledby="legal-texts-title">
     <div class="flex flex-wrap items-end justify-between gap-4">
       <div class="flex flex-col gap-1">
-        <h2 id="legal-texts-title" class="text-xl font-semibold">
+        <h2 id="legal-texts-title" class="text-heading">
           {{ 'platform.legal.texts' | translate }}
         </h2>
         <p class="text-sm" data-testid="legal-waiting">
@@ -169,7 +169,7 @@
 
   @if (opened(); as current) {
     <section class="flex flex-col gap-3" aria-labelledby="legal-editor-title">
-      <h2 id="legal-editor-title" class="text-xl font-semibold" data-testid="legal-editor-title">
+      <h2 id="legal-editor-title" class="text-heading" data-testid="legal-editor-title">
         {{ 'legal.pages.' + current.page | translate }} — <bdi>{{ names[current.language] }}</bdi>
       </h2>
       <div class="flex flex-wrap gap-2">

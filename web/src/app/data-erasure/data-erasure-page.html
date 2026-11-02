@@ -1,5 +1,5 @@
 <section class="flex max-w-3xl flex-col gap-6">
-  <h1 class="text-3xl font-semibold" data-testid="erasure-title">
+  <h1 class="text-title" data-testid="erasure-title">
     {{ 'data_erasure.title' | translate }}
   </h1>
   @if (confirmedAt() === null) {
@@ -21,7 +21,7 @@
       {{ 'data_erasure.confirmed' | translate: { time: confirmedTime() } }}
     </p>
     <section class="flex max-w-xl flex-col gap-3">
-      <h2 class="text-lg font-semibold">{{ 'data_erasure.some' | translate }}</h2>
+      <h2 class="text-heading">{{ 'data_erasure.some' | translate }}</h2>
       <ul class="m-0 flex list-none flex-col gap-2 p-0">
         @for (part of parts(); track part.part) {
           <li

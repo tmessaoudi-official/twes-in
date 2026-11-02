@@ -1,5 +1,5 @@
 <section class="flex flex-col gap-6">
-  <h1 class="text-3xl font-semibold" data-testid="members-title">
+  <h1 class="text-title" data-testid="members-title">
     {{ 'members.title' | translate }}
   </h1>
 
@@ -62,7 +62,7 @@
     <!-- Named, and on the page's own left edge: in a card it stood indented under the list with nothing saying what
          it does. -->
     <section class="flex flex-col gap-3" aria-labelledby="member-invite-title">
-      <h2 id="member-invite-title" class="text-lg font-semibold" data-testid="member-invite-title">
+      <h2 id="member-invite-title" class="text-heading" data-testid="member-invite-title">
         {{ 'members.invite_title' | translate }}
       </h2>
       <form [formGroup]="form" (ngSubmit)="add()" class="flex flex-wrap items-start gap-4">

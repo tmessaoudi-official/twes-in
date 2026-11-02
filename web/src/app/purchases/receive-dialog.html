@@ -48,7 +48,7 @@
 
     @for (row of rows(); track row.line.id; let i = $index) {
       <fieldset
-        class="flex min-w-0 flex-col gap-3 rounded-xl border border-outline-variant p-3"
+        class="flex min-w-0 flex-col gap-3 rounded-card border border-outline-variant p-3"
         [attr.data-testid]="'receive-row-' + i"
       >
         <legend class="px-1 font-semibold">

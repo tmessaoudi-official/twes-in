@@ -36,7 +36,7 @@ import { LegalText } from '../shared/legal/legal-text';
           </a>
         </p>
         @if (known()) {
-          <h1 class="text-2xl font-semibold" data-testid="legal-title">
+          <h1 class="text-title" data-testid="legal-title">
             {{ 'legal.pages.' + slug() | translate }}
           </h1>
           <app-legal-text [slug]="slug()" />

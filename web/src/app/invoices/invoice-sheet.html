@@ -17,7 +17,7 @@
         <h2
           #heading
           tabindex="-1"
-          class="text-2xl font-semibold tabular-nums outline-none"
+          class="text-heading tabular-nums outline-none"
           data-testid="invoice-sheet-title"
         >
           <bdi>{{ invoice.number }}</bdi>
@@ -60,7 +60,7 @@
   @if (invoice(); as invoice) {
     @if (owed()) {
       <div
-        class="flex flex-col gap-3 rounded-2xl bg-surface-container-low p-4"
+        class="flex flex-col gap-3 rounded-card bg-surface-container-low p-4"
         data-testid="invoice-sheet-due"
       >
         <span class="text-sm text-on-surface-variant">{{ 'invoices.due.left' | translate }}</span>

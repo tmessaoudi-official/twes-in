@@ -4,7 +4,7 @@
   <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
     <div class="flex flex-col gap-1">
       <h1
-        class="text-3xl font-semibold"
+        class="text-title"
         data-testid="delivery-note-title"
         [attr.aria-hidden]="!current() && id() !== null ? true : null"
       >
@@ -305,7 +305,7 @@
     <mat-card data-testid="delivery-note-totals">
       <mat-card-content>
         <div class="flex flex-col gap-2">
-          <h2 class="text-xl font-semibold">{{ 'delivery_notes.totals.title' | translate }}</h2>
+          <h2 class="text-heading">{{ 'delivery_notes.totals.title' | translate }}</h2>
           <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
             <dt>{{ 'delivery_notes.totals.subtotal' | translate }}</dt>
             <dd class="text-end">{{ note.subtotalNet | amount: scale() }}</dd>

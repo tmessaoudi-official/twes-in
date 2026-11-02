@@ -1,10 +1,10 @@
 <app-signed-out-layout wide>
-  <h1>{{ 'auth.two_factor.title' | translate }}</h1>
+  <h1 class="text-title">{{ 'auth.two_factor.title' | translate }}</h1>
 
   <!-- Material styles the card content itself, so the spacing lives on a wrapper of our own. -->
   <div class="mt-4 flex flex-col gap-6">
     @if (recoveryCodes(); as codes) {
-      <h2 class="text-lg font-medium">{{ 'auth.two_factor.recovery_title' | translate }}</h2>
+      <h2 class="text-section">{{ 'auth.two_factor.recovery_title' | translate }}</h2>
       <p>{{ 'auth.two_factor.recovery_intro' | translate }}</p>
       <ul class="grid grid-cols-2 gap-2 font-mono" data-testid="two-factor-recovery-codes">
         @for (code of codes; track code) {
@@ -33,7 +33,7 @@
       }
 
       <section class="flex flex-col gap-4" aria-labelledby="two-factor-app-title">
-        <h2 id="two-factor-app-title" class="text-lg font-medium">
+        <h2 id="two-factor-app-title" class="text-section">
           {{ 'auth.two_factor.app_title' | translate }}
         </h2>
         @if (totp()) {
@@ -280,7 +280,7 @@
         aria-labelledby="two-factor-passkeys-title"
         data-testid="two-factor-passkeys"
       >
-        <h2 id="two-factor-passkeys-title" class="text-lg font-medium">
+        <h2 id="two-factor-passkeys-title" class="text-section">
           {{ 'auth.two_factor.passkeys_title' | translate }}
         </h2>
         <p>{{ 'auth.two_factor.passkeys_intro' | translate }}</p>

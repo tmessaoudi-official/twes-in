@@ -1,6 +1,6 @@
 <section class="flex flex-col gap-4" data-testid="expense-bill">
   <div class="flex flex-col gap-1">
-    <h2 class="text-xl font-semibold">{{ 'expenses.bill.title' | translate }}</h2>
+    <h2 class="text-heading">{{ 'expenses.bill.title' | translate }}</h2>
     @if (!readOnly()) {
       <p class="text-sm text-on-surface-variant" data-testid="bill-hint">
         {{ (mode() === 'gross' ? 'expenses.bill.hint_gross' : 'expenses.bill.hint') | translate }}
@@ -41,7 +41,7 @@
     </mat-radio-group>
     @for (line of lines(); track line; let i = $index) {
       <fieldset
-        class="flex min-w-0 flex-col gap-2 rounded-xl border border-outline-variant p-4"
+        class="flex min-w-0 flex-col gap-2 rounded-card border border-outline-variant p-4"
         [formGroup]="line"
         [attr.data-testid]="'bill-line-' + i"
       >

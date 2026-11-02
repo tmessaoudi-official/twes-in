@@ -4,7 +4,7 @@
   <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
     <div class="flex flex-col gap-1">
       <h1
-        class="text-3xl font-semibold"
+        class="text-title"
         data-testid="expense-title"
         [attr.aria-hidden]="!current() && id() !== null ? true : null"
       >
@@ -291,7 +291,7 @@
       <mat-card-content>
         <div class="flex flex-col gap-4">
           <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
-            <h2 class="text-xl font-semibold">{{ 'expenses.attachments.title' | translate }}</h2>
+            <h2 class="text-heading">{{ 'expenses.attachments.title' | translate }}</h2>
             @if (mayWrite()) {
               <app-file-drop
                 class="w-full max-w-sm"

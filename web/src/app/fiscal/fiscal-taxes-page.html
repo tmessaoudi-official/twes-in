@@ -1,6 +1,6 @@
 <section class="flex flex-col gap-6">
   <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-3xl font-semibold" data-testid="taxes-title">
+    <h1 class="text-title" data-testid="taxes-title">
       {{ 'fiscal.taxes.title' | translate }}
     </h1>
     @if (mayManage() && editing() === null && company()) {
@@ -89,7 +89,7 @@
   </app-data-list>
 
   <div class="flex flex-col gap-2">
-    <h2 class="text-xl font-semibold" data-testid="regimes-title">
+    <h2 class="text-heading" data-testid="regimes-title">
       {{ 'fiscal.regimes.title' | translate }}
     </h2>
     <p class="opacity-80">{{ 'fiscal.regimes.intro' | translate }}</p>

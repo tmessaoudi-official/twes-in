@@ -4,7 +4,7 @@
   <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
     <div class="flex flex-col gap-1">
       <h1
-        class="text-3xl font-semibold"
+        class="text-title"
         data-testid="invoice-title"
         [attr.aria-hidden]="!current() && id() !== null ? true : null"
       >
@@ -327,7 +327,7 @@
     <mat-card data-testid="invoice-document-taxes">
       <mat-card-content>
         <div class="flex flex-col gap-2">
-          <h2 class="text-xl font-semibold">{{ 'invoices.document_taxes.title' | translate }}</h2>
+          <h2 class="text-heading">{{ 'invoices.document_taxes.title' | translate }}</h2>
           <p
             id="invoice-document-taxes-hint"
             class="text-sm text-on-surface-variant"
@@ -383,7 +383,7 @@
     <mat-card data-testid="invoice-totals">
       <mat-card-content>
         <div class="flex flex-col gap-2">
-          <h2 class="text-xl font-semibold">{{ 'invoices.totals.title' | translate }}</h2>
+          <h2 class="text-heading">{{ 'invoices.totals.title' | translate }}</h2>
           <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
             <dt>{{ 'invoices.totals.subtotal' | translate }}</dt>
             <dd class="text-end">{{ invoice.subtotalNet | amount: scale() }}</dd>
@@ -478,7 +478,7 @@
     <mat-card data-testid="invoice-deliveries">
       <mat-card-content>
         <div class="flex flex-col gap-2">
-          <h2 class="text-xl font-semibold">{{ 'deliveries.card.title' | translate }}</h2>
+          <h2 class="text-heading">{{ 'deliveries.card.title' | translate }}</h2>
           <ul class="flex flex-col gap-1">
             @for (note of deliveredBy(); track note.deliveryNoteId; let i = $index) {
               <li
@@ -523,7 +523,7 @@
       <mat-card data-testid="invoice-payments">
         <mat-card-content>
           <div class="flex flex-col gap-4">
-            <h2 class="text-xl font-semibold">{{ 'invoices.payments.title' | translate }}</h2>
+            <h2 class="text-heading">{{ 'invoices.payments.title' | translate }}</h2>
             @if (invoice.payments.length === 0) {
               <p data-testid="invoice-payments-none">{{ 'invoices.payments.none' | translate }}</p>
             } @else {
@@ -609,7 +609,7 @@
     <mat-card data-testid="invoice-history">
       <mat-card-content>
         <div class="flex flex-col gap-4">
-          <h2 class="text-lg font-semibold">{{ 'activity.history.title' | translate }}</h2>
+          <h2 class="text-heading">{{ 'activity.history.title' | translate }}</h2>
           <app-record-history kind="invoice" [recordId]="invoice.id" />
         </div>
       </mat-card-content>

@@ -35,7 +35,7 @@ import { RemindersApi } from './reminders-api';
       <mat-card data-testid="invoice-reminders">
         <mat-card-content>
           <div class="flex flex-col gap-3">
-            <h2 class="text-lg font-semibold">{{ 'invoices.reminders.title' | translate }}</h2>
+            <h2 class="text-heading">{{ 'invoices.reminders.title' | translate }}</h2>
             <ol class="flex flex-col gap-1">
               @for (row of rows(); track row.id) {
                 <li

@@ -1,7 +1,7 @@
 <section class="flex flex-col gap-4 p-6" data-testid="product-scan-card" tabindex="-1">
   <header class="flex items-center gap-3">
     <mat-icon aria-hidden="true">barcode_scanner</mat-icon>
-    <h2 class="m-0 text-lg font-medium">{{ 'products.scan.title' | translate }}</h2>
+    <h2 class="m-0 text-heading">{{ 'products.scan.title' | translate }}</h2>
     <span class="ms-auto font-mono text-sm opacity-80" data-testid="product-scan-code"
       ><bdi>{{ code }}</bdi></span
     >
@@ -17,7 +17,7 @@
     </p>
   } @else if (scan(); as found) {
     <div
-      class="flex flex-col gap-2 rounded-sm border border-outline-variant p-4"
+      class="flex flex-col gap-2 rounded-card border border-outline-variant p-4"
       role="status"
       data-testid="product-scan-found"
     >

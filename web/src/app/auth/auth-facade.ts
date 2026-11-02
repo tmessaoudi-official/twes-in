@@ -36,6 +36,7 @@ import type {
 } from './auth-types';
 import { PasskeyClient, type PasskeyRequest } from './passkey-client';
 import { refusedFor, saidAlready } from '../shared/errors/said-already';
+import { unchangedKept } from '../shared/session/unchanged-kept';
 
 /**
  * The signed-in state, as signals. The session itself is a cookie the browser keeps; this facade only knows
@@ -557,7 +558,10 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold, Com
     return this.stateSignal()?.modules.includes(module) ?? false;
   }
 
-  private signedIn(state: SignedInState): void {
+  private signedIn(read: SignedInState): void {
+    // A re-read bringing back what is held changes no object, so no page reading the session hears a change.
+    const held = this.stateSignal();
+    const state = held === null ? read : unchangedKept(held, read);
     this.session.heard(state);
     this.stateSignal.set(state);
     this.statusSignal.set('authenticated');

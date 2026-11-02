@@ -193,14 +193,39 @@ html {
       active-indicator-color: var(--twes-accent-soft),
     )
   );
-  // A card is a flat panel on the page, not a raised sheet: the page itself is already the lifted surface.
+  // A card is a flat panel on the page, not a raised sheet: the page itself is already the lifted surface. Every card
+  // has the card's corner, whatever draws it.
   @include mat.card-overrides(
     (
       elevated-container-color: transparent,
       elevated-container-elevation: none,
-      elevated-container-shape: var(--radius-2xl),
-      outlined-container-shape: var(--radius-2xl),
+      elevated-container-shape: var(--radius-card),
+      filled-container-shape: var(--radius-card),
+      outlined-container-shape: var(--radius-card),
       outlined-outline-color: var(--mat-sys-outline-variant),
+      // A card's title is the heading step its h2 siblings take, never Material's larger title.
+      title-text-size: var(--text-heading),
+      title-text-line-height: var(--text-heading--line-height),
+      title-text-weight: var(--text-heading--font-weight),
+      title-text-tracking: var(--text-heading--letter-spacing),
+    )
+  );
+  // A dialog is the panel's kind: its corner, the highest elevation, and its title the heading step every card and
+  // record section takes, so a dialog's title never outranks the page title behind it.
+  @include mat.dialog-overrides(
+    (
+      container-shape: var(--radius-panel),
+      container-elevation-shadow: var(--twes-shadow-3),
+      subhead-size: var(--text-heading),
+      subhead-line-height: var(--text-heading--line-height),
+      subhead-weight: var(--text-heading--font-weight),
+      subhead-tracking: var(--text-heading--letter-spacing),
+    )
+  );
+  // A menu floats as the bottom bar and a toast do: Material's own elevation literal is replaced by the theme's.
+  @include mat.menu-overrides(
+    (
+      container-elevation-shadow: var(--twes-shadow-2),
     )
   );
   @include mat.table-overrides(
@@ -582,7 +607,9 @@ html {
 }
 
 html.theme-dark {
-  --twes-shadow-1: 0 0 0 1px oklch(1 0 0 / 0.07), 0 1px 0 oklch(1 0 0 / 0.04) inset;
+  // A raised surface reads nearer by a faint ring, a lit top edge and a short dark drop.
+  --twes-shadow-1:
+    0 0 0 1px oklch(1 0 0 / 0.06), 0 1px 0 oklch(1 0 0 / 0.05) inset, 0 1px 2px oklch(0 0 0 / 0.5);
   --twes-shadow-2: 0 0 0 1px oklch(1 0 0 / 0.09), 0 28px 56px -18px oklch(0 0 0 / 0.7);
   --twes-shadow-3: 0 0 0 1px oklch(1 0 0 / 0.11), 0 36px 72px -18px oklch(0 0 0 / 0.8);
 }
@@ -660,11 +687,14 @@ textarea {
     'opsz' 24;
 }
 
-// The notification centre (notifications/notification-bell.ts): a full-height panel against the right edge, square
-// where it meets the screen, its title laid out by the panel's own header.
+// The notification centre (notifications/notification-bell.ts): a full-height panel against the inline end, square
+// where it meets the screen and rounded as a panel on the side facing the page, its title laid out by the panel's
+// own header.
 .notification-panel {
   .mat-mdc-dialog-surface {
     border-radius: 0;
+    border-start-start-radius: var(--radius-panel);
+    border-end-start-radius: var(--radius-panel);
   }
 
   .mat-mdc-dialog-title {
@@ -832,9 +862,9 @@ textarea {
   padding-inline: 0.75rem;
   color: var(--mat-sys-on-surface-variant);
   font-size: var(--text-overline);
-  font-weight: var(--font-weight-strong);
-  letter-spacing: 0.06em;
-  line-height: 1rem;
+  font-weight: var(--text-overline--font-weight);
+  letter-spacing: var(--text-overline--letter-spacing);
+  line-height: var(--text-overline--line-height);
   text-transform: uppercase;
 }
 
@@ -997,7 +1027,7 @@ textarea {
     flex: none;
     margin-inline-start: auto;
     padding: 0 0.375rem;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-chip);
     font-family: inherit;
     font-size: var(--text-overline);
     font-weight: var(--font-weight-semibold);
@@ -1026,7 +1056,7 @@ textarea {
 .twes-button-key {
   margin-inline-start: 0.5rem;
   padding: 0 0.375rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-chip);
   font-family: inherit;
   font-size: var(--text-overline);
   font-weight: var(--font-weight-semibold);
@@ -1053,7 +1083,7 @@ textarea {
 .twes-rail-count {
   margin-inline-start: auto;
   padding: 0 0.375rem;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-chip);
   background-color: var(--mat-sys-surface-container-high);
   font-size: var(--text-xs);
   font-weight: var(--font-weight-strong);
@@ -1075,7 +1105,7 @@ textarea {
   min-width: 1rem;
   height: 1rem;
   padding-inline: 0.25rem;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-chip);
   background-color: var(--mat-sys-error);
   color: var(--mat-sys-on-error);
   font: var(--mat-sys-label-small);
@@ -1097,7 +1127,7 @@ textarea {
   flex: none;
   padding: 0 0.3125rem;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-chip);
   color: var(--mat-sys-on-surface-variant);
   font-size: var(--text-2xs);
   font-weight: var(--font-weight-semibold);
@@ -1773,15 +1803,15 @@ app-cookie-notice {
 .twes-palette kbd {
   padding: 0.0625rem 0.375rem;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-chip);
   background-color: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface-variant);
   font: var(--mat-sys-label-small);
 }
 
 .twes-palette-panel .mat-mdc-dialog-surface {
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--twes-shadow-2);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--twes-shadow-3);
 }
 
 .twes-palette {
@@ -1891,461 +1921,6 @@ app-cookie-notice {
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 9.5 9 3M4 2.75h5.25V8'/%3E%3C/svg%3E")
       center / contain no-repeat;
   }
-}
-
-// The pages shown before the shell (auth/signed-out-layout.html): the brand over one card, on a softly tinted ground.
-/* The layout, not its page, holds the window's height: a first visit's cookie notice above it then takes its share of
-   the height instead of pushing the page's foot below the window (row 149). */
-app-signed-out-layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
-}
-
-.twes-auth {
-  position: relative;
-  display: flex;
-  flex: 1 0 auto;
-  flex-direction: column;
-  overflow: hidden;
-  background:
-    radial-gradient(60rem 40rem at 100% 0%, var(--twes-accent-soft), transparent 70%),
-    var(--mat-sys-surface-container-low);
-}
-
-.twes-auth-toolbar {
-  position: absolute;
-  inset-block-start: 0.75rem;
-  inset-inline-end: 0.75rem;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.twes-auth-main {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.25rem;
-  padding: 2.5rem 1rem 1.5rem;
-
-  // On a phone the wordmark's arrow, centred under the language and scheme menus, rose into their row (audit V-23):
-  // the brand starts below it.
-  @media (max-width: 599px) {
-    padding-block-start: 5rem;
-  }
-}
-
-.twes-auth-brand {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  text-align: center;
-}
-
-.twes-auth-tagline {
-  margin: 0;
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-body-large);
-  text-wrap: balance;
-}
-
-.twes-auth-card {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  box-sizing: border-box;
-  width: min(26.25rem, 100%);
-  padding: 2rem;
-  border-radius: var(--radius-panel);
-  background-color: var(--mat-sys-surface);
-  box-shadow: var(--twes-shadow-2);
-
-  h1 {
-    margin: 0;
-    font: var(--mat-sys-headline-small);
-    font-weight: var(--font-weight-bold);
-    letter-spacing: -0.01em;
-  }
-
-  form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-}
-
-.twes-auth-card-wide {
-  width: min(32rem, 100%);
-
-  h2 {
-    margin: 0;
-    font: var(--mat-sys-title-medium);
-    font-weight: var(--font-weight-strong);
-  }
-}
-
-// A page shown before the shell that brings its own cards: it takes the width, with no second surface under it.
-// The card above holds one column of fields; a page's form lays out in two either way and would collapse in it.
-.twes-auth-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  box-sizing: border-box;
-  width: min(56rem, 100%);
-}
-
-.twes-auth-intro {
-  margin: 0;
-  color: var(--mat-sys-on-surface-variant);
-}
-
-.twes-auth-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  min-width: 0;
-}
-
-.twes-auth-submit.mat-mdc-unelevated-button {
-  --mat-button-filled-container-height: 2.75rem;
-  width: 100%;
-}
-
-.twes-auth-error {
-  margin: 0;
-  color: var(--mat-sys-error);
-  font: var(--mat-sys-body-medium);
-}
-
-.twes-auth-after {
-  margin: 0;
-  color: var(--mat-sys-on-surface-variant);
-  text-align: center;
-
-  a,
-  button {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--twes-accent-text);
-    font: inherit;
-    font-weight: var(--font-weight-semibold);
-    text-decoration: none;
-    cursor: pointer;
-
-    &:hover,
-    &:focus-visible {
-      text-decoration: underline;
-    }
-  }
-}
-
-.twes-auth-section-label {
-  margin: 0.25rem 0 0;
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-label-small);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-// « Essayer la démo » under the sign-in form: its heading, a line, then one choice row per country.
-.twes-auth-demo {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--mat-sys-outline-variant);
-}
-
-// A choice row inside the card: icon tile, two lines, a chevron.
-.twes-auth-option {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: var(--radius-xl);
-  background: transparent;
-  color: var(--mat-sys-on-surface);
-  font: inherit;
-  text-align: start;
-  cursor: pointer;
-  transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);
-
-  &:hover {
-    background-color: var(--twes-accent-hover);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--twes-focus);
-    outline-offset: 2px;
-  }
-
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
-
-  > .mat-icon:last-child {
-    margin-inline-start: auto;
-    color: var(--mat-sys-on-surface-variant);
-  }
-}
-
-.twes-auth-option-icon {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--radius-control);
-  background-color: var(--twes-accent-soft);
-  color: var(--twes-accent-text);
-}
-
-.twes-auth-option-text {
-  display: flex;
-  flex-direction: column;
-
-  strong {
-    font-weight: var(--font-weight-semibold);
-  }
-
-  span {
-    color: var(--mat-sys-on-surface-variant);
-    font: var(--mat-sys-body-small);
-  }
-}
-
-.twes-auth-footer {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  // Stacked and centred: the page's own line (the API status on sign-in) above, the legal line centred under it.
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  text-align: center;
-  min-height: 1.5rem;
-  padding: 0 1rem 1rem;
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-body-small);
-
-  p {
-    margin: 0;
-  }
-}
-
-.twes-auth-status::before {
-  content: '';
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-inline-end: 0.5rem;
-  border-radius: 50%;
-  background-color: var(--twes-status-neutral-dot, currentColor);
-  vertical-align: 0.05em;
-}
-
-.twes-auth-status[data-status='ok']::before {
-  background-color: var(--twes-status-success-dot, currentColor);
-}
-
-.twes-auth-status[data-status='degraded']::before {
-  background-color: var(--twes-status-warning-dot, currentColor);
-}
-
-.twes-auth-status[data-status='unreachable']::before {
-  background-color: var(--twes-status-danger-dot, currentColor);
-}
-
-// The scene behind the card: a few documents a business keeps here, tilted and quiet. Wide screens only: at 1024 px the
-// cards ran under the sign-in card, a total cut to « 1 428 » and a chart half hidden.
-.twes-auth-scene {
-  display: none;
-}
-
-@media (min-width: 1280px) {
-  .twes-auth-scene {
-    position: absolute;
-    inset: 0;
-    display: block;
-    pointer-events: none;
-    user-select: none;
-  }
-}
-
-.twes-scene-card {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  box-sizing: border-box;
-  padding: 1rem 1.125rem;
-  border-radius: var(--radius-2xl);
-  background-color: color-mix(in oklch, var(--mat-sys-surface) 88%, transparent);
-  box-shadow: var(--twes-shadow-2);
-  color: var(--mat-sys-on-surface);
-
-  p {
-    margin: 0;
-  }
-}
-
-.twes-scene-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.twes-scene-meta {
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-body-small);
-}
-
-.twes-scene-title {
-  font: var(--mat-sys-title-small);
-  font-weight: var(--font-weight-strong);
-}
-
-.twes-scene-amount {
-  font: var(--mat-sys-title-medium);
-  font-weight: var(--font-weight-bold);
-  font-variant-numeric: tabular-nums;
-}
-
-.twes-scene-amount-success {
-  margin-inline-start: auto;
-  color: var(--twes-status-success-fg, inherit);
-}
-
-.twes-scene-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-pill);
-  background-color: var(--twes-status-success-bg, transparent);
-  color: var(--twes-status-success-fg, inherit);
-  font: var(--mat-sys-label-medium);
-
-  .mat-icon {
-    width: 0.875rem;
-    height: 0.875rem;
-    font-size: var(--text-sm);
-  }
-}
-
-.twes-scene-line {
-  display: block;
-  height: 0.5rem;
-  border-radius: var(--radius-pill);
-  background-color: var(--mat-sys-surface-container-high);
-}
-
-.twes-scene-line-short {
-  width: 70%;
-}
-
-.twes-scene-icon {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--radius-xl);
-  background-color: var(--twes-accent-soft);
-  color: var(--twes-accent-text);
-}
-
-.twes-scene-icon-success {
-  background-color: var(--twes-status-success-bg, transparent);
-  color: var(--twes-status-success-fg, inherit);
-}
-
-.twes-scene-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
-  height: 3.5rem;
-
-  span {
-    flex: 1;
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    background-color: var(--twes-accent-soft);
-  }
-
-  .twes-scene-bar-strong {
-    background-color: var(--twes-accent-indicator);
-  }
-}
-
-.twes-scene-gauge {
-  display: block;
-  height: 0.375rem;
-  border-radius: var(--radius-pill);
-  background-color: var(--mat-sys-surface-container-high);
-
-  span {
-    display: block;
-    width: 34%;
-    height: 100%;
-    border-radius: inherit;
-    background-color: var(--twes-status-warning-dot, currentColor);
-  }
-}
-
-.twes-scene-invoice {
-  top: 11%;
-  inset-inline-start: 6%;
-  width: 21rem;
-  transform: rotate(-4deg);
-}
-
-.twes-scene-chart {
-  top: 40%;
-  inset-inline-start: 18%;
-  width: 13rem;
-  transform: rotate(-6deg);
-  opacity: 0.8;
-}
-
-.twes-scene-delivery {
-  bottom: 24%;
-  inset-inline-start: 10%;
-  flex-direction: row;
-  align-items: center;
-  width: 19rem;
-  transform: rotate(3deg);
-}
-
-.twes-scene-payment {
-  top: 10%;
-  inset-inline-end: 6%;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.75rem;
-  width: 19rem;
-  transform: rotate(4deg);
-}
-
-.twes-scene-stock {
-  bottom: 22%;
-  inset-inline-end: 6%;
-  width: 18rem;
-  transform: rotate(-3deg);
 }
 
 // Held for one frame while the theme's colours change (ThemeFacade): without it every colour transition fades from the
@@ -2655,7 +2230,7 @@ tr.mat-mdc-row.twes-row-active > td.twes-row-actions {
   row-gap: 0.5rem;
   padding: 0.75rem;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: var(--mat-sys-corner-medium);
+  border-radius: var(--radius-card);
   background: var(--mat-sys-surface-container-low);
 }
 
@@ -2747,14 +2322,6 @@ li.twes-row-new.twes-list-card {
   color: var(--twes-status-danger-dot, var(--mat-sys-error));
 }
 
-.twes-auth-notice {
-  padding: 0.625rem 0.875rem;
-  border-radius: var(--radius-control);
-  background-color: var(--mat-sys-secondary-container);
-  color: var(--mat-sys-on-secondary-container);
-  font: var(--mat-sys-body-medium);
-}
-
 @media (prefers-reduced-motion: reduce) {
   /* A still bar says "working" as well as a moving one, without the motion. */
   .twes-activity-progress .mdc-linear-progress__bar {
@@ -2816,5 +2383,5 @@ li.twes-row-new.twes-list-card {
 .twes-tour-card {
   background-color: var(--mat-sys-surface-container-high);
   color: var(--mat-sys-on-surface);
-  box-shadow: var(--mat-sys-level3);
+  box-shadow: var(--twes-shadow-2);
 }

@@ -2,7 +2,7 @@
   <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
     <div class="flex flex-col gap-1">
       <h1
-        class="text-3xl font-semibold"
+        class="text-title"
         data-testid="quote-title"
         [attr.aria-hidden]="!current() && id() !== null ? true : null"
       >
@@ -225,7 +225,7 @@
     <mat-card data-testid="quote-totals">
       <mat-card-content>
         <div class="flex flex-col gap-2">
-          <h2 class="text-xl font-semibold">{{ 'quotes.totals.title' | translate }}</h2>
+          <h2 class="text-heading">{{ 'quotes.totals.title' | translate }}</h2>
           <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
             <dt>{{ 'quotes.totals.subtotal' | translate }}</dt>
             <dd class="text-end">{{ totals.subtotalNet | amount: scale() }}</dd>
@@ -281,7 +281,7 @@
       <mat-card data-testid="quote-deposits">
         <mat-card-content>
           <div class="flex flex-col gap-2">
-            <h2 class="text-xl font-semibold">{{ 'quotes.deposits.title' | translate }}</h2>
+            <h2 class="text-heading">{{ 'quotes.deposits.title' | translate }}</h2>
             <ul class="flex flex-col gap-1 tabular-nums">
               @for (deposit of deposits(); track deposit.invoiceId; let i = $index) {
                 <li
@@ -312,7 +312,7 @@
       <mat-card data-testid="quote-deliveries">
         <mat-card-content>
           <div class="flex flex-col gap-2">
-            <h2 class="text-xl font-semibold">{{ 'deliveries.card.title' | translate }}</h2>
+            <h2 class="text-heading">{{ 'deliveries.card.title' | translate }}</h2>
             <ul class="flex flex-col gap-1">
               @for (note of deliveryNotes(); track note.deliveryNoteId; let i = $index) {
                 <li
@@ -359,7 +359,7 @@
       <mat-card-content>
         <div class="flex flex-col gap-4">
           <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
-            <h2 class="text-xl font-semibold">{{ 'quotes.attachments.title' | translate }}</h2>
+            <h2 class="text-heading">{{ 'quotes.attachments.title' | translate }}</h2>
             @if (mayWrite()) {
               <app-file-drop
                 class="w-full max-w-sm"

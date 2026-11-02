@@ -7,7 +7,7 @@
           {{ today }}
         </p>
       }
-      <h1 class="text-3xl font-semibold" data-testid="greeting">
+      <h1 class="text-title" data-testid="greeting">
         {{ 'hello.greeting' | translate: { name: me.user.displayName } }}
       </h1>
       @if (me.company; as company) {

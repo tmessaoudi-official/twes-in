@@ -40,7 +40,7 @@ export function lockoutRisk(mfa: MfaStatus): LockoutRisk | null {
   template: `
     @if (risk(); as risk) {
       <section
-        class="flex flex-col gap-3 rounded-md border border-outline-variant p-4"
+        class="flex flex-col gap-3 rounded-card border border-outline-variant p-4"
         data-testid="mfa-lockout"
       >
         <p class="m-0" data-testid="mfa-lockout-said">

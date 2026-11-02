@@ -1,5 +1,5 @@
 <section class="flex max-w-7xl flex-col gap-6">
-  <h1 class="text-3xl font-semibold" data-testid="platform-title">
+  <h1 class="text-title" data-testid="platform-title">
     {{ 'platform.title' | translate }}
   </h1>
 
@@ -81,7 +81,7 @@
             aria-labelledby="platform-content-title"
             data-testid="platform-content"
           >
-            <h2 id="platform-content-title" class="text-xl font-semibold">
+            <h2 id="platform-content-title" class="text-heading">
               {{ 'platform.content.title' | translate }}
             </h2>
             <div class="grid gap-4 sm:grid-cols-2">
@@ -467,7 +467,7 @@
 
           <section class="flex flex-col gap-3">
             <div class="flex flex-wrap items-baseline justify-between gap-3">
-              <h2 class="text-xl font-semibold">{{ 'platform.waiting.title' | translate }}</h2>
+              <h2 class="text-heading">{{ 'platform.waiting.title' | translate }}</h2>
               @if (waitingTotal() > waiting().length) {
                 <a
                   mat-stroked-button
@@ -513,7 +513,7 @@
       @case ('companies') {
         <div class="flex flex-col gap-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-xl font-semibold">{{ 'platform.companies.title' | translate }}</h2>
+            <h2 class="text-heading">{{ 'platform.companies.title' | translate }}</h2>
             <button
               mat-flat-button
               type="button"
@@ -775,7 +775,7 @@
 
       @case ('accounts') {
         <div class="flex flex-col gap-4">
-          <h2 class="text-xl font-semibold">{{ 'platform.accounts.title' | translate }}</h2>
+          <h2 class="text-heading">{{ 'platform.accounts.title' | translate }}</h2>
           <app-data-list
             [descriptor]="accountsList()"
             [rows]="accounts()"
@@ -829,7 +829,7 @@
 
       @case ('payments') {
         <section class="flex flex-col gap-3">
-          <h2 class="text-xl font-semibold">{{ 'platform.payments.title' | translate }}</h2>
+          <h2 class="text-heading">{{ 'platform.payments.title' | translate }}</h2>
           @for (payment of waitingPayments(); track payment.id) {
             <mat-card appearance="outlined" [attr.data-testid]="'payment-' + payment.id">
               <mat-card-content>
@@ -908,7 +908,7 @@
 
       @case ('demand') {
         <section class="flex flex-col gap-3" aria-labelledby="platform-demand-title">
-          <h2 id="platform-demand-title" class="text-xl font-semibold">
+          <h2 id="platform-demand-title" class="text-heading">
             {{ 'platform.demand.title' | translate }}
           </h2>
           <p class="max-w-prose text-sm">{{ 'platform.demand.intro' | translate }}</p>

@@ -1,11 +1,11 @@
 <section
   [attr.data-testid]="testId()"
   [attr.aria-labelledby]="testId() + '-title'"
-  class="flex items-start gap-2 rounded-lg border border-outline-variant p-3"
+  class="flex items-start gap-2 rounded-card border border-outline-variant p-3"
 >
   <mat-icon aria-hidden="true">fact_check</mat-icon>
   <div class="flex min-w-0 flex-col gap-1">
-    <h2 [id]="testId() + '-title'" class="font-medium">{{ 'check.panel.title' | translate }}</h2>
+    <h2 [id]="testId() + '-title'" class="text-section">{{ 'check.panel.title' | translate }}</h2>
     @if (marked()) {
       <p [attr.data-testid]="testId() + '-marked'">
         {{ 'check.marked' | translate }}

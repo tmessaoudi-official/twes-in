@@ -26,7 +26,7 @@
     >
       <!-- In full screen the title stays the page's heading for whoever reads it, and gives its room to the bar. -->
       <h1
-        class="twes-map-title me-auto text-3xl font-semibold"
+        class="twes-map-title me-auto text-title"
         [class.sr-only]="full()"
         data-testid="stock-map-title"
       >
@@ -337,7 +337,7 @@
         }
         @if (found(); as now) {
           <div
-            class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-outline-variant bg-surface-container-low p-4 lg:flex-1 lg:px-4 lg:py-2"
+            class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 rounded-card border border-outline-variant bg-surface-container-low p-4 lg:flex-1 lg:px-4 lg:py-2"
             role="status"
             data-testid="stock-map-found"
           >
@@ -408,7 +408,7 @@
         } @else if (note(); as looking) {
           <!-- A delivery note's lines, looked for together from the note: what to pick, and from where. -->
           <div
-            class="flex min-w-0 flex-wrap items-start gap-x-4 gap-y-2 rounded-xl border border-outline-variant bg-surface-container-low p-4 lg:flex-1 lg:px-4 lg:py-2"
+            class="flex min-w-0 flex-wrap items-start gap-x-4 gap-y-2 rounded-card border border-outline-variant bg-surface-container-low p-4 lg:flex-1 lg:px-4 lg:py-2"
             role="status"
             data-testid="stock-map-note"
           >
@@ -523,10 +523,10 @@
         is not theirs.
       -->
       <section
-        class="flex max-w-2xl flex-col gap-4 rounded-xl border border-outline-variant p-4"
+        class="flex max-w-2xl flex-col gap-4 rounded-card border border-outline-variant p-4"
         data-testid="stock-map-first-use"
       >
-        <h2 class="text-xl font-semibold">{{ 'inventory.plan.first.title' | translate }}</h2>
+        <h2 class="text-heading">{{ 'inventory.plan.first.title' | translate }}</h2>
         <p data-testid="stock-map-no-floor">{{ 'inventory.plan.no_floor' | translate }}</p>
         <app-stock-map-first-steps [pictured]="true" />
         @if (!floorFormGroup()) {
@@ -572,7 +572,7 @@
         <!-- ——— the rail: floors, the lists that are the plan's keyboard path, and in Aménager the tools ——— -->
         <div class="twes-map-rail flex min-w-0 flex-col gap-4 [grid-area:rail]">
           <nav class="flex flex-col gap-1" [appLabel]="'inventory.plan.floors' | translate">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+            <h2 class="text-overline uppercase text-on-surface-variant">
               {{ 'inventory.plan.floors' | translate }}
             </h2>
             <!--
@@ -642,7 +642,7 @@
 
           @if (!arranging()) {
             <div class="flex flex-col gap-1" data-testid="stock-map-legend">
-              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              <h2 class="text-overline uppercase text-on-surface-variant">
                 {{ 'inventory.plan.legend' | translate }}
               </h2>
               <span class="flex items-center gap-2 text-sm">
@@ -689,7 +689,7 @@
                 said once. Each is a BUTTON and not something only a pointer can take hold of: a shape is posed at the
                 middle of the plan with its form open, so the palette is as usable from a keyboard as from a hand.
               -->
-              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              <h2 class="text-overline uppercase text-on-surface-variant">
                 {{ 'inventory.plan.pose' | translate }}
               </h2>
               <p class="text-sm text-on-surface-variant" data-testid="stock-map-pose-rule">
@@ -749,9 +749,7 @@
                   The structure layer's four tools. Nothing posed here is a stock location and none of it ever will be:
                   a wall holds no goods, so it appears in no list, no import and no movement's location picker.
                 -->
-                <h2
-                  class="mt-2 text-sm font-semibold uppercase tracking-wide text-on-surface-variant"
-                >
+                <h2 class="mt-2 text-overline uppercase text-on-surface-variant">
                   {{ 'inventory.plan.structure' | translate }}
                 </h2>
                 <p class="text-sm text-on-surface-variant" data-testid="stock-structure-hint">
@@ -783,7 +781,7 @@
             pointing at the drawing, the building included.
           -->
           <div class="flex flex-col gap-1">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+            <h2 class="text-overline uppercase text-on-surface-variant">
               {{ 'inventory.plan.drawn' | translate }}
             </h2>
             @for (shape of shapes(); track shape.drawing.id) {
@@ -812,7 +810,7 @@
 
           @if (builtShapes().length > 0) {
             <div class="flex flex-col gap-1">
-              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              <h2 class="text-overline uppercase text-on-surface-variant">
                 {{ 'inventory.plan.building' | translate }}
               </h2>
               @for (built of builtShapes(); track built.piece.id) {
@@ -847,7 +845,7 @@
               named, or moving from one to the other — so this is the reader's choice, remembered, and not a column.
             -->
             <div class="flex flex-col gap-1">
-              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              <h2 class="text-overline uppercase text-on-surface-variant">
                 {{ 'inventory.plan.labels' | translate }}
               </h2>
               <div
@@ -875,7 +873,7 @@
               and still reachable by keyboard, it simply stops answering the pointer, which only matters while arranging.
             -->
             <div class="flex flex-col gap-1">
-              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              <h2 class="text-overline uppercase text-on-surface-variant">
                 {{ 'inventory.plan.layers' | translate }}
               </h2>
               <ul class="flex flex-col gap-1" data-testid="stock-map-layers">
@@ -959,7 +957,7 @@
               />
             } @placeholder {
               <p
-                class="flex h-[55dvh] min-h-[20rem] items-center justify-center rounded-xl border border-outline-variant text-on-surface-variant"
+                class="flex h-[55dvh] min-h-[20rem] items-center justify-center rounded-card border border-outline-variant text-on-surface-variant"
                 data-testid="stock-volume-loading"
               >
                 {{ 'inventory.plan.volume.loading' | translate }}
@@ -967,7 +965,7 @@
             } @error {
               <p
                 role="status"
-                class="rounded-xl border border-outline-variant p-4 text-on-surface-variant"
+                class="rounded-card border border-outline-variant p-4 text-on-surface-variant"
                 data-testid="stock-volume-failed"
               >
                 {{ 'inventory.plan.volume.failed' | translate }}
@@ -976,7 +974,7 @@
           </div>
         } @else {
           <div
-            class="twes-map-board flex min-w-0 flex-col self-start overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest [grid-area:board]"
+            class="twes-map-board flex min-w-0 flex-col self-start overflow-hidden rounded-card border border-outline-variant bg-surface-container-lowest [grid-area:board]"
           >
             <div
               class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant px-3 py-2 text-sm"
@@ -1444,7 +1442,7 @@
                   !tracing()
                 ) {
                   <div
-                    class="pointer-events-none absolute start-3 top-3 flex max-w-sm flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-4"
+                    class="pointer-events-none absolute start-3 top-3 flex max-w-sm flex-col gap-3 rounded-card border border-outline-variant bg-surface p-4"
                     data-testid="stock-map-first-floor"
                   >
                     <app-stock-map-first-steps
@@ -1610,7 +1608,7 @@
           }
           @if (floorFormGroup()) {
             <div
-              class="relative twes-form-stacked flex flex-col gap-4 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4"
+              class="relative twes-form-stacked flex flex-col gap-4 overflow-y-auto rounded-card border border-outline-variant bg-surface p-4"
             >
               <ng-container [ngTemplateOutlet]="floorFormTemplate" />
             </div>
@@ -1620,7 +1618,7 @@
               while the piece is dragged. It scrolls inside itself with Enregistrer pinned at its foot.
             -->
             <div
-              class="relative twes-form-stacked flex flex-col gap-4 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4"
+              class="relative twes-form-stacked flex flex-col gap-4 overflow-y-auto rounded-card border border-outline-variant bg-surface p-4"
               data-testid="stock-map-inspector"
             >
               @if (drawingFormGroup(); as group) {
@@ -1699,10 +1697,10 @@
           } @else if (chosenDrawings().length > 1) {
             <!-- A group: what it is, and how to let it go. What it can be told comes with it (§ 7, 2026-10-09 17:45). -->
             <div
-              class="flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-4"
+              class="flex flex-col gap-3 rounded-card border border-outline-variant bg-surface p-4"
               data-testid="stock-map-chosen"
             >
-              <h2 class="text-lg font-semibold" aria-live="polite">
+              <h2 class="text-heading" aria-live="polite">
                 {{ 'inventory.plan.chosen' | translate: { count: chosenDrawings().length } }}
               </h2>
               <p class="text-sm text-on-surface-variant">
@@ -1747,11 +1745,11 @@
             </div>
           } @else if (selected(); as drawing) {
             <div
-              class="relative flex flex-col gap-3 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4"
+              class="relative flex flex-col gap-3 overflow-y-auto rounded-card border border-outline-variant bg-surface p-4"
               data-testid="stock-map-selection"
             >
               <div class="flex flex-col gap-1">
-                <h2 class="text-lg font-semibold">
+                <h2 class="text-heading">
                   <bdi>{{ drawing.locationCode }}</bdi> · <bdi>{{ drawing.locationName }}</bdi>
                 </h2>
                 <p class="text-sm text-on-surface-variant">
@@ -1840,7 +1838,7 @@
                 -->
                 @if (repeating()) {
                   <div
-                    class="flex flex-col gap-3 rounded-lg border border-outline-variant p-3"
+                    class="flex flex-col gap-3 rounded-card border border-outline-variant p-3"
                     data-testid="stock-repeat-panel"
                   >
                     <h3
@@ -1957,10 +1955,10 @@
             </div>
           } @else if (selectedStructure(); as piece) {
             <div
-              class="flex flex-col gap-1 rounded-xl border border-outline-variant bg-surface p-4"
+              class="flex flex-col gap-1 rounded-card border border-outline-variant bg-surface p-4"
               data-testid="stock-map-selection"
             >
-              <h2 class="text-lg font-semibold">
+              <h2 class="text-heading">
                 {{ 'inventory.plan.structure_kinds.' + piece.kind | translate }}
                 @if (piece.name !== '') {
                   · {{ piece.name }}
@@ -1993,10 +1991,10 @@
           } @else if (found() !== null && foundPlaces().length > 0) {
             <!-- « Où elle se trouve »: each drawn place holding it, this floor first; a card goes to the place. -->
             <div
-              class="flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-4"
+              class="flex flex-col gap-3 rounded-card border border-outline-variant bg-surface p-4"
               data-testid="stock-map-where"
             >
-              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              <h2 class="text-overline uppercase text-on-surface-variant">
                 {{ 'inventory.plan.search.where' | translate }}
               </h2>
               <ul class="flex flex-col gap-2">
@@ -2060,10 +2058,10 @@
           } @else if (note(); as looking) {
             <!-- A note's lines one by one, in the note's order: where to pick each, this floor first. -->
             <div
-              class="flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-4"
+              class="flex flex-col gap-3 rounded-card border border-outline-variant bg-surface p-4"
               data-testid="stock-map-note-lines"
             >
-              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              <h2 class="text-overline uppercase text-on-surface-variant">
                 {{ 'inventory.plan.search.where_lines' | translate }}
               </h2>
               @for (group of noteGroups(); track group.product.productId) {
@@ -2131,7 +2129,7 @@
           } @else {
             <!-- Only beside the board: narrower, a sentence above the floors would push them down for nothing. -->
             <p
-              class="hidden rounded-xl border border-dashed border-outline-variant p-4 text-sm text-on-surface-variant 2xl:block"
+              class="hidden rounded-card border border-dashed border-outline-variant p-4 text-sm text-on-surface-variant 2xl:block"
               data-testid="stock-map-panel-hint"
             >
               {{

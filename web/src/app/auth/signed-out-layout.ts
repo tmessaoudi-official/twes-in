@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { booleanAttribute, ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import {
+  booleanAttribute,
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  ViewEncapsulation,
+} from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Brand } from '../shared/brand/brand';
@@ -29,6 +36,10 @@ import { SchemeMenu } from '../shared/theme/scheme-menu';
     TranslatePipe,
   ],
   templateUrl: './signed-out-layout.html',
+  // Its pages write these classes in their own templates, so the styles are not scoped to the layout's view; they load
+  // with it, off the signed-in first page.
+  styleUrls: ['./signed-out-layout.scss', './signed-out-scene.scss'],
+  encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SignedOutLayout {

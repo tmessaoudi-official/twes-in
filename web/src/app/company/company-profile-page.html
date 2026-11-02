@@ -2,7 +2,7 @@
   <!-- The bar stays in view while the page scrolls: the save sat below the first screen
        (design review finding 4). -->
   <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-3xl font-semibold" data-testid="profile-title">
+    <h1 class="text-title" data-testid="profile-title">
       {{ 'company.profile.title' | translate }}
     </h1>
     <app-record-bar [changes]="changes()" [actions]="recordActions()" />
@@ -26,7 +26,7 @@
         <!-- Its name first, then the picture beside what changes it: led by the picture, the card put the preview
              above its own heading once a phone wrapped it. -->
         <div class="flex flex-col gap-2">
-          <h2 class="text-lg font-semibold" data-testid="profile-logo-title">
+          <h2 class="text-heading" data-testid="profile-logo-title">
             {{ 'company.profile.logo.title' | translate }}
           </h2>
           <p class="text-sm text-on-surface-variant">

@@ -1,6 +1,6 @@
 <section class="flex flex-col gap-6">
   <header class="flex flex-col gap-1">
-    <h1 class="text-3xl font-semibold" data-testid="import-title">
+    <h1 class="text-title" data-testid="import-title">
       {{ 'import.title' | translate: { subject: 'import.subjects.' + subjectKey() | translate } }}
     </h1>
     @if (guide(); as guide) {
@@ -21,7 +21,7 @@
 
   @if (guide(); as guide) {
     <div class="flex flex-col gap-4">
-      <h2 class="text-xl font-semibold">{{ 'import.file_title' | translate }}</h2>
+      <h2 class="text-heading">{{ 'import.file_title' | translate }}</h2>
 
       <app-file-drop
         class="w-full max-w-md"
@@ -206,7 +206,7 @@
 
   @if (report(); as report) {
     <div class="flex flex-col gap-3" data-testid="import-report">
-      <h2 class="text-xl font-semibold">
+      <h2 class="text-heading">
         {{ (report.committed ? 'import.stored_title' : 'import.preview_title') | translate }}
       </h2>
       @if (report.encoding; as encoding) {
@@ -373,7 +373,7 @@
   }
   @if (undone(); as undone) {
     <div class="flex flex-col gap-3" data-testid="import-undone">
-      <h2 class="text-xl font-semibold">{{ 'import.undo.title' | translate }}</h2>
+      <h2 class="text-heading">{{ 'import.undo.title' | translate }}</h2>
       <div class="flex flex-wrap items-center gap-3">
         <app-status-badge tone="neutral" data-testid="import-undone-removed">
           {{ 'import.undo.removed' | translate: { count: undone.removed.length } }}
@@ -432,7 +432,7 @@
 
   @if (recent().length > 0) {
     <div class="flex flex-col gap-3" data-testid="import-recent">
-      <h2 class="text-xl font-semibold">{{ 'import.recent.title' | translate }}</h2>
+      <h2 class="text-heading">{{ 'import.recent.title' | translate }}</h2>
       <p class="text-sm text-on-surface-variant">{{ 'import.recent.intro' | translate }}</p>
       <ul class="m-0 flex list-none flex-col gap-3 p-0">
         @for (run of recent(); track run.id) {
@@ -481,7 +481,7 @@
 
   @if (guide(); as guide) {
     <div class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold">{{ 'import.columns_title' | translate }}</h2>
+      <h2 class="text-heading">{{ 'import.columns_title' | translate }}</h2>
       <div class="flex flex-wrap items-center gap-3">
         <a
           mat-stroked-button

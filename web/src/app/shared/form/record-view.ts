@@ -48,7 +48,7 @@ interface ShownSection {
     <div class="flex flex-col gap-6" [attr.data-testid]="testId()">
       @for (section of sections(); track section.id) {
         <div class="flex flex-col gap-2" [attr.data-section]="section.id">
-          <h2 class="text-lg font-semibold">{{ section.title | translate }}</h2>
+          <h2 class="text-section">{{ section.title | translate }}</h2>
           <dl class="grid gap-x-6 gap-y-2 @min-[30rem]:grid-cols-2">
             @if (lead(); as lead) {
               @if (lead.section === section.id) {

@@ -1,9 +1,9 @@
 <section class="flex flex-col gap-4" data-testid="purchase-order-lines">
-  <h2 class="text-xl font-semibold">{{ 'purchases.lines.title' | translate }}</h2>
+  <h2 class="text-heading">{{ 'purchases.lines.title' | translate }}</h2>
 
   @for (line of groups(); track line; let i = $index) {
     <fieldset
-      class="flex min-w-0 flex-col gap-4 rounded-xl border border-outline-variant p-4"
+      class="flex min-w-0 flex-col gap-4 rounded-card border border-outline-variant p-4"
       [formGroup]="line"
       [attr.data-testid]="'purchase-line-' + i"
     >

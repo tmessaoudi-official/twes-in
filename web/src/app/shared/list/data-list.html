@@ -226,7 +226,7 @@
       [id]="testId() + '-views'"
       role="group"
       [attr.aria-label]="'list.views' | translate"
-      class="flex flex-col gap-2 rounded-xl border border-outline-variant bg-surface-container-low p-2"
+      class="flex flex-col gap-2 rounded-card border border-outline-variant bg-surface-container-low p-2"
     >
       @if (views().length === 0) {
         <p class="px-2 py-1 text-sm text-on-surface-variant" data-testid="list-views-none">
@@ -294,7 +294,7 @@
       [id]="testId() + '-columns'"
       role="group"
       [attr.aria-label]="'list.columns' | translate"
-      class="flex flex-col gap-1 rounded-xl border border-outline-variant bg-surface-container-low p-2"
+      class="flex flex-col gap-1 rounded-card border border-outline-variant bg-surface-container-low p-2"
     >
       <ul cdkDropList (cdkDropListDropped)="drop($event)" class="flex flex-col">
         @for (entry of chooser(); track entry.column.id; let first = $first, last = $last) {

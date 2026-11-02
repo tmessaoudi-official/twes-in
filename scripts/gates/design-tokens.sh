@@ -46,7 +46,7 @@ fi
 # a [class.x] or [ngClass] binding, a TypeScript string with its comments taken out), so a word in prose is no class.
 # An arbitrary value in those namespaces is refused, as is a style binding of a font, radius, shadow or motion property;
 # geometry (widths, grids, z) keeps its arbitrary values. DESIGN_TOKENS_FLOOR: the fewest such classes a tree reads.
-floor=${DESIGN_TOKENS_FLOOR:-2100}
+floor=${DESIGN_TOKENS_FLOOR:-1950}
 steps=$(perl -ne '
   next unless /^\s*--(color|text|font-weight|font|radius|shadow|leading|tracking|ease)-([a-z0-9-]+)\s*:/;
   my ($space, $name) = ($1, $2); next if $name =~ /--/;
@@ -131,6 +131,56 @@ if ((${#templates[@]})); then
   read_count=$(sed -n 's/^COUNT //p' <<<"$scale_out")
   while IFS= read -r line; do [[ -n "$line" && "$line" != COUNT* ]] && wrong+=("$line"); done <<<"$scale_out"
 fi
+# A heading takes its role and a card its kind: an h1 or h2 names no raw text size (text-xs to text-4xl, behind a
+# variant too, even a declared one) but a role step, text-title for a page, text-heading or text-section below it; a
+# mat-card or a twes-card names no raw radius (rounded-sm to rounded-3xl) but rounded-card. A tag is read whole, over
+# its lines, in templates and in the inline templates of TypeScript. A heading in a role is one naming a role step, a
+# dialog title (styles.scss gives mat-dialog-title the heading's step) or a rail's overline (it reads text-overline).
+# DESIGN_TOKENS_HEADINGS_FLOOR and DESIGN_TOKENS_CARDS_FLOOR: the fewest of each a tree reads, so a parser that stops
+# finding them reds rather than passing over nothing.
+headings_floor=${DESIGN_TOKENS_HEADINGS_FLOOR:-214}
+cards_floor=${DESIGN_TOKENS_CARDS_FLOOR:-95}
+headings_read=0; cards_read=0
+if ((${#templates[@]})); then
+  role_out=$(cd "$root" && perl -0777 -ne '
+    BEGIN { $headings = 0; $cards = 0; }
+    my $text = $_;
+    my @regions;
+    if ($ARGV =~ /\.html$/) { @regions = ([0, $text]); }
+    else {
+      while ($text =~ /`([^`]*)`/gs) {
+        my ($start, $string) = ($-[1], $1);
+        push @regions, [$start, $string] if $string =~ /<[a-zA-Z]/;
+      }
+    }
+    my $attrs = qr/(?:[^>"\x27]|"[^"]*"|\x27[^\x27]*\x27)*/;
+    for my $region (@regions) {
+      my ($offset, $body) = @$region;
+      while ($body =~ /<([a-z][\w-]*)\b($attrs)>/g) {
+        my ($tag, $inside, $at) = ($1, $2, $offset + $-[0]);
+        my $classes = join " ", ($inside =~ /(?:^|\s)class="([^"]*)"/g), ($inside =~ /\[class\.([^\]=\s]+)\]/g);
+        my $heading = $tag eq "h1" || $tag eq "h2";
+        my $card = $tag eq "mat-card" || $classes =~ /(?:^|\s)twes-card(?:\s|$)/;
+        next unless $heading || $card;
+        my $line = 1 + (substr($text, 0, $at) =~ tr/\n//);
+        if ($heading) {
+          my @raw = $classes =~ /(?:^|\s)((?:[\w-]+:)*text-(?:xs|sm|base|lg|xl|2xl|3xl|4xl))(?=\s|$)/g;
+          print "$ARGV:$line heading with a raw text size: " . join(", ", @raw) . " (a role: text-title, text-heading or text-section)\n" if @raw;
+          $headings++ if $classes =~ /(?:^|\s)(?:[\w-]+:)*(?:text-(?:title|heading|section|overline|display)|twes-rail-overline)(?:\s|$)/ || $inside =~ /(?:^|\s)mat-dialog-title(?:[\s=]|$)/;
+        }
+        if ($card) {
+          $cards++;
+          my @raw = $classes =~ /(?:^|\s)((?:[\w-]+:)*rounded(?:-(?:t|r|b|l|s|e|tl|tr|br|bl|ss|se|es|ee))?-(?:sm|md|lg|xl|2xl|3xl))(?=\s|$)/g;
+          print "$ARGV:$line card with a raw radius: " . join(", ", @raw) . " (rounded-card)\n" if @raw;
+        }
+      }
+    }
+    END { print "HEADINGS $headings\nCARDS $cards\n"; }
+  ' "${templates[@]}")
+  headings_read=$(sed -n 's/^HEADINGS //p' <<<"$role_out")
+  cards_read=$(sed -n 's/^CARDS //p' <<<"$role_out")
+  while IFS= read -r line; do [[ -n "$line" && "$line" != HEADINGS* && "$line" != CARDS* ]] && wrong+=("$line"); done <<<"$role_out"
+fi
 # Stylesheets read the same steps: web/src/styles.scss and every component stylesheet, outside @font-face (where a
 # family is declared) and the custom properties that define a token. A type size, weight or radius is a var() or a
 # keyword; a family a var() (or the icon font, which names an icon set, not a type choice); a shadow draws geometry
@@ -198,4 +248,12 @@ if ((read_count < floor)); then
   printf 'design-tokens: FAIL — %d type, radius and shadow classes read, below the floor of %d: a parser that finds nothing is no pass\n' "$read_count" "$floor"
   exit 1
 fi
-printf 'design-tokens: OK — %d files take their colours from the theme, none styled inline; %d type, radius and shadow classes read, each a declared step\n' "${#files[@]}" "$read_count"
+if ((headings_read < headings_floor)); then
+  printf 'design-tokens: FAIL — %d headings in a role, below the floor of %d: the h1 and h2 are no longer found, or one was removed on purpose (then set DESIGN_TOKENS_HEADINGS_FLOOR to the new count)\n' "$headings_read" "$headings_floor"
+  exit 1
+fi
+if ((cards_read < cards_floor)); then
+  printf 'design-tokens: FAIL — %d cards read, below the floor of %d: the mat-card and twes-card are no longer found, or one was removed on purpose (then set DESIGN_TOKENS_CARDS_FLOOR to the new count)\n' "$cards_read" "$cards_floor"
+  exit 1
+fi
+printf 'design-tokens: OK — %d files take their colours from the theme, none styled inline; %d type, radius and shadow classes read, each a declared step; %d headings in a role, %d cards in their corner\n' "${#files[@]}" "$read_count" "$headings_read" "$cards_read"

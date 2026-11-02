@@ -21,7 +21,7 @@ import { CompanyEntry } from './company-entry';
         class="mx-auto flex max-w-xl flex-col items-start gap-4 py-8"
         data-testid="company-proof-panel"
       >
-        <h1 class="m-0 text-2xl">
+        <h1 class="m-0 text-title">
           {{ 'company_proof.title' | translate: { company: asked.companyName } }}
         </h1>
         <p class="m-0">{{ 'company_proof.panel' | translate }}</p>

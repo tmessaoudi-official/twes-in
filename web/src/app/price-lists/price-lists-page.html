@@ -1,6 +1,6 @@
 <section class="flex max-w-6xl flex-col gap-6">
   <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-3xl font-semibold" data-testid="price-lists-title">
+    <h1 class="text-title" data-testid="price-lists-title">
       {{ 'price_lists.title' | translate }}
     </h1>
     @if (mayWrite() && editing() === null && company()) {
@@ -152,7 +152,7 @@
             <ng-container *ngTemplateOutlet="fieldConflict; context: { $implicit: field }" />
           }
 
-          <h2 class="text-lg font-semibold">{{ 'price_lists.prices.title' | translate }}</h2>
+          <h2 class="text-heading">{{ 'price_lists.prices.title' | translate }}</h2>
           @if (sync.conflicts().some(isPricesConflict)) {
             <app-part-conflict
               field="items"

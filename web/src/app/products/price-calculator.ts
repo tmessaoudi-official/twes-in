@@ -64,7 +64,7 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
   template: `
     <section class="flex flex-col gap-4" data-testid="price-calculator">
       <div class="flex flex-col gap-1">
-        <h2 class="m-0 text-lg font-medium">{{ 'products.calculator.title' | translate }}</h2>
+        <h2 class="m-0 text-heading">{{ 'products.calculator.title' | translate }}</h2>
         <p class="m-0 max-w-prose">{{ 'products.calculator.intro' | translate }}</p>
       </div>
 

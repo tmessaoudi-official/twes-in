@@ -1,7 +1,7 @@
 <app-page-tabs [tabs]="tabs" label="nav.stock">
   <section class="flex flex-col gap-6">
     <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
-      <h1 class="text-3xl font-semibold" data-testid="stock-movements-title">
+      <h1 class="text-title" data-testid="stock-movements-title">
         {{ 'inventory.movements.title' | translate }}
       </h1>
       <app-list-export [address]="exporter()" testId="stock-movements-export" />

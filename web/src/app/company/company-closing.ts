@@ -15,7 +15,7 @@ import { CompanyClosingActions } from './company-closing-actions';
   imports: [MatButtonModule, TranslatePipe],
   template: `
     <section class="flex max-w-xl flex-col gap-3" data-testid="company-closing">
-      <h2 class="text-lg font-semibold">{{ 'company.closing.title' | translate }}</h2>
+      <h2 class="text-heading">{{ 'company.closing.title' | translate }}</h2>
       <p class="m-0 text-sm text-on-surface-variant">{{ 'company.closing.intro' | translate }}</p>
       @if (owner()) {
         <div>

@@ -1,5 +1,5 @@
 <section class="flex max-w-3xl flex-col gap-4 p-4" data-testid="account-page">
-  <h1 class="text-2xl font-semibold">{{ 'account.title' | translate }}</h1>
+  <h1 class="text-title">{{ 'account.title' | translate }}</h1>
 
   <mat-tab-group
     data-testid="account-tabs"
@@ -48,7 +48,7 @@
                   (submit)="$event.preventDefault(); changePassword()"
                   data-testid="account-password"
                 >
-                  <h2 class="text-lg font-semibold">{{ 'account.password.title' | translate }}</h2>
+                  <h2 class="text-heading">{{ 'account.password.title' | translate }}</h2>
                   <p class="m-0 text-sm text-on-surface-variant">
                     {{ 'account.password.intro' | translate }}
                   </p>
@@ -174,7 +174,7 @@
             }
             @case ('preferences') {
               <div class="flex flex-col gap-3">
-                <h2 class="text-lg font-semibold">{{ 'account.display' | translate }}</h2>
+                <h2 class="text-heading">{{ 'account.display' | translate }}</h2>
                 <div class="grid gap-3 sm:grid-cols-3">
                   <app-select
                     [label]="'account.language' | translate"
@@ -243,7 +243,7 @@
               </div>
 
               <div class="flex flex-col gap-2">
-                <h2 class="text-lg font-semibold">{{ 'account.coming' | translate }}</h2>
+                <h2 class="text-heading">{{ 'account.coming' | translate }}</h2>
                 <mat-slide-toggle
                   data-testid="account-show-coming"
                   [checked]="theme.showComing()"
@@ -254,7 +254,7 @@
 
               @if (canPin()) {
                 <div class="flex flex-col gap-2">
-                  <h2 class="text-lg font-semibold">
+                  <h2 class="text-heading">
                     {{ 'account.company_at_sign_in' | translate }}
                   </h2>
                   <mat-slide-toggle
@@ -286,7 +286,7 @@
 
               <div class="flex flex-col gap-2" data-testid="account-shortcuts">
                 <div class="flex flex-wrap items-center gap-2">
-                  <h2 class="text-lg font-semibold">{{ 'account.shortcuts' | translate }}</h2>
+                  <h2 class="text-heading">{{ 'account.shortcuts' | translate }}</h2>
                   @if (customisedKeys()) {
                     <button
                       mat-button
@@ -329,7 +329,7 @@
             }
             @case ('device') {
               <div class="flex flex-col gap-2">
-                <h2 class="text-lg font-semibold">{{ 'account.scanning' | translate }}</h2>
+                <h2 class="text-heading">{{ 'account.scanning' | translate }}</h2>
                 <mat-slide-toggle
                   data-testid="account-scan-feedback"
                   [checked]="scanFeedback()"

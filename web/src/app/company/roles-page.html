@@ -1,5 +1,5 @@
 <section class="flex max-w-4xl flex-col gap-6">
-  <h1 class="text-3xl font-semibold" data-testid="roles-title">
+  <h1 class="text-title" data-testid="roles-title">
     {{ 'company.roles.title' | translate }}
   </h1>
   <p class="max-w-prose">{{ 'company.roles.intro' | translate }}</p>
@@ -89,7 +89,7 @@
         class="twes-document-header flex flex-wrap items-center justify-between gap-4"
         data-testid="role-editor-header"
       >
-        <h2 class="text-xl font-semibold">
+        <h2 class="text-heading">
           {{
             (creating() ? 'company.roles.new' : 'company.roles.editing')
               | translate: { name: openName() }

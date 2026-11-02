@@ -3,7 +3,7 @@
        them on this page (design review finding 4). -->
   <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
     <h1
-      class="text-3xl font-semibold"
+      class="text-title"
       data-testid="customer-title"
       [attr.aria-hidden]="!current() && id() !== null ? true : null"
     >
@@ -117,7 +117,7 @@
               aria-labelledby="customer-contacts-title"
             >
               <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
-                <h2 id="customer-contacts-title" class="text-xl font-semibold">
+                <h2 id="customer-contacts-title" class="text-heading">
                   {{ 'customers.contacts.title' | translate }}
                 </h2>
                 @if (mayWrite() && contactEditing() === null) {

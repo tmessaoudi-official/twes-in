@@ -1,5 +1,5 @@
 <section class="flex flex-col gap-6">
-  <h1 class="text-3xl font-semibold" data-testid="numbering-title">
+  <h1 class="text-title" data-testid="numbering-title">
     {{ 'company.numbering.title' | translate }}
   </h1>
   <p class="max-w-prose">{{ 'company.numbering.intro' | translate }}</p>
@@ -25,7 +25,7 @@
     @if (editing(); as row) {
       <mat-card>
         <mat-card-content>
-          <h2 class="mb-4 text-xl font-medium" data-testid="series-editing">
+          <h2 class="mb-4 text-heading" data-testid="series-editing">
             <bdi>{{ row.establishmentCode }}</bdi> ·
             {{ 'company.numbering.document_types.' + row.documentType | translate }}
           </h2>

@@ -1,5 +1,5 @@
 <section class="flex flex-col gap-4" data-testid="delivery-note-lines">
-  <h2 class="text-xl font-semibold">{{ 'delivery_notes.lines.title' | translate }}</h2>
+  <h2 class="text-heading">{{ 'delivery_notes.lines.title' | translate }}</h2>
 
   @if (readOnly()) {
     @if (groups().length > 0) {
@@ -12,7 +12,7 @@
   } @else {
     @for (line of groups(); track line; let i = $index) {
       <fieldset
-        class="flex min-w-0 flex-col gap-4 rounded-xl border border-outline-variant p-4"
+        class="flex min-w-0 flex-col gap-4 rounded-card border border-outline-variant p-4"
         [formGroup]="line"
         [attr.data-testid]="'line-' + i"
       >

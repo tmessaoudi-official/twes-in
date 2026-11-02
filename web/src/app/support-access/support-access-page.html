@@ -1,5 +1,5 @@
 <section class="flex max-w-3xl flex-col gap-6">
-  <h1 class="text-3xl font-semibold" data-testid="support-access-title">
+  <h1 class="text-title" data-testid="support-access-title">
     {{ 'support_access.title' | translate }}
   </h1>
   <p class="m-0 max-w-prose">
@@ -24,7 +24,7 @@
       {{ 'support_access.owner_only' | translate }}
     </p>
   } @else if (state(); as current) {
-    <section class="flex max-w-xl flex-col gap-3 rounded-lg border border-outline-variant p-4">
+    <section class="flex max-w-xl flex-col gap-3 rounded-card border border-outline-variant p-4">
       @if (until(); as closesAt) {
         <p class="m-0 flex items-center gap-2 font-medium" data-testid="support-access-open">
           <mat-icon aria-hidden="true">support_agent</mat-icon>

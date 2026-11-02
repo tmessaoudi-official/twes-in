@@ -978,20 +978,21 @@ describe('DataList', () => {
       expect(q('list-new')).toBeNull();
     });
 
-    it('asks for the size the person chose for every list, unless a shared address names its own', async () => {
+    // One page per case: two in one outran the five seconds under a loaded machine.
+    it.each<{ address: Record<string, string>; asked: number[]; named: string }>([
+      { address: {}, asked: [25], named: 'the size the person chose for every list' },
+      {
+        address: { size: '10' },
+        asked: [10],
+        named: 'the size a shared address names, over the person’s',
+      },
+    ])('asks for $named', async ({ address, asked }) => {
       server.destroy();
-      await mount(undefined, undefined, all, {}, '25');
+      await mount(undefined, undefined, all, address, '25');
       fixture.destroy();
       server = TestBed.createComponent(ServerHost);
       await settleServer();
-      expect(lastQuery()?.pageSize).toBe(25);
-
-      server.destroy();
-      await mount(undefined, undefined, all, { size: '10' }, '25');
-      fixture.destroy();
-      server = TestBed.createComponent(ServerHost);
-      await settleServer();
-      expect(queries().map((query) => query.pageSize)).toEqual([10]);
+      expect(queries().map((query) => query.pageSize)).toEqual(asked);
     });
 
     it('opens on the page, words, filter options, sort and size the address names', async () => {

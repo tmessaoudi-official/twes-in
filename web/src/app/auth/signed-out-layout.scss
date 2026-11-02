@@ -1,0 +1,288 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/*
+ * The signed-out pages' styles, loaded with the layout every one of them draws in, so none of it rides on the signed-in
+ * first page. Not encapsulated: the pages inside the layout use these classes in their own templates.
+ */
+
+// The pages shown before the shell (auth/signed-out-layout.html): the brand over one card, on a softly tinted ground.
+/* The layout, not its page, holds the window's height: a first visit's cookie notice above it then takes its share of
+   the height instead of pushing the page's foot below the window (row 149). */
+app-signed-out-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.twes-auth {
+  position: relative;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(60rem 40rem at 100% 0%, var(--twes-accent-soft), transparent 70%),
+    var(--mat-sys-surface-container-low);
+}
+
+.twes-auth-toolbar {
+  position: absolute;
+  inset-block-start: 0.75rem;
+  inset-inline-end: 0.75rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.twes-auth-main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2.5rem 1rem 1.5rem;
+
+  // On a phone the wordmark's arrow, centred under the language and scheme menus, rose into their row (audit V-23):
+  // the brand starts below it.
+  @media (max-width: 599px) {
+    padding-block-start: 5rem;
+  }
+}
+
+.twes-auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.twes-auth-tagline {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-large);
+  text-wrap: balance;
+}
+
+.twes-auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+  width: min(26.25rem, 100%);
+  padding: 2rem;
+  border-radius: var(--radius-panel);
+  background-color: var(--mat-sys-surface);
+  box-shadow: var(--twes-shadow-2);
+
+  // The title's size is its class, text-title, as on every page.
+  h1 {
+    margin: 0;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+.twes-auth-card-wide {
+  width: min(32rem, 100%);
+
+  // A section's size is its class, text-section.
+  h2 {
+    margin: 0;
+  }
+}
+
+// A page shown before the shell that brings its own cards: it takes the width, with no second surface under it.
+// The card above holds one column of fields; a page's form lays out in two either way and would collapse in it.
+.twes-auth-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-sizing: border-box;
+  width: min(56rem, 100%);
+}
+
+.twes-auth-intro {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.twes-auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.twes-auth-submit.mat-mdc-unelevated-button {
+  --mat-button-filled-container-height: 2.75rem;
+  width: 100%;
+}
+
+.twes-auth-error {
+  margin: 0;
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+}
+
+.twes-auth-after {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+
+  a,
+  button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--twes-accent-text);
+    font: inherit;
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
+    }
+  }
+}
+
+.twes-auth-section-label {
+  margin: 0.25rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: var(--text-overline);
+  font-weight: var(--text-overline--font-weight);
+  letter-spacing: var(--text-overline--letter-spacing);
+  line-height: var(--text-overline--line-height);
+  text-transform: uppercase;
+}
+
+// « Essayer la démo » under the sign-in form: its heading, a line, then one choice row per country.
+.twes-auth-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+// A choice row inside the card: icon tile, two lines, a chevron.
+.twes-auth-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--radius-xl);
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);
+
+  &:hover {
+    background-color: var(--twes-accent-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--twes-focus);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  > .mat-icon:last-child {
+    margin-inline-start: auto;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.twes-auth-option-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-control);
+  background-color: var(--twes-accent-soft);
+  color: var(--twes-accent-text);
+}
+
+.twes-auth-option-text {
+  display: flex;
+  flex-direction: column;
+
+  strong {
+    font-weight: var(--font-weight-semibold);
+  }
+
+  span {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-small);
+  }
+}
+
+.twes-auth-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  // Stacked and centred: the page's own line (the API status on sign-in) above, the legal line centred under it.
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  min-height: 1.5rem;
+  padding: 0 1rem 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+
+  p {
+    margin: 0;
+  }
+}
+
+.twes-auth-status::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-inline-end: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--twes-status-neutral-dot, currentColor);
+  vertical-align: 0.05em;
+}
+
+.twes-auth-status[data-status='ok']::before {
+  background-color: var(--twes-status-success-dot, currentColor);
+}
+
+.twes-auth-status[data-status='degraded']::before {
+  background-color: var(--twes-status-warning-dot, currentColor);
+}
+
+.twes-auth-status[data-status='unreachable']::before {
+  background-color: var(--twes-status-danger-dot, currentColor);
+}
+
+.twes-auth-notice {
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--radius-control);
+  background-color: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-body-medium);
+}

@@ -5,7 +5,7 @@ TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's
 GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/design-tokens.sh
 pass=0; fail=0
 # The real tree's floor is a count no fixture reaches; the floor's own case sets one.
-export DESIGN_TOKENS_FLOOR=0
+export DESIGN_TOKENS_FLOOR=0 DESIGN_TOKENS_HEADINGS_FLOOR=0 DESIGN_TOKENS_CARDS_FLOOR=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 repo() { local d; d=$(mktemp -d); git -C "$d" init -q; mkdir -p "$d/web/src/app/x" "$d/web/src/app/shared/theme"; echo "$d"; }
 echo "design-tokens gate"
@@ -116,4 +116,20 @@ check "  and primary mixed into a ground" 0 0 "$out" "web/src/styles.scss:2 prim
 check "  while a fill on primary, its ink and the accent roles pass" "$(grep -cE 'styles.scss:(3|4)' <<<"$out")" 0 "$out" ""
 d=$(repo); scale "$d"; printf '.x {\n  border-color: color-mix(in srgb, var(--mat-sys-primary) 40%%, var(--mat-sys-surface));\n}\n' > "$d/web/src/app/x/b.scss"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a component stylesheet mixing primary is caught too" $? 1 "$out" "web/src/app/x/b.scss:2 primary where an accent role is meant: color-mix"
+# A heading takes its role's step and a card its kind's corner: a raw size on an h1 or h2, or a raw radius on a
+# mat-card or a twes-card, is refused even where the step is declared, so the roles stay one canon.
+d=$(repo); scale "$d"; printf '<section>\n  <h1\n    class="m-0 text-3xl font-semibold"\n    data-testid="t"\n  >x</h1>\n  <h2 class="lg:text-sm text-print-ink">y</h2>\n  <h2 class="text-title text-print-ink text-start">z</h2>\n</section>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a raw text size on an h1 spread over lines is caught at the tag" $? 1 "$out" "web/src/app/x/a.html:2 heading with a raw text size: text-3xl"
+check "  and on an h2 behind a variant, a declared step included" 0 0 "$out" "web/src/app/x/a.html:6 heading with a raw text size: lg:text-sm"
+check "  while a role with a colour and an alignment passes" "$(grep -c 'a.html:7' <<<"$out")" 0 "$out" ""
+d=$(repo); scale "$d"; printf '@Component({\n  template: `\n    <h2 mat-dialog-title class="flex-1 text-sm">x</h2>\n  `,\n})\nexport class A {}\n' > "$d/web/src/app/x/a.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a raw text size on a heading of an inline template is caught" $? 1 "$out" "web/src/app/x/a.ts:3 heading with a raw text size: text-sm"
+d=$(repo); scale "$d"; printf '<mat-card\n  class="rounded-lg"\n>x</mat-card>\n<div class="twes-card rounded-lg p-4">y</div>\n<mat-card class="rounded-card">z</mat-card>\n<div class="rounded-lg border p-4">w</div>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a raw radius on a mat-card is caught at the tag" $? 1 "$out" "web/src/app/x/a.html:1 card with a raw radius: rounded-lg"
+check "  and on a twes-card" 0 0 "$out" "web/src/app/x/a.html:4 card with a raw radius: rounded-lg"
+check "  while the card's own corner and a plain box pass" "$(grep -cE 'a.html:(5|6)' <<<"$out")" 0 "$out" ""
+d=$(repo); scale "$d"; printf '<h1 class="text-title">x</h1>\n<h2 mat-dialog-title>y</h2>\n<mat-card>z</mat-card>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "headings in a role and cards are counted" $? 0 "$out" "2 headings in a role, 1 cards"
+out=$(DESIGN_TOKENS_HEADINGS_FLOOR=3 bash "$GATE" --root "$d" 2>&1); check "fewer headings in a role than the floor reds: losing the discovery is no pass" $? 1 "$out" "2 headings in a role, below the floor of 3"
+out=$(DESIGN_TOKENS_CARDS_FLOOR=2 bash "$GATE" --root "$d" 2>&1); check "fewer cards than the floor reds" $? 1 "$out" "1 cards read, below the floor of 2"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

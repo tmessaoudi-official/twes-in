@@ -34,7 +34,7 @@
 
   @if (view(); as current) {
     <header class="flex flex-col gap-1">
-      <h1 class="flex items-center gap-2 text-2xl font-semibold" data-testid="watch-subject-title">
+      <h1 class="flex items-center gap-2 text-title" data-testid="watch-subject-title">
         <mat-icon aria-hidden="true">{{ current.icon }}</mat-icon>
         {{ 'watch.subjects.' + kind() + '.title' | translate }}
         @if (count() !== null) {

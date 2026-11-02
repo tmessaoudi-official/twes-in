@@ -33,7 +33,7 @@ import { TourGuide } from './tour-guide';
         aria-modal="false"
         aria-labelledby="twes-tour-title"
         aria-describedby="twes-tour-body"
-        class="twes-tour-card flex flex-col gap-3 rounded-xl p-4"
+        class="twes-tour-card flex flex-col gap-3 rounded-card p-4"
         data-testid="tour-card"
       >
         <div class="flex items-start justify-between gap-2">
@@ -41,7 +41,7 @@ import { TourGuide } from './tour-guide';
             #title
             id="twes-tour-title"
             tabindex="-1"
-            class="text-base font-semibold"
+            class="text-section"
             data-testid="tour-title"
           >
             {{ step.titleKey | translate }}

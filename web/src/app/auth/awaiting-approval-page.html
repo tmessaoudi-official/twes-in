@@ -1,5 +1,5 @@
 <app-signed-out-layout>
-  <h1>{{ 'auth.awaiting.title' | translate }}</h1>
+  <h1 class="text-title">{{ 'auth.awaiting.title' | translate }}</h1>
 
   @if (company(); as company) {
     @if (company.access === 'locked') {
@@ -53,7 +53,7 @@
   <!-- What the platform's operators decide (an approval, a suspension, a payment to confirm): whom to ask. -->
   @if (channels().length > 0) {
     <section class="flex flex-col gap-1" data-testid="awaiting-contact">
-      <h2 class="text-base font-medium">{{ 'help.contact.title' | translate }}</h2>
+      <h2 class="text-section">{{ 'help.contact.title' | translate }}</h2>
       @for (channel of channels(); track channel.key) {
         <a
           mat-button
@@ -73,7 +73,7 @@
 
   @if (elsewhere().length > 0) {
     <section class="flex flex-col gap-2" data-testid="awaiting-elsewhere">
-      <h2 class="text-base font-medium">{{ 'auth.awaiting.elsewhere' | translate }}</h2>
+      <h2 class="text-section">{{ 'auth.awaiting.elsewhere' | translate }}</h2>
       @for (other of elsewhere(); track other.id) {
         <button
           mat-stroked-button

@@ -1,5 +1,5 @@
 <section class="flex max-w-6xl flex-col gap-6">
-  <h1 class="text-3xl font-semibold" data-testid="subscription-title">
+  <h1 class="text-title" data-testid="subscription-title">
     {{ 'licensing.title' | translate }}
   </h1>
 
@@ -106,7 +106,7 @@
     }
 
     <section class="flex flex-col gap-3">
-      <h2 class="text-xl font-medium">{{ 'licensing.payment.history' | translate }}</h2>
+      <h2 class="text-heading">{{ 'licensing.payment.history' | translate }}</h2>
       @if (current.payments.length === 0) {
         <p data-testid="subscription-no-payments">{{ 'licensing.payment.none' | translate }}</p>
       } @else {

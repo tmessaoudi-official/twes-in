@@ -1,5 +1,5 @@
 <section class="flex flex-col gap-4 p-4" data-testid="demo-mails-page">
-  <h1 class="text-2xl font-semibold">{{ 'demo_mails.title' | translate }}</h1>
+  <h1 class="text-title">{{ 'demo_mails.title' | translate }}</h1>
   <p class="text-sm text-on-surface-variant">{{ 'demo_mails.intro' | translate }}</p>
 
   @if (failed()) {
@@ -37,10 +37,10 @@
         </ul>
         @if (opened(); as mail) {
           <article
-            class="flex min-w-0 flex-col gap-3 rounded-lg border border-outline-variant p-4"
+            class="flex min-w-0 flex-col gap-3 rounded-card border border-outline-variant p-4"
             data-testid="demo-mail-opened"
           >
-            <h2 class="m-0 text-lg font-medium">
+            <h2 class="m-0 text-heading">
               <bdi>{{ mail.subject }}</bdi>
             </h2>
             <p class="m-0 text-sm text-on-surface-variant">{{ mail.capturedAt | moment }}</p>

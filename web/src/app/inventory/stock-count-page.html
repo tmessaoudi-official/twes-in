@@ -1,7 +1,7 @@
 <app-page-tabs [tabs]="tabs" label="nav.stock" selected="/stock/count">
   <section class="flex flex-col gap-6" data-testid="stock-count">
     <header class="flex flex-col gap-1">
-      <h1 class="m-0 text-3xl font-semibold">{{ 'inventory.count.title' | translate }}</h1>
+      <h1 class="m-0 text-title">{{ 'inventory.count.title' | translate }}</h1>
       <p class="m-0 max-w-prose">{{ 'inventory.count.intro' | translate }}</p>
     </header>
 
@@ -63,7 +63,7 @@
       <div class="flex flex-col gap-4" data-testid="stock-count-lines">
         @for (group of groups(); track group.locationId; let g = $index) {
           <section class="flex flex-col gap-2" [attr.data-testid]="'stock-count-group-' + g">
-            <h2 class="m-0 text-lg font-medium">
+            <h2 class="m-0 text-heading">
               <bdi>{{ group.name }}</bdi>
             </h2>
             <ol class="m-0 flex list-none flex-col gap-2 p-0">

@@ -66,7 +66,7 @@ import { STORED_ITEMS } from './stored-items';
       <!-- Rendered from the one declaration scripts/gates/stored-items.sh checks against the code. -->
       @if (slug() === 'cookies') {
         <section class="flex flex-col gap-3" data-testid="stored-items">
-          <h2 class="text-lg font-semibold">{{ 'legal.stored.title' | translate }}</h2>
+          <h2 class="text-heading">{{ 'legal.stored.title' | translate }}</h2>
           <p>{{ 'legal.stored.intro' | translate }}</p>
           <div class="relative overflow-x-auto">
             <table class="twes-legal-table">
