@@ -321,6 +321,142 @@ Facts that decay with the calendar or the tree:
 - Which Symfony / API Platform minor each CLAUDE.md gotcha was measured on is not stated in the files.  [Unverified]
 - Several entries above carry a date range "2026-09-1x/2x" taken from the digest tags; a few log entries in r2-decisions were truncated in this reading: the SPEC §7 line is the authority, not this file.  [Unverified]
 
+## 19. Moved from the core and lower-weight rulings (2026-11-02)
+
+### 19.A Moved out of the core
+Doc map (was core §0):
+| Question | Open | Authority |
+|---|---|---|
+| Product, scope, goal order, definition of done | docs/SPEC.md §1, §2, §5 | SPEC wins on product |
+| Why was X decided; is X ruled | SPEC §7 Decisions Log | only ledger of rulings |
+| What exists / is open / is fragile | SPEC §8 | machine-maintained |
+| How work is delivered, gates | CLAUDE.md | CLAUDE.md wins on process |
+| A tax rule and its source | docs/fiscal/TN.md, FR.md, then api/config/fiscal/<CC>.yaml | .md changes first, preset in the same change |
+| Till certification, hardware | docs/research/till-certification.md, till-hardware.md | research, not ruling |
+| Roles, voters, establishments | SPEC §3 Authorization; docs/research/authorization.md | |
+| Bring-up, seed, reset; version pins | docs/START.md; docs/UPDATE.md (`make versions`) | |
+| May I add a dependency | LICENSING.md, THIRD-PARTY-NOTICES.md (generated) | one-way door |
+[Source: CLAUDE.md l.3-5, SPEC §0]
+
+Business (was core §1):
+- First two customers: a hardware shop (quincaillerie) and a machining workshop (tourneur); the product serves them without being built for them alone.  [Source: SPEC §1, §2]
+- Built, sold and hosted by the developer; one plan per company; a person belongs to several companies and switches.  [Source: SPEC §1]
+- Rates NUMERIC(6,3); scale from the currency (TND 3, EUR 2), the shown price decimals a company setting defaulting to it (SPEC:5317).  [Source: SPEC §3 Money; Ruled: user 2026-10-16 17:40]
+- Subscriptions computed from dates on every request, never by a scheduled job; payments DECLARED by the company and confirmed by the operator.  [Ruled: user 2026-09-17]
+- Glossary (as screens say it): facture, avoir, bon de livraison, TVA, FODEC, timbre fiscal, retenue a la source, matricule fiscal, SIREN/SIRET/NIC, franchise en base, autoliquidation, "TVA collectee" (never "a declarer").  [Source: docs/fiscal/TN.md, FR.md]
+- Treat any "out" as provisional unless it names a legal reason: purchase orders, recurring, portal, reservations and cafe were all reversed within days.  [Source: r2-decisions contradictions, §17]
+- Per-company fiscal signing key, encrypted at rest under an env master key; AGPL public edition (closed build only under the commercial licence; no PHP encoder); the web address (passkeys bind to the host); issued numbers, frozen figures and stored PDFs: one-way doors.  [Ruled: user 2026-09-20, §10]
+- Import refusals carry a stable `reason` code; never match on an English message.  [Ruled: user 2026-09-18, 2026-09-22]
+- Company logo: one raster only, SVG and URL refused; RGAA target; form-first, dragging an accelerator.  [Ruled: user 2026-09-22, 2026-09-26, 2026-10-02]
+
+Working style (was core §3):
+- The ONE build order is the numbered list at the top of SPEC §8 (since 2026-10-16 17:25); never restate it.  [Ruled: user 2026-10-06 02:47; Source: SPEC §8]
+- Economize: one advisor() per gate; the full panel once on a frozen commit, on the developer's word; suggest /compact before a panel; a round with a lost lens is a FLOOR.  [Ruled: user 2026-08-19; Observed: 2026-08-28]
+- `free -h` before gates (background tests were once OOM-killed with swap near full).  [Observed: 2026-09-14]
+- CORRECTION 2026-09-19: never pass a Makefile to bash; re-read compound commands for leftover fragments; no `2>/dev/null` on unpredicted commands. CORRECTION 2026-09-22/23: a CI monitor on an invented SHA stays empty with exit 0: `SHA=$(git rev-parse HEAD)` in the same command, FULL 40-char SHA, read every job's conclusion. Read the body, not the signature; prove session-buffer claims against `git reflog` / `git stash list`.  [Observed: 2026-09-01/19/22]
+
+Machine (was core §4):
+- The first e2e after `make up` can time out on route compilation: rerun.  [Observed: 2026-09-26]
+- Recovery of a frozen session: `git stash create` + `git update-ref refs/recovery/<date> <sha>`; a drafted file is recoverable from the dead session's `tool_use` input; a reboot wipes /tmp.  [Observed: 2026-09-26]
+
+Stale (was core §5):
+- Examples of superseded rulings: invitation of an existing account, recovery-code hashing (now SHA-256), status tones, barcode (now unique per company), cookie banner (now wanted).  [Source: r2-decisions contradictions]
+- START.md and SPEC §7 disagree about the dev operator password; `make versions` is the truth for versions; FR CIBS article numbers move on 2027-01-01.  [Source: r2-research-ops §5, docs/fiscal/FR.md]
+
+Open (was core §7):
+- French text of the arrêté of 3 Dec 1987 read only through a ministry summary; the FR archived-data format norm not yet published.  [Unverified]
+
+### 19.B Law, fiscal, licences (weight 2 and 1)
+- Bulk PDF skips drafts and cancelled invoices unless ticked per run (never remembered); included ones carry BROUILLON / ANNULÉ; it needs a recent step-up and records export.downloaded.  [Ruled: user 2026-10-11 20:47, 20:48; SPEC:5032-5033]
+- « Ajouter à… » adds goods only to a new or open draft.  [Ruled: user 2026-10-11 01:24; SPEC:4993]
+- Goods move between establishments only by a transfer document; transport-document rules sourced first.  [Ruled: user 2026-10-09 10:31; SPEC:4925]
+- MinIO refused; SeaweedFS only as a CI/local stand-in; tools inside images named in the notices sentence, licences beside pins in docs/UPDATE.md.  [Ruled: user 2026-10-12 10:12/10:32/15:31; SPEC:5094]
+- TEJ withholding by CIN: source TEJ identifier types in TN.md first.  [Ruled: user 2026-10-15 20:00; SPEC:5285]
+- The stamp rule is the preset key `corrections.stamp`, covering every fixed charge per document (replaces "property of fixed_document").  [Ruled: user 2026-10-14 19:19; SPEC:5204]
+- Each credit-note line names the invoice line it credits.  [Ruled: user 2026-10-14 18:07; SPEC:5202]
+- An expense's printed tax is accepted within 0.001 per tax line and recorded as typed; a new expense offers fixed charges unticked.  [Ruled: user 2026-10-14 19:19; SPEC:5206-5207]
+- Issuing an invoice is corrigeable; issuing a credit note définitif. « TVA collectée » footnoted « sur les factures émises » until cash basis is modelled.  [Ruled: user 2026-10-15 20:00; SPEC:5280, 5293]
+- A numbering series takes an import only while it has issued nothing; the activity log and « À surveiller » take none.  [Ruled: user 2026-10-16 17:17; SPEC:5305]
+- Bump to latest stable, majors included, one ecosystem per commit; a licence change stops the bump; Angular CLI's dev-only MCP packages accepted.  [Ruled: user 2026-10-16 17:24, 19:56; SPEC:5310, 5328]
+- Never distribute Docker Desktop. No ionCube; Symfony `#[Encrypted]` only from 8.2.0 stable, on columns never searched or summed.  [Ruled: user 2026-10-17 16:53, 2026-10-19 00:41; SPEC:5351, 5382]
+- No layout may hide, move or recolour the watermark; intensity never below 8 %.  [Ruled: user 2026-10-20 19:49; SPEC:5534]
+- An issued document keeps the person's name, anonymised elsewhere; a previous value is kept as a correction record. `taxBasis` a preset default, overridable where the preset allows. Period lock by month meanwhile, a date before the previous day refused, operator override audited.  [Ruled: user 2026-10-31 21:14; SPEC:5755]
+- Off-site to Google Drive through rclone, encrypted first; a synced Drive folder refused. Only « régime réel » supported for the first client. No PowerShell Gallery packages vendored. A new typeface is an OFL-1.1 step.  [Ruled: user 2026-10-31 21:14, 2026-10-25 11:29, 2026-10-27 17:29, 2026-11-02 00:39; SPEC:5756, 5654, 5692, 5766]
+
+### 19.C Tenancy and security (weight 2 and 1)
+- Images public on GHCR only once checked for secrets; web errors post to the API's own endpoint, no browser SDK; alert texts carry no customer data.  [Ruled: user 2026-10-12 22:07, 15:10; SPEC:5123, 5105]
+- Import quantity columns only for stock.write with the stock module on.  [Ruled: user 2026-10-09 09:56; SPEC:4918]
+- Azure Speech key in a gitignored env file only; rotate APP_MFA_KEY with api and worker stopped.  [Ruled: user 2026-10-11 09:11, 2026-10-12 22:16; SPEC:5012, 5127]
+- Step-up also for: granting support access, a vendor's new or changed IBAN/BIC, `POST /api/companies`, turning company 2FA off; a module switch gets a consequence dialog instead; the TEJ declaration is refused under a support grant.  [Ruled: user 2026-10-13 20:21, 20:50, 2026-10-14 15:14, 2026-10-15 20:00; SPEC:5172-5177, 5193, 5289]
+- E2E code sign-ins use `codes@twes.local`; never loosen the step-up limiter for tests.  [Ruled: user 2026-10-13 23:20; SPEC:5181]
+- Home money panels need « finances »; the accountant template gets stock.read and product.cost.read.  [Ruled: user 2026-10-15 20:00; SPEC:5290, 5283]
+- Account deletion refused while the only owner; closes at once, cancellable 7 days; closing a company undoable by its owner within a 7-day grace.  [Ruled: user 2026-10-13 12:31, 14:53; SPEC:5145-5146, 5154]
+- « Textes » overrides are plain text, checked on save; fiscal and legal mentions locked; edited only in Paramètres › Textes.  [Ruled: user 2026-10-13 00:17, 2026-10-17 00:30; SPEC:5141, 5337]
+- Delete/restore need the subject's write permission; merge and import undo also step-up; a refused delete counts only what the person may read; customer delete/merge needs customer.remove.  [Ruled: user 2026-10-20 01:32, 15:17, 2026-10-21 13:22; SPEC:5453, 5518, 5573]
+- The monitor cannot reach the machine holding the signing key.  [Ruled: user 2026-10-20 01:43; SPEC:5462]
+- Session-ending actions reach the person at once; Centrifugo token 120 s, connections cut at sign-out, end-all and lock.  [Ruled: user 2026-10-27 21:37, 2026-10-29 09:20; SPEC:5696, 5718]
+- Entering a company asks once per sign-in the proof it accepts (until sign-out, 30 min idle or 12 h). Passwordless = passkey with UV, only beside the authenticator, off by default; e-mail asked first.  [Ruled: user 2026-10-28 23:40, 2026-10-27 23:16; SPEC:5717, 5703]
+- Demo off by default on a shop; Trivy weekly; no build toolchain in the prod api image. « Mon compte » reachable whatever the company's state.  [Ruled: user 2026-10-25 22:38, 2026-10-26 20:54; SPEC:5663, 5685]
+- From outside only owner, staff and the developer; Tailscale SSH for the developer's device only; security releases at the next tick with a mail; host name and ports installation settings, changed by a checked `twes` command; links carry the tailnet name when on.  [Ruled: user 2026-10-31 19:29, 19:34, 21:14; SPEC:5738, 5743, 5755]
+
+### 19.D Architecture (weight 2 and 1)
+- Erasure deletes at once, 24 h in-company copy for undo, one pending at a time, only owners undo.  [Ruled: user 2026-10-10 13:06/13:39; SPEC:4978]
+- Stock moves traced as linked movements; an undo is a counter-movement correcting average cost. Rack position stored on stock_location.  [Ruled: user 2026-10-09 09:45, 10:31, 2026-10-15 20:00; SPEC:4917, 4924, 5284]
+- Imports: a rejected row lists all its faults; a file cannot clear a value this release. A refused form field shows the import's text from one refusal shape.  [Ruled: user 2026-10-09 10:40, 2026-10-15 06:51; SPEC:4927, 5232]
+- Attachment removal is soft with « Annuler »; a bulk run changed since its preview is refused whole (409).  [Ruled: user 2026-10-11 00:55, 11:00; SPEC:4989, 5020]
+- Modules in-house only, contracts by contract tests; four visibility layers; a country preset is a typed, versioned contract.  [Ruled: user 2026-10-11 23:52; SPEC:5043-5048]
+- API layout follows API Platform's DDD reference; web sub-feature folders, ≤25 files a folder.  [Ruled: user 2026-10-16 09:47, 17:17; SPEC:5300, 5306]
+- Optimistic locking on every editable record, one problem+json contract; settings page saves in one PUT (409 on any collision); set-replacing PUTs send the product's version; pause/resume no version; a delete sends it.  [Ruled: user 2026-10-16 17:17, 2026-10-17 03:44, 08:55, 16:04; SPEC:5308, 5341-5343]
+- A delivery note from an issued invoice is linked line by line; recurring documents create drafts only.  [Ruled: user 2026-10-16 17:40, 2026-10-15 17:46; SPEC:5318, 5271]
+- One front end: PWA, no service worker, manifest written by the API.  [Ruled: user 2026-10-18 00:11, 2026-10-22 21:28; SPEC:5371, 5631]
+- Raw SQL only where DQL cannot; each copied business rule has one home. A writing module crossing becomes a port; shared resource-state primitive in facades.  [Ruled: user 2026-10-20 15:35, 2026-10-21 11:30; SPEC:5523, 5558-5559]
+- One action catalogue per subject; eleven adding writes take an Idempotency-Key; every audited action declares who is told.  [Ruled: user 2026-10-21 00:36, 22:14, 2026-10-27 22:45; SPEC:5550, 5597, 5700]
+- Postgres starts with `--no-recreate`; `twes install` never refuses over backups; validation patterns converted and guarded; libphonenumber on both sides; performance 5 writers, p95 < 500 ms on 2 cores/4 GB.  [Ruled: user 2026-10-21 02:19, 2026-10-22 17:22, 2026-10-29 16:53, 20:20, 2026-10-31 21:14; SPEC:5555, 5625, 5722, 5730, 5755]
+
+### 19.E Business (weight 2 and 1)
+- Prices and plans are dated data versions; pilot RPO 15 min / RTO 4 h; pilot in French, free 3 months.  [Ruled: user 2026-10-12 00:15/00:23; SPEC:5054-5057]
+- Appointments one general module.  [Ruled: user 2026-10-11 23:03; SPEC:5036]
+- A configuration link does not block a delete (cleared and restored with it), yet a refusal names it where it does.  [Ruled: user 2026-10-20 15:33, 2026-10-22 00:44; SPEC:5522, 5601]
+- Vendor merge undo refused after a dated movement or expense.  [Ruled: user 2026-10-20 15:17; SPEC:5517]
+- Purchase history never becomes stock; stock starts at 0 « à compter »; it never moves cost, price or stock, sits behind product.cost.read; undated lines « date inconnue ».  [Ruled: user 2026-10-20 01:52, 2026-10-25 11:25/11:31; SPEC:5466, 5652, 5655]
+- Purchase cost after discounts; recoverable VAT excluded. A general import question becomes a parameter.  [Ruled: user 2026-10-20 01:43, 21:34; SPEC:5459, 5539]
+- Issued documents snapshot printed unit/tax names. Matricule parsed part by part, stored 1234567A/A/M/000. TN preset carries « forfaitaire ».  [Ruled: user 2026-10-19 12:01, 2026-10-20 22:38, 21:34; SPEC:5401, 5545, 5540]
+- Repository stays public. No subscription keeps full access, no default trial. Business profiles are data. Time zone from the preset.  [Ruled: user 2026-10-21 12:59, 2026-10-23 03:31, 2026-10-31 21:07, 2026-10-29 19:48; SPEC:5572, 5637, 5753, 5728]
+- « À surveiller » shows every product below zero; cost change follows « price on cost change »; columns offered by role; a receiver without cost hears prices only.  [Ruled: user 2026-10-28 00:13, 2026-10-21 00:36, 18:26, 2026-10-22 20:13; SPEC:5706, 5553, 5590, 5630]
+- Post-release parked order: composite products, declarations, jobs, till, zakat.  [Ruled: user 2026-10-20 15:17; SPEC:5519]
+
+### 19.F UI and product (weight 2 and 1)
+- « Annuler » only for the toast's undo; single-letter shortcuts switchable; next-step word only where widths hold; « Bientôt » dashed on a wide bar.  [Ruled: user 2026-10-11 08:26, 12:28; SPEC:4999-5004, 5024]
+- Arabic is MSA keeping fiscal terms in French; ships unreviewed, labelled « aperçu »; a language over budget is split per module.  [Ruled: user 2026-10-11 09:11, 2026-10-20 19:16, 2026-10-31 21:14, 2026-10-12 00:29; SPEC:5009, 5531, 5755, 5060]
+- Définitif danger look; « Définitif à terme » hourglass; typed word for account deletion, company closing, erasure; the leave question is Définitif and sign-out asks it.  [Ruled: user 2026-10-13 16:43, 17:01, 2026-10-14 16:18/16:27, 2026-10-15 20:00; SPEC:5161, 5170, 5197-5198, 5279]
+- Focus flow; arrival focus by pointer; lists focus the title, « / » to search; scan pages focus the heading.  [Ruled: user 2026-10-14 12:05, 2026-10-15 20:00; SPEC:5184, 5276-5278]
+- A scanner burst into a number field is a scan; a count freezes expected at first scan; a blind count never zeroes unscanned items.  [Ruled: user 2026-10-14 12:57, 2026-10-15 20:00; SPEC:5188, 5281-5282]
+- A list never cuts a value (lowest priority gives way whole); a typed name wraps, a code/amount/date never.  [Ruled: user 2026-10-18 21:20, 2026-10-21 14:07; SPEC:5375, 5575]
+- Every outcome shows at once in every tab; the browser checks with the API's own rule.  [Ruled: user 2026-10-21 00:36, 2026-10-27 20:57; SPEC:5553, 5694]
+- « Montrer ce qui arrive » off by default, operator default, nearer wins. Form refusal words in `form-refusals/`.  [Ruled: user 2026-10-27 13:11, 2026-10-26 10:43; SPEC:5690, 5670]
+- One phone field: country box + local number; countries named via Intl.DisplayNames.  [Ruled: user 2026-10-29 17:44, 19:48; SPEC:5725, 5729]
+- Data checks reach operators by label; customer display shows the line's own TTC price; switcher names country and currency, never flags; the stock plan read-only on a phone; text size per device, new accounts « vif »; a phone outside ranges confirmed with « C'est juste ».  [Ruled: user 2026-10-12 07:53, 2026-10-15 06:31, 2026-10-16 17:40, 2026-10-20 14:34, 2026-10-31 23:04, 2026-10-30 05:30; SPEC:5080, 5230, 5319, 5504, 5758, 5732]
+
+### 19.G Working style, release, machine (weight 2 and 1)
+- Validated mockups before code for ruled features; cross-cutting redesigns shown before/after; design judged on mockups with a route coverage table; no new screen text before the developer sees it.  [Ruled: user 2026-10-09 23:19, 2026-10-11 01:24, 2026-10-31 22:03, 2026-10-15 10:50; SPEC:4964, 4995, 5757, 5240]
+- A ruled fix may be declared Large with a hard stop; data loss, security and wrong money fixed at once.  [Ruled: user 2026-10-14 15:19, 2026-10-16 22:03; SPEC:5194, 5330]
+- Audit findings A/B fixed, C only with advisor(), D parked; each lens repeats until no A defect; one full gate per 2-3 slices.  [Ruled: user 2026-10-18 23:56, 2026-10-20 19:16, 14:34; SPEC:5381, 5530, 5503]
+- Parallel: at most 2 builders + 1 hunter; only the main lane touches e2e and the live stack; heavy runs under /tmp/twes-in-gate.lock.  [Ruled: user 2026-10-26 19:53; SPEC:5681]
+- Stabilise before features; no feature into a frozen release; after a cutoff only P0/P1 hold a release; class 4 mistakes get their own release; shop incidents diagnosed from `twes status` first; clean worktrees after a tag.  [Ruled: user 2026-10-27 22:45, 2026-10-24 17:44, 2026-10-28 20:22, 2026-10-26 00:17, 18:46, 20:05; SPEC:5701, 5641, 5714, 5669, 5678, 5683]
+- Stable release: one release, RC rehearsed on real data, rollback tested; no patch tag before it (interim TN 2027 patch if not out by 2026-12-15); no tag 2026-12-20 to 2027-01-10 but a hotfix; no cloud sessions; design foundation before P5/P6; ASSUMED picks marked before the tag.  [Ruled: user 2026-10-31 19:29, 20:40, 20:55, 21:07, 21:14, 2026-11-02 00:32; SPEC:5737, 5747, 5749, 5752, 5755, 5764]
+- Machine: the local stack is Claude's e2e stack during away runs, left an empty platform; the other session keeps load low during gates; Tailscale tested against a stand-in binary; the protected ask rule stays.  [Ruled: user 2026-10-28 01:04, 2026-10-26 16:39, 2026-10-31 21:14, 2026-10-16 17:40; SPEC:5709, 5675, 5755, 5325]
+- Weight 1: no videos while gates run; Dependabot alerts only; marking pages not meetings; own mutation runner; oxlint/Biome/oxfmt/Mago not adopted; review lenses closed set, feelings F1-F12.  [Ruled: user 2026-10-11 01:32, 2026-10-12 00:29, 2026-10-16 17:44, 2026-10-15 14:10, 2026-10-13 22:15, 16:59, 2026-10-15 20:00; SPEC:4997, 5062, 5326, 5254, 5179, 5168, 5298]
+
+### 19.H Stale, superseded, not ruled
+- Superseded: two parallel writers (SPEC:4905) and one writer at a time (SPEC:5014), three lanes (SPEC:5580): cap is 2 builders + 1 hunter. Bulk PDF merged/zip remembered (SPEC:5022): a PDF ▾ menu per click. Server-built images and `--env-file` (SPEC:5102): deploy by digest, compose secrets. « A sale is never blocked » (SPEC:5589): only the stock-exit default. Lost authenticator server-only for all (SPEC:5636), partly superseded: self-service replace while the account can still prove itself (SPEC:5646); the console route for a lost one stands. Shop name under a bought domain (SPEC:5686) and network-only name (SPEC:5688): Tailscale (SPEC:5762). Dead dates 2026-10-21 Wed deadline (SPEC:5529). macOS dropped (SPEC:5446). Update policy set in the app (SPEC:5464). Platform country replaces row 252's fixed Tunisia (SPEC:5726). The 2026-10-31 20:33 start sequence shortened (SPEC:5761).  [Ruled: user, dates at each line]
+- ASSUMED (review), never cite as AGREED: chain key and payload (SPEC:5069); support 403 shape (SPEC:5088); stage folding (SPEC:5059); SymfonyDomainEvents one by one (SPEC:5332); limiters on flock (SPEC:5334); `#[ORM\Version]` shape (SPEC:5335); closed company GET-only (SPEC:5156); import checks via resource constraints, contradicted by Q12 (SPEC:5229); 24 direct API-adapter injections (SPEC:5399); vite override (SPEC:5556); ContainerSecrets (SPEC:5604); FILES_S3_SECRET_KEY env (SPEC:5606); refusal text scope (SPEC:5610); duplicate matricule warned (SPEC:5634); no « commande client » (SPEC:5638); matricule letter sets refused (SPEC:5609).
+- Traps observed: Compose 2.38.2 drops a `!reset` reached through an alias (SPEC:5607); Compose keeps a container whose secret alone changed, hence `twes.secrets-digest` (SPEC:5608).  [Observed: 2026-10-22]
+- 26 ASSUMED picks of the 2026-10-06 audit ratified (SPEC:5578).  [Ruled: user 2026-10-21 14:07]
+
+### 19.I Open questions
+- Round 2 grading scale: −1..5 (SPEC:5299) vs 0 to 4 (SPEC:5331).  [Observed]
+- Draft merges stay unmergeable until ruled (SPEC:5528); shop PC at-rest protection reopened later (SPEC:5383); a realtime token may outlive a session by 900 s (SPEC:5711); Tailscale through the Topnet router, port 80, plan terms (SPEC:5754); Arabic chart time axis (SPEC:5758).  [Ruled/Observed as listed]
+
 ## Changes vs v2
 - DROPPED sections 2 (Rules R1-R18), 3 (Methodology) and 4 (Architecture at a glance): they restated CLAUDE.md, which is already loaded every session. v3 is the delta only.
 - FIXED: v2 section 5 said "Tunisia's cash-register rules: JORT n.125 has NOT been read". Round 2 (till-certification.md) records JORT 125 as now READ via republication (it sets scope and dates only); the scope/dates entry in section 15 replaces it, while accreditation details stay Unverified.

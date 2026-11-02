@@ -61,5 +61,7 @@ check "with the api gone, no token in any line of either stream" "$(grep -ciE "$
 check "the failed request is logged, masked, with its upstream's status" \
     "$(grep -cE '"GET /api/invitations/\[token\]/accept\?next=\[token\] HTTP/1.1" 502 .* upstream="[0-9.]+:80" 502 -$' <<<"$gone")" 1
 check "no error line about a request is written" "$(grep -c '\[error\]' <<<"$gone")" 0
+# Red once under a gate's load and never alone: the lines it counted are printed, so the next red names them.
+grep '\[error\]' <<<"$gone" | sed 's/^/       error line: /'
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
