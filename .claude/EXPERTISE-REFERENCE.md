@@ -1,5 +1,5 @@
 # EXPERTISE REFERENCE - twes-in   (full L4 detail; READ ON DEMAND by section, NOT loaded every session: the always-loaded part is .claude/rules/expertise-core.md, which points here)
-Review date: 2026-10-09 10:40   Validation mode: advisory   Packs: domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
+Review date: 2026-10-09 10:40 (§ 19 added 2026-11-02 22:30; §§ 1-18 not re-read)   Validation mode: advisory   Packs: domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
 Scope: the DELTA over CLAUDE.md. Its Process, Licensing invariants, Git rules and ~70 "Lessons" are loaded every session and are NOT repeated here. Entries come from the round-2 digests (r2-decisions = SPEC §7 log, r2-memories, r2-research-ops). Tags: [Ruled: user <date>] = AGREED in SPEC §7; [Source: ...] = a document; [Observed: ...]; [Unverified]. Entries the log marks ASSUMED/PROVISIONAL are tagged [Source] not [Ruled]. `SPEC §7 <date>` means the Decisions Log entry of that date.
 
 ## Domains this project touches
@@ -405,7 +405,7 @@ Open (was core §7):
 - Imports: a rejected row lists all its faults; a file cannot clear a value this release. A refused form field shows the import's text from one refusal shape.  [Ruled: user 2026-10-09 10:40, 2026-10-15 06:51; SPEC:4927, 5232]
 - Attachment removal is soft with « Annuler »; a bulk run changed since its preview is refused whole (409).  [Ruled: user 2026-10-11 00:55, 11:00; SPEC:4989, 5020]
 - Modules in-house only, contracts by contract tests; four visibility layers; a country preset is a typed, versioned contract.  [Ruled: user 2026-10-11 23:52; SPEC:5043-5048]
-- API layout follows API Platform's DDD reference; web sub-feature folders, ≤25 files a folder.  [Ruled: user 2026-10-16 09:47, 17:17; SPEC:5300, 5306]
+- API layout follows API Platform's DDD reference; web sub-feature folders, the same file cap per folder (`SourceLayoutTest::CAP` holds the API's; nothing holds the web's yet).  [Ruled: user 2026-10-16 09:47, 17:17; SPEC:5300, 5306]
 - Optimistic locking on every editable record, one problem+json contract; settings page saves in one PUT (409 on any collision); set-replacing PUTs send the product's version; pause/resume no version; a delete sends it.  [Ruled: user 2026-10-16 17:17, 2026-10-17 03:44, 08:55, 16:04; SPEC:5308, 5341-5343]
 - A delivery note from an issued invoice is linked line by line; recurring documents create drafts only.  [Ruled: user 2026-10-16 17:40, 2026-10-15 17:46; SPEC:5318, 5271]
 - One front end: PWA, no service worker, manifest written by the API.  [Ruled: user 2026-10-18 00:11, 2026-10-22 21:28; SPEC:5371, 5631]
@@ -456,6 +456,8 @@ Open (was core §7):
 ### 19.I Open questions
 - Round 2 grading scale: −1..5 (SPEC:5299) vs 0 to 4 (SPEC:5331).  [Observed]
 - Draft merges stay unmergeable until ruled (SPEC:5528); shop PC at-rest protection reopened later (SPEC:5383); a realtime token may outlive a session by 900 s (SPEC:5711); Tailscale through the Topnet router, port 80, plan terms (SPEC:5754); Arabic chart time axis (SPEC:5758).  [Ruled/Observed as listed]
+
+- Angular facades: a private `xSignal` exposed as a readonly `x` (48 of 52 facades; the rest keep a `sessionSignal`). Moved from the angular pack for room.  [Source: git ls-files web/src/app/**/*-facade.ts, 2026-11-02]
 
 ## Changes vs v2
 - DROPPED sections 2 (Rules R1-R18), 3 (Methodology) and 4 (Architecture at a glance): they restated CLAUDE.md, which is already loaded every session. v3 is the delta only.
