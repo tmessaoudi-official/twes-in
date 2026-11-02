@@ -46,6 +46,7 @@
     "display": "Affichage",
     "language": "Langue",
     "scheme": "Thème",
+    "theme_preset": "Style des couleurs",
     "density": "Densité",
     "date_format": "Format des dates",
     "number_format": "Format des nombres",

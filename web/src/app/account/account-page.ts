@@ -58,6 +58,7 @@ import {
   type SchemePreference,
   SUPPORTED_LANGUAGES,
 } from '../shared/settings/settings-registry';
+import { THEME_PRESETS, type ThemePreset } from '../shared/theme/neutral-ramp';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { RefusedField } from '../shared/form/refused-field';
@@ -215,6 +216,7 @@ export class AccountPage implements OnInit {
   /** What each preference Select offers; the language dropdown names each language itself, in its own words. */
   protected readonly languageOptions = languageChoices(this.languages, 'account-language-option');
   protected readonly schemeOptions = this.choices('scheme', this.schemes);
+  protected readonly themePresetOptions = this.choices('theme-preset', THEME_PRESETS);
   protected readonly densityOptions = this.choices('density', this.densities);
   protected readonly dateFormatOptions = this.choices('date-format', this.dateFormats);
   protected readonly numberFormatOptions = this.choices('number-format', this.numberFormats);
@@ -430,6 +432,10 @@ export class AccountPage implements OnInit {
 
   protected schemeOf(value: string): SchemePreference {
     return value as SchemePreference;
+  }
+
+  protected themePresetOf(value: string): ThemePreset {
+    return value as ThemePreset;
   }
 
   protected densityOf(value: string): Density {

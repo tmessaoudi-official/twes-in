@@ -35,7 +35,8 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Label } from '../shared/a11y/label';
-import { colourTokens, statusTokens } from '../shared/theme/accent-theme';
+import { accentTokens, colourTokens, statusTokens } from '../shared/theme/accent-theme';
+import { surfaceTokens } from '../shared/theme/neutral-ramp';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import type { StockDrawingRow, StockStructureRow } from './inventory-types';
 import {
@@ -132,10 +133,20 @@ export class StockMapVolume {
         one.depth === other.depth,
     },
   );
-  /** The colours the theme gives this accent and scheme, worked out as the theme works them out. */
+  /**
+   * The colours the theme gives this accent, scheme and preset, worked out as the theme works them out: the grounds
+   * from the neutral ramp over the accent scheme, so the volume stands on the ground the plan beside it does.
+   */
   private readonly palette = computed(() => {
     const scheme = this.theme.scheme();
-    return { ...colourTokens(this.theme.accent(), scheme), ...statusTokens(scheme) };
+    const accent = this.theme.accent();
+    const preset = this.theme.themePreset();
+    return {
+      ...colourTokens(accent, scheme),
+      ...surfaceTokens(accent, scheme, preset),
+      ...accentTokens(accent, scheme, preset),
+      ...statusTokens(scheme),
+    };
   });
 
   private renderer: WebGLRenderer | null = null;

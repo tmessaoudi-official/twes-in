@@ -416,7 +416,7 @@ html {
   }
 
   &:focus-visible {
-    outline: 2px solid var(--mat-sys-primary);
+    outline: 2px solid var(--twes-focus);
     outline-offset: 2px;
   }
 
@@ -520,7 +520,7 @@ html {
   transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);
 
   &:hover {
-    background-color: color-mix(in oklch, var(--mat-sys-primary) 5%, transparent);
+    background-color: var(--twes-accent-hover);
   }
 }
 
@@ -539,6 +539,10 @@ html {
   --twes-ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
   --twes-ease-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
 
+  // Every focus ring: the accent text, which reads on every ground of the page; the toast's inverse surface takes its
+  // own below. A ring is drawn outside the control, so it is judged against the ground under the gap.
+  --twes-focus: var(--twes-accent-text);
+
   // The oldest unpaid invoices: the danger red darkened, so the ramp gets darker with age in both schemes. The danger
   // label colour it used is light in the dark scheme, and there the worst bucket read as the palest.
   --twes-aging-worst: color-mix(in oklab, var(--twes-status-danger-dot) 70%, black);
@@ -549,6 +553,32 @@ html {
   // s3 sits above everything: preview, palette, dialogs (design direction § 1.3).
   --twes-shadow-3:
     0 0 0 1px oklch(0.2 0.03 262 / 0.08), 0 32px 64px -16px oklch(0.25 0.05 262 / 0.38);
+}
+
+// First paint: every theme role of our own before the theme facade writes them, at the default accent, light, on the
+// preset new accounts start on, so a link, a ring or the shell's ground has a value from the first frame (a var() with
+// none voids the whole `background` it sits in). accent-theme.spec.ts holds this block to surfaceTokens and accentTokens.
+:root {
+  --twes-accent: #1f6feb;
+  --twes-on-accent: #ffffff;
+  --twes-accent-state: #000000;
+  --twes-accent-soft: #cfdff9;
+  --twes-accent-text: #1857b7;
+  --twes-surface-backdrop: #dae3f1;
+  --twes-surface-raised: #ffffff;
+  --twes-surface-sunken: #edf1f9;
+  --twes-danger-fill: #b71824;
+  --twes-on-danger: #ffffff;
+  --twes-accent-strip: #d2e2fb;
+  --twes-accent-hover: #e7eefb;
+  --twes-accent-hover-raised: #edf3fd;
+  --twes-accent-hover-container: #e2eaf8;
+  --twes-accent-soft-raised: #d4e4fb;
+  --twes-accent-soft-container: #c9daf6;
+  --twes-accent-indicator: #1f6feb;
+  --twes-on-indicator: #ffffff;
+  --twes-accent-text-inverse: #74a6f3;
+  --twes-focus-inverse: #74a6f3;
 }
 
 html.theme-dark {
@@ -651,18 +681,12 @@ textarea {
 // accent; the page is a surface panel lifted above it. On a phone the panel is the whole screen and the
 // destinations sit in a bar at the bottom, clear of the home indicator.
 .twes-shell.mat-drawer-container {
+  // The two glows stay until the page header's band carries the colour; each is a derived ground muted text reads on,
+  // never the strip, which muted text is not written on.
   background:
-    radial-gradient(
-      900px 520px at 100% 0%,
-      color-mix(in oklch, var(--mat-sys-primary) 14%, transparent),
-      transparent 72%
-    ),
-    radial-gradient(
-      700px 500px at 0% 100%,
-      color-mix(in oklch, var(--mat-sys-primary) 7%, transparent),
-      transparent 70%
-    ),
-    var(--mat-sys-surface-container-low);
+    radial-gradient(900px 520px at 100% 0%, var(--twes-accent-soft), transparent 72%),
+    radial-gradient(700px 500px at 0% 100%, var(--twes-accent-hover), transparent 70%),
+    var(--twes-surface-backdrop);
 }
 
 .twes-shell-nav.mat-drawer-side {
@@ -723,7 +747,7 @@ textarea {
 
   // Keyboard focus reads apart from a pointer's hover, which Material paints the same grey (WCAG 2.4.7).
   .mdc-list-item:focus-visible {
-    outline: 2px solid var(--mat-sys-primary);
+    outline: 2px solid var(--twes-focus);
     outline-offset: 2px;
   }
 
@@ -963,7 +987,7 @@ textarea {
   cursor: pointer;
 
   &:focus-visible {
-    outline: 2px solid var(--mat-sys-primary);
+    outline: 2px solid var(--twes-focus);
     outline-offset: 2px;
   }
 
@@ -1232,7 +1256,7 @@ app-cookie-notice {
   }
 
   a {
-    color: var(--mat-sys-primary);
+    color: var(--twes-accent-text);
     text-decoration: underline;
   }
 }
@@ -1487,7 +1511,7 @@ app-cookie-notice {
   }
 
   &:focus-visible {
-    outline: 2px solid var(--mat-sys-primary);
+    outline: 2px solid var(--twes-focus);
     outline-offset: 2px;
   }
 }
@@ -1665,7 +1689,7 @@ app-cookie-notice {
     }
 
     &:focus-visible {
-      outline: 2px solid var(--mat-sys-primary);
+      outline: 2px solid var(--twes-focus);
       outline-offset: -2px;
       border-radius: var(--radius-xl);
     }
@@ -1707,7 +1731,7 @@ app-cookie-notice {
   }
 
   &:focus-visible {
-    outline: 2px solid var(--mat-sys-primary);
+    outline: 2px solid var(--twes-focus);
     outline-offset: 2px;
   }
 
@@ -1814,10 +1838,10 @@ app-cookie-notice {
   }
 
   &.is-active {
-    background-color: color-mix(in oklch, var(--mat-sys-primary) 14%, var(--mat-sys-surface));
+    background-color: var(--twes-accent-soft-container);
 
     .mat-icon {
-      color: var(--mat-sys-primary);
+      color: var(--twes-accent-text);
     }
   }
 }
@@ -1886,11 +1910,7 @@ app-signed-out-layout {
   flex-direction: column;
   overflow: hidden;
   background:
-    radial-gradient(
-      60rem 40rem at 100% 0%,
-      color-mix(in oklch, var(--mat-sys-primary) 16%, transparent),
-      transparent 70%
-    ),
+    radial-gradient(60rem 40rem at 100% 0%, var(--twes-accent-soft), transparent 70%),
     var(--mat-sys-surface-container-low);
 }
 
@@ -2015,7 +2035,7 @@ app-signed-out-layout {
     padding: 0;
     border: 0;
     background: none;
-    color: var(--mat-sys-primary);
+    color: var(--twes-accent-text);
     font: inherit;
     font-weight: var(--font-weight-semibold);
     text-decoration: none;
@@ -2062,11 +2082,11 @@ app-signed-out-layout {
   transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);
 
   &:hover {
-    background-color: color-mix(in oklch, var(--mat-sys-primary) 5%, transparent);
+    background-color: var(--twes-accent-hover);
   }
 
   &:focus-visible {
-    outline: 2px solid var(--mat-sys-primary);
+    outline: 2px solid var(--twes-focus);
     outline-offset: 2px;
   }
 
@@ -2089,8 +2109,8 @@ app-signed-out-layout {
   width: 2.25rem;
   height: 2.25rem;
   border-radius: var(--radius-control);
-  background-color: color-mix(in oklch, var(--mat-sys-primary) 12%, transparent);
-  color: var(--mat-sys-primary);
+  background-color: var(--twes-accent-soft);
+  color: var(--twes-accent-text);
 }
 
 .twes-auth-option-text {
@@ -2246,8 +2266,8 @@ app-signed-out-layout {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: var(--radius-xl);
-  background-color: color-mix(in oklch, var(--mat-sys-primary) 12%, transparent);
-  color: var(--mat-sys-primary);
+  background-color: var(--twes-accent-soft);
+  color: var(--twes-accent-text);
 }
 
 .twes-scene-icon-success {
@@ -2264,11 +2284,11 @@ app-signed-out-layout {
   span {
     flex: 1;
     border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    background-color: color-mix(in oklch, var(--mat-sys-primary) 22%, transparent);
+    background-color: var(--twes-accent-soft);
   }
 
   .twes-scene-bar-strong {
-    background-color: color-mix(in oklch, var(--mat-sys-primary) 60%, transparent);
+    background-color: var(--twes-accent-indicator);
   }
 }
 
@@ -2352,6 +2372,13 @@ app-signed-out-layout {
   background: var(--twes-status-danger-dot);
 }
 
+/* A filled mark that alone shows a state (a step done): the indicator, written on in its own ink, which no colour class
+   names since it reads only on the indicator. */
+.twes-indicator-fill {
+  background-color: var(--twes-accent-indicator);
+  color: var(--twes-on-indicator);
+}
+
 /* Row 48: what the application waits for (shared/feedback/activity-bar) and what it did (toasts). */
 // Qualified by Material's own class: its component styles load after this file with `.mdc-linear-progress { position:
 // relative; height: 4px }`, which at equal specificity won, put the bar in the flow and pushed the whole app 4 px down
@@ -2405,6 +2432,8 @@ app-signed-out-layout {
   border-radius: var(--radius-card);
   background-color: var(--mat-sys-inverse-surface);
   box-shadow: var(--twes-shadow-2);
+  // The accent text turns the wrong way round on the inverse surface: a ring there is the inverse accent.
+  --twes-focus: var(--twes-focus-inverse);
 }
 
 // On a phone a toast saying its kind and offering « Annuler » has no room left for its sentence beside them: the
@@ -2435,12 +2464,12 @@ app-signed-out-layout {
   /* The one follow-up a toast offers ("Annuler" after a scan): the inverse primary, as Material's snack bar action
      is, since the primary itself is too dark on the inverse surface (axe, 2026-09-23). */
   .mat-mdc-button {
-    --mat-button-text-label-text-color: var(--mat-sys-inverse-primary);
+    --mat-button-text-label-text-color: var(--twes-accent-text-inverse);
   }
 }
 
 .twes-toast-success .twes-toast-icon {
-  color: var(--mat-sys-inverse-primary);
+  color: var(--twes-accent-text-inverse);
 }
 
 /* Row 49: another person's saved version, merged into an open editor. */
@@ -2536,7 +2565,7 @@ th.mat-mdc-header-cell.twes-row-actions {
 
 /* The pinned cell paints its ground, so the row's tints are laid on it too, opaque: what scrolls under it stays hidden. */
 tr.mat-mdc-row:hover > td.twes-row-actions {
-  background: color-mix(in oklch, var(--mat-sys-primary) 5%, var(--mat-sys-surface));
+  background: var(--twes-accent-hover);
 }
 
 /* The leading box's cell is the box's own 40 px target: Material's 16 px cell padding would leave it no room. */
@@ -2550,7 +2579,7 @@ tr.mat-mdc-row.twes-row-selected > td.twes-row-actions {
 }
 
 tr.mat-mdc-row.twes-row-active > td.twes-row-actions {
-  background: color-mix(in oklch, var(--mat-sys-primary) 12%, var(--mat-sys-surface));
+  background: var(--twes-accent-soft);
 }
 
 /* Columns sit under the pinned actions: a shadow on its edge says the table goes on, which a cut cell alone did not. */
@@ -2633,9 +2662,12 @@ tr.mat-mdc-row.twes-row-active > td.twes-row-actions {
 /* The row whose record is open beside the list (docs/SPEC.md § 7, 2026-09-26): an accent bar on its leading edge and a
    soft ground, so it reads as "this one" without a colour alone saying it (aria-current says it to a reader). */
 tr.mat-mdc-row.twes-row-active,
-tr.mat-mdc-row.twes-row-active:hover,
+tr.mat-mdc-row.twes-row-active:hover {
+  background-color: var(--twes-accent-soft);
+}
+/* A phone's list card is a raised card: the soft ground drawn over it. */
 li.twes-row-active.twes-list-card {
-  background-color: color-mix(in oklch, var(--mat-sys-primary) 12%, transparent);
+  background-color: var(--twes-accent-soft-raised);
 }
 /* A selected row: the selection bar's own ground, so the eye pairs the rows with the bar that counts them. */
 tr.mat-mdc-row.twes-row-selected,
@@ -2650,7 +2682,7 @@ li.twes-row-selected.twes-list-card {
 
 tr.twes-row-active > td:first-child,
 li.twes-row-active.twes-list-card {
-  box-shadow: inset 3px 0 0 var(--mat-sys-primary);
+  box-shadow: inset 3px 0 0 var(--twes-accent-indicator);
 }
 
 tr.twes-row-new > td,
@@ -2773,9 +2805,9 @@ li.twes-row-new.twes-list-card {
   }
 }
 
-// What a tour step points at: ringed in the primary colour, outside its own box so nothing it holds moves.
+// What a tour step points at: ringed as « this one », outside its own box so nothing it holds moves.
 [data-tour-active] {
-  outline: 3px solid var(--mat-sys-primary);
+  outline: 3px solid var(--twes-accent-indicator);
   outline-offset: 4px;
   border-radius: var(--radius-lg);
 }

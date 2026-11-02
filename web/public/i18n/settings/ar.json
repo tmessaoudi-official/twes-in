@@ -89,6 +89,7 @@
     "presentation": {
       "accent": "لون الإبراز",
       "scheme": "المظهر",
+      "theme_preset": "نمط الألوان",
       "density": "الكثافة",
       "sidebar": "القائمة الجانبية",
       "sidebar_settings": "قائمة الإعدادات",
@@ -159,6 +160,10 @@
           "auto": "تلقائي",
           "light": "فاتح",
           "dark": "داكن"
+        },
+        "theme-preset": {
+          "calme": "هادئ",
+          "vif": "حيوي"
         },
         "density": {
           "comfortable": "مريحة",

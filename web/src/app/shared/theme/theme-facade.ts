@@ -20,6 +20,7 @@ import {
   colourTokens,
   statusTokens,
 } from './accent-theme';
+import { surfaceTokens, type ThemePreset } from './neutral-ramp';
 
 export { DEFAULT_ACCENT, type Density, type SchemePreference } from '../settings/settings-registry';
 
@@ -59,6 +60,8 @@ export class ThemeFacade {
     const preference = this.preference();
     return preference === 'auto' ? (this.deviceDark() ? 'dark' : 'light') : preference;
   });
+  /** How strongly the accent colours the grounds: calme or vif, the person's own. */
+  readonly themePreset = this.settings.value(PRESENTATION.themePreset);
   readonly density = this.settings.value(PRESENTATION.density);
   readonly sidebar = this.settings.value(PRESENTATION.sidebar);
   /** The settings area's own answer, so folding one menu does not fold the other. */
@@ -81,12 +84,17 @@ export class ThemeFacade {
       // colour transition fades from the old scheme's colours: dark text on the dark ground for a fifth of a second
       // after every page load in dark, which is what axe read as an unstable contrast (docs/SPEC.md § 8 row 28).
       this.root.classList.add('theme-changing');
+      const preset = this.themePreset();
+      // The grounds come from the neutral ramp, tinted by the preset, over the roles the accent's scheme derives: a
+      // red accent no longer turns the whole backdrop pink.
       applyColourTokens(this.root, {
         ...colourTokens(this.accent(), scheme),
-        ...accentTokens(this.accent(), scheme),
+        ...surfaceTokens(this.accent(), scheme, preset),
+        ...accentTokens(this.accent(), scheme, preset),
         ...statusTokens(scheme),
       });
       this.root.classList.toggle('theme-dark', scheme === 'dark');
+      this.root.classList.toggle('preset-vif', preset === 'vif');
       this.root.classList.toggle('density-compact', this.density() === 'compact');
       // Reading a computed style makes the browser apply the new colours now, while transitions are still held.
       void this.view?.getComputedStyle(this.root).color;
@@ -102,6 +110,10 @@ export class ThemeFacade {
 
   setScheme(scheme: SchemePreference): void {
     this.settings.set(PRESENTATION.scheme, scheme);
+  }
+
+  setThemePreset(preset: ThemePreset): void {
+    this.settings.set(PRESENTATION.themePreset, preset);
   }
 
   setDensity(density: Density): void {

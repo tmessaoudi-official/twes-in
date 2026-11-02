@@ -40,7 +40,7 @@ scale() {
   mkdir -p "$1/web/src"
   printf '@theme {\n  --text-*: initial;\n  --color-print-ink: #000;\n  --font-mono: monospace;\n  --text-sm: 0.875rem;\n  --text-sm--line-height: 1.4;\n  --font-weight-semibold: 600;\n  --tracking-wide: 0.025em;\n  --leading-tight: 1.25;\n  --radius-lg: 0.5rem;\n  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1);\n  --ease-out: cubic-bezier(0, 0, 0.2, 1);\n}\n@theme inline {\n  --font-sans: Inter;\n  --color-primary: var(--mat-sys-primary);\n}\n@theme {\n  --text-title: 1.5rem;\n  --radius-card: 14px;\n}\n' > "$1/web/src/tailwind.css"
 }
-d=$(repo); scale "$d"; printf '<p\n  class="text-sm font-semibold font-mono font-sans tracking-wide leading-tight leading-4 leading-none rounded-lg rounded-t-lg rounded-full rounded-none rounded-card shadow-sm shadow-none ease-out ease-linear text-title text-center text-end text-ellipsis text-nowrap text-print-ink bg-transparent text-current text-primary grid-cols-[1fr_2fr] max-w-[50rem]"\n  [class.md:text-sm]="on"\n>x</p>\n' > "$d/web/src/app/x/a.html"; printf "/** The total, rounded half away from zero, with no shadow of doubt. */\nexport const CARD = 'rounded-card shadow-sm text-sm';\n" > "$d/web/src/app/x/a.ts"; git -C "$d" add -A
+d=$(repo); scale "$d"; printf '<p\n  class="text-sm font-semibold font-mono font-sans tracking-wide leading-tight leading-4 leading-none rounded-lg rounded-t-lg rounded-full rounded-none rounded-card shadow-sm shadow-none ease-out ease-linear text-title text-center text-end text-ellipsis text-nowrap text-print-ink bg-transparent text-current bg-primary grid-cols-[1fr_2fr] max-w-[50rem]"\n  [class.md:text-sm]="on"\n>x</p>\n' > "$d/web/src/app/x/a.html"; printf "/** The total, rounded half away from zero, with no shadow of doubt. */\nexport const CARD = 'rounded-card shadow-sm text-sm';\n" > "$d/web/src/app/x/a.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "declared steps, built-in keywords, geometry values and a comment's words pass" $? 0 "$out" "OK — 2 files"
 d=$(repo); scale "$d"; printf '<p class="text-lg font-bold font-serif tracking-tight leading-loose rounded-xl shadow-lg ease-in">x</p>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a step tailwind.css does not declare is caught, one per namespace" $? 1 "$out" "web/src/app/x/a.html:1 undeclared step text-lg, font-bold, font-serif, tracking-tight, leading-loose, rounded-xl, shadow-lg, ease-in"
@@ -101,4 +101,19 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "a component stylesheet is read the 
 d=$(repo); scale "$d"; printf '%s\n' '// font-size: 12px in a comment is not a style' '@Component({' '  styles: `' '    :host { font-size: var(--text-xs); }' '    .dot { border-radius: 9999px; }' '  `,' '})' 'const size = { "font-size": 12 };' > "$d/web/src/app/x/c.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a component's inline styles are read, by line, and nothing else of its file" $? 1 "$out" "web/src/app/x/c.ts:5 literal border-radius"
 check "  and only that line" "$(grep -c "c.ts:" <<<"$out")" 1 "$out" ""
+# Primary is Material's component chrome; a word, a link or an icon read as text is the accent text, which reads on
+# every ground of the theme, and a tint is one of the theme's derived grounds.
+d=$(repo); scale "$d"; printf '<a class="font-semibold text-primary">x</a>\n<b [class.text-primary]="on">y</b>\n<i class="bg-primary fill-primary hover:bg-primary text-primary/60">z</i>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a text-primary class is caught, in a class list and in a class binding" $? 1 "$out" "web/src/app/x/a.html:1 primary where an accent role is meant: text-primary"
+check "  and in the binding on the next line" 0 0 "$out" "web/src/app/x/a.html:2 primary where an accent role is meant: text-primary"
+check "  and with an opacity, while chrome on primary passes" "$(grep -c 'a.html:3' <<<"$out")" 1 "$out" "a.html:3 primary where an accent role is meant: text-primary"
+d=$(repo); scale "$d"; sheet "$d" '.a { color: var(--mat-sys-primary); }
+.b:hover { background-color: color-mix(in oklch, var(--mat-sys-primary) 5%, transparent); }
+.c { background-color: var(--mat-sys-primary); color: var(--mat-sys-on-primary); outline-color: var(--twes-focus); }
+.d { color: var(--twes-accent-text); --mat-button-text-label-text-color: var(--mat-sys-primary); selected-icon-color: var(--mat-sys-primary); }'; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "primary as a text colour in the global stylesheet is caught" $? 1 "$out" "web/src/styles.scss:1 primary where an accent role is meant: color"
+check "  and primary mixed into a ground" 0 0 "$out" "web/src/styles.scss:2 primary where an accent role is meant: color-mix"
+check "  while a fill on primary, its ink and the accent roles pass" "$(grep -cE 'styles.scss:(3|4)' <<<"$out")" 0 "$out" ""
+d=$(repo); scale "$d"; printf '.x {\n  border-color: color-mix(in srgb, var(--mat-sys-primary) 40%%, var(--mat-sys-surface));\n}\n' > "$d/web/src/app/x/b.scss"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a component stylesheet mixing primary is caught too" $? 1 "$out" "web/src/app/x/b.scss:2 primary where an accent role is meant: color-mix"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

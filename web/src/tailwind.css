@@ -111,6 +111,20 @@
   --color-on-accent: var(--twes-on-accent);
   --color-accent-soft: var(--twes-accent-soft);
   --color-accent-text: var(--twes-accent-text);
+  /* The renewed theme's state grounds and indicator (accent-theme.ts accentTokens). Its on-indicator and focus-inverse
+     inks stay variables only: a class of them would be written where no indicator or toast sits under it. */
+  --color-accent-strip: var(--twes-accent-strip);
+  --color-accent-hover: var(--twes-accent-hover);
+  --color-accent-hover-raised: var(--twes-accent-hover-raised);
+  --color-accent-hover-container: var(--twes-accent-hover-container);
+  --color-accent-soft-raised: var(--twes-accent-soft-raised);
+  --color-accent-soft-container: var(--twes-accent-soft-container);
+  --color-accent-indicator: var(--twes-accent-indicator);
+  --color-accent-text-inverse: var(--twes-accent-text-inverse);
+  /* The grounds Material has no role for, and the card's, named by the ramp (neutral-ramp.ts surfaceTokens). */
+  --color-surface-backdrop: var(--twes-surface-backdrop);
+  --color-surface-raised: var(--twes-surface-raised);
+  --color-surface-sunken: var(--twes-surface-sunken);
 
   --color-primary: var(--mat-sys-primary);
   --color-on-primary: var(--mat-sys-on-primary);

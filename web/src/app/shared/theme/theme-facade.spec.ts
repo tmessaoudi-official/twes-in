@@ -4,7 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
-import { colourTokens, InvalidAccentColour, statusTokens } from './accent-theme';
+import { accentTokens, colourTokens, InvalidAccentColour, statusTokens } from './accent-theme';
+import { surfaceTokens } from './neutral-ramp';
 import { DEFAULT_ACCENT, DEVICE_SCHEME_QUERY, ThemeFacade } from './theme-facade';
 
 /** The device's `prefers-color-scheme: dark` query, which a test turns on and off. */
@@ -80,6 +81,30 @@ describe('ThemeFacade', () => {
 
     expect(info()).toBe(before);
     expect(info()).toBe(statusTokens('light')['--twes-status-info-fg']);
+  });
+
+  it('draws the grounds from the neutral ramp, not from the accent, vivid until the person chooses calm', () => {
+    const facade = start();
+    const ground = () => root.style.getPropertyValue('--mat-sys-surface');
+    const soft = () => root.style.getPropertyValue('--twes-accent-soft');
+    expect(ground()).toBe(surfaceTokens(DEFAULT_ACCENT, 'light', 'vif')['--mat-sys-surface']);
+    expect(soft()).toBe(accentTokens(DEFAULT_ACCENT, 'light', 'vif')['--twes-accent-soft']);
+    expect(root.classList.contains('preset-vif')).toBe(true);
+
+    facade.setThemePreset('calme');
+    TestBed.tick();
+
+    expect(facade.themePreset()).toBe('calme');
+    expect(ground()).toBe(surfaceTokens(DEFAULT_ACCENT, 'light', 'calme')['--mat-sys-surface']);
+    expect(soft()).toBe(accentTokens(DEFAULT_ACCENT, 'light', 'calme')['--twes-accent-soft']);
+    expect(root.classList.contains('preset-vif')).toBe(false);
+  });
+
+  it('takes the danger tone for Material error roles, so one red means danger everywhere', () => {
+    start();
+    expect(root.style.getPropertyValue('--mat-sys-error')).toBe(
+      surfaceTokens(DEFAULT_ACCENT, 'light', 'vif')['--mat-sys-error'],
+    );
   });
 
   it('switches to the dark scheme: the class for color-scheme and the dark tokens', () => {

@@ -310,7 +310,7 @@
             <label class="flex flex-1 items-center gap-2 py-1">
               <input
                 type="checkbox"
-                class="size-4 accent-primary"
+                class="size-4 accent-accent-indicator"
                 [checked]="entry.visible"
                 [disabled]="entry.column.hideable === false"
                 (change)="toggleColumn(entry.column.id)"
@@ -529,7 +529,7 @@
                 [attr.aria-valuenow]="widthOf(column)"
                 [attr.aria-valuemin]="minWidth"
                 [attr.aria-valuemax]="maxWidth"
-                class="absolute inset-e-0 top-0 h-full w-2 cursor-col-resize hover:bg-outline-variant focus:bg-primary focus:outline-none"
+                class="absolute inset-e-0 top-0 h-full w-2 cursor-col-resize hover:bg-outline-variant focus:bg-accent-text focus:outline-none"
                 (click)="$event.stopPropagation()"
                 (keydown)="onResizeKey($event, column)"
                 (pointerdown)="startResize($event, column)"

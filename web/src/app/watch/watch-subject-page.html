@@ -1,7 +1,7 @@
 <section class="flex flex-col gap-4 p-4" data-testid="watch-subject-page">
   <a
     routerLink="/watch"
-    class="flex w-fit items-center gap-1 font-medium text-primary"
+    class="flex w-fit items-center gap-1 font-medium text-accent-text"
     data-testid="watch-back"
   >
     <mat-icon aria-hidden="true" class="mat-icon-rtl-mirror">arrow_back</mat-icon
@@ -53,7 +53,7 @@
             <a
               [routerLink]="elsewhere.link"
               [queryParams]="elsewhere.query ?? null"
-              class="flex w-fit items-center gap-1 font-medium text-primary"
+              class="flex w-fit items-center gap-1 font-medium text-accent-text"
               [attr.data-testid]="$first ? 'watch-elsewhere' : 'watch-elsewhere-' + $index"
             >
               {{ elsewhere.label | translate

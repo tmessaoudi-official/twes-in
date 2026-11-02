@@ -197,6 +197,16 @@
                     testId="account-scheme"
                   />
                   <app-select
+                    [label]="'account.theme_preset' | translate"
+                    [labelInside]="true"
+                    [options]="themePresetOptions"
+                    [translateLabels]="true"
+                    [ngModel]="theme.themePreset()"
+                    (ngModelChange)="theme.setThemePreset(themePresetOf($event))"
+                    [ngModelOptions]="{ standalone: true }"
+                    testId="account-theme-preset"
+                  />
+                  <app-select
                     [label]="'account.density' | translate"
                     [labelInside]="true"
                     [options]="densityOptions"

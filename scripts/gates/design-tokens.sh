@@ -86,7 +86,7 @@ if ((${#templates[@]})); then
       }
     }
     while ($text =~ /\[class\.([^\]=\s]+)\]/g) { push @spans, [$-[1], $1]; }
-    my (%step_at, %arbitrary_at, %style_at);
+    my (%step_at, %arbitrary_at, %style_at, %primary_at);
     for my $span (@spans) {
       my ($start, $value) = @$span;
       while ($value =~ /(\S+)/g) {
@@ -99,6 +99,9 @@ if ((${#templates[@]})); then
         $class =~ s/^(?:[^:\[\]]+:)+//;
         $class =~ s/\/[\w.]+$//;
         next if $property{$class};
+        # Primary is the component chrome of Material, tuned for the grounds of the accent scheme: a word, a link or an icon
+        # read as text is the accent text, which is held to 4.5:1 on every ground the theme draws.
+        if ($class eq "text-primary") { push @{$primary_at{$line}}, $class; next; }
         if ($class =~ /^(?:text|font|leading|tracking|rounded(?:-[a-z]{1,2})?|shadow|duration|delay|ease|bg|border|ring|outline|fill|stroke|accent|caret|decoration|divide|placeholder)-[\[(]/) {
           push @{$arbitrary_at{$line}}, $class; next;
         }
@@ -122,6 +125,7 @@ if ((${#templates[@]})); then
     for my $line (sort { $a <=> $b } keys %step_at) { print "$ARGV:$line undeclared step " . join(", ", @{$step_at{$line}}) . "\n"; }
     for my $line (sort { $a <=> $b } keys %arbitrary_at) { print "$ARGV:$line arbitrary value " . join(", ", @{$arbitrary_at{$line}}) . "\n"; }
     for my $line (sort { $a <=> $b } keys %style_at) { print "$ARGV:$line style binding " . join(", ", @{$style_at{$line}}) . "\n"; }
+    for my $line (sort { $a <=> $b } keys %primary_at) { print "$ARGV:$line primary where an accent role is meant: " . join(", ", @{$primary_at{$line}}) . " (text-accent-text)\n"; }
     END { print "COUNT $count\n"; }
   ' "${templates[@]}")
   read_count=$(sed -n 's/^COUNT //p' <<<"$scale_out")
@@ -177,6 +181,12 @@ if ((${#existing[@]})); then
       push @{$at{$line_of->($-[0])}}, $1;
     }
     print "$ARGV:$_ literal " . join(", ", @{$at{$_}}) . "\n" for sort { $a <=> $b } keys %at;
+    # Primary as a text colour, or mixed into a ground: the accent text and the derived grounds (accent-hover, -soft,
+    # -strip, each over the ground it is drawn on) are what clear their contrast on every ground of the theme.
+    my %primary;
+    while ($text =~ /(?<![\w-])color\s*:\s*var\(\s*--mat-sys-primary\s*\)/g) { push @{$primary{$line_of->($-[0])}}, "color (var(--twes-accent-text))"; }
+    while ($text =~ /color-mix\([^;{}]*?var\(\s*--mat-sys-primary\s*\)/g) { push @{$primary{$line_of->($-[0])}}, "color-mix (a derived ground: --twes-accent-hover, -soft, -strip)"; }
+    print "$ARGV:$_ primary where an accent role is meant: " . join(", ", @{$primary{$_}}) . "\n" for sort { $a <=> $b } keys %primary;
   ' "${existing[@]}")
 fi
 if ((${#wrong[@]})); then

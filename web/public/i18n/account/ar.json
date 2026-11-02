@@ -46,6 +46,7 @@
     "display": "العرض",
     "language": "اللغة",
     "scheme": "السمة",
+    "theme_preset": "نمط الألوان",
     "density": "الكثافة",
     "date_format": "صيغة التواريخ",
     "number_format": "صيغة الأعداد",

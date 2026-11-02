@@ -36,7 +36,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
           }}</span>
           <button
             type="button"
-            class="font-medium text-primary"
+            class="font-medium text-accent-text"
             (click)="leave()"
             [disabled]="companies.switching()"
             data-testid="support-banner-leave"
@@ -53,7 +53,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
           @if (owner()) {
             <a
               routerLink="/company/support-access"
-              class="font-medium text-primary"
+              class="font-medium text-accent-text"
               data-testid="support-banner-manage"
               >{{ 'support_access.manage' | translate }}</a
             >

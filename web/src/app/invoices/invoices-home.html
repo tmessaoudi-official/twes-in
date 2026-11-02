@@ -145,7 +145,7 @@
                   'invoices.home.overdue_detail'
                     | translate: { count: s.overdueCount, days: s.oldestOverdueDays }
                 }}</span>
-                <a routerLink="/invoices" class="font-medium text-primary">{{
+                <a routerLink="/invoices" class="font-medium text-accent-text">{{
                   'invoices.home.see' | translate
                 }}</a>
               </div>
@@ -228,7 +228,7 @@
                   }}</span>
                 }
               </div>
-              <a routerLink="/invoices" class="text-sm font-medium text-primary">{{
+              <a routerLink="/invoices" class="text-sm font-medium text-accent-text">{{
                 'invoices.home.all_unpaid' | translate
               }}</a>
             </div>
@@ -338,7 +338,7 @@
                     class="w-full max-w-10 rounded-t-md"
                     [style.height.%]="bar.height"
                     [style.min-height.px]="2"
-                    [class.bg-primary]="bar.current"
+                    [class.bg-accent-indicator]="bar.current"
                     [class.bg-surface-container-highest]="!bar.current"
                   ></span>
                   <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->

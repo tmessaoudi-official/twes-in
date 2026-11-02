@@ -37,8 +37,8 @@ const TYPE_NAMES: Record<string, string> = {
   host: { class: 'flex min-w-0 flex-col gap-1' },
   template: `
     <label
-      class="flex cursor-pointer flex-col items-center gap-1 rounded-card border-2 border-dashed border-outline px-4 py-5 text-center text-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
-      [class.border-primary]="over()"
+      class="flex cursor-pointer flex-col items-center gap-1 rounded-card border-2 border-dashed border-outline px-4 py-5 text-center text-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent-text"
+      [class.border-accent-indicator]="over()"
       [class.bg-surface-container]="over()"
       [class.opacity-60]="disabled()"
       [class.cursor-not-allowed]="disabled()"
@@ -47,7 +47,7 @@ const TYPE_NAMES: Record<string, string> = {
       (drop)="dropped($event)"
       data-testid="file-drop-zone"
     >
-      <mat-icon aria-hidden="true" class="text-primary">upload_file</mat-icon>
+      <mat-icon aria-hidden="true" class="text-accent-text">upload_file</mat-icon>
       <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
       <span class="font-medium">{{ label() }}</span>
       <span class="text-on-surface-variant">{{ 'form.file.drop' | translate }}</span>

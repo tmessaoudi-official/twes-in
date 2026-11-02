@@ -41,6 +41,9 @@ final readonly class PresentationSettings implements DeclaresSettings
 
         yield new SettingDefinition('presentation.accent', SettingType::Colour, '#1f6feb', $chain, $shared, 'settings.presentation.accent', self::MODULE);
         yield new SettingDefinition('presentation.scheme', SettingType::Enum, 'auto', $chain, $shared, 'settings.presentation.scheme', self::MODULE, choices: ['auto', 'light', 'dark']);
+        // How strongly the accent colours the grounds: the person's own, as a scheme is. A new account starts vivid; the
+        // accounts that existed when it came kept the calmer look they had (migration Version20261102070000).
+        yield new SettingDefinition('presentation.theme-preset', SettingType::Enum, 'vif', $chain, [SettingLevel::User], 'settings.presentation.theme_preset', self::MODULE, choices: ['calme', 'vif']);
         yield new SettingDefinition('presentation.density', SettingType::Enum, 'comfortable', $chain, $shared, 'settings.presentation.density', self::MODULE, choices: ['comfortable', 'compact']);
         yield new SettingDefinition('presentation.sidebar', SettingType::Enum, 'expanded', $chain, $shared, 'settings.presentation.sidebar', self::MODULE, choices: ['expanded', 'rail']);
         yield new SettingDefinition('presentation.sidebar-settings', SettingType::Enum, 'expanded', $chain, $shared, 'settings.presentation.sidebar_settings', self::MODULE, choices: ['expanded', 'rail']);

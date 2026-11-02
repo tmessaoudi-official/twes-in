@@ -334,7 +334,12 @@ describe('StockMapPage', () => {
         { provide: COARSE_POINTER, useValue: coarse.asReadonly() },
         {
           provide: ThemeFacade,
-          useValue: { showComing, scheme: signal('light'), accent: signal('#1f6feb') },
+          useValue: {
+            showComing,
+            scheme: signal('light'),
+            accent: signal('#1f6feb'),
+            themePreset: signal('vif'),
+          },
         },
       ],
     });

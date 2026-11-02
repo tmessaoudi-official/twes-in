@@ -92,6 +92,7 @@ class StaticLoader implements TranslateLoader {
         choices: {
           presentation: {
             scheme: { auto: 'Automatique', light: 'Clair', dark: 'Sombre' },
+            'theme-preset': { calme: 'Calme', vif: 'Vif' },
             density: { comfortable: 'Confortable', compact: 'Compacte' },
             'date-format': { auto: 'Selon la langue', ymd: '2026-12-31' },
             'number-format': { auto: 'Selon la langue', 'comma-dot': '1,234.56' },
@@ -129,11 +130,14 @@ describe('AccountPage', () => {
   const preference = signal<'auto' | 'light' | 'dark'>('auto');
   const density = signal<'comfortable' | 'compact'>('comfortable');
   const showComing = signal(true);
+  const themePreset = signal<'calme' | 'vif'>('vif');
   const theme = {
     preference,
+    themePreset,
     density,
     showComing,
     setScheme: vi.fn(),
+    setThemePreset: vi.fn(),
     setDensity: vi.fn(),
     setShowComing: vi.fn(),
   };
@@ -552,16 +556,19 @@ describe('AccountPage', () => {
     });
   });
 
-  it('sets the language, the scheme and the density', async () => {
+  it('sets the language, the scheme, the colour style and the density', async () => {
     const root = await render('preferences');
     expect(shownIn(root, 'account-language')).toBe('Français');
 
     await choose(root, 'account-language', 'en');
     await choose(root, 'account-scheme', 'dark');
+    expect(shownIn(root, 'account-theme-preset')).toBe('Vif');
+    await choose(root, 'account-theme-preset', 'calme');
     await choose(root, 'account-density', 'compact');
 
     expect(language.use).toHaveBeenCalledWith('en');
     expect(theme.setScheme).toHaveBeenCalledWith('dark');
+    expect(theme.setThemePreset).toHaveBeenCalledWith('calme');
     expect(theme.setDensity).toHaveBeenCalledWith('compact');
   });
 

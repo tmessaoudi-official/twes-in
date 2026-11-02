@@ -4,6 +4,7 @@ import { DEFAULT_SHORTCUTS, parseShellShortcuts, type ShellKeys } from '../actio
 import { DATE_FORMATS, type DateFormat, NUMBER_FORMATS, type NumberStyle } from '../i18n/format';
 import { DEFAULT_LANGUAGE, INTERFACE_LANGUAGES, type Language } from '../i18n/languages';
 import { assertAccentColour } from '../theme/accent-theme';
+import { DEFAULT_THEME_PRESET, type ThemePreset } from '../theme/neutral-ramp';
 import type { ListFilterValues, ListPreferences, ListSort, ListView } from '../list/list-types';
 import { NO_LIST_PREFERENCES } from '../list/list-types';
 import { type SettingDefinition, UnregisteredSetting } from './settings-facade';
@@ -83,6 +84,12 @@ export const PRESENTATION = {
     'presentation.scheme',
     'auto',
     oneOf('auto', 'light', 'dark'),
+  ),
+  /** How strongly the accent colours the grounds, the person's own (docs/SPEC.md § 7, D1 and D2). */
+  themePreset: defineSetting<ThemePreset>(
+    'presentation.theme-preset',
+    DEFAULT_THEME_PRESET,
+    oneOf('calme', 'vif'),
   ),
   density: defineSetting<Density>(
     'presentation.density',

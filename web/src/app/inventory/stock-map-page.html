@@ -647,7 +647,7 @@
               </h2>
               <span class="flex items-center gap-2 text-sm">
                 <span
-                  class="inline-block h-3 w-5 rounded-sm border border-primary bg-primary-container"
+                  class="inline-block h-3 w-5 rounded-sm border border-accent-indicator bg-primary-container"
                 ></span>
                 {{ 'inventory.plan.legend_items.rack' | translate }}
               </span>
@@ -735,7 +735,7 @@
                   {{ 'inventory.plan.trace_hint' | translate }}
                   <button
                     type="button"
-                    class="text-primary underline"
+                    class="text-accent-text underline"
                     (click)="typeMeasures()"
                     data-testid="stock-map-trace-type"
                   >
@@ -1016,7 +1016,7 @@
               arrows move what is shown. Its buttons keep their own Enter and Space.
             -->
             <div
-              class="twes-map-board-area flex flex-col focus-visible:outline-2 focus-visible:outline-primary lg:h-[max(20rem,calc(100dvh-24rem-var(--twes-cookie-notice-height,0px)))]"
+              class="twes-map-board-area flex flex-col focus-visible:outline-2 focus-visible:outline-accent-text lg:h-[max(20rem,calc(100dvh-24rem-var(--twes-cookie-notice-height,0px)))]"
               tabindex="0"
               role="group"
               [attr.aria-label]="'inventory.plan.board' | translate"
@@ -1115,7 +1115,7 @@
                       [attr.rx]="0.1"
                       [attr.stroke-width]="0.05"
                       stroke-dasharray="0.3 0.2"
-                      class="fill-primary-container/40 stroke-primary"
+                      class="fill-primary-container/40 stroke-accent-indicator"
                       [class.stroke-error]="repeatOffFloor()"
                       [attr.data-testid]="'stock-repeat-preview-' + $index"
                     />
@@ -1197,7 +1197,7 @@
                           [attr.cy]="grip.y"
                           [attr.r]="handleRadius()"
                           [attr.stroke-width]="handleRadius() / 3"
-                          class="pointer-events-none fill-surface stroke-primary"
+                          class="pointer-events-none fill-surface stroke-accent-indicator"
                         />
                         <circle
                           [attr.cx]="grip.x"
@@ -1255,7 +1255,7 @@
                         [attr.stroke-width]="0.04"
                         [class]="arranging() ? 'cursor-move touch-none' : 'cursor-pointer'"
                         [class.fill-primary-container]="shape.drawing.locationKind === 'rack'"
-                        [class.stroke-primary]="shape.drawing.locationKind === 'rack'"
+                        [class.stroke-accent-indicator]="shape.drawing.locationKind === 'rack'"
                         [class.fill-surface-container-high]="shape.drawing.locationKind !== 'rack'"
                         [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
                         [class.twes-map-chosen]="chosen().has(shape.drawing.id)"
@@ -1378,7 +1378,7 @@
                             [attr.cy]="grip.y"
                             [attr.r]="handleRadius()"
                             [attr.stroke-width]="handleRadius() / 3"
-                            class="pointer-events-none fill-surface stroke-primary"
+                            class="pointer-events-none fill-surface stroke-accent-indicator"
                           />
                           <circle
                             [attr.cx]="grip.x"
@@ -1427,7 +1427,7 @@
                       [attr.height]="lasso.depth"
                       [attr.stroke-width]="handleRadius() / 4"
                       stroke-dasharray="0.3 0.2"
-                      class="pointer-events-none fill-none stroke-primary"
+                      class="pointer-events-none fill-none stroke-accent-indicator"
                       data-testid="stock-map-selection-box"
                     />
                   }

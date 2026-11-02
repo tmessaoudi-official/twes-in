@@ -123,7 +123,9 @@
     >
   </span>
   @if (row.entry.readAt === null) {
-    <span class="mt-2 size-2.5 shrink-0 rounded-full bg-primary" data-testid="notification-unread"
+    <span
+      class="mt-2 size-2.5 shrink-0 rounded-full bg-accent-indicator"
+      data-testid="notification-unread"
       ><span class="sr-only">{{ 'notifications.unread' | translate }}</span></span
     >
   }

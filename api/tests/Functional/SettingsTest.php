@@ -38,7 +38,7 @@ final class SettingsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
         $keys = array_column($rows, 'key');
-        self::assertSame(['identity.passkey_entry', 'presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.stock-map-view', 'presentation.page-size', 'presentation.language', 'presentation.show-coming', 'presentation.scan-feedback', 'presentation.scan-recount-ms', 'presentation.shortcuts', 'presentation.date-format', 'presentation.number-format', 'presentation.folded-sections', 'presentation.settings-list'], $keys);
+        self::assertSame(['identity.passkey_entry', 'presentation.accent', 'presentation.scheme', 'presentation.theme-preset', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.stock-map-view', 'presentation.page-size', 'presentation.language', 'presentation.show-coming', 'presentation.scan-feedback', 'presentation.scan-recount-ms', 'presentation.shortcuts', 'presentation.date-format', 'presentation.number-format', 'presentation.folded-sections', 'presentation.settings-list'], $keys);
         // Read by key and not by position: what each case below is about is one setting's own default, and an
         // ordinal makes every future presentation setting shift assertions that have nothing to do with it.
         $row = static function (string $key) use ($rows, $keys): array {

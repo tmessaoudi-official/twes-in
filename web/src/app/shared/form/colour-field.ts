@@ -48,7 +48,7 @@ const HEX = /^#[0-9a-f]{6}$/;
         <button
           type="button"
           role="radio"
-          class="size-8 shrink-0 rounded-full border border-outline outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary"
+          class="size-8 shrink-0 rounded-full border border-outline outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent-text"
           [class.ring-2]="isChosen(preset.hex)"
           [class.ring-offset-2]="isChosen(preset.hex)"
           [class.ring-on-surface]="isChosen(preset.hex)"

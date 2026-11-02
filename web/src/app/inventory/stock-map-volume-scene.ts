@@ -8,7 +8,7 @@ import type {
 } from './inventory-types';
 import { planRectangles, structureRectangles } from './stock-map-forms';
 import type { PlanRectangle } from './stock-map-geometry';
-import type { ColourTokens, StatusTokens } from '../shared/theme/accent-theme';
+import type { AccentTokens, ColourTokens, StatusTokens } from '../shared/theme/accent-theme';
 
 /**
  * What the volume view is made of, worked out here without a line of three.js: which box stands where, how tall,
@@ -263,13 +263,13 @@ export interface VolumeTones {
   opacity: number;
 }
 
-export type VolumeToken = keyof ColourTokens | keyof StatusTokens;
+export type VolumeToken = keyof ColourTokens | keyof AccentTokens | keyof StatusTokens;
 
 /** How much of a see-through wall, or of a place dimmed by a search, still shows. */
 export const SEE_THROUGH = 0.35;
 
 export const PART_TONES: Readonly<Record<VolumePart, VolumeTones>> = {
-  rack: { fill: '--mat-sys-primary-container', edge: '--mat-sys-primary', opacity: 1 },
+  rack: { fill: '--mat-sys-primary-container', edge: '--twes-accent-indicator', opacity: 1 },
   zone: { fill: '--mat-sys-surface-container-high', edge: '--mat-sys-outline', opacity: 1 },
   quarantine: { fill: '--mat-sys-error-container', edge: '--mat-sys-error', opacity: 1 },
   wall: { fill: '--mat-sys-outline-variant', edge: '--mat-sys-outline', opacity: SEE_THROUGH },
@@ -311,7 +311,7 @@ export const CHOSEN_TONES: VolumeTones = {
 };
 
 /** The see-through ring round what is chosen, a little wider and taller than it, in metres. */
-export const CHOSEN_HALO = { margin: 0.35, tone: '--mat-sys-primary', opacity: 0.3 } as const;
+export const CHOSEN_HALO = { margin: 0.35, tone: '--twes-accent-indicator', opacity: 0.3 } as const;
 
 export function haloOf(box: VolumeBox): VolumeBox {
   return {

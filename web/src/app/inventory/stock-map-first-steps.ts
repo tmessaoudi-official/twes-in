@@ -31,21 +31,21 @@ import { TranslatePipe } from '@ngx-translate/core';
             y="14"
             width="10"
             height="44"
-            class="fill-primary-container stroke-primary"
+            class="fill-primary-container stroke-accent-indicator"
           />
           <rect
             x="34"
             y="14"
             width="10"
             height="44"
-            class="fill-primary-container stroke-primary"
+            class="fill-primary-container stroke-accent-indicator"
           />
           <rect
             x="54"
             y="14"
             width="10"
             height="44"
-            class="fill-primary-container stroke-primary"
+            class="fill-primary-container stroke-accent-indicator"
           />
           <rect
             x="78"
@@ -61,8 +61,7 @@ import { TranslatePipe } from '@ngx-translate/core';
           <li class="flex items-start gap-2" [attr.data-testid]="'stock-map-step-' + step.key">
             <span
               class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium"
-              [class.bg-primary]="step.done"
-              [class.text-on-primary]="step.done"
+              [class.twes-indicator-fill]="step.done"
               [class.border]="!step.done"
               [class.border-outline]="!step.done"
               aria-hidden="true"

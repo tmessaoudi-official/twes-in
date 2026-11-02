@@ -65,7 +65,11 @@ describe('StockMapVolume', () => {
         }),
         {
           provide: ThemeFacade,
-          useValue: { scheme: signal('light'), accent: signal('#1f6feb') },
+          useValue: {
+            scheme: signal('light'),
+            accent: signal('#1f6feb'),
+            themePreset: signal('vif'),
+          },
         },
       ],
     });

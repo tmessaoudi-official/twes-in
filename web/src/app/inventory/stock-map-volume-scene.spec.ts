@@ -335,7 +335,7 @@ describe('the stock map in volume', () => {
     expect(halo.width).toBeCloseTo(box!.width + 2 * CHOSEN_HALO.margin);
     expect(halo.depth).toBeCloseTo(box!.depth + 2 * CHOSEN_HALO.margin);
     expect(halo.height).toBeCloseTo(box!.height + CHOSEN_HALO.margin);
-    expect(CHOSEN_HALO.tone).toBe('--mat-sys-primary');
+    expect(CHOSEN_HALO.tone).toBe('--twes-accent-indicator');
     expect(CHOSEN_HALO.opacity).toBeLessThan(1);
   });
 

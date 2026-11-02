@@ -15,7 +15,7 @@
               [attr.data-step]="step.key"
               [attr.data-done]="step.done"
             >
-              <mat-icon aria-hidden="true" [class.text-primary]="step.done">{{
+              <mat-icon aria-hidden="true" [class.text-accent-text]="step.done">{{
                 step.done ? 'check_circle' : 'radio_button_unchecked'
               }}</mat-icon>
               @if (step.done) {
@@ -24,7 +24,7 @@
                 }}</span>
                 <span class="sr-only">{{ 'first_steps.done' | translate }}</span>
               } @else if (links[step.key]; as link) {
-                <a [routerLink]="link" class="font-medium text-primary">{{
+                <a [routerLink]="link" class="font-medium text-accent-text">{{
                   labelOf(step.key) | translate
                 }}</a>
               } @else {

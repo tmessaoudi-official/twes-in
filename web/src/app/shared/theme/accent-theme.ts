@@ -8,6 +8,20 @@ import {
   SchemeFidelity,
 } from '@material/material-color-utilities';
 
+import { assertAccentColour, type ColourScheme } from './colour-math';
+import { DEFAULT_THEME_PRESET, themeRoles, type ThemePreset } from './neutral-ramp';
+
+export {
+  assertAccentColour,
+  type ColourScheme,
+  InvalidAccentColour,
+  oklchToHex,
+  STATUS_TONES,
+  type StatusTone,
+  type StatusTokens,
+  statusTokens,
+} from './colour-math';
+
 /**
  * The Material 3 system colour roles Angular Material reads as `--mat-sys-<role>` custom properties
  * (`@angular/material/core/tokens/m3/_md-sys-color.scss`). Any accent is turned into all of them at runtime, so
@@ -67,17 +81,7 @@ export const SYSTEM_COLOUR_ROLES = [
 ] as const;
 
 export type SystemColourRole = (typeof SYSTEM_COLOUR_ROLES)[number];
-export type ColourScheme = 'light' | 'dark';
 export type ColourTokens = Record<`--mat-sys-${SystemColourRole}`, string>;
-
-export class InvalidAccentColour extends Error {
-  constructor(readonly value: string) {
-    super(`The accent colour "${value}" is not a #rrggbb colour.`);
-    this.name = 'InvalidAccentColour';
-  }
-}
-
-const HEX_COLOUR = /^#[0-9a-f]{6}$/i;
 
 /**
  * Every system colour role for one accent and one scheme. The fidelity scheme keeps the accent's chroma, so the colour
@@ -103,82 +107,56 @@ export type AccentTokens = Record<
   | '--twes-on-accent'
   | '--twes-accent-state'
   | '--twes-accent-soft'
-  | '--twes-accent-text',
+  | '--twes-accent-text'
+  | '--twes-accent-strip'
+  | '--twes-accent-hover'
+  | '--twes-accent-hover-raised'
+  | '--twes-accent-hover-container'
+  | '--twes-accent-soft-raised'
+  | '--twes-accent-soft-container'
+  | '--twes-accent-indicator'
+  | '--twes-on-indicator'
+  | '--twes-accent-text-inverse'
+  | '--twes-focus-inverse',
   string
 >;
 
-const WHITE = '#ffffff';
-/** The ink written on a light accent (design direction § 1.1, the approved board's `ink`). */
-const INK = '#0d0f14';
-/** WCAG AA for body text, which every accent role that carries words meets. */
-const READABLE = 4.5;
-
 /**
- * The accent as the company picked it, and the roles that keep it readable whatever it is (design direction § 1.1,
- * docs/SPEC.md § 7, 2026-09-25): `--twes-accent` fills primary buttons and marks selection; `--twes-on-accent` writes on
- * it, in white when white reads, else in ink, else in black, which always reads where white does not;
- * `--twes-accent-state` is the layer a filled control shows when hovered, focused or pressed, the opposite of its ink,
- * so a state darkens a fill written in white and lightens one written in ink and never lowers its contrast (CI run
- * 36204583076: a hovered « Enregistrer » in #1f6feb under Material's white layer read 4.07:1);
- * `--twes-accent-soft` is a selected row's fill; `--twes-accent-text` is the accent as a link on the scheme's surface,
- * darkened (light) or lightened (dark) from the direction's starting mix until it reaches 4.5:1.
+ * The accent as the company picked it, and the roles that keep it readable whatever it is, over the neutral ramp's
+ * grounds tinted at the preset's shares (`themeRoles`). `--twes-accent` fills primary buttons; `--twes-on-accent`
+ * writes on it, in white when white reads, else in ink, else in black; `--twes-accent-state` is the layer a filled
+ * control shows when hovered, focused or pressed, the opposite of its ink, so a state never lowers its contrast (CI run
+ * 36204583076: a hovered « Enregistrer » in #1f6feb under Material's white layer read 4.07:1).
+ * Hover and soft (selected) grounds come in three, over the page, over a raised card and over a bar or menu, each
+ * perceptible over its ground, a selection never mistaken for a hover; `--twes-accent-strip` is the header band.
+ * `--twes-accent-text` reads at 4.6:1 on every ground it is written on and is the focus ring; `--twes-accent-indicator`
+ * is the accent where it alone marks a state, at 3:1 on every ground it is drawn on, `--twes-on-indicator` written on
+ * it when filled; `--twes-accent-text-inverse` and `--twes-focus-inverse` are the word and the ring on a toast's inverse
+ * surface, where the accent text would turn the wrong way round.
  */
-export function accentTokens(accent: string, scheme: ColourScheme): AccentTokens {
-  assertAccentColour(accent);
-  const hex = accent.toLowerCase();
-  const surface = colourTokens(hex, scheme)['--mat-sys-surface'];
-  const dark = scheme === 'dark';
-  const onAccent = [WHITE, INK].find((ink) => contrastRatio(ink, hex) >= READABLE) ?? '#000000';
-  const toward = dark ? WHITE : '#000000';
-  let share = dark ? 0.62 : 0.82;
-  let text = mixHex(hex, toward, share);
-  while (contrastRatio(text, surface) < READABLE && share > 0) {
-    share = Math.max(0, share - 0.04);
-    text = mixHex(hex, toward, share);
-  }
+export function accentTokens(
+  accent: string,
+  scheme: ColourScheme,
+  preset: ThemePreset = DEFAULT_THEME_PRESET,
+): AccentTokens {
+  const t = themeRoles(accent, scheme, preset);
   return {
-    '--twes-accent': hex,
-    '--twes-on-accent': onAccent,
-    '--twes-accent-state': onAccent === WHITE ? '#000000' : WHITE,
-    '--twes-accent-soft': dark ? mixHex(hex, surface, 0.22) : mixHex(hex, WHITE, 0.11),
-    '--twes-accent-text': text,
+    '--twes-accent': t.accent,
+    '--twes-on-accent': t.onAccent,
+    '--twes-accent-state': t.accentState,
+    '--twes-accent-soft': t.accentSoft,
+    '--twes-accent-text': t.accentText,
+    '--twes-accent-strip': t.accentStrip,
+    '--twes-accent-hover': t.accentHover,
+    '--twes-accent-hover-raised': t.accentHoverRaised,
+    '--twes-accent-hover-container': t.accentHoverContainer,
+    '--twes-accent-soft-raised': t.accentSoftRaised,
+    '--twes-accent-soft-container': t.accentSoftContainer,
+    '--twes-accent-indicator': t.accentIndicator,
+    '--twes-on-indicator': t.onIndicator,
+    '--twes-accent-text-inverse': t.accentTextInverse,
+    '--twes-focus-inverse': t.focusInverse,
   };
-}
-
-/** `share` of `a` and the rest of `b`, channel by channel in sRGB, as CSS `color-mix(in srgb, a share, b)`. */
-function mixHex(a: string, b: string, share: number): string {
-  const channel = (hex: string, i: number) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
-  return (
-    '#' +
-    [0, 1, 2]
-      .map((i) =>
-        Math.round(channel(a, i) * share + channel(b, i) * (1 - share))
-          .toString(16)
-          .padStart(2, '0'),
-      )
-      .join('')
-  );
-}
-
-/** WCAG 2 contrast ratio between two #rrggbb colours. */
-function contrastRatio(a: string, b: string): number {
-  const [light, dark] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
-  return (light + 0.05) / (dark + 0.05);
-}
-
-function relativeLuminance(hex: string): number {
-  const [r, g, b] = [1, 3, 5].map((i) => {
-    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-/** Throws InvalidAccentColour unless the value is #rrggbb; the one place that rule lives. */
-export function assertAccentColour(value: string): void {
-  if (!HEX_COLOUR.test(value)) {
-    throw new InvalidAccentColour(value);
-  }
 }
 
 /** Writes the tokens as custom properties on an element; the document root themes the whole application. */
@@ -195,73 +173,4 @@ export function applyColourTokens(
 function roleArgb(scheme: DynamicScheme, role: SystemColourRole): number {
   const getter = role.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
   return (scheme as unknown as Record<string, number>)[getter];
-}
-
-/**
- * The tones a status badge takes. Each names a meaning, so a module maps its statuses onto them and never picks a
- * colour; none follows the company's accent, which marks actions, selection and focus (docs/SPEC.md § 7, 2026-09-16,
- * the approved design).
- */
-export const STATUS_TONES = ['neutral', 'info', 'warning', 'success', 'danger', 'purple'] as const;
-export type StatusTone = (typeof STATUS_TONES)[number];
-export type StatusTokens = Record<`--twes-status-${StatusTone}-${'bg' | 'fg' | 'dot'}`, string>;
-
-/** OKLCH hue and chroma of each tone, as the approved design canvas draws them. */
-const TONE_HUE_CHROMA: Record<StatusTone, readonly [number, number]> = {
-  neutral: [262, 0.02],
-  info: [252, 0.13],
-  warning: [68, 0.12],
-  success: [152, 0.12],
-  danger: [25, 0.15],
-  purple: [300, 0.13],
-};
-
-/**
- * Each status tone's badge colours in one scheme: a soft background, a strong label and a solid dot at fixed OKLCH
- * lightness, so every tone reads alike whatever its hue and the label stays readable on its badge.
- */
-export function statusTokens(scheme: ColourScheme): StatusTokens {
-  const dark = scheme === 'dark';
-  const tokens: Record<string, string> = {};
-  for (const tone of STATUS_TONES) {
-    const [hue, chroma] = TONE_HUE_CHROMA[tone];
-    tokens[`--twes-status-${tone}-bg`] = dark
-      ? oklchToHex(0.31, chroma * 0.4, hue)
-      : oklchToHex(0.95, chroma * 0.28, hue);
-    tokens[`--twes-status-${tone}-fg`] = dark
-      ? oklchToHex(0.86, chroma * 0.75, hue)
-      : oklchToHex(0.45, chroma, hue);
-    tokens[`--twes-status-${tone}-dot`] = dark
-      ? oklchToHex(0.74, chroma, hue)
-      : oklchToHex(0.62, chroma, hue);
-  }
-  return tokens as StatusTokens;
-}
-
-/** An OKLCH colour as #rrggbb (CSS Color 4 matrices), each channel clipped into sRGB. */
-export function oklchToHex(lightness: number, chroma: number, hue: number): string {
-  const radians = (hue * Math.PI) / 180;
-  const a = chroma * Math.cos(radians);
-  const b = chroma * Math.sin(radians);
-  const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-  const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-  const s = (lightness - 0.0894841775 * a - 1.291485548 * b) ** 3;
-  const linear = [
-    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
-  ];
-  return (
-    '#' +
-    linear
-      .map((channel) => {
-        const clipped = Math.min(1, Math.max(0, channel));
-        const encoded =
-          clipped <= 0.0031308 ? 12.92 * clipped : 1.055 * clipped ** (1 / 2.4) - 0.055;
-        return Math.round(encoded * 255)
-          .toString(16)
-          .padStart(2, '0');
-      })
-      .join('')
-  );
 }

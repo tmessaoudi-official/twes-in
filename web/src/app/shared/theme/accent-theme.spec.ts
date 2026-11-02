@@ -11,6 +11,8 @@ import {
   statusTokens,
   SYSTEM_COLOUR_ROLES,
 } from './accent-theme';
+import { surfaceTokens, THEME_PRESETS, type ThemePreset } from './neutral-ramp';
+import expected from './proposal-tokens.fixture.json';
 
 /** WCAG relative luminance of a #rrggbb colour. */
 function luminance(hex: string): number {
@@ -258,15 +260,428 @@ describe('accentTokens', () => {
     }
   });
 
-  it('softens the accent toward the surface for a selected fill', () => {
+  // The selected fill is a tint of the page, stronger than it used to be so it reads at 1.20:1 over the page.
+  it('softens the accent toward the page for a selected fill', () => {
     const light = accentTokens('#1f6feb', 'light')['--twes-accent-soft'];
     const dark = accentTokens('#1f6feb', 'dark')['--twes-accent-soft'];
-    expect(luminance(light)).toBeGreaterThan(0.75);
+    expect(luminance(light)).toBeGreaterThan(0.65);
     expect(luminance(dark)).toBeLessThan(0.08);
     expect(light).not.toBe('#ffffff');
   });
 
   it('refuses what is not a #rrggbb colour', () => {
     expect(() => accentTokens('blue', 'light')).toThrow(InvalidAccentColour);
+  });
+});
+
+// The renewed design system's pairs (var/claude/design-system/proposal-tokens.py, ported): every ground, ink, state and
+// indicator for every swatch, scheme and preset, each at or above its minimum, each state on the right side of its ground.
+type Role = keyof (typeof expected.themes)['calme/light/blue'];
+
+/** Each of the reference computation's names, read from the tokens the theme writes. */
+const ROLE_TOKEN: Record<Role, string> = {
+  backdrop: '--twes-surface-backdrop',
+  surface: '--mat-sys-surface',
+  raised: '--twes-surface-raised',
+  sunken: '--twes-surface-sunken',
+  container: '--mat-sys-surface-container',
+  high: '--mat-sys-surface-container-high',
+  highest: '--mat-sys-surface-container-highest',
+  on_surface: '--mat-sys-on-surface',
+  on_variant: '--mat-sys-on-surface-variant',
+  outline: '--mat-sys-outline',
+  outline_variant: '--mat-sys-outline-variant',
+  inverse: '--mat-sys-inverse-surface',
+  on_inverse: '--mat-sys-inverse-on-surface',
+  accent: '--twes-accent',
+  on_accent: '--twes-on-accent',
+  accent_state: '--twes-accent-state',
+  accent_hover: '--twes-accent-hover',
+  accent_soft: '--twes-accent-soft',
+  accent_hover_raised: '--twes-accent-hover-raised',
+  accent_soft_raised: '--twes-accent-soft-raised',
+  accent_hover_container: '--twes-accent-hover-container',
+  accent_soft_container: '--twes-accent-soft-container',
+  accent_strip: '--twes-accent-strip',
+  accent_text: '--twes-accent-text',
+  focus: '--twes-accent-text',
+  accent_indicator: '--twes-accent-indicator',
+  on_indicator: '--twes-on-indicator',
+  accent_text_inverse: '--twes-accent-text-inverse',
+  focus_inverse: '--twes-focus-inverse',
+  danger_fill: '--twes-danger-fill',
+  on_danger: '--twes-on-danger',
+};
+
+const HOVER_FLOOR = 1.1;
+const SOFT_FLOOR = 1.2;
+const SOFT_VS_HOVER = 1.15;
+
+/** (label, foreground, background, minimum); a minimum of 0 is listed for information only. */
+const PAIRS: readonly (readonly [string, Role, Role, number])[] = [
+  ['text on surface (page)', 'on_surface', 'surface', 4.5],
+  ['text on raised card', 'on_surface', 'raised', 4.5],
+  ['text on backdrop', 'on_surface', 'backdrop', 4.5],
+  ['text on sunken (list header)', 'on_surface', 'sunken', 4.5],
+  ['text on container (bar, menu)', 'on_surface', 'container', 4.5],
+  ['text on highest container', 'on_surface', 'highest', 4.5],
+  ['text on hover (page)', 'on_surface', 'accent_hover', 4.5],
+  ['text on hover (card)', 'on_surface', 'accent_hover_raised', 4.5],
+  ['text on soft (selected row)', 'on_surface', 'accent_soft', 4.5],
+  ['text on soft (selected card)', 'on_surface', 'accent_soft_raised', 4.5],
+  ['text on accent-strip', 'on_surface', 'accent_strip', 4.5],
+  ['muted on surface', 'on_variant', 'surface', 4.5],
+  ['muted on raised card', 'on_variant', 'raised', 4.5],
+  ['muted on backdrop', 'on_variant', 'backdrop', 4.5],
+  ['muted on sunken', 'on_variant', 'sunken', 4.5],
+  ['muted on container', 'on_variant', 'container', 4.5],
+  ['muted on highest', 'on_variant', 'highest', 4.5],
+  ['muted on hover (page)', 'on_variant', 'accent_hover', 4.5],
+  ['muted on hover (card)', 'on_variant', 'accent_hover_raised', 4.5],
+  ['muted on soft (selected row)', 'on_variant', 'accent_soft', 4.5],
+  ['muted on soft (selected card subtitle)', 'on_variant', 'accent_soft_raised', 4.5],
+  [
+    'text on soft (bottom-bar pill, menu selected item)',
+    'on_surface',
+    'accent_soft_container',
+    4.5,
+  ],
+  ['muted on accent-strip (FORBIDDEN, info)', 'on_variant', 'accent_strip', 0],
+  ['accent-text on surface (link)', 'accent_text', 'surface', 4.5],
+  ['accent-text on raised', 'accent_text', 'raised', 4.5],
+  ['accent-text on container', 'accent_text', 'container', 4.5],
+  ['accent-text on soft (tonal button)', 'accent_text', 'accent_soft', 4.5],
+  ['accent-text on soft (card)', 'accent_text', 'accent_soft_raised', 4.5],
+  ['accent-text on soft (bottom-bar pill)', 'accent_text', 'accent_soft_container', 4.5],
+  ['accent-text on hover (text button)', 'accent_text', 'accent_hover', 4.5],
+  ['accent-text on accent-strip (KPI label)', 'accent_text', 'accent_strip', 4.5],
+  ['on-accent on accent (filled button)', 'on_accent', 'accent', 4.5],
+  ['on-indicator on indicator (pressed chip)', 'on_indicator', 'accent_indicator', 4.5],
+  ['on-danger on danger fill', 'on_danger', 'danger_fill', 4.5],
+  ['inverse text on inverse (toast)', 'on_inverse', 'inverse', 4.5],
+  ['accent-text-inverse on inverse (toast action)', 'accent_text_inverse', 'inverse', 4.5],
+  ['field outline on surface', 'outline', 'surface', 3],
+  ['field outline on raised', 'outline', 'raised', 3],
+  ['field outline on soft (selected card)', 'outline', 'accent_soft_raised', 3],
+  ['focus ring on surface', 'focus', 'surface', 3],
+  ['focus ring on raised', 'focus', 'raised', 3],
+  ['focus ring on backdrop', 'focus', 'backdrop', 3],
+  ['focus ring on container (bar, menu)', 'focus', 'container', 3],
+  ['focus ring on soft (selected row)', 'focus', 'accent_soft', 3],
+  ['focus ring on inverse (toast)', 'focus_inverse', 'inverse', 3],
+  ['indicator on surface', 'accent_indicator', 'surface', 3],
+  ['indicator on raised', 'accent_indicator', 'raised', 3],
+  ['indicator on container (bottom-bar bar)', 'accent_indicator', 'container', 3],
+  ['indicator on soft (active-row bar)', 'accent_indicator', 'accent_soft', 3],
+  ['indicator on soft (selected-card border)', 'accent_indicator', 'accent_soft_raised', 3],
+  ['indicator on soft (bottom-bar pill bar)', 'accent_indicator', 'accent_soft_container', 3],
+  ['indicator on hover (new-row fallback)', 'accent_indicator', 'accent_hover', 3],
+  ['indicator fill vs surface (pressed chip)', 'accent_indicator', 'surface', 3],
+  ['hover vs page', 'accent_hover', 'surface', HOVER_FLOOR],
+  ['hover vs card', 'accent_hover_raised', 'raised', HOVER_FLOOR],
+  ['hover vs bar/menu', 'accent_hover_container', 'container', HOVER_FLOOR],
+  ['soft vs page', 'accent_soft', 'surface', SOFT_FLOOR],
+  ['soft vs card', 'accent_soft_raised', 'raised', SOFT_FLOOR],
+  ['soft vs bar/menu (bottom-bar pill)', 'accent_soft_container', 'container', SOFT_FLOOR],
+  ['soft vs hover (page)', 'accent_soft', 'accent_hover', SOFT_VS_HOVER],
+  ['soft vs hover (card)', 'accent_soft_raised', 'accent_hover_raised', SOFT_VS_HOVER],
+  ['soft vs hover (bar/menu)', 'accent_soft_container', 'accent_hover_container', SOFT_VS_HOVER],
+  ['page vs backdrop (info)', 'surface', 'backdrop', 0],
+  ['card vs page (info: depth)', 'raised', 'surface', 0],
+  ['sunken vs card (info)', 'sunken', 'raised', 0],
+  ['hairline on card (decorative, info)', 'outline_variant', 'raised', 0],
+  [
+    'indicator on accent-strip (vif header rule, decorative, info)',
+    'accent_indicator',
+    'accent_strip',
+    0,
+  ],
+  ['accent fill vs surface (info; the button has its label)', 'accent', 'surface', 0],
+];
+
+/** A state and the ground it is drawn over: lighter than it in dark, darker in light. */
+const DIRECTION: readonly (readonly [Role, Role])[] = [
+  ['accent_hover', 'surface'],
+  ['accent_hover_raised', 'raised'],
+  ['accent_hover_container', 'container'],
+  ['accent_soft', 'surface'],
+  ['accent_soft_raised', 'raised'],
+  ['accent_soft_container', 'container'],
+];
+const TINTED: readonly Role[] = [
+  'accent_hover',
+  'accent_hover_raised',
+  'accent_soft',
+  'accent_soft_raised',
+  'accent_strip',
+];
+
+const THEMES = THEME_PRESETS.flatMap((preset) =>
+  (['light', 'dark'] as const).flatMap((scheme) =>
+    ACCENT_PRESETS.map((swatch) => ({
+      preset,
+      scheme,
+      swatch: swatch.id,
+      accent: swatch.hex as string,
+    })),
+  ),
+);
+
+function themeOf(
+  accent: string,
+  scheme: 'light' | 'dark',
+  preset: ThemePreset,
+): Record<Role, string> {
+  const tokens: Record<string, string> = {
+    ...colourTokens(accent, scheme),
+    ...surfaceTokens(accent, scheme, preset),
+    ...accentTokens(accent, scheme, preset),
+  };
+  return Object.fromEntries(
+    (Object.keys(ROLE_TOKEN) as Role[]).map((role) => [role, tokens[ROLE_TOKEN[role]]]),
+  ) as Record<Role, string>;
+}
+
+describe('the renewed theme, 8 swatches × 2 schemes × 2 presets', () => {
+  it('covers the 32 themes the reference computation does', () => {
+    expect(THEMES.map((t) => `${t.preset}/${t.scheme}/${t.swatch}`).sort()).toEqual(
+      Object.keys(expected.themes).sort(),
+    );
+  });
+
+  it.each(THEMES)(
+    '$preset $scheme $swatch: every pair at or above its minimum',
+    ({ preset, scheme, swatch, accent }) => {
+      const t = themeOf(accent, scheme, preset);
+      for (const [label, fg, bg, minimum] of PAIRS) {
+        if (minimum > 0) {
+          expect(
+            contrast(t[fg], t[bg]),
+            `${preset}/${scheme}/${swatch}: ${label}`,
+          ).toBeGreaterThanOrEqual(minimum);
+        }
+      }
+    },
+  );
+
+  it.each(THEMES)(
+    '$preset $scheme $swatch: each state on the right side of its ground',
+    ({ preset, scheme, swatch, accent }) => {
+      const t = themeOf(accent, scheme, preset);
+      for (const [state, ground] of DIRECTION) {
+        expect(
+          luminance(t[state]) > luminance(t[ground]),
+          `${preset}/${scheme}/${swatch}: ${state} over ${ground}`,
+        ).toBe(scheme === 'dark');
+      }
+    },
+  );
+
+  // A link moved off primary also sits on a banner or a dialog, the high container, which the accent text's loop does
+  // not name. The highest container is not such a ground: in dark the accent text falls under 4.5 there, so no text in
+  // the accent is written on it.
+  it.each(THEMES)(
+    '$preset $scheme $swatch: the accent text reads on the high container too',
+    ({ preset, scheme, swatch, accent }) => {
+      const t = themeOf(accent, scheme, preset);
+      for (const ground of ['high'] as Role[]) {
+        expect(
+          contrast(t.accent_text, t[ground]),
+          `${preset}/${scheme}/${swatch}: accent-text on ${ground}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    },
+  );
+
+  it.each(THEMES)(
+    '$preset $scheme $swatch: every status label reads on every tinted ground and card',
+    ({ preset, scheme, swatch, accent }) => {
+      const t = themeOf(accent, scheme, preset);
+      const tones = statusTokens(scheme);
+      for (const tone of STATUS_TONES) {
+        for (const ground of [...TINTED, 'raised', 'surface'] as Role[]) {
+          expect(
+            contrast(tones[`--twes-status-${tone}-fg`], t[ground]),
+            `${preset}/${scheme}/${swatch}: ${tone} on ${ground}`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    },
+  );
+
+  // Python rounds a channel's exact half to even, Math.round rounds it up: these mixes land on a half and come out one
+  // higher in one channel here. Every pair above is checked on the values written here, which is why accent-text aims
+  // at 4.6 rather than 4.5.
+  const HALF_ROUNDED_UP: Record<string, Partial<Record<Role, string>>> = {
+    'calme/light/red': { accent_soft: '#efdadb', accent_strip: '#f7e9e9' },
+    'calme/light/slate': { accent_strip: '#eceff0' },
+    'calme/dark/red': { accent_text: '#dfa4a1', focus: '#dfa4a1' },
+    'calme/dark/orange': { accent_text: '#e1aa80', focus: '#e1aa80' },
+    'calme/dark/purple': { backdrop: '#0e0f17' },
+    'vif/light/red': { accent_soft: '#efd9da' },
+    'vif/dark/red': { accent_hover: '#281c1f', accent_text: '#dfa4a1', focus: '#dfa4a1' },
+    'vif/dark/purple': { accent_strip: '#443071' },
+    'vif/dark/teal': { accent_hover: '#152527' },
+    'vif/dark/pink': { accent_hover: '#291a25' },
+    'vif/dark/slate': { accent_soft_raised: '#3a4249' },
+  };
+
+  it('differs from the reference only by a half rounded up, one channel by one', () => {
+    for (const [at, roles] of Object.entries(HALF_ROUNDED_UP)) {
+      const reference = expected.themes[at as keyof typeof expected.themes];
+      for (const [role, port] of Object.entries(roles) as [Role, string][]) {
+        const steps = [1, 3, 5].map(
+          (i) => parseInt(port.slice(i, i + 2), 16) - parseInt(reference[role].slice(i, i + 2), 16),
+        );
+        expect(steps.sort(), `${at}: ${role}`).toEqual([0, 0, 1]);
+      }
+    }
+  });
+
+  it.each(THEMES)(
+    '$preset $scheme $swatch: the colours the reference computation gives',
+    ({ preset, scheme, swatch, accent }) => {
+      const at = `${preset}/${scheme}/${swatch}`;
+      const t = themeOf(accent, scheme, preset);
+      expect(t).toEqual({
+        ...expected.themes[at as keyof typeof expected.themes],
+        ...HALF_ROUNDED_UP[at],
+      });
+    },
+  );
+
+  // Material's own component chrome stays on primary and secondary-container: its pairs over the new grounds.
+  it.each(THEMES)(
+    '$preset $scheme $swatch: Material primary and secondary-container pairs on the new grounds',
+    ({ preset, scheme, swatch, accent }) => {
+      const m = colourTokens(accent, scheme);
+      const t = themeOf(accent, scheme, preset);
+      const at = `${preset}/${scheme}/${swatch}`;
+      const pairs = {
+        'primary on surface': contrast(m['--mat-sys-primary'], t.surface),
+        'primary on raised': contrast(m['--mat-sys-primary'], t.raised),
+        'on-primary on primary (slide toggle handle icon)': contrast(
+          m['--mat-sys-on-primary'],
+          m['--mat-sys-primary'],
+        ),
+        'primary vs surface (slide toggle track, UI)': contrast(m['--mat-sys-primary'], t.surface),
+        'on-secondary-container on secondary-container': contrast(
+          m['--mat-sys-on-secondary-container'],
+          m['--mat-sys-secondary-container'],
+        ),
+      };
+      for (const [label, ratio] of Object.entries(pairs)) {
+        expect(ratio, `${at}: ${label}`).toBeGreaterThanOrEqual(label.includes('(UI)') ? 3 : 4.5);
+      }
+      if (swatch === 'blue') {
+        const reference =
+          expected.materialPrimaryBlue[at as keyof typeof expected.materialPrimaryBlue];
+        for (const [label, ratio] of Object.entries(pairs)) {
+          expect(ratio, `${at}: ${label}`).toBeCloseTo(
+            reference[label as keyof typeof reference],
+            2,
+          );
+        }
+      }
+    },
+  );
+
+  it('keeps the status tones the reference computation validated', () => {
+    for (const scheme of ['light', 'dark'] as const) {
+      const tones = statusTokens(scheme);
+      expect([
+        tones['--twes-status-danger-bg'],
+        tones['--twes-status-danger-fg'],
+        tones['--twes-status-danger-dot'],
+      ]).toEqual(expected.statusDanger[scheme]);
+    }
+  });
+
+  it('defaults the preset to vif for a two-argument call', () => {
+    expect(accentTokens('#7b3fe4', 'light')).toEqual(accentTokens('#7b3fe4', 'light', 'vif'));
+  });
+
+  // No swatch falls under 3:1 in light, so the light step toward black is exercised by an accent a person may type.
+  it('darkens a pale typed accent into an indicator that marks a state on every light ground it is drawn on', () => {
+    for (const preset of THEME_PRESETS) {
+      for (const accent of ['#ffd400', '#00e5ff', '#ffffff']) {
+        const tokens = accentTokens(accent, 'light', preset);
+        const surface = surfaceTokens(accent, 'light', preset);
+        const indicator = tokens['--twes-accent-indicator'];
+        expect(indicator, `${preset} ${accent}`).not.toBe(accent);
+        expect(luminance(indicator), `${preset} ${accent}`).toBeLessThan(luminance(accent));
+        for (const ground of [
+          surface['--mat-sys-surface'],
+          surface['--twes-surface-raised'],
+          surface['--twes-surface-backdrop'],
+          surface['--mat-sys-surface-container'],
+          tokens['--twes-accent-soft'],
+          tokens['--twes-accent-soft-raised'],
+          tokens['--twes-accent-soft-container'],
+          tokens['--twes-accent-hover'],
+          tokens['--twes-accent-hover-raised'],
+          tokens['--twes-accent-hover-container'],
+        ]) {
+          expect(
+            contrast(indicator, ground),
+            `${preset} ${accent} on ${ground}`,
+          ).toBeGreaterThanOrEqual(3);
+        }
+      }
+    }
+  });
+
+  it('adds the state grounds, indicator, inverse and focus roles beside the accent roles it always had', () => {
+    expect(Object.keys(accentTokens('#1f6feb', 'dark', 'calme')).sort()).toEqual(
+      [
+        '--twes-accent',
+        '--twes-on-accent',
+        '--twes-accent-state',
+        '--twes-accent-soft',
+        '--twes-accent-text',
+        '--twes-accent-strip',
+        '--twes-accent-hover',
+        '--twes-accent-hover-raised',
+        '--twes-accent-hover-container',
+        '--twes-accent-soft-raised',
+        '--twes-accent-soft-container',
+        '--twes-accent-indicator',
+        '--twes-on-indicator',
+        '--twes-accent-text-inverse',
+        '--twes-focus-inverse',
+      ].sort(),
+    );
+  });
+});
+
+// A first paint, before the theme facade writes the tokens, reads these from styles.scss: the default accent, light,
+// on the preset new accounts start on. Read from the stylesheet itself, so its values never drift from the functions.
+declare const process: {
+  getBuiltinModule(name: 'fs'): { readFileSync(path: string, encoding: 'utf8'): string };
+};
+
+describe('the stylesheet first paint', () => {
+  // The shell's ground and every link and ring read these before the facade runs: a role left out paints nothing.
+  it('holds every --twes- role the theme computes at its value for #1f6feb, light, vif', () => {
+    // Through a variable: the build takes `new URL('…', import.meta.url)` for an asset to bundle and rewrites it.
+    const here = import.meta.url;
+    const sheet = process
+      .getBuiltinModule('fs')
+      .readFileSync(new URL('../../../styles.scss', here).pathname, 'utf8');
+    const block = /\/\/ First paint[^\n]*\n(?:\/\/[^\n]*\n)*:root \{([^}]*)\}/.exec(sheet);
+    expect(block, 'the first-paint :root block').not.toBeNull();
+    const declared = Object.fromEntries(
+      [...(block?.[1] ?? '').matchAll(/(--twes-[a-z-]+):\s*([^;]+);/g)].map((m) => [
+        m[1],
+        m[2].trim(),
+      ]),
+    );
+    const computed = Object.fromEntries(
+      Object.entries({
+        ...surfaceTokens('#1f6feb', 'light', 'vif'),
+        ...accentTokens('#1f6feb', 'light', 'vif'),
+      }).filter(([name]) => name.startsWith('--twes-')),
+    );
+    expect(declared).toEqual(computed);
   });
 });

@@ -50,7 +50,7 @@ const SCHEMES: readonly { value: SchemePreference; icon: IconName }[] = [
             <span class="flex-1">{{ 'appearance.schemes.' + scheme.value | translate }}</span>
             <span
               aria-hidden="true"
-              class="material-symbols-outlined text-primary"
+              class="material-symbols-outlined text-accent-text"
               [class.invisible]="theme.preference() !== scheme.value"
               >check</span
             >

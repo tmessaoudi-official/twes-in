@@ -17,7 +17,7 @@
 /* The ring round what is chosen, wide and faint, behind the place itself; the 3D draws the same ring. */
 .twes-map-halo {
   fill: none;
-  stroke: var(--mat-sys-primary);
+  stroke: var(--twes-accent-indicator);
   stroke-width: 0.45;
   stroke-opacity: 0.35;
   pointer-events: none;

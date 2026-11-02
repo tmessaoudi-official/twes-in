@@ -89,6 +89,7 @@
     "presentation": {
       "accent": "Accent colour",
       "scheme": "Colour scheme",
+      "theme_preset": "Colour style",
       "density": "Density",
       "sidebar": "Sidebar",
       "sidebar_settings": "Settings menu",
@@ -159,6 +160,10 @@
           "auto": "Automatic",
           "light": "Light",
           "dark": "Dark"
+        },
+        "theme-preset": {
+          "calme": "Calm",
+          "vif": "Vivid"
         },
         "density": {
           "comfortable": "Comfortable",
