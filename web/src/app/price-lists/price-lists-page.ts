@@ -51,7 +51,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { Feedback } from '../shared/feedback/feedback';
 import { DataList, DataListCell } from '../shared/list/data-list';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { PRICE_LISTS_LIST } from './price-lists-forms';
 import { rowFigures, type RowFigures } from './price-lists-figures';
@@ -177,6 +177,18 @@ export class PriceListsPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'sell',
+    title: 'price_lists.none',
+    action: {
+      id: 'create',
+      label: 'price_lists.add',
+      icon: 'add',
+      run: () => this.open('new'),
+      shown: this.mayWrite() && this.editing() === null && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));
   protected readonly rowTestId = (row: PriceListRow): string => `price-list-${row.name}`;
   protected readonly scopeOf = scopeOf;

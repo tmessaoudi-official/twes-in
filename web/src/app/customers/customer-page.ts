@@ -24,7 +24,7 @@ import { liveRecord } from '../shared/form/live-record';
 import { listRecord } from '../shared/form/list-record';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import {
   CONTACT_FORM,
@@ -91,6 +91,18 @@ export class CustomerPage {
   protected readonly error = this.facade.error;
   protected readonly contacts = this.facade.contacts;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly contactEmpty = computed<EmptyState>(() => ({
+    icon: 'contacts',
+    title: 'customers.contacts.none',
+    action: {
+      id: 'create',
+      label: 'customers.contacts.add',
+      icon: 'add',
+      run: () => this.openContact('new'),
+      shown: this.mayWrite() && this.contactEditing() === null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
   /** The statement is a customer's money: it takes the right to read invoices as well as customers. */
   protected readonly mayStatement = computed(() => this.auth.hasPermission('invoice.read'));

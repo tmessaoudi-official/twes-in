@@ -16,7 +16,7 @@ import { map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { DataList } from '../shared/list/data-list';
-import type { ListQuery } from '../shared/list/list-types';
+import type { EmptyState, ListQuery } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
 import { hintKey, permittedList, subjectView } from './watch-subjects';
@@ -36,6 +36,8 @@ import { watchRowView } from './watch-view';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WatchSubjectPage implements OnInit {
+  /** What the list says before it holds anything. */
+  protected readonly emptyState: EmptyState = { icon: 'visibility', title: 'watch.none' };
   private readonly facade = inject(WatchFacade);
   private readonly auth = inject(AuthFacade);
   private readonly format = inject(FormatFacade);

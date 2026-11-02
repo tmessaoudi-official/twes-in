@@ -183,7 +183,7 @@
                 [failed]="facade.error() !== null"
                 testId="contacts-table"
                 [rowTestId]="contactTestId"
-                emptyKey="customers.contacts.none"
+                [empty]="contactEmpty()"
                 emptyTestId="contacts-empty"
               >
                 <ng-template appDataListCell="isPrimary" let-row>

@@ -15,7 +15,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { DayPipe } from '../shared/i18n/format-pipes';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { SCHEDULE_UNITS, scheduleSentence } from '../shared/schedule/schedule';
@@ -64,6 +64,8 @@ export class RecurringPage implements OnInit {
   protected readonly error = this.requests.error;
   protected readonly busy = signal(false);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything. */
+  protected readonly emptyState: EmptyState = { icon: 'event_repeat', title: 'recurring.none' };
   protected readonly mayWrite = computed(() => this.auth.hasPermission('invoice.write'));
   protected readonly state = recurringState;
   protected readonly tone = (row: RecurringInvoiceRow): StatusTone =>

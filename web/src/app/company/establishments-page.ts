@@ -23,7 +23,7 @@ import { buildFormGroup } from '../shared/form/form-builder';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { EstablishmentRow } from './company-types';
 import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
@@ -98,6 +98,18 @@ export class EstablishmentsPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'store',
+    title: 'company.establishments.none',
+    action: {
+      id: 'create',
+      label: 'company.establishments.add',
+      icon: 'add',
+      run: () => this.add(),
+      shown: this.mayManage() && this.editing() === null && this.company() !== null,
+    },
+  }));
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   /** Each establishment keeping a contact today's rules refuse, named above the list so it is opened and corrected. */
   protected readonly contactChecks = computed<readonly CheckItem[]>(() =>

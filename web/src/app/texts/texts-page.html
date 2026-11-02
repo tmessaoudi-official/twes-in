@@ -37,7 +37,7 @@
     [rowTestId]="rowTestId"
     (queryChange)="onQuery($event)"
     testId="texts-list"
-    emptyKey="texts.none"
+    [empty]="emptyState"
     emptyTestId="texts-empty"
   />
 </section>

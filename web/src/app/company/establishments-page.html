@@ -96,7 +96,7 @@
     [failed]="facade.error() !== null"
     testId="establishments-table"
     [rowTestId]="rowTestId"
-    emptyKey="company.establishments.none"
+    [empty]="emptyState()"
     emptyTestId="establishments-empty"
   >
     <ng-template appDataListCell="isDefault" let-row>

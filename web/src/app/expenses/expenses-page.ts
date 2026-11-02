@@ -23,7 +23,12 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
-import type { ListFacetCounts, ListPickSource, ListQuery } from '../shared/list/list-types';
+import type {
+  EmptyState,
+  ListFacetCounts,
+  ListPickSource,
+  ListQuery,
+} from '../shared/list/list-types';
 import type { PickAsked } from '../shared/form/pick-api';
 import { keyName } from '../shared/actions/shortcuts-sheet';
 import { SettingsFacade } from '../shared/settings/settings-facade';
@@ -80,6 +85,19 @@ export class ExpensesPage implements OnInit {
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'payments',
+    title: 'expenses.none',
+    sentence: 'expenses.none_sentence',
+    action: {
+      id: 'create',
+      label: 'expenses.add',
+      icon: 'add',
+      link: ['/expenses/new'],
+      shown: this.mayWrite() && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('expense.write'));
   protected readonly rowTestId = (row: ExpenseRow): string => `expense-${row.id}`;
   /** What each status chip would list, as the API counted it (docs/SPEC.md § 7, 2026-09-26). */

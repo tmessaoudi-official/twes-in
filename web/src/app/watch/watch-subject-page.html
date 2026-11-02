@@ -88,7 +88,7 @@
           [total]="total()"
           (queryChange)="onQuery($event)"
           testId="watch-table"
-          emptyKey="watch.none"
+          [empty]="emptyState"
           emptyTestId="watch-empty"
         />
       }

@@ -12,15 +12,24 @@
 # feature's own files (never `shared/`), three levels deep; a descriptor that cannot be read reds, since nothing could
 # then be judged. A list whose descriptor is chosen at run time (the watch page's, one per subject) is judged on all
 # of them at once. Red too on an aspect with neither, on a reason left for an aspect that is offered, and on a reason
-# naming no list. Usage: list-stances.sh [--root DIR] [--stances FILE]
+# naming no list.
+#
+# Each list also says what it holds before it holds anything: an `[empty]` state (`EmptyState`: an icon, a title, the
+# list's own create action), or a reason below. A new company sees only empty lists, and a bare « Aucun … » left it
+# with no way to the first record. The retired `emptyKey` reds wherever it is written, and fewer lists drawing an empty
+# state than the floor red too, so a list losing its own is seen. Usage: list-stances.sh [--root DIR] [--stances FILE]
+# [--empty-floor N]
 set -uo pipefail
 export LC_ALL=C
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 stances_file=
+# Every list drawn today, 31, says what it holds when empty.
+empty_floor=31
 while (($#)); do
   case "$1" in
     --root) root=$2; shift 2 ;;
     --stances) stances_file=$2; shift 2 ;;
+    --empty-floor) empty_floor=$2; shift 2 ;;
     *) echo "list-stances: unknown argument $1"; exit 2 ;;
   esac
 done
@@ -135,6 +144,7 @@ watch/watch-subject-page#list|selection=not-ruled
 EOF
 [[ -n "$stances_file" ]] && STANCES=$(cat "$stances_file")
 export STANCES
+export EMPTY_FLOOR=$empty_floor
 cd "$root" && python3 -I - <<'PY'
 import os, re, subprocess, sys
 
@@ -142,7 +152,7 @@ REASONS = {
     'not-ruled': 'not ruled yet: the list × action matrix (docs/plans/source-layout.plan.md step 7)',
     'row-260': 'ruled 2026-10-11 01:24 (row 260: every action of a record reachable from its list row): not built here yet',
 }
-ASPECTS_OF_LIST = ('selection', 'bulk', 'row-actions')
+ASPECTS_OF_LIST = ('selection', 'bulk', 'row-actions', 'empty')
 ASPECTS_OF_PAGE = ('import', 'export')
 APP = 'web/src/app/'
 
@@ -208,6 +218,7 @@ templates = subprocess.run(['git', 'ls-files', '--', APP + '*.html'], capture_ou
 offered = {}
 unread = []
 drawn = []
+retired = []
 pages = set()
 for template in templates:
     text = read(template)
@@ -226,6 +237,8 @@ for template in templates:
         key = f'{page}#{expression.split(".")[-1].removesuffix("()") if head in aliases else name}'
         closing = text.find('</app-data-list>', tag.end())
         inner = text[tag.end():closing] if closing != -1 and not tag.group(0).endswith('/>') else ''
+        if re.search(r'\bemptyKey\b', tag.group(1)):
+            retired.append(key)
         body = descriptor(component, name) if name and os.path.isfile(component) else ''
         if not re.search(r'\bid\s*:', body):  # every descriptor names its list's id; without one it was not reached
             unread.append(key)
@@ -235,6 +248,7 @@ for template in templates:
         offered[f'{key}|bulk'] = 'appDataListSelection' in inner
         # Row actions are what the descriptor declares; a control drawn in a cell is none of them, and reds below.
         offered[f'{key}|row-actions'] = bool(re.search(r'\bactions\s*:\s*(\[(?!\s*\])|onRows\()', body))
+        offered[f'{key}|empty'] = bool(re.search(r'\[empty\]\s*=\s*"[^"]+"', tag.group(1)))
         if re.search(r'<button\b|<a\s[^>]*\bmat-[\w-]*button\b|\(click\)', cells):
             drawn.append(key)
     offered[f'{page}|import'] = 'routerLink="/imports/' in text
@@ -249,6 +263,14 @@ for key in unread:
     status = 1
 for key in drawn:
     print(f'list-stances: FAIL — {key}: a cell draws a button; declare it in the descriptor\'s actions, which ask, fold and reach every surface')
+    status = 1
+for key in retired:
+    print(f'list-stances: FAIL — {key}: emptyKey is retired; give the list an [empty] state, its icon, title and own create action')
+    status = 1
+empties = sum(1 for aspect_key, has in offered.items() if has and aspect_key.endswith('|empty'))
+floor = int(os.environ['EMPTY_FLOOR'])
+if empties < floor:
+    print(f'list-stances: FAIL — {empties} lists draw an empty state, below the floor of {floor}: a list lost its own')
     status = 1
 
 reasons = {}
@@ -275,5 +297,5 @@ for aspect_key, has in sorted(offered.items()):
 if status:
     sys.exit(1)
 lists = len({key.split('|')[0] for key in offered if '#' in key})
-print(f'list-stances: OK — {lists} lists on {len(pages)} pages: {sum(offered.values())} offered, {len(reasons)} not, each with its reason')
+print(f'list-stances: OK — {lists} lists on {len(pages)} pages, {empties} with an empty state: {sum(offered.values())} offered, {len(reasons)} not, each with its reason')
 PY

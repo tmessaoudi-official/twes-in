@@ -74,7 +74,7 @@
       [failed]="facade.error() !== null"
       testId="customer-groups-table"
       [rowTestId]="rowTestId"
-      emptyKey="customers.groups.none"
+      [empty]="emptyState()"
       emptyTestId="customer-groups-empty"
     >
       @if (mayWrite()) {}

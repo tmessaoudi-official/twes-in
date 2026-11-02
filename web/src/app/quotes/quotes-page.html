@@ -36,7 +36,7 @@
     (queryChange)="onQuery($event)"
     testId="quotes-table"
     [rowTestId]="rowTestId"
-    emptyKey="quotes.none"
+    [empty]="emptyState()"
     emptyTestId="quotes-empty"
   >
     <ng-template appDataListCell="number" let-row>

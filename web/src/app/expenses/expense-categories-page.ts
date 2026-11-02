@@ -25,7 +25,7 @@ import {
   type DescriptorFormGroup,
 } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -112,6 +112,18 @@ export class ExpenseCategoriesPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'label',
+    title: 'expenses.categories.none',
+    action: {
+      id: 'create',
+      label: 'expenses.categories.add',
+      icon: 'add',
+      run: () => this.open('new'),
+      shown: this.mayWrite() && this.editing() === null && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('expense.write'));
   protected readonly rowTestId = (row: ExpenseCategoryListRow): string =>
     `expense-category-${row.name}`;

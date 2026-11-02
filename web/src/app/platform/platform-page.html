@@ -751,7 +751,7 @@
             (queryChange)="onCompaniesQuery($event)"
             testId="platform-companies-table"
             [rowTestId]="companyRowId"
-            emptyKey="platform.companies.none"
+            [empty]="companiesEmpty"
             emptyTestId="platform-companies-empty"
           >
             <ng-template appDataListCell="country" let-row>
@@ -785,7 +785,7 @@
             (queryChange)="onAccountsQuery($event)"
             testId="platform-accounts-table"
             [rowTestId]="accountRowId"
-            emptyKey="platform.accounts.none"
+            [empty]="accountsEmpty"
             emptyTestId="platform-accounts-empty"
           >
             <ng-template appDataListCell="name" let-row>

@@ -80,7 +80,7 @@
       [failed]="facade.error() !== null"
       testId="stock-locations-table"
       [rowTestId]="rowTestId"
-      emptyKey="inventory.locations.none"
+      [empty]="emptyState()"
       emptyTestId="stock-locations-empty"
     >
       <ng-template appDataListCell="path" let-row>

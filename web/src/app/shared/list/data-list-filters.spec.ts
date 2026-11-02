@@ -14,7 +14,7 @@ import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { DataList } from './data-list';
-import type { ListDescriptor, ListPickSource, ListQuery } from './list-types';
+import type { EmptyState, ListDescriptor, ListPickSource, ListQuery } from './list-types';
 
 interface Doc {
   id: string;
@@ -82,11 +82,12 @@ const descriptor: ListDescriptor<Doc> = {
       (queryChange)="queries.push($event)"
       testId="docs-table"
       [rowTestId]="rowTestId"
-      emptyKey="d.none"
+      [empty]="emptyState"
     />
   `,
 })
 class PagedHost {
+  readonly emptyState: EmptyState = { icon: 'description', title: 'd.none' };
   readonly descriptor = descriptor;
   readonly rows = signal<Doc[]>(docs);
   readonly total = signal<number | null>(5);

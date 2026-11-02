@@ -25,7 +25,7 @@ import { unsavedChanges } from '../shared/form/dirty-count';
 import { emailRule, emailTypo } from '../shared/form/email-rule';
 import { AuthFacade } from '../auth/auth-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
 import { CapitalizePipe } from '../shared/i18n/capitalize-pipe';
@@ -246,6 +246,8 @@ export class MembersPage implements OnInit {
   protected readonly busy = this.members.busy;
   protected readonly error = this.members.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything. */
+  protected readonly emptyState: EmptyState = { icon: 'group', title: 'members.none' };
   protected readonly mayManage = computed(() => this.auth.hasPermission('user.write'));
   /** Lifting a member's password lock is the owner's alone, whatever a custom role grants, as the API holds it. */
   protected readonly isOwner = computed(() => this.auth.me()?.company?.role === 'owner');

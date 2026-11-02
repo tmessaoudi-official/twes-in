@@ -297,7 +297,7 @@
     [failed]="facade.error() !== null"
     testId="price-lists-table"
     [rowTestId]="rowTestId"
-    emptyKey="price_lists.none"
+    [empty]="emptyState()"
     emptyTestId="price-lists-empty"
   >
     <ng-template appDataListCell="scope" let-row>

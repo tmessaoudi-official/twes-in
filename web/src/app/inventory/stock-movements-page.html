@@ -54,7 +54,7 @@
       (queryChange)="onQuery($event)"
       testId="stock-movements-table"
       [rowTestId]="rowTestId"
-      emptyKey="inventory.movements.none"
+      [empty]="emptyState"
       emptyTestId="stock-movements-empty"
     >
       <ng-template appDataListCell="at" let-row>

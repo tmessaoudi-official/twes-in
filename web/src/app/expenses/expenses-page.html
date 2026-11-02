@@ -50,7 +50,7 @@
       (queryChange)="onQuery($event)"
       testId="expenses-table"
       [rowTestId]="rowTestId"
-      emptyKey="expenses.none"
+      [empty]="emptyState()"
       emptyTestId="expenses-empty"
     >
       <ng-template appDataListCell="date" let-row>{{ row.date | day }}</ng-template>

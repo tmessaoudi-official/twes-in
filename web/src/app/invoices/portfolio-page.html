@@ -25,7 +25,7 @@
     (queryChange)="onQuery($event)"
     testId="portfolio-table"
     [rowTestId]="rowTestId"
-    emptyKey="invoices.portfolio.none"
+    [empty]="emptyState"
     emptyTestId="portfolio-empty"
   >
     <ng-template appDataListCell="dueOn" let-row>{{ row.dueOn | day }}</ng-template>

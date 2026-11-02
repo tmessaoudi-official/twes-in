@@ -35,7 +35,7 @@
       (queryChange)="onQuery($event)"
       testId="customers-table"
       [rowTestId]="rowTestId"
-      emptyKey="customers.none"
+      [empty]="emptyState()"
       emptyTestId="customers-empty"
       [(selected)]="selected"
     >

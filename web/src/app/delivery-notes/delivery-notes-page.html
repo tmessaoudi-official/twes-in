@@ -40,7 +40,7 @@
     (queryChange)="onQuery($event)"
     testId="delivery-notes-table"
     [rowTestId]="rowTestId"
-    emptyKey="delivery_notes.none"
+    [empty]="emptyState()"
     emptyTestId="delivery-notes-empty"
   >
     <ng-template appDataListSelection>

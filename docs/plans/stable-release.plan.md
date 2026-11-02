@@ -171,7 +171,7 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S5.6 | Unsaved work kept across a session end | M | todo | - | web/src/app/shared/form/**, web/src/app/shared/session/**, web/e2e/session-end-unsaved.spec.ts |
 | S5.7 | One-canon rows on the screens used | L | todo | - | web/src/app/**, api/src/** |
 | S5.8 | Invisible marks gate on web inputs | S | todo | - | scripts/gates/typed-codes.sh, web/src/app/shared/form/** |
-| S5.9 | 200 percent text and reflow e2e | M | todo | - | web/e2e/reflow.spec.ts, web/src/styles.scss |
+| S5.9 | 200 percent text and reflow e2e | M | doing | - | web/e2e/reflow.spec.ts, web/src/styles.scss |
 | S5.10 | Slow unit cases one page per case | M | todo | - | web/src/app/**/*.spec.ts, scripts/gates/one-page-per-case.sh |
 | S5.11 | Correction flows and contract leftovers | L | todo | - | web/src/app/**, api/src/**, web/e2e/** |
 | S5.13 | Half-built rows finished or hidden | M | todo | - | docs/SPEC.md, docs/plans/*.plan.md, web/src/app/** |
@@ -191,7 +191,7 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S7.3 | Phone list cards | M | todo | - | web/src/app/shared/list/**, web/src/app/**, web/e2e/phone-lists.spec.ts |
 | S7.4 | Wide screens and sticky summary | L | todo | - | web/src/app/invoices/**, web/src/app/quotes/**, web/src/app/delivery-notes/**, web/src/app/purchases/**, web/e2e/list-fit.spec.ts |
 | S7.5 | Home structure and KPI tile | M | todo | - | web/src/app/*/*-nav.ts, web/src/app/shared/ui/kpi-tile.ts, web/src/app/first-steps/**, api/src/Module/*/Infrastructure/Home/* |
-| S7.6 | Text size per device, calme and vif per person | M | todo | - | api/src/Settings/Application/PresentationSettings.php, web/src/app/shared/theme/**, web/src/app/shared/settings/** |
+| S7.6 | Text size per device, calme and vif per person | M | doing | - | api/src/Settings/Application/PresentationSettings.php, web/src/app/shared/theme/**, web/src/app/shared/settings/** |
 | S7.7 | Dark mode depth | M | todo | - | web/src/styles.scss, web/src/app/shared/theme/** |
 | S7.9 | Small flaws and canon | L | todo | - | web/src/app/**, scripts/gates/* |
 | S7.11 | Client performance trace | S | todo | - | web/e2e/perf-trace.spec.ts |
@@ -221,11 +221,12 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S9.10 | Post-tag acceptance at the shop | M | todo | - | - |
 | S9.11 | Alarm 2026-12-10 | S | todo | - | - |
 | S9.12 | Interim patch if no tag by 2026-12-15: the TN 2027 values and the seven built fixes (ruled 2026-11-01) | M | todo | - | api/config/fiscal/TN.yaml, docs/fiscal/TN.md |
-| S7.13 | Accent presets off the status hues (rouge dE 1.7 from danger; rose, orange, vert close): each moved, a company keeps its preset in the new shade; danger buttons carry their own outline (ruled 2026-11-01) | M | todo | - | web/src/app/shared/theme/**, api/src/Settings/** |
+| S7.13 | Accent presets off the status hues (rouge dE 1.7 from danger; rose, orange, vert close): each moved, a company keeps its preset in the new shade; danger buttons carry their own outline (ruled 2026-11-01) | M | done | 7fa4a4935 | web/src/app/shared/theme/**, api/src/Settings/** |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
 ### Needs research
 ### Fragile
 ### Known issues
+- data-list.spec's two column scenarios (hidden column, saved view) fail on a machine whose Demo has gathered e2e members: at 1,280 px beside the settings panel the members list keeps only « Nom », so « Rôle » is never shown to hide. Green on CI's fresh database (9447cf2ad); the scenarios should pick a list and width whose columns fit whatever the data holds.
 - 2026-11-01: c564b7742's batch (FC#265's spentBudgetInterceptor, from nb1) stopped the app at start on NG0200; found by the FC#276 e2e before any push, fixed with app-config.spec.ts as the class guard (lands with S0.4).

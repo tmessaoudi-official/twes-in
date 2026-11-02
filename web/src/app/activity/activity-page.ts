@@ -18,7 +18,7 @@ import { MomentPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
-import type { ListPickSource, ListQuery } from '../shared/list/list-types';
+import type { EmptyState, ListPickSource, ListQuery } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { ActivityFacade } from './activity-facade';
 import { ActivityFieldsPipe } from './activity-fields-pipe';
@@ -64,6 +64,8 @@ export class ActivityPage implements OnInit {
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything. */
+  protected readonly emptyState: EmptyState = { icon: 'history', title: 'activity.none' };
   protected readonly actionKey = actionKey;
   protected readonly unnamedActorKey = unnamedActorKey;
   protected readonly kindKey = kindKey;

@@ -32,6 +32,7 @@ import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import type { PickAsked } from '../shared/form/pick-api';
 import type {
+  EmptyState,
   ListDescriptor,
   ListPickSource,
   ListQuery,
@@ -145,6 +146,11 @@ export class StockMovementsPage {
   protected readonly total = this.facade.movementsTotal;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything. */
+  protected readonly emptyState: EmptyState = {
+    icon: 'swap_horiz',
+    title: 'inventory.movements.none',
+  };
   protected readonly rowTestId = (row: StockMovementListRow): string => `stock-movement-${row.id}`;
 
   /** What the list last asked the API for; the page is not read until the list has said what it wants. */

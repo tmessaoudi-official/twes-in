@@ -43,7 +43,12 @@ import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { InventoryFacade } from './inventory-facade';
 import type { PickAsked } from '../shared/form/pick-api';
-import type { ListDescriptor, ListPickSource, ListQuery } from '../shared/list/list-types';
+import type {
+  EmptyState,
+  ListDescriptor,
+  ListPickSource,
+  ListQuery,
+} from '../shared/list/list-types';
 import {
   countInput,
   locationLabels,
@@ -187,6 +192,11 @@ export class StockPage implements OnInit {
   );
   private readonly editor = viewChild(DescriptorForm);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything. */
+  protected readonly emptyState: EmptyState = {
+    icon: 'inventory_2',
+    title: 'inventory.stock.none',
+  };
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
   protected readonly rowTestId = (row: StockListRow): string =>
     `stock-${row.productReference}-${row.locationCode}`;

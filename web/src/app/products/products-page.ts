@@ -24,7 +24,7 @@ import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import { filterValues } from '../shared/list/list-filters';
 import { StatusBadge } from '../shared/ui/status-badge';
-import type { ListPickSource, ListQuery } from '../shared/list/list-types';
+import type { EmptyState, ListPickSource, ListQuery } from '../shared/list/list-types';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import {
   categoryLabels,
@@ -93,6 +93,19 @@ export class ProductsPage implements OnInit {
   protected readonly decimal = (value: string): string => this.format.decimal(value);
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'inventory_2',
+    title: 'products.none',
+    sentence: 'products.none_sentence',
+    action: {
+      id: 'create',
+      label: 'products.add',
+      icon: 'add',
+      link: ['/products/new'],
+      shown: this.mayWrite() && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));
   /** Who a product is bought from is written with the product, while the company keeps vendors. */
   protected readonly mayImportVendors = computed(() => this.auth.hasModule('vendors'));

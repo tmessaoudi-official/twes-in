@@ -13,7 +13,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { PickAsked } from '../shared/form/pick-api';
-import type { ListPickSource, ListQuery } from '../shared/list/list-types';
+import type { EmptyState, ListPickSource, ListQuery } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -45,6 +45,11 @@ export class PortfolioPage implements OnInit {
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything. */
+  protected readonly emptyState: EmptyState = {
+    icon: 'payments',
+    title: 'invoices.portfolio.none',
+  };
   /** A list cell's row is untyped, so the tone is looked up through a typed function. */
   protected readonly toneOf = (status: InstrumentStatus): StatusTone =>
     INSTRUMENT_STATUS_TONES[status];

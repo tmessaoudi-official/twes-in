@@ -35,7 +35,7 @@
     (queryChange)="onQuery($event)"
     testId="activity-table"
     [rowTestId]="rowTestId"
-    emptyKey="activity.none"
+    [empty]="emptyState"
     emptyTestId="activity-empty"
   >
     <ng-template appDataListCell="at" let-row>{{ row.at | moment }}</ng-template>

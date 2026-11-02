@@ -23,7 +23,7 @@ import { buildFormGroup } from '../shared/form/form-builder';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { NumberingSeriesRow } from './company-types';
 import { seriesChanges, seriesForm, seriesFormValues, seriesList } from './establishment-forms';
@@ -74,6 +74,11 @@ export class NumberingPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything. */
+  protected readonly emptyState: EmptyState = {
+    icon: 'format_list_numbered',
+    title: 'company.numbering.none',
+  };
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly rowTestId = (row: NumberingSeriesRow): string =>
     `series-${row.establishmentCode}-${row.documentType}`;

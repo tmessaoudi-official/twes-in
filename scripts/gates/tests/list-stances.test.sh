@@ -7,9 +7,10 @@ pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 repo() { local d; d=$(mktemp -d); git -C "$d" init -q; mkdir -p "$d/web/src/app/x" "$d/web/src/app/shared/list"; echo "$d"; }
 # The stances a fixture declares, one "key|aspect=reason" per line, read by the gate from --stances.
-stances() { printf '%s\n' "$@" > "$TMPDIR/stances.txt"; echo "$TMPDIR/stances.txt"; }
+# Every case but the empty state's own gives `x/a-page#list` its empty-state reason, so each judges what it names.
+stances() { printf '%s\n' "$@" ${EMPTY_STANCE-'x/a-page#list|empty=r'} > "$TMPDIR/stances.txt"; echo "$TMPDIR/stances.txt"; }
 page() { printf '%s\n' "$2" > "$1/web/src/app/x/a-page.html"; printf '%s\n' "$3" > "$1/web/src/app/x/a-page.ts"; git -C "$1" add -A; }
-run() { bash "$GATE" --root "$1" --stances "$2" 2>&1; }
+run() { bash "$GATE" --root "$1" --stances "$2" --empty-floor "${FLOOR:-0}" 2>&1; }
 ALL_BUT_ROWS=('x/a-page#list|selection=r' 'x/a-page#list|bulk=r' 'x/a-page|import=r' 'x/a-page|export=r')
 NONE=("${ALL_BUT_ROWS[@]}" 'x/a-page#list|row-actions=r')
 echo "list-stances gate"
@@ -87,4 +88,14 @@ d=$(repo); page "$d" '<app-data-list [descriptor]="list" />' 'export class APage
 printf '%s\n' '<app-data-list [descriptor]="rows" />' > "$d/web/src/app/x/b-dialog.html"
 printf '%s\n' 'export class BDialog { protected readonly rows = { id: "b" }; }' > "$d/web/src/app/x/b-dialog.ts"; git -C "$d" add -A
 out=$(run "$d" "$(stances "${NONE[@]}")"); check "a list drawn outside a page is judged too" $? 1 "$out" "x/b-dialog#rows|selection"
+d=$(repo); page "$d" '<app-data-list [descriptor]="list" />' 'export class APage { protected readonly list = { id: "a", actions: [OPEN] }; }'
+out=$(EMPTY_STANCE='' run "$d" "$(EMPTY_STANCE='' stances "${ALL_BUT_ROWS[@]}")"); check "a list with no empty state and no reason for it is named" $? 1 "$out" "x/a-page#list|empty is neither offered"
+
+d=$(repo); page "$d" '<app-data-list [descriptor]="list" [empty]="emptyState()" />' 'export class APage { protected readonly list = { id: "a", actions: [OPEN] }; }'
+out=$(FLOOR=1 run "$d" "$(EMPTY_STANCE='' stances "${ALL_BUT_ROWS[@]}")"); check "a list given an empty state passes, at the floor" $? 0 "$out" "1 with an empty state"
+out=$(run "$d" "$(stances "${ALL_BUT_ROWS[@]}")"); check "a reason left for an empty state the list draws is named" $? 1 "$out" "x/a-page#list|empty is listed with a reason but offered"
+out=$(FLOOR=2 run "$d" "$(EMPTY_STANCE='' stances "${ALL_BUT_ROWS[@]}")"); check "fewer empty states than the floor red, so losing one is seen" $? 1 "$out" "below the floor of 2"
+
+d=$(repo); page "$d" '<app-data-list [descriptor]="list" emptyKey="a.none" />' 'export class APage { protected readonly list = { id: "a", actions: [OPEN] }; }'
+out=$(run "$d" "$(stances "${ALL_BUT_ROWS[@]}")"); check "the retired emptyKey reds wherever it is written" $? 1 "$out" "emptyKey"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

@@ -41,7 +41,7 @@ import { ProductsFacade } from './products-facade';
 import type { ProductCategoryRow } from './products-types';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { PRODUCTS_TABS } from './products-nav';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
@@ -115,6 +115,18 @@ export class ProductCategoriesPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'label',
+    title: 'products.categories.none',
+    action: {
+      id: 'create',
+      label: 'products.categories.add',
+      icon: 'add',
+      run: () => this.open('new'),
+      shown: this.mayWrite() && this.editing() === null && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));
   protected readonly rowTestId = (row: ProductCategoryListRow): string =>
     `product-category-${row.name}`;

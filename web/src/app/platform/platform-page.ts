@@ -44,7 +44,7 @@ import { typedCount } from '../shared/form/count-input';
 import { companyNameRefusal, ownerEmailRefusal } from './platform-rules';
 import { Select, type SelectOption } from '../shared/form/select';
 import { DataList, DataListCell } from '../shared/list/data-list';
-import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { CountBadge } from '../shared/ui/count-badge';
 import { SelectedTabInView } from '../shared/ui/selected-tab-in-view';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -205,6 +205,16 @@ import { PLATFORM_KINDS } from './platform-kinds';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlatformPage implements OnInit {
+  /** What the list says before it holds anything. */
+  protected readonly accountsEmpty: EmptyState = {
+    icon: 'manage_accounts',
+    title: 'platform.accounts.none',
+  };
+  /** What the list says before it holds anything. */
+  protected readonly companiesEmpty: EmptyState = {
+    icon: 'business',
+    title: 'platform.companies.none',
+  };
   private readonly platform = inject(PlatformFacade);
   private readonly payments = inject(SubscriptionFacade);
   private readonly dialog = inject(MatDialog);

@@ -64,7 +64,7 @@
       [failed]="facade.error() !== null"
       testId="expense-categories-table"
       [rowTestId]="rowTestId"
-      emptyKey="expenses.categories.none"
+      [empty]="emptyState()"
       emptyTestId="expense-categories-empty"
     >
       <ng-template appDataListCell="status" let-row>

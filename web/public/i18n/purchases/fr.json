@@ -1,6 +1,7 @@
 {
   "purchases": {
     "none": "Aucune commande fournisseur pour l’instant.",
+    "none_sentence": "Vos commandes fournisseur apparaîtront ici dès la première créée.",
     "no_company": "Choisissez une entreprise pour voir ses commandes fournisseurs.",
     "read_only": "Vous pouvez consulter les commandes fournisseurs, pas les modifier.",
     "back": "Retour aux commandes",

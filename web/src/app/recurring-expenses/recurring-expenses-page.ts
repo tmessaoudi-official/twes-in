@@ -22,7 +22,7 @@ import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { AMOUNT_WIDTH } from '../shared/list/list-view';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { RecordDeletes } from '../shared/records/record-deletes';
@@ -88,6 +88,11 @@ export class RecurringExpensesPage implements OnInit {
   protected readonly error = this.requests.error;
   protected readonly busy = signal(false);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything. */
+  protected readonly emptyState: EmptyState = {
+    icon: 'event_repeat',
+    title: 'expenses.recurring.none',
+  };
   protected readonly mayWrite = computed(() => this.auth.hasPermission('expense.write'));
   protected readonly state = recurringExpenseState;
   protected readonly tone = (row: RecurringExpenseRow): StatusTone =>

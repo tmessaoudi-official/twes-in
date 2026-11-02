@@ -66,7 +66,7 @@
     [failed]="fiscal.error() !== null"
     testId="units-table"
     [rowTestId]="rowTestId"
-    emptyKey="fiscal.units.none"
+    [empty]="emptyState()"
     emptyTestId="units-empty"
   >
     <ng-template appDataListCell="isActive" let-row>

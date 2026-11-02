@@ -21,7 +21,7 @@
       [failed]="error() !== null"
       testId="recurring-table"
       [rowTestId]="rowTestId"
-      emptyKey="recurring.none"
+      [empty]="emptyState"
       emptyTestId="recurring-empty"
     >
       <ng-template appDataListCell="model" let-row>

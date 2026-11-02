@@ -446,19 +446,7 @@
         </li>
       } @empty {
         <li class="px-4 py-8 text-center text-on-surface-variant">
-          @if (blank() === 'loading') {
-            <span role="status" data-testid="list-loading">{{ 'list.loading' | translate }}</span>
-          } @else if (blank() === 'failed') {
-            <span role="alert" data-testid="list-failed">{{ 'list.failed' | translate }}</span>
-          } @else if (blank() === 'empty') {
-            <span [attr.data-testid]="emptyTestId()">{{ emptyKey() | translate }}</span>
-          } @else {
-            <span data-testid="list-no-match">{{
-              query()
-                ? ('list.no_match' | translate: { query: query() })
-                : ('list.no_match_filters' | translate)
-            }}</span>
-          }
+          <ng-container *ngTemplateOutlet="blankState" />
         </li>
       }
     </ul>
@@ -620,19 +608,7 @@
             [attr.colspan]="columnIds().length"
             class="px-4 py-8 text-center text-on-surface-variant"
           >
-            @if (blank() === 'loading') {
-              <span role="status" data-testid="list-loading">{{ 'list.loading' | translate }}</span>
-            } @else if (blank() === 'failed') {
-              <span role="alert" data-testid="list-failed">{{ 'list.failed' | translate }}</span>
-            } @else if (blank() === 'empty') {
-              <span [attr.data-testid]="emptyTestId()">{{ emptyKey() | translate }}</span>
-            } @else {
-              <span data-testid="list-no-match">{{
-                query()
-                  ? ('list.no_match' | translate: { query: query() })
-                  : ('list.no_match_filters' | translate)
-              }}</span>
-            }
+            <ng-container *ngTemplateOutlet="blankState" />
           </td>
         </tr>
       </table>
@@ -835,5 +811,74 @@
     >
       <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
     </button>
+  }
+</ng-template>
+
+<!-- What stands in place of rows: loading, failed, nothing at all yet, or nothing matching what was asked. -->
+<ng-template #blankState>
+  @if (blank() === 'loading') {
+    <span role="status" data-testid="list-loading">{{ 'list.loading' | translate }}</span>
+  } @else if (blank() === 'failed') {
+    <span role="alert" data-testid="list-failed">{{ 'list.failed' | translate }}</span>
+  } @else if (blank() === 'empty') {
+    @if (empty(); as state) {
+      <div class="flex flex-col items-center gap-3">
+        <span class="twes-empty-circle grid place-items-center rounded-full p-4 text-accent-text">
+          <mat-icon class="twes-empty-icon" aria-hidden="true" data-testid="list-empty-icon">{{
+            state.icon
+          }}</mat-icon>
+        </span>
+        <p class="text-heading text-on-surface" [attr.data-testid]="emptyTestId()">
+          {{ state.title | translate }}
+        </p>
+        @if (state.sentence) {
+          <p class="max-w-prose text-sm text-on-surface-variant" data-testid="list-empty-sentence">
+            {{ state.sentence | translate }}
+          </p>
+        }
+        @if (state.action; as action) {
+          @if (action.shown !== false) {
+            @if (action.link) {
+              <a matButton="tonal" [routerLink]="action.link" data-testid="list-empty-action">
+                @if (action.icon) {
+                  <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+                }
+                {{ action.label | translate }}
+              </a>
+            } @else {
+              <button
+                matButton="tonal"
+                type="button"
+                (click)="action.run?.()"
+                data-testid="list-empty-action"
+              >
+                @if (action.icon) {
+                  <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+                }
+                {{ action.label | translate }}
+              </button>
+            }
+          }
+        }
+      </div>
+    } @else {
+      <span [attr.data-testid]="emptyTestId()">{{ 'list.nothing_yet' | translate }}</span>
+    }
+  } @else {
+    <div class="flex flex-col items-center gap-3">
+      <span data-testid="list-no-match">{{
+        query()
+          ? ('list.no_match' | translate: { query: query() })
+          : ('list.no_match_filters' | translate)
+      }}</span>
+      <button
+        matButton="tonal"
+        type="button"
+        (click)="clearSearchAndFilters()"
+        data-testid="list-no-match-clear"
+      >
+        {{ 'list.filters_clear_all' | translate }}
+      </button>
+    </div>
   }
 </ng-template>

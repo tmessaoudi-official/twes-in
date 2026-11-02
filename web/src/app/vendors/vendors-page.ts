@@ -19,7 +19,7 @@ import { DataList, DataListCell, DataListSelection } from '../shared/list/data-l
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import { StatusBadge } from '../shared/ui/status-badge';
-import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { VENDORS_LIST, vendorSearch } from './vendor-forms';
 import { VendorsFacade } from './vendors-facade';
@@ -63,6 +63,19 @@ export class VendorsPage implements OnInit {
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'storefront',
+    title: 'vendors.none',
+    sentence: 'vendors.none_sentence',
+    action: {
+      id: 'create',
+      label: 'vendors.add',
+      icon: 'add',
+      link: ['/vendors/new'],
+      shown: this.mayWrite() && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('vendor.write'));
   protected readonly rowTestId = (row: VendorRow): string => `vendor-${row.number}`;
 

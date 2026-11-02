@@ -62,7 +62,7 @@
     [failed]="fiscal.error() !== null"
     testId="taxes-table"
     [rowTestId]="rowTestId"
-    emptyKey="fiscal.taxes.none"
+    [empty]="emptyState()"
     emptyTestId="taxes-empty"
   >
     <ng-template appDataListCell="family" let-row>
@@ -101,7 +101,7 @@
     [failed]="fiscal.error() !== null"
     testId="regimes-table"
     [rowTestId]="regimeTestId"
-    emptyKey="fiscal.regimes.none"
+    [empty]="regimeEmpty"
     emptyTestId="regimes-empty"
   >
     <ng-template appDataListCell="excluded" let-row>

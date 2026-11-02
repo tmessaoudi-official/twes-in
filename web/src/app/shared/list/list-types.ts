@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ActionGroup } from '../actions/record-action';
-import type { ActionConfirm } from '../actions/screen-action';
+import type { ActionConfirm, ScreenAction } from '../actions/screen-action';
 import type { IconName } from '../icons/icons';
 import type { StatusTone } from '../theme/accent-theme';
 
@@ -97,6 +97,25 @@ export interface RowAction<Row> {
    * which one is about to go.
    */
   confirm?: (row: Row) => ActionConfirm;
+}
+
+/**
+ * What a list says in place of rows when there is nothing at all yet, not when a search or a filter matches nothing,
+ * which the list says itself with a way back to every row. An empty list is the first thing a new company sees: it
+ * names what will be here and offers the step that puts the first one there.
+ */
+export interface EmptyState {
+  /** Drawn large and hidden from screen readers: the title says what the list holds. */
+  icon: IconName;
+  /** A translation key: what the list will hold, said as « none yet ». */
+  title: string;
+  /** A translation key: one sentence saying how the first one arrives. */
+  sentence?: string;
+  /**
+   * The list's own create action, the same address or the same method its page's button runs, so the empty list and
+   * the page never create two ways. Absent, or `shown: false`, where the person may not create.
+   */
+  action?: Pick<ScreenAction, 'id' | 'label' | 'icon' | 'link' | 'run' | 'shown'>;
 }
 
 export interface ListDescriptor<Row> {

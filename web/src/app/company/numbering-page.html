@@ -65,7 +65,7 @@
     [failed]="facade.error() !== null"
     testId="series-table"
     [rowTestId]="rowTestId"
-    emptyKey="company.numbering.none"
+    [empty]="emptyState"
     emptyTestId="series-empty"
   >
     <ng-template appDataListCell="documentType" let-row>

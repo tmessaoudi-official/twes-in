@@ -23,7 +23,7 @@ import { Select } from '../shared/form/select';
 import { languageChoices } from '../shared/i18n/language-options';
 import { DEFAULT_LANGUAGE, INTERFACE_LANGUAGES } from '../shared/i18n/languages';
 import { DataList } from '../shared/list/data-list';
-import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { TextDialog, type TextDialogData } from './text-dialog';
 import { TextsFacade } from './texts-facade';
@@ -63,6 +63,8 @@ const TEXT_CHANGES = ['text'];
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TextsPage implements OnInit {
+  /** What the list says before it holds anything. */
+  protected readonly emptyState: EmptyState = { icon: 'translate', title: 'texts.none' };
   private readonly facade = inject(TextsFacade);
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);

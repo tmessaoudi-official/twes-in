@@ -16,7 +16,12 @@ import { keyName } from '../shared/actions/shortcuts-sheet';
 import type { PickAsked } from '../shared/form/pick-api';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
-import type { ListFacetCounts, ListPickSource, ListQuery } from '../shared/list/list-types';
+import type {
+  EmptyState,
+  ListFacetCounts,
+  ListPickSource,
+  ListQuery,
+} from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
@@ -64,6 +69,19 @@ export class QuotesPage implements OnInit {
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'request_quote',
+    title: 'quotes.none',
+    sentence: 'quotes.none_sentence',
+    action: {
+      id: 'create',
+      label: 'quotes.add',
+      icon: 'add',
+      link: ['/quotes/new'],
+      shown: this.mayWrite() && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('quote.write'));
   protected readonly rowTestId = (row: QuoteListRow): string => `quote-${row.id}`;
   /** What each status chip would list, as the API counted it. */

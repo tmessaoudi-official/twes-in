@@ -32,7 +32,7 @@ import {
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -145,6 +145,18 @@ export class StockLocationsPage implements OnInit {
     inject(RefusalFigures),
   );
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'warehouse',
+    title: 'inventory.locations.none',
+    action: {
+      id: 'create',
+      label: 'inventory.locations.add',
+      icon: 'add',
+      run: () => this.open('new'),
+      shown: this.mayWrite() && this.editing() === null && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
   protected readonly rowTestId = (row: StockLocationListRow): string =>
     `stock-location-${row.code}`;

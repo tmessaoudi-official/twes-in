@@ -38,7 +38,7 @@
     (queryChange)="onQuery($event)"
     testId="purchases-table"
     [rowTestId]="rowTestId"
-    emptyKey="purchases.none"
+    [empty]="emptyState()"
     emptyTestId="purchases-empty"
   >
     <ng-template appDataListCell="number" let-row>

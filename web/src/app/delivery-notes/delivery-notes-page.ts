@@ -23,6 +23,7 @@ import type { StatusTone } from '../shared/theme/accent-theme';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { PickAsked } from '../shared/form/pick-api';
 import type {
+  EmptyState,
   ListDescriptor,
   ListFacetCounts,
   ListPickSource,
@@ -107,6 +108,19 @@ export class DeliveryNotesPage implements OnInit {
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'local_shipping',
+    title: 'delivery_notes.none',
+    sentence: 'delivery_notes.none_sentence',
+    action: {
+      id: 'create',
+      label: 'delivery_notes.add',
+      icon: 'add',
+      link: ['/delivery-notes/new'],
+      shown: this.mayWrite() && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('delivery_note.write'));
   protected readonly rowTestId = (row: DeliveryNoteListRow): string => `delivery-note-${row.id}`;
   /** What each status chip would list, as the API counted it. */

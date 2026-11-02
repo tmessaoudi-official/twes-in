@@ -21,7 +21,7 @@
     [failed]="members.error() !== null"
     testId="members-table"
     [rowTestId]="rowTestId"
-    emptyKey="members.none"
+    [empty]="emptyState"
     emptyTestId="members-empty"
   >
     <ng-template appDataListCell="name" let-row>

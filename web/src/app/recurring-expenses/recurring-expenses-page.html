@@ -23,7 +23,7 @@
       [failed]="error() !== null"
       testId="recurring-expenses-table"
       [rowTestId]="rowTestId"
-      emptyKey="expenses.recurring.none"
+      [empty]="emptyState"
       emptyTestId="recurring-expenses-empty"
     >
       <ng-template appDataListCell="description" let-row>

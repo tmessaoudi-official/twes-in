@@ -30,6 +30,9 @@ import type {
   ListView,
 } from './list-types';
 import { NO_LIST_PREFERENCES } from './list-types';
+import type { EmptyState } from './list-types';
+
+const NO_CUSTOMERS: EmptyState = { icon: 'group', title: 'c.none' };
 
 interface Customer {
   id: string;
@@ -95,7 +98,7 @@ const descriptor: ListDescriptor<Customer> = {
       [failed]="failed()"
       testId="customers-table"
       [rowTestId]="rowTestId"
-      emptyKey="c.none"
+      [empty]="empty()"
       emptyTestId="customers-empty"
     >
       <ng-template appDataListCell="status" let-row>
@@ -106,6 +109,13 @@ const descriptor: ListDescriptor<Customer> = {
 })
 class Host {
   readonly descriptor = signal<ListDescriptor<Customer>>(descriptor);
+  readonly added: string[] = [];
+  readonly empty = signal<EmptyState | null>({
+    icon: 'group',
+    title: 'c.none',
+    sentence: 'c.none_sentence',
+    action: { id: 'add', label: 'c.add', icon: 'add', run: () => this.added.push('add') },
+  });
   readonly rows = signal<Customer[]>(all);
   readonly loading = signal(false);
   readonly failed = signal(false);
@@ -127,13 +137,14 @@ class Host {
       (queryChange)="queries.push($event)"
       testId="customers-table"
       [rowTestId]="rowTestId"
-      emptyKey="c.none"
+      [empty]="emptyState"
       emptyTestId="customers-empty"
     />
   `,
 })
 class ServerHost {
   readonly descriptor = descriptor;
+  readonly emptyState = NO_CUSTOMERS;
   readonly rows = signal<Customer[]>([...all].reverse().slice(0, 10));
   readonly total = signal(30);
   readonly facetCounts = signal<ListFacetCounts | null>(null);
@@ -211,7 +222,7 @@ const declared: ListDescriptor<Customer> = {
       [activeRowId]="active()"
       [loading]="false"
       [failed]="false"
-      emptyKey="c.none"
+      [empty]="emptyState"
       emptyTestId="customers-empty"
     >
       <ng-template appDataListCell="name" let-row>
@@ -221,6 +232,7 @@ const declared: ListDescriptor<Customer> = {
   `,
 })
 class DeclaredHost {
+  readonly emptyState = NO_CUSTOMERS;
   readonly descriptor = signal<ListDescriptor<Customer>>(declared);
   readonly rows = signal<Customer[]>(all.slice(0, 3));
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
@@ -240,7 +252,7 @@ class DeclaredHost {
       [(selected)]="selected"
       testId="customers-table"
       [rowTestId]="rowTestId"
-      emptyKey="c.none"
+      [empty]="emptyState"
       emptyTestId="customers-empty"
     >
       <ng-template appDataListSelection>
@@ -250,6 +262,7 @@ class DeclaredHost {
   `,
 })
 class SelectHost {
+  readonly emptyState = NO_CUSTOMERS;
   readonly descriptor: ListDescriptor<Customer> = {
     ...declared,
     selection: { countKey: 'c.selected' },
@@ -273,6 +286,8 @@ class StaticLoader implements TranslateLoader {
         export: 'Export',
         archive: 'Archive',
         none: 'No customers.',
+        none_sentence: 'Your customers show here once the first one is added.',
+        add: 'New customer',
         active: 'Active',
         archived: 'Archived',
         any_status: 'Every status',
@@ -309,6 +324,8 @@ class StaticLoader implements TranslateLoader {
         selection_clear: 'Clear selection',
         loading: 'Loading…',
         failed: 'The list could not be loaded.',
+        filters_clear_all: 'Clear all',
+        nothing_yet: 'Nothing here yet.',
         paginator: {
           items_per_page: 'Rows a page',
           next: 'Next page',
@@ -480,11 +497,83 @@ describe('DataList', () => {
     expect(q('customers-empty')).toBeNull();
   });
 
-  it('shows the empty state when there are no rows at all', async () => {
+  it("shows the empty state when there are no rows at all: its icon, title, sentence and the list's own create action", async () => {
     fixture.componentInstance.rows.set([]);
     await settle();
 
     expect(q('customers-empty')?.textContent?.trim()).toBe('No customers.');
+    expect(q('list-empty-sentence')?.textContent?.trim()).toBe(
+      'Your customers show here once the first one is added.',
+    );
+    expect(q('list-empty-icon')?.textContent?.trim()).toBe('group');
+    expect(q('list-empty-icon')?.getAttribute('aria-hidden')).toBe('true');
+    expect(q('list-no-match')).toBeNull();
+    expect(q('list-no-match-clear')).toBeNull();
+
+    const action = q('list-empty-action');
+    expect(action?.textContent?.trim()).toContain('New customer');
+    // Material's tonal button, not a bare element: `matButton` is an attribute, and a wrong one would draw unstyled.
+    expect(action?.classList).toContain('mat-tonal-button');
+    action!.click();
+    expect(fixture.componentInstance.added).toEqual(['add']);
+  });
+
+  it("draws an empty state's action as a link when the list's own create action is an address", async () => {
+    fixture.componentInstance.empty.set({
+      icon: 'group',
+      title: 'c.none',
+      action: { id: 'add', label: 'c.add', link: ['/customers', 'new'] },
+    });
+    fixture.componentInstance.rows.set([]);
+    await settle();
+
+    const action = q('list-empty-action');
+    expect(action?.tagName).toBe('A');
+    expect(action?.getAttribute('href')).toBe('/customers/new');
+    expect(action?.classList).toContain('mat-tonal-button');
+    expect(q('list-empty-sentence')).toBeNull();
+  });
+
+  it('offers no action on an empty state whose screen offers none, or hides it while the action is not shown', async () => {
+    fixture.componentInstance.empty.set({ icon: 'group', title: 'c.none' });
+    fixture.componentInstance.rows.set([]);
+    await settle();
+    expect(q('customers-empty')?.textContent?.trim()).toBe('No customers.');
+    expect(q('list-empty-action')).toBeNull();
+
+    fixture.componentInstance.empty.set({
+      icon: 'group',
+      title: 'c.none',
+      action: { id: 'add', label: 'c.add', run: () => undefined, shown: false },
+    });
+    await settle();
+    expect(q('list-empty-action')).toBeNull();
+  });
+
+  it('says something even when the screen declared no empty state, never a blank list', async () => {
+    fixture.componentInstance.empty.set(null);
+    fixture.componentInstance.rows.set([]);
+    await settle();
+
+    expect(q('customers-empty')?.textContent?.trim()).toBe('Nothing here yet.');
+  });
+
+  it('says that nothing matches, not that the list is empty, and offers to clear the search and the filters', async () => {
+    await chooseFacet('archived');
+    await type('list-filter', 'nowhere');
+    expect(rowIds()).toEqual([]);
+    expect(q('list-no-match')?.textContent).toContain('nowhere');
+    expect(q('customers-empty')).toBeNull();
+    expect(q('list-empty-action')).toBeNull();
+
+    const clear = q('list-no-match-clear');
+    expect(clear?.textContent?.trim()).toBe('Clear all');
+    expect(clear?.classList).toContain('mat-tonal-button');
+    clear!.click();
+    await settle();
+
+    expect((q('list-filter') as HTMLInputElement).value).toBe('');
+    expect(rowIds()).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
     expect(q('list-no-match')).toBeNull();
   });
 
@@ -955,6 +1044,24 @@ describe('DataList', () => {
       expect(queries()).toEqual([
         { query: '', filters: {}, sort: null, pageIndex: 0, pageSize: 10 },
       ]);
+    });
+
+    it('asks again for every row at once when « Effacer tout » clears a search that matched nothing', async () => {
+      const field = q('list-filter') as HTMLInputElement;
+      field.value = 'nowhere';
+      field.dispatchEvent(new Event('input'));
+      await pause();
+      await settleServer();
+      server.componentInstance.rows.set([]);
+      server.componentInstance.total.set(0);
+      await settleServer();
+      expect(q('customers-empty')).toBeNull();
+
+      q('list-no-match-clear')!.click();
+      await settleServer();
+
+      expect(lastQuery()).toMatchObject({ query: '', filters: {}, pageIndex: 0 });
+      expect(field.value).toBe('');
     });
 
     it('asks for the words a person typed once they pause, from the first page', async () => {

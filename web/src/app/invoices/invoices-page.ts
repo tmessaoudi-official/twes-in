@@ -29,6 +29,7 @@ import { Label } from '../shared/a11y/label';
 import { DataList, DataListCell, DataListSelection } from '../shared/list/data-list';
 import { InvoiceBulk } from './invoice-bulk';
 import type {
+  EmptyState,
   ListDescriptor,
   ListFacetCounts,
   ListPickSource,
@@ -129,6 +130,19 @@ export class InvoicesPage implements OnInit {
   protected readonly toneOf = (status: InvoiceShownStatus): StatusTone =>
     INVOICE_STATUS_TONES[status];
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'receipt_long',
+    title: 'invoices.none',
+    sentence: 'invoices.none_sentence',
+    action: {
+      id: 'create',
+      label: 'invoices.add',
+      icon: 'add',
+      link: ['/invoices/new'],
+      shown: this.mayWrite() && this.company() !== null,
+    },
+  }));
   protected readonly rows = computed(() =>
     invoiceListRows(this.facade.invoices(), todayIn(this.company()?.timezone)),
   );

@@ -27,7 +27,7 @@ import {
   customersList,
 } from './customer-forms';
 import type { CustomerSearch } from './customers-types';
-import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { CustomersFacade } from './customers-facade';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { CUSTOMERS_TABS } from './customers-nav';
@@ -77,6 +77,19 @@ export class CustomersPage implements OnInit {
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'contacts',
+    title: 'customers.none',
+    sentence: 'customers.none_sentence',
+    action: {
+      id: 'create',
+      label: 'customers.add',
+      icon: 'add',
+      link: ['/customers/new'],
+      shown: this.mayWrite() && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
   protected readonly mayRemove = computed(() => this.auth.hasPermission('customer.remove'));
   protected readonly rowTestId = (row: CustomerListRow): string => `customer-${row.number}`;

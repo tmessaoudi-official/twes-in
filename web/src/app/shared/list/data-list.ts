@@ -58,6 +58,7 @@ import {
   PRESENTATION,
 } from '../settings/settings-registry';
 import type {
+  EmptyState,
   ListColumn,
   ListDescriptor,
   ListFacetCounts,
@@ -245,6 +246,18 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
     TranslatePipe,
   ],
   templateUrl: './data-list.html',
+  // An empty list's circle and its icon, larger than Material's 24 px. Here rather than in styles.scss or as utilities
+  // no other screen uses, so the rules travel with the lists, which no first page draws.
+  styles: `
+    .twes-empty-circle {
+      background-color: var(--twes-accent-soft-raised);
+    }
+    .mat-icon.twes-empty-icon {
+      width: var(--text-4xl);
+      height: var(--text-4xl);
+      font-size: var(--text-4xl);
+    }
+  `,
   // The list brings its paginator's texts itself: provided at the root, they put Material's paginator, its select and
   // the whole forms package on the first page.
   providers: [{ provide: MatPaginatorIntl, useClass: TranslatedPaginatorIntl }],
@@ -278,7 +291,8 @@ export class DataList<Row> implements OnInit {
   readonly failed = input.required<boolean>();
   readonly testId = input('data-list');
   readonly rowTestId = input<((row: Row) => string) | null>(null);
-  readonly emptyKey = input.required<string>();
+  /** What the list says when there is nothing at all yet; null says a plain « nothing yet ». */
+  readonly empty = input<EmptyState | null>(null);
   readonly emptyTestId = input('data-list-empty');
   /** How many rows the whole list holds when the API pages it; null when `rows` is the whole list. */
   readonly total = input<number | null>(null);
@@ -665,7 +679,7 @@ export class DataList<Row> implements OnInit {
     return total > 0 && (sizes.length > 1 || total > (sizes[0] ?? Infinity));
   });
   /** Nothing to show because there is nothing at all, not because of what a person asked for. */
-  protected readonly empty = computed(
+  protected readonly nothingAtAll = computed(
     () =>
       this.rows().length === 0 &&
       (!this.byApi() || (this.searched() === '' && Object.keys(this.chosenFilters()).length === 0)),
@@ -674,7 +688,7 @@ export class DataList<Row> implements OnInit {
   protected readonly blank = computed<'loading' | 'failed' | 'empty' | 'no-match'>(() => {
     if (this.loading()) return 'loading';
     if (this.failed()) return 'failed';
-    return this.empty() ? 'empty' : 'no-match';
+    return this.nothingAtAll() ? 'empty' : 'no-match';
   });
   protected readonly actionsColumn = ACTIONS_COLUMN;
   protected readonly selectColumn = SELECT_COLUMN;
@@ -1297,6 +1311,12 @@ export class DataList<Row> implements OnInit {
   protected clearAllFilters(): void {
     this.chosenFilters.set({});
     this.pageIndex.set(0);
+  }
+
+  /** Every row again, from a list whose search and filters matched nothing: the way back from « no match ». */
+  protected clearSearchAndFilters(): void {
+    this.search('', false);
+    this.clearAllFilters();
   }
 
   protected onNamed(option: PickOption): void {

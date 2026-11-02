@@ -90,7 +90,7 @@
     [failed]="facade.error() !== null"
     testId="custom-fields-table"
     [rowTestId]="rowTestId"
-    emptyKey="company.custom_fields.none"
+    [empty]="emptyState()"
     emptyTestId="custom-fields-empty"
   >
     <ng-template appDataListCell="type" let-row>

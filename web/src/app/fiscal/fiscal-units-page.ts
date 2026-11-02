@@ -22,7 +22,7 @@ import { buildFormGroup } from '../shared/form/form-builder';
 import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import { FiscalFacade } from './fiscal-facade';
 import {
@@ -79,6 +79,18 @@ export class FiscalUnitsPage implements OnInit {
   protected readonly busy = this.fiscal.busy;
   protected readonly error = this.fiscal.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'straighten',
+    title: 'fiscal.units.none',
+    action: {
+      id: 'create',
+      label: 'fiscal.units.add',
+      icon: 'add',
+      run: () => this.add(),
+      shown: this.mayManage() && this.editing() === null && this.company() !== null,
+    },
+  }));
   protected readonly mayManage = computed(() => this.auth.hasPermission('fiscal.write'));
   protected readonly rowTestId = (row: UnitRow): string => `unit-${row.code}`;
 

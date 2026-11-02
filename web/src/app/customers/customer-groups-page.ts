@@ -20,7 +20,7 @@ import { editorActions } from '../shared/form/editor-actions';
 import { RecordBar } from '../shared/form/record-bar';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { DataList } from '../shared/list/data-list';
 import { GROUP_FORM, GROUPS_LIST, groupInput, groupValues } from './customer-forms';
 import { CustomersFacade } from './customers-facade';
@@ -94,6 +94,18 @@ export class CustomerGroupsPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'label',
+    title: 'customers.groups.none',
+    action: {
+      id: 'create',
+      label: 'customers.groups.add',
+      icon: 'add',
+      run: () => this.open('new'),
+      shown: this.mayWrite() && this.editing() === null && this.company() !== null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
   protected readonly mayRemove = computed(() => this.auth.hasPermission('customer.remove'));
   protected readonly rowTestId = (row: CustomerGroupRow): string => `customer-group-${row.name}`;

@@ -28,7 +28,7 @@ import { listRecord } from '../shared/form/list-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import type { FormValues } from '../shared/form/form-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { EmptyState, ListDescriptor } from '../shared/list/list-types';
 import { StatusBadge } from '../shared/ui/status-badge';
 import {
   DEFINITIONS_LIST,
@@ -81,6 +81,18 @@ export class CustomFieldsPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  /** What the list says before it holds anything, offering the page's own create action where it is offered. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
+    icon: 'tune',
+    title: 'company.custom_fields.none',
+    action: {
+      id: 'create',
+      label: 'company.custom_fields.add',
+      icon: 'add',
+      run: () => this.add(),
+      shown: this.mayManage() && this.editing() === null && this.company() !== null,
+    },
+  }));
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly rowTestId = (row: CustomFieldDefinition): string => `custom-field-${row.key}`;
 
