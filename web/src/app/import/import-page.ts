@@ -24,6 +24,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { ImportApi } from './import-api';
 import { ImportFacade } from './import-facade';
+import { DurationWords } from '../shared/i18n/duration-pipe';
 import { IMPORT_RUN_KIND } from './import-types';
 import {
   TEXT_ENCODINGS,
@@ -47,6 +48,7 @@ import { MomentPipe } from '../shared/i18n/format-pipes';
 import { deadlineClock } from '../shared/time/deadline-clock';
 import type { ActionConfirm } from '../shared/actions/screen-action';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
+import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { tableCounts } from '../shared/records/record-tables';
 import { refusalParams } from '../shared/form/refusal-words';
@@ -102,6 +104,7 @@ interface PairingRow {
     MatIconModule,
     MatRadioModule,
     MomentPipe,
+    RouterLink,
     StatusBadge,
   ],
   templateUrl: './import-page.html',
@@ -115,10 +118,18 @@ export class ImportPage {
   private readonly facade = inject(ImportFacade);
   private readonly api = inject(ImportApi);
   private readonly auth = inject(AuthFacade);
+  /** Whether this person may open « Paramètres », where the company's import defaults are set. */
+  protected readonly maySetDefaults = computed(() => this.auth.hasPermission('company.settings'));
   private readonly translate = inject(TranslateService);
   private readonly windowClass = inject(WINDOW_CLASS);
   private readonly format = inject(FormatFacade);
   private readonly dialog = inject(MatDialog);
+  private readonly durations = inject(DurationWords);
+  /** How long an import can be taken back, the operator's, which the refusal and « Imports récents » say. */
+  protected undoWindow(): string {
+    // A method, not a computed: the words follow the screen's language, which no signal here carries.
+    return this.durations.recordsUndoable();
+  }
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -274,12 +285,17 @@ export class ImportPage {
       void this.facade.load(companyId, subject);
       void this.facade.loadRecent(companyId);
     });
-    // A teammate's import kept, taken back or put back moves « Imports récents »; the guide itself no one changes.
+    // A teammate's import kept, taken back or put back moves « Imports récents », and a kept one the pairing the guide
+    // offers next (the company's last), which the guide read again leaves as the person set it while they work.
     this.live.reloadOn(
       [IMPORT_RUN_KIND],
       async () => {
         const companyId = this.company()?.id;
-        if (companyId !== undefined) await this.facade.loadRecent(companyId);
+        if (companyId === undefined) return;
+        await Promise.all([
+          this.facade.loadRecent(companyId),
+          this.facade.reloadGuide(companyId, this.subject()),
+        ]);
       },
       this.destroyRef,
     );
@@ -399,6 +415,7 @@ export class ImportPage {
       kind: 'corrigeable',
       title: 'import.undo.confirm_title',
       message: 'import.undo.confirm_message',
+      messageParams: { duration: this.durations.recordsUndoable() },
       confirmLabel: 'import.undo.confirm',
       keepLabel: 'import.undo.keep',
     };

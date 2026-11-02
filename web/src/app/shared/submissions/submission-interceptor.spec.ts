@@ -4,7 +4,7 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { noticeToasts, provideQuietFeedback } from '../testing/feedback';
-import { WebParameters } from '../build/web-parameters';
+import { WEB_PARAMETERS_UNTIL_TOLD, WebParameters } from '../build/web-parameters';
 import { submissionInterceptor } from './submission-interceptor';
 import {
   SUBMISSION_IN_PROGRESS,
@@ -115,7 +115,11 @@ describe('SubmissionKeys', () => {
   });
 
   it('keeps a key as long as the operator set, once the API has said it', () => {
-    TestBed.inject(WebParameters).tell({ errorReportsPerPage: 5, submissionRetryMinutes: 2 });
+    TestBed.inject(WebParameters).tell({
+      ...WEB_PARAMETERS_UNTIL_TOLD,
+      errorReportsPerPage: 5,
+      submissionRetryMinutes: 2,
+    });
     const keys = TestBed.inject(SubmissionKeys);
     const write = writeOf(PAYMENTS, { amount: '40' });
     const key = keys.keyFor(write, 0);

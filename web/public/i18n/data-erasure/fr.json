@@ -13,8 +13,8 @@
     "preview": {
       "title": "Ce qui sera effacé",
       "counted": "Calculé à l’instant, sans rien toucher. Cela disparaît des écrans de tous les membres dès « Effacer » ; l’effacement est inscrit au journal d’activité.",
-      "undoable": "pendant 24 h, depuis le bandeau « Annuler l’effacement » ; ensuite rien ne revient.",
-      "proof": "Si votre confirmation d’identité a plus de 5 minutes, elle est redemandée au moment d’effacer.",
+      "undoable": "pendant {{duration}}, depuis le bandeau « Annuler l’effacement » ; ensuite rien ne revient.",
+      "proof": "Si votre confirmation d’identité a plus de {{duration}}, elle est redemandée au moment d’effacer.",
       "back": "Retour",
       "erase": "Effacer"
     },

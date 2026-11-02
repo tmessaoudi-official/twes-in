@@ -372,6 +372,7 @@
                       [label]="'account.scanner.min_length' | translate"
                       [labelInside]="true"
                       [options]="minLengthOptions"
+                      [translateLabels]="true"
                       [ngModel]="'' + scanMinLength.length()"
                       (ngModelChange)="scanMinLength.set(+$event)"
                       [ngModelOptions]="{ standalone: true }"
@@ -381,6 +382,21 @@
                     <p id="account-scanner-min-length-hint" class="text-sm opacity-80">
                       {{ 'account.scanner.min_length_hint' | translate }}
                     </p>
+                    @if (scanMinLength.length() !== defaultMinLength) {
+                      <div class="flex gap-2">
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          data-testid="account-scanner-min-length-reset"
+                          (click)="scanMinLength.reset()"
+                        >
+                          {{
+                            'account.scanner.min_length_reset'
+                              | translate: { count: defaultMinLength }
+                          }}
+                        </button>
+                      </div>
+                    }
                   </div>
                   <mat-form-field appearance="outline" class="max-w-sm">
                     <mat-label>{{ 'account.scanner.test' | translate }}</mat-label>

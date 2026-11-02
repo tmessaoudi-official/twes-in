@@ -32,6 +32,19 @@ describe('ScanMinLength', () => {
     expect(create().length()).toBe(2);
   });
 
+  // A choice in « Mon compte › Cet appareil » of one tab reached the till's tab only at its next reload: the scanner
+  // there kept refusing the short references the person had just allowed.
+  it('follows a length chosen in another tab of this browser, and its reset', () => {
+    const here = create();
+    storage.setItem(SCAN_MIN_LENGTH_KEY, '2');
+    window.dispatchEvent(new StorageEvent('storage', { key: SCAN_MIN_LENGTH_KEY, newValue: '2' }));
+    expect(here.length()).toBe(2);
+
+    storage.removeItem(SCAN_MIN_LENGTH_KEY);
+    window.dispatchEvent(new StorageEvent('storage', { key: SCAN_MIN_LENGTH_KEY, newValue: null }));
+    expect(here.length()).toBe(4);
+  });
+
   it('offers two to eight characters: one would take a quick key and Enter for a scan, nine would refuse an EAN-8', () => {
     expect(SCAN_MIN_LENGTH_CHOICES).toEqual([2, 3, 4, 5, 6, 7, 8]);
   });

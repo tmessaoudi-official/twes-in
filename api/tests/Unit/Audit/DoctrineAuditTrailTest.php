@@ -11,7 +11,10 @@ namespace App\Tests\Unit\Audit;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditVocabulary;
+use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\Model\AuditLog;
+use App\Audit\Domain\ValueObject\AuditScope;
+use App\Audit\Domain\ValueObject\Recorded;
 use App\Audit\Infrastructure\DoctrineAuditTrail;
 use App\Audit\Infrastructure\UndeclaredAuditAction;
 use App\Shared\Application\LiveChange;
@@ -56,8 +59,32 @@ final class DoctrineAuditTrailTest extends TestCase
         }
     }
 
+    /**
+     * An action whose declaration says no screen needs it (a page support read) is written to the journal and staged as
+     * no live change: every member's tab hearing its kind read its session again for nothing.
+     */
+    public function testAnActionNoScreenHearsIsRecordedWithoutALiveChange(): void
+    {
+        $vocabulary = new AuditVocabulary([new class implements DeclaresAuditActions {
+            public function auditActions(): array
+            {
+                return [
+                    'grant.read' => new Recorded('grant', AuditScope::Company, heard: false),
+                    'grant.changed' => new Recorded('grant', AuditScope::Company),
+                ];
+            }
+        }]);
+        [$trail, $persisted, $staged] = self::trail(debug: true, vocabulary: $vocabulary);
+
+        $trail->record(new AuditEntry('grant', null, 'grant.read', null, [], Uuid::v7()));
+        $trail->record(new AuditEntry('grant', null, 'grant.changed', null, [], Uuid::v7()));
+
+        self::assertSame(['grant.read', 'grant.changed'], array_map(static fn (AuditLog $row): string => $row->getAction(), $persisted->rows));
+        self::assertSame(['grant.changed'], array_map(static fn (LiveChange $change): string => $change->action, $staged->changes));
+    }
+
     /** @return array{DoctrineAuditTrail, object{rows: list<AuditLog>}, object{changes: list<LiveChange>}, object{said: list<array{string, string}>}} */
-    private static function trail(bool $debug): array
+    private static function trail(bool $debug, ?AuditVocabulary $vocabulary = null): array
     {
         $persisted = new class {
             /** @var list<AuditLog> */
@@ -88,6 +115,6 @@ final class DoctrineAuditTrailTest extends TestCase
             }
         };
 
-        return [new DoctrineAuditTrail($entityManager, new RequestStack(), new MockClock(), $staged, new AuditVocabulary([]), $logger, $debug), $persisted, $staged, $logger];
+        return [new DoctrineAuditTrail($entityManager, new RequestStack(), new MockClock(), $staged, $vocabulary ?? new AuditVocabulary([]), $logger, $debug), $persisted, $staged, $logger];
     }
 }

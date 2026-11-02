@@ -31,6 +31,11 @@ export interface WedgeReading {
    * cannot be told from a hand's until the second arrives, so it is never claimed.
    */
   readonly claimed: boolean;
+  /**
+   * The length of a scanner's burst its Enter closed below the shortest this browser reads as a scan, which the page
+   * dropped: two characters at least, each and the Enter within the gap, so a hand's typing never counts as one.
+   */
+  readonly short?: number;
 }
 
 /**
@@ -57,12 +62,13 @@ export class ScanWedge {
       return { code: null, claimed: false };
     }
     if (key.key === 'Enter') {
-      const code =
-        this.buffer.length >= this.minLength() && key.at - this.lastAt < this.gapMs()
-          ? this.buffer
-          : null;
+      const quick = key.at - this.lastAt < this.gapMs();
+      const length = [...this.buffer].length;
+      const code = length >= this.minLength() && quick ? this.buffer : null;
+      // One character and Enter is a quick key a hand presses, never told from a scan.
+      const short = code === null && quick && length >= 2 ? length : undefined;
       this.reset();
-      return { code, claimed: code !== null };
+      return { code, claimed: code !== null, ...(short === undefined ? {} : { short }) };
     }
     // A named key (Shift, CapsLock) is not a character: it neither joins nor breaks a burst.
     if ([...key.key].length !== 1) return { code: null, claimed: false };

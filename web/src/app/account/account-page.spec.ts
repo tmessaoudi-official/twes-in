@@ -54,6 +54,11 @@ class StaticLoader implements TranslateLoader {
           device: 'Cet appareil',
           notifications: 'Notifications',
         },
+        scanner: {
+          min_length_option: '{{count}}',
+          min_length_default: '{{count}} (par défaut)',
+          min_length_reset: 'Revenir à {{count}} caractères',
+        },
         display: 'Affichage',
         language: 'Langue',
         scheme: 'Thème',
@@ -691,15 +696,29 @@ describe('AccountPage', () => {
     expect(byTestId(root, 'account-scanner-result')).toBeNull();
   });
 
-  it('sets the shortest code this browser reads as a scan, four until changed', async () => {
+  // As the gap beside it: the default named among the choices, and a way back to it once another is chosen.
+  it('sets the shortest code this browser reads as a scan, its default named, and goes back to it', async () => {
     const root = await render('device');
     expect(TestBed.inject(ScanMinLength).length()).toBe(4);
-    expect(shownIn(root, 'account-scanner-min-length')).toBe('4');
+    expect(shownIn(root, 'account-scanner-min-length')).toBe('4 (par défaut)');
+    expect(byTestId(root, 'account-scanner-min-length-reset')).toBeNull();
 
     await choose(root, 'account-scanner-min-length', '2');
 
     expect(TestBed.inject(ScanMinLength).length()).toBe(2);
     expect(shownIn(root, 'account-scanner-min-length')).toBe('2');
+    const reset = byTestId(root, 'account-scanner-min-length-reset') as HTMLButtonElement;
+    expect(reset.textContent?.trim()).toBe('Revenir à 4 caractères');
+
+    reset.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    // The select takes its new value from ngModel a turn later.
+    fixture.detectChanges();
+
+    expect(TestBed.inject(ScanMinLength).length()).toBe(4);
+    expect(shownIn(root, 'account-scanner-min-length')).toBe('4 (par défaut)');
+    expect(byTestId(root, 'account-scanner-min-length-reset')).toBeNull();
   });
 
   it('says it read nothing from a hand, and offers nothing to apply', async () => {

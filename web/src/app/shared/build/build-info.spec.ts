@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { BuildApi } from './build-api';
 import { BUILD_CHECK_INTERVAL, BuildInfo, WEB_MODE } from './build-info';
 import type { ApiBuild, PartBuild } from './build-types';
-import { WebParameters } from './web-parameters';
+import { WEB_PARAMETERS_UNTIL_TOLD, WebParameters } from './web-parameters';
 
 const web = (version: string, commit = 'aaaa1111'): PartBuild => ({ version, commit });
 const api = (version: string, changes: Partial<ApiBuild> = {}): ApiBuild => ({
@@ -123,7 +123,9 @@ describe('BuildInfo', () => {
     create();
     const parameters = TestBed.inject(WebParameters);
     apis.api.mockResolvedValue(
-      api('2026.10.07.5', { web: { errorReportsPerPage: 0, submissionRetryMinutes: 3 } }),
+      api('2026.10.07.5', {
+        web: { ...WEB_PARAMETERS_UNTIL_TOLD, errorReportsPerPage: 0, submissionRetryMinutes: 3 },
+      }),
     );
     info.start();
     await settle();
@@ -135,7 +137,9 @@ describe('BuildInfo', () => {
     expect(parameters.errorReportsPerPage()).toBe(0);
 
     apis.api.mockResolvedValue(
-      api('2026.10.07.5', { web: { errorReportsPerPage: 9, submissionRetryMinutes: 20 } }),
+      api('2026.10.07.5', {
+        web: { ...WEB_PARAMETERS_UNTIL_TOLD, errorReportsPerPage: 9, submissionRetryMinutes: 20 },
+      }),
     );
     await vi.advanceTimersByTimeAsync(1000);
     expect(parameters.errorReportsPerPage()).toBe(9);

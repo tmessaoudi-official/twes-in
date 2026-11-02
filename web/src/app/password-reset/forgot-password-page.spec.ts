@@ -9,6 +9,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { WEB_PARAMETERS_UNTIL_TOLD, WebParameters } from '../shared/build/web-parameters';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { provideStillAppearance } from '../shared/testing/appearance';
 import { provideQuietFeedback } from '../shared/testing/feedback';
@@ -20,10 +21,15 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       password_reset: {
-        forgot: { sent: 'Un lien est en route.', email_invalid: 'Adresse invalide' },
+        forgot: {
+          sent: 'Un lien est en route. Il vaut {{duration}}.',
+          intro: 'Saisissez votre adresse ; le lien vaut {{duration}}.',
+          email_invalid: 'Adresse invalide',
+        },
         errors: { too_many_attempts: 'Trop de demandes' },
         back_to_login: 'Retour à la connexion',
       },
+      duration: { minutes: '{{count}} minutes', hours: '{{count}} heures' },
     });
   }
 }
@@ -80,6 +86,23 @@ describe('ForgotPasswordPage', () => {
     expect(facade.request).toHaveBeenCalledWith('someone@example.test', 'en');
     expect(query('forgot-sent')?.textContent).toContain('Un lien est en route.');
     expect(query('forgot-form')).toBeNull();
+  });
+
+  // The link's life is the operator's (app.password_reset.valid_for), a quarter hour to a day: the page said « une
+  // heure » whatever was set, while the mail said the true minutes.
+  it('says how long the link works as the operator set it, before and after asking', async () => {
+    TestBed.inject(WebParameters).tell({ ...WEB_PARAMETERS_UNTIL_TOLD, passwordResetSeconds: 900 });
+    const { fixture, query } = await render();
+    const page = fixture.nativeElement as HTMLElement;
+    expect(page.querySelector('.twes-auth-intro')?.textContent).toContain(
+      'le lien vaut 15 minutes.',
+    );
+
+    type(query<HTMLInputElement>('forgot-email')!, 'someone@example.test');
+    query<HTMLButtonElement>('forgot-submit')!.click();
+    await fixture.whenStable();
+
+    expect(query('forgot-sent')?.textContent).toContain('Il vaut 15 minutes.');
   });
 
   // An address pasted with an invisible mark at an end (an Arabic keyboard's direction mark) is the address, as the API

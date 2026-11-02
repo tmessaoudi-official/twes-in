@@ -8,6 +8,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { WebParameters } from '../shared/build/web-parameters';
+import { DurationPipe } from '../shared/i18n/duration-pipe';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { SignupFacade } from './signup-facade';
 import { emailRule, emailTypo } from '../shared/form/email-rule';
@@ -29,11 +31,14 @@ import { onTypedText, typedText } from '../shared/form/typed-text';
     MatInputModule,
     MatButtonModule,
     TranslatePipe,
+    DurationPipe,
   ],
   templateUrl: './signup-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SignupPage implements OnInit {
+  /** The operator's durations this screen states, never a fixed hour. */
+  protected readonly parameters = inject(WebParameters);
   private readonly signup = inject(SignupFacade);
   private readonly language = inject(LanguageFacade);
 

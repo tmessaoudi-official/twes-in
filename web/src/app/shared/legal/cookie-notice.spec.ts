@@ -79,6 +79,17 @@ describe('CookieNotice', () => {
     expect(q('cookie-notice')).toBeNull();
   });
 
+  it('goes when it is closed in another tab of this browser', async () => {
+    await render();
+    storage.setItem(COOKIE_NOTICE_KEY, 'closed');
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: COOKIE_NOTICE_KEY, newValue: 'closed' }),
+    );
+    fixture.detectChanges();
+
+    expect(q('cookie-notice')).toBeNull();
+  });
+
   /** A screen sized to the window leaves the notice's height out, or the notice lies over its foot. */
   it('tells the page how tall it stands while open, and nothing once closed or gone', async () => {
     const observed: (() => void)[] = [];

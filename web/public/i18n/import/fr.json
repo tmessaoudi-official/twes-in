@@ -181,7 +181,8 @@
       "windows-1252": "Windows-1252 (français)",
       "windows-1256": "Windows-1256 (arabe)",
       "utf-16": "UTF-16 (Texte Unicode d’Excel)",
-      "read_as": "Fichier lu en {{encoding}}. Des lettres illisibles ? Choisissez l’encodage du fichier."
+      "read_as": "Fichier lu en {{encoding}}. Des lettres illisibles ? Choisissez l’encodage du fichier.",
+      "from_company": "Proposé d’abord : l’encodage choisi dans les valeurs par défaut de l’entreprise."
     },
     "preview": "Prévisualiser",
     "store": "Importer",
@@ -214,7 +215,7 @@
       "invalid": "Le fichier n’a pas pu être lu.",
       "step_up_required": "Rien n’a changé : confirmez que c’est bien vous pour faire ce changement.",
       "import_undone": "Cet import est déjà annulé.",
-      "import_final": "Cet import ne s’annule plus : ses 24 heures sont passées."
+      "import_final": "Cet import ne s’annule plus : le délai de {{duration}} pour l’annuler est passé."
     },
     "refusals": {
       "invalid_request": "La demande n’a pas été comprise.",
@@ -263,12 +264,13 @@
       "intro": "Chaque en-tête de votre fichier est lu comme la colonne choisie. Ces choix sont gardés avec l’import, pour le prochain fichier écrit de la même façon.",
       "from_last": "Repris de votre dernier import : vérifiez-les avant de prévisualiser.",
       "ignored": "Ne pas importer",
-      "forget": "Oublier l’association de {{heading}}"
+      "forget": "Oublier l’association de {{heading}}",
+      "not_reused": "L’association de votre dernier import n’est pas reprise : les valeurs par défaut de l’entreprise le demandent."
     },
     "undo": {
       "action": "Annuler cet import",
       "confirm_title": "Annuler cet import ?",
-      "confirm_message": "Les fiches que ce fichier a créées et que rien n’utilise encore vont dans « Récemment supprimés », d’où elles peuvent être remises pendant 24 heures. Celles qui servent déjà restent. Le stock qu’il a apporté est repris, sauf là où il a été compté depuis ou ne suffirait plus. Ce qu’il a modifié reste modifié.",
+      "confirm_message": "Les fiches que ce fichier a créées et que rien n’utilise encore vont dans « Récemment supprimés », d’où elles peuvent être remises pendant {{duration}}. Celles qui servent déjà restent. Le stock qu’il a apporté est repris, sauf là où il a été compté depuis ou ne suffirait plus. Ce qu’il a modifié reste modifié.",
       "confirm": "Annuler l’import",
       "keep": "Garder l’import",
       "done": "L’import est annulé.",
@@ -290,7 +292,7 @@
     },
     "recent": {
       "title": "Imports récents",
-      "intro": "Les imports des dernières 24 heures dans ce que vous pouvez modifier, le plus récent d’abord.",
+      "intro": "Les imports de moins de {{duration}} dans ce que vous pouvez modifier, le plus récent d’abord.",
       "by": "Le {{moment}}, par {{name}}",
       "at": "Le {{moment}}",
       "counts": "{{created}} {created, plural, one {créée} other {créées}}, {{updated}} {updated, plural, one {modifiée} other {modifiées}}",
@@ -318,6 +320,7 @@
       "unit_cost_note": "Ce qu’une unité a coûté, hors taxes, quatre décimales au plus. L’historique seul est rempli : le prix de revient, le prix de vente et le stock ne bougent pas.",
       "skip_zero_lines": "Ignorer les lignes de quantité 0",
       "skip_zero_lines_note": "Pour une feuille qui écrit 0 sur les lignes sans achat : ces lignes ne sont pas gardées, et chacune le dit."
-    }
+    },
+    "settings_link": "Ouvrir « Valeurs par défaut »"
   }
 }

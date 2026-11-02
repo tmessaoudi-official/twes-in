@@ -17,6 +17,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { Session } from '../shared/session/session';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { WEB_PARAMETERS_UNTIL_TOLD, WebParameters } from '../shared/build/web-parameters';
 import { ImportFacade } from './import-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { CHANGES_SHOWN, ImportPage } from './import-page';
@@ -33,6 +34,7 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      duration: { minutes: '{{count}} minutes', hours: '{{count}} heures' },
       import: {
         title: 'Importer des {{subject}}',
         subjects: { opening_stock: 'stocks de départ' },
@@ -152,6 +154,7 @@ const GUIDE: ImportGuide = {
     },
   ],
   lastPairing: [],
+  reusesLastPairing: true,
   csvEncoding: null,
 };
 
@@ -516,6 +519,54 @@ describe('ImportPage', () => {
       [],
       {},
     );
+  });
+
+  // The guide offers the pairing the company's last import kept (lastPairing, company-wide): a teammate's import, in
+  // another tab or on another computer, moves it, and its undo moves « Imports récents ».
+  it('reads « Imports récents » and the guide again when an import is kept, undone or put back', async () => {
+    const call = live.reloadOn.mock.calls.find(([kinds]) =>
+      (kinds as string[]).includes('import_run'),
+    );
+    expect(call).toBeDefined();
+    facade.loadRecent.mockClear();
+
+    await (call![1] as () => Promise<void>)();
+
+    expect(facade.loadRecent).toHaveBeenCalledWith('c1');
+    expect(facade.reloadGuide).toHaveBeenCalledWith('c1', 'opening-stock');
+  });
+
+  describe('the encoding the company reads its CSV files in', () => {
+    it('says the one offered first is the company’s setting, with the way to it for whoever may change it', async () => {
+      guide.set({ ...GUIDE, csvEncoding: 'windows-1256' });
+      chooseFile('stocks.csv');
+      await settle();
+
+      const said = q('import-encoding-from-company');
+      expect(said).not.toBeNull();
+      expect(
+        said?.querySelector('a[data-testid="import-settings-link"]')?.getAttribute('href'),
+      ).toBe('/settings');
+    });
+
+    it('names the setting without a link for whoever may not change it', async () => {
+      auth.hasPermission.mockImplementation(
+        (permission: string) => permission !== 'company.settings',
+      );
+      guide.set({ ...GUIDE, csvEncoding: 'windows-1256' });
+      chooseFile('stocks.csv');
+      await settle();
+
+      expect(q('import-encoding-from-company')).not.toBeNull();
+      expect(q('import-settings-link')).toBeNull();
+    });
+
+    it('says nothing while the encoding is found on each file', async () => {
+      chooseFile('stocks.csv');
+      await settle();
+
+      expect(q('import-encoding-from-company')).toBeNull();
+    });
   });
 
   describe('when the company’s import settings or the platform’s row limit move', () => {
@@ -1030,6 +1081,33 @@ describe('ImportPage', () => {
       expect(lastPairing()).toEqual(KEPT);
     });
 
+    // Where the offered pairing comes from is a field not seen otherwise: a company that reuses none (« Paramètres »)
+    // meets every file's headings afresh, and is told why, with the way to the setting for whoever may change it.
+    it('says the company reuses no pairing, where the last one would be offered, with the way to the setting', async () => {
+      guide.set({ ...GUIDE, reusesLastPairing: false });
+      chooseFile();
+      await settle();
+      facade.run.mockImplementation(async () =>
+        refusal.set({ reason: 'unknown_columns', columns: ['Qté'], limit: null, encoding: null }),
+      );
+      await click('import-preview');
+
+      expect(q('import-pairing-from-last')).toBeNull();
+      expect(q('import-pairing-not-reused')).not.toBeNull();
+      expect(
+        q('import-pairing-not-reused')
+          ?.querySelector('a[data-testid="import-settings-link"]')
+          ?.getAttribute('href'),
+      ).toBe('/settings');
+    });
+
+    it('says nothing of the setting while the company reuses its pairing', async () => {
+      guide.set({ ...GUIDE, lastPairing: KEPT });
+      await settle();
+
+      expect(q('import-pairing-not-reused')).toBeNull();
+    });
+
     it('shows no pairing at all while there is none to show', () => {
       expect(q('import-pairing')).toBeNull();
     });
@@ -1165,6 +1243,11 @@ describe('ImportPage', () => {
 
     it('offers it on a stored import, says what it does first, and undoes only on « oui »', async () => {
       report.set({ ...CLEAN, committed: true, run: 'r1' });
+      // How long « Récemment supprimés » keeps what goes is the operator's (app.records.undoable_for).
+      TestBed.inject(WebParameters).tell({
+        ...WEB_PARAMETERS_UNTIL_TOLD,
+        recordsUndoableSeconds: 7200,
+      });
       await settle();
       dialog.open.mockReturnValue({ afterClosed: () => of(false) });
 
@@ -1175,6 +1258,7 @@ describe('ImportPage', () => {
           kind: 'corrigeable',
           title: 'import.undo.confirm_title',
           message: 'import.undo.confirm_message',
+          messageParams: { duration: '2 heures' },
           confirmLabel: 'import.undo.confirm',
           keepLabel: 'import.undo.keep',
         },

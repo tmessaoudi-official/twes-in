@@ -2625,11 +2625,11 @@
   "password_reset": {
     "forgot": {
       "title": "Forgot your password?",
-      "intro": "Enter the email address of your account. If it has one, we send a link to choose a new password; it works for one hour.",
+      "intro": "Enter the email address of your account. If it has one, we send a link to choose a new password; it works for {{duration}}.",
       "email": "Email address",
       "email_invalid": "This email address is not valid.",
       "submit": "Send the link",
-      "sent": "If this address has an account, a link is on its way. It works for one hour."
+      "sent": "If this address has an account, a link is on its way. It works for {{duration}}."
     },
     "reset": {
       "title": "Choose a new password",
@@ -2662,7 +2662,7 @@
       "email": "Email address",
       "email_invalid": "An email address is written name@domain.extension (example: accounts@example.tn). Check the @ and the dot.",
       "submit": "Send me a link",
-      "sent": "Check your inbox: if this address can be used to sign up, a link to finish is on its way. It is valid for 24 hours.",
+      "sent": "Check your inbox: if this address can be used to sign up, a link to finish is on its way. It is valid for {{duration}}.",
       "closed": "Signing up is not open at the moment.",
       "errors": {
         "too_many": "Too many requests from here. Try again in a while.",
@@ -2995,7 +2995,8 @@
         "nowhere": "Open a product's Photos tab on the computer, then take the photo again.",
         "lost": "The photo did not reach the computer. Take it again."
       }
-    }
+    },
+    "too_short": "A code of {{count}} {count, plural, one {character} other {characters}} was not read as a scan: this browser reads codes of {shortest, plural, one {{{shortest}} character} other {{{shortest}} characters}} or more. Change it in “My account › This device”."
   },
   "customer_screen": {
     "open": "Open the customer screen",
@@ -3972,5 +3973,10 @@
     "undo": "Undo",
     "dropped": "“Received by” is switched off for this document: {{name}} will not be kept.",
     "undo_refused": "{{why}} Who received it was not put back."
+  },
+  "duration": {
+    "seconds": "{{count}} {count, plural, one {second} other {seconds}}",
+    "minutes": "{{count}} {count, plural, one {minute} other {minutes}}",
+    "hours": "{{count}} {count, plural, one {hour} other {hours}}"
   }
 }

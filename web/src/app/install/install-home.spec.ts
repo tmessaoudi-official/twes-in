@@ -123,6 +123,17 @@ describe('InstallHome', () => {
     expect(install).not.toHaveBeenCalled();
   });
 
+  it('goes when it is put aside in another tab of this phone', async () => {
+    const { card, storage, settle } = await render('compact', 'guide');
+    expect(card()).not.toBeNull();
+
+    storage.setItem(INSTALL_LATER_KEY, 'true');
+    window.dispatchEvent(new StorageEvent('storage', { key: INSTALL_LATER_KEY, newValue: 'true' }));
+    await settle();
+
+    expect(card()).toBeNull();
+  });
+
   it('stays away once put aside, without even fetching its words', async () => {
     const storage = new PageMemoryStorage();
     storage.setItem(INSTALL_LATER_KEY, 'true');

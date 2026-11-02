@@ -433,10 +433,13 @@ final class CustomerImportTest extends ApiTestCase
         $changes->change(new SettingContext($this->found()), ImportSettings::REUSE_LAST_PAIRING, SettingLevel::Company, false, null);
         $this->getJson($this->companyPath().'/imports/customers');
         self::assertSame([], $this->json()['lastPairing'] ?? null);
+        // The screen says why none is offered: the company's setting, not a first import.
+        self::assertFalse($this->json()['reusesLastPairing'] ?? null);
 
         $changes->change(new SettingContext($this->found()), ImportSettings::REUSE_LAST_PAIRING, SettingLevel::Company, true, null);
         $this->getJson($this->companyPath().'/imports/customers');
         self::assertSame([['heading' => 'Réf. client', 'column' => 'number'], ['heading' => 'Raison sociale [FR]', 'column' => 'name']], $this->json()['lastPairing'] ?? null);
+        self::assertTrue($this->json()['reusesLastPairing'] ?? null);
     }
 
     /** The screen starts a CSV's encoding at the company's own: automatic (none) until its owner names one. */

@@ -14,9 +14,12 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
+use App\Shared\Application\RealtimePublisher;
+use App\Tenancy\Application\Support\RecordSupportVisit;
 use App\Tenancy\Application\Support\SupportAccess;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
+use App\Tests\Support\RecordingRealtimePublisher;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -133,6 +136,42 @@ final class SupportAccessTest extends ApiTestCase
         $this->as(self::MANAGER);
         $this->getJson('/api/auth/me');
         self::assertSame($until, $this->json()['supportAccessUntil']);
+    }
+
+    /**
+     * A page support reads is written to the journal, never said to the members' open tabs: every one of them hears a
+     * change to the grant (« support_grant » is a session kind) and reads its session again, so at PT0M each page the
+     * operator opened reloaded every member's screens. The grant's own changes are still said.
+     */
+    public function testAPageSupportReadsIsJournalledWithoutReloadingTheMembersScreens(): void
+    {
+        // A kernel of its own, whose live changes the recorder hears: the setup's provisioning already used the publisher.
+        static::ensureKernelShutdown();
+        $this->client = static::createClient();
+        $this->client->setServerParameter('HTTP_ORIGIN', 'http://localhost');
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+        $this->client->disableReboot();
+        $publisher = new RecordingRealtimePublisher();
+        static::getContainer()->set(RealtimePublisher::class, $publisher);
+        $this->grant(24);
+        $this->as(self::OPERATOR);
+        $this->postJson('/api/me/company', ['companyId' => $this->companyId()]);
+        self::assertResponseIsSuccessful();
+
+        $this->getJson($this->path('/customers'));
+        self::assertResponseIsSuccessful();
+
+        self::assertSame(['support.entered' => 1, 'support.read' => 1], $this->supportVisits());
+        $said = [];
+        foreach ($publisher->pushed as $push) {
+            if ('changed' === ($push['data']['type'] ?? null) && 'support_grant' === ($push['data']['kind'] ?? null)) {
+                $action = $push['data']['action'] ?? null;
+                self::assertIsString($action);
+                $said[] = $action;
+            }
+        }
+        self::assertContains('support_access.granted', $said, 'the grant itself is still said to the members');
+        self::assertNotContains(RecordSupportVisit::READ, $said, 'a page read reloads nobody');
     }
 
     public function testUnderAGrantNothingIsWrittenExportedOrCostedAndTheOwnersOwnPagesStayClosed(): void

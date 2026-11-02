@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   signal,
@@ -18,7 +19,13 @@ import { TextsParts } from '../shared/i18n/texts-part';
 import { AppInstall } from '../shared/install/app-install';
 import { INSTALL_TEXTS } from '../shared/install/install-texts';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
-import { INSTALL_STORAGE, installPutAside, putInstallAside } from './install-later';
+import { StorageChanges } from '../shared/settings/storage-changes';
+import {
+  INSTALL_LATER_KEY,
+  INSTALL_STORAGE,
+  installPutAside,
+  putInstallAside,
+} from './install-later';
 
 /**
  * The offer to install the application, once, on a phone's home (docs/SPEC.md § 7, the install offer): only where the
@@ -77,6 +84,12 @@ export class InstallHome {
   protected readonly shown = computed(() => this.worded() && this.offered());
 
   constructor() {
+    // Put aside in another tab of this phone, it goes from this one too.
+    inject(StorageChanges).follow(
+      INSTALL_LATER_KEY,
+      () => this.putAside.set(installPutAside(this.storage)),
+      inject(DestroyRef),
+    );
     effect(() => {
       if (!this.offered() || this.opening) return;
       this.opening = true;

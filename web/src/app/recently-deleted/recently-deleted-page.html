@@ -1,6 +1,11 @@
 <section class="flex flex-col gap-4 p-4" data-testid="recently-deleted-page">
   <h1 class="text-title">{{ 'records.recent.title' | translate }}</h1>
-  <p class="text-sm text-on-surface-variant">{{ 'records.recent.intro' | translate }}</p>
+  <p class="text-sm text-on-surface-variant">
+    {{
+      'records.recent.intro'
+        | translate: { duration: parameters.recordsUndoableSeconds() | duration }
+    }}
+  </p>
 
   @if (failed()) {
     <p role="alert" class="text-error" data-testid="removals-error">
@@ -9,7 +14,11 @@
   } @else if (removals(); as list) {
     @if (list.length === 0) {
       <p class="flex items-center gap-2" data-testid="removals-empty">
-        <mat-icon aria-hidden="true">history</mat-icon>{{ 'records.recent.empty' | translate }}
+        <mat-icon aria-hidden="true">history</mat-icon
+        >{{
+          'records.recent.empty'
+            | translate: { duration: parameters.recordsUndoableSeconds() | duration }
+        }}
       </p>
     } @else {
       <ul class="m-0 flex list-none flex-col gap-3 p-0">

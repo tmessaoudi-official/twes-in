@@ -15,7 +15,7 @@
   }
   @if (error(); as code) {
     <p role="alert" data-testid="import-error" class="text-error">
-      {{ 'import.errors.' + code | translate }}
+      {{ 'import.errors.' + code | translate: { duration: undoWindow() } }}
     </p>
   }
 
@@ -66,6 +66,16 @@
               }}</mat-radio-button>
             }
           </mat-radio-group>
+          @if (guide.csvEncoding !== null) {
+            <p class="text-sm text-on-surface-variant" data-testid="import-encoding-from-company">
+              {{ 'import.encoding.from_company' | translate }}
+              @if (maySetDefaults()) {
+                <a routerLink="/settings" class="underline" data-testid="import-settings-link">{{
+                  'import.settings_link' | translate
+                }}</a>
+              }
+            </p>
+          }
         </div>
       }
 
@@ -126,6 +136,15 @@
           @if (pairingFromLast()) {
             <p class="text-sm text-on-surface-variant" data-testid="import-pairing-from-last">
               {{ 'import.pairing.from_last' | translate }}
+            </p>
+          } @else if (!guide.reusesLastPairing) {
+            <p class="text-sm text-on-surface-variant" data-testid="import-pairing-not-reused">
+              {{ 'import.pairing.not_reused' | translate }}
+              @if (maySetDefaults()) {
+                <a routerLink="/settings" class="underline" data-testid="import-settings-link">{{
+                  'import.settings_link' | translate
+                }}</a>
+              }
             </p>
           }
           <ul class="flex flex-col gap-2" data-testid="import-pairing">
@@ -433,7 +452,9 @@
   @if (recent().length > 0) {
     <div class="flex flex-col gap-3" data-testid="import-recent">
       <h2 class="text-heading">{{ 'import.recent.title' | translate }}</h2>
-      <p class="text-sm text-on-surface-variant">{{ 'import.recent.intro' | translate }}</p>
+      <p class="text-sm text-on-surface-variant">
+        {{ 'import.recent.intro' | translate: { duration: undoWindow() } }}
+      </p>
       <ul class="m-0 flex list-none flex-col gap-3 p-0">
         @for (run of recent(); track run.id) {
           <li

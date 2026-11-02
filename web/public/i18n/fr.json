@@ -2625,11 +2625,11 @@
   "password_reset": {
     "forgot": {
       "title": "Mot de passe oublié ?",
-      "intro": "Saisissez l’adresse e-mail de votre compte. S’il en existe un, nous envoyons un lien pour choisir un nouveau mot de passe ; il vaut une heure.",
+      "intro": "Saisissez l’adresse e-mail de votre compte. S’il en existe un, nous envoyons un lien pour choisir un nouveau mot de passe ; il vaut {{duration}}.",
       "email": "Adresse e-mail",
       "email_invalid": "Cette adresse e-mail n’est pas valide.",
       "submit": "Envoyer le lien",
-      "sent": "Si cette adresse a un compte, un lien est en route. Il vaut une heure."
+      "sent": "Si cette adresse a un compte, un lien est en route. Il vaut {{duration}}."
     },
     "reset": {
       "title": "Choisir un nouveau mot de passe",
@@ -2662,7 +2662,7 @@
       "email": "Adresse e-mail",
       "email_invalid": "Une adresse e-mail s’écrit nom@domaine.extension (exemple : compta@exemple.tn). Vérifiez l’arobase et le point.",
       "submit": "Recevoir le lien",
-      "sent": "Consultez votre boîte de réception : si cette adresse peut servir à s’inscrire, un lien pour terminer est en route. Il est valable 24 heures.",
+      "sent": "Consultez votre boîte de réception : si cette adresse peut servir à s’inscrire, un lien pour terminer est en route. Il est valable {{duration}}.",
       "closed": "Les inscriptions ne sont pas ouvertes pour l’instant.",
       "errors": {
         "too_many": "Trop de demandes depuis ici. Réessayez dans un moment.",
@@ -2995,7 +2995,8 @@
         "nowhere": "Ouvrez l’onglet Photos d’un article sur l’ordinateur, puis reprenez la photo.",
         "lost": "La photo n’est pas arrivée sur l’ordinateur. Reprenez-la."
       }
-    }
+    },
+    "too_short": "Code de {{count}} {count, plural, one {caractère} other {caractères}} non lu comme un scan : ce navigateur lit les codes à partir de {shortest, plural, one {{{shortest}} caractère} other {{{shortest}} caractères}}. Changez-le dans « Mon compte › Cet appareil »."
   },
   "customer_screen": {
     "open": "Ouvrir l’écran client",
@@ -3972,5 +3973,10 @@
     "undo": "Annuler",
     "dropped": "« Reçu par » est désactivé pour ce document : {{name}} ne sera pas gardé.",
     "undo_refused": "{{why}} Qui a reçu n’a pas été remis comme avant."
+  },
+  "duration": {
+    "seconds": "{{count}} {count, plural, one {seconde} other {secondes}}",
+    "minutes": "{{count}} {count, plural, one {minute} other {minutes}}",
+    "hours": "{{count}} {count, plural, one {heure} other {heures}}"
   }
 }

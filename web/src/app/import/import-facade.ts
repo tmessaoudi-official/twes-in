@@ -3,6 +3,7 @@
 import { requestState } from '../shared/feedback/request-state';
 import { inject, Injectable } from '@angular/core';
 import { Feedback } from '../shared/feedback/feedback';
+import { DurationWords } from '../shared/i18n/duration-pipe';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { StepUp } from '../shared/step-up/step-up';
 import { ImportApi, ImportNotKept, ImportRefused } from './import-api';
@@ -29,6 +30,7 @@ import { sessionSignal } from '../shared/session/session-data';
 export class ImportFacade {
   private readonly api = inject(ImportApi);
   private readonly feedback = inject(Feedback);
+  private readonly durations = inject(DurationWords);
   private readonly stepUp = inject(StepUp);
   private readonly records = inject(RecordDeletes);
 
@@ -169,7 +171,10 @@ export class ImportFacade {
         await this.loadRecent(companyId);
         return true;
       } catch (error) {
-        this.feedback.failure(`import.errors.${codeOf(error)}`);
+        // `import_final` names the time to undo, the operator's.
+        this.feedback.failure(`import.errors.${codeOf(error)}`, {
+          duration: this.durations.recordsUndoable(),
+        });
         await this.loadRecent(companyId);
         return false;
       }

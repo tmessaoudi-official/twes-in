@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { SETTINGS_STORAGE } from '../settings/settings-facade';
+import { StorageChanges } from '../settings/storage-changes';
 
 /** Where this browser keeps how close two keystrokes must be to come from its scanner. */
 export const SCAN_GAP_KEY = 'twes.scan.gap';
@@ -31,6 +32,11 @@ export class ScanGap {
   private readonly value = signal(this.remembered());
 
   readonly gap = this.value.asReadonly();
+
+  constructor() {
+    // A gap measured in another tab of this browser holds here at once, for the same scanner.
+    inject(StorageChanges).follow(SCAN_GAP_KEY, () => this.value.set(this.remembered()));
+  }
 
   /** Keeps a gap inside the range; a value outside it is not taken. */
   set(ms: number): void {

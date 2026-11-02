@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { SETTINGS_STORAGE } from '../settings/settings-facade';
+import { StorageChanges } from '../settings/storage-changes';
 import { SCAN_MIN_LENGTH } from './scan-wedge';
 
 /** Where this browser keeps the shortest code it reads as a scan from a page with no field focused. */
@@ -28,6 +29,11 @@ export class ScanMinLength {
   private readonly value = signal(this.remembered());
 
   readonly length = this.value.asReadonly();
+
+  constructor() {
+    // A length chosen in another tab of this browser holds here at once: the till's tab reads the next scan by it.
+    inject(StorageChanges).follow(SCAN_MIN_LENGTH_KEY, () => this.value.set(this.remembered()));
+  }
 
   /** Keeps a length the browser may choose; any other is not taken. */
   set(length: number): void {

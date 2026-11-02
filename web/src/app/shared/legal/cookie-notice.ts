@@ -4,6 +4,7 @@ import { DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   effect,
   type ElementRef,
   inject,
@@ -13,6 +14,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SETTINGS_STORAGE } from '../settings/settings-facade';
+import { StorageChanges } from '../settings/storage-changes';
 import { LegalLink } from './legal-link';
 
 /** Where this browser remembers that the notice was closed. */
@@ -68,6 +70,12 @@ export class CookieNotice {
   private readonly notice = viewChild<ElementRef<HTMLElement>>('notice');
 
   constructor() {
+    // Closed in another tab of this browser, it goes from this one too.
+    inject(StorageChanges).follow(
+      COOKIE_NOTICE_KEY,
+      () => this.open.set(this.firstVisit()),
+      inject(DestroyRef),
+    );
     const root = inject(DOCUMENT).documentElement;
     effect((onCleanup) => {
       const notice = this.notice()?.nativeElement;

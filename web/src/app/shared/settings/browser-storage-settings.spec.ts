@@ -87,6 +87,20 @@ describe('BrowserStorageSettings', () => {
     expect(density()).toBe('comfortable');
   });
 
+  // A signed-out page (sign-in, a legal page) keeps the person's display choices here: one chosen in another tab shows.
+  it('follows a choice made in another tab of this browser, over one made here before', () => {
+    const facade = settings();
+    facade.set(PRESENTATION.scheme, 'light');
+    const scheme = facade.value(PRESENTATION.scheme);
+
+    storage.setItem('twes.settings.u1.' + PRESENTATION.scheme.key, JSON.stringify('dark'));
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: 'twes.settings.u1.' + PRESENTATION.scheme.key }),
+    );
+
+    expect(scheme()).toBe('dark');
+  });
+
   it('ignores a stored value that is not a valid one and answers the default', () => {
     storage.items.set('twes.settings.u1.presentation.scheme', JSON.stringify('purple'));
     storage.items.set('twes.settings.u1.presentation.density', '{not json');

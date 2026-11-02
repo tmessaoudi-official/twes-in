@@ -68,7 +68,8 @@ final readonly class RecordSupportVisit implements DeclaresAuditActions
     {
         return [
             self::ENTERED => new Recorded(ManageSupportAccess::ENTITY_TYPE, AuditScope::Company),
-            self::READ => new Recorded(ManageSupportAccess::ENTITY_TYPE, AuditScope::Company),
+            // A page read changes nothing a member sees: said to their tabs, it would read every session again on each.
+            self::READ => new Recorded(ManageSupportAccess::ENTITY_TYPE, AuditScope::Company, heard: false),
         ];
     }
 }

@@ -71,6 +71,29 @@ describe('ScanWedge', () => {
     expect(feed(new ScanWedge(undefined, () => 8), burst('1234567')).at(-1)).toBeNull();
   });
 
+  // A burst a scanner sent, shorter than this browser reads as a scan, did nothing at all: the person never learnt
+  // their setting was why. The reading says it, so the page can; typing by hand never does.
+  it('says a scanner’s burst was shorter than this browser reads, and never says so of typing', () => {
+    const short = (wedge: ScanWedge, keys: readonly WedgeKey[]) =>
+      keys.map((key) => wedge.read(key).short ?? null);
+
+    // A scanner's two characters and its Enter, with four characters the shortest read.
+    expect(short(new ScanWedge(), burst('A7')).at(-1)).toBe(2);
+    expect(short(new ScanWedge(), burst('A7')).slice(0, -1)).toEqual([null, null]);
+    // Long enough is a code, not a short burst.
+    expect(short(new ScanWedge(), burst('1234')).at(-1)).toBeNull();
+    // A person typing the same, or one quick key and Enter, is no burst.
+    expect(short(new ScanWedge(), burst('A7', 1000, SCAN_GAP_MS * 4)).at(-1)).toBeNull();
+    expect(short(new ScanWedge(), burst('7')).at(-1)).toBeNull();
+    // An Enter pressed by hand after quick keys is the hand's.
+    const keys = burst('A7');
+    const enter = keys.pop()!;
+    expect(short(new ScanWedge(), [...keys, { ...enter, at: enter.at + 200 }]).at(-1)).toBeNull();
+    // Inside a field any length is read, so nothing is short there.
+    const inField = burst('A7').map((key) => ({ ...key, editable: true }));
+    expect(short(new ScanWedge(), inField).at(-1)).toBeNull();
+  });
+
   it('leaves a field its own scan, and a modified key is never part of one', () => {
     const wedge = new ScanWedge();
     const inField = burst('3017620422003').map((key) => ({ ...key, editable: true }));

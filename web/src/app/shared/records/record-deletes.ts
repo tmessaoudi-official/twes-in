@@ -5,6 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { Feedback } from '../feedback/feedback';
+import { DurationWords } from '../i18n/duration-pipe';
 import { TextsParts } from '../i18n/texts-part';
 import { StepUp } from '../step-up/step-up';
 import {
@@ -70,6 +71,7 @@ const MERGE_REFUSALS = [
 export class RecordDeletes {
   private readonly api = inject(RecordRemovalsApi);
   private readonly feedback = inject(Feedback);
+  private readonly durations = inject(DurationWords);
   private readonly translate = inject(TranslateService);
   private readonly stepUp = inject(StepUp);
   private readonly dialog = inject(MatDialog);
@@ -277,7 +279,10 @@ export class RecordDeletes {
     ) {
       this.feedback.failure(`records.merge_refused.${refusal.reason}`, { ...refusal.params });
     } else {
-      this.feedback.failure(`records.errors.${refusal.code}`);
+      // The time to undo, which `removal_final` names, is the operator's.
+      this.feedback.failure(`records.errors.${refusal.code}`, {
+        duration: this.durations.recordsUndoable(),
+      });
     }
   }
 

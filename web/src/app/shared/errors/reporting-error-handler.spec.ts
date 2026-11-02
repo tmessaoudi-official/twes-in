@@ -4,7 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { DOCUMENT, ErrorHandler, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { BuildInfo } from '../build/build-info';
-import { WebParameters } from '../build/web-parameters';
+import { WEB_PARAMETERS_UNTIL_TOLD, WebParameters } from '../build/web-parameters';
 import {
   MAX_REPORTS_PER_PAGE,
   REPORT_CLIENT_ERROR,
@@ -70,7 +70,11 @@ describe('ReportingErrorHandler', () => {
   });
 
   it('stops after the number the operator set, once the API has said it', async () => {
-    TestBed.inject(WebParameters).tell({ errorReportsPerPage: 2, submissionRetryMinutes: 15 });
+    TestBed.inject(WebParameters).tell({
+      ...WEB_PARAMETERS_UNTIL_TOLD,
+      errorReportsPerPage: 2,
+      submissionRetryMinutes: 15,
+    });
 
     for (let i = 0; i < 6; i++) handler.handleError(new Error(`n${i}`));
     await settle();
@@ -79,7 +83,11 @@ describe('ReportingErrorHandler', () => {
   });
 
   it('sends none when the operator set none, and still writes each to the console', async () => {
-    TestBed.inject(WebParameters).tell({ errorReportsPerPage: 0, submissionRetryMinutes: 15 });
+    TestBed.inject(WebParameters).tell({
+      ...WEB_PARAMETERS_UNTIL_TOLD,
+      errorReportsPerPage: 0,
+      submissionRetryMinutes: 15,
+    });
 
     handler.handleError(new Error('first'));
     await settle();

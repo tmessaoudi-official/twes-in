@@ -53,6 +53,7 @@ import { LanguageFacade } from '../shared/i18n/language-facade';
 import { languageChoices } from '../shared/i18n/language-options';
 import { ScanGap, SCAN_GAP_DEFAULT_MS, suggestGap } from '../shared/scan/scan-gap';
 import { ScanMinLength, SCAN_MIN_LENGTH_CHOICES } from '../shared/scan/scan-min-length';
+import { SCAN_MIN_LENGTH } from '../shared/scan/scan-wedge';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import {
   type Density,
@@ -274,10 +275,15 @@ export class AccountPage implements OnInit {
   protected readonly scanGap = inject(ScanGap);
   protected readonly defaultGap = SCAN_GAP_DEFAULT_MS;
   protected readonly scanMinLength = inject(ScanMinLength);
-  /** The lengths offered, each said as its number. */
+  protected readonly defaultMinLength = SCAN_MIN_LENGTH;
+  /** The lengths offered, each said as its number, the default named as the gap's is, so it can be found again. */
   protected readonly minLengthOptions: SelectOption[] = SCAN_MIN_LENGTH_CHOICES.map((length) => ({
     value: String(length),
-    label: String(length),
+    label:
+      length === SCAN_MIN_LENGTH
+        ? 'account.scanner.min_length_default'
+        : 'account.scanner.min_length_option',
+    params: { count: length },
     testId: `account-scanner-min-length-option-${length}`,
   }));
   /** The gap measured from the last burst typed into the test field, or null when it measured nothing yet. */

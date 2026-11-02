@@ -61,6 +61,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from '../watch/watch-facade';
 import { WATCHED_KINDS } from '../watch/watch-types';
 import { SESSION_KINDS, withSessionKinds } from '../shared/session/session-kinds';
+import { Feedback } from '../shared/feedback/feedback';
 import { RequestActivity } from '../shared/feedback/request-activity';
 import { LANGUAGE_NAMES, LanguageFacade } from '../shared/i18n/language-facade';
 import { LanguageDialog } from '../shared/i18n/language-dialog';
@@ -224,6 +225,9 @@ export class AppShell {
     () => this.scanMinLength.length(),
   );
   private readonly scans = inject(ScanBus);
+  private readonly feedback = inject(Feedback);
+  /** Whether this page said a burst was shorter than this browser's shortest scan: once is enough to find why. */
+  private saidShort = false;
   /** The product whose page is on view, which the scan card offers a code nobody holds to first. */
   private readonly productOnView = inject(ProductOnView);
   private readonly count = new ScanCount();
@@ -561,6 +565,15 @@ export class AppShell {
       // AltGr reports Ctrl and Alt together and types a character ("]" on AZERTY): only a bare Ctrl or Meta is a command.
       modified: !isBareKeystroke(event),
     });
+    // A scanner's burst below this browser's shortest scan is dropped: said once a page, with the scanner on, naming
+    // the setting and where it is, so the person does not take the scanner for broken.
+    if (reading.short !== undefined && this.scanning() && !this.saidShort) {
+      this.saidShort = true;
+      this.feedback.failure('scan.too_short', {
+        count: reading.short,
+        shortest: this.scanMinLength.length(),
+      });
+    }
     if (reading.code !== null || reading.claimed) {
       // The key before this one was the first of a scanned code, not a shortcut: what it would have run never runs.
       this.dropHeldShortcut();

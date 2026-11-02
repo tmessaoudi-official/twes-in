@@ -86,6 +86,7 @@ final readonly class ImportGuideProvider implements ProviderInterface
         // A company that reuses no pairing is offered none; the last one stays kept, for when it does again.
         $reuse = $this->settings->value($companySettings, ImportSettings::REUSE_LAST_PAIRING);
         \is_bool($reuse) || throw new \LogicException(ImportSettings::REUSE_LAST_PAIRING.' is declared as a switch.');
+        $guide->reusesLastPairing = $reuse;
         if ($reuse) {
             foreach ($this->runs->lastPairingOf($company->getId(), $declaration->key()) as $heading => $column) {
                 $guide->lastPairing[] = ['heading' => (string) $heading, 'column' => $column];

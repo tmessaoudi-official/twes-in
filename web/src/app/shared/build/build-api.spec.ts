@@ -57,11 +57,27 @@ describe('BuildApi', () => {
         build: { version: '2026.10.07.5', commit: 'bbbb2222', mode: 'prod' },
         deployment: null,
         statusUrl: null,
-        web: { errorReportsPerPage: 0, submissionRetryMinutes: 30 },
+        web: {
+          errorReportsPerPage: 0,
+          submissionRetryMinutes: 30,
+          passwordResetSeconds: 900,
+          signupSeconds: 86400,
+          stepUpSeconds: 300,
+          recordsUndoableSeconds: 7200,
+          erasureUndoableSeconds: 86400,
+        },
       },
       { status: 503, statusText: 'Service Unavailable' },
     );
-    expect((await health)?.web).toEqual({ errorReportsPerPage: 0, submissionRetryMinutes: 30 });
+    expect((await health)?.web).toEqual({
+      errorReportsPerPage: 0,
+      submissionRetryMinutes: 30,
+      passwordResetSeconds: 900,
+      signupSeconds: 86400,
+      stepUpSeconds: 300,
+      recordsUndoableSeconds: 7200,
+      erasureUndoableSeconds: 86400,
+    });
   });
 
   it('reads a web with no build file as unversioned, an empty version as none, and silence as nothing known', async () => {

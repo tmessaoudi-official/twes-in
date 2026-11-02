@@ -9,6 +9,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { WEB_PARAMETERS_UNTIL_TOLD, WebParameters } from '../shared/build/web-parameters';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { SignupFacade } from './signup-facade';
 import { SignupPage } from './signup-page';
@@ -25,7 +26,7 @@ class StaticLoader implements TranslateLoader {
           email: 'Adresse e-mail',
           email_invalid: 'Adresse invalide',
           submit: 'Recevoir le lien',
-          sent: 'Si cette adresse peut s’inscrire, un lien est en route.',
+          sent: 'Si cette adresse peut s’inscrire, un lien est en route. Il est valable {{duration}}.',
           closed: 'Les inscriptions sont fermées.',
           errors: {
             too_many: 'Trop de demandes',
@@ -36,6 +37,7 @@ class StaticLoader implements TranslateLoader {
         },
         back_to_login: 'Retour à la connexion',
       },
+      duration: { minutes: '{{count}} minutes', hours: '{{count}} heures' },
     });
   }
 }
@@ -125,6 +127,18 @@ describe('SignupPage', () => {
     expect(facade.request).toHaveBeenCalledWith('new@example.test', 'en');
     expect(query('signup-sent')).not.toBeNull();
     expect(query('signup-form')).toBeNull();
+  });
+
+  // How long the link works is the operator's (app.signup.valid_for), never a fixed « 24 heures ».
+  it('says how long the link works as the operator set it', async () => {
+    TestBed.inject(WebParameters).tell({ ...WEB_PARAMETERS_UNTIL_TOLD, signupSeconds: 7200 });
+    const { fixture, query } = await render();
+
+    type(query<HTMLInputElement>('signup-email')!, 'new@example.test');
+    query<HTMLFormElement>('signup-form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(query('signup-sent')?.textContent).toContain('Il est valable 2 heures.');
   });
 
   // An address pasted with an invisible mark at an end is the address, as the API reads it.

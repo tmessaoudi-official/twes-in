@@ -10,6 +10,7 @@ import {
   InjectionToken,
   signal,
 } from '@angular/core';
+import { StorageChanges } from '../settings/storage-changes';
 import { SettingsFacade } from '../settings/settings-facade';
 import { type Density, PRESENTATION, type SchemePreference } from '../settings/settings-registry';
 import {
@@ -96,14 +97,11 @@ export class ThemeFacade {
       inject(DestroyRef).onDestroy(() => query.removeEventListener('change', follow));
     }
     // A size chosen in another tab of this browser shows here at once, as every other outcome does.
-    const view = this.view;
-    if (view !== null) {
-      const followDevice = (event: StorageEvent) => {
-        if (event.key === TEXT_SIZE_KEY) this.textSizeKept.set(storedTextSize(this.thisDevice));
-      };
-      view.addEventListener('storage', followDevice);
-      inject(DestroyRef).onDestroy(() => view.removeEventListener('storage', followDevice));
-    }
+    inject(StorageChanges).follow(
+      TEXT_SIZE_KEY,
+      () => this.textSizeKept.set(storedTextSize(this.thisDevice)),
+      inject(DestroyRef),
+    );
     effect(() => {
       const scheme = this.scheme();
       // Every transition is held while the colours change (styles.scss, .theme-changing), or each element with a

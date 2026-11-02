@@ -266,6 +266,21 @@ describe('ImportApi', () => {
     expect((await automatic).csvEncoding).toBeNull();
   });
 
+  it('reads whether the company offers its last pairing again', async () => {
+    const off = api.guide('c1', 'customers');
+    http.expectOne('/api/companies/c1/imports/customers').flush({
+      subject: 'customers',
+      identity: ['number'],
+      maxRows: 2000,
+      columns: [],
+      switches: [],
+      lastPairing: [],
+      reusesLastPairing: false,
+      csvEncoding: null,
+    });
+    expect((await off).reusesLastPairing).toBe(false);
+  });
+
   it('sends the pairing as one object of headings to columns, and nothing when there is none', async () => {
     const file = new File(['x'], 'clients.csv', { type: 'text/csv' });
     const paired = api.run('c1', 'customers', file, 'create', true, [], null, [

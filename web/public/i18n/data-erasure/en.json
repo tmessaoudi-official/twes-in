@@ -13,8 +13,8 @@
     "preview": {
       "title": "What will be erased",
       "counted": "Counted just now, without touching anything. It disappears from every member’s screens on « Erase »; the erasure is written to the activity journal.",
-      "undoable": "for 24 hours, from the « Undo the erasure » banner; after that nothing comes back.",
-      "proof": "If your identity confirmation is more than 5 minutes old, it is asked again when erasing.",
+      "undoable": "for {{duration}}, from the « Undo the erasure » banner; after that nothing comes back.",
+      "proof": "If your identity confirmation is more than {{duration}} old, it is asked again when erasing.",
       "back": "Back",
       "erase": "Erase"
     },

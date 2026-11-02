@@ -30,6 +30,13 @@ describe('ScanGap', () => {
     expect(create().gap()).toBe(45);
   });
 
+  it('follows a gap measured in another tab of this browser', () => {
+    const here = create();
+    storage.setItem(SCAN_GAP_KEY, '45');
+    window.dispatchEvent(new StorageEvent('storage', { key: SCAN_GAP_KEY, newValue: '45' }));
+    expect(here.gap()).toBe(45);
+  });
+
   it('ignores a stored value outside the range a scanner can be told from a hand within', () => {
     storage.setItem(SCAN_GAP_KEY, '5');
     expect(create().gap()).toBe(30);

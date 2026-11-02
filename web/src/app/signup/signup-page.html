@@ -7,7 +7,9 @@
     @if (!open.enabled) {
       <p data-testid="signup-closed">{{ 'signup.request.closed' | translate }}</p>
     } @else if (requested()) {
-      <p role="status" data-testid="signup-sent">{{ 'signup.request.sent' | translate }}</p>
+      <p role="status" data-testid="signup-sent">
+        {{ 'signup.request.sent' | translate: { duration: parameters.signupSeconds() | duration } }}
+      </p>
     } @else {
       <p class="twes-auth-intro">{{ 'signup.request.intro' | translate }}</p>
       <form

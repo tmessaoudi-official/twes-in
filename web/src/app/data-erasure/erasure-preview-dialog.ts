@@ -5,6 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
+import { WebParameters } from '../shared/build/web-parameters';
+import { DurationPipe } from '../shared/i18n/duration-pipe';
 
 /** One line of the dry run: a part, and what it would take, already said in words. */
 export interface ErasurePreviewLine {
@@ -18,7 +20,7 @@ export interface ErasurePreviewLine {
  */
 @Component({
   selector: 'app-erasure-preview-dialog',
-  imports: [MatButtonModule, MatDialogModule, MatIconModule, TranslatePipe],
+  imports: [MatButtonModule, MatDialogModule, MatIconModule, TranslatePipe, DurationPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title>{{ 'data_erasure.preview.title' | translate }}</h2>
@@ -38,11 +40,18 @@ export interface ErasurePreviewLine {
         <mat-icon aria-hidden="true" class="shrink-0">undo</mat-icon>
         <span>
           <strong>{{ 'actions.kind.annulable' | translate }}</strong>
-          · {{ 'data_erasure.preview.undoable' | translate }}
+          ·
+          {{
+            'data_erasure.preview.undoable'
+              | translate: { duration: parameters.erasureUndoableSeconds() | duration }
+          }}
         </span>
       </p>
       <p class="mt-3 text-sm text-on-surface-variant">
-        {{ 'data_erasure.preview.proof' | translate }}
+        {{
+          'data_erasure.preview.proof'
+            | translate: { duration: parameters.stepUpSeconds() | duration }
+        }}
       </p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -66,5 +75,7 @@ export interface ErasurePreviewLine {
   `,
 })
 export class ErasurePreviewDialog {
+  /** The operator's durations this screen states, never a fixed hour. */
+  protected readonly parameters = inject(WebParameters);
   protected readonly lines = inject<readonly ErasurePreviewLine[]>(MAT_DIALOG_DATA);
 }

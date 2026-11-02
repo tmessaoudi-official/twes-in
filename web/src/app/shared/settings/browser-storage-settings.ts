@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { computed, inject, Injectable, type Signal, signal } from '@angular/core';
+import { computed, DestroyRef, inject, Injectable, type Signal, signal } from '@angular/core';
 import { Session } from '../session/session';
 import {
   SETTINGS_STORAGE,
@@ -9,8 +9,17 @@ import {
   UnregisteredSetting,
 } from './settings-facade';
 import { isRegisteredSetting } from './settings-registry';
+import { StorageChanges } from './storage-changes';
 
 const FORGOTTEN = Symbol('forgotten');
+
+/** One person's key for one setting, written out whole so the stored-items gate reads it. */
+function storageKeyOf(user: string, setting: string): string {
+  return `twes.settings.${user}.${setting}`;
+}
+
+/** Where every key of this adapter starts (`twes.settings.`), which a change in another tab is told by. */
+const PREFIX = storageKeyOf('', '').slice(0, -1);
 
 /**
  * Presentation preferences kept in the browser, one key per user and setting (`twes.settings.<user>.<key>`).
@@ -21,6 +30,17 @@ export class BrowserStorageSettings extends SettingsFacade {
   private readonly session = inject(Session);
   private readonly storage = inject(SETTINGS_STORAGE);
   private readonly written = signal(new Map<string, unknown>());
+
+  constructor() {
+    super();
+    // A choice made in another tab wins over one this page made before it: it is the latest, and the one stored.
+    inject(StorageChanges).follow(
+      (key) => key.startsWith(PREFIX),
+      // Forgetting what this page wrote makes every answer read the storage again.
+      () => this.written.set(new Map()),
+      inject(DestroyRef),
+    );
+  }
 
   value<T>(setting: SettingDefinition<T>): Signal<T> {
     this.assertRegistered(setting);
@@ -76,7 +96,7 @@ export class BrowserStorageSettings extends SettingsFacade {
   }
 
   private storageKey(setting: SettingDefinition<unknown>): string {
-    return `twes.settings.${this.session.me()?.user.id ?? 'anonymous'}.${setting.key}`;
+    return storageKeyOf(this.session.me()?.user.id ?? 'anonymous', setting.key);
   }
 
   private assertRegistered(setting: SettingDefinition<unknown>): void {

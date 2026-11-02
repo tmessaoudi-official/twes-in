@@ -90,11 +90,16 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                 ],
                 'web' => [
                     'type' => 'object',
-                    'required' => ['errorReportsPerPage', 'submissionRetryMinutes'],
+                    'required' => ['errorReportsPerPage', 'submissionRetryMinutes', 'passwordResetSeconds', 'signupSeconds', 'stepUpSeconds', 'recordsUndoableSeconds', 'erasureUndoableSeconds'],
                     'description' => 'What the operator set for the page itself, read as it starts',
                     'properties' => [
                         'errorReportsPerPage' => ['type' => 'integer', 'description' => 'The errors one page load reports to POST /api/client-errors (app.client_errors.per_page); 0 sends none'],
                         'submissionRetryMinutes' => ['type' => 'integer', 'description' => 'The minutes a write whose answer never came keeps its Idempotency-Key for being sent again (app.submissions.retry_minutes)'],
+                        'passwordResetSeconds' => ['type' => 'integer', 'description' => 'How long a password reset link works, in seconds (app.password_reset.valid_for)'],
+                        'signupSeconds' => ['type' => 'integer', 'description' => 'How long a signup link works, in seconds (app.signup.valid_for)'],
+                        'stepUpSeconds' => ['type' => 'integer', 'description' => 'How long a confirmed step-up proof holds, in seconds (app.step_up.valid_for)'],
+                        'recordsUndoableSeconds' => ['type' => 'integer', 'description' => 'How long a delete, a merge or an import can be taken back, in seconds (app.records.undoable_for)'],
+                        'erasureUndoableSeconds' => ['type' => 'integer', 'description' => 'How long an erasure can be taken back, in seconds (app.erasure.undoable_for)'],
                     ],
                 ],
             ],

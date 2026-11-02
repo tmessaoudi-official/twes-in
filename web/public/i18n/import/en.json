@@ -181,7 +181,8 @@
       "windows-1252": "Windows-1252 (French)",
       "windows-1256": "Windows-1256 (Arabic)",
       "utf-16": "UTF-16 (Excel’s Unicode text)",
-      "read_as": "File read as {{encoding}}. Unreadable letters? Choose the file’s encoding."
+      "read_as": "File read as {{encoding}}. Unreadable letters? Choose the file’s encoding.",
+      "from_company": "Offered first: the encoding chosen in the company’s defaults."
     },
     "preview": "Preview",
     "store": "Import",
@@ -214,7 +215,7 @@
       "invalid": "The file could not be read.",
       "step_up_required": "Nothing changed: confirm it is you to make this change.",
       "import_undone": "This import is undone already.",
-      "import_final": "This import can no longer be undone: its 24 hours are over."
+      "import_final": "This import can no longer be undone: the time to undo it ({{duration}}) is over."
     },
     "refusals": {
       "invalid_request": "The request was not understood.",
@@ -263,12 +264,13 @@
       "intro": "Each heading of your file is read as the column chosen. These choices are kept with the import, for the next file written the same way.",
       "from_last": "Taken from your last import: check them before you preview.",
       "ignored": "Do not import",
-      "forget": "Forget how {{heading}} is paired"
+      "forget": "Forget how {{heading}} is paired",
+      "not_reused": "Your last import’s pairing is not offered again: the company’s defaults say so."
     },
     "undo": {
       "action": "Undo this import",
       "confirm_title": "Undo this import?",
-      "confirm_message": "The records this file created that nothing uses yet go to “Recently deleted”, where they can be put back for 24 hours. Those already in use stay. The stock it brought is taken back, except where it was counted since or would no longer be enough. What it changed stays changed.",
+      "confirm_message": "The records this file created that nothing uses yet go to “Recently deleted”, where they can be put back for {{duration}}. Those already in use stay. The stock it brought is taken back, except where it was counted since or would no longer be enough. What it changed stays changed.",
       "confirm": "Undo the import",
       "keep": "Keep the import",
       "done": "The import is undone.",
@@ -290,7 +292,7 @@
     },
     "recent": {
       "title": "Recent imports",
-      "intro": "The imports of the last 24 hours into what you may change, the latest first.",
+      "intro": "The imports of less than {{duration}} ago into what you may change, the latest first.",
       "by": "On {{moment}}, by {{name}}",
       "at": "On {{moment}}",
       "counts": "{{created}} created, {{updated}} changed",
@@ -318,6 +320,7 @@
       "unit_cost_note": "What one unit cost, excluding taxes, at most four decimals. Only the history is filled: the cost price, the sale price and the stock do not move.",
       "skip_zero_lines": "Skip lines whose quantity is 0",
       "skip_zero_lines_note": "For a sheet that writes 0 on lines with no purchase: those lines are not kept, and each says so."
-    }
+    },
+    "settings_link": "Open “Defaults”"
   }
 }

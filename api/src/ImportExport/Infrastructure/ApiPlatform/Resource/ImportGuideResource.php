@@ -130,6 +130,14 @@ final class ImportGuideResource
     public array $lastPairing = [];
 
     /**
+     * Whether the company offers its last pairing again (« Paramètres », import.reuse_last_pairing): off, lastPairing is
+     * empty however many files were paired, and the screen says the setting is why.
+     */
+    #[ApiProperty(required: true)]
+    #[Groups([self::READ])]
+    public bool $reusesLastPairing = true;
+
+    /**
      * The encoding the company reads its CSV files in first, which the screen starts its choice at; null for one found on
      * the file. A request naming no encoding is still read in the one found, so the screen sends what it shows.
      */

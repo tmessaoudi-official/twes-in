@@ -71,7 +71,10 @@
       "nothing": "Nothing was read: these are keys typed by hand, or too few characters.",
       "reset": "Back to {{ms}} ms",
       "min_length": "Shortest code taken for a scan (characters)",
-      "min_length_hint": "Outside a field, a shorter code is taken for keys typed by hand. In a field, any code is read."
+      "min_length_hint": "Outside a field, a shorter code is taken for keys typed by hand. In a field, any code is read.",
+      "min_length_default": "{{count}} (default)",
+      "min_length_reset": "Back to {{count}} {count, plural, one {character} other {characters}}",
+      "min_length_option": "{{count}}"
     },
     "company_at_sign_in": "Company at sign-in",
     "company_at_sign_in_on": "Always open the same company",

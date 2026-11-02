@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
+import { WEB_PARAMETERS_UNTIL_TOLD, WebParameters } from '../shared/build/web-parameters';
 import { Feedback } from '../shared/feedback/feedback';
 import { StepUp } from '../shared/step-up/step-up';
 import { RecordDeletes } from '../shared/records/record-deletes';
@@ -55,6 +57,7 @@ describe('ImportFacade', () => {
     TestBed.configureTestingModule({
       providers: [
         ...provideQuietFeedback(),
+        provideTranslateService({ lang: 'fr', fallbackLang: 'fr' }),
         { provide: ImportApi, useValue: api },
         { provide: StepUp, useValue: stepUp },
         { provide: RecordDeletes, useValue: records },
@@ -71,6 +74,7 @@ describe('ImportFacade', () => {
       columns: [],
       switches: [],
       lastPairing: [],
+      reusesLastPairing: true,
       csvEncoding: null,
     });
 
@@ -352,10 +356,23 @@ describe('ImportFacade', () => {
 
     it('says why an undo was refused, and reads the list again', async () => {
       api.undo.mockRejectedValue(new ImportRefused('import_final'));
+      // The time an import can be undone is the operator's (app.records.undoable_for): the refusal names it.
+      TestBed.inject(TranslateService).setTranslation('fr', {
+        duration: { minutes: '{{count}} minutes', hours: '{{count}} heures' },
+      });
+      TestBed.inject(TranslateService).use('fr');
+      TestBed.inject(WebParameters).tell({
+        ...WEB_PARAMETERS_UNTIL_TOLD,
+        recordsUndoableSeconds: 7200,
+      });
 
       expect(await facade.undo('c1', 'r1')).toBe(false);
 
       expect(failureToasts()).toEqual(['import.errors.import_final']);
+      const said = (TestBed.inject(Feedback) as RecordedFeedback).said.find(
+        (toast) => toast.key === 'import.errors.import_final',
+      );
+      expect(said?.params).toEqual({ duration: '2 heures' });
       expect(facade.undone()).toBeNull();
       expect(api.recent).toHaveBeenCalledWith('c1');
     });

@@ -7,6 +7,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { WebParameters } from '../shared/build/web-parameters';
+import { DurationPipe } from '../shared/i18n/duration-pipe';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { PasswordResetFacade } from './password-reset-facade';
@@ -27,11 +29,14 @@ import { onTypedText, typedText } from '../shared/form/typed-text';
     MatInputModule,
     MatButtonModule,
     TranslatePipe,
+    DurationPipe,
   ],
   templateUrl: './forgot-password-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ForgotPasswordPage {
+  /** The operator's durations this screen states, never a fixed hour. */
+  protected readonly parameters = inject(WebParameters);
   private readonly reset = inject(PasswordResetFacade);
   private readonly language = inject(LanguageFacade);
 

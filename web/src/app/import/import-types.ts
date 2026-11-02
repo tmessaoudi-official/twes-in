@@ -100,6 +100,8 @@ export interface ImportGuide {
   switches: readonly ImportSwitch[];
   /** How the last file imported here had its headings paired, offered again for the next one. */
   lastPairing: readonly ImportPairing[];
+  /** Whether the company offers its last pairing again (« Paramètres »); off, none is, and the screen says why. */
+  reusesLastPairing: boolean;
   /** The encoding the company reads its CSV files in, which the screen starts at; null for one found on the file. */
   csvEncoding: TextEncoding | null;
 }

@@ -56,6 +56,11 @@ export class BuildApi {
             web: {
               errorReportsPerPage: body.web.errorReportsPerPage,
               submissionRetryMinutes: body.web.submissionRetryMinutes,
+              passwordResetSeconds: body.web.passwordResetSeconds,
+              signupSeconds: body.web.signupSeconds,
+              stepUpSeconds: body.web.stepUpSeconds,
+              recordsUndoableSeconds: body.web.recordsUndoableSeconds,
+              erasureUndoableSeconds: body.web.erasureUndoableSeconds,
             },
           }
         : {}),

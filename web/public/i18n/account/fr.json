@@ -71,7 +71,10 @@
       "nothing": "Rien n’a été lu : ce sont des touches tapées à la main, ou trop peu de caractères.",
       "reset": "Revenir à {{ms}} ms",
       "min_length": "Code le plus court pris pour un scan (caractères)",
-      "min_length_hint": "Hors d’un champ, un code plus court est pris pour des touches tapées à la main. Dans un champ, tout code est lu."
+      "min_length_hint": "Hors d’un champ, un code plus court est pris pour des touches tapées à la main. Dans un champ, tout code est lu.",
+      "min_length_default": "{{count}} (par défaut)",
+      "min_length_reset": "Revenir à {{count}} {count, plural, one {caractère} other {caractères}}",
+      "min_length_option": "{{count}}"
     },
     "company_at_sign_in": "Société à l’ouverture",
     "company_at_sign_in_on": "Toujours ouvrir la même société",

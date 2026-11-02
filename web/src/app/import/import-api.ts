@@ -240,6 +240,7 @@ function toGuide(answer: ImportGuideImportGuideRead): ImportGuide {
       choices: choice.choices.map((answer) => ({ key: answer.key, labelKey: answer.labelKey })),
     })),
     lastPairing: answer.lastPairing.map((pair) => ({ heading: pair.heading, column: pair.column })),
+    reusesLastPairing: answer.reusesLastPairing,
     csvEncoding: encodingOf(answer.csvEncoding),
   };
 }

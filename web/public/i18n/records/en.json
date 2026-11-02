@@ -21,13 +21,13 @@
       "goes": "“{{name}}” goes; what names it moves to the record kept: {{moves}}.",
       "goes_empty": "“{{name}}” goes; nothing names it.",
       "settings": "Defaults move too, except those the record kept already sets.",
-      "undo_hint": "The merge can be undone for 24 hours, from the message that follows or from “Recently deleted”.",
+      "undo_hint": "The merge can be undone for {{duration}}, from the message that follows or from “Recently deleted”.",
       "cancel": "Merge nothing",
       "confirm": "Merge",
       "alias": "“{{name}}” stays, switched off, and points to the record kept. What moves to the record kept: {{moves}}.",
       "alias_empty": "“{{name}}” stays, switched off, and points to the record kept. Nothing moves to the record kept.",
       "alias_stays": "What stays under “{{name}}”, as the books and the stock recorded it: {{stays}}.",
-      "undo_hint_alias": "The merge can be undone for 24 hours, from the message that follows or from “Recently deleted”, as long as nothing has been received or recorded under the record kept."
+      "undo_hint_alias": "The merge can be undone for {{duration}}, from the message that follows or from “Recently deleted”, as long as nothing has been received or recorded under the record kept."
     },
     "tables": {
       "stock_movement": "{{count}} {count, plural, one {stock movement} other {stock movements}}",
@@ -72,7 +72,7 @@
       "no_record": "Choose at least one record to delete.",
       "record_used": "Nothing is deleted, because a record is still in use.",
       "restore_conflict": "Nothing is put back, because a record made since takes its place (the same number, for instance), or a record it names has been deleted since.",
-      "removal_final": "The 24 hours are over. The delete is final.",
+      "removal_final": "The time to undo it ({{duration}}) is over. The delete is final.",
       "removal_restored": "Put back already: what was deleted is there again.",
       "merge_undone": "This merge is undone already.",
       "merge_into_itself": "Nothing is merged, because the record kept is among those to merge.",
@@ -87,8 +87,8 @@
     },
     "recent": {
       "title": "Recently deleted",
-      "intro": "What you delete, merge or take away by undoing an import stays here for 24 hours, and can be put back as it was. After that, it is final.",
-      "empty": "Nothing was deleted in the last 24 hours.",
+      "intro": "What you delete, merge or take away by undoing an import stays here for {{duration}}, and can be put back as it was. After that, it is final.",
+      "empty": "Nothing was deleted in the last {{duration}}.",
       "restore": "Put back",
       "removed_at": "Deleted on {{moment}}",
       "until": "Can be put back until {{moment}}",

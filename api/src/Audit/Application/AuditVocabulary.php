@@ -23,6 +23,8 @@ final class AuditVocabulary
     private ?array $scopes = null;
     /** @var array<string, list<string>> */
     private array $kinds = [];
+    /** @var array<string, true> the actions no open screen hears */
+    private array $unheard = [];
 
     /** @param iterable<DeclaresAuditActions> $declarations */
     public function __construct(#[AutowireIterator('app.audit.actions')] private readonly iterable $declarations)
@@ -42,6 +44,14 @@ final class AuditVocabulary
         return $this->kinds[$action] ?? [];
     }
 
+    /** Whether an open screen hears the action as a live change; one nobody declares is, as every action was. */
+    public function heard(string $action): bool
+    {
+        $this->all();
+
+        return !isset($this->unheard[$action]);
+    }
+
     /** @return array<string, AuditScope> by action, sorted */
     public function all(): array
     {
@@ -55,6 +65,9 @@ final class AuditVocabulary
                     }
                     $scopes[$action] = $recorded->scope;
                     $kinds[$action][$recorded->kind] = $recorded->kind;
+                    if (!$recorded->heard) {
+                        $this->unheard[$action] = true;
+                    }
                 }
             }
             ksort($scopes);

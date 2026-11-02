@@ -64,6 +64,13 @@ final class OpenApiTest extends KernelTestCase
         self::assertSame(['retainUntil', 'reopenUntil'], $this->required($schemas['MeClosing']));
         self::assertSame(['email', 'password'], $this->required($schemas['LoginRequest']));
         self::assertSame(['status', 'database', 'build', 'deployment', 'statusUrl', 'passkeys', 'web'], $this->required($schemas['Health']));
+        // The durations a screen states are the operator's, told with the page's other values (/api/health).
+        $health = json_decode(json_encode($schemas['Health'], \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($health);
+        self::assertIsArray($health['properties'] ?? null);
+        $web = $health['properties']['web'] ?? null;
+        self::assertIsArray($web);
+        self::assertSame(['errorReportsPerPage', 'submissionRetryMinutes', 'passwordResetSeconds', 'signupSeconds', 'stepUpSeconds', 'recordsUndoableSeconds', 'erasureUndoableSeconds'], $web['required'] ?? null);
 
         // ArrayObjects all the way down: a JSON round trip is the plain view of the schema.
         $me = json_decode(json_encode($schemas['Me'], \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);

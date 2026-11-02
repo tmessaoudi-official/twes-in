@@ -5,6 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatRadioModule } from '@angular/material/radio';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { WebParameters } from '../build/web-parameters';
+import { DurationPipe } from '../i18n/duration-pipe';
 import type { RemovedItem, TableCount } from './record-removals-api';
 import { tableCounts } from './record-tables';
 
@@ -35,7 +37,7 @@ export interface RecordMergeDialogData {
  */
 @Component({
   selector: 'app-record-merge-dialog',
-  imports: [MatButtonModule, MatDialogModule, MatRadioModule, TranslatePipe],
+  imports: [MatButtonModule, MatDialogModule, MatRadioModule, TranslatePipe, DurationPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="record-merge-title">
@@ -71,7 +73,8 @@ export interface RecordMergeDialogData {
         }
         <p class="m-0 text-sm text-on-surface-variant">
           {{
-            (data.aliased ? 'records.merge.undo_hint_alias' : 'records.merge.undo_hint') | translate
+            (data.aliased ? 'records.merge.undo_hint_alias' : 'records.merge.undo_hint')
+              | translate: { duration: parameters.recordsUndoableSeconds() | duration }
           }}
         </p>
       </div>
@@ -96,6 +99,8 @@ export class RecordMergeDialog {
     inject<MatDialogRef<RecordMergeDialog, RemovedItem | null>>(MatDialogRef);
   protected readonly data = inject<RecordMergeDialogData>(MAT_DIALOG_DATA);
   private readonly translate = inject(TranslateService);
+  /** How long the merge can be taken back, the operator's. */
+  protected readonly parameters = inject(WebParameters);
 
   protected readonly what: string = this.translate.instant(
     `records.recent.subjects.${this.data.subject}`,

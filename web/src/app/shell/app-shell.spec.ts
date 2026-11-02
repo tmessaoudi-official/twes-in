@@ -1674,6 +1674,52 @@ describe('AppShell', () => {
     expect(saved).toBe(0);
   });
 
+  // A scanner's burst shorter than this browser's shortest scan did nothing, and nothing said why: the person took
+  // the scanner for broken. Said once a page, as a failure naming the setting and where it is; typing never is.
+  it('says once that a scan was too short for this browser, naming the setting, and never for typing', async () => {
+    permissions.set(['product.read']);
+    modules.set(['products', 'scanning']);
+    await render();
+    const feedback = TestBed.inject(Feedback) as RecordedFeedback;
+    const typed = (keys: readonly string[]) => {
+      const start = performance.now();
+      keys.forEach((key, index) => {
+        const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+        Object.defineProperty(event, 'timeStamp', { value: start + index * SCAN_GAP_MS * 4 });
+        document.body.dispatchEvent(event);
+      });
+    };
+
+    typed(['A', '7', 'Enter']);
+    await settled();
+    expect(feedback.said.filter((toast) => toast.key === 'scan.too_short')).toEqual([]);
+
+    burst(document.body, ['A', '7', 'Enter']);
+    burst(document.body, ['B', '8', 'Enter']);
+    await settled();
+
+    const said = feedback.said.filter((toast) => toast.key === 'scan.too_short');
+    expect(said).toHaveLength(1);
+    expect(said[0]).toEqual(
+      expect.objectContaining({ kind: 'failure', params: { count: 2, shortest: 4 } }),
+    );
+  });
+
+  it('says nothing of a short burst with the scanner off', async () => {
+    permissions.set(['product.read']);
+    modules.set(['products']);
+    await render();
+
+    burst(document.body, ['A', '7', 'Enter']);
+    await settled();
+
+    expect(
+      (TestBed.inject(Feedback) as RecordedFeedback).said.filter(
+        (toast) => toast.key === 'scan.too_short',
+      ),
+    ).toEqual([]);
+  });
+
   // docs/SPEC.md § 7, 2026-10-03 08:20: the customer screen is one click from any page, for whoever may read products.
   it('offers the customer screen to somebody who may read products, as a link to it', async () => {
     permissions.set(['product.read']);
