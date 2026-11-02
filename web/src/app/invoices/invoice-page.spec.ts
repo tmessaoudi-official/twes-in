@@ -1049,6 +1049,20 @@ describe('InvoicePage', () => {
     expect(text('invoice-due')).toContain('sur 2 121,570');
   });
 
+  it('lays what is due and the totals in the summary track, before the invoice itself', async () => {
+    invoice.set(issued);
+    await open('i1');
+
+    // Design proposal § 5: the figures stand in the summary track, read before the main one, which holds the rest.
+    const summary = q('invoice-due')?.closest('.twes-record-summary');
+    expect(summary).not.toBeNull();
+    expect(q('invoice-totals')?.closest('.twes-record-summary')).toBe(summary);
+    const main = q('invoice-view')?.closest('.twes-record-main');
+    expect(main).not.toBeNull();
+    expect(main?.closest('.twes-record-summary')).toBeNull();
+    expect(summary!.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   // Audit 2026-10-06, C-12: the API counts « net à payer »; the screen shows its figure and never redoes the sum.
   it('shows the net payable the API counted, not a sum of its own', async () => {
     invoice.set({ ...issued, netToPay: '2121.000' });

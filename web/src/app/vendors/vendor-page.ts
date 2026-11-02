@@ -33,12 +33,14 @@ import { PURCHASES_MODULE } from '../purchases/purchases-nav';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 import { VendorPurchasesSection } from './vendor-purchases';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
 
 @Component({
   selector: 'app-vendor-page',
   imports: [
+    StickyHeaderSize,
     MatButtonModule,
     MatCardModule,
     MatTabsModule,

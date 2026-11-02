@@ -63,6 +63,7 @@ import {
   type PriceListRow,
   type PriceListScope,
 } from './price-lists-types';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 const SCOPES: readonly PriceListScope[] = ['everyone', 'group', 'customer'];
 
@@ -122,6 +123,7 @@ function pricesKey(
 @Component({
   selector: 'app-price-lists-page',
   imports: [
+    StickyHeaderSize,
     FormsModule,
     ReactiveFormsModule,
     Select,

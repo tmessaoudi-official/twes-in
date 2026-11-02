@@ -39,6 +39,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingRefusalLines } from '../shared/settings/setting-refusal-lines';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /** A planned module's settings, said in words: what a company will be able to set once it ships. */
 export interface PlannedSetting {
@@ -68,6 +69,7 @@ export const PLANNED_SETTINGS: readonly PlannedSetting[] = [
 @Component({
   selector: 'app-settings-page',
   imports: [
+    StickyHeaderSize,
     MatButtonModule,
     MatCardModule,
     RouterLink,

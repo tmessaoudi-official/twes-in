@@ -40,6 +40,7 @@ import { lengthSaid } from '../shared/form/length-said';
 import { RefusedField } from '../shared/form/refused-field';
 import { ArticleDefaults } from '../products/article-defaults';
 import type { ArticleSubject } from '../shared/settings/settings-types';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /** What a role's name keeps, as the API holds it. */
 const ROLE_NAME_MAX = 64;
@@ -55,6 +56,7 @@ const ROLE_NAME_MAX = 64;
 @Component({
   selector: 'app-roles-page',
   imports: [
+    StickyHeaderSize,
     ArticleDefaults,
     Label,
     CapitalizePipe,

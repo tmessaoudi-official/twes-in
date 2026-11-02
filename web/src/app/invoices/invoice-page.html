@@ -1,7 +1,10 @@
-<section class="flex max-w-5xl flex-col gap-6">
+<section class="flex flex-col gap-6">
   <!-- The bar stays in view while the page scrolls: the measured defect was the next step sitting below
        2000 px of form (design review finding 3). -->
-  <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
+  <div
+    appStickyHeader
+    class="twes-document-header flex flex-wrap items-center justify-between gap-4"
+  >
     <div class="flex flex-col gap-1">
       <h1
         class="text-title"
@@ -126,493 +129,512 @@
     }
   }
 
-  @if (current(); as invoice) {
-    @if (invoice.status !== 'draft') {
-      <app-stock-move-failures [documentId]="invoice.id" />
-    }
-    @if (!isCreditNote() && invoice.status !== 'draft' && invoice.status !== 'cancelled') {
-      <mat-card data-testid="invoice-due">
-        <mat-card-content>
-          <div class="flex flex-wrap items-end justify-between gap-4">
-            <div class="flex flex-col">
-              <span class="text-sm text-on-surface-variant">{{
-                'invoices.due.left' | translate
-              }}</span>
-              <span class="text-3xl font-semibold tabular-nums" data-testid="invoice-amount-due">
-                {{ invoice.amountDue | amount: scale() }}
-                <span class="text-base font-normal"
-                  ><bdi>{{ options()?.currency }}</bdi></span
-                >
-              </span>
-            </div>
-            <p class="text-sm tabular-nums text-on-surface-variant">
-              {{
-                'invoices.due.paid_of'
-                  | translate
-                    : {
-                        paid: (invoice.amountPaid | amount: scale()),
-                        total: (invoice.netToPay | amount: scale()),
-                      }
-              }}
-            </p>
-          </div>
-        </mat-card-content>
-      </mat-card>
-      @if (company(); as owner) {
-        <app-invoice-reminders [companyId]="owner.id" [invoiceId]="invoice.id" />
-      }
-    }
-  }
-
-  @if (form(); as form) {
-    @if (sync.changedBy(); as changedBy) {
-      <app-record-changed
-        [changedBy]="changedBy"
-        [conflictCount]="sync.conflicts().length"
-        (reload)="sync.reloadSaved(form)"
-      />
-    }
-    @if (descriptor(); as descriptor) {
-      <mat-card>
-        <mat-card-content>
-          <div class="flex flex-col">
-            @if (asView()) {
-              <!-- It no longer changes, so it is read rather than filled in (design review finding 3). -->
-              <app-record-view
-                [descriptor]="descriptor"
-                [values]="form.getRawValue()"
-                [picked]="viewPicked()"
-                [lead]="viewLead()"
-                testId="invoice-view"
-              />
-            } @else {
-              <app-descriptor-form
-                [descriptor]="descriptor"
-                [form]="form"
-                testId="invoice-form"
-                leadIn="parties"
-                [readOnly]="!editable()"
-                [updated]="sync.updated()"
-                [conflicts]="sync.conflicts()"
-                (resolved)="sync.resolve(form, $event)"
-                (submitted)="save()"
-              >
-                <div formLead class="flex flex-col gap-1.5">
-                  <label class="twes-field-label" for="invoice-customer-input">
-                    {{ 'invoices.fields.customerId' | translate }}
-                  </label>
-                  <app-pick-field
-                    [label]="'invoices.fields.customerId' | translate"
-                    testId="invoice-customer"
-                    [labelInside]="false"
-                    inputId="invoice-customer-input"
-                    [search]="searchCustomers"
-                    [value]="customerShown()"
-                    [disabled]="!editable() || customerLock() !== null"
-                    [noneFoundLabel]="'invoices.form.no_customer_found' | translate"
-                    [hint]="customerLock() ?? 'invoices.form.customer_hint' | translate"
-                    (picked)="chooseCustomer($event)"
-                  />
-                  @if (customerMissing()) {
-                    <p
-                      role="alert"
-                      class="px-2 text-xs text-error"
-                      data-testid="invoice-customer-error"
+  <app-record-columns>
+    <div recordSummary>
+      @if (current(); as invoice) {
+        @if (!isCreditNote() && invoice.status !== 'draft' && invoice.status !== 'cancelled') {
+          <mat-card data-testid="invoice-due">
+            <mat-card-content>
+              <div class="flex flex-wrap items-end justify-between gap-4">
+                <div class="flex flex-col">
+                  <span class="text-sm text-on-surface-variant">{{
+                    'invoices.due.left' | translate
+                  }}</span>
+                  <span
+                    class="text-3xl font-semibold tabular-nums"
+                    data-testid="invoice-amount-due"
+                  >
+                    {{ invoice.amountDue | amount: scale() }}
+                    <span class="text-base font-normal"
+                      ><bdi>{{ options()?.currency }}</bdi></span
                     >
-                      {{ 'invoices.form.customer_required' | translate }}
-                    </p>
-                  }
-                  @if (customerUnread()) {
-                    <div class="flex flex-wrap items-center gap-2 px-2">
-                      <p
-                        role="alert"
-                        class="text-xs text-error"
-                        data-testid="invoice-customer-unread"
-                      >
-                        {{ 'documents.customer_unread' | translate }}
-                      </p>
-                      <button
-                        #customerReread
-                        mat-button
-                        type="button"
-                        data-testid="invoice-customer-reread"
-                        (click)="rereadCustomer()"
-                      >
-                        {{ 'documents.customer_reread' | translate }}
-                      </button>
-                    </div>
-                  }
-                  @if (customerRefused(); as refused) {
-                    <p
-                      role="alert"
-                      class="px-2 text-xs text-error"
-                      data-testid="invoice-customer-refused"
-                    >
-                      {{ refused.key | translate: refused.params }}
-                    </p>
-                  } @else if (error() === 'customer_unavailable') {
-                    <p
-                      role="alert"
-                      class="px-2 text-xs text-error"
-                      data-testid="invoice-customer-refused"
-                    >
-                      {{ 'invoices.errors.customer_unavailable' | translate }}
-                    </p>
-                  }
+                  </span>
                 </div>
-              </app-descriptor-form>
-              @if (receiverAsked() ? receiver() : null; as receiver) {
-                <div
-                  class="max-w-md pt-4"
-                  [class.twes-field-updated]="sync.updated().has('receivedBy')"
-                >
-                  @if (sync.conflicts().some(isReceiverConflict)) {
-                    <app-part-conflict
-                      field="receivedBy"
-                      message="live.receiver_conflict"
-                      (resolved)="sync.resolve(form, $event)"
-                    />
-                  }
-                  <app-receiver-field
-                    [form]="receiver"
-                    [contacts]="receiverContacts()"
-                    testId="invoice-receiver"
-                  />
-                </div>
-              }
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
-    }
-  }
-
-  @if (lines(); as lines) {
-    @if (options(); as options) {
-      <mat-card>
-        <mat-card-content [class.twes-field-updated]="sync.updated().has('lines')">
-          @if (form(); as form) {
-            @if (sync.conflicts().some(isLinesConflict)) {
-              <app-part-conflict
-                field="lines"
-                message="live.lines_conflict"
-                (resolved)="sync.resolve(form, $event)"
-              />
-            }
-          }
-          <app-invoice-lines
-            [lines]="lines"
-            [options]="options"
-            [companyId]="company()?.id ?? ''"
-            [customer]="customer()"
-            [priceLists]="auth.hasModule('price_lists')"
-            [nets]="nets()"
-            [figures]="lineFigures()"
-            [readOnly]="!editable()"
-            [returnable]="isCreditNote()"
-            [stock]="showsStock()"
-            [establishmentId]="typedEstablishment()"
-          />
-          <app-quantity-totals
-            [lines]="lines"
-            [units]="options.units"
-            testId="invoice-quantities"
-          />
-        </mat-card-content>
-      </mat-card>
-    }
-  }
-
-  @if (form() && editable() && documentTaxChoices().length > 0) {
-    <mat-card data-testid="invoice-document-taxes">
-      <mat-card-content>
-        <div class="flex flex-col gap-2">
-          <h2 class="text-heading">{{ 'invoices.document_taxes.title' | translate }}</h2>
-          <p
-            id="invoice-document-taxes-hint"
-            class="text-sm text-on-surface-variant"
-            data-testid="document-taxes-hint"
-          >
-            {{ 'invoices.document_taxes.hint' | translate }}
-          </p>
-          <div class="max-w-md">
-            <app-select
-              [multiple]="true"
-              [ngModel]="documentTaxes()"
-              (ngModelChange)="documentTaxes.set($event); documentTaxesRefused.set(null)"
-              [ngModelOptions]="{ standalone: true }"
-              [options]="documentTaxSelectOptions()"
-              [label]="'invoices.document_taxes.title' | translate"
-              [labelInside]="true"
-              testId="document-taxes"
-              [describedBy]="
-                stampHeldBack()
-                  ? 'invoice-document-taxes-hint invoice-document-taxes-held-back'
-                  : 'invoice-document-taxes-hint'
-              "
-            />
-            @if (documentTaxesRefused(); as refused) {
-              <p
-                role="alert"
-                class="px-4 pt-1 text-xs text-error"
-                data-testid="document-taxes-error"
-              >
-                {{ refused.key | translate: refused.params }}
-              </p>
-            }
-            <!-- On the page before its line, or a screen reader is not told when the line appears; inside the field's
-                 block, so that empty it takes no room in the card's column. -->
-            <div role="status" data-testid="document-taxes-stamp-status">
-              @if (stampHeldBack()) {
-                <p
-                  id="invoice-document-taxes-held-back"
-                  class="mt-2 text-sm text-on-surface-variant"
-                  data-testid="document-taxes-stamp-held-back"
-                >
-                  {{ 'invoices.document_taxes.stamp_held_back' | translate }}
-                </p>
-              }
-            </div>
-          </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  }
-
-  @if (shownTotals(); as invoice) {
-    <mat-card data-testid="invoice-totals">
-      <mat-card-content>
-        <div class="flex flex-col gap-2">
-          <h2 class="text-heading">{{ 'invoices.totals.title' | translate }}</h2>
-          <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
-            <dt>{{ 'invoices.totals.subtotal' | translate }}</dt>
-            <dd class="text-end">{{ invoice.subtotalNet | amount: scale() }}</dd>
-            @if (!isZero(invoice.documentDiscount)) {
-              <dt>{{ 'invoices.totals.discount' | translate }}</dt>
-              <dd class="text-end">{{ negated(invoice.documentDiscount) | amount: scale() }}</dd>
-              <dt>{{ 'invoices.totals.total_net' | translate }}</dt>
-              <dd class="text-end">{{ invoice.totalNet | amount: scale() }}</dd>
-            }
-            @for (tax of invoice.taxes; track tax.code + '|' + tax.rate) {
-              <dt>
-                @if (taxName()(tax.code, tax.rate); as name) {
+                <p class="text-sm tabular-nums text-on-surface-variant">
                   {{
-                    'invoices.totals.tax_named'
-                      | translate: { name: name, base: (tax.base | amount: scale()) }
-                  }}
-                } @else {
-                  {{
-                    'invoices.totals.tax'
+                    'invoices.due.paid_of'
                       | translate
                         : {
-                            code: tax.code,
-                            rate: (tax.rate | amount: 0),
-                            base: (tax.base | amount: scale()),
+                            paid: (invoice.amountPaid | amount: scale()),
+                            total: (invoice.netToPay | amount: scale()),
                           }
                   }}
+                </p>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+      }
+      @if (shownTotals(); as invoice) {
+        <mat-card data-testid="invoice-totals">
+          <mat-card-content>
+            <div class="flex flex-col gap-2">
+              <h2 class="text-heading">{{ 'invoices.totals.title' | translate }}</h2>
+              <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
+                <dt>{{ 'invoices.totals.subtotal' | translate }}</dt>
+                <dd class="text-end">{{ invoice.subtotalNet | amount: scale() }}</dd>
+                @if (!isZero(invoice.documentDiscount)) {
+                  <dt>{{ 'invoices.totals.discount' | translate }}</dt>
+                  <dd class="text-end">
+                    {{ negated(invoice.documentDiscount) | amount: scale() }}
+                  </dd>
+                  <dt>{{ 'invoices.totals.total_net' | translate }}</dt>
+                  <dd class="text-end">{{ invoice.totalNet | amount: scale() }}</dd>
                 }
-              </dt>
-              <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
-            }
-            @for (tax of invoice.fixedTaxes; track tax.code) {
-              <dt>
-                <bdi>{{ taxName()(tax.code, null) ?? tax.code }}</bdi>
-              </dt>
-              <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
-            }
-            <dt class="font-semibold">{{ 'invoices.totals.total' | translate }}</dt>
-            <dd class="text-end font-semibold" data-testid="invoice-total">
-              {{ invoice.total | amount: scale() }}
-            </dd>
-            @for (withholding of invoice.withholdings; track withholding.code) {
-              <dt>
-                @if (taxName()(withholding.code, withholding.rate); as name) {
-                  {{ name }}
+                @for (tax of invoice.taxes; track tax.code + '|' + tax.rate) {
+                  <dt>
+                    @if (taxName()(tax.code, tax.rate); as name) {
+                      {{
+                        'invoices.totals.tax_named'
+                          | translate: { name: name, base: (tax.base | amount: scale()) }
+                      }}
+                    } @else {
+                      {{
+                        'invoices.totals.tax'
+                          | translate
+                            : {
+                                code: tax.code,
+                                rate: (tax.rate | amount: 0),
+                                base: (tax.base | amount: scale()),
+                              }
+                      }}
+                    }
+                  </dt>
+                  <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
+                }
+                @for (tax of invoice.fixedTaxes; track tax.code) {
+                  <dt>
+                    <bdi>{{ taxName()(tax.code, null) ?? tax.code }}</bdi>
+                  </dt>
+                  <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
+                }
+                <dt class="font-semibold">{{ 'invoices.totals.total' | translate }}</dt>
+                <dd class="text-end font-semibold" data-testid="invoice-total">
+                  {{ invoice.total | amount: scale() }}
+                </dd>
+                @for (withholding of invoice.withholdings; track withholding.code) {
+                  <dt>
+                    @if (taxName()(withholding.code, withholding.rate); as name) {
+                      {{ name }}
+                    } @else {
+                      {{
+                        'invoices.totals.withholding'
+                          | translate
+                            : { code: withholding.code, rate: (withholding.rate | amount: 0) }
+                      }}
+                    }
+                  </dt>
+                  <dd class="text-end">{{ negated(withholding.amount) | amount: scale() }}</dd>
+                }
+                @if (
+                  invoice.withholdings.length > 0 && invoice.status !== 'draft' && !isCreditNote()
+                ) {
+                  <dt class="font-semibold">{{ 'invoices.totals.net_due' | translate }}</dt>
+                  <dd class="text-end font-semibold" data-testid="invoice-net-due">
+                    {{ invoice.netToPay | amount: scale() }}
+                  </dd>
+                }
+                @if (invoice.status === 'draft' || isCreditNote()) {
+                  <dt class="font-semibold">{{ 'invoices.totals.net_due' | translate }}</dt>
+                  <dd class="text-end font-semibold" data-testid="invoice-net-due">
+                    {{ invoice.amountDue | amount: scale() }}
+                  </dd>
                 } @else {
-                  {{
-                    'invoices.totals.withholding'
-                      | translate: { code: withholding.code, rate: (withholding.rate | amount: 0) }
-                  }}
+                  <dt>{{ 'invoices.totals.paid' | translate }}</dt>
+                  <dd class="text-end">{{ invoice.amountPaid | amount: scale() }}</dd>
+                  <dt>{{ 'invoices.totals.credited' | translate }}</dt>
+                  <dd class="text-end">{{ invoice.amountCredited | amount: scale() }}</dd>
+                  <dt class="font-semibold">{{ 'invoices.totals.left' | translate }}</dt>
+                  <dd class="text-end font-semibold">{{ invoice.amountDue | amount: scale() }}</dd>
                 }
-              </dt>
-              <dd class="text-end">{{ negated(withholding.amount) | amount: scale() }}</dd>
-            }
-            @if (invoice.withholdings.length > 0 && invoice.status !== 'draft' && !isCreditNote()) {
-              <dt class="font-semibold">{{ 'invoices.totals.net_due' | translate }}</dt>
-              <dd class="text-end font-semibold" data-testid="invoice-net-due">
-                {{ invoice.netToPay | amount: scale() }}
-              </dd>
-            }
-            @if (invoice.status === 'draft' || isCreditNote()) {
-              <dt class="font-semibold">{{ 'invoices.totals.net_due' | translate }}</dt>
-              <dd class="text-end font-semibold" data-testid="invoice-net-due">
-                {{ invoice.amountDue | amount: scale() }}
-              </dd>
-            } @else {
-              <dt>{{ 'invoices.totals.paid' | translate }}</dt>
-              <dd class="text-end">{{ invoice.amountPaid | amount: scale() }}</dd>
-              <dt>{{ 'invoices.totals.credited' | translate }}</dt>
-              <dd class="text-end">{{ invoice.amountCredited | amount: scale() }}</dd>
-              <dt class="font-semibold">{{ 'invoices.totals.left' | translate }}</dt>
-              <dd class="text-end font-semibold">{{ invoice.amountDue | amount: scale() }}</dd>
-            }
-            @if (!isCreditNote() && saves(invoice.savings)) {
-              <dt>{{ 'invoices.totals.savings' | translate }}</dt>
-              <dd class="text-end" data-testid="invoice-savings">
-                {{ invoice.savings | amount: scale() }}
-              </dd>
-            }
-          </dl>
-          <p class="text-xs opacity-70" data-testid="invoice-totals-note">
-            {{
-              (invoice.live ? 'document_figures.as_typed' : 'invoices.totals.as_saved')
-                | translate: { currency: options()?.currency }
-            }}
-          </p>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  }
+                @if (!isCreditNote() && saves(invoice.savings)) {
+                  <dt>{{ 'invoices.totals.savings' | translate }}</dt>
+                  <dd class="text-end" data-testid="invoice-savings">
+                    {{ invoice.savings | amount: scale() }}
+                  </dd>
+                }
+              </dl>
+              <p class="text-xs opacity-70" data-testid="invoice-totals-note">
+                {{
+                  (invoice.live ? 'document_figures.as_typed' : 'invoices.totals.as_saved')
+                    | translate: { currency: options()?.currency }
+                }}
+              </p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+    <!-- /recordSummary -->
 
-  @if (deliveredBy().length > 0) {
-    <mat-card data-testid="invoice-deliveries">
-      <mat-card-content>
-        <div class="flex flex-col gap-2">
-          <h2 class="text-heading">{{ 'deliveries.card.title' | translate }}</h2>
-          <ul class="flex flex-col gap-1">
-            @for (note of deliveredBy(); track note.deliveryNoteId; let i = $index) {
-              <li
-                class="flex flex-wrap items-center gap-2"
-                [attr.data-testid]="'invoice-delivered-by-' + i"
-              >
-                <a [routerLink]="['/delivery-notes', note.deliveryNoteId]" class="underline">{{
-                  note.number ?? ('deliveries.card.draft' | translate)
-                }}</a>
-                <span class="text-sm text-on-surface-variant">{{
-                  'delivery_notes.statuses.' + note.status | translate
-                }}</span>
-              </li>
-            }
-          </ul>
-          <ul class="flex flex-col gap-1 tabular-nums">
-            @for (line of deliveries(); track line.lineId; let i = $index) {
-              <li class="flex flex-col" [attr.data-testid]="'invoice-delivery-line-' + i">
-                <bdi class="font-medium">{{ line.description }}</bdi>
-                <span class="text-sm text-on-surface-variant">{{
-                  'invoice_deliveries.figures'
-                    | translate
-                      : {
-                          quantity: line.quantity | amount: null,
-                          returned: line.returned | amount: null,
-                          onNotes: line.onNotes | amount: null,
-                          delivered: line.delivered | amount: null,
-                          left: line.left | amount: null,
-                        }
-                }}</span>
-              </li>
-            }
-          </ul>
-          <p class="text-xs opacity-70">{{ 'invoice_deliveries.hint' | translate }}</p>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  }
-
-  @if (showsPayments()) {
     @if (current(); as invoice) {
-      <mat-card data-testid="invoice-payments">
-        <mat-card-content>
-          <div class="flex flex-col gap-4">
-            <h2 class="text-heading">{{ 'invoices.payments.title' | translate }}</h2>
-            @if (invoice.payments.length === 0) {
-              <p data-testid="invoice-payments-none">{{ 'invoices.payments.none' | translate }}</p>
-            } @else {
-              <ul class="flex flex-col divide-y divide-outline-variant">
-                @for (payment of invoice.payments; track payment.id) {
-                  <li
-                    class="flex flex-wrap items-center justify-between gap-2 py-2"
-                    [attr.data-testid]="'payment-' + payment.id"
-                  >
-                    <span class="flex flex-col">
-                      <span
-                        >{{ 'invoices.payments.methods.' + payment.method | translate }} ·
-                        {{ payment.date | day }}</span
-                      >
-                      @if (payment.reference) {
-                        <span class="text-sm text-on-surface-variant"
-                          ><bdi>{{ payment.reference }}</bdi></span
-                        >
-                      }
-                    </span>
-                    <span class="flex items-center gap-2">
-                      <span class="font-semibold tabular-nums">{{
-                        payment.amount | amount: scale()
-                      }}</span>
-                      @if (mayPay()) {
-                        @if (confirmingPaymentDelete() === payment.id) {
-                          <button
-                            mat-button
-                            type="button"
-                            (click)="confirmingPaymentDelete.set(null)"
-                            [attr.data-testid]="'payment-' + payment.id + '-keep'"
-                          >
-                            {{ 'invoices.payments.keep' | translate }}
-                          </button>
-                          <button
-                            mat-flat-button
-                            type="button"
-                            [disabled]="busy()"
-                            (click)="deletePayment(payment)"
-                            [attr.data-testid]="'payment-' + payment.id + '-delete-confirm'"
-                          >
-                            {{ 'invoices.payments.confirm_delete' | translate }}
-                          </button>
-                        } @else {
-                          <button
-                            mat-button
-                            type="button"
-                            (click)="confirmingPaymentDelete.set(payment.id)"
-                            [attr.data-testid]="'payment-' + payment.id + '-delete'"
-                            [attr.aria-label]="
-                              'invoices.payments.delete'
-                                | translate: { amount: (payment.amount | amount: scale()) }
-                            "
-                          >
-                            {{ 'invoices.payments.delete_short' | translate }}
-                          </button>
-                        }
-                      }
-                    </span>
-                  </li>
-                }
-              </ul>
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
-      @if (company(); as owner) {
-        @if (scale() !== null) {
-          <app-invoice-instruments
-            [companyId]="owner.id"
-            [invoiceId]="invoice.id"
-            [amountDue]="invoice.amountDue"
-            [scale]="scale() ?? 0"
-            [today]="today()"
-            [mayPay]="mayPay()"
-            (changed)="instrumentCashed()"
-          />
+      @if (invoice.status !== 'draft') {
+        <app-stock-move-failures [documentId]="invoice.id" />
+      }
+      @if (!isCreditNote() && invoice.status !== 'draft' && invoice.status !== 'cancelled') {
+        @if (company(); as owner) {
+          <app-invoice-reminders [companyId]="owner.id" [invoiceId]="invoice.id" />
         }
       }
     }
-  }
-  @if (mayHistory() && current(); as invoice) {
-    <mat-card data-testid="invoice-history">
-      <mat-card-content>
-        <div class="flex flex-col gap-4">
-          <h2 class="text-heading">{{ 'activity.history.title' | translate }}</h2>
-          <app-record-history kind="invoice" [recordId]="invoice.id" />
-        </div>
-      </mat-card-content>
-    </mat-card>
-  }
+
+    @if (form(); as form) {
+      @if (sync.changedBy(); as changedBy) {
+        <app-record-changed
+          [changedBy]="changedBy"
+          [conflictCount]="sync.conflicts().length"
+          (reload)="sync.reloadSaved(form)"
+        />
+      }
+      @if (descriptor(); as descriptor) {
+        <mat-card>
+          <mat-card-content>
+            <div class="flex flex-col">
+              @if (asView()) {
+                <!-- It no longer changes, so it is read rather than filled in (design review finding 3). -->
+                <app-record-view
+                  [descriptor]="descriptor"
+                  [values]="form.getRawValue()"
+                  [picked]="viewPicked()"
+                  [lead]="viewLead()"
+                  testId="invoice-view"
+                />
+              } @else {
+                <app-descriptor-form
+                  [descriptor]="descriptor"
+                  [form]="form"
+                  testId="invoice-form"
+                  leadIn="parties"
+                  [readOnly]="!editable()"
+                  [updated]="sync.updated()"
+                  [conflicts]="sync.conflicts()"
+                  (resolved)="sync.resolve(form, $event)"
+                  (submitted)="save()"
+                >
+                  <div formLead class="flex flex-col gap-1.5">
+                    <label class="twes-field-label" for="invoice-customer-input">
+                      {{ 'invoices.fields.customerId' | translate }}
+                    </label>
+                    <app-pick-field
+                      [label]="'invoices.fields.customerId' | translate"
+                      testId="invoice-customer"
+                      [labelInside]="false"
+                      inputId="invoice-customer-input"
+                      [search]="searchCustomers"
+                      [value]="customerShown()"
+                      [disabled]="!editable() || customerLock() !== null"
+                      [noneFoundLabel]="'invoices.form.no_customer_found' | translate"
+                      [hint]="customerLock() ?? 'invoices.form.customer_hint' | translate"
+                      (picked)="chooseCustomer($event)"
+                    />
+                    @if (customerMissing()) {
+                      <p
+                        role="alert"
+                        class="px-2 text-xs text-error"
+                        data-testid="invoice-customer-error"
+                      >
+                        {{ 'invoices.form.customer_required' | translate }}
+                      </p>
+                    }
+                    @if (customerUnread()) {
+                      <div class="flex flex-wrap items-center gap-2 px-2">
+                        <p
+                          role="alert"
+                          class="text-xs text-error"
+                          data-testid="invoice-customer-unread"
+                        >
+                          {{ 'documents.customer_unread' | translate }}
+                        </p>
+                        <button
+                          #customerReread
+                          mat-button
+                          type="button"
+                          data-testid="invoice-customer-reread"
+                          (click)="rereadCustomer()"
+                        >
+                          {{ 'documents.customer_reread' | translate }}
+                        </button>
+                      </div>
+                    }
+                    @if (customerRefused(); as refused) {
+                      <p
+                        role="alert"
+                        class="px-2 text-xs text-error"
+                        data-testid="invoice-customer-refused"
+                      >
+                        {{ refused.key | translate: refused.params }}
+                      </p>
+                    } @else if (error() === 'customer_unavailable') {
+                      <p
+                        role="alert"
+                        class="px-2 text-xs text-error"
+                        data-testid="invoice-customer-refused"
+                      >
+                        {{ 'invoices.errors.customer_unavailable' | translate }}
+                      </p>
+                    }
+                  </div>
+                </app-descriptor-form>
+                @if (receiverAsked() ? receiver() : null; as receiver) {
+                  <div
+                    class="max-w-md pt-4"
+                    [class.twes-field-updated]="sync.updated().has('receivedBy')"
+                  >
+                    @if (sync.conflicts().some(isReceiverConflict)) {
+                      <app-part-conflict
+                        field="receivedBy"
+                        message="live.receiver_conflict"
+                        (resolved)="sync.resolve(form, $event)"
+                      />
+                    }
+                    <app-receiver-field
+                      [form]="receiver"
+                      [contacts]="receiverContacts()"
+                      testId="invoice-receiver"
+                    />
+                  </div>
+                }
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+
+    @if (lines(); as lines) {
+      @if (options(); as options) {
+        <mat-card>
+          <mat-card-content [class.twes-field-updated]="sync.updated().has('lines')">
+            @if (form(); as form) {
+              @if (sync.conflicts().some(isLinesConflict)) {
+                <app-part-conflict
+                  field="lines"
+                  message="live.lines_conflict"
+                  (resolved)="sync.resolve(form, $event)"
+                />
+              }
+            }
+            <app-invoice-lines
+              [lines]="lines"
+              [options]="options"
+              [companyId]="company()?.id ?? ''"
+              [customer]="customer()"
+              [priceLists]="auth.hasModule('price_lists')"
+              [nets]="nets()"
+              [figures]="lineFigures()"
+              [readOnly]="!editable()"
+              [returnable]="isCreditNote()"
+              [stock]="showsStock()"
+              [establishmentId]="typedEstablishment()"
+            />
+            <app-quantity-totals
+              [lines]="lines"
+              [units]="options.units"
+              testId="invoice-quantities"
+            />
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+
+    @if (form() && editable() && documentTaxChoices().length > 0) {
+      <mat-card data-testid="invoice-document-taxes">
+        <mat-card-content>
+          <div class="flex flex-col gap-2">
+            <h2 class="text-heading">{{ 'invoices.document_taxes.title' | translate }}</h2>
+            <p
+              id="invoice-document-taxes-hint"
+              class="text-sm text-on-surface-variant"
+              data-testid="document-taxes-hint"
+            >
+              {{ 'invoices.document_taxes.hint' | translate }}
+            </p>
+            <div class="max-w-md">
+              <app-select
+                [multiple]="true"
+                [ngModel]="documentTaxes()"
+                (ngModelChange)="documentTaxes.set($event); documentTaxesRefused.set(null)"
+                [ngModelOptions]="{ standalone: true }"
+                [options]="documentTaxSelectOptions()"
+                [label]="'invoices.document_taxes.title' | translate"
+                [labelInside]="true"
+                testId="document-taxes"
+                [describedBy]="
+                  stampHeldBack()
+                    ? 'invoice-document-taxes-hint invoice-document-taxes-held-back'
+                    : 'invoice-document-taxes-hint'
+                "
+              />
+              @if (documentTaxesRefused(); as refused) {
+                <p
+                  role="alert"
+                  class="px-4 pt-1 text-xs text-error"
+                  data-testid="document-taxes-error"
+                >
+                  {{ refused.key | translate: refused.params }}
+                </p>
+              }
+              <!-- On the page before its line, or a screen reader is not told when the line appears; inside the field's
+                   block, so that empty it takes no room in the card's column. -->
+              <div role="status" data-testid="document-taxes-stamp-status">
+                @if (stampHeldBack()) {
+                  <p
+                    id="invoice-document-taxes-held-back"
+                    class="mt-2 text-sm text-on-surface-variant"
+                    data-testid="document-taxes-stamp-held-back"
+                  >
+                    {{ 'invoices.document_taxes.stamp_held_back' | translate }}
+                  </p>
+                }
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    @if (deliveredBy().length > 0) {
+      <mat-card data-testid="invoice-deliveries">
+        <mat-card-content>
+          <div class="flex flex-col gap-2">
+            <h2 class="text-heading">{{ 'deliveries.card.title' | translate }}</h2>
+            <ul class="flex flex-col gap-1">
+              @for (note of deliveredBy(); track note.deliveryNoteId; let i = $index) {
+                <li
+                  class="flex flex-wrap items-center gap-2"
+                  [attr.data-testid]="'invoice-delivered-by-' + i"
+                >
+                  <a [routerLink]="['/delivery-notes', note.deliveryNoteId]" class="underline">{{
+                    note.number ?? ('deliveries.card.draft' | translate)
+                  }}</a>
+                  <span class="text-sm text-on-surface-variant">{{
+                    'delivery_notes.statuses.' + note.status | translate
+                  }}</span>
+                </li>
+              }
+            </ul>
+            <ul class="flex flex-col gap-1 tabular-nums">
+              @for (line of deliveries(); track line.lineId; let i = $index) {
+                <li class="flex flex-col" [attr.data-testid]="'invoice-delivery-line-' + i">
+                  <bdi class="font-medium">{{ line.description }}</bdi>
+                  <span class="text-sm text-on-surface-variant">{{
+                    'invoice_deliveries.figures'
+                      | translate
+                        : {
+                            quantity: line.quantity | amount: null,
+                            returned: line.returned | amount: null,
+                            onNotes: line.onNotes | amount: null,
+                            delivered: line.delivered | amount: null,
+                            left: line.left | amount: null,
+                          }
+                  }}</span>
+                </li>
+              }
+            </ul>
+            <p class="text-xs opacity-70">{{ 'invoice_deliveries.hint' | translate }}</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    @if (showsPayments()) {
+      @if (current(); as invoice) {
+        <mat-card data-testid="invoice-payments">
+          <mat-card-content>
+            <div class="flex flex-col gap-4">
+              <h2 class="text-heading">{{ 'invoices.payments.title' | translate }}</h2>
+              @if (invoice.payments.length === 0) {
+                <p data-testid="invoice-payments-none">
+                  {{ 'invoices.payments.none' | translate }}
+                </p>
+              } @else {
+                <ul class="flex flex-col divide-y divide-outline-variant">
+                  @for (payment of invoice.payments; track payment.id) {
+                    <li
+                      class="flex flex-wrap items-center justify-between gap-2 py-2"
+                      [attr.data-testid]="'payment-' + payment.id"
+                    >
+                      <span class="flex flex-col">
+                        <span
+                          >{{ 'invoices.payments.methods.' + payment.method | translate }} ·
+                          {{ payment.date | day }}</span
+                        >
+                        @if (payment.reference) {
+                          <span class="text-sm text-on-surface-variant"
+                            ><bdi>{{ payment.reference }}</bdi></span
+                          >
+                        }
+                      </span>
+                      <span class="flex items-center gap-2">
+                        <span class="font-semibold tabular-nums">{{
+                          payment.amount | amount: scale()
+                        }}</span>
+                        @if (mayPay()) {
+                          @if (confirmingPaymentDelete() === payment.id) {
+                            <button
+                              mat-button
+                              type="button"
+                              (click)="confirmingPaymentDelete.set(null)"
+                              [attr.data-testid]="'payment-' + payment.id + '-keep'"
+                            >
+                              {{ 'invoices.payments.keep' | translate }}
+                            </button>
+                            <button
+                              mat-flat-button
+                              type="button"
+                              [disabled]="busy()"
+                              (click)="deletePayment(payment)"
+                              [attr.data-testid]="'payment-' + payment.id + '-delete-confirm'"
+                            >
+                              {{ 'invoices.payments.confirm_delete' | translate }}
+                            </button>
+                          } @else {
+                            <button
+                              mat-button
+                              type="button"
+                              (click)="confirmingPaymentDelete.set(payment.id)"
+                              [attr.data-testid]="'payment-' + payment.id + '-delete'"
+                              [attr.aria-label]="
+                                'invoices.payments.delete'
+                                  | translate: { amount: (payment.amount | amount: scale()) }
+                              "
+                            >
+                              {{ 'invoices.payments.delete_short' | translate }}
+                            </button>
+                          }
+                        }
+                      </span>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+        @if (company(); as owner) {
+          @if (scale() !== null) {
+            <app-invoice-instruments
+              [companyId]="owner.id"
+              [invoiceId]="invoice.id"
+              [amountDue]="invoice.amountDue"
+              [scale]="scale() ?? 0"
+              [today]="today()"
+              [mayPay]="mayPay()"
+              (changed)="instrumentCashed()"
+            />
+          }
+        }
+      }
+    }
+    @if (mayHistory() && current(); as invoice) {
+      <mat-card data-testid="invoice-history">
+        <mat-card-content>
+          <div class="flex flex-col gap-4">
+            <h2 class="text-heading">{{ 'activity.history.title' | translate }}</h2>
+            <app-record-history kind="invoice" [recordId]="invoice.id" />
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  </app-record-columns>
 </section>

@@ -69,6 +69,7 @@ export const SETTINGS_INDEX = '/company';
     LegalFooter,
   ],
   templateUrl: './settings-area.html',
+  styleUrl: './settings-area.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SettingsArea {

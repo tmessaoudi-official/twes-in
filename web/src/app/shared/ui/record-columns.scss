@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+@use 'record-tracks' as tracks;
+
+// The page box the tracks are decided on (design proposal § 5): the page's own width, never the window's.
+app-record-columns {
+  // Each one a token a theme or a company's presentation may set otherwise.
+  --twes-record-summary-inline-size: 18rem;
+  --twes-record-gap: 1.5rem;
+  // How far the stuck summary keeps from the header above it and from the window's foot.
+  --twes-record-summary-offset: 1rem;
+  // Room inside the summary's own scroller, so a card's shadow is not cut at its edge.
+  --twes-record-summary-bleed: 0.5rem;
+
+  display: block;
+  container-type: inline-size;
+}
+
+.twes-record-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--twes-record-gap);
+  align-items: start;
+}
+
+.twes-record-main,
+.twes-record-summary > [recordSummary] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--twes-record-gap);
+  min-inline-size: 0;
+}
+
+// The read-only sections inside measure the main track, not the page (twes-record-pairs, record-view).
+.twes-record-main {
+  container-type: inline-size;
+}
+
+// A field takes the width its track gives it. Material keeps a fixed 180 px for a field's text, which at 125 % in a 320
+// px window is more than a line's fieldset leaves, so the page ran sideways (WCAG 1.4.10).
+.twes-record-main .mat-mdc-form-field-infix {
+  min-inline-size: 0;
+}
+
+// A document with no figures yet (a new one before its first line) gives the main track the whole width.
+.twes-record-summary:not(:has(> [recordSummary] > *)) {
+  display: none;
+}
+
+@container (min-width: #{tracks.$two-tracks-from}) {
+  .twes-record-columns:has(> .twes-record-summary > [recordSummary] > *) {
+    grid-template-columns: minmax(0, 1fr) var(--twes-record-summary-inline-size);
+  }
+
+  .twes-record-main {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  // Stuck under the shell's bar and the document's header while the main track scrolls by, and scrolling inside
+  // itself when it is taller than what they leave of the window, so its last figures are never out of reach.
+  .twes-record-summary {
+    grid-row: 1;
+    grid-column: 2;
+    align-self: start;
+    position: sticky;
+    // Where it sticks: below the shell's bar and the document's header, each as measured, then its offset.
+    --twes-record-summary-top: calc(
+      var(--twes-top-bar-height, 0px) + var(--twes-sticky-header-block-size, 0px) +
+        var(--twes-record-summary-offset)
+    );
+    inset-block-start: var(--twes-record-summary-top);
+    max-block-size: calc(
+      100dvh - var(--twes-record-summary-top) - var(--twes-cookie-notice-height, 0px) - var(
+          --twes-record-summary-offset
+        )
+    );
+    overflow-y: auto;
+    padding: var(--twes-record-summary-bleed);
+    margin: calc(-1 * var(--twes-record-summary-bleed));
+  }
+}

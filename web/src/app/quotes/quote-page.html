@@ -1,5 +1,8 @@
-<section class="flex max-w-5xl flex-col gap-6">
-  <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
+<section class="flex flex-col gap-6">
+  <div
+    appStickyHeader
+    class="twes-document-header flex flex-wrap items-center justify-between gap-4"
+  >
     <div class="flex flex-col gap-1">
       <h1
         class="text-title"
@@ -86,332 +89,347 @@
     }
   }
 
-  @if (form(); as form) {
-    @if (sync.changedBy(); as changedBy) {
-      <app-record-changed
-        [changedBy]="changedBy"
-        [conflictCount]="sync.conflicts().length"
-        (reload)="sync.reloadSaved(form)"
-      />
-    }
-    @if (descriptor(); as descriptor) {
-      <mat-card>
-        <mat-card-content>
-          <div class="flex flex-col">
-            @if (asView()) {
-              <app-record-view
-                [descriptor]="descriptor"
-                [values]="form.getRawValue()"
-                [picked]="viewPicked()"
-                [lead]="viewLead()"
-                testId="quote-view"
-              />
-            } @else {
-              <app-descriptor-form
-                [descriptor]="descriptor"
-                [form]="form"
-                testId="quote-form"
-                leadIn="parties"
-                [readOnly]="!editable()"
-                [updated]="sync.updated()"
-                [conflicts]="sync.conflicts()"
-                (resolved)="sync.resolve(form, $event)"
-                (submitted)="save()"
-              >
-                <div formLead class="flex flex-col gap-1.5">
-                  <label class="twes-field-label" for="quote-customer-input">
-                    {{ 'quotes.fields.customerId' | translate }}
-                  </label>
-                  <app-pick-field
-                    [label]="'quotes.fields.customerId' | translate"
-                    testId="quote-customer"
-                    [labelInside]="false"
-                    inputId="quote-customer-input"
-                    [search]="searchCustomers"
-                    [value]="customerShown()"
-                    [disabled]="!editable()"
-                    [noneFoundLabel]="'quotes.form.no_customer_found' | translate"
-                    [hint]="'quotes.form.customer_hint' | translate"
-                    (picked)="chooseCustomer($event)"
-                  />
-                  @if (customerMissing()) {
-                    <p
-                      role="alert"
-                      class="px-2 text-xs text-error"
-                      data-testid="quote-customer-error"
-                    >
-                      {{ 'quotes.form.customer_required' | translate }}
-                    </p>
-                  }
-                  @if (customerUnread()) {
-                    <div class="flex flex-wrap items-center gap-2 px-2">
+  <app-record-columns>
+    <div recordSummary>
+      @if (shownTotals(); as totals) {
+        <mat-card data-testid="quote-totals">
+          <mat-card-content>
+            <div class="flex flex-col gap-2">
+              <h2 class="text-heading">{{ 'quotes.totals.title' | translate }}</h2>
+              <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
+                <dt>{{ 'quotes.totals.subtotal' | translate }}</dt>
+                <dd class="text-end">{{ totals.subtotalNet | amount: scale() }}</dd>
+                @if (!isZero(totals.documentDiscount)) {
+                  <dt>{{ 'quotes.totals.discount' | translate }}</dt>
+                  <dd class="text-end">{{ negated(totals.documentDiscount) | amount: scale() }}</dd>
+                }
+                @for (tax of totals.taxes; track tax.code + '|' + tax.rate) {
+                  <dt>
+                    @if (taxName()(tax.code, tax.rate); as name) {
+                      {{
+                        'quotes.totals.tax_named'
+                          | translate: { name: name, base: (tax.base | amount: scale()) }
+                      }}
+                    } @else {
+                      {{
+                        'quotes.totals.tax'
+                          | translate
+                            : {
+                                code: tax.code,
+                                rate: (tax.rate | amount: 0),
+                                base: (tax.base | amount: scale()),
+                              }
+                      }}
+                    }
+                  </dt>
+                  <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
+                }
+                <dt class="font-semibold">{{ 'quotes.totals.total' | translate }}</dt>
+                <dd class="text-end font-semibold" data-testid="quote-total">
+                  {{ totals.total | amount: scale() }}
+                </dd>
+                @if (saves(totals.savings)) {
+                  <dt>{{ 'quotes.totals.savings' | translate }}</dt>
+                  <dd class="text-end" data-testid="quote-savings">
+                    {{ totals.savings | amount: scale() }}
+                  </dd>
+                }
+              </dl>
+              <p class="text-xs opacity-70" data-testid="quote-totals-note">
+                {{
+                  (totals.live ? 'document_figures.as_typed' : 'quotes.totals.as_saved')
+                    | translate: { currency: options()?.currency }
+                }}
+              </p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+    <!-- /recordSummary -->
+
+    @if (form(); as form) {
+      @if (sync.changedBy(); as changedBy) {
+        <app-record-changed
+          [changedBy]="changedBy"
+          [conflictCount]="sync.conflicts().length"
+          (reload)="sync.reloadSaved(form)"
+        />
+      }
+      @if (descriptor(); as descriptor) {
+        <mat-card>
+          <mat-card-content>
+            <div class="flex flex-col">
+              @if (asView()) {
+                <app-record-view
+                  [descriptor]="descriptor"
+                  [values]="form.getRawValue()"
+                  [picked]="viewPicked()"
+                  [lead]="viewLead()"
+                  testId="quote-view"
+                />
+              } @else {
+                <app-descriptor-form
+                  [descriptor]="descriptor"
+                  [form]="form"
+                  testId="quote-form"
+                  leadIn="parties"
+                  [readOnly]="!editable()"
+                  [updated]="sync.updated()"
+                  [conflicts]="sync.conflicts()"
+                  (resolved)="sync.resolve(form, $event)"
+                  (submitted)="save()"
+                >
+                  <div formLead class="flex flex-col gap-1.5">
+                    <label class="twes-field-label" for="quote-customer-input">
+                      {{ 'quotes.fields.customerId' | translate }}
+                    </label>
+                    <app-pick-field
+                      [label]="'quotes.fields.customerId' | translate"
+                      testId="quote-customer"
+                      [labelInside]="false"
+                      inputId="quote-customer-input"
+                      [search]="searchCustomers"
+                      [value]="customerShown()"
+                      [disabled]="!editable()"
+                      [noneFoundLabel]="'quotes.form.no_customer_found' | translate"
+                      [hint]="'quotes.form.customer_hint' | translate"
+                      (picked)="chooseCustomer($event)"
+                    />
+                    @if (customerMissing()) {
                       <p
                         role="alert"
-                        class="text-xs text-error"
-                        data-testid="quote-customer-unread"
+                        class="px-2 text-xs text-error"
+                        data-testid="quote-customer-error"
                       >
-                        {{ 'documents.customer_unread' | translate }}
+                        {{ 'quotes.form.customer_required' | translate }}
                       </p>
+                    }
+                    @if (customerUnread()) {
+                      <div class="flex flex-wrap items-center gap-2 px-2">
+                        <p
+                          role="alert"
+                          class="text-xs text-error"
+                          data-testid="quote-customer-unread"
+                        >
+                          {{ 'documents.customer_unread' | translate }}
+                        </p>
+                        <button
+                          #customerReread
+                          mat-button
+                          type="button"
+                          data-testid="quote-customer-reread"
+                          (click)="rereadCustomer()"
+                        >
+                          {{ 'documents.customer_reread' | translate }}
+                        </button>
+                      </div>
+                    }
+                    @if (customerRefused(); as refused) {
+                      <p
+                        role="alert"
+                        class="px-2 text-xs text-error"
+                        data-testid="quote-customer-refused"
+                      >
+                        {{ refused.key | translate: refused.params }}
+                      </p>
+                    } @else if (error() === 'customer_unavailable') {
+                      <p
+                        role="alert"
+                        class="px-2 text-xs text-error"
+                        data-testid="quote-customer-refused"
+                      >
+                        {{ 'quotes.errors.customer_unavailable' | translate }}
+                      </p>
+                    }
+                  </div>
+                </app-descriptor-form>
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+
+    @if (lines(); as lines) {
+      @if (options(); as options) {
+        <mat-card>
+          <mat-card-content [class.twes-field-updated]="sync.updated().has('lines')">
+            @if (form(); as form) {
+              @if (sync.conflicts().some(isLinesConflict)) {
+                <app-part-conflict
+                  field="lines"
+                  message="live.lines_conflict"
+                  (resolved)="sync.resolve(form, $event)"
+                />
+              }
+            }
+            <app-invoice-lines
+              [lines]="lines"
+              [options]="options"
+              [companyId]="company()?.id ?? ''"
+              [customer]="customer()"
+              [priceLists]="auth.hasModule('price_lists')"
+              [nets]="nets()"
+              [figures]="lineFigures()"
+              [readOnly]="!editable()"
+              [lots]="false"
+              [stock]="showsStock()"
+              [establishmentId]="typedEstablishment()"
+            />
+            <app-quantity-totals
+              [lines]="lines"
+              [units]="options.units"
+              testId="quote-quantities"
+            />
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+
+    @if (current(); as quote) {
+      @if (deposits().length > 0) {
+        <mat-card data-testid="quote-deposits">
+          <mat-card-content>
+            <div class="flex flex-col gap-2">
+              <h2 class="text-heading">{{ 'quotes.deposits.title' | translate }}</h2>
+              <ul class="flex flex-col gap-1 tabular-nums">
+                @for (deposit of deposits(); track deposit.invoiceId; let i = $index) {
+                  <li
+                    class="flex flex-wrap items-center justify-between gap-2"
+                    [attr.data-testid]="'quote-deposit-' + i"
+                  >
+                    @if (mayReadInvoices()) {
+                      <a [routerLink]="['/invoices', deposit.invoiceId]" class="underline">{{
+                        deposit.number ?? ('quotes.deposits.draft' | translate)
+                      }}</a>
+                    } @else {
+                      <span>{{ deposit.number ?? ('quotes.deposits.draft' | translate) }}</span>
+                    }
+                    <span class="text-sm text-on-surface-variant">{{
+                      'invoices.statuses.' + deposit.status | translate
+                    }}</span>
+                    <span class="ms-auto font-semibold">{{ deposit.total | amount: scale() }}</span>
+                  </li>
+                }
+              </ul>
+              <p class="text-xs opacity-70">{{ 'quotes.deposits.hint' | translate }}</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+
+      @if (deliveryNotes().length > 0) {
+        <mat-card data-testid="quote-deliveries">
+          <mat-card-content>
+            <div class="flex flex-col gap-2">
+              <h2 class="text-heading">{{ 'deliveries.card.title' | translate }}</h2>
+              <ul class="flex flex-col gap-1">
+                @for (note of deliveryNotes(); track note.deliveryNoteId; let i = $index) {
+                  <li
+                    class="flex flex-wrap items-center gap-2"
+                    [attr.data-testid]="'quote-delivery-note-' + i"
+                  >
+                    @if (mayReadNotes()) {
+                      <a
+                        [routerLink]="['/delivery-notes', note.deliveryNoteId]"
+                        class="underline"
+                        >{{ note.number ?? ('deliveries.card.draft' | translate) }}</a
+                      >
+                    } @else {
+                      <span>{{ note.number ?? ('deliveries.card.draft' | translate) }}</span>
+                    }
+                    <span class="text-sm text-on-surface-variant">{{
+                      'delivery_notes.statuses.' + note.status | translate
+                    }}</span>
+                  </li>
+                }
+              </ul>
+              <ul class="flex flex-col gap-1 tabular-nums">
+                @for (line of deliveries(); track line.lineId; let i = $index) {
+                  <li class="flex flex-col" [attr.data-testid]="'quote-delivery-line-' + i">
+                    <bdi class="font-medium">{{ line.description }}</bdi>
+                    <span class="text-sm text-on-surface-variant">{{
+                      'deliveries.card.figures'
+                        | translate
+                          : {
+                              onNotes: line.onNotes | amount: null,
+                              delivered: line.delivered | amount: null,
+                              quantity: line.quantity | amount: null,
+                              left: line.left | amount: null,
+                            }
+                    }}</span>
+                  </li>
+                }
+              </ul>
+              <p class="text-xs opacity-70">{{ 'deliveries.card.hint' | translate }}</p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+
+      <mat-card data-testid="quote-attachments-card">
+        <mat-card-content>
+          <div class="flex flex-col gap-4">
+            <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
+              <h2 class="text-heading">{{ 'quotes.attachments.title' | translate }}</h2>
+              @if (mayWrite()) {
+                <app-file-drop
+                  class="w-full max-w-sm"
+                  [label]="'quotes.attachments.add' | translate"
+                  accept="application/pdf,image/png,image/jpeg,image/webp"
+                  [maxBytes]="maxBytes"
+                  [disabled]="busy()"
+                  testId="quote-attach"
+                  (picked)="upload($event)"
+                />
+              }
+            </div>
+            <p class="text-sm text-on-surface-variant">
+              {{ 'quotes.attachments.hint' | translate }}
+            </p>
+            @if (attachments().length === 0) {
+              <p data-testid="quote-attachments-empty">
+                {{ 'quotes.attachments.none' | translate }}
+              </p>
+            } @else {
+              <ul class="flex flex-col gap-2" data-testid="quote-attachments">
+                @for (attachment of attachments(); track attachment.id) {
+                  <li
+                    class="flex flex-wrap items-center justify-between gap-2"
+                    [attr.data-testid]="'quote-attachment-' + attachment.name"
+                  >
+                    <a
+                      [href]="attachmentUrl(attachment)"
+                      target="_blank"
+                      rel="noopener"
+                      class="underline"
+                      ><bdi>{{ attachment.name }}</bdi></a
+                    >
+                    <span class="text-sm text-on-surface-variant">
+                      {{ kilobytes(attachment.size) }} KB · {{ attachment.createdAt | moment }}
+                    </span>
+                    @if (mayWrite()) {
                       <button
-                        #customerReread
                         mat-button
                         type="button"
-                        data-testid="quote-customer-reread"
-                        (click)="rereadCustomer()"
+                        (click)="detach(attachment)"
+                        [disabled]="busy()"
+                        [attr.data-testid]="'quote-detach-' + attachment.name"
+                        [attr.aria-label]="
+                          'quotes.attachments.remove' | translate: { name: attachment.name }
+                        "
                       >
-                        {{ 'documents.customer_reread' | translate }}
+                        {{ 'quotes.attachments.remove_short' | translate }}
                       </button>
-                    </div>
-                  }
-                  @if (customerRefused(); as refused) {
-                    <p
-                      role="alert"
-                      class="px-2 text-xs text-error"
-                      data-testid="quote-customer-refused"
-                    >
-                      {{ refused.key | translate: refused.params }}
-                    </p>
-                  } @else if (error() === 'customer_unavailable') {
-                    <p
-                      role="alert"
-                      class="px-2 text-xs text-error"
-                      data-testid="quote-customer-refused"
-                    >
-                      {{ 'quotes.errors.customer_unavailable' | translate }}
-                    </p>
-                  }
-                </div>
-              </app-descriptor-form>
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
-    }
-  }
-
-  @if (lines(); as lines) {
-    @if (options(); as options) {
-      <mat-card>
-        <mat-card-content [class.twes-field-updated]="sync.updated().has('lines')">
-          @if (form(); as form) {
-            @if (sync.conflicts().some(isLinesConflict)) {
-              <app-part-conflict
-                field="lines"
-                message="live.lines_conflict"
-                (resolved)="sync.resolve(form, $event)"
-              />
-            }
-          }
-          <app-invoice-lines
-            [lines]="lines"
-            [options]="options"
-            [companyId]="company()?.id ?? ''"
-            [customer]="customer()"
-            [priceLists]="auth.hasModule('price_lists')"
-            [nets]="nets()"
-            [figures]="lineFigures()"
-            [readOnly]="!editable()"
-            [lots]="false"
-            [stock]="showsStock()"
-            [establishmentId]="typedEstablishment()"
-          />
-          <app-quantity-totals [lines]="lines" [units]="options.units" testId="quote-quantities" />
-        </mat-card-content>
-      </mat-card>
-    }
-  }
-
-  @if (shownTotals(); as totals) {
-    <mat-card data-testid="quote-totals">
-      <mat-card-content>
-        <div class="flex flex-col gap-2">
-          <h2 class="text-heading">{{ 'quotes.totals.title' | translate }}</h2>
-          <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
-            <dt>{{ 'quotes.totals.subtotal' | translate }}</dt>
-            <dd class="text-end">{{ totals.subtotalNet | amount: scale() }}</dd>
-            @if (!isZero(totals.documentDiscount)) {
-              <dt>{{ 'quotes.totals.discount' | translate }}</dt>
-              <dd class="text-end">{{ negated(totals.documentDiscount) | amount: scale() }}</dd>
-            }
-            @for (tax of totals.taxes; track tax.code + '|' + tax.rate) {
-              <dt>
-                @if (taxName()(tax.code, tax.rate); as name) {
-                  {{
-                    'quotes.totals.tax_named'
-                      | translate: { name: name, base: (tax.base | amount: scale()) }
-                  }}
-                } @else {
-                  {{
-                    'quotes.totals.tax'
-                      | translate
-                        : {
-                            code: tax.code,
-                            rate: (tax.rate | amount: 0),
-                            base: (tax.base | amount: scale()),
-                          }
-                  }}
+                    }
+                  </li>
                 }
-              </dt>
-              <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
+              </ul>
             }
-            <dt class="font-semibold">{{ 'quotes.totals.total' | translate }}</dt>
-            <dd class="text-end font-semibold" data-testid="quote-total">
-              {{ totals.total | amount: scale() }}
-            </dd>
-            @if (saves(totals.savings)) {
-              <dt>{{ 'quotes.totals.savings' | translate }}</dt>
-              <dd class="text-end" data-testid="quote-savings">
-                {{ totals.savings | amount: scale() }}
-              </dd>
-            }
-          </dl>
-          <p class="text-xs opacity-70" data-testid="quote-totals-note">
-            {{
-              (totals.live ? 'document_figures.as_typed' : 'quotes.totals.as_saved')
-                | translate: { currency: options()?.currency }
-            }}
-          </p>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  }
-
-  @if (current(); as quote) {
-    @if (deposits().length > 0) {
-      <mat-card data-testid="quote-deposits">
-        <mat-card-content>
-          <div class="flex flex-col gap-2">
-            <h2 class="text-heading">{{ 'quotes.deposits.title' | translate }}</h2>
-            <ul class="flex flex-col gap-1 tabular-nums">
-              @for (deposit of deposits(); track deposit.invoiceId; let i = $index) {
-                <li
-                  class="flex flex-wrap items-center justify-between gap-2"
-                  [attr.data-testid]="'quote-deposit-' + i"
-                >
-                  @if (mayReadInvoices()) {
-                    <a [routerLink]="['/invoices', deposit.invoiceId]" class="underline">{{
-                      deposit.number ?? ('quotes.deposits.draft' | translate)
-                    }}</a>
-                  } @else {
-                    <span>{{ deposit.number ?? ('quotes.deposits.draft' | translate) }}</span>
-                  }
-                  <span class="text-sm text-on-surface-variant">{{
-                    'invoices.statuses.' + deposit.status | translate
-                  }}</span>
-                  <span class="ms-auto font-semibold">{{ deposit.total | amount: scale() }}</span>
-                </li>
-              }
-            </ul>
-            <p class="text-xs opacity-70">{{ 'quotes.deposits.hint' | translate }}</p>
           </div>
         </mat-card-content>
       </mat-card>
     }
-
-    @if (deliveryNotes().length > 0) {
-      <mat-card data-testid="quote-deliveries">
-        <mat-card-content>
-          <div class="flex flex-col gap-2">
-            <h2 class="text-heading">{{ 'deliveries.card.title' | translate }}</h2>
-            <ul class="flex flex-col gap-1">
-              @for (note of deliveryNotes(); track note.deliveryNoteId; let i = $index) {
-                <li
-                  class="flex flex-wrap items-center gap-2"
-                  [attr.data-testid]="'quote-delivery-note-' + i"
-                >
-                  @if (mayReadNotes()) {
-                    <a [routerLink]="['/delivery-notes', note.deliveryNoteId]" class="underline">{{
-                      note.number ?? ('deliveries.card.draft' | translate)
-                    }}</a>
-                  } @else {
-                    <span>{{ note.number ?? ('deliveries.card.draft' | translate) }}</span>
-                  }
-                  <span class="text-sm text-on-surface-variant">{{
-                    'delivery_notes.statuses.' + note.status | translate
-                  }}</span>
-                </li>
-              }
-            </ul>
-            <ul class="flex flex-col gap-1 tabular-nums">
-              @for (line of deliveries(); track line.lineId; let i = $index) {
-                <li class="flex flex-col" [attr.data-testid]="'quote-delivery-line-' + i">
-                  <bdi class="font-medium">{{ line.description }}</bdi>
-                  <span class="text-sm text-on-surface-variant">{{
-                    'deliveries.card.figures'
-                      | translate
-                        : {
-                            onNotes: line.onNotes | amount: null,
-                            delivered: line.delivered | amount: null,
-                            quantity: line.quantity | amount: null,
-                            left: line.left | amount: null,
-                          }
-                  }}</span>
-                </li>
-              }
-            </ul>
-            <p class="text-xs opacity-70">{{ 'deliveries.card.hint' | translate }}</p>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    }
-
-    <mat-card data-testid="quote-attachments-card">
-      <mat-card-content>
-        <div class="flex flex-col gap-4">
-          <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
-            <h2 class="text-heading">{{ 'quotes.attachments.title' | translate }}</h2>
-            @if (mayWrite()) {
-              <app-file-drop
-                class="w-full max-w-sm"
-                [label]="'quotes.attachments.add' | translate"
-                accept="application/pdf,image/png,image/jpeg,image/webp"
-                [maxBytes]="maxBytes"
-                [disabled]="busy()"
-                testId="quote-attach"
-                (picked)="upload($event)"
-              />
-            }
-          </div>
-          <p class="text-sm text-on-surface-variant">{{ 'quotes.attachments.hint' | translate }}</p>
-          @if (attachments().length === 0) {
-            <p data-testid="quote-attachments-empty">{{ 'quotes.attachments.none' | translate }}</p>
-          } @else {
-            <ul class="flex flex-col gap-2" data-testid="quote-attachments">
-              @for (attachment of attachments(); track attachment.id) {
-                <li
-                  class="flex flex-wrap items-center justify-between gap-2"
-                  [attr.data-testid]="'quote-attachment-' + attachment.name"
-                >
-                  <a
-                    [href]="attachmentUrl(attachment)"
-                    target="_blank"
-                    rel="noopener"
-                    class="underline"
-                    ><bdi>{{ attachment.name }}</bdi></a
-                  >
-                  <span class="text-sm text-on-surface-variant">
-                    {{ kilobytes(attachment.size) }} KB · {{ attachment.createdAt | moment }}
-                  </span>
-                  @if (mayWrite()) {
-                    <button
-                      mat-button
-                      type="button"
-                      (click)="detach(attachment)"
-                      [disabled]="busy()"
-                      [attr.data-testid]="'quote-detach-' + attachment.name"
-                      [attr.aria-label]="
-                        'quotes.attachments.remove' | translate: { name: attachment.name }
-                      "
-                    >
-                      {{ 'quotes.attachments.remove_short' | translate }}
-                    </button>
-                  }
-                </li>
-              }
-            </ul>
-          }
-        </div>
-      </mat-card-content>
-    </mat-card>
-  }
+  </app-record-columns>
 </section>

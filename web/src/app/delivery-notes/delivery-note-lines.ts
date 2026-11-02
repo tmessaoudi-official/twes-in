@@ -82,6 +82,7 @@ type CheckedField = keyof Omit<
     AmountPipe,
   ],
   templateUrl: './delivery-note-lines.html',
+  styleUrl: './delivery-note-lines.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DeliveryNoteLines {

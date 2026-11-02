@@ -487,6 +487,20 @@ describe('DeliveryNotePage', () => {
     expect(text('delivery-note-totals-note')).toContain('delivery_notes.totals.as_saved');
   });
 
+  it('lays the totals in the summary track, before the note itself', async () => {
+    note.set(draft);
+    await open('n1');
+    await figuresAnswered();
+
+    // Design proposal § 5: the figures stand in the summary track, read before the main one, which holds the rest.
+    const summary = q('delivery-note-totals')?.closest('.twes-record-summary');
+    expect(summary).not.toBeNull();
+    const main = q('delivery-note-form')?.closest('.twes-record-main');
+    expect(main).not.toBeNull();
+    expect(main?.closest('.twes-record-summary')).toBeNull();
+    expect(summary!.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('asks nothing of a validated note, nor of a new one before it names its customer', async () => {
     note.set(validated);
     await open('n1');

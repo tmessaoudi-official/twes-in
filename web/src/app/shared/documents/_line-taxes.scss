@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+// A line's tax field asks for this much before it shares its row with what follows it, and never more than its line
+// has: a fixed minimum of 16 rem is 320 px at 125 %, wider than a phone's whole window, and ran the page sideways.
+$basis: 16rem;
+$most: 28rem;
+
+@mixin field {
+  flex: 1 1 $basis;
+  min-inline-size: 0;
+  max-inline-size: $most;
+}

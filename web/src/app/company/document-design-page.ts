@@ -51,6 +51,7 @@ import {
   type WatermarkIntensity,
   type WatermarkSpread,
 } from './document-design-types';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /** How long the choice rests before its preview is asked for: a picture per keystroke would be wasted. */
 export const PREVIEW_DELAY_MS = 300;
@@ -63,6 +64,7 @@ export const PREVIEW_DELAY_MS = 300;
 @Component({
   selector: 'app-document-design-page',
   imports: [
+    StickyHeaderSize,
     ReactiveFormsModule,
     CountInput,
     MatButtonModule,

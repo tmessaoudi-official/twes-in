@@ -33,11 +33,13 @@ import { CompanyClosing } from './company-closing';
 import { FileDrop } from '../shared/form/file-drop';
 import { LOGO_MAX_BYTES } from '../shared/form/file-limits';
 import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /** What the company's documents say about it, revised by whoever holds the settings permission. */
 @Component({
   selector: 'app-company-profile-page',
   imports: [
+    StickyHeaderSize,
     CheckPanel,
     FileDrop,
     MatButtonModule,

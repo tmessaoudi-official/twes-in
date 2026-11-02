@@ -434,6 +434,19 @@ describe('QuotePage', () => {
     expect(facade.revise.mock.calls[0]![2]).toEqual(expect.objectContaining({ customerId: 'k1' }));
   });
 
+  it('lays the totals in the summary track, before the quote itself', async () => {
+    quote.set(draft);
+    await open('q1');
+
+    // Design proposal § 5: the figures stand in the summary track, read before the main one, which holds the rest.
+    const summary = q('quote-totals')?.closest('.twes-record-summary');
+    expect(summary).not.toBeNull();
+    const main = q('quote-form')?.closest('.twes-record-main');
+    expect(main).not.toBeNull();
+    expect(main?.closest('.twes-record-summary')).toBeNull();
+    expect(summary!.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('marks a draft sent only once asked, with the lines shown saved first', async () => {
     quote.set(draft);
     await open('q1');

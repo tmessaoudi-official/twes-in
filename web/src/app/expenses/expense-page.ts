@@ -74,6 +74,7 @@ import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { FileDrop } from '../shared/form/file-drop';
 import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /**
  * One expense: a draft to fill in, revise, attach receipts to and record; a recorded one to pay. A new expense takes
@@ -82,6 +83,7 @@ import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 @Component({
   selector: 'app-expense-page',
   imports: [
+    StickyHeaderSize,
     ExpenseBill,
     PartConflict,
     FileDrop,

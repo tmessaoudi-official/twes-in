@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// Where a record page changes its layout (docs design proposal § 5), measured in rem on a box of the page, never on
+// the window: at 125 % the same window gives the page fewer rem, so it keeps one column where it would cut the lines.
+// A container condition cannot read a custom property, so these two are the one place each threshold is written.
+
+// The page box from which the summary stands at the inline end beside the main track: 880 px at 100 %, which a 1,200
+// px window gives the page.
+$two-tracks-from: 55rem;
+
+// The main track from which a read-only section reads its pairs on two columns.
+$pairs-from: 34rem;

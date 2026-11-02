@@ -381,6 +381,19 @@ describe('PurchaseOrderPage', () => {
     });
   });
 
+  it('lays the total in the summary track, before the order itself', async () => {
+    order.set(orderIn('sent'));
+    await open('o1');
+
+    // Design proposal § 5: the figures stand in the summary track, read before the main one, which holds the rest.
+    const summary = q('purchase-order-totals')?.closest('.twes-record-summary');
+    expect(summary).not.toBeNull();
+    const main = q('purchase-order-view')?.closest('.twes-record-main');
+    expect(main).not.toBeNull();
+    expect(main?.closest('.twes-record-summary')).toBeNull();
+    expect(summary!.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('reads a sent order, offers to receive it or withdraw it, and nothing to type', async () => {
     order.set(orderIn('sent'));
     await open('o1');

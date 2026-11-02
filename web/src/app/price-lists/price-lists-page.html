@@ -36,7 +36,7 @@
           (ngSubmit)="save()"
           data-testid="price-list-form"
         >
-          <div class="twes-document-header flex justify-end">
+          <div appStickyHeader class="twes-document-header flex justify-end">
             <app-record-bar [changes]="changes()" [actions]="editorActions()" testId="price-list" />
           </div>
           <div class="flex flex-wrap items-start gap-3">

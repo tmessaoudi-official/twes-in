@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+@use '../ui/record-tracks' as tracks;
+
+// Label above value, on two columns once the box around them (a record page's main track) is wide enough for two
+// values side by side (design proposal § 3.1, § 5).
+@container (min-width: #{tracks.$pairs-from}) {
+  .twes-record-pairs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .twes-record-pair-wide {
+    grid-column: 1 / -1;
+  }
+}

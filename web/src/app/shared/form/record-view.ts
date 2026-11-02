@@ -44,15 +44,16 @@ interface ShownSection {
   selector: 'app-record-view',
   imports: [TranslatePipe, AmountPipe, DayPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styleUrl: './record-view.scss',
   template: `
     <div class="flex flex-col gap-6" [attr.data-testid]="testId()">
       @for (section of sections(); track section.id) {
         <div class="flex flex-col gap-2" [attr.data-section]="section.id">
           <h2 class="text-section">{{ section.title | translate }}</h2>
-          <dl class="grid gap-x-6 gap-y-2 @min-[30rem]:grid-cols-2">
+          <dl class="twes-record-pairs grid gap-x-6 gap-y-2">
             @if (lead(); as lead) {
               @if (lead.section === section.id) {
-                <div class="@min-[30rem]:col-span-2">
+                <div class="twes-record-pair-wide">
                   <dt
                     class="text-sm text-on-surface-variant"
                     [attr.data-testid]="lead.testId + '-label'"
@@ -66,7 +67,7 @@ interface ShownSection {
               }
             }
             @for (field of section.fields; track field.id) {
-              <div [class]="field.span === 2 ? '@min-[30rem]:col-span-2' : ''">
+              <div [class.twes-record-pair-wide]="field.span === 2">
                 <dt
                   class="text-sm text-on-surface-variant"
                   [attr.data-testid]="'view-label-' + field.id"

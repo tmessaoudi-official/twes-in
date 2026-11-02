@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+// The page scrolls inside the panel, under the shell's top bar and a document's header stuck below it, over the phone's
+// bottom bar and the cookie notice held at its foot. A field reached by Tab, or by a link to it, comes to rest clear of
+// all four (WCAG 2.4.11, RGAA 10.7); each height is measured where it is drawn, and a layer not there counts nothing.
+.twes-shell-content {
+  scroll-padding-block-start: calc(
+    var(--twes-top-bar-height, 0px) + var(--twes-sticky-header-block-size, 0px)
+  );
+  scroll-padding-block-end: calc(
+    var(--twes-bottom-bar-height, 0px) + var(--twes-cookie-notice-height, 0px)
+  );
+}

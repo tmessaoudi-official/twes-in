@@ -93,6 +93,8 @@ import {
   type InvoiceTarget,
   QUOTE_INVOICE_TARGET,
 } from '../shared/documents/invoice-target';
+import { RecordColumns } from '../shared/ui/record-columns';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /** What a quote will offer once its planned modules ship, shown « Bientôt » beside what it offers today. */
 export const QUOTE_PLANNED: readonly PlannedAction[] = [
@@ -109,6 +111,8 @@ export const QUOTE_PLANNED: readonly PlannedAction[] = [
 @Component({
   selector: 'app-quote-page',
   imports: [
+    RecordColumns,
+    StickyHeaderSize,
     MatButtonModule,
     MatCardModule,
     RouterLink,

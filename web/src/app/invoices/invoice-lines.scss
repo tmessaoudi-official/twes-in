@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+@use '../shared/documents/line-taxes';
+
+.twes-line-taxes {
+  @include line-taxes.field;
+}
+
+// One column on a phone, as narrow as the line leaves: an implicit column is as wide as the widest field's content, which
+// at 125 % in a 320 px window ran past the window. From `sm` the six columns are the template's own.
+.twes-line-fields {
+  grid-auto-columns: minmax(0, 1fr);
+}

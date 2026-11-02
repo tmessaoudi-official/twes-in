@@ -102,6 +102,7 @@ type CheckedField = keyof Omit<
     Label,
   ],
   templateUrl: './invoice-lines.html',
+  styleUrl: './invoice-lines.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InvoiceLines {

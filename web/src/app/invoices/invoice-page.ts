@@ -103,6 +103,8 @@ import { QuantityTotalsView } from '../shared/documents/quantity-totals';
 import { productsIntoLines, takeInAdded, type TakenIn } from '../shared/documents/add-to';
 import { StockMoveFailures } from '../inventory/stock-move-failures';
 import { ShortSales } from '../inventory/short-sale-dialog';
+import { RecordColumns } from '../shared/ui/record-columns';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /**
  * One invoice or credit note: a new draft to fill in, a draft to revise, issue or cancel, or an issued document to
@@ -121,6 +123,8 @@ export const INVOICE_PLANNED: readonly PlannedAction[] = [
 @Component({
   selector: 'app-invoice-page',
   imports: [
+    RecordColumns,
+    StickyHeaderSize,
     StockMoveFailures,
     MatButtonModule,
     MatCardModule,

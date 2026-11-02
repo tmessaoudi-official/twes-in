@@ -51,11 +51,13 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { MatTabsModule } from '@angular/material/tabs';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /** One customer: a new one to fill in, or an existing one with the people to write to there. */
 @Component({
   selector: 'app-customer-page',
   imports: [
+    StickyHeaderSize,
     MatButtonModule,
     MatCardModule,
     RouterLink,

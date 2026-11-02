@@ -59,11 +59,13 @@ import type { ScreenAction } from '../shared/actions/screen-action';
 import { movementAddress } from '../inventory/inventory-types';
 import { RecordBar } from '../shared/form/record-bar';
 import { MatTabsModule } from '@angular/material/tabs';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /** One product: a new one to fill in, or an existing one to revise. */
 @Component({
   selector: 'app-product-page',
   imports: [
+    StickyHeaderSize,
     MatButtonModule,
     MatCardModule,
     RouterLink,

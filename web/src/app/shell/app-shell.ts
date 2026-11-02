@@ -179,6 +179,7 @@ const TOP_BAR_HEIGHT = '--twes-top-bar-height';
     CompanyProofPanel,
   ],
   templateUrl: './app-shell.html',
+  styleUrl: './app-shell.scss',
   host: { '(document:keydown)': 'onKeydown($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -67,6 +67,8 @@ import { ReceiveDialog, type ReceiveDialogData } from './receive-dialog';
 import { ReceiverDialog, type ReceiverDialogData } from '../shared/receivers/receiver-dialog';
 import { sayReceiverUndoRefused } from '../shared/receivers/receiver-undo';
 import type { Receiver } from '../shared/receivers/receiver';
+import { RecordColumns } from '../shared/ui/record-columns';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /** What an order will offer once its planned modules ship, shown « Bientôt » beside what it offers today. */
 export const PURCHASE_ORDER_PLANNED: readonly PlannedAction[] = [
@@ -81,6 +83,8 @@ export const PURCHASE_ORDER_PLANNED: readonly PlannedAction[] = [
 @Component({
   selector: 'app-purchase-order-page',
   imports: [
+    RecordColumns,
+    StickyHeaderSize,
     MatButtonModule,
     MatCardModule,
     RouterLink,

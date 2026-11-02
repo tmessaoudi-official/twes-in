@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+// From 1024 px the settings page scrolls on its own, its header stuck at its top: a field reached by Tab comes to rest
+// below it, as in the shell's panel.
+.twes-settings-page {
+  scroll-padding-block-start: var(--twes-sticky-header-block-size, 0px);
+}

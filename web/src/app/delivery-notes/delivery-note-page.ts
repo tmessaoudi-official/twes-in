@@ -105,6 +105,8 @@ import { QuantityTotalsView } from '../shared/documents/quantity-totals';
 import { liveFigures, toDocumentFigures } from '../shared/documents/document-figures';
 import { StockMoveFailures } from '../inventory/stock-move-failures';
 import { ShortSales } from '../inventory/short-sale-dialog';
+import { RecordColumns } from '../shared/ui/record-columns';
+import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 
 /**
  * One delivery note: a new draft to fill in, a draft to revise and validate, or a numbered note to deliver, cancel
@@ -119,6 +121,8 @@ export const DELIVERY_NOTE_PLANNED: readonly PlannedAction[] = [
 @Component({
   selector: 'app-delivery-note-page',
   imports: [
+    RecordColumns,
+    StickyHeaderSize,
     QuantityTotalsView,
     MatButtonModule,
     MatCardModule,

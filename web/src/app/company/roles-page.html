@@ -86,6 +86,7 @@
     <form class="flex flex-col gap-5" (ngSubmit)="save()" data-testid="role-editor">
       <!-- The editor's save stays beside its title while the matrix scrolls under it. -->
       <div
+        appStickyHeader
         class="twes-document-header flex flex-wrap items-center justify-between gap-4"
         data-testid="role-editor-header"
       >
