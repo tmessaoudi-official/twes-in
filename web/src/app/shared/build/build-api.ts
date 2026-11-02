@@ -51,6 +51,14 @@ export class BuildApi {
       mode: build.mode,
       deployment: given(body?.deployment),
       statusUrl: given(body?.statusUrl),
+      ...(body?.web
+        ? {
+            web: {
+              errorReportsPerPage: body.web.errorReportsPerPage,
+              submissionRetryMinutes: body.web.submissionRetryMinutes,
+            },
+          }
+        : {}),
     };
   }
 }

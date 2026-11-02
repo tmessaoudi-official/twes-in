@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { BuildApi } from './build-api';
 import type { ApiBuild, PartBuild } from './build-types';
+import { WebParameters } from './web-parameters';
 
 /** How often a page asks which builds are out, besides when it starts and when it comes back into view. */
 export const BUILD_CHECK_INTERVAL = new InjectionToken<number>('BUILD_CHECK_INTERVAL', {
@@ -36,6 +37,7 @@ export class BuildInfo {
   private readonly interval = inject(BUILD_CHECK_INTERVAL);
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly parameters = inject(WebParameters);
   readonly webMode = inject(WEB_MODE);
 
   /** The build this page runs: the first one read, never replaced. Null until a server answered. */
@@ -80,6 +82,8 @@ export class BuildInfo {
   private async check(): Promise<void> {
     const [web, api] = await Promise.all([this.api$.web(), this.api$.api()]);
     if (api !== null) this.api.set(api);
+    // What the operator set for the page reaches it with the build, a page left open included.
+    if (api?.web) this.parameters.tell(api.web);
     if (web === null) return;
     const own = this.web();
     if (own === null) this.web.set(web);

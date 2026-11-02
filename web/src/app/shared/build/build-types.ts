@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { WebParameterValues } from './web-parameters';
+
 /**
  * A part's build as git said it when its image was built (scripts/build-version.sh): `YYYY.MM.DD.N`, « -dirty » when
  * built from uncommitted changes, and the short hash of its last commit. Both null for an image built without them.
@@ -17,4 +19,6 @@ export interface ApiBuild extends PartBuild {
   deployment: string | null;
   /** The monitor's public status page the operators set, which the footer links to; null when none is. */
   statusUrl: string | null;
+  /** What the operator set for the page itself; absent when the API said none. */
+  web?: WebParameterValues;
 }

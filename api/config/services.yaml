@@ -53,6 +53,15 @@ parameters:
     app.rate_limit.notification_mail_stop.interval: '15 minutes'
     app.rate_limit.client_errors.limit: 20
     app.rate_limit.client_errors.interval: '15 minutes'
+    # A report of an error in someone's browser (POST /api/client-errors, ClientErrorController): the body refused unread past
+    # its bytes, the message and the stack cut to their characters, and the reports one page load sends, which the web reads
+    # from /api/health (0: it sends none, and the API logs none it is sent). The CSRF proof, the page kept without its query
+    # or fragment and the scrubbing stay code. Checked when the container is built (ClientErrorBounds): 1,024 to 65,536
+    # bytes; 100 to 2,000 and 500 to 16,000 characters; 0 to 20 reports.
+    app.client_errors.max_body: 16384
+    app.client_errors.max_message: 500
+    app.client_errors.max_stack: 4000
+    app.client_errors.per_page: 5
     app.rate_limit.demo_entry.limit: 10
     app.rate_limit.demo_entry.interval: '1 hour'
     # Invitations: how long a mailed link works, and the page it points at. The URL is built from the same
@@ -84,6 +93,10 @@ parameters:
     # rather than made again (SubmissionGuard): a lost answer is retried within minutes; the hourly purge forgets the rest.
     # A claim whose work never committed is taken back once it is older than app.long_request.max_seconds.
     app.submissions.kept_hours: 24
+    # The minutes the web keeps a write's key while no answer came, for the same write sent again to carry it (the web's
+    # SubmissionKeys, told it through /api/health): past them the same values sent again are a new write. Checked when the
+    # container is built (SubmissionRetryBounds): from 1 minute to below what the API keeps a key, app.submissions.kept_hours.
+    app.submissions.retry_minutes: 15
     # What an imported workbook's parts may inflate to, together (64 MiB): a few kilobytes of zip can hold gigabytes, while
     # 5,000 rows (the row cap's ceiling) of twenty forty-character cells inflate to about 10 MB.
     app.import.max_inflated_bytes: 67108864

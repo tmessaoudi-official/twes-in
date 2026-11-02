@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { BuildApi } from './build-api';
 import { BUILD_CHECK_INTERVAL, BuildInfo, WEB_MODE } from './build-info';
 import type { ApiBuild, PartBuild } from './build-types';
+import { WebParameters } from './web-parameters';
 
 const web = (version: string, commit = 'aaaa1111'): PartBuild => ({ version, commit });
 const api = (version: string, changes: Partial<ApiBuild> = {}): ApiBuild => ({
@@ -116,6 +117,28 @@ describe('BuildInfo', () => {
     window.dispatchEvent(new Event('focus'));
     await settle();
     expect(apis.web).toHaveBeenCalledTimes(3);
+  });
+
+  it('tells the page what the operator set for it, each time the API says it, and nothing when it says none', async () => {
+    create();
+    const parameters = TestBed.inject(WebParameters);
+    apis.api.mockResolvedValue(
+      api('2026.10.07.5', { web: { errorReportsPerPage: 0, submissionRetryMinutes: 3 } }),
+    );
+    info.start();
+    await settle();
+    expect(parameters.errorReportsPerPage()).toBe(0);
+    expect(parameters.submissionRetryMs()).toBe(3 * 60 * 1000);
+
+    apis.api.mockResolvedValue(api('2026.10.07.5'));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(parameters.errorReportsPerPage()).toBe(0);
+
+    apis.api.mockResolvedValue(
+      api('2026.10.07.5', { web: { errorReportsPerPage: 9, submissionRetryMinutes: 20 } }),
+    );
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(parameters.errorReportsPerPage()).toBe(9);
   });
 
   it('writes the line support is given: each part, its hash and its mode, and the deployment, prod left unsaid', async () => {

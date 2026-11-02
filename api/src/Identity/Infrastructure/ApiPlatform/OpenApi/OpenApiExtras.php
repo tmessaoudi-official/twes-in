@@ -64,7 +64,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
         ]);
         $schemas['Health'] = new \ArrayObject([
             'type' => 'object',
-            'required' => ['status', 'database', 'build', 'deployment', 'statusUrl', 'passkeys'],
+            'required' => ['status', 'database', 'build', 'deployment', 'statusUrl', 'passkeys', 'web'],
             'properties' => [
                 'status' => ['type' => 'string', 'enum' => ['ok', 'degraded']],
                 'database' => ['type' => 'string', 'enum' => ['ok', 'unreachable']],
@@ -86,6 +86,15 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                     'properties' => [
                         'host' => ['type' => 'string', 'description' => 'The relying party id passkeys are bound to'],
                         'address' => ['type' => ['string', 'null'], 'description' => 'The first origin the API allows for them, the address to open'],
+                    ],
+                ],
+                'web' => [
+                    'type' => 'object',
+                    'required' => ['errorReportsPerPage', 'submissionRetryMinutes'],
+                    'description' => 'What the operator set for the page itself, read as it starts',
+                    'properties' => [
+                        'errorReportsPerPage' => ['type' => 'integer', 'description' => 'The errors one page load reports to POST /api/client-errors (app.client_errors.per_page); 0 sends none'],
+                        'submissionRetryMinutes' => ['type' => 'integer', 'description' => 'The minutes a write whose answer never came keeps its Idempotency-Key for being sent again (app.submissions.retry_minutes)'],
                     ],
                 ],
             ],

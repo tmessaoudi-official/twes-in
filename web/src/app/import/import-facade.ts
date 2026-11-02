@@ -57,6 +57,22 @@ export class ImportFacade {
     );
   }
 
+  /**
+   * Reads the guide again where it stands, when what it is made of moved (the company's import settings, the platform's
+   * row limit): never empty between, the last answer kept, a failure leaving the guide as it was, and an answer for a
+   * subject the screen has left meanwhile dropped.
+   */
+  async reloadGuide(companyId: string, subject: string): Promise<void> {
+    let guide: ImportGuide;
+    try {
+      guide = await this.api.guide(companyId, subject);
+    } catch {
+      // The guide on screen still holds; the next change or opening reads it again.
+      return;
+    }
+    if (this.guideSignal()?.subject === guide.subject) this.guideSignal.set(guide);
+  }
+
   /** Previews the file, or imports it. Says so with a toast only when something was actually stored. */
   async run(
     companyId: string,

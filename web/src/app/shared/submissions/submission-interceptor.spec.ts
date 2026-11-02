@@ -4,6 +4,7 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { noticeToasts, provideQuietFeedback } from '../testing/feedback';
+import { WebParameters } from '../build/web-parameters';
 import { submissionInterceptor } from './submission-interceptor';
 import {
   SUBMISSION_IN_PROGRESS,
@@ -105,12 +106,22 @@ describe('submissionInterceptor', () => {
 
 describe('SubmissionKeys', () => {
   it('forgets a key whose answer never came once its time is over', () => {
-    const keys = new SubmissionKeys();
+    const keys = TestBed.inject(SubmissionKeys);
     const write = writeOf(PAYMENTS, { amount: '40' });
     const key = keys.keyFor(write, 0);
 
     expect(keys.keyFor(write, SUBMISSION_KEY_KEPT_MS)).toBe(key);
     expect(keys.keyFor(write, 2 * SUBMISSION_KEY_KEPT_MS + 1)).not.toBe(key);
+  });
+
+  it('keeps a key as long as the operator set, once the API has said it', () => {
+    TestBed.inject(WebParameters).tell({ errorReportsPerPage: 5, submissionRetryMinutes: 2 });
+    const keys = TestBed.inject(SubmissionKeys);
+    const write = writeOf(PAYMENTS, { amount: '40' });
+    const key = keys.keyFor(write, 0);
+
+    expect(keys.keyFor(write, 2 * 60 * 1000)).toBe(key);
+    expect(keys.keyFor(write, 2 * 60 * 1000 + 1)).not.toBe(key);
   });
 
   it('reads a file picked again as the same write, and another file as another', () => {

@@ -15,7 +15,9 @@ use App\Identity\Infrastructure\Session\SessionBounds;
 use App\Identity\Infrastructure\StepUp\StepUpBounds;
 use App\Records\Infrastructure\Http\RestoreStepUpBounds;
 use App\Shared\Infrastructure\DevelopmentKeys;
+use App\Shared\Infrastructure\ErrorReporting\ClientErrorBounds;
 use App\Shared\Infrastructure\ErrorReporting\ErrorReportingMasksBounds;
+use App\Shared\Infrastructure\Submissions\SubmissionRetryBounds;
 use App\Tenancy\Infrastructure\Http\SupportVisitBounds;
 use App\Tenancy\Infrastructure\Invitation\InvitationBounds;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
@@ -49,6 +51,8 @@ class Kernel extends BaseKernel
         $container->addCompilerPass(new InvitationBounds());
         $container->addCompilerPass(new ErrorReportingMasksBounds());
         $container->addCompilerPass(new RestoreStepUpBounds());
+        $container->addCompilerPass(new ClientErrorBounds());
+        $container->addCompilerPass(new SubmissionRetryBounds());
     }
 
     /**

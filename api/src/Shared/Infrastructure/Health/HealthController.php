@@ -13,6 +13,8 @@ use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Settings\Application\SupportSettings;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Infrastructure\ErrorReporting\ClientErrorBounds;
+use App\Shared\Infrastructure\Submissions\SubmissionRetryBounds;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,6 +28,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * monitor's public status page, which the same footer links to: read only while the database answers, where it is kept.
  * And where passkeys work, the host WebAuthn binds them to and the first address the API allows, which every passkey
  * ceremony's options name already: a page opened at another address, a shop's network one, offers none that cannot work.
+ * And what the operator set for the page itself, which every page reads as it starts, signed out too: how many errors one
+ * page load reports (app.client_errors.per_page) and how long a write whose answer never came keeps its key
+ * (app.submissions.retry_minutes); container parameters, so a degraded API still says them.
  */
 final readonly class HealthController
 {
@@ -39,6 +44,8 @@ final readonly class HealthController
         #[Autowire(param: 'app.webauthn.rp_id')] private string $passkeyHost,
         /** @var list<string> */
         #[Autowire(param: 'app.webauthn.origins')] private array $passkeyOrigins,
+        #[Autowire(param: ClientErrorBounds::PER_PAGE)] private int $errorReportsPerPage,
+        #[Autowire(param: SubmissionRetryBounds::RETRY_MINUTES)] private int $submissionRetryMinutes,
     ) {
     }
 
@@ -55,6 +62,7 @@ final readonly class HealthController
                 'deployment' => self::given($this->deployment),
                 'statusUrl' => $reachable ? $this->statusUrl() : null,
                 'passkeys' => ['host' => $this->passkeyHost, 'address' => $this->passkeyOrigins[0] ?? null],
+                'web' => ['errorReportsPerPage' => $this->errorReportsPerPage, 'submissionRetryMinutes' => $this->submissionRetryMinutes],
             ],
             $reachable ? Response::HTTP_OK : Response::HTTP_SERVICE_UNAVAILABLE,
         );

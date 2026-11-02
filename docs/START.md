@@ -845,6 +845,8 @@ if possible: `infra/monitor/compose.yaml`, three services behind a Caddy edge of
   every line hides its address, host, port, conditions and errors, and no alert names a customer.
 - **GlitchTip** receives the errors. The API reports through Sentry's SDK, and the web posts its own errors to the
   API (`POST /api/client-errors`), which reports them the same way: no script from another site runs in the browser.
+  How many one page load sends (`app.client_errors.per_page`, 5; 0 sends none) and the report's sizes (`max_body`,
+  `max_message`, `max_stack`) are operator parameters in `api/config/services.yaml`, held to their bounds when the API starts.
   Addresses, quoted values and long numbers are masked before anything leaves the instance; an error report is kept 30
   days. Nobody signs up: the operator's account is made once, below.
 - Its **PostgreSQL**, for GlitchTip alone.

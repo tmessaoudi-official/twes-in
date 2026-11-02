@@ -2,6 +2,7 @@
 
 import { DOCUMENT, ErrorHandler, inject, Injectable, InjectionToken } from '@angular/core';
 import { BuildInfo } from '../build/build-info';
+import { WEB_PARAMETERS_UNTIL_TOLD, WebParameters } from '../build/web-parameters';
 
 /** What the API is told of an error in the browser: what broke, where and in which build. */
 export interface ClientErrorReport {
@@ -11,8 +12,11 @@ export interface ClientErrorReport {
   build: string | null;
 }
 
-/** A page that breaks in a loop says so a few times, not once per turn of the loop. */
-export const MAX_REPORTS_PER_PAGE = 5;
+/**
+ * A page that breaks in a loop says so a few times, not once per turn of the loop: the operator's number
+ * (app.client_errors.per_page, told by `/api/health`), this one until the API said it.
+ */
+export const MAX_REPORTS_PER_PAGE = WEB_PARAMETERS_UNTIL_TOLD.errorReportsPerPage;
 
 /** Sends one report. The sender loads only when a first error happens, so the first page carries none of it. */
 export const REPORT_CLIENT_ERROR = new InjectionToken<(report: ClientErrorReport) => Promise<void>>(
@@ -32,11 +36,12 @@ export class ReportingErrorHandler extends ErrorHandler {
   private readonly report = inject(REPORT_CLIENT_ERROR);
   private readonly document = inject(DOCUMENT);
   private readonly build = inject(BuildInfo);
+  private readonly parameters = inject(WebParameters);
   private sent = 0;
 
   override handleError(error: unknown): void {
     super.handleError(error);
-    if (isApiAnswer(error) || this.sent >= MAX_REPORTS_PER_PAGE) return;
+    if (isApiAnswer(error) || this.sent >= this.parameters.errorReportsPerPage()) return;
     this.sent++;
     // A report that cannot be sent is let go: raising it would only be one more error to report.
     this.report({

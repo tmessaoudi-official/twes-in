@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Asks the registry every five minutes whether master published a newer commit (docs/RUNBOOK.md). A run that is still
-# deploying is not started twice: the next one waits for it to end.
+# deploying is not started twice: the next one waits for it to end. Another interval is STAGING_FOLLOW_INTERVAL in
+# /etc/twes-in/staging-follow.env, written over this by scripts/deploy/staging-follow-interval.sh as a drop-in.
 [Unit]
 Description=twes-in staging: follow master every five minutes
 

@@ -14,7 +14,9 @@ use App\Identity\Infrastructure\Password\PasswordResetBounds;
 use App\Identity\Infrastructure\Session\SessionBounds;
 use App\Kernel;
 use App\Records\Infrastructure\Http\RestoreStepUpBounds;
+use App\Shared\Infrastructure\ErrorReporting\ClientErrorBounds;
 use App\Shared\Infrastructure\ErrorReporting\ErrorReportingMasksBounds;
+use App\Shared\Infrastructure\Submissions\SubmissionRetryBounds;
 use App\Tenancy\Infrastructure\Http\SupportVisitBounds;
 use App\Tenancy\Infrastructure\Invitation\InvitationBounds;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -29,7 +31,8 @@ use Symfony\Component\Yaml\Yaml;
  * container is built, so a deployment outside them never starts: no value an operator types can weaken the protection
  * the shipped value gives (a session's use noted an hour late, a support visit's pages unrecorded, a recovery set of
  * three codes, a reset link open for a week, an invitation open for a year, a mask that is no regular expression, a restore
- * switch written as text).
+ * switch written as text, a browser's report cut to nothing or sent without end, a lost write's key held past the API's
+ * own memory of it).
  */
 final class OperatorParameterBoundsTest extends TestCase
 {
@@ -45,6 +48,14 @@ final class OperatorParameterBoundsTest extends TestCase
         self::assertSame('P7D', $parameters['app.invitation.valid_for']);
         self::assertSame([], $parameters['app.error_reporting.extra_masks']);
         self::assertFalse($parameters['app.step_up.on_restore'], 'a restore asks no proof until the operator says so');
+        // ClientErrorController's constants and the web's MAX_REPORTS_PER_PAGE before they were parameters.
+        self::assertSame(16_384, $parameters['app.client_errors.max_body']);
+        self::assertSame(500, $parameters['app.client_errors.max_message']);
+        self::assertSame(4_000, $parameters['app.client_errors.max_stack']);
+        self::assertSame(5, $parameters['app.client_errors.per_page']);
+        // The web's SUBMISSION_KEY_KEPT_MS (15 minutes) before it was the API's, below the day the API keeps a key.
+        self::assertSame(15, $parameters['app.submissions.retry_minutes']);
+        self::assertSame(24, $parameters['app.submissions.kept_hours']);
 
         $container = new ContainerBuilder();
         foreach ($parameters as $name => $value) {
@@ -84,6 +95,16 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'a reset link for a day' => ['app.password_reset.valid_for', 'PT24H'];
         yield 'an invitation for a day' => ['app.invitation.valid_for', 'P1D'];
         yield 'an invitation for thirty days' => ['app.invitation.valid_for', 'P30D'];
+        yield 'a report body of 1 KiB' => ['app.client_errors.max_body', 1_024];
+        yield 'a report body of 64 KiB' => ['app.client_errors.max_body', 65_536];
+        yield 'a message of 100 characters' => ['app.client_errors.max_message', 100];
+        yield 'a message of 2,000 characters' => ['app.client_errors.max_message', 2_000];
+        yield 'a stack of 500 characters' => ['app.client_errors.max_stack', 500];
+        yield 'a stack of 16,000 characters' => ['app.client_errors.max_stack', 16_000];
+        yield 'no report from a page' => ['app.client_errors.per_page', 0];
+        yield 'twenty reports from a page' => ['app.client_errors.per_page', 20];
+        yield 'a lost write retried within a minute' => ['app.submissions.retry_minutes', 1];
+        yield 'a lost write retried within a minute less than a day' => ['app.submissions.retry_minutes', 1_439];
         yield 'a mask of the operator' => ['app.error_reporting.extra_masks', [['pattern' => '/\bTN\d{2}\b/', 'replacement' => '[branch]']]];
     }
 
@@ -121,6 +142,22 @@ final class OperatorParameterBoundsTest extends TestCase
         // YAML reads « yes », « no », « on » and « off » as text, which a bool argument would take as true.
         yield 'a restore proof as « no »' => ['app.step_up.on_restore', 'no'];
         yield 'a restore proof as 1' => ['app.step_up.on_restore', 1];
+        yield 'a report body of 1,023 bytes' => ['app.client_errors.max_body', 1_023];
+        yield 'a report body of 64 KiB and one' => ['app.client_errors.max_body', 65_537];
+        yield 'a report body as text' => ['app.client_errors.max_body', '16384'];
+        yield 'a message of 99 characters' => ['app.client_errors.max_message', 99];
+        yield 'a message of 2,001 characters' => ['app.client_errors.max_message', 2_001];
+        yield 'a stack of 499 characters' => ['app.client_errors.max_stack', 499];
+        yield 'a stack of 16,001 characters' => ['app.client_errors.max_stack', 16_001];
+        yield 'reports from a page below none' => ['app.client_errors.per_page', -1];
+        yield 'twenty-one reports from a page' => ['app.client_errors.per_page', 21];
+        yield 'a lost write retried at once' => ['app.submissions.retry_minutes', 0];
+        yield 'a lost write retried as long as the API keeps it' => ['app.submissions.retry_minutes', 1_440];
+        yield 'a lost write retried longer than the API keeps it' => ['app.submissions.retry_minutes', 2_000];
+        yield 'a lost write retried as text' => ['app.submissions.retry_minutes', '15'];
+        // The window is held below what the API keeps, so what the API keeps must be a number to compare with.
+        yield 'keys kept for no hour' => ['app.submissions.kept_hours', 0];
+        yield 'keys kept as text' => ['app.submissions.kept_hours', '24'];
     }
 
     /** @param array<mixed>|int|string $value */
@@ -140,7 +177,7 @@ final class OperatorParameterBoundsTest extends TestCase
     /** @return list<CompilerPassInterface> */
     private static function passes(): array
     {
-        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds()];
+        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds()];
     }
 
     /** @param array<mixed>|bool|float|int|string|null $value */
@@ -161,7 +198,7 @@ final class OperatorParameterBoundsTest extends TestCase
         $file = Yaml::parseFile(__DIR__.'/../../../../../config/services.yaml', Yaml::PARSE_CONSTANT | Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($file);
         self::assertIsArray($file['parameters'] ?? null);
-        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore'];
+        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours'];
         $shipped = [];
         foreach ($names as $name) {
             self::assertArrayHasKey($name, $file['parameters']);

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
+import { WEB_PARAMETERS_UNTIL_TOLD, WebParameters } from '../build/web-parameters';
 
 /**
  * The header naming one attempt at a write (docs/SPEC.md § 3 « One submission, one write »). The API makes a write that
@@ -16,9 +17,10 @@ export const SUBMISSION_UNANSWERED = '/problems/submission-unanswered';
 
 /**
  * How long a write whose answer never came keeps its key for being sent again. A person tries again within moments of
- * a lost answer; past this, the same values sent again are a new write. The API keeps a key far longer (a day).
+ * a lost answer; past this, the same values sent again are a new write. The operator's (app.submissions.retry_minutes,
+ * told by `/api/health`, always below the day the API keeps a key), this one until the API said it.
  */
-export const SUBMISSION_KEY_KEPT_MS = 15 * 60 * 1000;
+export const SUBMISSION_KEY_KEPT_MS = WEB_PARAMETERS_UNTIL_TOLD.submissionRetryMinutes * 60 * 1000;
 
 /**
  * The key of each write still waiting for a definite answer, by what it sends. The same write sent again after a lost
@@ -29,11 +31,13 @@ export const SUBMISSION_KEY_KEPT_MS = 15 * 60 * 1000;
 @Injectable({ providedIn: 'root' })
 export class SubmissionKeys {
   private readonly waiting = new Map<string, { readonly key: string; readonly since: number }>();
+  private readonly parameters = inject(WebParameters);
 
   /** The key for this write: the one it was sent with before, while that sending is unanswered and recent. */
   keyFor(write: string, now: number = Date.now()): string {
+    const kept = this.parameters.submissionRetryMs();
     for (const [sent, held] of this.waiting) {
-      if (now - held.since > SUBMISSION_KEY_KEPT_MS) this.waiting.delete(sent);
+      if (now - held.since > kept) this.waiting.delete(sent);
     }
     const held = this.waiting.get(write);
     if (held !== undefined) return held.key;

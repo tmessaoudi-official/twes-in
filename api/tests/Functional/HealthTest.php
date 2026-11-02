@@ -22,7 +22,7 @@ final class HealthTest extends WebTestCase
         self::assertResponseHeaderSame('content-type', 'application/json');
         $body = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         // An image built with no version (here, the test kernel) says so rather than inventing one.
-        self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => null, 'commit' => null, 'mode' => 'test'], 'deployment' => null, 'statusUrl' => null, 'passkeys' => ['host' => 'localhost', 'address' => 'http://localhost:8090']], $body);
+        self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => null, 'commit' => null, 'mode' => 'test'], 'deployment' => null, 'statusUrl' => null, 'passkeys' => ['host' => 'localhost', 'address' => 'http://localhost:8090'], 'web' => ['errorReportsPerPage' => 5, 'submissionRetryMinutes' => 15]], $body);
     }
 
     /**
@@ -38,6 +38,25 @@ final class HealthTest extends WebTestCase
         $body = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         self::assertIsArray($body);
         self::assertSame(['host' => 'localhost', 'address' => 'http://localhost:8090'], $body['passkeys'] ?? null, 'the relying party\'s id and the first origin the API allows');
+    }
+
+    /**
+     * What the operator sets for the page itself, read by every page as it starts, a signed-out one too: how many errors
+     * one page load reports (app.client_errors.per_page) and how long a write whose answer never came keeps its key
+     * (app.submissions.retry_minutes). Container parameters, so a degraded API still says them.
+     */
+    public function testHealthTellsThePageWhatTheOperatorSetForIt(): void
+    {
+        $client = static::createClient();
+        $client->request('GET', '/api/health');
+
+        $body = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($body);
+        $container = static::getContainer();
+        self::assertSame([
+            'errorReportsPerPage' => $container->getParameter('app.client_errors.per_page'),
+            'submissionRetryMinutes' => $container->getParameter('app.submissions.retry_minutes'),
+        ], $body['web'] ?? null);
     }
 
     /**

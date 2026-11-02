@@ -48,6 +48,22 @@ describe('BuildApi', () => {
     });
   });
 
+  it('reads what the operator set for the page, a degraded API’s too', async () => {
+    const health = api.api();
+    http.expectOne('/api/health').flush(
+      {
+        status: 'degraded',
+        database: 'unreachable',
+        build: { version: '2026.10.07.5', commit: 'bbbb2222', mode: 'prod' },
+        deployment: null,
+        statusUrl: null,
+        web: { errorReportsPerPage: 0, submissionRetryMinutes: 30 },
+      },
+      { status: 503, statusText: 'Service Unavailable' },
+    );
+    expect((await health)?.web).toEqual({ errorReportsPerPage: 0, submissionRetryMinutes: 30 });
+  });
+
   it('reads a web with no build file as unversioned, an empty version as none, and silence as nothing known', async () => {
     const missing = api.web();
     http.expectOne('/version.json').flush('', { status: 404, statusText: 'Not Found' });

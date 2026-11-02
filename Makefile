@@ -297,6 +297,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/wsl-engine.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow-interval.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-steps.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes-secrets.test.sh

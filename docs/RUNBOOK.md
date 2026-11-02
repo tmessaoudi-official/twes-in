@@ -18,7 +18,7 @@ Bring-up, the values and the first deployment are in `docs/START.md` § 13–15;
 | Machine | Runs | Gets new code |
 |---|---|---|
 | Production | the four deployment files with `compose.release.yaml`: the images CI published, by digest | `deploy.sh --release`, by hand, on a release tag |
-| Staging | the same files, with its own values (`DEPLOY_ENV=staging`), its own bucket and keys | `staging-follow.sh`, every five minutes, from the registry |
+| Staging | the same files, with its own values (`DEPLOY_ENV=staging`), its own bucket and keys | `staging-follow.sh`, every five minutes (`STAGING_FOLLOW_INTERVAL`), from the registry |
 | Monitor | `infra/monitor/compose.yaml`, on a machine of its own | by hand, `git pull` then START § 15's start, which hands the mounted files' digest |
 
 CI builds the three images (api, web, database) once per green master commit and pushes them to GHCR as
@@ -47,7 +47,16 @@ Untried. A small VM, like production's but smaller, at a provider of your choice
    name) and its own Gatus lines, kept off the public status page and alerting you alone.
 6. The timer: `sudo cp /srv/twes-in/infra/staging/twes-staging-follow.{service,timer} /etc/systemd/system/`, then
    `sudo cp /srv/twes-in/infra/staging/staging-follow.env.example /etc/twes-in/staging-follow.env` and edit it if the paths
-   differ, then `sudo systemctl daemon-reload && sudo systemctl enable --now twes-staging-follow.timer`.
+   differ (`STAGING_FOLLOW_INTERVAL`, how often it asks the registry: at least `1min`, `5min` when unset), then write
+   that interval over the timer (it refuses one below a minute):
+
+   ```
+   sudo bash /srv/twes-in/scripts/deploy/staging-follow-interval.sh /etc/twes-in/staging-follow.env /etc/systemd/system/twes-staging-follow.timer.d
+   ```
+
+   then `sudo systemctl daemon-reload && sudo systemctl enable --now twes-staging-follow.timer`. After changing
+   the interval, run the script and `daemon-reload` again. Untried on a real machine; `staging-follow-interval.test.sh`
+   reads the drop-in it writes.
 7. The first operator, as in `docs/START.md` § 14.
 
 Watch it work: `journalctl -u twes-staging-follow -f`. Each run says `waiting` (the three `:master` images do not agree
@@ -58,7 +67,7 @@ yet, a publish is under way), `already deployed here`, `already failed here`, `h
 Tried on the check stack (`make staging-check`: publish, follow, every container proved to run its digest, nothing
 built, a second follow doing nothing).
 
-Nothing to do: merge to master; once CI is green it publishes, and staging follows within five minutes. To follow now,
+Nothing to do: merge to master; once CI is green it publishes, and staging follows within the interval (five minutes unless `STAGING_FOLLOW_INTERVAL` says otherwise). To follow now,
 `sudo systemctl start twes-staging-follow`.
 
 A commit that failed to start is written down as `failed` and not tried again until master moves on. Read why with

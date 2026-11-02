@@ -218,6 +218,7 @@ describe('ImportPage', () => {
     loadRecent: vi.fn(async () => undefined),
     undo: vi.fn(async () => true),
     load: vi.fn(),
+    reloadGuide: vi.fn(async () => undefined),
     refresh: vi.fn(async () => undefined),
     run: vi.fn(),
     forget: vi.fn(),
@@ -270,6 +271,7 @@ describe('ImportPage', () => {
     facade.loadRecent.mockClear();
     facade.undo.mockReset().mockResolvedValue(true);
     facade.load.mockReset().mockResolvedValue(undefined);
+    facade.reloadGuide.mockReset().mockResolvedValue(undefined);
     facade.run.mockReset().mockResolvedValue(undefined);
     facade.forget.mockReset();
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -514,6 +516,79 @@ describe('ImportPage', () => {
       [],
       {},
     );
+  });
+
+  describe('when the company’s import settings or the platform’s row limit move', () => {
+    /** The reload the page asked to run on those kinds, as the realtime connection would run it. */
+    function guideReload(): () => Promise<void> {
+      const call = live.reloadOn.mock.calls.find(([kinds]) =>
+        (kinds as string[]).includes('setting'),
+      );
+      expect(call?.[0]).toEqual(['setting', 'platform_setting']);
+      return call![1] as () => Promise<void>;
+    }
+
+    it('reads the guide again for the subject it is on, quietly', async () => {
+      await guideReload()();
+
+      expect(facade.reloadGuide).toHaveBeenCalledWith('c1', 'opening-stock');
+      expect(facade.load).toHaveBeenCalledTimes(1);
+    });
+
+    it('says the new row limit and starts the next file at the company’s new encoding, before a file is chosen', async () => {
+      guide.set({ ...GUIDE, maxRows: 3000, csvEncoding: 'windows-1256' });
+      await settle();
+
+      expect(q('import-identity')?.textContent).toContain('3000');
+      chooseFile('stocks.csv');
+      await settle();
+      facade.run.mockImplementation(async () => report.set(CLEAN));
+      await click('import-preview');
+      expect(facade.run.mock.lastCall?.[6]).toBe('windows-1256');
+    });
+
+    it('leaves the file, its encoding and its pairing as the person set them', async () => {
+      chooseFile('stocks.csv');
+      await settle();
+      (q('import-encoding-windows-1252')!.querySelector('input') as HTMLInputElement).click();
+      await settle();
+
+      guide.set({
+        ...GUIDE,
+        maxRows: 3000,
+        csvEncoding: 'utf-16',
+        lastPairing: [{ heading: 'Réf', column: 'reference' }],
+      });
+      await settle();
+
+      expect(q('import-pairing')).toBeNull();
+      facade.run.mockImplementation(async () => report.set(CLEAN));
+      await click('import-preview');
+      expect(facade.run.mock.lastCall?.[2]).toEqual(
+        expect.objectContaining({ name: 'stocks.csv' }),
+      );
+      expect(facade.run.mock.lastCall?.[6]).toBe('windows-1252');
+      expect(facade.run.mock.lastCall?.[7]).toEqual([]);
+    });
+
+    it('leaves a pairing the person changed before choosing a file', async () => {
+      const kept = [
+        { heading: 'Réf', column: 'reference' },
+        { heading: 'Remarque', column: '' },
+      ];
+      guide.set({ ...GUIDE, lastPairing: kept });
+      await settle();
+      await click('import-pairing-forget-1');
+
+      guide.set({ ...GUIDE, maxRows: 3000, lastPairing: kept });
+      await settle();
+
+      chooseFile();
+      await settle();
+      facade.run.mockImplementation(async () => report.set(CLEAN));
+      await click('import-preview');
+      expect(facade.run.mock.lastCall?.[7]).toEqual([{ heading: 'Réf', column: 'reference' }]);
+    });
   });
 
   it('starts a CSV at the encoding the company reads its files in, which the person may still change', async () => {

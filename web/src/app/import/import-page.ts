@@ -64,6 +64,9 @@ const PRICE_PARAMS = new Set(['gross', 'below', 'above']);
  */
 const SET_ASIDE = '*set-aside';
 
+/** No pairing at all: the page's first, which the guide's first offer replaces. */
+const NO_PAIRING: readonly ImportPairing[] = [];
+
 /** A heading as the file writes it, compared as the API compares it: trimmed, whatever its case. */
 const sameHeading = (one: string, other: string): boolean =>
   one.trim().toLowerCase() === other.trim().toLowerCase();
@@ -157,7 +160,9 @@ export class ImportPage {
    * the same way reads the same way; the list is shown from the start, before any preview, because a preview of new
    * rows shows no cell, and a heading set aside by an old choice would leave its column out unseen.
    */
-  protected readonly pairing = signal<readonly ImportPairing[]>([]);
+  protected readonly pairing = signal<readonly ImportPairing[]>(NO_PAIRING);
+  /** The pairing the guide last offered, which `pairing` still is until the person changes it. */
+  private offered: readonly ImportPairing[] = NO_PAIRING;
   /** The pairing is still the one the last import kept, untouched. */
   protected readonly pairingFromLast = signal(false);
   /**
@@ -278,13 +283,29 @@ export class ImportPage {
       },
       this.destroyRef,
     );
-    // Each subject's guide brings the pairing its last import kept, and the encoding the company reads its CSVs in.
+    // The guide is made of the company's import settings and the platform's row limit: read again when either moves,
+    // here or in another tab, so the limit said and the encoding and pairing offered are the ones in force.
+    this.live.reloadOn(
+      ['setting', 'platform_setting'],
+      async () => {
+        const companyId = this.company()?.id;
+        if (companyId !== undefined) await this.facade.reloadGuide(companyId, this.subject());
+      },
+      this.destroyRef,
+    );
+    // Each subject's guide brings the pairing its last import kept, and the encoding the company reads its CSVs in. A
+    // guide read again while the person works (a file chosen, or the offered pairing changed) leaves their work as is.
     effect(() => {
-      const kept = this.guide()?.lastPairing ?? [];
-      this.pairing.set(kept);
-      this.pairingFromLast.set(kept.length > 0);
-      this.asked.set([]);
-      this.encoding.set(this.companyEncoding());
+      const guide = this.guide();
+      const kept = guide?.lastPairing ?? [];
+      untracked(() => {
+        if (guide !== null && (this.file() !== null || this.pairing() !== this.offered)) return;
+        this.offered = kept;
+        this.pairing.set(kept);
+        this.pairingFromLast.set(kept.length > 0);
+        this.asked.set([]);
+        this.encoding.set(this.companyEncoding());
+      });
     });
   }
 

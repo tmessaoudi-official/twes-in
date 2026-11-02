@@ -11,6 +11,7 @@ namespace App\Shared\Infrastructure\ErrorReporting;
 
 use App\Shared\Domain\Service\TypedText;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,13 +24,11 @@ use Symfony\Component\Routing\Attribute\Route;
  * tracker itself, so no tracker address, key or script reaches the page: the API logs the error at error level on the
  * `client` channel, and the Monolog road every API error takes carries it on through ScrubPersonalData. Its values are
  * masked here already, so the instance's own log keeps none either. The page is kept without its query or fragment, the
- * message and the stack are cut to a length, and a body past its size is refused unread.
+ * message and the stack are cut to a length, and a body past its size is refused unread: the operator's
+ * (app.client_errors.*), and a page load told to send none is answered with nothing logged.
  */
 final readonly class ClientErrorController
 {
-    private const int MAX_BODY = 16_384;
-    private const int MAX_MESSAGE = 500;
-    private const int MAX_STACK = 4_000;
     private const int MAX_FIELD = 200;
 
     public function __construct(
@@ -38,16 +37,24 @@ final readonly class ClientErrorController
         #[Target('client_errors')]
         private RateLimiterFactoryInterface $limiter,
         private ScrubPersonalData $scrub,
+        #[Autowire(param: ClientErrorBounds::MAX_BODY)] private int $maxBody,
+        #[Autowire(param: ClientErrorBounds::MAX_MESSAGE)] private int $maxMessage,
+        #[Autowire(param: ClientErrorBounds::MAX_STACK)] private int $maxStack,
+        #[Autowire(param: ClientErrorBounds::PER_PAGE)] private int $perPage,
     ) {
     }
 
     #[Route('/api/client-errors', name: 'api_client_errors', methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
+        // A page told to send none that has not heard it yet spends no budget and reaches no log.
+        if (0 === $this->perPage) {
+            return new Response(null, Response::HTTP_NO_CONTENT);
+        }
         if (!$this->limiter->create($request->getClientIp() ?? '')->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
-        if (\strlen($request->getContent()) > self::MAX_BODY) {
+        if (\strlen($request->getContent()) > $this->maxBody) {
             return new JsonResponse(['error' => 'report_too_large'], Response::HTTP_REQUEST_ENTITY_TOO_LARGE);
         }
 
@@ -62,8 +69,8 @@ final readonly class ClientErrorController
             "Web error on %s (build %s): %s\n%s",
             '' === $page ? '?' : $page,
             self::text($body, 'build', self::MAX_FIELD) ?: '?',
-            mb_substr($body['message'], 0, self::MAX_MESSAGE),
-            self::text($body, 'stack', self::MAX_STACK),
+            mb_substr($body['message'], 0, $this->maxMessage),
+            self::text($body, 'stack', $this->maxStack),
         );
         $this->logger->error($this->scrub->mask($line));
 

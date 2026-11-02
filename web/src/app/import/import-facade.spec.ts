@@ -63,6 +63,62 @@ describe('ImportFacade', () => {
     facade = TestBed.inject(ImportFacade);
   });
 
+  describe('reading the guide again', () => {
+    const guide = (subject: string, maxRows: number) => ({
+      subject,
+      identity: ['reference'],
+      maxRows,
+      columns: [],
+      switches: [],
+      lastPairing: [],
+      csvEncoding: null,
+    });
+
+    it('replaces the guide in place, never showing none between, and keeps the last answer', async () => {
+      api.guide.mockResolvedValueOnce(guide('products', 2000));
+      await facade.load('c1', 'products');
+      api.run.mockRejectedValueOnce(new ImportNotKept(report([]), null));
+      await facade.run('c1', 'products', new File(['x'], 'p.csv'), 'create', true);
+      let answer!: (value: unknown) => void;
+      api.guide.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+      const reading = facade.reloadGuide('c1', 'products');
+      expect(facade.guide()?.maxRows).toBe(2000);
+      answer(guide('products', 3000));
+      await reading;
+
+      expect(facade.guide()?.maxRows).toBe(3000);
+      expect(facade.report()).not.toBeNull();
+      expect(facade.error()).toBeNull();
+    });
+
+    it('keeps the guide it has when it cannot be read again, saying nothing', async () => {
+      api.guide.mockResolvedValueOnce(guide('products', 2000));
+      await facade.load('c1', 'products');
+      api.guide.mockRejectedValueOnce(new Error('offline'));
+
+      await facade.reloadGuide('c1', 'products');
+
+      expect(facade.guide()?.maxRows).toBe(2000);
+      expect(facade.error()).toBeNull();
+    });
+
+    it('drops an answer for a subject the screen has left meanwhile', async () => {
+      api.guide.mockResolvedValueOnce(guide('products', 2000));
+      await facade.load('c1', 'products');
+      let late!: (value: unknown) => void;
+      api.guide.mockReturnValueOnce(new Promise((resolve) => (late = resolve)));
+      const reading = facade.reloadGuide('c1', 'products');
+      api.guide.mockResolvedValueOnce(guide('customers', 500));
+      await facade.load('c1', 'customers');
+
+      late(guide('products', 3000));
+      await reading;
+
+      expect(facade.guide()?.subject).toBe('customers');
+    });
+  });
+
   /** A file the rules would not keep is the answer the person came for, not a failure of the request. */
   it('holds a rejected run as the report, and leaves the error clear', async () => {
     const rejected = report([
