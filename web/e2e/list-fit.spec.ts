@@ -3,6 +3,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { aCustomer, aProduct, aVendor, forget, retireVendor } from './catalogue';
 import { forgetPresentationChoices } from './presentation';
+import { sidewaysOverflow } from './overflow';
 import { inACompany, signIn } from './session';
 import { runDigits } from './run';
 import { chooseLanguage } from './language';
@@ -393,6 +394,35 @@ test('a column given way for rows a filter removes comes back for the rows left'
     await retireVendor(page, short);
   }
 });
+
+// A phone's card shows a long value whole over several lines rather than run past the card: a city of 120 letters
+// with no space, which the scenario above leaves retired in the shared company, widened the page by 1,079 px at
+// 390 px once the vendors' card named its city under the title.
+test(
+  'on a phone a card keeps a long unbroken value inside it',
+  { tag: '@phone' },
+  async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const run = `V${runDigits()}`;
+    const wide = await aVendorIn(page, `${run}-W`, 'W'.repeat(120));
+    try {
+      await page.goto(`/vendors?q=${run}`);
+      const city = page.getByTestId('list-card-part-city');
+      await expect(city).toHaveCount(1);
+      await expect(city).toContainText('W'.repeat(120));
+      expect(await sidewaysOverflow(page), 'the card must not widen the page').toBeLessThanOrEqual(
+        0,
+      );
+      const card = await page.locator('[data-testid^="list-card-subtitle-"]').boundingBox();
+      const part = await city.boundingBox();
+      expect(part!.x + part!.width).toBeLessThanOrEqual(card!.x + card!.width + 0.5);
+    } finally {
+      await retireVendor(page, wide);
+    }
+  },
+);
 
 /** A vendor in a city of the run's choosing, through the API; its id. */
 async function aVendorIn(page: Page, number: string, city: string): Promise<string> {

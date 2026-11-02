@@ -298,7 +298,9 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
       align-items: baseline;
       column-gap: 0.75rem;
     }
-    /* Each part beside the last, a part a cell draws on two lines (a number over its kind) beside its day, not above it. */
+    /* Each part beside the last, a part a cell draws on two lines (a number over its kind) beside its day, not above it.
+       A part with no place to break (a city of 120 letters) breaks anywhere and stays whole inside the card: a flex
+       part is never narrower than its longest word, and that word widened the page by 1,079 px on a phone. */
     .twes-list-card-subtitle {
       display: flex;
       flex-wrap: wrap;
@@ -306,6 +308,7 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
       column-gap: 0.25rem;
       min-width: 0;
       margin: 0;
+      overflow-wrap: anywhere;
     }
     .twes-list-card-amount {
       margin-inline-start: auto;
