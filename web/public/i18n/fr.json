@@ -3281,7 +3281,8 @@
         "stock_plan": "Le plan d’un étage arrangé et pas encore enregistré, pour le reprendre sur cet appareil.",
         "phone": "Le lien d’un téléphone prêté comme scanner.",
         "install_later": "Que la proposition d’installer l’application, sur l’accueil, a été mise de côté sur cet appareil.",
-        "text_size": "La taille du texte choisie pour cet appareil, appliquée dès l’ouverture de la page."
+        "text_size": "La taille du texte choisie pour cet appareil, appliquée dès l’ouverture de la page.",
+        "scan_min_length": "Le code le plus court que votre scanner lit sur cet appareil."
       },
       "third_party": "Aucun script tiers, aucune mesure d’audience, aucune publicité."
     }

@@ -29,6 +29,7 @@ use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\Uid\Uuid;
 
@@ -36,7 +37,9 @@ use Symfony\Component\Uid\Uuid;
  * Puts back every record a delete took, as they were, until its day ends; all of them or none, with what the context
  * that made the removal puts back beside them (an import's undo, the stock it took back). A merge is undone the
  * same way, and every row it pointed at the record kept that still names it is pointed back; undoing one takes the
- * proof merging took, and is refused once the record kept traded since (goods received, an expense in the books).
+ * proof merging took, and is refused once the record kept traded since (goods received, an expense in the books). A
+ * delete's or an import's restore asks none, since it only puts back what the person's own action took, unless the
+ * operator makes every restore ask one (app.step_up.on_restore).
  */
 final readonly class RestoreRecords implements DeclaresAuditActions
 {
@@ -49,6 +52,9 @@ final readonly class RestoreRecords implements DeclaresAuditActions
         private ConfirmStepUp $stepUp,
         private RecordCatalogue $catalogue,
         private LiveChanges $liveChanges,
+        /** Whether every restore asks a proof given again, as a merge's undo always does: an operator's choice. */
+        #[Autowire(param: 'app.step_up.on_restore')]
+        private bool $onRestore,
         /** @var iterable<MergeEffects> */
         #[AutowireIterator('app.record.merge_effects')]
         private iterable $effects = [],
@@ -62,7 +68,7 @@ final readonly class RestoreRecords implements DeclaresAuditActions
      * @throws UnknownRecords
      * @throws RemovalNoLongerPending
      * @throws RemovalConflict
-     * @throws StepUpRequired         when it undoes a merge without a proof given again in the last few minutes
+     * @throws StepUpRequired         when it undoes a merge, or the operator asks one of every restore, without a proof given again in the last few minutes
      * @throws MergeAlias             when the record a merge kept was merged into another since
      * @throws MergeTransacted        when the record a merge kept traded since
      * @throws MergeRefused           when a module refuses to undo what it did for the merge
@@ -76,8 +82,8 @@ final readonly class RestoreRecords implements DeclaresAuditActions
                 throw $removal->noLongerPending();
             }
             $merge = RemovalKind::Merge === $removal->getKind();
-            if ($merge && (null === $actorUserId || !$this->stepUp->isRecent($actorUserId))) {
-                throw new StepUpRequired('Undoing a merge takes a proof given again in the last few minutes.');
+            if (($merge || $this->onRestore) && (null === $actorUserId || !$this->stepUp->isRecent($actorUserId))) {
+                throw new StepUpRequired($merge ? 'Undoing a merge takes a proof given again in the last few minutes.' : 'This installation asks a proof given again in the last few minutes to restore.');
             }
             $naming = $this->catalogue->naming($removal->getSubject());
             $kept = $removal->kept();

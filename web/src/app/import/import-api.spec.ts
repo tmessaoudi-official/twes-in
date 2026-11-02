@@ -240,6 +240,32 @@ describe('ImportApi', () => {
     ]);
   });
 
+  it('reads the encoding the company starts a CSV at, automatic when it names none', async () => {
+    const named = api.guide('c1', 'customers');
+    http.expectOne('/api/companies/c1/imports/customers').flush({
+      subject: 'customers',
+      identity: ['number'],
+      maxRows: 2000,
+      columns: [],
+      switches: [],
+      lastPairing: [],
+      csvEncoding: 'windows-1256',
+    });
+    expect((await named).csvEncoding).toBe('windows-1256');
+
+    const automatic = api.guide('c1', 'customers');
+    http.expectOne('/api/companies/c1/imports/customers').flush({
+      subject: 'customers',
+      identity: ['number'],
+      maxRows: 2000,
+      columns: [],
+      switches: [],
+      lastPairing: [],
+      csvEncoding: null,
+    });
+    expect((await automatic).csvEncoding).toBeNull();
+  });
+
   it('sends the pairing as one object of headings to columns, and nothing when there is none', async () => {
     const file = new File(['x'], 'clients.csv', { type: 'text/csv' });
     const paired = api.run('c1', 'customers', file, 'create', true, [], null, [

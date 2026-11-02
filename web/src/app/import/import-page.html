@@ -57,7 +57,7 @@
             aria-labelledby="import-encoding-label"
             data-testid="import-encoding"
           >
-            <mat-radio-button value="auto">{{
+            <mat-radio-button value="auto" data-testid="import-encoding-auto">{{
               'import.encoding.auto' | translate
             }}</mat-radio-button>
             @for (choice of encodings; track choice) {

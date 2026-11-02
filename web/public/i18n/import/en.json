@@ -243,7 +243,8 @@
       "unit_to_confirm": "No unit: created in {{code}}, the default unit. Confirm it on its page.",
       "gross_reached": "Price including taxes {{gross}} cannot be reached: {{reached}} kept.",
       "set_aside": "“{{value}}” set aside: {{why}} The record is marked “To check” with what the file held.",
-      "date_kept_unknown": "Date “{{date}}” cannot be: the line is kept as “date unknown”."
+      "date_kept_unknown": "Date “{{date}}” cannot be: the line is kept as “date unknown”.",
+      "zero_line_skipped": "Quantity 0: line skipped, as asked."
     },
     "stock": {
       "stock_add": "Quantity to add",
@@ -314,7 +315,9 @@
       "quantity": "Quantity",
       "quantity_note": "How many were bought; a return is written below zero.",
       "unit_cost": "Unit cost",
-      "unit_cost_note": "What one unit cost, excluding taxes, at most four decimals. Only the history is filled: the cost price, the sale price and the stock do not move."
+      "unit_cost_note": "What one unit cost, excluding taxes, at most four decimals. Only the history is filled: the cost price, the sale price and the stock do not move.",
+      "skip_zero_lines": "Skip lines whose quantity is 0",
+      "skip_zero_lines_note": "For a sheet that writes 0 on lines with no purchase: those lines are not kept, and each says so."
     }
   }
 }

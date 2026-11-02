@@ -94,6 +94,39 @@ final class PurchaseHistoryImportTest extends ApiTestCase
         self::assertSame([null, null, null], array_column($this->historyOf('P-1'), 2));
     }
 
+    /** Unless the person ticks the switch, a line of 0 is kept as written: history keeps what the sheet says. */
+    public function testALineOfZeroIsKeptByDefault(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import(self::HEADER."P-1,F-001,,,0,1.5\nP-1,F-001,,,2,1.6\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[2, 3], [], []], [$this->json()['created'], $this->json()['unchanged'], $this->json()['rejected']]);
+        $quantities = array_column($this->historyOf('P-1'), 6);
+        sort($quantities);
+        self::assertSame(['0.000', '2.000'], $quantities);
+    }
+
+    /**
+     * Ticked, a line of 0 (« 0 », « 0.000 », « -0 ») is left out, never silently: it is counted with the lines that wrote
+     * nothing, and a note says why on each. A line with no quantity is no line of 0, and is kept.
+     */
+    public function testTheSwitchLeavesOutLinesOfZeroAndSaysSo(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import(self::HEADER."P-1,F-001,,,0,1.5\nP-1,F-001,,,0.000,1.5\nP-1,F-001,,,-0,1.5\nP-1,F-001,,,2,1.6\nP-1,F-001,,,,1.7\n", switches: ['skip_zero_lines']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[5, 6], [2, 3, 4], []], [$this->json()['created'], $this->json()['unchanged'], $this->json()['rejected']], json_encode($this->json()['rejected']) ?: '');
+        $notes = array_map(static fn (mixed $note): array => \is_array($note) ? [$note['line'] ?? null, $note['column'] ?? null, $note['code'] ?? null] : [], $this->arrayAt($this->json(), 'notes'));
+        self::assertSame([[2, 'quantity', 'zero_line_skipped'], [3, 'quantity', 'zero_line_skipped'], [4, 'quantity', 'zero_line_skipped']], $notes);
+        $costs = array_column($this->historyOf('P-1'), 1);
+        sort($costs);
+        self::assertSame(['1.6000', '1.7000'], $costs);
+    }
+
     /** @return iterable<string, array{string, string, string, array<string, int|string>}> */
     public static function refusedRows(): iterable
     {
@@ -243,6 +276,8 @@ final class PurchaseHistoryImportTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $columns = array_map(static fn (mixed $column): array => \is_array($column) ? [$column['key'] ?? null, $column['required'] ?? null] : [], $this->arrayAt($this->json(), 'columns'));
         self::assertSame([['product_reference', true], ['vendor_number', true], ['date', false], ['invoice_number', false], ['quantity', false], ['unit_cost', true]], $columns);
+        $switches = array_map(static fn (mixed $switch): array => \is_array($switch) ? [$switch['key'] ?? null, $switch['labelKey'] ?? null, $switch['noteKey'] ?? null] : [], $this->arrayAt($this->json(), 'switches'));
+        self::assertSame([['skip_zero_lines', 'import.purchase_history.skip_zero_lines', 'import.purchase_history.skip_zero_lines_note']], $switches);
     }
 
     /** @return list<array{string, string|null, string|null, string|null, string|null, string|null, string|null}> */
@@ -278,9 +313,10 @@ final class PurchaseHistoryImportTest extends ApiTestCase
         return $product;
     }
 
-    private function import(string $contents, bool $dryRun = false): void
+    /** @param list<string> $switches */
+    private function import(string $contents, bool $dryRun = false, array $switches = []): void
     {
-        $this->uploadFile($this->companyPath().'/imports/purchase-history', 'achats.csv', $contents, 'file', ['mode' => 'create', 'dryRun' => $dryRun ? '1' : '0']);
+        $this->uploadFile($this->companyPath().'/imports/purchase-history', 'achats.csv', $contents, 'file', ['mode' => 'create', 'dryRun' => $dryRun ? '1' : '0', 'switches' => $switches]);
     }
 
     /** @param list<string> $permissions */

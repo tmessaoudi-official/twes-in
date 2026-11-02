@@ -154,6 +154,10 @@ parameters:
     # checked when the container is built (StepUpBounds): PT1M to PT15M, and 3 to 10.
     app.step_up.valid_for: 'PT5M'
     app.step_up.attempts: 5
+    # Whether restoring from « Récemment supprimés » (a delete, an import's undo) asks that proof too; a merge's undo always
+    # does. false asks none, as the restore only puts back what the person's own action took. true or false itself, checked
+    # when the container is built (RestoreStepUpBounds): it may add a proof, never take one away.
+    app.step_up.on_restore: false
     # How many recovery codes a set holds, shown once at enrolment and on each renewal; each code's shape and hashing stay
     # code. Checked when the container is built (RecoveryCodeBounds): 8 to 16.
     app.recovery_codes.per_set: 10

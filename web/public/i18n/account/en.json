@@ -69,7 +69,9 @@
       "result": "Your scanner types a character every few milliseconds; suggested setting: {{ms}} ms.",
       "apply": "Set to {{ms}} ms",
       "nothing": "Nothing was read: these are keys typed by hand, or too few characters.",
-      "reset": "Back to {{ms}} ms"
+      "reset": "Back to {{ms}} ms",
+      "min_length": "Shortest code taken for a scan (characters)",
+      "min_length_hint": "Outside a field, a shorter code is taken for keys typed by hand. In a field, any code is read."
     },
     "company_at_sign_in": "Company at sign-in",
     "company_at_sign_in_on": "Always open the same company",

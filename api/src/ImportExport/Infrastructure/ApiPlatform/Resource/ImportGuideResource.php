@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Get;
 use App\ImportExport\Infrastructure\ApiPlatform\Output\ImportGuideColumn;
 use App\ImportExport\Infrastructure\ApiPlatform\Output\ImportGuideSwitch;
 use App\ImportExport\Infrastructure\ApiPlatform\State\Provider\ImportGuideProvider;
+use App\Shared\Application\Spreadsheet\TextEncoding;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
@@ -127,4 +128,12 @@ final class ImportGuideResource
     ])]
     #[Groups([self::READ])]
     public array $lastPairing = [];
+
+    /**
+     * The encoding the company reads its CSV files in first, which the screen starts its choice at; null for one found on
+     * the file. A request naming no encoding is still read in the one found, so the screen sends what it shows.
+     */
+    #[ApiProperty(required: true, schema: ['type' => ['string', 'null'], 'enum' => [TextEncoding::Utf8->value, TextEncoding::Windows1252->value, TextEncoding::Windows1256->value, TextEncoding::Utf16->value, null]])]
+    #[Groups([self::READ])]
+    public ?string $csvEncoding = null;
 }

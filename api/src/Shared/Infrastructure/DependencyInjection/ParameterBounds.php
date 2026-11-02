@@ -15,7 +15,7 @@ use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 /**
  * How an operator's parameter is held between its floor and its ceiling when the container is built: a deployment
  * outside them never starts, so no value typed in services.yaml weakens what the shipped value protects. Each context's
- * compiler pass names its parameters and their bounds; this says how a duration and a whole number are read.
+ * compiler pass names its parameters and their bounds; this says how a duration, a whole number and a switch are read.
  */
 final class ParameterBounds
 {
@@ -39,6 +39,20 @@ final class ParameterBounds
         $value = $container->getParameter($parameter);
         if (!\is_int($value) || $value < $fewest || $value > $most) {
             throw new InvalidArgumentException(\sprintf('%s is a whole number from %d to %d; %s is not.', $parameter, $fewest, $most, json_encode($value)));
+        }
+    }
+
+    /**
+     * A switch is true or false itself: YAML reads « yes », « no », « on » and « off » as text, and a bool argument
+     * would take any of them, « no » included, as true.
+     *
+     * @throws InvalidArgumentException when the parameter is no bool
+     */
+    public static function bool(ContainerBuilder $container, string $parameter): void
+    {
+        $value = $container->getParameter($parameter);
+        if (!\is_bool($value)) {
+            throw new InvalidArgumentException(\sprintf('%s is true or false; %s is not.', $parameter, json_encode($value)));
         }
     }
 

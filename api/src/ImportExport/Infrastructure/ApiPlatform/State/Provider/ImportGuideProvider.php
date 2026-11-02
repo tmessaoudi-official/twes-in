@@ -24,6 +24,7 @@ use App\ImportExport\Infrastructure\ApiPlatform\Output\ImportGuideSwitch;
 use App\ImportExport\Infrastructure\ApiPlatform\Resource\ImportGuideResource;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -80,10 +81,18 @@ final readonly class ImportGuideProvider implements ProviderInterface
             $switch->note,
             array_map(static fn (ImportChoice $choice): array => ['key' => $choice->key, 'labelKey' => $choice->label], $switch->choices),
         ), $subject->switches);
+        $companySettings = new SettingContext($company);
         $guide->lastPairing = [];
-        foreach ($this->runs->lastPairingOf($company->getId(), $declaration->key()) as $heading => $column) {
-            $guide->lastPairing[] = ['heading' => (string) $heading, 'column' => $column];
+        // A company that reuses no pairing is offered none; the last one stays kept, for when it does again.
+        $reuse = $this->settings->value($companySettings, ImportSettings::REUSE_LAST_PAIRING);
+        \is_bool($reuse) || throw new \LogicException(ImportSettings::REUSE_LAST_PAIRING.' is declared as a switch.');
+        if ($reuse) {
+            foreach ($this->runs->lastPairingOf($company->getId(), $declaration->key()) as $heading => $column) {
+                $guide->lastPairing[] = ['heading' => (string) $heading, 'column' => $column];
+            }
         }
+        $encoding = $this->settings->text($companySettings, ImportSettings::CSV_ENCODING);
+        $guide->csvEncoding = ImportSettings::AUTOMATIC === $encoding ? null : TextEncoding::from($encoding)->value;
 
         return $guide;
     }

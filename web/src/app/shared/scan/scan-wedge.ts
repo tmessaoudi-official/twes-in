@@ -6,7 +6,10 @@
  */
 export const SCAN_GAP_MS = 30;
 
-/** The shortest code read as a scan: below it a quick double press is likelier than a barcode. */
+/**
+ * The shortest code read as a scan until this browser chooses its own (`ScanMinLength`): below it a quick double press
+ * is likelier than a barcode.
+ */
 export const SCAN_MIN_LENGTH = 4;
 
 /** One keystroke, as much of it as the reading needs. */
@@ -39,8 +42,14 @@ export class ScanWedge {
   private buffer = '';
   private lastAt = Number.NEGATIVE_INFINITY;
 
-  /** `gapMs` is read on every key: this browser's own measure of its scanner, `SCAN_GAP_MS` until it has one. */
-  constructor(private readonly gapMs: () => number = () => SCAN_GAP_MS) {}
+  /**
+   * `gapMs` and `minLength` are read on every key: this browser's own measure of its scanner and the shortest code it
+   * reads as a scan, `SCAN_GAP_MS` and `SCAN_MIN_LENGTH` until it has its own.
+   */
+  constructor(
+    private readonly gapMs: () => number = () => SCAN_GAP_MS,
+    private readonly minLength: () => number = () => SCAN_MIN_LENGTH,
+  ) {}
 
   read(key: WedgeKey): WedgeReading {
     if (key.editable || key.modified) {
@@ -49,7 +58,7 @@ export class ScanWedge {
     }
     if (key.key === 'Enter') {
       const code =
-        this.buffer.length >= SCAN_MIN_LENGTH && key.at - this.lastAt < this.gapMs()
+        this.buffer.length >= this.minLength() && key.at - this.lastAt < this.gapMs()
           ? this.buffer
           : null;
       this.reset();

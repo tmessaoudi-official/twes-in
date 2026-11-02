@@ -239,6 +239,15 @@
           "optional": "عند الرغبة",
           "required": "دائمًا، عند الاستلام"
         }
+      },
+      "import": {
+        "csv_encoding": {
+          "auto": "تلقائي",
+          "utf-8": "UTF-8 (يونيكود)",
+          "windows-1252": "Windows-1252 (الفرنسية)",
+          "windows-1256": "Windows-1256 (العربية)",
+          "utf-16": "UTF-16 (نص Unicode من Excel)"
+        }
       }
     },
     "overrides": {
@@ -322,6 +331,10 @@
     "purchase_receipt": {
       "receiver": "ذكر مستلم المشتريات",
       "receiver_hint": "عند كل استلام لطلبية لدى مزوّد، من بين الأعضاء أو اسم يُكتب."
+    },
+    "import": {
+      "csv_encoding": "ترميز ملفات CSV المستوردة",
+      "reuse_last_pairing": "إعادة استعمال عناوين أعمدة آخر استيراد"
     }
   }
 }

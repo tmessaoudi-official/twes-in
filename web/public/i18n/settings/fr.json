@@ -239,6 +239,15 @@
           "optional": "Si on le souhaite",
           "required": "Toujours, à la réception"
         }
+      },
+      "import": {
+        "csv_encoding": {
+          "auto": "Automatique",
+          "utf-8": "UTF-8",
+          "windows-1252": "Windows-1252 (français)",
+          "windows-1256": "Windows-1256 (arabe)",
+          "utf-16": "UTF-16 (Texte Unicode d’Excel)"
+        }
       }
     },
     "overrides": {
@@ -322,6 +331,10 @@
     "purchase_receipt": {
       "receiver": "Nommer qui a reçu les achats",
       "receiver_hint": "À chaque réception d’une commande fournisseur, un membre de l’entreprise ou un nom saisi."
+    },
+    "import": {
+      "csv_encoding": "Encodage des fichiers CSV importés",
+      "reuse_last_pairing": "Reprendre les en-têtes du dernier import"
     }
   }
 }

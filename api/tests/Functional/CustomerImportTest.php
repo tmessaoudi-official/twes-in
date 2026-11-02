@@ -16,8 +16,11 @@ use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
+use App\ImportExport\Application\ImportSettings;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\Model\CustomerGroup;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\InvalidSettingValue;
 use App\Settings\Application\PhoneSettings;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingContext;
@@ -417,6 +420,55 @@ final class CustomerImportTest extends ApiTestCase
             $this->json()['lastPairing'] ?? null,
             'a file needing no pairing leaves the last one offered',
         );
+    }
+
+    /** A shop receiving files from several sources is offered no pairing when its owner says so; the last one stays kept. */
+    public function testACompanyThatReusesNoPairingIsOfferedNoneAndGetsItBackWhenItDoes(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+        $this->import("Réf. client,Raison sociale [FR]\nCLI-0001,Carthage Conseil\n", pairing: ['Réf. client' => 'number', 'Raison sociale [FR]' => 'name']);
+        self::assertResponseIsSuccessful();
+        $changes = static::getContainer()->get(ChangeSettings::class);
+
+        $changes->change(new SettingContext($this->found()), ImportSettings::REUSE_LAST_PAIRING, SettingLevel::Company, false, null);
+        $this->getJson($this->companyPath().'/imports/customers');
+        self::assertSame([], $this->json()['lastPairing'] ?? null);
+
+        $changes->change(new SettingContext($this->found()), ImportSettings::REUSE_LAST_PAIRING, SettingLevel::Company, true, null);
+        $this->getJson($this->companyPath().'/imports/customers');
+        self::assertSame([['heading' => 'Réf. client', 'column' => 'number'], ['heading' => 'Raison sociale [FR]', 'column' => 'name']], $this->json()['lastPairing'] ?? null);
+    }
+
+    /** The screen starts a CSV's encoding at the company's own: automatic (none) until its owner names one. */
+    public function testTheGuideSaysTheEncodingTheCompanyReadsItsFilesIn(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->getJson($this->companyPath().'/imports/customers');
+        self::assertArrayHasKey('csvEncoding', $this->json());
+        self::assertNull($this->json()['csvEncoding']);
+
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->found()), ImportSettings::CSV_ENCODING, SettingLevel::Company, 'windows-1256', null);
+        $this->getJson($this->companyPath().'/imports/customers');
+        self::assertSame('windows-1256', $this->json()['csvEncoding'] ?? null);
+    }
+
+    /** What a company may choose is what a file may be read in, and automatic: nothing else is stored. */
+    public function testTheCompanysEncodingIsOneAFileMayBeReadIn(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->expectException(InvalidSettingValue::class);
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->found()), ImportSettings::CSV_ENCODING, SettingLevel::Company, 'latin-9', null);
+    }
+
+    /** The company as this kernel's entity manager holds it: a request reboots the kernel, which forgets the one set up. */
+    private function found(): Company
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+
+        return $company;
     }
 
     public function testAPairingNamingNoColumnIsRefusedSayingWhich(): void

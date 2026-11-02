@@ -13,6 +13,7 @@ use App\Identity\Infrastructure\Mfa\RecoveryCodeBounds;
 use App\Identity\Infrastructure\Password\PasswordResetBounds;
 use App\Identity\Infrastructure\Session\SessionBounds;
 use App\Identity\Infrastructure\StepUp\StepUpBounds;
+use App\Records\Infrastructure\Http\RestoreStepUpBounds;
 use App\Shared\Infrastructure\DevelopmentKeys;
 use App\Shared\Infrastructure\ErrorReporting\ErrorReportingMasksBounds;
 use App\Tenancy\Infrastructure\Http\SupportVisitBounds;
@@ -47,6 +48,7 @@ class Kernel extends BaseKernel
         $container->addCompilerPass(new PasswordResetBounds());
         $container->addCompilerPass(new InvitationBounds());
         $container->addCompilerPass(new ErrorReportingMasksBounds());
+        $container->addCompilerPass(new RestoreStepUpBounds());
     }
 
     /**

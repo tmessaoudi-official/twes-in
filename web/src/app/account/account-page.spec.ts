@@ -26,6 +26,7 @@ import {
 } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
 import { ScanGap } from '../shared/scan/scan-gap';
+import { ScanMinLength } from '../shared/scan/scan-min-length';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 import { provideKnownPasswordRule } from '../shared/testing/password-rule';
@@ -688,6 +689,17 @@ describe('AccountPage', () => {
     expect(TestBed.inject(ScanGap).gap()).toBe(25);
     expect(byTestId(root, 'account-scanner-reset')).not.toBeNull();
     expect(byTestId(root, 'account-scanner-result')).toBeNull();
+  });
+
+  it('sets the shortest code this browser reads as a scan, four until changed', async () => {
+    const root = await render('device');
+    expect(TestBed.inject(ScanMinLength).length()).toBe(4);
+    expect(shownIn(root, 'account-scanner-min-length')).toBe('4');
+
+    await choose(root, 'account-scanner-min-length', '2');
+
+    expect(TestBed.inject(ScanMinLength).length()).toBe(2);
+    expect(shownIn(root, 'account-scanner-min-length')).toBe('2');
   });
 
   it('says it read nothing from a hand, and offers nothing to apply', async () => {

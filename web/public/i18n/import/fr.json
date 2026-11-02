@@ -243,7 +243,8 @@
       "unit_to_confirm": "Sans unité : créé en {{code}}, l’unité par défaut. Confirmez-la dans sa fiche.",
       "gross_reached": "Prix TTC {{gross}} impossible à atteindre : {{reached}} retenu.",
       "set_aside": "« {{value}} » mis de côté : {{why}} La fiche est marquée « À vérifier » avec ce que le fichier tenait.",
-      "date_kept_unknown": "Date « {{date}} » impossible : la ligne est gardée en « date inconnue »."
+      "date_kept_unknown": "Date « {{date}} » impossible : la ligne est gardée en « date inconnue ».",
+      "zero_line_skipped": "Quantité 0 : ligne ignorée, comme demandé."
     },
     "stock": {
       "stock_add": "Quantité à ajouter",
@@ -314,7 +315,9 @@
       "quantity": "Quantité",
       "quantity_note": "Combien ont été achetés ; un retour s’écrit sous zéro.",
       "unit_cost": "Coût unitaire",
-      "unit_cost_note": "Ce qu’une unité a coûté, hors taxes, quatre décimales au plus. L’historique seul est rempli : le prix de revient, le prix de vente et le stock ne bougent pas."
+      "unit_cost_note": "Ce qu’une unité a coûté, hors taxes, quatre décimales au plus. L’historique seul est rempli : le prix de revient, le prix de vente et le stock ne bougent pas.",
+      "skip_zero_lines": "Ignorer les lignes de quantité 0",
+      "skip_zero_lines_note": "Pour une feuille qui écrit 0 sur les lignes sans achat : ces lignes ne sont pas gardées, et chacune le dit."
     }
   }
 }

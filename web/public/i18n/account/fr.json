@@ -69,7 +69,9 @@
       "result": "Votre scanner écrit un caractère toutes les quelques millisecondes ; réglage conseillé : {{ms}} ms.",
       "apply": "Régler à {{ms}} ms",
       "nothing": "Rien n’a été lu : ce sont des touches tapées à la main, ou trop peu de caractères.",
-      "reset": "Revenir à {{ms}} ms"
+      "reset": "Revenir à {{ms}} ms",
+      "min_length": "Code le plus court pris pour un scan (caractères)",
+      "min_length_hint": "Hors d’un champ, un code plus court est pris pour des touches tapées à la main. Dans un champ, tout code est lu."
     },
     "company_at_sign_in": "Société à l’ouverture",
     "company_at_sign_in_on": "Toujours ouvrir la même société",

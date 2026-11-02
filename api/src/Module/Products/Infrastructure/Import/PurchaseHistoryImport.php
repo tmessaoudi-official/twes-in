@@ -16,6 +16,7 @@ use App\ImportExport\Application\ImportContext;
 use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
+use App\ImportExport\Application\ImportSwitch;
 use App\ImportExport\Application\RowFaults;
 use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
@@ -48,11 +49,17 @@ use Symfony\Component\Uid\Uuid;
  * refusing a line whose cost is right: no day is invented. Two identical lines are two lines, as a sheet may buy the
  * same thing twice on one invoice, so a row is found by nothing and the file only ever adds.
  *
+ * A line of 0 is kept as written unless the person ticks « skip_zero_lines » for the file: then it is left out, counted
+ * with the lines that wrote nothing and noted on its row.
+ *
  * What a product was bought for is a cost, read only with `product.cost.read`: whoever lacks it is offered no such file.
  */
 final readonly class PurchaseHistoryImport implements DeclaresImport
 {
     public const string KEY = 'purchase-history';
+
+    /** Leaves out a line of 0 (a sheet's placeholder), counted and said on its row; off, it is kept as written. */
+    public const string SKIP_ZERO_LINES = 'skip_zero_lines';
 
     /** No shop's books here start before this day: an earlier one is a typing slip (« 0202 » for 2022). */
     private const string EARLIEST = '1990-01-01';
@@ -107,7 +114,7 @@ final readonly class PurchaseHistoryImport implements DeclaresImport
             new ImportColumn('invoice_number', 'import.purchase_history.invoice_number', false, 'FA-2025-118', 'import.purchase_history.invoice_number_note', code: true),
             new ImportColumn('quantity', 'import.purchase_history.quantity', false, '72', 'import.purchase_history.quantity_note'),
             new ImportColumn('unit_cost', 'import.purchase_history.unit_cost', true, '1.6882', 'import.purchase_history.unit_cost_note'),
-        ]);
+        ], [new ImportSwitch(self::SKIP_ZERO_LINES, 'import.purchase_history.skip_zero_lines', 'import.purchase_history.skip_zero_lines_note')]);
     }
 
     public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
@@ -121,6 +128,12 @@ final readonly class PurchaseHistoryImport implements DeclaresImport
         $invoice = $faults->read(static fn (): ?string => self::invoiceOf($record));
         $faults->stopIfAny();
         \assert(null !== $product && null !== $named && null !== $cost);
+        if (null !== $quantity && $context->ticked(self::SKIP_ZERO_LINES) && 0 === bccomp($quantity, '0', 3)) {
+            // Left out as the person asked, never silently: counted with the lines that wrote nothing, and said.
+            $notes->note('quantity', 'zero_line_skipped');
+
+            return RowImported::Unchanged;
+        }
         $vendor = MergedVendors::followed($named, 'vendor_number', $notes);
         $day = $this->dayOf($company, $record, $notes);
 
@@ -192,7 +205,8 @@ final readonly class PurchaseHistoryImport implements DeclaresImport
         if (null === $quantity) {
             return null;
         }
-        // A return is a line bought back below zero, kept as written, as a line of 0 is: history keeps what the sheet says.
+        // A return is a line bought back below zero, kept as written, as a line of 0 is unless the person asks it left out:
+        // history keeps what the sheet says.
         if (1 !== preg_match('/^-?(0|[1-9][0-9]{0,10})(\.[0-9]+)?$/', $quantity) || !is_numeric($quantity)) {
             throw new RowRejected('quantity', 'A quantity is a number of at most eleven digits; a return is below 0.', 'invalid_quantity');
         }

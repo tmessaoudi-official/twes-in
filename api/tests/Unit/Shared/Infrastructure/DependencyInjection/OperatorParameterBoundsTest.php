@@ -13,6 +13,7 @@ use App\Identity\Infrastructure\Mfa\RecoveryCodeBounds;
 use App\Identity\Infrastructure\Password\PasswordResetBounds;
 use App\Identity\Infrastructure\Session\SessionBounds;
 use App\Kernel;
+use App\Records\Infrastructure\Http\RestoreStepUpBounds;
 use App\Shared\Infrastructure\ErrorReporting\ErrorReportingMasksBounds;
 use App\Tenancy\Infrastructure\Http\SupportVisitBounds;
 use App\Tenancy\Infrastructure\Invitation\InvitationBounds;
@@ -27,7 +28,8 @@ use Symfony\Component\Yaml\Yaml;
  * What only the operator may set is a parameter of services.yaml, each held between a floor and a ceiling when the
  * container is built, so a deployment outside them never starts: no value an operator types can weaken the protection
  * the shipped value gives (a session's use noted an hour late, a support visit's pages unrecorded, a recovery set of
- * three codes, a reset link open for a week, an invitation open for a year, a mask that is no regular expression).
+ * three codes, a reset link open for a week, an invitation open for a year, a mask that is no regular expression, a restore
+ * switch written as text).
  */
 final class OperatorParameterBoundsTest extends TestCase
 {
@@ -42,6 +44,7 @@ final class OperatorParameterBoundsTest extends TestCase
         self::assertSame('PT1H', $parameters['app.password_reset.valid_for']);
         self::assertSame('P7D', $parameters['app.invitation.valid_for']);
         self::assertSame([], $parameters['app.error_reporting.extra_masks']);
+        self::assertFalse($parameters['app.step_up.on_restore'], 'a restore asks no proof until the operator says so');
 
         $container = new ContainerBuilder();
         foreach ($parameters as $name => $value) {
@@ -66,9 +69,11 @@ final class OperatorParameterBoundsTest extends TestCase
         }
     }
 
-    /** @return iterable<string, array{string, array<mixed>|int|string}> */
+    /** @return iterable<string, array{string, array<mixed>|bool|int|string}> */
     public static function withinBounds(): iterable
     {
+        yield 'every restore asks a proof' => ['app.step_up.on_restore', true];
+        yield 'a restore asks no proof' => ['app.step_up.on_restore', false];
         yield 'a session noted every minute' => ['app.session.touch_every', 'PT1M'];
         yield 'a session noted every quarter hour' => ['app.session.touch_every', 'PT15M'];
         yield 'every support read recorded' => ['app.support.read_recorded_every', 'PT0M'];
@@ -82,9 +87,9 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'a mask of the operator' => ['app.error_reporting.extra_masks', [['pattern' => '/\bTN\d{2}\b/', 'replacement' => '[branch]']]];
     }
 
-    /** @param array<mixed>|int|string $value */
+    /** @param array<mixed>|bool|int|string $value */
     #[DataProvider('withinBounds')]
-    public function testAValueWithinItsBoundsIsKept(string $parameter, array|int|string $value): void
+    public function testAValueWithinItsBoundsIsKept(string $parameter, array|bool|int|string $value): void
     {
         $container = $this->withShipped($parameter, $value);
         foreach (self::passes() as $pass) {
@@ -113,6 +118,9 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'a mask with a key of its own' => ['app.error_reporting.extra_masks', [['pattern' => '/x/', 'replacement' => 'y', 'flags' => 'i']]];
         yield 'masks as a map' => ['app.error_reporting.extra_masks', ['/x/' => 'y']];
         yield 'masks as text' => ['app.error_reporting.extra_masks', '/x/'];
+        // YAML reads « yes », « no », « on » and « off » as text, which a bool argument would take as true.
+        yield 'a restore proof as « no »' => ['app.step_up.on_restore', 'no'];
+        yield 'a restore proof as 1' => ['app.step_up.on_restore', 1];
     }
 
     /** @param array<mixed>|int|string $value */
@@ -132,7 +140,7 @@ final class OperatorParameterBoundsTest extends TestCase
     /** @return list<CompilerPassInterface> */
     private static function passes(): array
     {
-        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds()];
+        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds()];
     }
 
     /** @param array<mixed>|bool|float|int|string|null $value */
@@ -147,13 +155,13 @@ final class OperatorParameterBoundsTest extends TestCase
         return $container;
     }
 
-    /** @return array<string, array<mixed>|bool|float|int|string|null> the six parameters as services.yaml ships them */
+    /** @return array<string, array<mixed>|bool|float|int|string|null> the operator parameters as services.yaml ships them */
     private function shipped(): array
     {
         $file = Yaml::parseFile(__DIR__.'/../../../../../config/services.yaml', Yaml::PARSE_CONSTANT | Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($file);
         self::assertIsArray($file['parameters'] ?? null);
-        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks'];
+        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore'];
         $shipped = [];
         foreach ($names as $name) {
             self::assertArrayHasKey($name, $file['parameters']);

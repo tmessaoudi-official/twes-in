@@ -367,6 +367,21 @@
                   <p class="text-sm opacity-80" data-testid="account-scanner-gap">
                     {{ 'account.scanner.gap' | translate: { ms: scanGap.gap() } }}
                   </p>
+                  <div class="flex max-w-sm flex-col gap-1">
+                    <app-select
+                      [label]="'account.scanner.min_length' | translate"
+                      [labelInside]="true"
+                      [options]="minLengthOptions"
+                      [ngModel]="'' + scanMinLength.length()"
+                      (ngModelChange)="scanMinLength.set(+$event)"
+                      [ngModelOptions]="{ standalone: true }"
+                      describedBy="account-scanner-min-length-hint"
+                      testId="account-scanner-min-length"
+                    />
+                    <p id="account-scanner-min-length-hint" class="text-sm opacity-80">
+                      {{ 'account.scanner.min_length_hint' | translate }}
+                    </p>
+                  </div>
                   <mat-form-field appearance="outline" class="max-w-sm">
                     <mat-label>{{ 'account.scanner.test' | translate }}</mat-label>
                     <input

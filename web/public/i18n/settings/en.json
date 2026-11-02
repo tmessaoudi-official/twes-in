@@ -239,6 +239,15 @@
           "optional": "When wished",
           "required": "Always, at receipt"
         }
+      },
+      "import": {
+        "csv_encoding": {
+          "auto": "Automatic",
+          "utf-8": "UTF-8",
+          "windows-1252": "Windows-1252 (French)",
+          "windows-1256": "Windows-1256 (Arabic)",
+          "utf-16": "UTF-16 (Excel’s Unicode text)"
+        }
       }
     },
     "overrides": {
@@ -322,6 +331,10 @@
     "purchase_receipt": {
       "receiver": "Name who received purchases",
       "receiver_hint": "At each receipt of an order to a vendor, a member of the company or a name typed."
+    },
+    "import": {
+      "csv_encoding": "Encoding of imported CSV files",
+      "reuse_last_pairing": "Reuse the last import’s headings"
     }
   }
 }

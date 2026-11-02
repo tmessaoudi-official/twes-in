@@ -9,6 +9,7 @@ import {
   inject,
   input,
   signal,
+  untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -277,12 +278,13 @@ export class ImportPage {
       },
       this.destroyRef,
     );
-    // Each subject's guide brings the pairing its last import kept.
+    // Each subject's guide brings the pairing its last import kept, and the encoding the company reads its CSVs in.
     effect(() => {
       const kept = this.guide()?.lastPairing ?? [];
       this.pairing.set(kept);
       this.pairingFromLast.set(kept.length > 0);
       this.asked.set([]);
+      this.encoding.set(this.companyEncoding());
     });
   }
 
@@ -398,8 +400,9 @@ export class ImportPage {
     this.file.set(file);
     // The pairing is how the shop writes its files, so it stays; the headings asked about were this file's.
     this.asked.set([]);
-    // Another file may be written in another encoding: it is found on that file until chosen again.
-    this.encoding.set(null);
+    // Another file may be written in another encoding: it starts again from the company's own, found on the file when
+    // the company names none, until chosen again.
+    this.encoding.set(this.companyEncoding());
     this.previewed.set(false);
     this.facade.forget();
   }
@@ -408,6 +411,11 @@ export class ImportPage {
     this.mode.set(mode);
     this.previewed.set(false);
     this.facade.forget();
+  }
+
+  /** The encoding the company reads its CSV files in (« Paramètres »), null when it is found on each file. */
+  private companyEncoding(): TextEncoding | null {
+    return untracked(() => this.guide()?.csvEncoding ?? null);
   }
 
   /** Read in another encoding, the file says other things: the preview before no longer stands. */

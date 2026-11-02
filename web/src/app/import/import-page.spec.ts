@@ -152,6 +152,7 @@ const GUIDE: ImportGuide = {
     },
   ],
   lastPairing: [],
+  csvEncoding: null,
 };
 
 const CLEAN: ImportReport = {
@@ -513,6 +514,27 @@ describe('ImportPage', () => {
       [],
       {},
     );
+  });
+
+  it('starts a CSV at the encoding the company reads its files in, which the person may still change', async () => {
+    guide.set({ ...GUIDE, csvEncoding: 'windows-1256' });
+    chooseFile('stocks.csv');
+    await settle();
+    facade.run.mockImplementation(async () => report.set(CLEAN));
+
+    await click('import-preview');
+    expect(facade.run.mock.lastCall?.[6]).toBe('windows-1256');
+
+    (q('import-encoding-auto')!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    await click('import-preview');
+    expect(facade.run.mock.lastCall?.[6]).toBeNull();
+
+    // Another file starts again from the company's own.
+    chooseFile('other.csv');
+    await settle();
+    await click('import-preview');
+    expect(facade.run.mock.lastCall?.[6]).toBe('windows-1256');
   });
 
   it('says first what a CSV was read as, and what to do when its letters do not read', async () => {

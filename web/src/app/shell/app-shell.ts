@@ -77,6 +77,7 @@ import { PhonePairingDialog } from '../shared/scan/phone-pairing-dialog';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { ScanCount } from '../shared/scan/scan-count';
 import { ScanGap } from '../shared/scan/scan-gap';
+import { ScanMinLength } from '../shared/scan/scan-min-length';
 import { ScanWedge } from '../shared/scan/scan-wedge';
 import { SCANNING_MODULE } from '../shared/scan/scanning-module';
 import { CommandPalette, type CommandPaletteData } from './command-palette';
@@ -216,7 +217,11 @@ export class AppShell {
   private phoneOpen = false;
   private scanOpen = false;
   private readonly scanGap = inject(ScanGap);
-  private readonly wedge = new ScanWedge(() => this.scanGap.gap());
+  private readonly scanMinLength = inject(ScanMinLength);
+  private readonly wedge = new ScanWedge(
+    () => this.scanGap.gap(),
+    () => this.scanMinLength.length(),
+  );
   private readonly scans = inject(ScanBus);
   /** The product whose page is on view, which the scan card offers a code nobody holds to first. */
   private readonly productOnView = inject(ProductOnView);

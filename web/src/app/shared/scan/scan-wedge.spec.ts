@@ -60,6 +60,17 @@ describe('ScanWedge', () => {
     expect(feed(new ScanWedge(), burst('12')).at(-1)).toBeNull();
   });
 
+  it('reads four characters and more until this browser sets its own shortest code', () => {
+    expect(feed(new ScanWedge(), burst('123')).at(-1)).toBeNull();
+    expect(feed(new ScanWedge(), burst('1234')).at(-1)).toBe('1234');
+    // A shop whose references are two characters long scans them from the page.
+    const shortCodes = new ScanWedge(undefined, () => 2);
+    expect(feed(shortCodes, burst('A7')).at(-1)).toBe('A7');
+    expect(feed(shortCodes, burst('7')).at(-1)).toBeNull();
+    // A browser expecting long codes leaves a short burst to the hand.
+    expect(feed(new ScanWedge(undefined, () => 8), burst('1234567')).at(-1)).toBeNull();
+  });
+
   it('leaves a field its own scan, and a modified key is never part of one', () => {
     const wedge = new ScanWedge();
     const inField = burst('3017620422003').map((key) => ({ ...key, editable: true }));
