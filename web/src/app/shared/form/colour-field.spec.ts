@@ -5,7 +5,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { provideTranslateService } from '@ngx-translate/core';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { ACCENT_PRESETS } from '../theme/accent-presets';
 import { ColourField } from './colour-field';
+
+const RED = ACCENT_PRESETS.find((preset) => preset.id === 'red')?.hex;
 
 @Component({
   imports: [ReactiveFormsModule, ColourField],
@@ -41,7 +44,7 @@ describe('ColourField', () => {
   it('takes a swatch as the value, and marks it as the chosen one', async () => {
     q('accent-swatch-red').click();
     await settle();
-    expect(fixture.componentInstance.control.value).toBe('#b3261e');
+    expect(fixture.componentInstance.control.value).toBe(RED);
     expect(q('accent-swatch-red').getAttribute('aria-checked')).toBe('true');
     expect(q('accent-swatch-blue').getAttribute('aria-checked')).toBe('false');
   });
@@ -59,7 +62,7 @@ describe('ColourField', () => {
       new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }),
     );
     await settle();
-    expect(fixture.componentInstance.control.value).toBe('#b3261e');
+    expect(fixture.componentInstance.control.value).toBe(RED);
     expect(stops()).toEqual(['red']);
 
     q('accent-swatch-red').dispatchEvent(
@@ -84,7 +87,7 @@ describe('ColourField', () => {
         new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }),
       );
       await settle();
-      expect(fixture.componentInstance.control.value).toBe('#b3261e');
+      expect(fixture.componentInstance.control.value).toBe(RED);
     } finally {
       document.documentElement.dir = '';
     }

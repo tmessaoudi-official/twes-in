@@ -7,11 +7,11 @@
  */
 export const ACCENT_PRESETS = [
   { id: 'blue', hex: '#1f6feb' },
-  { id: 'red', hex: '#b3261e' },
-  { id: 'green', hex: '#1b7f3b' },
-  { id: 'orange', hex: '#c25400' },
+  { id: 'red', hex: '#760906' },
+  { id: 'green', hex: '#058329' },
+  { id: 'orange', hex: '#ac5102' },
   { id: 'purple', hex: '#7b3fe4' },
   { id: 'teal', hex: '#00796b' },
-  { id: 'pink', hex: '#c2185b' },
+  { id: 'pink', hex: '#bc1d6f' },
   { id: 'slate', hex: '#455a64' },
 ] as const;

@@ -90,7 +90,7 @@ test("the company's default colour takes effect at once, with no refresh", async
 
   // Whichever of the two it holds, save the other: filling the value it already has changes nothing, and the
   // case would then be measuring its own previous run.
-  const wanted = (await accent.inputValue()) === '#b3261e' ? '#1f6feb' : '#b3261e';
+  const wanted = (await accent.inputValue()) === '#760906' ? '#1f6feb' : '#760906';
   const before = await primary(page);
 
   await accent.fill(wanted);

@@ -510,30 +510,33 @@ describe('the renewed theme, 8 swatches × 2 schemes × 2 presets', () => {
   );
 
   // Python rounds a channel's exact half to even, Math.round rounds it up: these mixes land on a half and come out one
-  // higher in one channel here. Every pair above is checked on the values written here, which is why accent-text aims
-  // at 4.6 rather than 4.5.
+  // higher in a channel here, in two where an even share leaves two channels on a half (the red swatch's inverse text,
+  // its mix with white). Every pair above is checked on the values written here, which is why accent-text aims at 4.6
+  // rather than 4.5.
   const HALF_ROUNDED_UP: Record<string, Partial<Record<Role, string>>> = {
-    'calme/light/red': { accent_soft: '#efdadb', accent_strip: '#f7e9e9' },
+    'calme/light/red': { accent_text_inverse: '#bb8483', focus_inverse: '#bb8483' },
     'calme/light/slate': { accent_strip: '#eceff0' },
-    'calme/dark/red': { accent_text: '#dfa4a1', focus: '#dfa4a1' },
-    'calme/dark/orange': { accent_text: '#e1aa80', focus: '#e1aa80' },
+    'calme/dark/orange': { accent_text: '#d6a881', focus: '#d6a881' },
     'calme/dark/purple': { backdrop: '#0e0f17' },
-    'vif/light/red': { accent_soft: '#efd9da' },
-    'vif/dark/red': { accent_hover: '#281c1f', accent_text: '#dfa4a1', focus: '#dfa4a1' },
+    'vif/light/red': { accent_text_inverse: '#bb8483', focus_inverse: '#bb8483' },
+    'vif/light/orange': { accent_hover: '#f4edea', accent_soft: '#ecdcd1', surface: '#f9f9fb' },
     'vif/dark/purple': { accent_strip: '#443071' },
     'vif/dark/teal': { accent_hover: '#152527' },
-    'vif/dark/pink': { accent_hover: '#291a25' },
+    'vif/dark/pink': { accent_hover_container: '#3e3845' },
     'vif/dark/slate': { accent_soft_raised: '#3a4249' },
   };
 
-  it('differs from the reference only by a half rounded up, one channel by one', () => {
+  it('differs from the reference only by a half rounded up, each channel by one at most', () => {
     for (const [at, roles] of Object.entries(HALF_ROUNDED_UP)) {
       const reference = expected.themes[at as keyof typeof expected.themes];
       for (const [role, port] of Object.entries(roles) as [Role, string][]) {
         const steps = [1, 3, 5].map(
           (i) => parseInt(port.slice(i, i + 2), 16) - parseInt(reference[role].slice(i, i + 2), 16),
         );
-        expect(steps.sort(), `${at}: ${role}`).toEqual([0, 0, 1]);
+        expect(
+          steps.every((step) => step === 0 || step === 1) && steps.includes(1),
+          `${at}: ${role} ${steps.join(',')}`,
+        ).toBe(true);
       }
     }
   });
@@ -684,4 +687,39 @@ describe('the stylesheet first paint', () => {
     );
     expect(declared).toEqual(computed);
   });
+
+  // A danger button wears a ring an accent button never has, so a red accent never makes the two alike.
+  it('rings every enabled danger button with the danger colour, off its edge', () => {
+    const here = import.meta.url;
+    const sheet = process
+      .getBuiltinModule('fs')
+      .readFileSync(new URL('../../../styles.scss', here).pathname, 'utf8');
+    expect(sheet).toMatch(/--twes-danger-ring:\s*var\(--mat-sys-error\);/);
+    expect(sheet).toMatch(/--twes-danger-ring-width:\s*2px;/);
+    expect(sheet).toMatch(/--twes-danger-ring-gap:\s*[1-9]\d*px;/);
+    const rule = /\.mat-mdc-button-base\.twes-danger \{([\s\S]*?)\n\}/.exec(sheet)?.[1] ?? '';
+    const enabled =
+      /&:not\(:disabled, \[aria-disabled='true'\]\) \{([^}]*)\}/.exec(rule)?.[1] ?? '';
+    expect(enabled).toMatch(
+      /outline:\s*var\(--twes-danger-ring-width\) solid var\(--twes-danger-ring\);/,
+    );
+    expect(enabled).toMatch(/outline-offset:\s*var\(--twes-danger-ring-gap\);/);
+  });
+});
+
+// The ring is a mark that alone tells the button apart (WCAG 1.4.11): 3:1 on every ground a button is drawn on.
+describe('the danger ring', () => {
+  it.each(THEMES)(
+    '$preset $scheme $swatch: reads at 3:1 on the page, a card, a bar and a dialog',
+    ({ preset, scheme, swatch, accent }) => {
+      const t = themeOf(accent, scheme, preset);
+      const ring = surfaceTokens(accent, scheme, preset)['--mat-sys-error'];
+      for (const ground of ['surface', 'raised', 'container', 'high', 'backdrop'] as Role[]) {
+        expect(
+          contrast(ring, t[ground]),
+          `${preset}/${scheme}/${swatch}: ring on ${ground}`,
+        ).toBeGreaterThanOrEqual(3);
+      }
+    },
+  );
 });

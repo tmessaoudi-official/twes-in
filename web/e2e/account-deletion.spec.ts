@@ -40,6 +40,14 @@ async function drawn(button: Locator): Promise<{ label: string; fill: string }> 
   });
 }
 
+/** The ring a danger button wears and no accent button has: its outline, as the browser draws it. */
+async function ring(button: Locator): Promise<string> {
+  return button.evaluate((element) => {
+    const css = getComputedStyle(element);
+    return `${css.outlineStyle} ${css.outlineWidth} ${css.outlineColor} offset ${css.outlineOffset}`;
+  });
+}
+
 /**
  * « Supprimer mon compte » (docs/SPEC.md § 7, 2026-10-13 12:31, 16:43, 17:01): a member of Demo invited for the run, never
  * Demo's owner, deletes their own account. The button and the confirming one are drawn in the danger colour as the
@@ -100,6 +108,11 @@ test('a member deletes their own account behind a red button and a typed word, a
   await typed.fill('supprimer');
   await expect(run).toBeEnabled();
   await expect.poll(async () => inDanger(page, (await drawn(run)).fill, '')).toBe('in danger');
+  // Colour is never the only cue: both danger buttons are ringed in the danger colour, off their edge.
+  const danger = await dangerColour(page);
+  for (const button of [run, remove]) {
+    expect(await ring(button)).toBe(`solid 2px ${danger} offset 2px`);
+  }
   await page.screenshot({ path: test.info().outputPath('account-delete-dialog.png') });
   await run.click();
 
