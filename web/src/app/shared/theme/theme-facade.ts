@@ -21,6 +21,17 @@ import {
   statusTokens,
 } from './accent-theme';
 import { surfaceTokens, type ThemePreset } from './neutral-ramp';
+import {
+  keepTextSize,
+  storedTextSize,
+  TEXT_SIZE_CLASSES,
+  TEXT_SIZE_KEY,
+  TEXT_SIZE_STORAGE,
+  TEXT_SIZES,
+  type TextSize,
+  textSizeApplies,
+} from './text-size';
+import { TextFactor } from '../ui/text-factor';
 
 export { DEFAULT_ACCENT, type Density, type SchemePreference } from '../settings/settings-registry';
 
@@ -48,6 +59,9 @@ export const DEVICE_SCHEME_QUERY = new InjectionToken<DeviceSchemeQuery | null>(
 export class ThemeFacade {
   private readonly root = inject(DOCUMENT).documentElement;
   private readonly view = inject(DOCUMENT).defaultView;
+  private readonly location = inject(DOCUMENT).location;
+  private readonly thisDevice = inject(TEXT_SIZE_STORAGE);
+  private readonly windowClass = inject(TextFactor).windowClass;
   private readonly settings = inject(SettingsFacade);
   private readonly deviceQuery = inject(DEVICE_SCHEME_QUERY);
   private readonly deviceDark = signal(this.deviceQuery?.matches ?? false);
@@ -70,6 +84,9 @@ export class ThemeFacade {
   readonly settingsList = this.settings.value(PRESENTATION.settingsList);
   /** Whether the menus show the parts of the vision not built yet, each marked « Bientôt ». */
   readonly showComing = this.settings.value(PRESENTATION.showComing);
+  private readonly textSizeKept = signal<TextSize>(storedTextSize(this.thisDevice));
+  /** How large the text is on this device: kept in this browser, the person's other devices keep their own. */
+  readonly textSize = this.textSizeKept.asReadonly();
 
   constructor() {
     const query = this.deviceQuery;
@@ -77,6 +94,15 @@ export class ThemeFacade {
       const follow = () => this.deviceDark.set(query.matches);
       query.addEventListener('change', follow);
       inject(DestroyRef).onDestroy(() => query.removeEventListener('change', follow));
+    }
+    // A size chosen in another tab of this browser shows here at once, as every other outcome does.
+    const view = this.view;
+    if (view !== null) {
+      const followDevice = (event: StorageEvent) => {
+        if (event.key === TEXT_SIZE_KEY) this.textSizeKept.set(storedTextSize(this.thisDevice));
+      };
+      view.addEventListener('storage', followDevice);
+      inject(DestroyRef).onDestroy(() => view.removeEventListener('storage', followDevice));
     }
     effect(() => {
       const scheme = this.scheme();
@@ -96,9 +122,19 @@ export class ThemeFacade {
       this.root.classList.toggle('theme-dark', scheme === 'dark');
       this.root.classList.toggle('preset-vif', preset === 'vif');
       this.root.classList.toggle('density-compact', this.density() === 'compact');
+      // The root's font size, which every rem follows; the window facing the customer keeps its own.
+      const size = textSizeApplies(this.location?.pathname ?? '/') ? this.textSize() : '100';
+      for (const each of TEXT_SIZES) {
+        const name = TEXT_SIZE_CLASSES[each];
+        if (name !== null) this.root.classList.toggle(name, each === size);
+      }
       // Reading a computed style makes the browser apply the new colours now, while transitions are still held.
       void this.view?.getComputedStyle(this.root).color;
       this.view?.requestAnimationFrame(() => this.root.classList.remove('theme-changing'));
+    });
+    // The rules a phone takes in styles.scss read the class from here, decided on effective pixels as the shell's.
+    effect(() => {
+      this.root.dataset['window'] = this.windowClass();
     });
   }
 
@@ -114,6 +150,11 @@ export class ThemeFacade {
 
   setThemePreset(preset: ThemePreset): void {
     this.settings.set(PRESENTATION.themePreset, preset);
+  }
+
+  setTextSize(size: TextSize): void {
+    keepTextSize(this.thisDevice, size);
+    this.textSizeKept.set(size);
   }
 
   setDensity(density: Density): void {

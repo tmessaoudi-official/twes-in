@@ -94,8 +94,24 @@ $type-steps: (
   display-large: var(--text-m3-display-large),
 );
 
+// A phone's rules read `:root[data-window='compact']`, which ThemeFacade writes from the window class, rather than a
+// px media query: that is decided on effective pixels (the window over the text factor), which no media query follows,
+// so the shell's bottom bar and the rules a phone takes switch at the same width at every text size.
 html {
   height: 100%;
+
+  // The device's text size (app/shared/theme/text-size.ts): every rem, so every type step, gap, control height and the
+  // rail, follows the root. 112.5 % rather than 112 % so a rem lands on whole pixels; a percentage keeps a browser
+  // whose own size was raised raised. « Taille du texte » draws its « Aa » samples at the same steps.
+  --twes-text-size-112: 112.5%;
+  --twes-text-size-125: 125%;
+
+  &.twes-text-112 {
+    font-size: var(--twes-text-size-112);
+  }
+  &.twes-text-125 {
+    font-size: var(--twes-text-size-125);
+  }
   // `theme-type: color-scheme` compiles every colour role to light-dark(), so dark mode is one property.
   color-scheme: light;
   @include mat.theme(
@@ -155,12 +171,14 @@ html {
   }
 
   // The approved component sheet (docs/SPEC.md § 7): 40 px fields and 36 px buttons on a 10 px corner, a table
-  // whose header is a quiet label row and whose rows are separated by hairlines only.
+  // whose header is a quiet label row and whose rows are separated by hairlines only. Every height is in rem, so each
+  // control grows with the device's text size and a wrapped label or Arabic's taller line is never cut; the
+  // stylesheet spec in shared/theme/text-size.spec.ts refuses a px one.
   @include mat.form-field-overrides(
     (
       outlined-container-shape: var(--radius-control),
-      container-height: 40px,
-      container-vertical-padding: 8px,
+      container-height: 2.5rem,
+      container-vertical-padding: 0.5rem,
     )
   );
   @include mat.button-overrides(
@@ -180,17 +198,58 @@ html {
       text-container-shape: var(--radius-control),
       tonal-container-shape: var(--radius-control),
       protected-container-shape: var(--radius-control),
-      filled-container-height: 36px,
-      outlined-container-height: 36px,
-      text-container-height: 36px,
-      tonal-container-height: 36px,
-      protected-container-height: 36px
+      filled-container-height: 2.25rem,
+      outlined-container-height: 2.25rem,
+      text-container-height: 2.25rem,
+      tonal-container-height: 2.25rem,
+      protected-container-height: 2.25rem
+    )
+  );
+  // Material's density emits the other components' heights in px: each one the screens use is given again in rem, at
+  // the comfortable density's values.
+  @include mat.icon-button-overrides(
+    (
+      state-layer-size: 2.5rem,
+    )
+  );
+  @include mat.button-toggle-overrides(
+    (
+      height: 2.5rem,
+    )
+  );
+  @include mat.tabs-overrides(
+    (
+      container-height: 3rem,
+    )
+  );
+  @include mat.paginator-overrides(
+    (
+      container-size: 3.5rem,
+      form-field-container-height: 2.5rem,
+      form-field-container-vertical-padding: 0.5rem,
+    )
+  );
+  @include mat.checkbox-overrides(
+    (
+      state-layer-size: 2.5rem,
+    )
+  );
+  @include mat.radio-overrides(
+    (
+      state-layer-size: 2.5rem,
+    )
+  );
+  @include mat.toolbar-overrides(
+    (
+      standard-height: 4rem,
+      mobile-height: 3.5rem,
     )
   );
   // A selected navigation row is filled with the soft accent, not Material's secondary container (direction § 1.1).
   @include mat.list-overrides(
     (
       active-indicator-color: var(--twes-accent-soft),
+      list-item-one-line-container-height: 3rem,
     )
   );
   // A card is a flat panel on the page, not a raised sheet: the page itself is already the lifted surface. Every card
@@ -231,10 +290,10 @@ html {
   @include mat.table-overrides(
     (
       background-color: transparent,
-      header-container-height: 44px,
+      header-container-height: 2.75rem,
       header-headline-weight: var(--font-weight-semibold),
       header-headline-color: var(--mat-sys-on-surface-variant),
-      row-item-container-height: 52px,
+      row-item-container-height: 3.25rem,
       row-item-outline-color: var(--mat-sys-outline-variant),
     )
   );
@@ -256,14 +315,67 @@ html {
     );
     @include mat.form-field-overrides(
       (
-        container-height: 36px,
-        container-vertical-padding: 6px,
+        container-height: 2.25rem,
+        container-vertical-padding: 0.375rem,
       )
     );
     @include mat.table-overrides(
       (
-        header-container-height: 36px,
-        row-item-container-height: 40px,
+        header-container-height: 2.25rem,
+        row-item-container-height: 2.5rem,
+      )
+    );
+    // The density's own px heights, at its values in rem.
+    @include mat.button-overrides(
+      (
+        filled-container-height: 2rem,
+        outlined-container-height: 2rem,
+        text-container-height: 2rem,
+        tonal-container-height: 2rem,
+        protected-container-height: 2rem,
+      )
+    );
+    @include mat.button-toggle-overrides(
+      (
+        height: 2.5rem,
+      )
+    );
+    @include mat.icon-button-overrides(
+      (
+        state-layer-size: 2rem,
+      )
+    );
+    @include mat.tabs-overrides(
+      (
+        container-height: 2.5rem,
+      )
+    );
+    @include mat.list-overrides(
+      (
+        list-item-one-line-container-height: 2.5rem,
+      )
+    );
+    @include mat.paginator-overrides(
+      (
+        container-size: 3rem,
+        form-field-container-height: 2.5rem,
+        form-field-container-vertical-padding: 0.5rem,
+      )
+    );
+    @include mat.checkbox-overrides(
+      (
+        state-layer-size: 2rem,
+      )
+    );
+    @include mat.radio-overrides(
+      (
+        state-layer-size: 2rem,
+      )
+    );
+    @include mat.toolbar-overrides(
+      (
+        standard-height: 3.5rem,
+        mobile-height: 3rem,
       )
     );
   }
@@ -517,7 +629,7 @@ html {
     white-space: nowrap;
   }
 
-  @media (max-width: 599.98px) {
+  :root[data-window='compact'] & {
     .twes-list-search {
       flex-basis: 100%;
       max-width: none;
@@ -1070,7 +1182,7 @@ textarea {
   background-color: color-mix(in oklch, currentColor 22%, transparent);
 
   // A phone has no keyboard to press it on.
-  @media (max-width: 599.98px) {
+  :root[data-window='compact'] & {
     display: none;
   }
 }
@@ -1321,7 +1433,7 @@ app-cookie-notice {
  * A screen's title and its actions. On a phone the actions wrap under the title, and the filled one, what the screen
  * is for (« Nouvelle facture »), came last behind the exports: it is drawn first instead, the order a person reads.
  */
-@media (max-width: 599.98px) {
+:root[data-window='compact'] {
   .twes-page-head > .flex-wrap > .mat-mdc-unelevated-button {
     order: -1;
   }
@@ -1332,7 +1444,7 @@ app-cookie-notice {
  * value says its column before it. The stock valuation and the legal pages' overview scrolled sideways on a phone,
  * with nothing saying three of their columns lay off screen.
  */
-@media (max-width: 599.98px) {
+:root[data-window='compact'] {
   // Qualified, so it outweighs a table's own cell rules written later in this file (`.twes-legal-table td`).
   table.twes-stack-table {
     min-width: 0;
@@ -1785,7 +1897,7 @@ app-cookie-notice {
     font-size: var(--text-xl);
   }
 
-  @media (max-width: 599.98px) {
+  :root[data-window='compact'] & {
     padding-inline: 0.5rem;
 
     .twes-command-open-label,

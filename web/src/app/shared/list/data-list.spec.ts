@@ -21,7 +21,7 @@ import {
   PRESENTATION,
 } from '../settings/settings-registry';
 import { DataList, DataListCell, DataListSelection } from './data-list';
-import { WINDOW_CLASS, type WindowClass } from '../ui/window-class';
+import { TextFactor, WINDOW_CLASS, type WindowClass } from '../ui/window-class';
 import type {
   ListDescriptor,
   ListFacetCounts,
@@ -392,6 +392,9 @@ describe('DataList', () => {
     return reads;
   }
 
+  /** How much larger the text is than at 100 %: 1.25 at the largest text size. */
+  let textFactor = 1;
+
   async function mount(
     saved?: ListPreferences,
     savedViews?: ListView[],
@@ -416,6 +419,11 @@ describe('DataList', () => {
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: storage },
         { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
+        // jsdom's window is 1,024 px wide: the rail class, as the real factor reads it.
+        {
+          provide: TextFactor,
+          useValue: { factor: signal(textFactor), windowClass: signal<WindowClass>('medium') },
+        },
         ...provideQuietFeedback(),
       ],
     });
@@ -645,6 +653,48 @@ describe('DataList', () => {
 
     expect(q('list-header-balance')!.style.width).toBe('100px');
     window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  });
+
+  // Widths are kept at 100 % and drawn times the text factor, so a width saved at 125 % reads back the same at 100 %.
+  describe('at 125 % text', () => {
+    beforeEach(async () => {
+      textFactor = 1.25;
+      await mount();
+    });
+
+    afterEach(() => {
+      textFactor = 1;
+    });
+
+    it('draws each declared width times the factor', () => {
+      expect(q('list-header-balance')!.style.width).toBe('150px');
+      expect(q('customers-table')!.style.minWidth).toBe('750px');
+      // What a separator says is the width kept, at 100 %.
+      expect(q('list-resize-balance')!.getAttribute('aria-valuenow')).toBe('120');
+    });
+
+    it('keeps a width chosen from the keyboard at 100 %', async () => {
+      q('list-resize-balance')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+      );
+      await settle();
+
+      expect(preferences().widths).toEqual({ balance: 136 });
+      expect(q('list-header-balance')!.style.width).toBe('170px');
+    });
+
+    it('keeps a drag of 25 screen pixels as 20 at 100 %', async () => {
+      q('list-resize-balance')!.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, clientX: 300 }),
+      );
+      window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 275 }));
+      await settle();
+      expect(q('list-header-balance')!.style.width).toBe('125px');
+      window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+      await settle();
+
+      expect(preferences().widths).toEqual({ balance: 100 });
+    });
   });
 
   it('starts from what a person saved', async () => {
@@ -1308,6 +1358,7 @@ describe('DataList', () => {
   describe('on a wide window, where the card is measured', () => {
     let host: ComponentFixture<DeclaredHost>;
     let card = 0;
+    const factor = signal(1);
     const realObserver = globalThis.ResizeObserver;
     const realWidth = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')!;
 
@@ -1381,11 +1432,16 @@ describe('DataList', () => {
           { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
           { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
           { provide: WINDOW_CLASS, useValue: signal<WindowClass>('expanded') },
+          {
+            provide: TextFactor,
+            useValue: { factor, windowClass: signal<WindowClass>('expanded') },
+          },
         ],
       });
     });
 
     afterEach(() => {
+      factor.set(1);
       globalThis.ResizeObserver = realObserver;
       Object.defineProperty(Element.prototype, 'clientWidth', realWidth);
     });
@@ -1415,6 +1471,15 @@ describe('DataList', () => {
       expect(toggle.checked).toBe(true);
       expect(chooserEntry('status')).toContain('hidden: not enough room');
       expect(chooserEntry('city')).not.toContain('hidden: not enough room');
+    });
+
+    // A card 875 px wide at 125 % holds what a 700 px card holds at 100 %: the same column gives way, each drawn larger.
+    it('fits the columns on the card in effective pixels', async () => {
+      factor.set(1.25);
+      await measured(875);
+      expect(header('status')).toBeNull();
+      expect(header('name')).toBe('200px');
+      expect(header('balance')).toBe('150px');
     });
 
     it('hides the lowest priority first, and never the column the row opens on', async () => {

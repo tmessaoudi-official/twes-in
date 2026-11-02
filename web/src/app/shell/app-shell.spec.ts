@@ -12,6 +12,8 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { BehaviorSubject, map, of } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { WINDOW_CLASS, windowClassOf } from '../shared/ui/window-class';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanyEntry } from '../shared/company-proof/company-entry';
 import type { EntryAsked } from '../shared/company-proof/company-entry-proof';
@@ -319,6 +321,12 @@ describe('AppShell', () => {
           { path: 'awaiting-approval', component: BlankPage },
         ]),
         { provide: BreakpointObserver, useValue: viewport(width) },
+        // The window class reads the window over the text factor, at 100 % here.
+        {
+          provide: WINDOW_CLASS,
+          useFactory: () =>
+            toSignal(width.pipe(map((px) => windowClassOf(px, 1))), { requireSync: true }),
+        },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: WatchFacade, useValue: watch },

@@ -8,8 +8,9 @@
 #     declared cookies, both ways;
 #   - the twes.* keys in every web file that reaches browser storage (one naming a *_STORAGE token) against the
 #     declared keys, both ways; a `<placeholder>` in a declared name matches a `${…}` in a built one;
-#   - browser storage itself reached only inside a *_STORAGE token's factory; document.cookie, IndexedDB, the Cache API,
-#     cookieStore and a service worker nowhere;
+#   - browser storage itself reached only inside a *_STORAGE token's factory, or by index.html's boot script, which
+#     runs before Angular to put the device's text size on the first paint and whose keys are compared as a storage
+#     file's; document.cookie, IndexedDB, the Cache API, cookieStore and a service worker nowhere;
 #   - the CSP's script-src (infra/web/nginx.conf) naming no host, and no <script src> off-origin nor a script element
 #     built by the page.
 # Specs are not the app. STORED_ITEMS_FLOOR (default 6) is the fewest items discovery must find.
@@ -47,13 +48,14 @@ cookies=$(printf '%s\n' "$cookies" | grep -v '^$' | sort -u)
 
 # Browser storage reached outside a token's factory, or a store the page declares none of.
 mapfile -t token_files < <(cd "$root" && grep -lE 'export const [A-Z_]+_STORAGE = new InjectionToken' "${web[@]}" /dev/null 2>/dev/null)
-mapfile -t raw < <(cd "$root" && grep -lE '\b(localStorage|sessionStorage)\b' "${web[@]}" /dev/null 2>/dev/null | grep -vxF -f <(printf '%s\n' "${token_files[@]}" '-'))
+boot=web/src/index.html
+mapfile -t raw < <(cd "$root" && grep -lE '\b(localStorage|sessionStorage)\b' "${web[@]}" /dev/null 2>/dev/null | grep -vxF -f <(printf '%s\n' "${token_files[@]}" "$boot" '-'))
 ((${#raw[@]})) && say "browser storage reached outside a *_STORAGE token's factory (inject the token instead):" "${raw[@]}"
 mapfile -t forbidden < <(cd "$root" && grep -lE '\bdocument\.cookie\b|\bindexedDB\b|\bcookieStore\b|\bcaches\.(open|match)\b|serviceWorker\.register' "${web[@]}" /dev/null 2>/dev/null)
 ((${#forbidden[@]})) && say "a cookie, a database, a cache or a service worker the Cookies page declares none of:" "${forbidden[@]}"
 
 # Keys in every file that reaches storage.
-mapfile -t storage_files < <(cd "$root" && grep -lE '\b[A-Z_]+_STORAGE\b' "${web[@]}" /dev/null 2>/dev/null)
+mapfile -t storage_files < <(cd "$root" && grep -lE '\b[A-Z_]+_STORAGE\b' "${web[@]}" /dev/null 2>/dev/null; cd "$root" && grep -lE '\b(localStorage|sessionStorage)\b' "$boot" 2>/dev/null)
 keys=""
 if ((${#storage_files[@]})); then
   # Comments first: a doc comment quoting a key's shape is not a key.

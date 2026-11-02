@@ -77,6 +77,9 @@ class StaticLoader implements TranslateLoader {
           count: 'Réservée au nombre avant un scan.',
           taken: 'Déjà donnée à une autre action.',
         },
+        text_size: 'Taille du texte',
+        text_size_hint: 'Sur cet appareil seulement : chaque appareil garde la sienne.',
+        text_sizes: { '100': '100 %', '112': '112 %', '125': '125 %' },
         two_factor: 'Vérification en deux étapes',
         two_factor_on: 'Activée',
         two_factor_off: 'Désactivée',
@@ -131,9 +134,12 @@ describe('AccountPage', () => {
   const density = signal<'comfortable' | 'compact'>('comfortable');
   const showComing = signal(true);
   const themePreset = signal<'calme' | 'vif'>('vif');
+  const textSize = signal<'100' | '112' | '125'>('100');
   const theme = {
     preference,
     themePreset,
+    textSize,
+    setTextSize: vi.fn(),
     density,
     showComing,
     setScheme: vi.fn(),
@@ -570,6 +576,30 @@ describe('AccountPage', () => {
     expect(theme.setScheme).toHaveBeenCalledWith('dark');
     expect(theme.setThemePreset).toHaveBeenCalledWith('calme');
     expect(theme.setDensity).toHaveBeenCalledWith('compact');
+  });
+
+  // The text size belongs to the device: offered beside the colour style, each size showing « Aa » at its size.
+  it('offers the text size as « Aa » at each size, the one in force pressed', async () => {
+    textSize.set('112');
+    const root = await render('preferences');
+    const group = byTestId(root, 'account-text-size');
+    expect(group?.textContent).toContain('Taille du texte');
+    expect(group?.textContent).toContain('Sur cet appareil seulement');
+    const sizes = ['100', '112', '125'].map((size) =>
+      byTestId(root, `account-text-size-${size}`)?.querySelector('button'),
+    );
+    // Its name holds the « Aa » it shows, so what is seen is what is heard.
+    expect(sizes.map((button) => button?.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      'Aa 100 %',
+      'Aa 112 %',
+      'Aa 125 %',
+    ]);
+    expect(sizes[1]?.getAttribute('aria-checked') ?? sizes[1]?.getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+
+    sizes[2]?.click();
+    expect(theme.setTextSize).toHaveBeenCalledWith('125');
   });
 
   // docs/SPEC.md § 7, 2026-09-25 12:45, row 130.

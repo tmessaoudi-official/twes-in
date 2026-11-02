@@ -29,6 +29,7 @@ export const STORED_ITEMS: readonly StoredItem[] = [
   { id: 'notice', name: 'twes.cookie-notice', kind: 'local', lasts: 'kept' },
   { id: 'customer_screen_place', name: 'twes.customer-screen.place', kind: 'local', lasts: 'kept' },
   { id: 'install_later', name: 'twes.install.later', kind: 'local', lasts: 'kept' },
+  { id: 'text_size', name: 'twes.text-size', kind: 'local', lasts: 'kept' },
   { id: 'stock_plan', name: 'twes.stock-plan.<company>.<floor>', kind: 'local', lasts: 'kept' },
   { id: 'phone', name: 'twes.scan.phone', kind: 'session', lasts: 'tab' },
 ];

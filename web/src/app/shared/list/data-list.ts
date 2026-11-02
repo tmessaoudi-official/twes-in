@@ -109,7 +109,7 @@ import { menuOrder } from '../actions/record-action';
 import { runAction } from '../actions/run-action';
 import { ConfirmDialog } from '../ui/confirm-dialog';
 import type { ActionConfirm } from '../actions/screen-action';
-import { WINDOW_CLASS } from '../ui/window-class';
+import { TextFactor, WINDOW_CLASS } from '../ui/window-class';
 
 /** `<ng-template appDataListCell="columnId" let-row>`: how one column's cell renders instead of its plain value. */
 @Directive({ selector: 'ng-template[appDataListCell]' })
@@ -296,6 +296,11 @@ export class DataList<Row> implements OnInit {
   private readonly cells = contentChildren(DataListCell);
   protected readonly selectionActions = contentChild(DataListSelection);
   private readonly windowClass = inject(WINDOW_CLASS);
+  /**
+   * How much larger the text is than at 100 %. Every width here, declared, chosen or measured, is kept in 100 % pixels
+   * and drawn times it, so a width saved at 125 % reads back the same at 100 %.
+   */
+  private readonly textFactor = inject(TextFactor).factor;
 
   private readonly setting = computed(() => listPreferencesSetting(this.descriptor().id));
   private readonly stored = computed(() => this.settings.value(this.setting()));
@@ -338,6 +343,11 @@ export class DataList<Row> implements OnInit {
   protected readonly toolbarHeight = signal<number | null>(null);
   /** How wide the table's card is, once measured; null before, and where there is no layout. */
   private readonly boxWidth = signal<number | null>(null);
+  /** The card's width in 100 % pixels, what the columns' widths are weighed against. */
+  private readonly cardWidth = computed(() => {
+    const box = this.boxWidth();
+    return box === null ? null : box / this.textFactor();
+  });
   /**
    * How wide each column's widest value drew, its padding included, by column id: a column hidden for width keeps
    * what it last measured, so it comes back only once the card has room for it, until other rows replace those it
@@ -367,7 +377,7 @@ export class DataList<Row> implements OnInit {
         hideable: column.hideable !== false && column.id !== link,
       })),
       (this.hasRowControls() ? this.iconActionsWidth() : 0) + this.selectWidth(),
-      this.boxWidth(),
+      this.cardWidth(),
     );
   });
   /** What the table draws: the columns shown that fit, each at its own width. */
@@ -428,7 +438,7 @@ export class DataList<Row> implements OnInit {
     if (this.windowClass() !== 'expanded' || !actions.some((action) => action.next !== undefined)) {
       return false;
     }
-    const card = this.boxWidth();
+    const card = this.cardWidth();
     return (
       card === null ||
       (this.squeezed().size === 0 &&
@@ -1114,6 +1124,11 @@ export class DataList<Row> implements OnInit {
 
   protected trackRow = (_index: number, row: Row): string => this.descriptor().rowId(row);
 
+  /** A width kept in 100 % pixels, as drawn at the device's text size. */
+  protected drawn(width: number): number {
+    return width * this.textFactor();
+  }
+
   /** The width a column occupies: a live drag, then the chosen width, else the declared one widened to its values. */
   protected widthOf(column: ListColumn<Row>): number {
     const live = this.liveWidth();
@@ -1138,7 +1153,7 @@ export class DataList<Row> implements OnInit {
     return wrapWidths(
       new Map(wraps.map((column) => [column.id, this.columnWidth(column)])),
       others + this.selectWidth() + (this.hasRowControls() ? this.actionsWidth() : 0),
-      this.boxWidth(),
+      this.cardWidth(),
     );
   });
 
@@ -1174,11 +1189,12 @@ export class DataList<Row> implements OnInit {
     );
     if (cells.length === 0) return;
     const range = this.document.createRange();
+    const factor = this.textFactor();
     const measured = new Map<string, number>();
     for (const cell of cells) {
       const id = cell.dataset['column'];
       if (id === undefined) continue;
-      measured.set(id, Math.max(measured.get(id) ?? 0, valueWidth(cell, range)));
+      measured.set(id, Math.max(measured.get(id) ?? 0, valueWidth(cell, range) / factor));
     }
     this.widest.set(new Map([...this.widest(), ...measured]));
   }
@@ -1410,7 +1426,10 @@ export class DataList<Row> implements OnInit {
       this.liveWidth.set({
         id: column.id,
         width: clampWidth(
-          Math.round(startWidth + towardsEnd(moved.clientX - startX, this.direction.value)),
+          Math.round(
+            startWidth +
+              towardsEnd(moved.clientX - startX, this.direction.value) / this.textFactor(),
+          ),
         ),
       });
     const up = () => {
@@ -1435,7 +1454,10 @@ export class DataList<Row> implements OnInit {
    */
   private renderedWidth(column: ListColumn<Row>, event: Event): number {
     const header = (event.currentTarget as HTMLElement | null)?.closest('th');
-    return Math.round(header?.getBoundingClientRect().width ?? 0) || this.widthOf(column);
+    return (
+      Math.round((header?.getBoundingClientRect().width ?? 0) / this.textFactor()) ||
+      this.widthOf(column)
+    );
   }
 
   private saveWidth(id: string, width: number): void {

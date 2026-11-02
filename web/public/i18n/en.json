@@ -3273,7 +3273,8 @@
         "customer_screen_place": "The establishment this device's customer screen stands at, for each company.",
         "stock_plan": "A floor’s plan arranged and not saved yet, to take it up again on this device.",
         "phone": "The link of a phone lent as a scanner.",
-        "install_later": "That the offer to install the app, on the home page, was put aside on this device."
+        "install_later": "That the offer to install the app, on the home page, was put aside on this device.",
+        "text_size": "The text size chosen for this device, applied as soon as the page opens."
       },
       "third_party": "No third-party script, no audience measurement, no advertising."
     }

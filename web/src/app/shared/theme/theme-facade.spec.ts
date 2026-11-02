@@ -7,6 +7,7 @@ import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings
 import { accentTokens, colourTokens, InvalidAccentColour, statusTokens } from './accent-theme';
 import { surfaceTokens } from './neutral-ramp';
 import { DEFAULT_ACCENT, DEVICE_SCHEME_QUERY, ThemeFacade } from './theme-facade';
+import { TEXT_SIZE_KEY, TEXT_SIZE_STORAGE } from './text-size';
 
 /** The device's `prefers-color-scheme: dark` query, which a test turns on and off. */
 class DeviceQuery {
@@ -28,10 +29,13 @@ describe('ThemeFacade', () => {
   const root = document.documentElement;
 
   let storage: PageMemoryStorage;
+  let thisDevice: PageMemoryStorage;
   let device: DeviceQuery;
 
   beforeEach(() => {
     storage = new PageMemoryStorage();
+    thisDevice = new PageMemoryStorage();
+    history.replaceState(null, '', '/');
     device = new DeviceQuery();
     root.className = '';
     root.removeAttribute('style');
@@ -45,6 +49,7 @@ describe('ThemeFacade', () => {
         { provide: SETTINGS_STORAGE, useValue: storage },
         { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
         { provide: DEVICE_SCHEME_QUERY, useValue: device },
+        { provide: TEXT_SIZE_STORAGE, useValue: thisDevice },
       ],
     });
     const facade = TestBed.inject(ThemeFacade);
@@ -249,5 +254,57 @@ describe('ThemeFacade', () => {
     expect(reloaded.density()).toBe('compact');
     expect(reloaded.accent()).toBe('#d93025');
     expect(root.classList.contains('theme-dark')).toBe(true);
+  });
+
+  // The text size belongs to the device, not the person (D2): it is kept in this browser and never sent to the API.
+  describe('the text size', () => {
+    it('starts at 100 %, the root left at the browser size', () => {
+      const facade = start();
+      expect(facade.textSize()).toBe('100');
+      expect(root.className).not.toMatch(/twes-text-/);
+    });
+
+    it('applies the size this device keeps as soon as it starts', () => {
+      thisDevice.setItem(TEXT_SIZE_KEY, '125');
+      start();
+      expect(root.classList.contains('twes-text-125')).toBe(true);
+    });
+
+    it('switches inside .theme-changing and keeps the choice on this device only', () => {
+      const facade = start();
+      const personal = vi.spyOn(storage, 'setItem');
+      facade.setTextSize('112');
+      TestBed.tick();
+      // The frame that ends the hold has not run yet: the size changed while transitions were held.
+      expect(root.classList.contains('theme-changing')).toBe(true);
+      expect(root.classList.contains('twes-text-112')).toBe(true);
+      expect(thisDevice.getItem(TEXT_SIZE_KEY)).toBe('112');
+      expect(personal).not.toHaveBeenCalled();
+
+      facade.setTextSize('100');
+      TestBed.tick();
+      expect(root.className).not.toMatch(/twes-text-/);
+    });
+
+    it('follows a size chosen in another tab', () => {
+      const facade = start();
+      thisDevice.setItem(TEXT_SIZE_KEY, '125');
+      window.dispatchEvent(new StorageEvent('storage', { key: TEXT_SIZE_KEY, newValue: '125' }));
+      TestBed.tick();
+      expect(facade.textSize()).toBe('125');
+      expect(root.classList.contains('twes-text-125')).toBe(true);
+    });
+
+    it('leaves the customer display at its own size', () => {
+      thisDevice.setItem(TEXT_SIZE_KEY, '125');
+      history.replaceState(null, '', '/customer-display');
+      start();
+      expect(root.className).not.toMatch(/twes-text-/);
+    });
+
+    it('says the window class on the root, for the rules a phone takes', () => {
+      start();
+      expect(['compact', 'medium', 'expanded']).toContain(root.dataset['window']);
+    });
   });
 });

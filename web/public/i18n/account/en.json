@@ -47,6 +47,13 @@
     "language": "Language",
     "scheme": "Theme",
     "theme_preset": "Colour style",
+    "text_size": "Text size",
+    "text_size_hint": "On this device only: each device keeps its own.",
+    "text_sizes": {
+      "100": "100%",
+      "112": "112%",
+      "125": "125%"
+    },
     "density": "Density",
     "date_format": "Date format",
     "number_format": "Number format",

@@ -15,6 +15,26 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="manifest" href="/api/web-manifest" />
     <meta name="theme-color" content="#1f6feb" />
+    <!--
+      The text size this device keeps (Mon compte, Préférences), put on the root before the first paint so the page
+      never reflows to it; the customer display keeps its own. ThemeFacade applies the same key again and follows its
+      changes (app/shared/theme/text-size.ts). nginx writes the response's nonce in, as for every inline script.
+    -->
+    <script nonce="**CSP_NONCE**">
+      (function () {
+        try {
+          var size = window.localStorage.getItem('twes.text-size');
+          if (
+            (size === '112' || size === '125') &&
+            !/^\/customer-display(?:[/?#]|$)/.test(location.pathname)
+          ) {
+            document.documentElement.classList.add('twes-text-' + size);
+          }
+        } catch (blocked) {
+          // Site data blocked: the browser's own size, as the app then reads too.
+        }
+      })();
+    </script>
   </head>
   <body>
     <!-- nginx replaces the placeholder with this response's CSP nonce (infra/web/nginx.conf). -->

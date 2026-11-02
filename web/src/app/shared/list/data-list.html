@@ -479,7 +479,7 @@
         [matSortDirection]="sort()?.direction ?? ''"
         (matSortChange)="onSort($event)"
         class="w-full table-fixed"
-        [style.min-width.px]="tableWidth()"
+        [style.min-width.px]="drawn(tableWidth())"
         [attr.data-testid]="testId()"
       >
         @if (selectable()) {
@@ -488,7 +488,7 @@
               mat-header-cell
               *matHeaderCellDef
               class="twes-row-select"
-              [style.width.px]="selectWidthPx"
+              [style.width.px]="drawn(selectWidthPx)"
             >
               <mat-checkbox
                 [checked]="pageTicked().all"
@@ -514,7 +514,7 @@
               [arrowPosition]="column.align === 'end' ? 'before' : 'after'"
               class="relative"
               [class]="column.align === 'end' ? '!text-end' : ''"
-              [style.width.px]="widthOf(column)"
+              [style.width.px]="drawn(widthOf(column))"
               [attr.data-column]="column.id"
               [attr.data-testid]="'list-header-' + column.id"
             >
@@ -594,7 +594,7 @@
               mat-header-cell
               *matHeaderCellDef
               class="twes-row-actions"
-              [style.width.px]="actionsWidth()"
+              [style.width.px]="drawn(actionsWidth())"
             >
               <span class="sr-only">{{ 'list.actions' | translate }}</span>
             </th>

@@ -12,6 +12,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { FormsModule, NgModel } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -59,6 +60,7 @@ import {
   SUPPORTED_LANGUAGES,
 } from '../shared/settings/settings-registry';
 import { THEME_PRESETS, type ThemePreset } from '../shared/theme/neutral-ramp';
+import { TEXT_SIZES, type TextSize } from '../shared/theme/text-size';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { RefusedField } from '../shared/form/refused-field';
@@ -100,6 +102,7 @@ const PASSWORD_PROBLEM_FIELDS: Readonly<
     ConnectedDevices,
     NotificationChoices,
     MatButtonModule,
+    MatButtonToggleModule,
     FormsModule,
     MatFormFieldModule,
     Select,
@@ -112,6 +115,20 @@ const PASSWORD_PROBLEM_FIELDS: Readonly<
     TranslatePipe,
   ],
   templateUrl: './account-page.html',
+  // « Taille du texte »: each choice shows « Aa » at the size it gives, the root's own steps (styles.scss).
+  styles: [
+    `
+      .twes-text-sample {
+        font-weight: var(--font-weight-semibold);
+      }
+      .twes-text-sample[data-size='112'] {
+        font-size: var(--twes-text-size-112);
+      }
+      .twes-text-sample[data-size='125'] {
+        font-size: var(--twes-text-size-125);
+      }
+    `,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountPage implements OnInit {
@@ -218,6 +235,7 @@ export class AccountPage implements OnInit {
   protected readonly schemeOptions = this.choices('scheme', this.schemes);
   protected readonly themePresetOptions = this.choices('theme-preset', THEME_PRESETS);
   protected readonly densityOptions = this.choices('density', this.densities);
+  protected readonly textSizes = TEXT_SIZES;
   protected readonly dateFormatOptions = this.choices('date-format', this.dateFormats);
   protected readonly numberFormatOptions = this.choices('number-format', this.numberFormats);
   protected readonly companyOptions = computed<SelectOption[]>(() =>
@@ -436,6 +454,10 @@ export class AccountPage implements OnInit {
 
   protected themePresetOf(value: string): ThemePreset {
     return value as ThemePreset;
+  }
+
+  protected textSizeOf(value: unknown): TextSize {
+    return value as TextSize;
   }
 
   protected densityOf(value: string): Density {

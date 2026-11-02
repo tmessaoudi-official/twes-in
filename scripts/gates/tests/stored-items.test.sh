@@ -79,6 +79,16 @@ check "a CSP with no script-src is refused, since nothing then keeps a third-par
 d=$(repo); sed -i 's#<app-root>#<script src="https://cdn.example.com/a.js"></script><app-root>#' "$d/web/src/index.html"; out=$(run "$d")
 check "a script tag loading from another origin is named" $? 1 "$out" "index.html"
 
+boot() { printf '<!doctype html><html><head><script nonce="x">try { localStorage.getItem(%s); } catch (e) {}</script></head><body><app-root></app-root></body></html>\n' "'$2'" > "$1/web/src/index.html"; }
+d=$(repo); boot "$d" twes.scan.camera; out=$(run "$d")
+check "index.html's boot script reads a declared key before Angular starts" $? 0 "$out" "OK — 4 stored items"
+
+d=$(repo); boot "$d" twes.tracker; out=$(run "$d")
+check "index.html's boot script reading a key the list does not declare is named" $? 1 "$out" "twes.tracker"
+
+d=$(repo); printf '<p>x</p><script>localStorage.setItem("seen", "1")</script>\n' > "$d/web/src/app/x/page.html"; out=$(run "$d")
+check "any other page reaching browser storage is still named" $? 1 "$out" "page.html"
+
 d=$(repo); printf "const s = document.createElement('script');\n" > "$d/web/src/app/x/inject.ts"; out=$(run "$d")
 check "a script element built by the page is refused" $? 1 "$out" "inject.ts"
 

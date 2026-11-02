@@ -206,6 +206,32 @@
                     [ngModelOptions]="{ standalone: true }"
                     testId="account-theme-preset"
                   />
+                  <div class="flex flex-col gap-1" data-testid="account-text-size">
+                    <span id="account-text-size-label" class="text-label text-on-surface-variant">{{
+                      'account.text_size' | translate
+                    }}</span>
+                    <mat-button-toggle-group
+                      aria-labelledby="account-text-size-label"
+                      aria-describedby="account-text-size-hint"
+                      hideSingleSelectionIndicator
+                      [value]="theme.textSize()"
+                      (change)="theme.setTextSize(textSizeOf($event.value))"
+                    >
+                      @for (size of textSizes; track size) {
+                        <mat-button-toggle
+                          [value]="size"
+                          [attr.data-testid]="'account-text-size-' + size"
+                          ><span class="twes-text-sample" [attr.data-size]="size">Aa</span>
+                          {{ 'account.text_sizes.' + size | translate }}</mat-button-toggle
+                        >
+                      }
+                    </mat-button-toggle-group>
+                    <span
+                      id="account-text-size-hint"
+                      class="text-caption text-on-surface-variant"
+                      >{{ 'account.text_size_hint' | translate }}</span
+                    >
+                  </div>
                   <app-select
                     [label]="'account.density' | translate"
                     [labelInside]="true"

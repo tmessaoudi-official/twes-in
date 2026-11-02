@@ -47,6 +47,13 @@
     "language": "Langue",
     "scheme": "Thème",
     "theme_preset": "Style des couleurs",
+    "text_size": "Taille du texte",
+    "text_size_hint": "Sur cet appareil seulement : chaque appareil garde la sienne.",
+    "text_sizes": {
+      "100": "100 %",
+      "112": "112 %",
+      "125": "125 %"
+    },
     "density": "Densité",
     "date_format": "Format des dates",
     "number_format": "Format des nombres",
