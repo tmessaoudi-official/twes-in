@@ -52,12 +52,24 @@ final class RecoveryCodeTest extends TestCase
         self::assertSame(RecoveryCode::hashOf('abcde-fghjk'), RecoveryCode::hashOf('  ABCDE-FGHJK '));
     }
 
-    public function testASetIsTenDistinctCodes(): void
+    /** How many a set holds is the operator's (app.recovery_codes.per_set, 8 to 16): the set holds that many, all distinct. */
+    #[\PHPUnit\Framework\Attributes\TestWith([10])]
+    #[\PHPUnit\Framework\Attributes\TestWith([8])]
+    #[\PHPUnit\Framework\Attributes\TestWith([16])]
+    public function testASetIsAsManyDistinctCodesAsAsked(int $count): void
     {
-        $set = RecoveryCode::generateSet();
+        $set = RecoveryCode::generateSet($count);
 
-        self::assertCount(10, $set);
-        self::assertCount(10, array_unique(array_map(static fn (RecoveryCode $c): string => $c->raw, $set)));
+        self::assertCount($count, $set);
+        self::assertCount($count, array_unique(array_map(static fn (RecoveryCode $c): string => $c->raw, $set)));
+    }
+
+    public function testASetOfNoCodeIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('A set holds at least one recovery code.');
+
+        RecoveryCode::generateSet(0);
     }
 
     /** The lock lets a recovery code past and refuses six digits, so the shape must tell them apart and nothing else. */

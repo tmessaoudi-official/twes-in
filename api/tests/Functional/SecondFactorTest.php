@@ -381,7 +381,7 @@ final class SecondFactorTest extends ApiTestCase
         $user->confirmTotpEnrolment($codes->verify($this->secret, $codes->codeAt($this->secret, $earlier), $earlier) ?? 0);
 
         $raw = [];
-        foreach (RecoveryCode::generateSet() as $code) {
+        foreach (RecoveryCode::generateSet(10) as $code) {
             $raw[] = $code->raw;
             $this->em()->persist(new RecoveryCodeEntry($user, $code->hash()));
         }

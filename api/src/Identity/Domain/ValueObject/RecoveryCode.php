@@ -12,8 +12,9 @@ namespace App\Identity\Domain\ValueObject;
 use App\Shared\Domain\Service\TypedText;
 
 /**
- * A single-use way back in when the authenticator is gone. Ten are issued at enrolment and shown once
- * (ruling of 2026-09-10).
+ * A single-use way back in when the authenticator is gone. A set is issued at enrolment and shown once (ruling of
+ * 2026-09-10); how many it holds is the operator's (app.recovery_codes.per_set, ten as shipped), handed in by whoever
+ * issues it.
  *
  * Stored as SHA-256, like the invitation token and unlike a password: these are high-entropy values, so a
  * slow hash buys nothing against guessing and would turn one verification into ten argon2 passes. The
@@ -21,8 +22,6 @@ use App\Shared\Domain\Service\TypedText;
  */
 final readonly class RecoveryCode
 {
-    public const int PER_SET = 10;
-
     private const string ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 
     private const int GROUP = 5;
@@ -37,11 +36,14 @@ final readonly class RecoveryCode
     }
 
     /** @return list<self> */
-    public static function generateSet(): array
+    public static function generateSet(int $count): array
     {
+        if ($count < 1) {
+            throw new \InvalidArgumentException('A set holds at least one recovery code.');
+        }
         $codes = [];
 
-        while (\count($codes) < self::PER_SET) {
+        while (\count($codes) < $count) {
             $code = self::generate();
             // Distinct by construction rather than by luck: a duplicate would be a code that silently
             // burns two rows at once.

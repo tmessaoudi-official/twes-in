@@ -246,8 +246,9 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
     TranslatePipe,
   ],
   templateUrl: './data-list.html',
-  // An empty list's circle and its icon, larger than Material's 24 px. Here rather than in styles.scss or as utilities
-  // no other screen uses, so the rules travel with the lists, which no first page draws.
+  // What only a list draws: an empty list's circle and its icon, larger than Material's 24 px, a phone card's slots and
+  // an active filter's remove button. Here rather than in styles.scss or as utilities no other screen uses, so the
+  // rules travel with the lists, which no first page draws.
   styles: `
     .twes-empty-circle {
       background-color: var(--twes-accent-soft-raised);
@@ -256,6 +257,70 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
       width: var(--text-4xl);
       height: var(--text-4xl);
       font-size: var(--text-4xl);
+    }
+    /* A card laid out by its slots (cardTitle): the whole card is the title's link, its box and controls above it; the
+       amount at the second row's end is never cut, and goes under the subtitle when both do not fit. */
+    .twes-list-card-slotted {
+      position: relative;
+      min-block-size: 4.5rem;
+    }
+    .twes-list-card-slotted:has(.twes-list-card-link:focus-visible) {
+      outline: 2px solid var(--twes-focus);
+      outline-offset: 2px;
+    }
+    .twes-list-card-link {
+      outline: none;
+    }
+    .twes-list-card-link::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+    }
+    .twes-list-card-title {
+      font-size: var(--text-body);
+      font-weight: var(--font-weight-semibold);
+      line-height: var(--text-body--line-height);
+    }
+    .twes-list-card-slotted .twes-list-card-control {
+      position: relative;
+      z-index: 1;
+    }
+    .twes-list-card-line {
+      display: flex;
+      flex-wrap: wrap;
+      grid-column: 1 / -1;
+      align-items: baseline;
+      column-gap: 0.75rem;
+    }
+    /* Each part beside the last, a part a cell draws on two lines (a number over its kind) beside its day, not above it. */
+    .twes-list-card-subtitle {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      column-gap: 0.25rem;
+      min-width: 0;
+      margin: 0;
+    }
+    .twes-list-card-amount {
+      margin-inline-start: auto;
+      font-size: var(--text-figure-cell);
+      font-weight: var(--font-weight-strong);
+      line-height: var(--text-figure-cell--line-height);
+      white-space: nowrap;
+    }
+
+    /* An active filter's own remove button, inside its 2 rem chip: 1.75 rem, above the 24 px a target needs. */
+    .mat-mdc-icon-button.twes-chip-remove {
+      --mat-icon-button-state-layer-size: 1.75rem;
+      width: 1.75rem;
+      height: 1.75rem;
+      padding: 0.25rem;
+    }
+    .twes-chip-remove .mat-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+      font-size: var(--text-xl);
     }
   `,
   // The list brings its paginator's texts itself: provided at the root, they put Material's paginator, its select and
@@ -549,6 +614,53 @@ export class DataList<Row> implements OnInit {
     const title = this.titleColumn();
     return this.columns().filter((column) => column.id !== title?.id);
   });
+
+  /**
+   * The phone card's slots (`cardTitle`, `cardSubtitle`, `cardAmount`, `cardStatus`), as columns, or null for a list
+   * naming none, whose card keeps every column as a pair. A slot reads its column whether or not a person hid it from
+   * the table: the card is laid out by the list, and the record is one tap away.
+   */
+  protected readonly cardSlots = computed(() => {
+    const descriptor = this.descriptor();
+    if (descriptor.cardTitle === undefined) return null;
+    const known = new Map(descriptor.columns.map((column) => [column.id, column] as const));
+    const pick = (ids: readonly string[] | undefined): ListColumn<Row>[] =>
+      (ids ?? []).flatMap((id) => known.get(id) ?? []);
+    const title = known.get(descriptor.cardTitle) ?? this.titleColumn();
+    const subtitle = pick(descriptor.cardSubtitle);
+    const amount = pick(descriptor.cardAmount);
+    const status =
+      descriptor.cardStatus === undefined ? undefined : known.get(descriptor.cardStatus);
+    const slotted = new Set(
+      [title, ...subtitle, ...amount, status].flatMap((column) => (column ? [column.id] : [])),
+    );
+    // One more pair at most (the proposal's row 3): the first visible column the slots leave, in the person's order.
+    const rest = this.columns().filter((column) => !slotted.has(column.id));
+    return { title, subtitle, amount, status, rest };
+  });
+
+  /** The parts of a card's second row this row has anything in. */
+  protected cardParts(row: Row): ListColumn<Row>[] {
+    return (this.cardSlots()?.subtitle ?? []).filter((column) => this.inCard(column, row));
+  }
+
+  /** The amount a card shows for this row: the first of its columns the row has anything in. */
+  protected cardAmountOf(row: Row): ListColumn<Row> | null {
+    return (this.cardSlots()?.amount ?? []).find((column) => this.inCard(column, row)) ?? null;
+  }
+
+  /** The one further pair a slotted card names, if the row has anything in what the slots leave. */
+  protected cardExtra(row: Row): ListColumn<Row> | null {
+    return (this.cardSlots()?.rest ?? []).find((column) => this.inCard(column, row)) ?? null;
+  }
+
+  /**
+   * On a phone the choices wait behind « Filtres (n) » with the intervals and pickers, so the toolbar keeps to the search
+   * and its tools and the first card stays on the first screen.
+   */
+  protected readonly foldsFacets = computed(() => this.asCards() && this.filters().length > 0);
+  /** Whether the toolbar offers « Filtres »: something waits behind it. */
+  protected readonly hasFilterButton = computed(() => this.hasPanel() || this.foldsFacets());
 
   /** Whether a card names this field for the row: a label with nothing under it reads as data that is missing. */
   protected inCard(column: ListColumn<Row>, row: Row): boolean {

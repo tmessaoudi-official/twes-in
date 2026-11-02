@@ -12,6 +12,7 @@ namespace App\Shared\Infrastructure\ErrorReporting;
 use App\Shared\Infrastructure\Logging\SecretTokens;
 use Sentry\Event;
 use Sentry\EventHint;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * What an error report keeps before it leaves for the error tracker (docs/START.md § 15): where it happened and in
@@ -21,9 +22,11 @@ use Sentry\EventHint;
  * database error details after its column names (`Key (name)=(…)`, `Failing row contains (…)`), which hold whatever
  * the row held, parentheses included, so they are cut to the end of the detail. The person, the body,
  * the query, the cookies, the headers, the client address, the breadcrumbs and the frames' variables are dropped.
- * Named in config/packages/sentry.yaml as the SDK's before_send.
+ * The operator's own masks (app.error_reporting.extra_masks, checked by ErrorReportingMasksBounds) run after the built-in
+ * ones, which no parameter reaches: they add what a deployment's own data looks like and can take nothing away.
+ * Named in config/packages/sentry.yaml as the SDK's before_send, which the bundle resolves as this service.
  */
-final class ScrubPersonalData
+final readonly class ScrubPersonalData
 {
     private const array MASKS = [
         '/(\bKey \([^)]*\)=)\(.*?\)(?= already exists| is not present| is still referenced| conflicts with|\.?[ \t]*$)/mu' => '$1([values])',
@@ -34,6 +37,13 @@ final class ScrubPersonalData
         "/'[^']*'/u" => "'[value]'",
         '/\d{6,}/' => '[number]',
     ];
+
+    /** @param list<array{pattern: string, replacement: string}> $extraMasks */
+    public function __construct(
+        #[Autowire(param: 'app.error_reporting.extra_masks')]
+        private array $extraMasks = [],
+    ) {
+    }
 
     public function __invoke(Event $event, ?EventHint $hint): Event
     {
@@ -53,10 +63,10 @@ final class ScrubPersonalData
         $message = $event->getMessage();
         if (null !== $message) {
             $formatted = $event->getMessageFormatted();
-            $event->setMessage(self::mask($message), [], null === $formatted ? null : self::mask($formatted));
+            $event->setMessage($this->mask($message), [], null === $formatted ? null : $this->mask($formatted));
         }
         foreach ($event->getExceptions() as $exception) {
-            $exception->setValue(self::mask($exception->getValue()));
+            $exception->setValue($this->mask($exception->getValue()));
             foreach ($exception->getStacktrace()?->getFrames() ?? [] as $frame) {
                 $frame->setVars([]);
             }
@@ -65,9 +75,17 @@ final class ScrubPersonalData
         return $event;
     }
 
-    /** The text with every link's token, address, quoted value and long run of digits masked, as a report keeps it. */
-    public static function mask(string $text): string
+    /**
+     * The text with every link's token, address, quoted value and long run of digits masked, then the operator's own
+     * masks, as a report keeps it.
+     */
+    public function mask(string $text): string
     {
-        return preg_replace(array_keys(self::MASKS), array_values(self::MASKS), SecretTokens::mask($text)) ?? '[unreadable]';
+        $masked = preg_replace(array_keys(self::MASKS), array_values(self::MASKS), SecretTokens::mask($text));
+        foreach ($this->extraMasks as $mask) {
+            $masked = null === $masked ? null : preg_replace($mask['pattern'], $mask['replacement'], $masked);
+        }
+
+        return $masked ?? '[unreadable]';
     }
 }

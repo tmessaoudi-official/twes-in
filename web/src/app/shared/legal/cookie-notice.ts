@@ -46,7 +46,7 @@ export const COOKIE_NOTICE_HEIGHT = '--twes-cookie-notice-height';
           class="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 text-sm sm:px-6 lg:px-8"
         >
           <p class="m-0 min-w-0 flex-1 basis-72">{{ 'legal.notice.text' | translate }}</p>
-          <a appLegalLink="cookies" data-testid="cookie-notice-more">{{
+          <a appLegalLink="cookies" class="underline" data-testid="cookie-notice-more">{{
             'legal.notice.more' | translate
           }}</a>
           <button

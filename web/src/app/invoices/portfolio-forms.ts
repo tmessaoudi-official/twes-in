@@ -29,6 +29,11 @@ export const PORTFOLIO_LIST: ListDescriptor<PortfolioRow> = {
   rowId: (row) => row.id,
   link: (row) => ['/invoices', row.invoiceId],
   linkColumn: 'invoice',
+  // A phone's card leads with the name, the code under it (design proposal § 4, « Phone card »).
+  cardTitle: 'customer',
+  cardSubtitle: ['invoice', 'dueOn'],
+  cardAmount: ['amount'],
+  cardStatus: 'status',
   pageSizes: [25, 50, 100],
   defaultSort: { column: 'dueOn', direction: 'asc' },
   columns: [

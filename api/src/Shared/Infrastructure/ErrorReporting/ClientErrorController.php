@@ -37,6 +37,7 @@ final readonly class ClientErrorController
         private LoggerInterface $logger,
         #[Target('client_errors')]
         private RateLimiterFactoryInterface $limiter,
+        private ScrubPersonalData $scrub,
     ) {
     }
 
@@ -64,7 +65,7 @@ final readonly class ClientErrorController
             mb_substr($body['message'], 0, self::MAX_MESSAGE),
             self::text($body, 'stack', self::MAX_STACK),
         );
-        $this->logger->error(ScrubPersonalData::mask($line));
+        $this->logger->error($this->scrub->mask($line));
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }

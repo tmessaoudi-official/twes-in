@@ -69,6 +69,11 @@ export const QUOTES_LIST: ListDescriptor<QuoteListRow> = {
   id: 'quotes',
   rowId: (row) => row.id,
   link: (row) => ['/quotes', row.id],
+  // A phone's card leads with the name, the code under it (design proposal § 4, « Phone card »).
+  cardTitle: 'customer',
+  cardSubtitle: ['number', 'issueDate'],
+  cardAmount: ['total'],
+  cardStatus: 'status',
   pageSizes: [25, 50, 100],
   defaultSort: { column: 'issueDate', direction: 'desc' },
   columns: [

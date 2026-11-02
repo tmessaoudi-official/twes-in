@@ -42,32 +42,8 @@
     </div>
   } @else {
     <div #toolbar class="twes-list-toolbar">
-      @for (facet of facets(); track facet.filter.id) {
-        @if (facet.filter.multiple) {
-          <app-select
-            class="w-full sm:w-60"
-            [label]="facet.filter.label | translate"
-            [labelInside]="true"
-            [multiple]="true"
-            [options]="facetOptions(facet)"
-            [translateLabels]="true"
-            [emptyLabel]="facet.filter.anyLabel ?? 'list.filter_any'"
-            [ngModel]="facet.chosenList"
-            (ngModelChange)="onFacetMany(facet.filter.id, $event ?? [])"
-            [testId]="'list-facet-' + facet.filter.id"
-          />
-        } @else {
-          <app-select
-            class="w-full sm:w-60"
-            [label]="facet.filter.label | translate"
-            [labelInside]="true"
-            [options]="facetOptions(facet)"
-            [translateLabels]="true"
-            [ngModel]="facet.chosen === '' ? ANY_FACET : facet.chosen"
-            (ngModelChange)="onFacet(facet.filter.id, $event === ANY_FACET ? '' : $event)"
-            [testId]="'list-facet-' + facet.filter.id"
-          />
-        }
+      @if (!foldsFacets()) {
+        <ng-container [ngTemplateOutlet]="facetFields" />
       }
       <div class="twes-list-tools">
         @if (filterable()) {
@@ -102,7 +78,7 @@
             {{ (count === 1 ? 'list.new_row' : 'list.new_rows') | translate: { count } }}
           </button>
         }
-        @if (hasPanel()) {
+        @if (hasFilterButton()) {
           <button
             mat-stroked-button
             type="button"
@@ -165,17 +141,25 @@
     </div>
   }
 
-  @if (hasPanel() && panelOpen()) {
-    <app-list-filter-panel
-      [id]="testId() + '-filters'"
-      [ranges]="descriptor().ranges ?? []"
-      [picks]="descriptor().picks ?? []"
-      [sources]="pickSources()"
-      [chosen]="chosenFilters()"
-      [testId]="testId() + '-filter-panel'"
-      (patch)="patch($event)"
-      (named)="onNamed($event)"
-    />
+  @if (hasFilterButton() && panelOpen()) {
+    <div [id]="testId() + '-filters'" class="flex flex-col gap-3">
+      @if (foldsFacets()) {
+        <div class="flex flex-col gap-2" data-testid="list-filter-fold">
+          <ng-container [ngTemplateOutlet]="facetFields" />
+        </div>
+      }
+      @if (hasPanel()) {
+        <app-list-filter-panel
+          [ranges]="descriptor().ranges ?? []"
+          [picks]="descriptor().picks ?? []"
+          [sources]="pickSources()"
+          [chosen]="chosenFilters()"
+          [testId]="testId() + '-filter-panel'"
+          (patch)="patch($event)"
+          (named)="onNamed($event)"
+        />
+      }
+    </div>
   }
 
   @if (chips().length > 0) {
@@ -186,7 +170,7 @@
     >
       @for (chip of chips(); track chip.key) {
         <li
-          class="inline-flex items-center gap-1 rounded-full bg-secondary-container py-0.5 ps-3 pe-1 text-sm text-on-secondary-container"
+          class="inline-flex items-center gap-1 rounded-full border border-outline-variant bg-surface-container py-0.5 ps-3 pe-1 text-sm text-on-surface"
           [attr.data-testid]="'list-chip-' + chip.key"
         >
           <span>
@@ -377,6 +361,7 @@
       @for (row of page().rows; track trackRow($index, row)) {
         <li
           class="twes-list-card"
+          [class.twes-list-card-slotted]="cardSlots() !== null"
           [class.twes-row-selected]="isSelected(row)"
           (pointerdown)="pressStart($event, row)"
           (pointermove)="pressMove($event)"
@@ -388,31 +373,80 @@
           [attr.aria-current]="isActive(row) ? 'true' : null"
           [attr.data-testid]="testIdOf(row)"
         >
-          <div class="twes-list-card-head flex items-start gap-1">
-            @if (showBoxes()) {
-              <div class="-ms-2 -mt-2 shrink-0">
-                <ng-container *ngTemplateOutlet="rowBox; context: { $implicit: row }" />
-              </div>
-            }
-            <p
-              class="min-w-0 flex-1 font-medium"
-              [attr.data-testid]="'list-card-title-' + descriptor().rowId(row)"
-            >
-              <ng-container
-                *ngTemplateOutlet="cardTitle; context: { $implicit: row, column: titleColumn() }"
-              />
-            </p>
-            @if (hasRowControls()) {
-              <div class="-me-2 -mt-1 shrink-0">
+          @if (cardSlots(); as slots) {
+            <!-- A card laid out by its slots (design proposal § 4, « Phone card »): the name and the status, then
+                 the code and its day with the amount at the end, then one more pair at most. The title's link
+                 covers the whole card; the box and the row's own controls sit above it. -->
+            <div class="twes-list-card-head flex items-start gap-2">
+              @if (showBoxes()) {
+                <div class="twes-list-card-control -ms-2 -mt-2 shrink-0">
+                  <ng-container *ngTemplateOutlet="rowBox; context: { $implicit: row }" />
+                </div>
+              }
+              <p
+                class="twes-list-card-title min-w-0 flex-1"
+                [attr.data-testid]="'list-card-title-' + descriptor().rowId(row)"
+              >
                 <ng-container
-                  *ngTemplateOutlet="rowControls; context: { $implicit: row, card: true }"
+                  *ngTemplateOutlet="
+                    cardTitle;
+                    context: { $implicit: row, column: slots.title, slotted: true }
+                  "
                 />
+              </p>
+              @if (slots.status && inCard(slots.status, row)) {
+                <span
+                  class="shrink-0"
+                  [attr.data-testid]="'list-card-status-' + descriptor().rowId(row)"
+                >
+                  <ng-container
+                    *ngTemplateOutlet="cardCell; context: { $implicit: row, column: slots.status }"
+                  />
+                </span>
+              }
+              @if (hasRowControls()) {
+                <div class="twes-list-card-control -me-2 -mt-1 shrink-0">
+                  <ng-container
+                    *ngTemplateOutlet="rowControls; context: { $implicit: row, card: true }"
+                  />
+                </div>
+              }
+            </div>
+            @let parts = cardParts(row);
+            @let amount = cardAmountOf(row);
+            @if (parts.length > 0 || amount) {
+              <div class="twes-list-card-line">
+                <p
+                  class="twes-list-card-subtitle text-caption text-on-surface-variant"
+                  [attr.data-testid]="'list-card-subtitle-' + descriptor().rowId(row)"
+                >
+                  @for (part of parts; track part.id; let first = $first) {
+                    @if (!first) {
+                      <span aria-hidden="true"> · </span>
+                    }
+                    <bdi [attr.data-testid]="'list-card-part-' + part.id"
+                      ><ng-container
+                        *ngTemplateOutlet="cardCell; context: { $implicit: row, column: part }"
+                    /></bdi>
+                  }
+                </p>
+                @if (amount) {
+                  <span
+                    class="twes-list-card-amount tabular-nums"
+                    [attr.data-testid]="'list-card-amount-' + descriptor().rowId(row)"
+                    ><bdi
+                      ><ng-container
+                        *ngTemplateOutlet="
+                          cardCell;
+                          context: { $implicit: row, column: amount }
+                        " /></bdi
+                  ></span>
+                }
               </div>
             }
-          </div>
-          <dl class="twes-list-card-pairs text-sm">
-            @for (column of cardColumns(); track column.id) {
-              @if (inCard(column, row)) {
+            <!-- Row 3 is one further pair or the next step, never both (proposal § 7.3). -->
+            @if (cardNext(row) === null && cardExtra(row); as column) {
+              <dl class="twes-list-card-pairs text-sm">
                 <dt
                   class="text-on-surface-variant"
                   [attr.data-testid]="'list-card-label-' + column.id"
@@ -424,24 +458,78 @@
                   [class]="column.align === 'end' ? 'tabular-nums' : ''"
                   [attr.data-testid]="'list-card-value-' + column.id"
                 >
-                  @if (cellTemplates().get(column.id); as template) {
-                    <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
-                  } @else {
-                    <bdi>{{ column.value(row) }}</bdi>
-                  }
+                  <ng-container
+                    *ngTemplateOutlet="cardCell; context: { $implicit: row, column: column }"
+                  />
                 </dd>
-              }
+              </dl>
             }
-          </dl>
-          @if (cardNext(row); as next) {
-            <div
-              class="twes-list-card-next -me-2 -mb-1 flex justify-end"
-              [attr.data-testid]="'list-card-next-' + descriptor().rowId(row)"
-            >
-              <ng-container
-                *ngTemplateOutlet="rowButton; context: { $implicit: next, row: row, words: true }"
-              />
+            @if (cardNext(row); as next) {
+              <div
+                class="twes-list-card-next twes-list-card-control -me-2 -mb-1 flex justify-end"
+                [attr.data-testid]="'list-card-next-' + descriptor().rowId(row)"
+              >
+                <ng-container
+                  *ngTemplateOutlet="rowButton; context: { $implicit: next, row: row, words: true }"
+                />
+              </div>
+            }
+          } @else {
+            <div class="twes-list-card-head flex items-start gap-1">
+              @if (showBoxes()) {
+                <div class="-ms-2 -mt-2 shrink-0">
+                  <ng-container *ngTemplateOutlet="rowBox; context: { $implicit: row }" />
+                </div>
+              }
+              <p
+                class="min-w-0 flex-1 font-medium"
+                [attr.data-testid]="'list-card-title-' + descriptor().rowId(row)"
+              >
+                <ng-container
+                  *ngTemplateOutlet="cardTitle; context: { $implicit: row, column: titleColumn() }"
+                />
+              </p>
+              @if (hasRowControls()) {
+                <div class="-me-2 -mt-1 shrink-0">
+                  <ng-container
+                    *ngTemplateOutlet="rowControls; context: { $implicit: row, card: true }"
+                  />
+                </div>
+              }
             </div>
+            <dl class="twes-list-card-pairs text-sm">
+              @for (column of cardColumns(); track column.id) {
+                @if (inCard(column, row)) {
+                  <dt
+                    class="text-on-surface-variant"
+                    [attr.data-testid]="'list-card-label-' + column.id"
+                  >
+                    {{ column.label | translate }}
+                  </dt>
+                  <dd
+                    class="min-w-0 break-words"
+                    [class]="column.align === 'end' ? 'tabular-nums' : ''"
+                    [attr.data-testid]="'list-card-value-' + column.id"
+                  >
+                    @if (cellTemplates().get(column.id); as template) {
+                      <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
+                    } @else {
+                      <bdi>{{ column.value(row) }}</bdi>
+                    }
+                  </dd>
+                }
+              }
+            </dl>
+            @if (cardNext(row); as next) {
+              <div
+                class="twes-list-card-next -me-2 -mb-1 flex justify-end"
+                [attr.data-testid]="'list-card-next-' + descriptor().rowId(row)"
+              >
+                <ng-container
+                  *ngTemplateOutlet="rowButton; context: { $implicit: next, row: row, words: true }"
+                />
+              </div>
+            }
           }
         </li>
       } @empty {
@@ -715,19 +803,24 @@
 
 <!-- What a card leads with: the column that names the record, a real link when the list has one, and the cell's
      own template when it declared one — a number beside its type, a name beside a badge. -->
-<ng-template #cardTitle let-row let-column="column">
+<ng-template #cardTitle let-row let-column="column" let-slotted="slotted">
   @if (descriptor().link; as link) {
     <a
       [routerLink]="link(row)"
       [queryParams]="descriptor().linkQuery?.(row) ?? null"
       [queryParamsHandling]="descriptor().linkQuery?.(row) ? 'merge' : null"
       class="twes-row-link"
+      [class.twes-list-card-link]="slotted"
       [attr.data-testid]="'list-link-' + descriptor().rowId(row)"
     >
-      @if (cellTemplates().get(column.id); as template) {
-        <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
+      @if (slotted && !cellTemplates().has(column.id)) {
+        <span class="twes-value" dir="auto">{{ column.value(row) }}</span>
       } @else {
-        <bdi>{{ column.value(row) }}</bdi>
+        @if (cellTemplates().get(column.id); as template) {
+          <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
+        } @else {
+          <bdi>{{ column.value(row) }}</bdi>
+        }
       }
     </a>
   } @else if (cellTemplates().get(column.id); as template) {
@@ -880,5 +973,45 @@
         {{ 'list.filters_clear_all' | translate }}
       </button>
     </div>
+  }
+</ng-template>
+
+<!-- The choices of every filter: in the toolbar on a wide window, behind « Filtres (n) » on a phone. -->
+<ng-template #facetFields>
+  @for (facet of facets(); track facet.filter.id) {
+    @if (facet.filter.multiple) {
+      <app-select
+        class="w-full sm:w-60"
+        [label]="facet.filter.label | translate"
+        [labelInside]="true"
+        [multiple]="true"
+        [options]="facetOptions(facet)"
+        [translateLabels]="true"
+        [emptyLabel]="facet.filter.anyLabel ?? 'list.filter_any'"
+        [ngModel]="facet.chosenList"
+        (ngModelChange)="onFacetMany(facet.filter.id, $event ?? [])"
+        [testId]="'list-facet-' + facet.filter.id"
+      />
+    } @else {
+      <app-select
+        class="w-full sm:w-60"
+        [label]="facet.filter.label | translate"
+        [labelInside]="true"
+        [options]="facetOptions(facet)"
+        [translateLabels]="true"
+        [ngModel]="facet.chosen === '' ? ANY_FACET : facet.chosen"
+        (ngModelChange)="onFacet(facet.filter.id, $event === ANY_FACET ? '' : $event)"
+        [testId]="'list-facet-' + facet.filter.id"
+      />
+    }
+  }
+</ng-template>
+
+<!-- A slot's value in a phone card: the column's own cell where it declared one, else its value. -->
+<ng-template #cardCell let-row let-column="column">
+  @if (cellTemplates().get(column.id); as template) {
+    <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
+  } @else {
+    {{ column.value(row) }}
   }
 </ng-template>

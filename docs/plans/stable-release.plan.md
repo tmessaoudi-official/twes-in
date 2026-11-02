@@ -65,6 +65,8 @@ Read-only maps: `var/claude/hardening-map/`.
 - [2026-11-02 14:31] AGREED: desk q-budget (developer's answer b): the first page's reserve rises to 985 kB with the warning at 978 kB, still under the 1 MB wall.
 - [2026-11-02 14:31] AGREED: desk q-cards (developer's answer a): cards rise in « Vif » and in dark mode (a faint shadow, a slightly lighter card ground) and stay flat in « Calme » light, as the approved proposal says.
 - [2026-11-02 14:31] AGREED: desk q-titles (developer's answer a): page titles stay 24 px bold everywhere, the proposal's title step.
+- [2026-11-02 16:02] ASSUMED (review): the first batch of parameters from the picks review is the six operator values A95 (app.session.touch_every), B5 (app.support.read_recorded_every), A87 (app.recovery_codes.per_set), A94 and A98 (bounds on the existing reset and invitation lifetimes) and B6 (app.error_reporting.extra_masks), each defaulting to today's behaviour and bounded in code — because the 2026-10-09 ruling « everything parametrized » dictates it, each passes the three tests (default equals today, an existing app.* pattern, no fiscal or security judgement in the value) and advisor() agreed; B63 (a fiscal value), B62 (a step-up on the mfa_verify limiter) and the company settings C132, C160, C25 and C140 wait as medium items. Alternatives: build all fifteen small ones at once; wait for the developer's marks.
+- [2026-11-02 17:27] ASSUMED (review): S7.1 step 7: a phone card's row 3 is one further label/value pair or the next-step button, never both — because the approved proposal § 7.3 row 3 says « at most one more pair, or the next-step text button » (the builder had drawn both); held by data-list-cards.spec, red first. Alternatives: both (the builder's first reading).
 
 ## Formal Plan
 The full plan is `var/claude/hardening-map/plan-final.md` (revision 2, 136 steps, critic answers in its § 13); its rows are
@@ -90,6 +92,9 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S0.8 | Release-evidence gates in tag-release.sh and additive-migrations.sh | M | done | 283efa6f1 | scripts/release/** scripts/gates/** |
 | S0.9 | Flake and budget classes as gates (limiters, settled reads, test clock, docs run lines) | M | done | 2ce561bfd | api/tests/** scripts/gates/** |
 | S0.10 | ASSUMED marking page: 304 picks published, artifact UqoJRxiEXufS3BeJ53GUdP db marks; read back before the tag | S | done | - | - |
+| S0.10b | Picks review revised: each of the 304 with a recommended default, its parameter or the rule keeping it code, and file:line proof (2,256 quotes checked), hardest 13 first; desk revised the same way (2026-11-02) | M | done | - | var/claude/assumed-stable/** |
+| S0.10c | Parameters from the picks review, batch 1: six operator values bounded in code, each defaulting to today (A95, B5, A87, A94, A98, B6) | S | doing | - | api/config/services.yaml, api/src/** |
+| S0.10d | Parameters from the picks review, the rest a ruling decides (medium: B62 step-up on restore, C132, C160, C25 import switches, C140 scan length, B10, then the M list in reviewed.json); fiscal values only after the developer's marks | L | todo | - | api/**, web/** |
 | S0.11 | Values upgrade: new values filled from infra/onprem/values.defaults before compose config | M | done | 283efa6f1 | scripts/deploy/** infra/onprem/** |
 | S0.12 | snapshot-gate refuses a non-main tree while main-first exists (landed alone); test 41 passed, check removed: 2 fail | S | done | 864136fa2 | scripts/gate/** |
 | S0.13 | StatefulServicesTest: every stateful service resets or is listed | M | done | 2ce561bfd | api/tests/** |
@@ -231,6 +236,6 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 ### Needs research
 ### Fragile
 ### Known issues
-- document-actions.spec.ts « keeps it in « ⋮ » where it would push the bar under the title » failed once in the gate of bdf9ef31 (load ~8) and passed 3 of 3 alone: plannedRoom's measurement runs in afterRenderEffect, so a late render under load can read the bar before the case's widths apply; to trace from the case's own order of renders, not to retry.
+- document-actions.spec.ts « keeps it in « ⋮ » where it would push the bar under the title » failed once in the gate of bdf9ef31 (load ~8) and passed 3 of 3 alone: cause not found yet [Inferred hypotheses: the assertion means `fits` was true at 900 px, which this case's mocked widths cannot give; `q()` reads all of document.body, so a component left from the 1200 px case before it would answer instead, or plannedRoom's afterRenderEffect ran late]; if it reds again it is not load: trace it, never retry.
 - data-list.spec's two column scenarios (hidden column, saved view) fail on a machine whose Demo has gathered e2e members: at 1,280 px beside the settings panel the members list keeps only « Nom », so « Rôle » is never shown to hide. Green on CI's fresh database (9447cf2ad); the scenarios should pick a list and width whose columns fit whatever the data holds.
 - 2026-11-01: c564b7742's batch (FC#265's spentBudgetInterceptor, from nb1) stopped the app at start on NG0200; found by the FC#276 e2e before any push, fixed with app-config.spec.ts as the class guard (lands with S0.4).

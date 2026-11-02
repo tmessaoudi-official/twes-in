@@ -293,7 +293,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             'required' => ['passkey', 'recoveryCodes'],
             'properties' => [
                 'passkey' => ['$ref' => '#/components/schemas/Passkey'],
-                'recoveryCodes' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Ten codes, shown once, when this passkey is the first factor; otherwise empty.'],
+                'recoveryCodes' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'A set of recovery codes (app.recovery_codes.per_set, ten as shipped), shown once, when this passkey is the first factor; otherwise empty.'],
             ],
         ]);
         $schemas['PasskeyAssertion'] = new \ArrayObject([

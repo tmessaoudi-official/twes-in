@@ -40,9 +40,9 @@ final class ManageSessionsTest extends TestCase
         $this->users->save($this->user);
     }
 
-    private function manage(): ManageSessions
+    private function manage(string $touchEvery = 'PT5M'): ManageSessions
     {
-        return new ManageSessions($this->sessions, $this->users, $this->audit, $this->transactions, $this->clock, 28800);
+        return new ManageSessions($this->sessions, $this->users, $this->audit, $this->transactions, $this->clock, 28800, $touchEvery);
     }
 
     public function testTheFirstRequestOfASessionRecordsItWithItsDevice(): void
@@ -68,6 +68,18 @@ final class ManageSessionsTest extends TestCase
         $this->manage()->seen($this->user->getId(), 'session-a', $this->sessions->ofSessionId('session-a'), 'Firefox', '203.0.113.7');
         self::assertGreaterThan($first, $this->sessions->all[0]->getLastSeenAt());
         self::assertCount(1, $this->sessions->all);
+    }
+
+    /** The operator's app.session.touch_every: how closely a record knows its session's last use. */
+    public function testASessionIsWrittenAgainAsOftenAsTheOperatorSets(): void
+    {
+        $this->manage('PT1M')->seen($this->user->getId(), 'session-a', $this->sessions->ofSessionId('session-a'), 'Firefox', '203.0.113.7');
+        $first = $this->sessions->all[0]->getLastSeenAt();
+
+        $this->clock->modify('+2 minutes');
+        $this->manage('PT1M')->seen($this->user->getId(), 'session-a', $this->sessions->ofSessionId('session-a'), 'Firefox', '203.0.113.7');
+
+        self::assertGreaterThan($first, $this->sessions->all[0]->getLastSeenAt(), 'two minutes past a one-minute precision is written');
     }
 
     public function testAnEndedSessionIsReportedRevokedAndStaysSo(): void

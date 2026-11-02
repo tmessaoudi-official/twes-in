@@ -164,6 +164,11 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
   // The number opens the invoice, so a middle click and a copied address work (design review finding 1). A draft
   // has no number and its cell shows the word instead, which is what the link then reads.
   link: (row) => ['/invoices', row.id],
+  // A phone's card leads with the name, the code under it (design proposal § 4, « Phone card »).
+  cardTitle: 'customer',
+  cardSubtitle: ['number', 'issueDate'],
+  cardAmount: ['amountDue', 'total'],
+  cardStatus: 'status',
   pageSizes: [25, 50, 100],
   defaultSort: { column: 'issueDate', direction: 'desc' },
   // A draft has no number to name its box by: it is named by the customer it is drafted for.

@@ -280,6 +280,10 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       pageSizes: PAGE_SIZES,
       link: (view) => ['/invoices', view.row.subjectId],
       linkColumn: 'invoice',
+      // A phone's card leads with the name, the code under it (design proposal § 4, « Phone card »).
+      cardTitle: 'customer',
+      cardSubtitle: ['invoice', 'kind'],
+      cardAmount: ['amount'],
       columns: [
         cell('invoice', { hideable: false }),
         cell('customer'),
@@ -487,6 +491,9 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       pageSizes: PAGE_SIZES,
       link: (view) => ['/purchases', view.row.subjectId],
       linkColumn: 'number',
+      // A phone's card leads with the name, the code under it (design proposal § 4, « Phone card »).
+      cardTitle: 'vendor',
+      cardSubtitle: ['number', 'expectedOn'],
       columns: [
         cell('number', { hideable: false, width: 160 }),
         cell('vendor'),

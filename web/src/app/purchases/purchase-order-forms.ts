@@ -68,6 +68,11 @@ export const PURCHASES_LIST: ListDescriptor<PurchaseOrderRow> = {
   rowId: (row) => row.id,
   // The row opens through its naming column, so a middle click and a copied address work.
   link: (row) => ['/purchases', row.id],
+  // A phone's card leads with the name, the code under it (design proposal § 4, « Phone card »).
+  cardTitle: 'vendor',
+  cardSubtitle: ['number', 'issueDate'],
+  cardAmount: ['totalNet'],
+  cardStatus: 'status',
   pageSizes: [25, 50, 100],
   defaultSort: { column: 'number', direction: 'desc' },
   columns: [

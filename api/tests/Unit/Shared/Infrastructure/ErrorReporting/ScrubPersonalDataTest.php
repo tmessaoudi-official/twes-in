@@ -121,6 +121,29 @@ final class ScrubPersonalDataTest extends TestCase
         self::assertSame([], $frames[0]->getVars());
     }
 
+    /** The operator's masks (app.error_reporting.extra_masks) run after the built-in ones, which they can neither undo nor skip. */
+    public function testTheOperatorsMasksRunAfterTheBuiltInOnes(): void
+    {
+        $scrub = new ScrubPersonalData([
+            ['pattern' => '/\\bagency-\\w+/u', 'replacement' => '[agency]'],
+            // Written against what the built-in masks leave: an address is already « [address] » when this runs.
+            ['pattern' => '/\\[address\\]/u', 'replacement' => '[someone]'],
+        ]);
+        $message = 'Mail to ali@shop.tn from agency-sfax refused';
+        $event = Event::createEvent();
+        $event->setMessage($message, [], $message);
+
+        $scrubbed = $scrub($event, null);
+
+        self::assertSame('Mail to [someone] from [agency] refused', $scrubbed->getMessage());
+        self::assertSame('Mail to [someone] from [agency] refused', $scrub->mask($message));
+    }
+
+    public function testWithoutTheOperatorsMasksOnlyTheBuiltInOnesRun(): void
+    {
+        self::assertSame('Mail to [address] from agency-sfax refused', new ScrubPersonalData()->mask('Mail to ali@shop.tn from agency-sfax refused'));
+    }
+
     private static function scrub(Event $event): Event
     {
         return new ScrubPersonalData()($event, null);

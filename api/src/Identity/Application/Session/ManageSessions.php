@@ -25,7 +25,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * What a person sees of where they are signed in, and what they do about it. A session is recorded the first time a
- * request carries it and touched at most every five minutes after, so listing costs one read per request and a write
+ * request carries it and touched at most every app.session.touch_every after (five minutes as shipped), so listing costs one read per request and a write
  * only now and then. Ending a session never touches the PHP session itself: the request that brings it back is refused
  * (`seen` answers Revoked), which needs no raw session id in this table.
  */
@@ -33,9 +33,6 @@ final readonly class ManageSessions implements DeclaresAuditActions
 {
     public const string ENDED = 'auth.session_ended';
     public const string OTHERS_ENDED = 'auth.sessions_ended';
-
-    /** How often a session's record notes its last use: what reads the record knows that use only this closely. */
-    public const string TOUCH_EVERY = 'PT5M';
 
     public function __construct(
         private UserSessionRepository $sessions,
@@ -45,6 +42,9 @@ final readonly class ManageSessions implements DeclaresAuditActions
         private ClockInterface $clock,
         #[Autowire(param: 'app.session.absolute_ttl')]
         private int $absoluteTtl,
+        /** How often a session's record notes its last use: what reads the record knows that use only this closely. */
+        #[Autowire(param: 'app.session.touch_every')]
+        private string $touchEvery,
     ) {
     }
 
@@ -72,7 +72,7 @@ final readonly class ManageSessions implements DeclaresAuditActions
         if ($known->isRevoked()) {
             return SessionStanding::Revoked;
         }
-        if ($known->getLastSeenAt() <= $now->sub(new \DateInterval(self::TOUCH_EVERY))) {
+        if ($known->getLastSeenAt() <= $now->sub(new \DateInterval($this->touchEvery))) {
             $known->touch($now);
             $this->sessions->save($known);
         }

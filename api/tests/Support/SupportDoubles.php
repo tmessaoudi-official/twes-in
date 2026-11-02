@@ -44,7 +44,7 @@ final class SupportDoubles
             {
                 return false;
             }
-        }, new FakeTransactions(), new MockClock());
+        }, new FakeTransactions(), new MockClock(), 'PT15M');
     }
 
     public static function permissions(): KnownPermissions

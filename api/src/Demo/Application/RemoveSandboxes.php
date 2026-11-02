@@ -16,7 +16,6 @@ use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Demo\Domain\Repository\DemoSandboxRepository;
 use App\Files\Application\Files;
-use App\Identity\Application\Session\ManageSessions;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Domain\ValueObject\SettingAddress;
@@ -51,6 +50,9 @@ final readonly class RemoveSandboxes implements DeclaresAuditActions
         private string $givesUpAfter,
         #[Autowire(param: 'app.demo.idle_ttl')]
         private int $idleTtl,
+        /** How closely a session's record knows its last use, which a sandbox's last use is read through. */
+        #[Autowire(param: 'app.session.touch_every')]
+        private string $touchEvery,
     ) {
     }
 
@@ -60,7 +62,7 @@ final readonly class RemoveSandboxes implements DeclaresAuditActions
      */
     public function doneWith(): int
     {
-        $lastUsedBefore = $this->clock->now()->sub(new \DateInterval(\sprintf('PT%dS', $this->idleTtl)))->sub(new \DateInterval(ManageSessions::TOUCH_EVERY));
+        $lastUsedBefore = $this->clock->now()->sub(new \DateInterval(\sprintf('PT%dS', $this->idleTtl)))->sub(new \DateInterval($this->touchEvery));
         $removed = 0;
         foreach ($this->sandboxes->doneWith($lastUsedBefore) as $sandboxId) {
             $removed += $this->remove($sandboxId) ? 1 : 0;

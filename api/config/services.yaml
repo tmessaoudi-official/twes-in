@@ -12,6 +12,10 @@ parameters:
     # Session limits in seconds: 30 minutes idle, 12 hours absolute (docs/SPEC.md § 3 Auth).
     app.session.idle_ttl: 1800
     app.session.absolute_ttl: 43200
+    # How closely a session's record knows its last use: it is written again at most this often, so a request costs one
+    # read and a write only now and then. « Où vous êtes connecté » and the demo's sweep read the use this closely.
+    # Checked when the container is built (SessionBounds): PT1M to PT15M.
+    app.session.touch_every: 'PT5M'
     # Account lockout: after this many consecutive failures the account is locked for this long.
     app.auth.lock_after_failures: 5
     app.auth.lock_duration: 'PT15M'
@@ -52,7 +56,8 @@ parameters:
     app.rate_limit.demo_entry.limit: 10
     app.rate_limit.demo_entry.interval: '1 hour'
     # Invitations: how long a mailed link works, and the page it points at. The URL is built from the same
-    # origin the SPA is served from, because the link is opened from a mail client with no session.
+    # origin the SPA is served from, because the link is opened from a mail client with no session. The duration is
+    # checked when the container is built (InvitationBounds): P1D to P30D.
     app.invitation.valid_for: 'P7D'
     # How long the members list keeps an invitation whose link ran out unused, marked expired, to be sent again.
     app.invitation.expired_shown_for: 'P30D'
@@ -61,7 +66,8 @@ parameters:
     app.signup.login_url: '%env(DEFAULT_URI)%/login'
     app.platform_url: '%env(DEFAULT_URI)%/platform'
     app.signup.valid_for: 'PT24H'
-    # Forgot password: the page a reset link opens, and how long it works.
+    # Forgot password: the page a reset link opens, and how long it works, checked when the container is built
+    # (PasswordResetBounds): PT15M to PT24H.
     app.password_reset.link_url: '%env(DEFAULT_URI)%/reset-password/{token}'
     app.password_reset.valid_for: 'PT1H'
     # A notification's mail: where its button opens the app, and the page its stop link opens, which asks before
@@ -148,6 +154,16 @@ parameters:
     # checked when the container is built (StepUpBounds): PT1M to PT15M, and 3 to 10.
     app.step_up.valid_for: 'PT5M'
     app.step_up.attempts: 5
+    # How many recovery codes a set holds, shown once at enrolment and on each renewal; each code's shape and hashing stay
+    # code. Checked when the container is built (RecoveryCodeBounds): 8 to 16.
+    app.recovery_codes.per_set: 10
+    # How often a page support reads under an owner's grant is written again to the company's activity log: support's
+    # entry always is, and PT0M records every read. Checked when the container is built (SupportVisitBounds): PT0M to PT1H.
+    app.support.read_recorded_every: 'PT15M'
+    # Masks of the operator's own for an error report, each {pattern: a PCRE regular expression, replacement: text},
+    # applied after the built-in ones of ScrubPersonalData, which none can change: what a deployment's own data looks like
+    # (a branch code, a client's reference). A pattern PHP cannot compile refuses the container (ErrorReportingMasksBounds).
+    app.error_reporting.extra_masks: []
     # How long a company an account with several companies has proved itself for stays open to this sign-in: as long as it
     # is used within the idle time, and no longer than the lifetime in all; signing out forgets it at once.
     app.company_proof.idle: 'PT30M'

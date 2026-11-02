@@ -101,6 +101,11 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
   // The row opens through its naming column, so a middle click and a copied address work
   // (design review finding 1); the trailing "Ouvrir" is gone.
   link: (row) => ['/delivery-notes', row.id],
+  // A phone's card leads with the name, the code under it (design proposal § 4, « Phone card »).
+  cardTitle: 'customer',
+  cardSubtitle: ['number', 'issueDate'],
+  cardAmount: ['total'],
+  cardStatus: 'status',
   pageSizes: [25, 50, 100],
   defaultSort: { column: 'number', direction: 'desc' },
   columns: [

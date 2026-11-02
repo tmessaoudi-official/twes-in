@@ -91,6 +91,10 @@ export class RecurringPage implements OnInit {
     defaultSort: { column: 'nextOn', direction: 'asc' },
     link: (row) => ['/invoices', row.modelInvoiceId],
     linkColumn: 'model',
+    // A phone's card leads with the name, the code under it (design proposal § 4, « Phone card »).
+    cardTitle: 'customer',
+    cardSubtitle: ['model', 'nextOn'],
+    cardStatus: 'state',
     columns: [
       {
         id: 'customer',

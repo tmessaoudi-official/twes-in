@@ -103,7 +103,7 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
 
     /**
      * Guessing here is not merely paced, it is stopped, exactly as at login: these are the same six digits, and a
-     * guess that lands hands over all ten codes (docs/SPEC.md § 8 row 22, review S6).
+     * guess that lands hands over a whole set of codes (docs/SPEC.md § 8 row 22, review S6).
      */
     public function testGuessingLocksTheAccountAsItDoesAtLogin(): void
     {

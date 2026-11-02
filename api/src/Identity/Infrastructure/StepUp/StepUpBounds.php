@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\StepUp;
 
+use App\Shared\Infrastructure\DependencyInjection\ParameterBounds;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
@@ -31,7 +32,7 @@ final class StepUpBounds implements CompilerPassInterface
     public function process(ContainerBuilder $container): void
     {
         $validFor = $container->getParameter(self::VALID_FOR);
-        $seconds = self::seconds($validFor);
+        $seconds = ParameterBounds::seconds($validFor);
         if (null === $seconds || $seconds < self::SHORTEST_SECONDS || $seconds > self::LONGEST_SECONDS) {
             throw new InvalidArgumentException(\sprintf('%s is an ISO 8601 duration from one minute to a quarter hour (PT1M to PT15M); %s is not.', self::VALID_FOR, json_encode($validFor)));
         }
@@ -40,18 +41,5 @@ final class StepUpBounds implements CompilerPassInterface
         if ($attempts < self::FEWEST_ATTEMPTS || $attempts > self::MOST_ATTEMPTS) {
             throw new InvalidArgumentException(\sprintf('%s is a whole number from %d to %d; %s is not.', self::ATTEMPTS, self::FEWEST_ATTEMPTS, self::MOST_ATTEMPTS, json_encode($attempts)));
         }
-    }
-
-    /** The duration in seconds, counted from a fixed day so a month or a year has one length; null when it is none. */
-    private static function seconds(string $duration): ?int
-    {
-        try {
-            $interval = new \DateInterval($duration);
-        } catch (\Exception) {
-            return null;
-        }
-        $from = new \DateTimeImmutable('2000-01-01T00:00:00Z');
-
-        return $from->add($interval)->getTimestamp() - $from->getTimestamp();
     }
 }

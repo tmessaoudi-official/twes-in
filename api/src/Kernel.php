@@ -9,8 +9,14 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Identity\Infrastructure\Mfa\RecoveryCodeBounds;
+use App\Identity\Infrastructure\Password\PasswordResetBounds;
+use App\Identity\Infrastructure\Session\SessionBounds;
 use App\Identity\Infrastructure\StepUp\StepUpBounds;
 use App\Shared\Infrastructure\DevelopmentKeys;
+use App\Shared\Infrastructure\ErrorReporting\ErrorReportingMasksBounds;
+use App\Tenancy\Infrastructure\Http\SupportVisitBounds;
+use App\Tenancy\Infrastructure\Invitation\InvitationBounds;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
@@ -31,10 +37,16 @@ class Kernel extends BaseKernel
         parent::boot();
     }
 
-    /** A deployment whose step-up numbers are out of their bounds is refused when its container is built. */
+    /** A deployment whose operator parameters are out of their bounds is refused when its container is built. */
     protected function build(ContainerBuilder $container): void
     {
         $container->addCompilerPass(new StepUpBounds());
+        $container->addCompilerPass(new SessionBounds());
+        $container->addCompilerPass(new SupportVisitBounds());
+        $container->addCompilerPass(new RecoveryCodeBounds());
+        $container->addCompilerPass(new PasswordResetBounds());
+        $container->addCompilerPass(new InvitationBounds());
+        $container->addCompilerPass(new ErrorReportingMasksBounds());
     }
 
     /**

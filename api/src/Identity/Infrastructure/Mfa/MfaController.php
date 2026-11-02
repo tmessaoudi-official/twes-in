@@ -208,7 +208,7 @@ final readonly class MfaController
 
     /**
      * A new set of recovery codes against a current authenticator code. Throttled on the same budget as the login code,
-     * because it is the same six digits to guess, and a guess here that lands hands over all ten codes.
+     * because it is the same six digits to guess, and a guess here that lands hands over a whole set of codes.
      */
     #[Route('/api/auth/mfa/recovery-codes', name: 'api_auth_mfa_recovery_codes', methods: ['POST'])]
     public function regenerateRecoveryCodes(Request $request): JsonResponse

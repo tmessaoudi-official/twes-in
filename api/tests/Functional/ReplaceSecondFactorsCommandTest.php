@@ -136,7 +136,7 @@ final class ReplaceSecondFactorsCommandTest extends ApiTestCase
     private function withRecoveryCodes(string $email, int $count): void
     {
         $user = $this->userOf($email);
-        foreach (\array_slice(RecoveryCode::generateSet(), 0, $count) as $code) {
+        foreach (\array_slice(RecoveryCode::generateSet(10), 0, $count) as $code) {
             $this->em()->persist(new RecoveryCodeEntry($user, $code->hash()));
         }
         $this->em()->flush();

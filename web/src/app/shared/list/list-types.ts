@@ -141,6 +141,18 @@ export interface ListDescriptor<Row> {
   linkQuery?: (row: Row) => Record<string, string> | null;
   /** Which column carries the link; the first column that cannot be hidden when not given. */
   linkColumn?: string;
+  /**
+   * What a phone's card leads with, by column id, for a list whose link column is a code: a card headed « FA-0412 »
+   * says less than one headed with the customer it was made for. Row 1 is this name, the status at its end; the code
+   * and its day follow in `cardSubtitle`. A list naming none keeps the card that lists every column.
+   */
+  cardTitle?: string;
+  /** The parts of the card's second row, said in turn with « · » between: the number, then its day. */
+  cardSubtitle?: readonly string[];
+  /** The amount at the second row's end, never cut: the first of these columns the row has anything in. */
+  cardAmount?: readonly string[];
+  /** The status drawn at the end of the card's first row, through the column's own cell. */
+  cardStatus?: string;
   /** The row's own actions; the trailing column renders them. */
   actions?: RowAction<Row>[];
   /** Whether a person may select rows, the page at most; the screen holds what is selected as ids. */
