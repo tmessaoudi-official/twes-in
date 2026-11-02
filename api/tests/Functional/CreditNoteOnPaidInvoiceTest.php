@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\DataHealth\Application\DataFinding;
+use App\DataHealth\Application\RunDataChecks;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
@@ -112,6 +114,27 @@ final class CreditNoteOnPaidInvoiceTest extends ApiTestCase
         $audited = json_decode($changes, true);
         self::assertIsArray($audited);
         self::assertSame(['600.000', 'refund'], [$audited['excess'] ?? null, $audited['excessTo'] ?? null]);
+    }
+
+    /**
+     * Money given back by a credit note leaves nothing for the night's data check: what is due stays at nothing where
+     * paid and credited together pass the total, as settling decides, and the customer's credit adds up.
+     */
+    public function testEveryWayACreditNoteGivesMoneyBackHoldsEveryDataCheck(): void
+    {
+        foreach ([['1000', 'balance'], ['600', 'refund'], ['0', null]] as [$paid, $destination]) {
+            $invoice = $this->paid('1000', $paid);
+            $credit = $this->draftCreditNote($invoice);
+            $this->postJson($this->path($credit).'/issue'.(null === $destination ? '' : '?excessTo='.$destination), null);
+            self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        }
+
+        $this->em()->clear();
+        $found = array_filter(
+            static::getContainer()->get(RunDataChecks::class)->findings(),
+            fn (DataFinding $finding): bool => $finding->companyId?->equals($this->company->getId()) ?? false,
+        );
+        self::assertSame([], array_values(array_map(static fn (DataFinding $finding): string => "$finding->check: $finding->detail", $found)));
     }
 
     public function testWhatTheInvoiceStillHasDueTakesTheWholeCreditAndNeedsNoDestination(): void

@@ -19,6 +19,10 @@ final class XlsxPercentCells
     /** Excel's own percentage formats, which a workbook names by number alone: « 0% » and « 0.00% ». */
     private const array BUILT_IN = [9, 10];
 
+    /** A sheet's size, as Excel bounds it: 1,048,576 rows of 16,384 columns. */
+    private const int LAST_LINE = 1_048_576;
+    private const int COLUMNS = 16_384;
+
     /**
      * @return array<int, array<int, true>> by line, the columns (from 0) whose number is shown as a percentage
      */
@@ -31,8 +35,8 @@ final class XlsxPercentCells
         // A part this scan cannot read is left to openspout, which refuses the file in its own words.
         $quiet = libxml_use_internal_errors(true);
         try {
-            $styles = self::percentStyles((string) $zip->getFromName('xl/styles.xml'));
-            $sheet = [] === $styles ? null : self::firstSheet((string) $zip->getFromName('xl/workbook.xml'), (string) $zip->getFromName('xl/_rels/workbook.xml.rels'));
+            $styles = self::percentStyles(self::part($zip, 'xl/styles.xml'));
+            $sheet = [] === $styles ? null : self::firstSheet(self::part($zip, 'xl/workbook.xml'), self::part($zip, 'xl/_rels/workbook.xml.rels'));
             $zip->close();
 
             return null === $sheet ? [] : self::cells('zip://'.$path.'#'.$sheet, $styles);
@@ -40,6 +44,27 @@ final class XlsxPercentCells
             libxml_clear_errors();
             libxml_use_internal_errors($quiet);
         }
+    }
+
+    /**
+     * A part's bytes, or none when the zip cannot give them whole: a damaged part makes the zip library warn
+     * (« CRC error », « Premature end of file ») and is left to openspout, which refuses the file in its own words.
+     */
+    private static function part(\ZipArchive $zip, string $name): string
+    {
+        $damaged = false;
+        set_error_handler(static function () use (&$damaged): bool {
+            $damaged = true;
+
+            return true;
+        });
+        try {
+            $bytes = $zip->getFromName($name);
+        } finally {
+            restore_error_handler();
+        }
+
+        return $damaged || false === $bytes ? '' : $bytes;
     }
 
     /**
@@ -130,6 +155,8 @@ final class XlsxPercentCells
     {
         $reader = \XMLReader::fromUri($part, null, \LIBXML_NONET);
         $cells = [];
+        // A line or a column a reference puts outside any sheet is null: nothing after it on its row is marked, and
+        // no arithmetic runs on a number the file chose.
         $line = 0;
         $column = -1;
         while ($reader->read()) {
@@ -138,13 +165,13 @@ final class XlsxPercentCells
             }
             if ('row' === $reader->localName) {
                 $reference = $reader->getAttribute('r');
-                $line = null === $reference ? $line + 1 : (int) $reference;
+                $line = null === $reference ? (null === $line ? null : $line + 1) : self::lineOf($reference);
                 $column = -1;
             } elseif ('c' === $reader->localName) {
                 $reference = $reader->getAttribute('r');
-                $column = null === $reference ? $column + 1 : self::columnOf($reference);
+                $column = null === $reference ? (null === $column ? null : $column + 1) : self::columnOf($reference);
                 $style = $reader->getAttribute('s');
-                if (null !== $style && isset($styles[(int) $style])) {
+                if (null !== $line && null !== $column && $line <= self::LAST_LINE && $column < self::COLUMNS && null !== $style && isset($styles[(int) $style])) {
                     $cells[$line][$column] = true;
                 }
             }
@@ -154,14 +181,24 @@ final class XlsxPercentCells
         return $cells;
     }
 
-    /** « A1 » is column 0, « AB7 » column 27. */
-    private static function columnOf(string $reference): int
+    /** « A1 » is column 0, « AB7 » column 27; null for more letters than a sheet's last column, « XFD », has. */
+    private static function columnOf(string $reference): ?int
     {
+        $letters = (string) preg_replace('/[^A-Z]/', '', strtoupper($reference));
+        if ('' === $letters || \strlen($letters) > 3) {
+            return null;
+        }
         $column = 0;
-        foreach (str_split((string) preg_replace('/[^A-Z]/', '', strtoupper($reference))) as $letter) {
+        foreach (str_split($letters) as $letter) {
             $column = $column * 26 + \ord($letter) - 64;
         }
 
         return $column - 1;
+    }
+
+    /** A row's number as its reference writes it; null for one no sheet has. */
+    private static function lineOf(string $reference): ?int
+    {
+        return 1 === preg_match('/^[1-9]\d{0,6}$/', $reference) && (int) $reference <= self::LAST_LINE ? (int) $reference : null;
     }
 }

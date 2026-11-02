@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace App\DataFixtures\Scale;
 
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
+use App\Module\Invoices\Application\InvoiceWorkflow;
+use App\Module\Invoices\Application\ManageInvoices;
 use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Shared\Infrastructure\Doctrine\ScaleDatabase;
 use App\Tenancy\Domain\Model\NumberingSeries;
@@ -60,7 +62,7 @@ final class ScaleGenerator
     /** Company data this slice does not grow: table => why. */
     public const array LEFT_OUT = [
         'attachment' => 'files attached to documents are not cloned',
-        'audit_log' => 'the audit trail of a clone is not written; a follow-up slice grows it',
+        'audit_log' => 'the audit trail of a clone is not copied: only the issue entry each numbered document is checked for is written',
         'contact' => 'people of a customer: a follow-up slice',
         'customer_credit_entry' => 'what a customer has to their credit: a clone starts with none',
         'data_erasure' => 'the erasures a company made: a clone made none',
@@ -460,6 +462,16 @@ final class ScaleGenerator
             }
         }
         $this->entityManager->clear();
+        // Issuing records itself in the journal, and the data checks read that entry for every numbered document: a
+        // clone was numbered here rather than issued, so it is given the entry its issue would have written, once.
+        $this->connection->executeStatement(
+            'INSERT INTO audit_log (id, company_id, entity_type, entity_id, action, actor_user_id, changes, at, ip)
+             SELECT gen_random_uuid(), i.company_id, :entity, i.id, :action, NULL, \'[]\'::jsonb, COALESCE(i.issued_at, i.issue_date::timestamp), NULL
+             FROM invoice i
+             WHERE i.company_id = :company AND i.number IS NOT NULL
+               AND NOT EXISTS (SELECT 1 FROM audit_log a WHERE a.entity_type = :entity AND a.entity_id = i.id AND a.action = :action)',
+            ['company' => $company, 'entity' => ManageInvoices::ENTITY_TYPE, 'action' => InvoiceWorkflow::ISSUED],
+        );
         // In the order just numbered: the chain's backlog is read by day, then number, which is how these were given.
         $this->chains->all();
         $this->connection->executeStatement("UPDATE scale.run SET phase = 'numbered' WHERE company_id = ?", [$company]);

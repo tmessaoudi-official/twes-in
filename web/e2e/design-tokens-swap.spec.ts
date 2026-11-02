@@ -15,6 +15,10 @@ const CSRF = '0123456789abcdef0123456789abcdef';
 
 const SENTINEL_FONT = 'TwesSentinelFont';
 
+// The sentinels are a stylesheet the test adds, which the served build's Content-Security-Policy refuses (styles carry
+// the page's nonce): the policy is not what this test is about, and the swap is asserted to have landed below.
+test.use({ bypassCSP: true });
+
 /** The root variables a screen's look is made of, overridden with values nothing else uses. */
 async function swapTokens(page: Page): Promise<number> {
   return page.evaluate((font) => {
@@ -170,6 +174,13 @@ async function swapsWhole(page: Page, family: string): Promise<void> {
   // settled-read: every family's page is waited for by its caller before it is read.
   const before = await look(page, null);
   expect(await swapTokens(page), `${family}: the root declares its tokens`).toBeGreaterThan(40);
+  // A sentinel sheet the page refused would leave every token as it was, and the reads below would say nothing true.
+  expect(
+    await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--text-sm').trim(),
+    ),
+    `${family}: the sentinels are in force`,
+  ).toBe('13.7px');
   await expect
     .poll(async () => (await look(page, before)).sizes.join('|'), {
       message: `${family}: the type moves`,

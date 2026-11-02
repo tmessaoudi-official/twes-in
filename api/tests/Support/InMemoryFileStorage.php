@@ -34,4 +34,13 @@ final class InMemoryFileStorage implements FileStorage
     {
         unset($this->contents[$key]);
     }
+
+    public function keysUnder(string $prefix): iterable
+    {
+        foreach (array_keys($this->contents) as $key) {
+            if (str_starts_with($key, rtrim($prefix, '/').'/')) {
+                yield $key => new \DateTimeImmutable('@0');
+            }
+        }
+    }
 }

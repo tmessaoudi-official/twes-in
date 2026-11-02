@@ -15,6 +15,8 @@ use App\Shared\Application\Spreadsheet\TextEncoding;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
 use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Cell\FormulaCell;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Exception\OpenSpoutException;
 use OpenSpout\Reader\CSV\Reader as CsvReader;
 use OpenSpout\Reader\XLSX\Options as XlsxOptions;
 use OpenSpout\Reader\XLSX\Reader as XlsxReader;
@@ -102,26 +104,47 @@ final class OpenSpoutReader implements SpreadsheetReader
         $percentages = SpreadsheetFormat::Xlsx === $format ? XlsxPercentCells::of($path) : [];
 
         try {
+            foreach (self::firstSheetRows($reader, $path, $format) as $number => $row) {
+                $cells = [];
+                foreach (array_values($row->cells) as $column => $cell) {
+                    $value = $cell instanceof FormulaCell ? $cell->getComputedValue() : $cell->getValue();
+                    $cells[] = isset($percentages[$number][$column]) ? self::percentage($value) : self::text($value);
+                }
+
+                yield $number => SpreadsheetFormat::Csv === $format ? array_map(CsvFormula::restored(...), $cells) : $cells;
+            }
+        } finally {
+            $reader->close();
+        }
+    }
+
+    /**
+     * The first sheet's rows as openspout reads them, a malformed file refused as unreadable whichever way openspout
+     * fails on it: its own exceptions, and the errors of a part it did not expect to be missing or broken (a shared
+     * string read before any shared strings part, an XML node of another kind than it asserts). Only openspout runs
+     * in here, so an error of this class's own conversions is never taken for a file's fault.
+     *
+     * @return \Generator<int, Row>
+     *
+     * @throws UnreadableSpreadsheet
+     */
+    private static function firstSheetRows(CsvReader|XlsxReader $reader, string $path, SpreadsheetFormat $format): \Generator
+    {
+        try {
             foreach ($reader->getSheetIterator() as $sheet) {
                 foreach ($sheet->getRowIterator() as $number => $row) {
                     // openspout keys a row by its line in the file; asserted rather than assumed, because that key
                     // is what every rejected row's reason will name.
                     \assert(\is_int($number));
 
-                    $cells = [];
-                    foreach (array_values($row->cells) as $column => $cell) {
-                        $value = $cell instanceof FormulaCell ? $cell->getComputedValue() : $cell->getValue();
-                        $cells[] = isset($percentages[$number][$column]) ? self::percentage($value) : self::text($value);
-                    }
-
-                    yield $number => SpreadsheetFormat::Csv === $format ? array_map(CsvFormula::restored(...), $cells) : $cells;
+                    yield $number => $row;
                 }
 
                 // A template has one sheet, and a person's own file is asked to put its data in the first.
                 break;
             }
-        } finally {
-            $reader->close();
+        } catch (OpenSpoutException|\Error $failure) {
+            throw new UnreadableSpreadsheet(\sprintf('"%s" could not be read as %s.', basename($path), $format->value), previous: $failure);
         }
     }
 
@@ -195,8 +218,20 @@ final class OpenSpoutReader implements SpreadsheetReader
     {
         $carried = '';
         while (!feof($part)) {
-            $piece = fread($part, self::SCAN_CHUNK);
-            if (false === $piece) {
+            // A part whose compressed bytes are damaged makes the zip stream warn (« Zlib error: data error ») and
+            // hand over what it could: refused as unreadable, rather than scanned short or turned into an error.
+            $damaged = false;
+            set_error_handler(static function () use (&$damaged): bool {
+                $damaged = true;
+
+                return true;
+            });
+            try {
+                $piece = fread($part, self::SCAN_CHUNK);
+            } finally {
+                restore_error_handler();
+            }
+            if (false === $piece || $damaged) {
                 throw new UnreadableSpreadsheet(\sprintf('"%s" has a part that cannot be read.', basename($path)));
             }
             $text = $carried.str_replace("\0", '', $piece);

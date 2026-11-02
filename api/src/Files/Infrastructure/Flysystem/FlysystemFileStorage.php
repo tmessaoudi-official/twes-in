@@ -11,7 +11,9 @@ namespace App\Files\Infrastructure\Flysystem;
 
 use App\Files\Application\FileStorage;
 use App\Files\Application\StoredFileMissing;
+use League\Flysystem\FileAttributes;
 use League\Flysystem\FilesystemOperator;
+use League\Flysystem\FilesystemReader;
 use League\Flysystem\UnableToReadFile;
 
 /** A file's bytes on whatever Flysystem adapter the configuration names: a local volume by default. */
@@ -42,5 +44,18 @@ final readonly class FlysystemFileStorage implements FileStorage
     {
         // Flysystem's delete of an absent file succeeds on every adapter it ships.
         $this->filesystem->delete($key);
+    }
+
+    public function keysUnder(string $prefix): iterable
+    {
+        foreach ($this->filesystem->listContents($prefix, FilesystemReader::LIST_DEEP) as $item) {
+            if (!$item instanceof FileAttributes) {
+                continue;
+            }
+            // Both adapters it ships for, a local volume and an S3 bucket, list a file with the moment it was written.
+            $written = $item->lastModified() ?? throw new \UnexpectedValueException(\sprintf('The storage lists %s without when it was written.', $item->path()));
+
+            yield $item->path() => new \DateTimeImmutable('@'.$written);
+        }
     }
 }

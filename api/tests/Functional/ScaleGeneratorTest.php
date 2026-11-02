@@ -181,7 +181,7 @@ final class ScaleGeneratorTest extends ApiTestCase
 
     public function testItRefusesADatabaseThatIsNotAScaleOrTestOne(): void
     {
-        foreach (['twes', 'twes_prod', 'production', 'twes_w3', 'twes_test_prod', 'twes_testimonials', 'twes_test_prod_4', 'twes_test_w', 'twes_test_nb', 'twes_test_gate4', 'twes_test_4'] as $name) {
+        foreach (['twes', 'twes_prod', 'production', 'twes_w3', 'twes_test_prod', 'twes_testimonials', 'twes_test_prod_4', 'twes_test_w', 'twes_test_nb', 'twes_test_s', 'twes_test_gate4', 'twes_test_4'] as $name) {
             try {
                 ScaleGenerator::refuseUnlessScaleDatabase($name);
                 self::fail("$name must be refused");
@@ -203,6 +203,9 @@ final class ScaleGeneratorTest extends ApiTestCase
         // The snapshot gate's, in its own worktree (scripts/gate/snapshot-gate.sh), and its workers' copies.
         ScaleGenerator::refuseUnlessScaleDatabase('twes_test_gate');
         ScaleGenerator::refuseUnlessScaleDatabase('twes_test_gate_7');
+        // A release builder's (`s15`), and its workers' copies.
+        ScaleGenerator::refuseUnlessScaleDatabase('twes_test_s15');
+        ScaleGenerator::refuseUnlessScaleDatabase('twes_test_s112_7');
     }
 
     public function testEveryTableThatReachesTheInvoiceGraphIsClonedSharedOrNamedAsLeftOut(): void

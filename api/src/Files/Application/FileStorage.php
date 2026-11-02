@@ -20,4 +20,12 @@ interface FileStorage
 
     /** Deletes the bytes under the key; bytes already gone are not an error, so a second pass changes nothing. */
     public function delete(string $key): void;
+
+    /**
+     * Every key stored under the prefix, at any depth, with when its bytes were written: what the data check holds the
+     * file rows to.
+     *
+     * @return iterable<string, \DateTimeImmutable>
+     */
+    public function keysUnder(string $prefix): iterable;
 }
