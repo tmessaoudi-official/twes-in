@@ -96,6 +96,11 @@ test('a member deletes their own account behind a red button and a typed word, a
   }
   await page.emulateMedia({ colorScheme: 'light' });
   await page.screenshot({ path: test.info().outputPath('account-delete-button.png') });
+  // Colour is never the only cue: the danger button is ringed in the danger colour, off its edge. Read while it can be
+  // pressed: once its confirmation opens it is busy, disabled, and a refused button loses its ring with its colour.
+  await expect
+    .poll(async () => ring(remove))
+    .toBe(`solid 2px ${await dangerColour(page)} offset 2px`);
 
   await remove.click();
   const typed = page.getByTestId('confirm-typed');
@@ -108,11 +113,8 @@ test('a member deletes their own account behind a red button and a typed word, a
   await typed.fill('supprimer');
   await expect(run).toBeEnabled();
   await expect.poll(async () => inDanger(page, (await drawn(run)).fill, '')).toBe('in danger');
-  // Colour is never the only cue: both danger buttons are ringed in the danger colour, off their edge.
-  const danger = await dangerColour(page);
-  for (const button of [run, remove]) {
-    expect(await ring(button)).toBe(`solid 2px ${danger} offset 2px`);
-  }
+  // The confirming button wears the same ring once the typed word enables it.
+  expect(await ring(run)).toBe(`solid 2px ${await dangerColour(page)} offset 2px`);
   await page.screenshot({ path: test.info().outputPath('account-delete-dialog.png') });
   await run.click();
 

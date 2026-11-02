@@ -48,6 +48,9 @@ services:
       - ./infra/api/live-entrypoint.sh:/usr/local/bin/live-entrypoint:ro
       - ./infra/api/migrate.sh:/usr/local/bin/twes-migrate:ro
       - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
+      # Every service running the mounted source reads the screens' texts as the api does: a mail or a start step
+      # writes them too, and without them the worker's every mail failed.
+      - ./web/public/i18n:/app/resources/screen-texts:ro
 
   # A migration written while the stack runs is applied by this one (infra/api/migrate-watch.sh), so the api never serves
   # code ahead of its database until the next `make up`. Development only: a server migrates once, at deploy.
@@ -66,6 +69,9 @@ services:
       - ./infra/api/migrate.sh:/usr/local/bin/twes-migrate:ro
       - ./infra/api/migrate-watch.sh:/usr/local/bin/twes-migrate-watch:ro
       - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
+      # Every service running the mounted source reads the screens' texts as the api does: a mail or a start step
+      # writes them too, and without them the worker's every mail failed.
+      - ./web/public/i18n:/app/resources/screen-texts:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -87,6 +93,9 @@ services:
       - api-vendor:/app/vendor
       - api-var:/app/var
       - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
+      # Every service running the mounted source reads the screens' texts as the api does: a mail or a start step
+      # writes them too, and without them the worker's every mail failed.
+      - ./web/public/i18n:/app/resources/screen-texts:ro
   # The demo builds' consumer, the same way.
   demo-worker:
     labels: *mounts-digest
@@ -101,6 +110,9 @@ services:
       - api-vendor:/app/vendor
       - api-var:/app/var
       - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
+      # Every service running the mounted source reads the screens' texts as the api does: a mail or a start step
+      # writes them too, and without them the worker's every mail failed.
+      - ./web/public/i18n:/app/resources/screen-texts:ro
 
   web:
     build:
