@@ -277,6 +277,11 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
       inset: 0;
       border-radius: inherit;
     }
+    /* The head wraps rather than run past a narrow card: at 125 % in a 320 px window the status and the row's controls
+       cannot shrink, so the controls go under the title, at the inline end (WCAG 1.4.10 reflow). */
+    .twes-list-card-head-slotted .twes-list-card-title {
+      flex-basis: 8rem;
+    }
     .twes-list-card-title {
       font-size: var(--text-body);
       font-weight: var(--font-weight-semibold);

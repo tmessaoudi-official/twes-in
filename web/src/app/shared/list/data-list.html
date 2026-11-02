@@ -377,7 +377,9 @@
             <!-- A card laid out by its slots (design proposal § 4, « Phone card »): the name and the status, then
                  the code and its day with the amount at the end, then one more pair at most. The title's link
                  covers the whole card; the box and the row's own controls sit above it. -->
-            <div class="twes-list-card-head flex items-start gap-2">
+            <div
+              class="twes-list-card-head twes-list-card-head-slotted flex flex-wrap items-start gap-2"
+            >
               @if (showBoxes()) {
                 <div class="twes-list-card-control -ms-2 -mt-2 shrink-0">
                   <ng-container *ngTemplateOutlet="rowBox; context: { $implicit: row }" />
@@ -405,7 +407,7 @@
                 </span>
               }
               @if (hasRowControls()) {
-                <div class="twes-list-card-control -me-2 -mt-1 shrink-0">
+                <div class="twes-list-card-control -me-2 -mt-1 ms-auto shrink-0">
                   <ng-container
                     *ngTemplateOutlet="rowControls; context: { $implicit: row, card: true }"
                   />
