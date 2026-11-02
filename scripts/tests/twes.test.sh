@@ -653,6 +653,18 @@ d=$(installed); echo "$(($(date +%s) - 600)) ran" > "$TMPDIR/outcome/due"
 out=$(AT=$((NOON - 86400)) OUTCOME_DIR=$TMPDIR/outcome twes "$d" tick); [[ "$(told)" != *backup_stopped* ]]
 check "  and a host clock a day behind reads a fresh schedule as fresh" $? 0 "$(told)" ""
 rm -rf "$TMPDIR/outcome"
+# A clock set back after it ran ahead leaves the schedule's last word dated after now, its age below zero: the schedule
+# is silent from the moment a tick first reads it so, not never.
+d=$(installed)
+out=$(OUTCOMES="due-age -3000 ran\n" twes "$d" tick); [[ "$(told)" != *backup_stopped* ]]
+check "a schedule last heard on a clock since set back: not told at once" $? 0 "$(told)" ""
+for k in 1 2 3 4 5 6 7; do out=$(AT=$((NOON + 900 * k)) OUTCOMES="due-age -3000 ran\n" twes "$d" tick); done
+check "  still silent an hour and a half later: told" $? 0 "$(told)" "installation.backup_stopped"
+d=$(installed)
+out=$(OUTCOMES="due-age -3000 ran\n" twes "$d" tick)
+out=$(AT=$((NOON + 900)) OUTCOMES="due-age 60 ran\n" twes "$d" tick)
+for k in 2 3 4 5 6 7; do out=$(AT=$((NOON + 900 * k)) OUTCOMES="due-age -60 ran\n" twes "$d" tick); done; [[ "$(told)" != *backup_stopped* ]]
+check "  once heard again, a later moment ahead is counted afresh" $? 0 "$(told)" ""
 d=$(installed)
 out=$(OUTCOMES_DOWN=1 twes "$d" tick); check "a backup service that does not answer: told" $? 0 "$(told)" "installation.backup_stopped"
 

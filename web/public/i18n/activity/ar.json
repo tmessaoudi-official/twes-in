@@ -176,7 +176,8 @@
         "revised": "عدّل الفرع"
       },
       "numbering_series": {
-        "revised": "عدّل الترقيم"
+        "revised": "عدّل الترقيم",
+        "earlier_day_allowed": "سمح بتاريخ سابق لآخر تاريخ مرقَّم"
       },
       "tax_component": {
         "created": "أنشأ الأداء",

@@ -112,7 +112,10 @@
       "serial_one_piece": "Un numéro de série est une seule pièce : il se déplace un à la fois, quantité 1.",
       "same_location": "Les articles y sont déjà : choisissez un autre emplacement.",
       "stock_short": "{{name}} : il en faut {{wanted}} {{unit}}, le stock enregistré en compte {{on_hand}} {{unit}}. Comptez le stock ou recevez la marchandise d’abord.",
-      "stock_short_to_confirm": "{{name}} : il en faut {{wanted}} {{unit}}, le stock enregistré en compte {{on_hand}} {{unit}}. Confirmez la vente pour continuer."
+      "stock_short_to_confirm": "{{name}} : il en faut {{wanted}} {{unit}}, le stock enregistré en compte {{on_hand}} {{unit}}. Confirmez la vente pour continuer.",
+      "after_now": "Ce moment est déjà passé : choisissez une fin encore à venir.",
+      "before_last_day": "Le dernier numéro a été donné le {{last}}, et l’horloge de cet ordinateur indique le {{today}} : le document serait daté avant le précédent. Vérifiez la date et l’heure de l’ordinateur, puis recommencez.",
+      "before_last_period": "Le dernier numéro a été donné le {{last}}, et l’horloge de cet ordinateur indique le {{today}} : rien n’est numéroté avant le dernier mois numéroté. Vérifiez la date et l’heure de l’ordinateur, puis recommencez."
     }
   }
 }

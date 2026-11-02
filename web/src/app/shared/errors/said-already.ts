@@ -3,6 +3,7 @@
 import { isDemoRefused } from '../demo/demo-refused-interceptor';
 import { submissionProblemOf } from '../submissions/submission-interceptor';
 import { isBusy } from './busy-interceptor';
+import { isNumberingRefused } from './numbering-refused-interceptor';
 
 /**
  * The API's answer each feature refusal was built from. Kept beside the refusal rather than as its `Error.cause`: a
@@ -29,7 +30,13 @@ export function refusedFor<R extends Error>(answer: unknown, refusal: R): R {
 export function saidAlready(error: unknown): boolean {
   let seen: unknown = error;
   for (let depth = 0; depth < 4 && seen !== undefined && seen !== null; depth++) {
-    if (isDemoRefused(seen) || submissionProblemOf(seen) !== null || isBusy(seen)) return true;
+    if (
+      isDemoRefused(seen) ||
+      submissionProblemOf(seen) !== null ||
+      isBusy(seen) ||
+      isNumberingRefused(seen)
+    )
+      return true;
     seen = seen instanceof Error ? answers.get(seen) : undefined;
   }
   return false;

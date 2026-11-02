@@ -31,7 +31,7 @@ final class InvoiceSearchReader
      *
      * @throws InvalidFilter
      */
-    public static function read(array $parameters, ?string $text, array $order, Company $company, bool $withStatus = true): InvoiceSearch
+    public static function read(array $parameters, ?string $text, array $order, Company $company, \DateTimeImmutable $now, bool $withStatus = true): InvoiceSearch
     {
         $filters = new ListFilters($parameters);
         $statuses = $withStatus ? $filters->choices('status', [...array_column(InvoiceStatus::cases(), 'value'), self::OVERDUE]) : [];
@@ -43,7 +43,7 @@ final class InvoiceSearchReader
             array_map(InvoiceKind::from(...), $filters->choices('documentType', array_column(InvoiceKind::cases(), 'value'))),
             $filters->uuids('customerId'),
             $order,
-            $overdue ? new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone())) : null,
+            $overdue ? $now->setTimezone(new \DateTimeZone($company->getTimezone()))->setTime(0, 0) : null,
             self::open($filters->dateRange('issueDate')),
             self::open($filters->dateRange('dueDate')),
             self::open($filters->decimalRange('totalGross')),

@@ -408,7 +408,7 @@ final class ScaleGenerator
                 // Only the series this pass renumbers start again: a company's delivery notes, say, keep their numbers, so
                 // their series must keep counting after them or the next one printed repeats the first.
                 $this->connection->executeStatement(
-                    'UPDATE numbering_series s SET next_number = 1, last_reset_year = NULL, last_reset_month = NULL WHERE s.company_id = ? AND s.is_default AND EXISTS (SELECT 1 FROM invoice i WHERE i.company_id = s.company_id AND i.establishment_id = s.establishment_id AND i.document_type = s.document_type AND i.number IS NOT NULL)',
+                    'UPDATE numbering_series s SET next_number = 1, last_reset_year = NULL, last_reset_month = NULL, last_numbered_day = NULL WHERE s.company_id = ? AND s.is_default AND EXISTS (SELECT 1 FROM invoice i WHERE i.company_id = s.company_id AND i.establishment_id = s.establishment_id AND i.document_type = s.document_type AND i.number IS NOT NULL)',
                     [$company],
                 );
                 // A stored PDF prints the number its invoice had: it goes, and the first request renders the new one.

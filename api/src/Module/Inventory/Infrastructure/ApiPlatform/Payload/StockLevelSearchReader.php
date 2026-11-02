@@ -26,7 +26,7 @@ final class StockLevelSearchReader
      *
      * @throws InvalidFilter
      */
-    public static function read(array $parameters, ?string $text, array $order, Company $company): StockLevelSearch
+    public static function read(array $parameters, ?string $text, array $order, Company $company, \DateTimeImmutable $now): StockLevelSearch
     {
         $filters = new ListFilters($parameters);
         $negative = $filters->choices('negative', ['yes', 'no']);
@@ -43,7 +43,7 @@ final class StockLevelSearchReader
             [] === $negative ? null : 'yes' === $negative[0],
             [] === $expired ? null : 'yes' === $expired[0],
             $useBy->isOpen() ? null : $useBy,
-            new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone()))->format('Y-m-d'),
+            $now->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'),
         );
     }
 }

@@ -348,6 +348,31 @@ Untried. The deep health turns red under 20 % free on the files volume (`app.hea
    rollback anyway.
 5. Still full: grow the disk at the provider. Do not delete volumes.
 
+## A shop's clock ran ahead
+
+Untried. A computer whose clock ran ahead numbers documents on days still to come. Once the clock is right again,
+numbering refuses every new document: its day is before the last one numbered (`before_last_day`, said on the screen with
+both days and « vérifiez l'horloge de l'ordinateur »), or in an earlier month or year than a sequence that has started
+again there (`before_last_period`). Nothing is lost; nothing new is numbered until this is done.
+
+1. Put the clock right first: Windows' date and time, then `twes status` (under WSL, a clock off by more than a minute is
+   said there and alerted). Allowing earlier days on a clock still wrong moves the problem, it does not end it.
+2. Find the company: `docker compose … exec -T api bin/console app:numbering:allow-earlier-days --help`, and its id in
+   « Plateforme › Entreprises » (the address of its page).
+3. `docker compose … exec -T api bin/console app:numbering:allow-earlier-days <company id> <hours>`: every series the
+   company numbers with takes a day before its last number's until then (at most
+   `app.numbering.earlier_days_hours_max`, 72), one line per series in its trail. It answers the moment it ends.
+4. The documents numbered meanwhile keep their numbers in order, dated as issued: an invoice numbered after one dated
+   on a day still to come carries an earlier date than it. Tell the company's accountant which numbers and days, from
+   the invoices list sorted by number.
+5. The allowance never takes a monthly or yearly sequence back into an earlier month or year once it has started again
+   there: those numbers were given, and giving them again would number two documents alike. Such a series stays
+   refused until the clock reaches its last number's period. Do not edit the series: call the developer, who asks the
+   company's accountant what the law there wants (an open question, stable-release plan row S1.9b).
+6. Backups need nothing: a step whose last success is dated after now is read as never done, so the next half-hourly
+   run takes a full backup, the copy and the read-back again; `twes tick` counts the schedule's silence from the tick
+   that first read its last word dated ahead, and alerts after an hour and a half of it as usual.
+
 ## The queue is stuck
 
 Untried. Mails (invitations, password resets, notifications) leave through the Messenger queue on PostgreSQL; the deep

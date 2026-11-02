@@ -938,6 +938,13 @@ tick() {
       if [[ "$step" == due-age ]]; then
         t=${line#due-age }
         t=${t%% *}
+        # Its last word dated after now was written on a clock since set back: silent from the tick that first read it so.
+        if [[ "$t" =~ ^-[0-9]+$ ]]; then
+          [[ -f "$state/due-ahead" ]] || now > "$state/due-ahead"
+          t=$(($(now) - $(recall due-ahead)))
+        else
+          rm -f "$state/due-ahead"
+        fi
         if [[ "$t" =~ ^[0-9]+$ ]] && (((t < $(now) - awake ? t : $(now) - awake) > 5400)); then
           backup_stopped "Le calendrier des sauvegardes n'a pas tourné depuis plus d'une heure et demie alors que l'ordinateur et l'application tournent."
         fi

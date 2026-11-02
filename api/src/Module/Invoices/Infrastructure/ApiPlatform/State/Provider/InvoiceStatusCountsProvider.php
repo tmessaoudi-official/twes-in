@@ -18,11 +18,12 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
+use Psr\Clock\ClockInterface;
 
 /** @implements ProviderInterface<InvoiceStatusCountsResource> */
 final readonly class InvoiceStatusCountsProvider implements ProviderInterface
 {
-    public function __construct(private CompanyGuard $guard, private ManageInvoices $manage)
+    public function __construct(private CompanyGuard $guard, private ManageInvoices $manage, private ClockInterface $clock)
     {
     }
 
@@ -30,6 +31,6 @@ final readonly class InvoiceStatusCountsProvider implements ProviderInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
 
-        return InvoiceStatusCountsResource::of($this->manage->statusCounts($company, InvoiceSearchReader::read(Paging::parameters($context), Paging::text($operation), [], $company, withStatus: false)));
+        return InvoiceStatusCountsResource::of($this->manage->statusCounts($company, InvoiceSearchReader::read(Paging::parameters($context), Paging::text($operation), [], $company, $this->clock->now(), withStatus: false)));
     }
 }

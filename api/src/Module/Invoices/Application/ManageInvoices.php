@@ -118,7 +118,7 @@ final readonly class ManageInvoices implements DeclaresAuditActions
      */
     public function statusCounts(Company $company, InvoiceSearch $search): array
     {
-        return $this->invoices->statusCounts($company->getId(), $search, new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone())));
+        return $this->invoices->statusCounts($company->getId(), $search, $this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->setTime(0, 0));
     }
 
     /** @throws InvoiceNotFound */

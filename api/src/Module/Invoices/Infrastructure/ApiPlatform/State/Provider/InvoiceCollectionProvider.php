@@ -23,6 +23,7 @@ use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
+use Psr\Clock\ClockInterface;
 
 /**
  * One page of a company's invoices and credit notes, searched, narrowed and sorted in the database (docs/SPEC.md § 7,
@@ -37,6 +38,7 @@ final readonly class InvoiceCollectionProvider implements ProviderInterface
         private InvoiceView $view,
         private CompanyGuard $guard,
         private Paging $paging,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -44,7 +46,7 @@ final readonly class InvoiceCollectionProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
-        $search = InvoiceSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, InvoiceSearch::SORTS), $company);
+        $search = InvoiceSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, InvoiceSearch::SORTS), $company, $this->clock->now());
 
         $withCosts = $this->guard->may($company, ProductPermission::COST_READ);
 

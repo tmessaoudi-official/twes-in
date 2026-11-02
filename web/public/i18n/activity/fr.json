@@ -176,7 +176,8 @@
         "revised": "a modifié l’établissement"
       },
       "numbering_series": {
-        "revised": "a modifié la numérotation"
+        "revised": "a modifié la numérotation",
+        "earlier_day_allowed": "a permis une date antérieure à la dernière numérotée"
       },
       "tax_component": {
         "created": "a créé la taxe",

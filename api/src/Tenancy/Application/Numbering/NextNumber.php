@@ -37,6 +37,8 @@ final readonly class NextNumber
         $series = $this->series->defaultFor($establishment->getId(), $documentType)
             ?? throw new NoNumberingSeries(\sprintf('The establishment %s numbers no %s.', $establishment->getCode(), $documentType));
 
-        return $series->numberFor($this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone())));
+        $now = $this->clock->now();
+
+        return $series->numberFor($now->setTimezone(new \DateTimeZone($company->getTimezone())), $now);
     }
 }

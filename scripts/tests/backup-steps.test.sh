@@ -121,6 +121,13 @@ out=$(STEP=due run); check "a full backup older than a week: a full one, whateve
 rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 30; done_ago verify 200
 out=$(STEP=due run); check "a week since the last read-back: read back" $? 0 "$(calls)" "pgbackrest --stanza=twes verify"
 
+# A clock that ran ahead wrote its successes on days still to come; set right again, those ages read below zero, and
+# every step would wait for the clock to catch up, weeks without a backup. A success after now is no success to rely on.
+rm -rf "$O"; done_ago full -720; done_ago diff -720; done_ago copy -720; done_ago verify -720
+out=$(STEP=due run); check "successes dated after now (a clock that ran ahead): a full backup" $? 0 "$(calls)" "--type=full backup"
+check "  the copy" 0 0 "$(calls)" "pg_dump"
+check "  and the read-back" 0 0 "$(calls)" "pgbackrest --stanza=twes verify"
+
 rm -rf "$O"; done_ago full 30; done_ago diff 2; done_ago copy 2; done_ago verify 30
 out=$(STEP=due run OFFSITE_REPOSITORY=s3:https://bucket.test:443/b/offsite)
 check "the off-site copy switched on, never made: made" $? 0 "$(calls)" "-r s3:https://bucket.test:443/b/offsite backup"

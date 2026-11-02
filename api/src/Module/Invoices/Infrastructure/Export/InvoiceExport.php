@@ -21,6 +21,7 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
+use Psr\Clock\ClockInterface;
 
 /**
  * The invoices and credit notes list as a file (docs/SPEC.md § 7, row 60): one row per document, under the search,
@@ -33,7 +34,7 @@ final readonly class InvoiceExport implements DeclaresExport
     private const int BATCH = 200;
     private const string KEY = 'invoices';
 
-    public function __construct(private ManageInvoices $manage, private InvoiceTotals $totals)
+    public function __construct(private ManageInvoices $manage, private InvoiceTotals $totals, private ClockInterface $clock)
     {
     }
 
@@ -59,7 +60,7 @@ final readonly class InvoiceExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $search = InvoiceSearchReader::read($query->parameters(), $query->text(), $query->order(InvoiceSearch::SORTS), $company);
+        $search = InvoiceSearchReader::read($query->parameters(), $query->text(), $query->order(InvoiceSearch::SORTS), $company, $this->clock->now());
 
         for ($page = 1;; ++$page) {
             $answer = $this->manage->search($company, $search, new PageRequest($page, self::BATCH));

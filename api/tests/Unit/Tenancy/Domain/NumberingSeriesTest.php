@@ -79,16 +79,16 @@ final class NumberingSeriesTest extends TestCase
         $series = self::series();
         $series->revise(new NumberFormat('FAC-{YYYY}-{SEQ:5}'), ResetPeriod::Yearly, 41, new \DateTimeImmutable());
 
-        self::assertSame('FAC-2026-00041', $series->numberFor(new \DateTimeImmutable('2026-09-14')));
+        self::assertSame('FAC-2026-00041', $series->numberFor(new \DateTimeImmutable('2026-09-14'), new \DateTimeImmutable()));
         self::assertSame(41, $series->getNextNumber());
         self::assertFalse($series->isNumbered());
         self::assertSame('FAC-2026-00041', $series->allocate(new \DateTimeImmutable('2026-09-14'), new \DateTimeImmutable()));
 
-        self::assertSame('FAC-2027-00001', $series->numberFor(new \DateTimeImmutable('2027-01-02')), 'a new year starts again at one');
+        self::assertSame('FAC-2027-00001', $series->numberFor(new \DateTimeImmutable('2027-01-02'), new \DateTimeImmutable()), 'a new year starts again at one');
         self::assertSame(42, $series->getNextNumber(), 'said, not taken');
-        self::assertSame('FAC-2026-00042', $series->numberFor(new \DateTimeImmutable('2026-12-31')));
+        self::assertSame('FAC-2026-00042', $series->numberFor(new \DateTimeImmutable('2026-12-31'), new \DateTimeImmutable()));
         $this->expectException(InvalidNumbering::class);
-        $series->numberFor(new \DateTimeImmutable('2026-08-31'));
+        $series->numberFor(new \DateTimeImmutable('2026-08-31'), new \DateTimeImmutable());
     }
 
     public function testAYearlySequenceStartsAgainAtOneInANewYear(): void
@@ -133,6 +133,99 @@ final class NumberingSeriesTest extends TestCase
             self::assertSame('issueDate', $refused->field);
         }
         self::assertSame(2, $series->getNextNumber());
+    }
+
+    public function testAnEarlierMonthIsRefusedNamingTheMonthOfTheLastNumber(): void
+    {
+        $series = self::series();
+        $series->allocate(new \DateTimeImmutable('2026-12-05'), new \DateTimeImmutable());
+
+        try {
+            $series->allocate(new \DateTimeImmutable('2026-11-05'), new \DateTimeImmutable());
+            self::fail('A number was issued in a month before the last one.');
+        } catch (InvalidNumbering $refused) {
+            self::assertSame(['issueDate', 'before_last_period', ['last' => '2026-12-05', 'today' => '2026-11-05']], [$refused->field, $refused->reason, $refused->params]);
+        }
+    }
+
+    /**
+     * The day is the company's today, read from the clock: a day before the last number's, within its month, is a clock set
+     * back, and the document it would date before the previous one is refused, saying both days (docs/SPEC.md § 7, Q7).
+     */
+    public function testWithinAMonthADayBeforeTheLastNumbersDayIsRefusedNamingBoth(): void
+    {
+        $series = self::series();
+        $series->allocate(new \DateTimeImmutable('2026-11-15'), new \DateTimeImmutable());
+
+        try {
+            $series->allocate(new \DateTimeImmutable('2026-11-14'), new \DateTimeImmutable());
+            self::fail('A number was issued on a day before the last one.');
+        } catch (InvalidNumbering $refused) {
+            self::assertSame(['issueDate', 'before_last_day', ['last' => '2026-11-15', 'today' => '2026-11-14']], [$refused->field, $refused->reason, $refused->params]);
+        }
+        self::assertSame(2, $series->getNextNumber(), 'nothing taken');
+        try {
+            $series->numberFor(new \DateTimeImmutable('2026-11-14'), new \DateTimeImmutable());
+            self::fail('The number said before issuing was given for a day the issue refuses.');
+        } catch (InvalidNumbering $refused) {
+            self::assertSame('before_last_day', $refused->reason);
+        }
+        self::assertSame('FAC-2026-00002', $series->allocate(new \DateTimeImmutable('2026-11-15'), new \DateTimeImmutable()), 'the same day again');
+        self::assertSame('FAC-2026-00003', $series->allocate(new \DateTimeImmutable('2026-11-16'), new \DateTimeImmutable()));
+    }
+
+    /**
+     * An operator lets the series take an earlier day for a while, the way back from a clock that ran ahead: within the
+     * period the sequence counts in, numbers keep growing and none is given twice. Past the moment given, the rule is back.
+     */
+    public function testAnOperatorsAllowanceLetsAnEarlierDayOfTheSamePeriodUntilItEnds(): void
+    {
+        $now = new \DateTimeImmutable('2026-11-05 10:00');
+        $series = self::series();
+        $series->allocate(new \DateTimeImmutable('2026-12-05'), $now);
+
+        $series->allowEarlierDays($now->modify('+2 hours'), $now);
+        self::assertSame('FAC-2026-00002', $series->numberFor(new \DateTimeImmutable('2026-11-05'), $now->modify('+1 hour')));
+        self::assertSame('FAC-2026-00002', $series->allocate(new \DateTimeImmutable('2026-11-05'), $now->modify('+1 hour')));
+
+        try {
+            $series->allocate(new \DateTimeImmutable('2026-11-05'), $now->modify('+3 hours'));
+            self::fail('The allowance outlived the moment it was given until.');
+        } catch (InvalidNumbering $refused) {
+            self::assertSame('before_last_day', $refused->reason);
+        }
+    }
+
+    /** A monthly sequence starts again each month: back in an earlier month it would give that month's numbers twice. */
+    public function testTheAllowanceNeverTakesASeriesBackIntoAnEarlierPeriodItCountsIn(): void
+    {
+        $now = new \DateTimeImmutable('2026-11-20 10:00');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $establishment = Establishment::create($company, '000', 'Siège', true, $now);
+        $monthly = NumberingSeries::create($company, $establishment, 'invoice', new NumberFormat('FAC-{YYYY}{MM}-{SEQ:4}'), ResetPeriod::Monthly, true, $now);
+        $monthly->allocate(new \DateTimeImmutable('2026-12-01'), $now);
+        $monthly->allowEarlierDays($now->modify('+1 hour'), $now);
+
+        try {
+            $monthly->allocate(new \DateTimeImmutable('2026-11-20'), $now);
+            self::fail('A monthly series went back into a month whose numbers it would give again.');
+        } catch (InvalidNumbering $refused) {
+            self::assertSame('before_last_period', $refused->reason);
+        }
+
+        $yearly = self::series();
+        $yearly->allocate(new \DateTimeImmutable('2027-01-02'), $now);
+        $yearly->allowEarlierDays($now->modify('+1 hour'), $now);
+        $this->expectException(InvalidNumbering::class);
+        $yearly->allocate(new \DateTimeImmutable('2026-12-31'), $now);
+    }
+
+    public function testAnAllowanceIsGivenForAWhileThatHasNotEnded(): void
+    {
+        $now = new \DateTimeImmutable('2026-11-05 10:00');
+        $this->expectException(InvalidNumbering::class);
+
+        self::series()->allowEarlierDays($now, $now);
     }
 
     public function testOnceADocumentCarriesANumberTheSequenceIsFrozenButItsFormatIsNot(): void

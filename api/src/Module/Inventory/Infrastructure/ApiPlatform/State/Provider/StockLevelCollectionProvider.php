@@ -26,6 +26,7 @@ use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -44,6 +45,7 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
         private StockLocationRepository $locations,
         private CompanyGuard $guard,
         private Paging $paging,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -51,7 +53,7 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), StockPermission::READ);
-        $search = StockLevelSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, StockLevelSearch::SORTS), $company);
+        $search = StockLevelSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, StockLevelSearch::SORTS), $company, $this->clock->now());
         $page = $this->stock->searchLevels($company, $search, $this->paging->request($operation, $context));
 
         $productIds = array_map(static fn (StockLevel $level): Uuid => $level->productId, $page->items);

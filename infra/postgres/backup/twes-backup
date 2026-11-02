@@ -151,12 +151,15 @@ heartbeat() {
   exit "$status"
 }
 
-# How long ago a step last succeeded, in seconds; never is longer than any period.
+# How long ago a step last succeeded, in seconds; never is longer than any period. A success dated after now was written
+# by a clock that ran ahead and has been set right since: read as never, or every step would wait for the clock to
+# catch up with it, weeks without a backup.
 since() {
-  local t=''
+  local t='' now
   [[ -f "$OUTCOME_DIRECTORY/$1.ok" ]] && read -r t < "$OUTCOME_DIRECTORY/$1.ok"
-  [[ "$t" =~ ^[0-9]+$ ]] || { echo 999999999; return 0; }
-  echo $(($(date +%s) - t))
+  now=$(date +%s)
+  [[ "$t" =~ ^[0-9]+$ ]] && ((t <= now)) || { echo 999999999; return 0; }
+  echo $((now - t))
 }
 
 # Each step in its own process, as the schedule runs it, so it writes its outcome and takes the lock itself. A failed

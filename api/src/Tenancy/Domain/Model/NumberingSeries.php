@@ -64,6 +64,14 @@ class NumberingSeries implements CompanyOwned
     #[ORM\Column(name: 'last_reset_month', type: Types::SMALLINT, nullable: true)]
     private ?int $lastNumberedMonth = null;
 
+    /** The day of the last number issued; null until a document numbered since the day was kept carries one. */
+    #[ORM\Column(name: 'last_numbered_day', type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $lastNumberedDay = null;
+
+    /** Until when an operator lets the series take a day before its last one, within the period it counts in. */
+    #[ORM\Column(name: 'earlier_day_allowed_until', type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $earlierDayAllowedUntil = null;
+
     #[ORM\Column]
     private bool $isDefault = false;
 
@@ -141,10 +149,14 @@ class NumberingSeries implements CompanyOwned
      */
     public function allocate(\DateTimeImmutable $issueDay, \DateTimeImmutable $now): string
     {
-        $this->nextNumber = $this->sequenceOn($issueDay);
+        $this->nextNumber = $this->sequenceOn($issueDay, $now);
         $number = $this->preview($issueDay);
         ++$this->nextNumber;
         [$this->lastNumberedYear, $this->lastNumberedMonth] = [(int) $issueDay->format('Y'), (int) $issueDay->format('n')];
+        $day = new \DateTimeImmutable($issueDay->format('Y-m-d'));
+        if (null === $this->lastNumberedDay || $day > $this->lastNumberedDay) {
+            $this->lastNumberedDay = $day;
+        }
         $this->updatedAt = $now;
 
         return $number;
@@ -157,27 +169,59 @@ class NumberingSeries implements CompanyOwned
      *
      * @throws InvalidNumbering
      */
-    public function numberFor(\DateTimeImmutable $issueDay): string
+    public function numberFor(\DateTimeImmutable $issueDay, \DateTimeImmutable $now): string
     {
-        return new NumberFormat($this->format)->render($this->sequenceOn($issueDay), $issueDay, $this->establishment->getCode());
+        return new NumberFormat($this->format)->render($this->sequenceOn($issueDay, $now), $issueDay, $this->establishment->getCode());
+    }
+
+    /**
+     * Lets the series take a day before its last number's until that moment, within the period its sequence counts in: the
+     * way back from a computer clock that ran ahead and issued documents on a day not come yet (docs/SPEC.md § 7, Q7).
+     * An operator gives it, the trail says who and why. A monthly sequence never goes back into an earlier month, nor a
+     * yearly one into an earlier year: there it would give those numbers again.
+     *
+     * @throws InvalidNumbering when the moment has already passed
+     */
+    public function allowEarlierDays(\DateTimeImmutable $until, \DateTimeImmutable $now): void
+    {
+        if ($until <= $now) {
+            throw new InvalidNumbering('until', 'An earlier day is allowed until a moment still to come.', 'after_now');
+        }
+        $this->earlierDayAllowedUntil = $until;
+        $this->updatedAt = $now;
     }
 
     /**
      * Where the sequence stands for a document issued on that day: at one again on the first number of a later year
-     * (yearly) or month (monthly). A day before the month of the last number is refused, because starting again there
-     * would issue that month's numbers twice.
+     * (yearly) or month (monthly). The day is the company's today, read from the clock, so a day before the last number's
+     * is a clock set back: within the month it would date a document before the one numbered just before it, and in an
+     * earlier month starting again there would issue that month's numbers twice. Both are refused, saying both days;
+     * an operator's allowance lifts the first, never the second within a period the sequence starts again in.
      *
      * @throws InvalidNumbering
      */
-    private function sequenceOn(\DateTimeImmutable $issueDay): int
+    private function sequenceOn(\DateTimeImmutable $issueDay, \DateTimeImmutable $now): int
     {
         if (null === $this->lastNumberedYear) {
             return $this->nextNumber;
         }
         $period = [(int) $issueDay->format('Y'), (int) $issueDay->format('n')];
         $last = [$this->lastNumberedYear, $this->lastNumberedMonth ?? 1];
-        if ($period < $last) {
-            throw new InvalidNumbering('issueDate', \sprintf('A number cannot be issued on %s, before %04d-%02d, the month of the last one.', $issueDay->format('Y-m-d'), $last[0], $last[1]));
+        $allowed = null !== $this->earlierDayAllowedUntil && $now < $this->earlierDayAllowedUntil;
+        $samePeriod = match ($this->resetPeriod) {
+            ResetPeriod::Yearly => $period[0] === $last[0],
+            ResetPeriod::Monthly => $period === $last,
+            ResetPeriod::Never => true,
+        };
+        $today = $issueDay->format('Y-m-d');
+        if ($period < $last && !($allowed && $samePeriod)) {
+            // The last number's day where it was kept, else the first of its month: either reads as a day on the screen.
+            $lastDay = $this->lastNumberedDay?->format('Y-m-d') ?? \sprintf('%04d-%02d-01', $last[0], $last[1]);
+            throw new InvalidNumbering('issueDate', \sprintf('A number cannot be issued on %s, before %s, the day of the last one: check the computer\'s clock.', $today, $lastDay), 'before_last_period', ['last' => $lastDay, 'today' => $today]);
+        }
+        $lastDay = $this->lastNumberedDay?->format('Y-m-d');
+        if (null !== $lastDay && $today < $lastDay && !$allowed) {
+            throw new InvalidNumbering('issueDate', \sprintf('The last number was issued on %s and today reads %s: a document would be dated before the one numbered just before it. Check the computer\'s clock.', $lastDay, $today), 'before_last_day', ['last' => $lastDay, 'today' => $today]);
         }
         $startsAgain = match ($this->resetPeriod) {
             ResetPeriod::Yearly => $period[0] > $last[0],

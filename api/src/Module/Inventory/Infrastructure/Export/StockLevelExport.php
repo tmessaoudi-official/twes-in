@@ -23,6 +23,7 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -38,6 +39,7 @@ final readonly class StockLevelExport implements DeclaresExport
         private KeepStock $stock,
         private ProductRepository $products,
         private StockLocationRepository $locations,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -63,7 +65,7 @@ final readonly class StockLevelExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $search = StockLevelSearchReader::read($query->parameters(), $query->text(), $query->order(StockLevelSearch::SORTS), $company);
+        $search = StockLevelSearchReader::read($query->parameters(), $query->text(), $query->order(StockLevelSearch::SORTS), $company, $this->clock->now());
 
         for ($page = 1;; ++$page) {
             $answer = $this->stock->searchLevels($company, $search, new PageRequest($page, self::BATCH));

@@ -176,7 +176,8 @@
         "revised": "changed the establishment"
       },
       "numbering_series": {
-        "revised": "changed the numbering"
+        "revised": "changed the numbering",
+        "earlier_day_allowed": "allowed a day before the last one numbered"
       },
       "tax_component": {
         "created": "created the tax",
