@@ -48,7 +48,9 @@ app-signed-out-layout {
 
   // On a phone the wordmark's arrow, centred under the language and scheme menus, rose into their row (audit V-23):
   // the brand starts below it. A phone as the shell reads one, on effective pixels (the window over the text factor).
-  :host-context(html[data-window='compact']) & {
+  // `:root`, never `:host-context`: this stylesheet is not encapsulated, and Angular leaves `:host-context` as written
+  // there, a selector no browser matches.
+  :root[data-window='compact'] & {
     padding-block-start: 5rem;
   }
 }

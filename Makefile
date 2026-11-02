@@ -244,6 +244,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/version-pins.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/host-tools.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/design-tokens.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/unscoped-host-selectors.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/permission-labels.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/planned-module-labels.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/coming-texts.test.sh
@@ -333,6 +334,7 @@ in-gate-licences:
 	bash scripts/gates/version-pins.sh
 	bash scripts/gates/host-tools.sh
 	bash scripts/gates/design-tokens.sh
+	bash scripts/gates/unscoped-host-selectors.sh
 	bash scripts/gates/permission-labels.sh
 	bash scripts/gates/planned-module-labels.sh
 	bash scripts/gates/coming-texts.sh
