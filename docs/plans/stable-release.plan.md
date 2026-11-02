@@ -62,6 +62,9 @@ Read-only maps: `var/claude/hardening-map/`.
 - [2026-11-02 06:43] AGREED: existing accounts keep « calme » (developer's answer, 2026-11-02): the update that adds presentation.theme-preset stores « calme » for every account that exists then, so no screen changes under the shop on the update; an account created afterwards starts on « vif » (D1), and anyone switches in Mon compte.
 - [2026-11-02 07:28] ASSUMED (review): S7.1 colour step: no accent text is written on a selected list row (Material's secondary-container, kept as the bulk bar's own ground so the eye pairs rows and bar; accent-text reads 3.52-4.49 on it in 18 of 32 themes) nor on surface-container-highest (4.29-4.50 in 8 dark themes); nothing writes accent text there today, and the spec says why it holds only the grounds the accent-text loop covers. Because moving selection to accent-soft would make a selected row read as the active one, which already takes accent-soft (the proposal's attack 1). Alternatives: add highest and the selection ground to the accent-text loop (changes the reference values in dark). Also kept as they were, flagged: the toast notice's icon (inverse-primary on tertiary-container), and the identity marks (brand tile, company mark, wordmark arrow) on primary.
 - [2026-11-02 10:28] ASSUMED (review): S7.1's remaining proposal steps 6-11 (empty states, phone card slots, record page tracks, home, small flaws, the design review) come after S7.13 and S7.6+S5.9, and step 5 (rem sizing, the text-size setting) is S7.6+S5.9 itself — because the 00:32 ruling orders S7.1 (the renewed system and its token gate: steps 0-4, landed 7ff3798a4, 459e513e6, 18c4cec4f, 3e0348021), then S7.13, then S7.6 with S5.9, and steps 6-11 apply the system screen by screen. Alternatives: steps 6-11 before S7.13.
+- [2026-11-02 14:31] AGREED: desk q-budget (developer's answer b): the first page's reserve rises to 985 kB with the warning at 978 kB, still under the 1 MB wall.
+- [2026-11-02 14:31] AGREED: desk q-cards (developer's answer a): cards rise in « Vif » and in dark mode (a faint shadow, a slightly lighter card ground) and stay flat in « Calme » light, as the approved proposal says.
+- [2026-11-02 14:31] AGREED: desk q-titles (developer's answer a): page titles stay 24 px bold everywhere, the proposal's title step.
 
 ## Formal Plan
 The full plan is `var/claude/hardening-map/plan-final.md` (revision 2, 136 steps, critic answers in its § 13); its rows are
@@ -90,7 +93,7 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S0.11 | Values upgrade: new values filled from infra/onprem/values.defaults before compose config | M | done | 283efa6f1 | scripts/deploy/** infra/onprem/** |
 | S0.12 | snapshot-gate refuses a non-main tree while main-first exists (landed alone); test 41 passed, check removed: 2 fail | S | done | 864136fa2 | scripts/gate/** |
 | S0.13 | StatefulServicesTest: every stateful service resets or is listed | M | done | 2ce561bfd | api/tests/** |
-| S0.14 | Budget reserve measured and enforced (first page: 975 kB error, 965 kB warning, measured 960.45 kB, under the 1 MB wall; texts: reserve 59,392 B under the 61,440 B budget, ar 57,468 B) | S | done | 3f5a7e4b4 | web/angular.json scripts/gates/** |
+| S0.14 | Budget reserve measured and enforced (first page: 975 kB error, 965 kB warning, measured 960.45 kB, raised to 985 kB error and 978 kB warning by the developer's answer of 2026-11-02 14:31, under the 1 MB wall; texts: reserve 59,392 B under the 61,440 B budget, ar 57,468 B) | S | done | 3f5a7e4b4 | web/angular.json scripts/gates/** |
 | S0.15 | Baseline release proofs: update rehearsal and onprem-check legs with markers (baseline proved on tree a3fce7c9: the rehearsal from v2026.10.30.1 on the shop's files, 0 refused, nothing lost, and onprem-check; the evidence gates refused every rehearsal's own tag until 9e637df92; the legs come with the P2 rows that build what they test) | M | doing | 9e637df92 | scripts/onprem/** scripts/release/** Makefile |
 | S0.16 | Maintenance lane for patch tags | S | done | 283efa6f1 | scripts/release/tag-release.sh, scripts/onprem/twes, scripts/tests/twes.test.sh, scripts/release/tests/* |
 | S0.17 | Start steps never abort the start | M | done | 283efa6f1 | infra/api/docker-entrypoint.sh, api/src/Tenancy/Infrastructure/Console/ConvergePlatformCommand.php, api/src/Shared/Infrastructure/Http/HealthController.php, api/tests/Functional/StartStepsTest.php |
@@ -171,7 +174,7 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S5.6 | Unsaved work kept across a session end | M | todo | - | web/src/app/shared/form/**, web/src/app/shared/session/**, web/e2e/session-end-unsaved.spec.ts |
 | S5.7 | One-canon rows on the screens used | L | todo | - | web/src/app/**, api/src/** |
 | S5.8 | Invisible marks gate on web inputs | S | todo | - | scripts/gates/typed-codes.sh, web/src/app/shared/form/** |
-| S5.9 | 200 percent text and reflow e2e | M | doing | - | web/e2e/reflow.spec.ts, web/src/styles.scss |
+| S5.9 | 200 percent text and reflow e2e | M | done | 3937e942b | web/e2e/reflow.spec.ts, web/src/styles.scss |
 | S5.10 | Slow unit cases one page per case | M | todo | - | web/src/app/**/*.spec.ts, scripts/gates/one-page-per-case.sh |
 | S5.11 | Correction flows and contract leftovers | L | todo | - | web/src/app/**, api/src/**, web/e2e/** |
 | S5.13 | Half-built rows finished or hidden | M | todo | - | docs/SPEC.md, docs/plans/*.plan.md, web/src/app/** |
@@ -186,12 +189,12 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 | S6.10 | Two business profiles as data | M | todo | - | api/config/profiles/*.yaml, api/src/ModuleRegistry/**, api/src/FirstSteps/**, web/src/app/company/** |
 | S6.12 | Stock-loss VAT effect said | S | todo | - | api/src/Module/Inventory/**, web/src/app/inventory/** |
 | S6.E | P6 phase-end lens and legs | S | todo | - | - |
-| S7.1 | Renewed design system and token gate, built swappable (ruled 2026-11-02 00:32: now, before P5 and P6; the gate also refuses raw fonts, sizes, radii, shadows and durations, and an e2e overrides the root tokens alone and finds every screen family changed: about one day beyond the row's 4; proposal § 7.3 steps 0-4 landed: tokens 7ff3798a4, colour 459e513e6, radii and type roles 18c4cec4f; next the signed-figure pipe, then step 5) | L | doing | 18c4cec4f | web/src/app/shared/theme/**, web/src/app/**/*.html, web/src/tailwind.css, web/src/styles.scss, scripts/gates/design-tokens.sh |
+| S7.1 | Renewed design system and token gate, built swappable (ruled 2026-11-02 00:32: now, before P5 and P6; the gate also refuses raw fonts, sizes, radii, shadows and durations, and an e2e overrides the root tokens alone and finds every screen family changed: about one day beyond the row's 4; proposal § 7.3 steps 0-4 landed: tokens 7ff3798a4, colour 459e513e6, radii and type roles 18c4cec4f, signed figures 3e0348021, step 6 empty states 301185376; next step 7, phone cards) | L | doing | 301185376 | web/src/app/shared/theme/**, web/src/app/**/*.html, web/src/tailwind.css, web/src/styles.scss, scripts/gates/design-tokens.sh |
 | S7.2 | Empty states with their action | M | todo | - | web/src/app/shared/list/**, web/src/app/**/*-page.ts, web/public/i18n/list/* |
 | S7.3 | Phone list cards | M | todo | - | web/src/app/shared/list/**, web/src/app/**, web/e2e/phone-lists.spec.ts |
 | S7.4 | Wide screens and sticky summary | L | todo | - | web/src/app/invoices/**, web/src/app/quotes/**, web/src/app/delivery-notes/**, web/src/app/purchases/**, web/e2e/list-fit.spec.ts |
 | S7.5 | Home structure and KPI tile | M | todo | - | web/src/app/*/*-nav.ts, web/src/app/shared/ui/kpi-tile.ts, web/src/app/first-steps/**, api/src/Module/*/Infrastructure/Home/* |
-| S7.6 | Text size per device, calme and vif per person | M | doing | - | api/src/Settings/Application/PresentationSettings.php, web/src/app/shared/theme/**, web/src/app/shared/settings/** |
+| S7.6 | Text size per device, calme and vif per person | M | done | 3937e942b | api/src/Settings/Application/PresentationSettings.php, web/src/app/shared/theme/**, web/src/app/shared/settings/** |
 | S7.7 | Dark mode depth | M | todo | - | web/src/styles.scss, web/src/app/shared/theme/** |
 | S7.9 | Small flaws and canon | L | todo | - | web/src/app/**, scripts/gates/* |
 | S7.11 | Client performance trace | S | todo | - | web/e2e/perf-trace.spec.ts |
@@ -228,5 +231,6 @@ the 2026-12-15 interim carries the 2027 values and the seven built fixes if no t
 ### Needs research
 ### Fragile
 ### Known issues
+- document-actions.spec.ts « keeps it in « ⋮ » where it would push the bar under the title » failed once in the gate of bdf9ef31 (load ~8) and passed 3 of 3 alone: plannedRoom's measurement runs in afterRenderEffect, so a late render under load can read the bar before the case's widths apply; to trace from the case's own order of renders, not to retry.
 - data-list.spec's two column scenarios (hidden column, saved view) fail on a machine whose Demo has gathered e2e members: at 1,280 px beside the settings panel the members list keeps only « Nom », so « Rôle » is never shown to hide. Green on CI's fresh database (9447cf2ad); the scenarios should pick a list and width whose columns fit whatever the data holds.
 - 2026-11-01: c564b7742's batch (FC#265's spentBudgetInterceptor, from nb1) stopped the app at start on NG0200; found by the FC#276 e2e before any push, fixed with app-config.spec.ts as the class guard (lands with S0.4).

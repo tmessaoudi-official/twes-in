@@ -256,17 +256,21 @@ html {
   // has the card's corner, whatever draws it.
   @include mat.card-overrides(
     (
-      elevated-container-color: transparent,
-      elevated-container-elevation: none,
+      // A card lifts off the page or lies flat by the theme's own two values, set per preset and scheme below.
+      elevated-container-color: var(--twes-card-ground),
+      elevated-container-elevation: var(--twes-card-shadow),
       elevated-container-shape: var(--radius-card),
       filled-container-shape: var(--radius-card),
       outlined-container-shape: var(--radius-card),
+      // An outlined card (the home's panels, Paramètres, the reports) lifts as every card does, keeping its border.
+      outlined-container-color: var(--twes-card-ground),
+      outlined-container-elevation: var(--twes-card-shadow),
       outlined-outline-color: var(--mat-sys-outline-variant),
       // A card's title is the heading step its h2 siblings take, never Material's larger title.
       title-text-size: var(--text-heading),
       title-text-line-height: var(--text-heading--line-height),
       title-text-weight: var(--text-heading--font-weight),
-      title-text-tracking: var(--text-heading--letter-spacing),
+      title-text-tracking: var(--text-heading--letter-spacing)
     )
   );
   // A dialog is the panel's kind: its corner, the highest elevation, and its title the heading step every card and
@@ -691,6 +695,10 @@ html {
   --twes-danger-ring-gap: 2px;
 
   --twes-shadow-1: 0 0 0 1px oklch(0.2 0.03 262 / 0.07), 0 1px 2px oklch(0.2 0.03 262 / 0.06);
+  // A card's ground and lift: flat in « Calme » light; « Vif » and dark raise it a little (html.preset-vif and
+  // html.theme-dark below), the approved proposal as the developer chose it. A new identity changes these values only.
+  --twes-card-ground: transparent;
+  --twes-card-shadow: none;
   --twes-shadow-2:
     0 0 0 1px oklch(0.2 0.03 262 / 0.07), 0 24px 48px -18px oklch(0.25 0.05 262 / 0.3);
   // s3 sits above everything: preview, palette, dialogs (design direction § 1.3).
@@ -722,6 +730,13 @@ html {
   --twes-on-indicator: #ffffff;
   --twes-accent-text-inverse: #74a6f3;
   --twes-focus-inverse: #74a6f3;
+}
+
+// « Vif » and dark lift every card off the page: the raised ground and the first elevation.
+html.preset-vif,
+html.theme-dark {
+  --twes-card-ground: var(--twes-surface-raised);
+  --twes-card-shadow: var(--twes-shadow-1);
 }
 
 html.theme-dark {
