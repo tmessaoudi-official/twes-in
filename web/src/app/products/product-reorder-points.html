@@ -11,7 +11,7 @@
   <ul class="flex flex-col gap-2" data-testid="product-reorder-list">
     @for (row of rows(); track row.establishmentId) {
       <li
-        class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-outline-variant p-3"
         [attr.data-testid]="'product-reorder-' + row.establishmentCode"
       >
         <span class="flex min-w-40 flex-col">

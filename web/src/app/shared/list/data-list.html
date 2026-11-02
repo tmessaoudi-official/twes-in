@@ -298,7 +298,7 @@
     >
       <ul cdkDropList (cdkDropListDropped)="drop($event)" class="flex flex-col">
         @for (entry of chooser(); track entry.column.id; let first = $first, last = $last) {
-          <li cdkDrag class="flex items-center gap-1 rounded bg-surface-container-low px-1">
+          <li cdkDrag class="flex items-center gap-1 rounded-sm bg-surface-container-low px-1">
             <mat-icon
               cdkDragHandle
               class="cursor-grab text-on-surface-variant"
@@ -310,7 +310,7 @@
             <label class="flex flex-1 items-center gap-2 py-1">
               <input
                 type="checkbox"
-                class="size-4 accent-[var(--mat-sys-primary)]"
+                class="size-4 accent-primary"
                 [checked]="entry.visible"
                 [disabled]="entry.column.hideable === false"
                 (change)="toggleColumn(entry.column.id)"

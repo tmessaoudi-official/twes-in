@@ -13,7 +13,7 @@
   <ul class="flex flex-col gap-2" data-testid="vendor-purchases-list">
     @for (row of rows(); track row.id) {
       <li
-        class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-outline-variant p-3"
         [attr.data-testid]="'vendor-purchase-' + row.id"
       >
         <a

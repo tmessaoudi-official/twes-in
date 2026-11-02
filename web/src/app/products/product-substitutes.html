@@ -18,7 +18,7 @@
     <ul class="flex flex-col gap-2" data-testid="product-substitutes-list">
       @for (row of rows(); track row.id) {
         <li
-          class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-outline-variant p-3"
           [attr.data-testid]="'product-substitute-' + row.reference"
         >
           <a class="flex min-w-40 flex-col underline" [routerLink]="['/products', row.id]">

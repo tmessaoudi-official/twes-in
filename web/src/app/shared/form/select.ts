@@ -231,7 +231,7 @@ function fold(text: string): string {
           <div class="flex justify-between gap-2 border-b border-outline-variant px-2 py-1">
             <button
               type="button"
-              class="rounded px-3 py-2 text-sm text-accent-text hover:bg-accent-soft"
+              class="rounded-sm px-3 py-2 text-sm text-accent-text hover:bg-accent-soft"
               [attr.data-testid]="testId() + '-select-all'"
               (click)="selectAll()"
             >
@@ -239,7 +239,7 @@ function fold(text: string): string {
             </button>
             <button
               type="button"
-              class="rounded px-3 py-2 text-sm text-accent-text hover:bg-accent-soft"
+              class="rounded-sm px-3 py-2 text-sm text-accent-text hover:bg-accent-soft"
               [attr.data-testid]="testId() + '-clear-all'"
               (click)="clearAll()"
             >

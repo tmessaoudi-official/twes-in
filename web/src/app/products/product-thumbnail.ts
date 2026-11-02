@@ -16,7 +16,7 @@ import type { PhotoSize } from './product-photos-types';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class:
-      'inline-flex shrink-0 items-center justify-center overflow-hidden rounded bg-surface-container',
+      'inline-flex shrink-0 items-center justify-center overflow-hidden rounded-sm bg-surface-container',
     '[style.width.px]': 'side()',
     '[style.height.px]': 'side()',
   },

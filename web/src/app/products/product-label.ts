@@ -29,7 +29,8 @@ export function labelCode<Code extends { role: BarcodeRole }>(codes: readonly Co
   imports: [BarcodeSvg, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    class: 'flex h-full flex-col gap-1 rounded-md border border-black bg-white p-3 text-black',
+    class:
+      'flex h-full flex-col gap-1 rounded-md border border-print-ink bg-print-paper p-3 text-print-ink',
     'data-testid': 'product-label',
   },
   template: `

@@ -127,7 +127,7 @@ interface PageShortcut {
     }
     kbd {
       border: 1px solid var(--mat-sys-outline-variant);
-      border-radius: 0.25rem;
+      border-radius: var(--radius-sm);
       font: var(--mat-sys-label-medium);
       padding: 0.125rem 0.375rem;
       white-space: nowrap;

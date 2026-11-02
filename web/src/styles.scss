@@ -4,6 +4,7 @@
 // from a neutral default so the first paint is right, then replaced at runtime from the configured accent colour
 // (app/shared/theme/accent-theme.ts). Tailwind reads the same variables (tailwind.css), so utilities and Material
 // components never disagree.
+@use 'sass:map';
 @use '@angular/material' as mat;
 
 // Inter, vendored unmodified under public/fonts/inter with its OFL-1.1 LICENSE (the licence gate checks it).
@@ -74,7 +75,24 @@
     U+1EE80-1EE89, U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1;
 }
 
-$font-stack: ('Inter Variable', 'Noto Sans Arabic Variable', system-ui, sans-serif);
+// Material's type roles, each at the step of tailwind.css that holds its size.
+$type-steps: (
+  body-large: var(--text-base),
+  body-medium: var(--text-sm),
+  body-small: var(--text-xs),
+  label-large: var(--text-sm),
+  label-medium: var(--text-xs),
+  label-small: var(--text-overline),
+  title-large: var(--text-m3-title-large),
+  title-medium: var(--text-base),
+  title-small: var(--text-sm),
+  headline-small: var(--text-2xl),
+  headline-medium: var(--text-m3-headline-medium),
+  headline-large: var(--text-display),
+  display-small: var(--text-4xl),
+  display-medium: var(--text-m3-display-medium),
+  display-large: var(--text-m3-display-large),
+);
 
 html {
   height: 100%;
@@ -88,10 +106,47 @@ html {
         theme-type: color-scheme,
       ),
       typography: (
-        plain-family: $font-stack,
-        brand-family: $font-stack,
+        plain-family: var(--font-sans),
+        brand-family: var(--font-sans),
+        bold-weight: var(--font-weight-bold),
+        medium-weight: var(--font-weight-medium),
+        regular-weight: var(--font-weight-normal),
       ),
       density: 0,
+    )
+  );
+  // Material's corners and type sizes read the same steps as every class (tailwind.css), at Material's own values, so
+  // a new identity moves the components with the rest (docs/SPEC.md § 7, 2026-11-02 00:39).
+  // A role's shorthand is written again from its parts: `mat.theme` writes it with the size as a number.
+  $type: ();
+  @each $role, $size in $type-steps {
+    $type: map.merge(
+      $type,
+      (
+        '#{$role}-size': $size,
+        $role: var(--mat-sys-#{$role}-weight)
+          var(--mat-sys-#{$role}-size) /
+          var(--mat-sys-#{$role}-line-height)
+          var(--mat-sys-#{$role}-font),
+      )
+    );
+  }
+  @include mat.theme-overrides(
+    map.merge(
+      (
+        corner-extra-small: var(--radius-sm),
+        corner-extra-small-top: var(--radius-sm) var(--radius-sm) 0 0,
+        corner-small: var(--radius-lg),
+        corner-medium: var(--radius-xl),
+        corner-large: var(--radius-2xl),
+        corner-large-top: var(--radius-2xl) var(--radius-2xl) 0 0,
+        corner-large-start: var(--radius-2xl) 0 0 var(--radius-2xl),
+        corner-large-end: 0 var(--radius-2xl) var(--radius-2xl) 0,
+        corner-extra-large: var(--radius-sheet),
+        corner-extra-large-top: var(--radius-sheet) var(--radius-sheet) 0 0,
+        corner-full: var(--radius-pill),
+      ),
+      $type
     )
   );
 
@@ -103,7 +158,7 @@ html {
   // whose header is a quiet label row and whose rows are separated by hairlines only.
   @include mat.form-field-overrides(
     (
-      outlined-container-shape: 10px,
+      outlined-container-shape: var(--radius-control),
       container-height: 40px,
       container-vertical-padding: 8px,
     )
@@ -120,11 +175,11 @@ html {
           var(--twes-accent-state) calc(var(--mat-sys-pressed-state-layer-opacity) * 100%),
           transparent
         ),
-      filled-container-shape: 10px,
-      outlined-container-shape: 10px,
-      text-container-shape: 10px,
-      tonal-container-shape: 10px,
-      protected-container-shape: 10px,
+      filled-container-shape: var(--radius-control),
+      outlined-container-shape: var(--radius-control),
+      text-container-shape: var(--radius-control),
+      tonal-container-shape: var(--radius-control),
+      protected-container-shape: var(--radius-control),
       filled-container-height: 36px,
       outlined-container-height: 36px,
       text-container-height: 36px,
@@ -143,8 +198,8 @@ html {
     (
       elevated-container-color: transparent,
       elevated-container-elevation: none,
-      elevated-container-shape: 16px,
-      outlined-container-shape: 16px,
+      elevated-container-shape: var(--radius-2xl),
+      outlined-container-shape: var(--radius-2xl),
       outlined-outline-color: var(--mat-sys-outline-variant),
     )
   );
@@ -152,7 +207,7 @@ html {
     (
       background-color: transparent,
       header-container-height: 44px,
-      header-headline-weight: 600,
+      header-headline-weight: var(--font-weight-semibold),
       header-headline-color: var(--mat-sys-on-surface-variant),
       row-item-container-height: 52px,
       row-item-outline-color: var(--mat-sys-outline-variant),
@@ -281,7 +336,7 @@ html {
 .twes-form-section-title {
   margin: 0;
   font: var(--mat-sys-title-small);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .twes-form-section-about {
@@ -293,12 +348,12 @@ html {
 
 .twes-field-label {
   font: var(--mat-sys-label-large);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--mat-sys-on-surface);
 }
 
 .twes-field-optional {
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
   color: var(--mat-sys-on-surface-variant);
 }
 
@@ -346,11 +401,11 @@ html {
   height: 2rem;
   padding-inline: 0.75rem;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-label-large);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition:
     background-color var(--twes-motion-standard) var(--twes-ease-standard),
@@ -382,7 +437,7 @@ html {
 
 .twes-chip-count {
   color: var(--mat-sys-on-surface-variant);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   font-variant-numeric: tabular-nums;
 }
 
@@ -447,7 +502,7 @@ html {
 
 .twes-list-table {
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 0.875rem;
+  border-radius: var(--radius-card);
 
   /* Material's own `table-layout: auto` loads after Tailwind's `table-fixed` and won: every list sized its columns by
      their content, past the card, and no cell was ever cut with an ellipsis. Fixed, the declared widths hold. */
@@ -478,6 +533,8 @@ html {
   --twes-motion-exit: 200ms;
   --twes-motion-page: 350ms;
   --twes-motion-data: 450ms;
+  // A changed field or a new row is lit, then fades: long enough to be seen after the save.
+  --twes-motion-highlight: 2.4s;
   --twes-ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --twes-ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
   --twes-ease-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
@@ -507,6 +564,7 @@ html.theme-dark {
     --twes-motion-exit: 0ms;
     --twes-motion-page: 0ms;
     --twes-motion-data: 0ms;
+    --twes-motion-highlight: 0ms;
   }
 }
 
@@ -553,7 +611,7 @@ textarea {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;
   font-style: normal;
-  font-size: 24px;
+  font-size: var(--text-icon);
   line-height: 1;
   letter-spacing: normal;
   text-transform: none;
@@ -632,8 +690,8 @@ textarea {
 .twes-rail {
   // Material draws its own pill for the selected row and for hover and focus; left at its full-round default it met the
   // row's 10 px corners and the accent bar as a crescent (2026-09-26 sidebar review). One shape, and our own selection.
-  --mat-list-active-indicator-shape: 0.625rem;
-  --mat-list-list-item-container-shape: 0.625rem;
+  --mat-list-active-indicator-shape: var(--radius-control);
+  --mat-list-list-item-container-shape: var(--radius-control);
   --mat-list-active-indicator-color: transparent;
 
   display: flex;
@@ -649,13 +707,13 @@ textarea {
 
   .mdc-list-item {
     height: 2.5rem;
-    border-radius: 0.625rem;
+    border-radius: var(--radius-control);
     padding-inline: 0.625rem;
   }
 
   // Body size, as the direction's type scale says (§ 1.2), not Material's 16 px list title.
   .mdc-list-item__primary-text {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
   }
 
   // The icon lines up with « Créer »'s, and leaves the label Material's 16 px gap minus a quarter.
@@ -677,7 +735,7 @@ textarea {
 
     .mdc-list-item__primary-text {
       color: var(--mat-sys-on-surface);
-      font-weight: 650;
+      font-weight: var(--font-weight-strong);
     }
 
     .mat-icon {
@@ -733,8 +791,8 @@ textarea {
   // Two lines at most: one cut « Export com… », « Facturation… » and every planned module's name.
   display: -webkit-box;
   overflow: hidden;
-  font-size: 0.625rem;
-  font-weight: 600;
+  font-size: var(--text-2xs);
+  font-weight: var(--font-weight-semibold);
   line-height: 0.875rem;
   letter-spacing: 0;
   // Material's list title sets its own line height, which made each row 62 px tall.
@@ -749,8 +807,8 @@ textarea {
   margin: 0.75rem 0 0.25rem;
   padding-inline: 0.75rem;
   color: var(--mat-sys-on-surface-variant);
-  font-size: 0.6875rem;
-  font-weight: 650;
+  font-size: var(--text-overline);
+  font-weight: var(--font-weight-strong);
   letter-spacing: 0.06em;
   line-height: 1rem;
   text-transform: uppercase;
@@ -776,7 +834,7 @@ textarea {
   width: 100%;
   padding: 0.375rem 0.5rem;
   border: 0;
-  border-radius: 0.625rem;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--mat-sys-on-surface);
   font: inherit;
@@ -811,10 +869,10 @@ textarea {
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   background-color: var(--mat-sys-primary);
   color: var(--mat-sys-on-primary);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   overflow: hidden;
 }
 
@@ -866,13 +924,13 @@ textarea {
 }
 
 .twes-rail-company-name {
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .twes-rail-company-sub,
 .twes-rail-member-role {
   color: var(--mat-sys-on-surface-variant);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
 }
 
 // The country and currency with, after them, what waits in the other companies.
@@ -897,7 +955,7 @@ textarea {
   min-height: 2.5rem;
   padding-inline: 0.625rem;
   border: 0;
-  border-radius: 0.625rem;
+  border-radius: var(--radius-control);
   background: none;
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
@@ -915,10 +973,10 @@ textarea {
     flex: none;
     margin-inline-start: auto;
     padding: 0 0.375rem;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-md);
     font-family: inherit;
-    font-size: 0.6875rem;
-    font-weight: 600;
+    font-size: var(--text-overline);
+    font-weight: var(--font-weight-semibold);
     line-height: 1.25rem;
     white-space: nowrap;
   }
@@ -933,7 +991,7 @@ textarea {
   margin-top: 0.5rem;
   background-color: var(--twes-accent);
   color: var(--twes-on-accent);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 
   kbd {
     background-color: color-mix(in oklch, var(--twes-on-accent) 22%, transparent);
@@ -944,10 +1002,10 @@ textarea {
 .twes-button-key {
   margin-inline-start: 0.5rem;
   padding: 0 0.375rem;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-md);
   font-family: inherit;
-  font-size: 0.6875rem;
-  font-weight: 600;
+  font-size: var(--text-overline);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.25rem;
   background-color: color-mix(in oklch, currentColor 22%, transparent);
 
@@ -971,10 +1029,10 @@ textarea {
 .twes-rail-count {
   margin-inline-start: auto;
   padding: 0 0.375rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--mat-sys-surface-container-high);
-  font-size: 0.75rem;
-  font-weight: 650;
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-strong);
 }
 
 /* The phone bar's bell and its count, where Material's medium warn badge sits: drawn, so it is no label (styles above). */
@@ -993,7 +1051,7 @@ textarea {
   min-width: 1rem;
   height: 1rem;
   padding-inline: 0.25rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--mat-sys-error);
   color: var(--mat-sys-on-error);
   font: var(--mat-sys-label-small);
@@ -1006,7 +1064,7 @@ textarea {
   inset-inline-end: 0;
   width: 0.375rem;
   height: 0.375rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--mat-sys-error);
 }
 
@@ -1015,10 +1073,10 @@ textarea {
   flex: none;
   padding: 0 0.3125rem;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   color: var(--mat-sys-on-surface-variant);
-  font-size: 0.625rem;
-  font-weight: 600;
+  font-size: var(--text-2xs);
+  font-weight: var(--font-weight-semibold);
   line-height: 1rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -1073,7 +1131,7 @@ textarea {
   width: 0.4375rem;
   height: 0.4375rem;
   border: 1.5px solid var(--mat-sys-outline);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
 }
 
 // A menu row's title with its « Bientôt » beside it: the label gives way first, onto a second line rather than cut, and
@@ -1099,7 +1157,7 @@ textarea {
   flex: none;
   width: 3rem !important;
   height: 3rem !important;
-  font-size: 3rem !important;
+  font-size: var(--text-5xl) !important;
   color: var(--mat-sys-on-surface-variant);
 }
 
@@ -1149,15 +1207,15 @@ app-cookie-notice {
   h2,
   h3 {
     margin-block-start: 0.75rem;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   h1 {
-    font-size: 1.25rem;
+    font-size: var(--text-xl);
   }
 
   h2 {
-    font-size: 1.125rem;
+    font-size: var(--text-lg);
   }
 
   ul,
@@ -1183,11 +1241,11 @@ app-cookie-notice {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid var(--mat-sys-outline);
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   background: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
-  font-family: ui-monospace, monospace;
-  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
   line-height: 1.5;
 }
 
@@ -1270,7 +1328,7 @@ app-cookie-notice {
 
     th[scope='row'],
     td:not([data-label]) {
-      font-weight: 600;
+      font-weight: var(--font-weight-semibold);
     }
 
     /* A value the row does not have (a cost known, nothing unvalued) leaves no labelled blank in the card, the value
@@ -1285,7 +1343,7 @@ app-cookie-notice {
 .twes-legal-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
 
   th,
   td {
@@ -1297,7 +1355,7 @@ app-cookie-notice {
 
   th {
     color: var(--mat-sys-on-surface-variant);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 }
 
@@ -1313,8 +1371,8 @@ app-cookie-notice {
 
   th {
     color: var(--mat-sys-on-surface-variant);
-    font-size: 0.875rem;
-    font-weight: 600;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
   }
 
   tbody tr:last-child td {
@@ -1335,7 +1393,7 @@ app-cookie-notice {
   gap: 0.25rem;
   padding-block: 1.5rem 0.5rem;
   color: var(--mat-sys-on-surface-variant);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   line-height: 1.25rem;
 
   a {
@@ -1410,7 +1468,7 @@ app-cookie-notice {
   width: 100%;
   padding: 0;
   border: 0;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-md);
   background: none;
   color: inherit;
   font: inherit;
@@ -1421,7 +1479,7 @@ app-cookie-notice {
   .mat-icon {
     width: 1.125rem;
     height: 1.125rem;
-    font-size: 1.125rem;
+    font-size: var(--text-lg);
   }
 
   &:hover {
@@ -1487,18 +1545,18 @@ app-cookie-notice {
   justify-content: center;
   width: 2rem;
   height: 2rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--mat-sys-primary-container);
   color: var(--mat-sys-on-primary-container);
-  font-size: 0.8125rem;
-  font-weight: 650;
+  font-size: var(--text-chip);
+  font-weight: var(--font-weight-strong);
 }
 
 .twes-shell-content[data-window='medium'],
 .twes-shell-content[data-window='expanded'] {
   margin-block: 0.5rem;
   margin-inline-end: 0.5rem;
-  border-radius: 1.25rem;
+  border-radius: var(--radius-panel);
   background-color: var(--mat-sys-surface);
   box-shadow: var(--twes-shadow-1);
   // The panel scrolls inside the window-high container (app-shell.html): Material's own height of 100% plus the
@@ -1557,7 +1615,7 @@ app-cookie-notice {
 }
 
 .twes-shell-content > header {
-  border-radius: 1.25rem 1.25rem 0 0;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   background-color: var(--mat-sys-surface);
 }
 
@@ -1595,7 +1653,7 @@ app-cookie-notice {
       justify-content: center;
       width: 3.5rem;
       height: 2rem;
-      border-radius: 9999px;
+      border-radius: var(--radius-pill);
       transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);
     }
 
@@ -1609,7 +1667,7 @@ app-cookie-notice {
     &:focus-visible {
       outline: 2px solid var(--mat-sys-primary);
       outline-offset: -2px;
-      border-radius: 0.75rem;
+      border-radius: var(--radius-xl);
     }
   }
 
@@ -1620,7 +1678,7 @@ app-cookie-notice {
 
   > a.is-active {
     color: var(--mat-sys-on-surface);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
 
     .mat-icon {
       background-color: var(--mat-sys-primary-container);
@@ -1637,7 +1695,7 @@ app-cookie-notice {
   height: 2.25rem;
   padding-inline: 0.625rem 0.375rem;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--mat-sys-surface-container-low);
   color: var(--mat-sys-on-surface-variant);
   font: var(--mat-sys-body-medium);
@@ -1656,7 +1714,7 @@ app-cookie-notice {
   .mat-icon {
     width: 1.25rem;
     height: 1.25rem;
-    font-size: 1.25rem;
+    font-size: var(--text-xl);
   }
 
   @media (max-width: 599.98px) {
@@ -1691,14 +1749,14 @@ app-cookie-notice {
 .twes-palette kbd {
   padding: 0.0625rem 0.375rem;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 0.375rem;
+  border-radius: var(--radius-md);
   background-color: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface-variant);
   font: var(--mat-sys-label-small);
 }
 
 .twes-palette-panel .mat-mdc-dialog-surface {
-  border-radius: 1rem;
+  border-radius: var(--radius-2xl);
   box-shadow: var(--twes-shadow-2);
 }
 
@@ -1748,7 +1806,7 @@ app-cookie-notice {
   gap: 0.75rem;
   min-height: 2.5rem;
   padding-inline: 0.625rem;
-  border-radius: 0.625rem;
+  border-radius: var(--radius-control);
   cursor: pointer;
 
   .mat-icon {
@@ -1780,10 +1838,9 @@ app-cookie-notice {
 .twes-wordmark {
   display: inline-block;
   color: var(--mat-sys-on-surface);
-  font-family:
-    'Manrope Variable', 'Inter Variable', 'Noto Sans Arabic Variable', system-ui, sans-serif;
-  font-size: 2.5rem;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: var(--text-hero);
+  font-weight: var(--font-weight-heavy);
   line-height: 1.1;
   letter-spacing: -0.035em;
   white-space: nowrap;
@@ -1791,7 +1848,7 @@ app-cookie-notice {
 
 .twes-wordmark-joiner {
   color: var(--mat-sys-on-surface-variant);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 }
 
 .twes-wordmark-arrow {
@@ -1887,14 +1944,14 @@ app-signed-out-layout {
   box-sizing: border-box;
   width: min(26.25rem, 100%);
   padding: 2rem;
-  border-radius: 1.25rem;
+  border-radius: var(--radius-panel);
   background-color: var(--mat-sys-surface);
   box-shadow: var(--twes-shadow-2);
 
   h1 {
     margin: 0;
     font: var(--mat-sys-headline-small);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     letter-spacing: -0.01em;
   }
 
@@ -1911,7 +1968,7 @@ app-signed-out-layout {
   h2 {
     margin: 0;
     font: var(--mat-sys-title-medium);
-    font-weight: 650;
+    font-weight: var(--font-weight-strong);
   }
 }
 
@@ -1960,7 +2017,7 @@ app-signed-out-layout {
     background: none;
     color: var(--mat-sys-primary);
     font: inherit;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     text-decoration: none;
     cursor: pointer;
 
@@ -1996,7 +2053,7 @@ app-signed-out-layout {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   background: transparent;
   color: var(--mat-sys-on-surface);
   font: inherit;
@@ -2031,7 +2088,7 @@ app-signed-out-layout {
   justify-content: center;
   width: 2.25rem;
   height: 2.25rem;
-  border-radius: 0.625rem;
+  border-radius: var(--radius-control);
   background-color: color-mix(in oklch, var(--mat-sys-primary) 12%, transparent);
   color: var(--mat-sys-primary);
 }
@@ -2041,7 +2098,7 @@ app-signed-out-layout {
   flex-direction: column;
 
   strong {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
   }
 
   span {
@@ -2115,7 +2172,7 @@ app-signed-out-layout {
   gap: 0.5rem;
   box-sizing: border-box;
   padding: 1rem 1.125rem;
-  border-radius: 1rem;
+  border-radius: var(--radius-2xl);
   background-color: color-mix(in oklch, var(--mat-sys-surface) 88%, transparent);
   box-shadow: var(--twes-shadow-2);
   color: var(--mat-sys-on-surface);
@@ -2139,12 +2196,12 @@ app-signed-out-layout {
 
 .twes-scene-title {
   font: var(--mat-sys-title-small);
-  font-weight: 650;
+  font-weight: var(--font-weight-strong);
 }
 
 .twes-scene-amount {
   font: var(--mat-sys-title-medium);
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2158,7 +2215,7 @@ app-signed-out-layout {
   align-items: center;
   gap: 0.25rem;
   padding: 0.125rem 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background-color: var(--twes-status-success-bg, transparent);
   color: var(--twes-status-success-fg, inherit);
   font: var(--mat-sys-label-medium);
@@ -2166,14 +2223,14 @@ app-signed-out-layout {
   .mat-icon {
     width: 0.875rem;
     height: 0.875rem;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
   }
 }
 
 .twes-scene-line {
   display: block;
   height: 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background-color: var(--mat-sys-surface-container-high);
 }
 
@@ -2188,7 +2245,7 @@ app-signed-out-layout {
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   background-color: color-mix(in oklch, var(--mat-sys-primary) 12%, transparent);
   color: var(--mat-sys-primary);
 }
@@ -2206,7 +2263,7 @@ app-signed-out-layout {
 
   span {
     flex: 1;
-    border-radius: 0.25rem 0.25rem 0 0;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     background-color: color-mix(in oklch, var(--mat-sys-primary) 22%, transparent);
   }
 
@@ -2218,7 +2275,7 @@ app-signed-out-layout {
 .twes-scene-gauge {
   display: block;
   height: 0.375rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background-color: var(--mat-sys-surface-container-high);
 
   span {
@@ -2286,7 +2343,7 @@ app-signed-out-layout {
   flex-shrink: 0;
   width: 0.5rem;
   height: 0.5rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
 }
 .twes-dot-info {
   background: var(--twes-status-info-dot);
@@ -2319,7 +2376,7 @@ app-signed-out-layout {
   padding-block: 0.5rem;
   padding-inline: 0.875rem 0.5rem;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 9999px;
+  border-radius: var(--radius-pill);
   background-color: var(--mat-sys-surface-container-high);
   color: var(--mat-sys-on-surface);
   font: var(--mat-sys-body-medium);
@@ -2345,7 +2402,7 @@ app-signed-out-layout {
 .twes-toast-panel .mat-mdc-snackbar-surface {
   min-width: min(22rem, calc(100vw - 2rem));
   padding: 0;
-  border-radius: 0.875rem;
+  border-radius: var(--radius-card);
   background-color: var(--mat-sys-inverse-surface);
   box-shadow: var(--twes-shadow-2);
 }
@@ -2388,8 +2445,8 @@ app-signed-out-layout {
 
 /* Row 49: another person's saved version, merged into an open editor. */
 .twes-field-updated {
-  animation: twes-field-updated 2.4s ease-out;
-  border-radius: 0.5rem;
+  animation: twes-field-updated var(--twes-motion-highlight) var(--ease-out);
+  border-radius: var(--radius-lg);
 }
 
 @keyframes twes-field-updated {
@@ -2598,7 +2655,7 @@ li.twes-row-active.twes-list-card {
 
 tr.twes-row-new > td,
 li.twes-row-new.twes-list-card {
-  animation: twes-row-new 2.4s ease-out;
+  animation: twes-row-new var(--twes-motion-highlight) var(--ease-out);
 }
 
 @keyframes twes-row-new {
@@ -2631,7 +2688,7 @@ li.twes-row-new.twes-list-card {
   gap: 0.25rem 0.5rem;
   padding-block: 0.25rem;
   padding-inline: 0.75rem 0.25rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   background-color: var(--mat-sys-tertiary-container);
   color: var(--mat-sys-on-tertiary-container);
   font: var(--mat-sys-body-small);
@@ -2645,7 +2702,7 @@ li.twes-row-new.twes-list-card {
   padding-block: 0.75rem;
   padding-inline: 1rem 0.75rem;
   border: 1px solid var(--mat-sys-outline-variant);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   background-color: var(--mat-sys-tertiary-container);
   color: var(--mat-sys-on-tertiary-container);
 }
@@ -2660,7 +2717,7 @@ li.twes-row-new.twes-list-card {
 
 .twes-auth-notice {
   padding: 0.625rem 0.875rem;
-  border-radius: 0.625rem;
+  border-radius: var(--radius-control);
   background-color: var(--mat-sys-secondary-container);
   color: var(--mat-sys-on-secondary-container);
   font: var(--mat-sys-body-medium);
@@ -2720,7 +2777,7 @@ li.twes-row-new.twes-list-card {
 [data-tour-active] {
   outline: 3px solid var(--mat-sys-primary);
   outline-offset: 4px;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
 }
 
 // A tour step's card, raised over the page it does not hold.

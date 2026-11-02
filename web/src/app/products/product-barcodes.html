@@ -7,7 +7,9 @@
     } @else {
       <ul class="flex flex-col gap-2" data-testid="product-barcodes-readonly">
         @for (row of saved(); track row.code) {
-          <li class="flex flex-wrap items-center gap-3 rounded border border-outline-variant p-3">
+          <li
+            class="flex flex-wrap items-center gap-3 rounded-sm border border-outline-variant p-3"
+          >
             <span class="font-mono"
               ><bdi>{{ row.code }}</bdi></span
             >
@@ -78,7 +80,7 @@
       <ol class="flex flex-col gap-3" data-testid="product-barcodes-list">
         @for (row of rows(); track $index; let index = $index) {
           <li
-            class="flex flex-col gap-1 rounded border p-3"
+            class="flex flex-col gap-1 rounded-sm border p-3"
             [class.border-outline-variant]="duplicate() !== index"
             [class.border-primary]="duplicate() === index"
             [attr.data-testid]="'product-barcode-row-' + index"

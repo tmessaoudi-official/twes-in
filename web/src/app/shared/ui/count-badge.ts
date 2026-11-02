@@ -50,7 +50,7 @@ const KINDS: Record<CountKind, { icon: IconName; tone: StatusTone }> = {
     .count-icon {
       width: 1rem;
       height: 1rem;
-      font-size: 1rem;
+      font-size: var(--text-base);
       line-height: 1rem;
     }
   `,

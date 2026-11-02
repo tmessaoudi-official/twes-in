@@ -4,6 +4,8 @@ set -uo pipefail
 TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/design-tokens.sh
 pass=0; fail=0
+# The real tree's floor is a count no fixture reaches; the floor's own case sets one.
+export DESIGN_TOKENS_FLOOR=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 repo() { local d; d=$(mktemp -d); git -C "$d" init -q; mkdir -p "$d/web/src/app/x" "$d/web/src/app/shared/theme"; echo "$d"; }
 echo "design-tokens gate"
@@ -32,4 +34,71 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "defined tokens pass with a variant,
 accent() { mkdir -p "$1/web/src"; printf '@theme inline {\n  --color-accent: var(--twes-accent);\n  --color-accent-soft: var(--twes-accent-soft);\n  --color-on-accent: var(--twes-on-accent);\n}\n' > "$1/web/src/tailwind.css"; }
 d=$(repo); accent "$d"; printf '<a class="bg-accent-soft text-on-accent hover:bg-accent">x</a>\n<b class="text-accent-strong">y</b>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "the accent's roles are read as colour tokens: a declared one passes, an undeclared one is caught" $? 1 "$out" "web/src/app/x/a.html:2 unknown colour token accent-strong"
+# The theme is closed (docs/SPEC.md § 7, 2026-11-02 00:32): a type step, weight, family, radius, shadow, line height,
+# tracking or easing a class names must be one tailwind.css declares, or Tailwind draws nothing for it.
+scale() {
+  mkdir -p "$1/web/src"
+  printf '@theme {\n  --text-*: initial;\n  --color-print-ink: #000;\n  --font-mono: monospace;\n  --text-sm: 0.875rem;\n  --text-sm--line-height: 1.4;\n  --font-weight-semibold: 600;\n  --tracking-wide: 0.025em;\n  --leading-tight: 1.25;\n  --radius-lg: 0.5rem;\n  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1);\n  --ease-out: cubic-bezier(0, 0, 0.2, 1);\n}\n@theme inline {\n  --font-sans: Inter;\n  --color-primary: var(--mat-sys-primary);\n}\n@theme {\n  --text-title: 1.5rem;\n  --radius-card: 14px;\n}\n' > "$1/web/src/tailwind.css"
+}
+d=$(repo); scale "$d"; printf '<p\n  class="text-sm font-semibold font-mono font-sans tracking-wide leading-tight leading-4 leading-none rounded-lg rounded-t-lg rounded-full rounded-none rounded-card shadow-sm shadow-none ease-out ease-linear text-title text-center text-end text-ellipsis text-nowrap text-print-ink bg-transparent text-current text-primary grid-cols-[1fr_2fr] max-w-[50rem]"\n  [class.md:text-sm]="on"\n>x</p>\n' > "$d/web/src/app/x/a.html"; printf "/** The total, rounded half away from zero, with no shadow of doubt. */\nexport const CARD = 'rounded-card shadow-sm text-sm';\n" > "$d/web/src/app/x/a.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "declared steps, built-in keywords, geometry values and a comment's words pass" $? 0 "$out" "OK — 2 files"
+d=$(repo); scale "$d"; printf '<p class="text-lg font-bold font-serif tracking-tight leading-loose rounded-xl shadow-lg ease-in">x</p>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a step tailwind.css does not declare is caught, one per namespace" $? 1 "$out" "web/src/app/x/a.html:1 undeclared step text-lg, font-bold, font-serif, tracking-tight, leading-loose, rounded-xl, shadow-lg, ease-in"
+d=$(repo); scale "$d"; printf '<div\n  class="flex rounded\n    shadow p-2"\n>x</div>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a bare rounded or shadow over a multi-line class is caught at its own line" $? 1 "$out" "web/src/app/x/a.html:2 undeclared step rounded"
+check "  and the shadow on the next" 0 0 "$out" "web/src/app/x/a.html:3 undeclared step shadow"
+d=$(repo); scale "$d"; printf "export const C = 'text-[13px] rounded-[3px] font-[650] leading-[1.1] tracking-[0.1em] duration-[250ms] shadow-[0_1px_2px] accent-[var(--x)]';\n" > "$d/web/src/app/x/a.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "an arbitrary value for a type, radius, shadow, motion or colour is caught" $? 1 "$out" "web/src/app/x/a.ts:1 arbitrary value text-[13px], rounded-[3px], font-[650], leading-[1.1], tracking-[0.1em], duration-[250ms], shadow-[0_1px_2px], accent-[var(--x)]"
+d=$(repo); scale "$d"; printf '<b class="text-black bg-white border-gray-200 text-red-600">x</b>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a colour from Tailwind's own palette is caught: the palette is closed" $? 1 "$out" "web/src/app/x/a.html:1 undeclared step text-black, bg-white, border-gray-200, text-red-600"
+d=$(repo); scale "$d"; printf '<b [style.font-size.px]="size" [style.border-radius]="r" [style.width.px]="w" [style.background-color]="tone">x</b>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a style binding of a font or a radius is caught; geometry and colour tokens are not" $? 1 "$out" "web/src/app/x/a.html:1 style binding font-size, border-radius"
+d=$(repo); scale "$d"; printf '<p class="text-sm">x</p>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(DESIGN_TOKENS_FLOOR=5 bash "$GATE" --root "$d" 2>&1); check "fewer classes read than the floor reds: a parser finding nothing is not a pass" $? 1 "$out" "1 type, radius and shadow classes read, below the floor of 5"
+# A stylesheet reads the same steps: a literal type size, weight, family, radius, shadow or motion value is refused in
+# web/src/styles.scss and in a component's stylesheet, outside @font-face and the custom properties that define them.
+sheet() { mkdir -p "$1/web/src"; printf '%s\n' "$2" > "$1/web/src/styles.scss"; }
+d=$(repo); scale "$d"; sheet "$d" '@font-face {
+  font-family: "Inter Variable";
+  font-weight: 100 900;
+}
+:root {
+  --twes-motion-standard: 120ms;
+}
+.a {
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold) !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: 50%;
+  box-shadow:
+    inset 3px 0 0 var(--twes-accent-text),
+    var(--twes-shadow-1);
+  transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);
+  animation: none;
+  font-family: inherit;
+}
+.icon {
+  font-family: "Material Symbols Outlined";
+}'; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a stylesheet reading steps, geometry and keywords passes; @font-face and token definitions are not read" $? 0 "$out" "OK"
+d=$(repo); scale "$d"; sheet "$d" '.a {
+  font-size: 0.875rem;
+  font-weight: 650;
+  font-family:
+    Manrope, sans-serif;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+  transition: opacity 200ms ease;
+  animation: pulse 2.4s ease-out;
+}
+@include mat.form-field-overrides((outlined-container-shape: 10px, header-headline-weight: 600));'; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a literal type size in the global stylesheet is caught, by line" $? 1 "$out" "web/src/styles.scss:2 literal font-size"
+for want in "styles.scss:3 literal font-weight" "styles.scss:4 literal font-family" "styles.scss:6 literal border-radius" "styles.scss:7 literal box-shadow" "styles.scss:8 literal transition" "styles.scss:9 literal animation" "styles.scss:11 literal outlined-container-shape, header-headline-weight"; do
+  check "  and $want" 0 0 "$out" "$want"
+done
+d=$(repo); scale "$d"; printf '.b { border-radius: 6px; }\n' > "$d/web/src/app/x/b.scss"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a component stylesheet is read the same way" $? 1 "$out" "web/src/app/x/b.scss:1 literal border-radius"
+d=$(repo); scale "$d"; printf '%s\n' '// font-size: 12px in a comment is not a style' '@Component({' '  styles: `' '    :host { font-size: var(--text-xs); }' '    .dot { border-radius: 9999px; }' '  `,' '})' 'const size = { "font-size": 12 };' > "$d/web/src/app/x/c.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a component's inline styles are read, by line, and nothing else of its file" $? 1 "$out" "web/src/app/x/c.ts:5 literal border-radius"
+check "  and only that line" "$(grep -c "c.ts:" <<<"$out")" 1 "$out" ""
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

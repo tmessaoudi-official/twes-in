@@ -4,13 +4,108 @@
 @import 'tailwindcss' source('.');
 
 /*
+ * The theme is closed: each namespace below is cleared of Tailwind's defaults and holds only the steps the screens
+ * use, so a class naming any other step draws nothing (design-tokens.sh refuses it), and a new identity is a change
+ * of these values, never of the templates (docs/SPEC.md § 7, 2026-11-02 00:32 and 00:39). The values are Tailwind's
+ * own, as the screens drew them before the namespaces were closed; colours are the theme's (accent-theme.ts) but for
+ * the two print roles, black on white so a scanner reads a printed label in any scheme. `static` emits every one
+ * of them, used by a class or not: styles.scss and Angular Material's own tokens read them too.
+ */
+@theme static {
+  --color-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+  --font-weight-*: initial;
+  --tracking-*: initial;
+  --leading-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+  --ease-*: initial;
+  --animate-*: initial;
+  --blur-*: initial;
+
+  --color-print-ink: #000;
+  --color-print-paper: #fff;
+
+  --font-sans: 'Inter Variable', 'Noto Sans Arabic Variable', system-ui, sans-serif;
+  --font-display:
+    'Manrope Variable', 'Inter Variable', 'Noto Sans Arabic Variable', system-ui, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+
+  --text-2xs: 0.625rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(1 / 0.75);
+  --text-chip: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: calc(1.25 / 0.875);
+  --text-base: 1rem;
+  --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1.125rem;
+  --text-lg--line-height: calc(1.75 / 1.125);
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(1.75 / 1.25);
+  --text-icon: 1.5rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: calc(2.25 / 1.875);
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: calc(2.5 / 2.25);
+  --text-hero: 2.5rem;
+  /* Material's type roles that fall between the steps above, at Material's own values (styles.scss theme-overrides). */
+  --text-m3-title-large: 1.375rem;
+  --text-m3-headline-medium: 1.75rem;
+  --text-m3-display-medium: 2.812rem;
+  --text-m3-display-large: 3.562rem;
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 1;
+  --text-6xl: 3.75rem;
+  --text-6xl--line-height: 1;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-strong: 650;
+  --font-weight-bold: 700;
+  --font-weight-heavy: 800;
+
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  --leading-tight: 1.25;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-sheet: 1.75rem;
+  --radius-pill: 9999px;
+  /* `rounded-full` reads this rather than Tailwind's built-in calc(infinity * 1px), so a pill follows the identity. */
+  --radius-full: var(--radius-pill);
+
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/*
  * Tailwind utilities read the same Material 3 system variables as the components (styles.scss), so a runtime
  * accent colour or dark mode re-themes both. `inline` keeps the var() reference in each utility instead of
  * resolving it at build time.
  */
 @theme inline {
-  --font-sans: 'Inter Variable', 'Noto Sans Arabic Variable', system-ui, sans-serif;
-
   /* The accent as the company picked it, and its roles (design direction § 1.1, accent-theme.ts accentTokens). */
   --color-accent: var(--twes-accent);
   --color-on-accent: var(--twes-on-accent);
@@ -44,7 +139,7 @@
  * 2026-09-25): `text-title`, `rounded-card`, `shadow-s2`. A figure adds `tabular-nums`, an overline `uppercase`.
  * Screens move onto them as each is rebuilt in the order of docs/SPEC.md § 7 2026-09-25 09:03.
  */
-@theme {
+@theme static {
   --text-display: 2rem;
   --text-display--line-height: 2.5rem;
   --text-display--font-weight: 750;

@@ -37,7 +37,7 @@
 }
 .twes-map-hit-badge-text {
   fill: var(--twes-status-warning-bg);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 .twes-map-hit-chip {
   background-color: var(--twes-status-warning-bg);
@@ -77,7 +77,7 @@
 .twes-map-full .twes-map-bar {
   min-height: 3.75rem;
   padding: 0.375rem 0.625rem;
-  border-radius: 1rem;
+  border-radius: var(--radius-2xl);
   background: var(--mat-sys-surface-container-lowest);
   box-shadow: var(--mat-sys-level2);
 }
@@ -141,7 +141,7 @@
   max-height: none;
   position: relative;
   overflow-y: auto;
-  border-radius: 1rem;
+  border-radius: var(--radius-2xl);
   background: var(--mat-sys-surface-container-lowest);
   box-shadow: var(--mat-sys-level2);
 }
@@ -153,7 +153,7 @@
 .twes-map-full .twes-map-panel {
   position: relative;
   align-self: stretch;
-  animation: twes-map-slide 200ms var(--twes-ease-decelerate);
+  animation: twes-map-slide var(--twes-motion-exit) var(--twes-ease-decelerate);
 }
 
 /* Moved only, never faded: a scan for contrast mid-way would read a colour that is on its way. */
@@ -250,6 +250,6 @@
 .twes-map-full.twes-map-compact .twes-map-panel {
   margin: 0 -0.5rem -0.5rem;
   overflow: visible;
-  border-radius: 1.75rem 1.75rem 0 0;
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
   animation: none;
 }

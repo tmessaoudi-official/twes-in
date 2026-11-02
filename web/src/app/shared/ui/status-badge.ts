@@ -17,12 +17,12 @@ import type { StatusTone } from '../theme/accent-theme';
       align-items: center;
       gap: 0.375rem;
       padding: 0.125rem 0.5rem;
-      border-radius: 9999px;
+      border-radius: var(--radius-pill);
       background-color: var(--status-bg);
       color: var(--status-fg);
-      font-size: 0.75rem;
+      font-size: var(--text-xs);
       line-height: 1rem;
-      font-weight: 500;
+      font-weight: var(--font-weight-medium);
       white-space: nowrap;
     }
     :host(.is-struck) {
@@ -32,7 +32,7 @@ import type { StatusTone } from '../theme/accent-theme';
       flex-shrink: 0;
       width: 0.375rem;
       height: 0.375rem;
-      border-radius: 9999px;
+      border-radius: var(--radius-pill);
       background-color: var(--status-dot);
     }
   `,
