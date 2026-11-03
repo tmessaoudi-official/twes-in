@@ -724,7 +724,7 @@ Cheville 10 mm,6191234567897
 
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfaitaire'));
+        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfaitaire'), new \DateTimeImmutable());
         $this->em()->flush();
         $this->import("reference,name,unit_code,unit_price_net,cost_price_gross,default_tax_codes\nVIS-4,Vis 4,H87,2,1.19,TVA19\n");
 
@@ -743,7 +743,7 @@ Cheville 10 mm,6191234567897
         $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfaitaire'));
+        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfaitaire'), new \DateTimeImmutable());
         $this->em()->flush();
 
         $this->import("reference,name,unit_code,unit_price_gross,default_tax_codes\nTE-1,Té 50,H87,14.244,TVA19\n");
@@ -832,7 +832,7 @@ Cheville 10 mm,6191234567897
     /** In euros the cent is the last digit: 9.99 at 20 % is no net price's, as 8.32 makes 9.98 and 8.33 makes 10.00. */
     public function testInEurosAPriceTaxesIncludedIsCountedToTheCent(): void
     {
-        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->em()->persist($this->company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
@@ -854,7 +854,7 @@ Cheville 10 mm,6191234567897
      */
     public function testAPriceTaxesIncludedNoNetReachesIsTakenAsTheChoiceSays(): void
     {
-        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->em()->persist($this->company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
@@ -898,7 +898,7 @@ Cheville 10 mm,6191234567897
      */
     public function testAPriceTaxesIncludedNoNetReachesMarksTheProductUntilAPriceIsSet(): void
     {
-        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->em()->persist($this->company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);

@@ -17,6 +17,7 @@ use App\Audit\Domain\ValueObject\Recorded;
 use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -29,13 +30,14 @@ final readonly class FinishPasskeyLogin implements DeclaresAuditActions
         private UserRepository $users,
         private PasskeyAssertions $assertions,
         private AuditTrail $audit,
+        private ClockInterface $clock,
     ) {
     }
 
     /** @throws PasskeyRefused */
-    public function handle(Uuid $userId, string $optionsJson, string $credentialJson, ?\DateTimeImmutable $now = null): User
+    public function handle(Uuid $userId, string $optionsJson, string $credentialJson): User
     {
-        $now ??= new \DateTimeImmutable();
+        $now = $this->clock->now();
         $user = $this->users->ofId($userId);
 
         if (null === $user) {

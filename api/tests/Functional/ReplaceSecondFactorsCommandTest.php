@@ -137,14 +137,14 @@ final class ReplaceSecondFactorsCommandTest extends ApiTestCase
     {
         $user = $this->userOf($email);
         foreach (\array_slice(RecoveryCode::generateSet(10), 0, $count) as $code) {
-            $this->em()->persist(new RecoveryCodeEntry($user, $code->hash()));
+            $this->em()->persist(new RecoveryCodeEntry($user, $code->hash(), new \DateTimeImmutable()));
         }
         $this->em()->flush();
     }
 
     private function withPasskey(string $email): void
     {
-        $this->em()->persist(new Passkey($this->userOf($email), bin2hex(random_bytes(16)), '{}', 'Téléphone'));
+        $this->em()->persist(new Passkey($this->userOf($email), bin2hex(random_bytes(16)), '{}', 'Téléphone', new \DateTimeImmutable()));
         $this->em()->flush();
     }
 

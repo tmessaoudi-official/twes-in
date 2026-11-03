@@ -39,7 +39,7 @@ final class PurchaseOrderTotalsTest extends TestCase
         $this->now = $clock->now();
         $this->units = new InMemoryUnits();
         $this->establishments = new InMemoryEstablishments();
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock)->handle($this->company);
     }
 

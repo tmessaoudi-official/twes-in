@@ -199,9 +199,9 @@ final class PlatformCompaniesTest extends ApiTestCase
     private function company(string $name, string $country = 'TN', string $status = 'active', ?string $owner = null): Company
     {
         // A refused company is one suspended while it still waited, never opened.
-        $company = \in_array($status, ['pending', 'refused'], true) ? Company::pending($name, $country, 'TND', 'fr', 'Africa/Tunis') : new Company($name, $country, 'TND', 'fr', 'Africa/Tunis');
+        $company = \in_array($status, ['pending', 'refused'], true) ? Company::pending($name, $country, 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()) : new Company($name, $country, 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         if (\in_array($status, ['suspended', 'refused'], true)) {
-            $company->suspend();
+            $company->suspend(new \DateTimeImmutable());
         }
         $this->em()->persist($company);
         $this->em()->flush();

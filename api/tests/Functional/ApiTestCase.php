@@ -96,20 +96,20 @@ abstract class ApiTestCase extends WebTestCase
     protected function createUser(string $email, string $password, ?Company $company = null, array $permissions = ['*'], string $roleName = Role::OWNER, bool $operator = false, bool $active = true, ?bool $authenticator = null): User
     {
         $em = $this->em();
-        $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'), 'fr');
+        $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'), 'fr', new \DateTimeImmutable());
         $user->setPasswordHash(static::getContainer()->get(PasswordHasher::class)->hash($password), new \DateTimeImmutable());
-        $user->setPlatformOperator($operator);
-        $user->setActive($active);
+        $user->setPlatformOperator($operator, new \DateTimeImmutable());
+        $user->setActive($active, new \DateTimeImmutable());
         if ($authenticator ?? $operator) {
-            $user->beginTotpEnrolment((new SodiumSecretCipher(self::MFA_TEST_KEY))->encrypt(self::AUTHENTICATOR_SECRET));
-            $user->confirmTotpEnrolment(self::spentTimestep());
+            $user->beginTotpEnrolment((new SodiumSecretCipher(self::MFA_TEST_KEY))->encrypt(self::AUTHENTICATOR_SECRET), new \DateTimeImmutable());
+            $user->confirmTotpEnrolment(self::spentTimestep(), new \DateTimeImmutable());
             $this->enrolled[strtolower($email)] = true;
         }
         $em->persist($user);
         if (null !== $company) {
-            $role = new Role($roleName, $permissions, $company);
+            $role = new Role($roleName, $permissions, $company, new \DateTimeImmutable());
             $em->persist($role);
-            $em->persist(new Membership($user, $company, $role));
+            $em->persist(new Membership($user, $company, $role, new \DateTimeImmutable()));
         }
         $em->flush();
 
@@ -148,9 +148,9 @@ abstract class ApiTestCase extends WebTestCase
      */
     protected function createCompany(string $name = 'Demo', bool $named = true): Company
     {
-        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         if ($named) {
-            $company->reviseProfile(new CompanyProfile(legalName: $name.' SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', postalCode: '1000', city: 'Tunis'));
+            $company->reviseProfile(new CompanyProfile(legalName: $name.' SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', postalCode: '1000', city: 'Tunis'), new \DateTimeImmutable());
         }
         $this->em()->persist($company);
         $this->em()->flush();
@@ -178,9 +178,9 @@ abstract class ApiTestCase extends WebTestCase
     protected function addMembership(User $user, Company $company, string $roleName = Role::MEMBER, array $permissions = ['*']): void
     {
         $em = $this->em();
-        $role = new Role($roleName, $permissions, $company);
+        $role = new Role($roleName, $permissions, $company, new \DateTimeImmutable());
         $em->persist($role);
-        $em->persist(new Membership($user, $company, $role));
+        $em->persist(new Membership($user, $company, $role, new \DateTimeImmutable()));
         $em->flush();
     }
 
@@ -370,11 +370,11 @@ abstract class ApiTestCase extends WebTestCase
     protected function seedBuiltInRoles(): void
     {
         $em = $this->em();
-        $em->persist(new Role(Role::OWNER, [Permission::WILDCARD]));
-        $em->persist(new Role(Role::ADMIN, ['user.read', 'user.write', 'company.read']));
-        $em->persist(new Role(Role::MEMBER, ['company.read']));
-        $em->persist(new Role(Role::CLERK, ['company.read']));
-        $em->persist(new Role(Role::ACCOUNTANT, ['company.read']));
+        $em->persist(new Role(Role::OWNER, [Permission::WILDCARD], null, new \DateTimeImmutable()));
+        $em->persist(new Role(Role::ADMIN, ['user.read', 'user.write', 'company.read'], null, new \DateTimeImmutable()));
+        $em->persist(new Role(Role::MEMBER, ['company.read'], null, new \DateTimeImmutable()));
+        $em->persist(new Role(Role::CLERK, ['company.read'], null, new \DateTimeImmutable()));
+        $em->persist(new Role(Role::ACCOUNTANT, ['company.read'], null, new \DateTimeImmutable()));
         $em->flush();
     }
 
@@ -389,7 +389,7 @@ abstract class ApiTestCase extends WebTestCase
         // The last spent step goes back into the past first, so signing in twice within thirty seconds is not a replay.
         $user = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString($email)]);
         self::assertNotNull($user);
-        $user->confirmTotpEnrolment(self::spentTimestep());
+        $user->confirmTotpEnrolment(self::spentTimestep(), new \DateTimeImmutable());
         $this->em()->flush();
         $this->postJson('/api/auth/mfa/verify', ['code' => (new OtphpTotpCodes())->codeAt(self::AUTHENTICATOR_SECRET, new \DateTimeImmutable())]);
     }

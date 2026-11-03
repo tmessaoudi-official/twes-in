@@ -43,13 +43,13 @@ final class SupportAccessTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->memberships = new InMemoryMemberships();
         $this->users = new InMemoryUsers();
         $this->grants = new InMemorySupportGrants();
         $this->clock = new MockClock('2026-10-12 09:00:00');
-        $this->owner = new User(Email::fromString('owner@example.test'), 'Owner', 'fr');
-        $this->memberships->save(new Membership($this->owner, $this->company, new Role(Role::OWNER, ['*'])));
+        $this->owner = new User(Email::fromString('owner@example.test'), 'Owner', 'fr', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($this->owner, $this->company, new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
     }
 
     public function testAWindowIsAnHourADayOrThreeAndLiveFromItsStartToItsEnd(): void
@@ -112,7 +112,7 @@ final class SupportAccessTest extends TestCase
     {
         $this->grants->save(new SupportGrant($this->company, $this->owner, 1, $this->clock->now()));
         $operator = $this->user('operator@example.test', operator: true, secondFactor: true);
-        $this->memberships->save(new Membership($operator, $this->company, new Role(Role::MEMBER, ['invoice.read'])));
+        $this->memberships->save(new Membership($operator, $this->company, new Role(Role::MEMBER, ['invoice.read'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
 
         self::assertNull($this->access()->grantOf($operator->getId(), $this->company->getId()));
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter()->vote($this->token($operator), $this->company, ['customer.read']));
@@ -120,11 +120,11 @@ final class SupportAccessTest extends TestCase
 
     private function user(string $email, bool $operator, bool $secondFactor): User
     {
-        $user = new User(Email::fromString($email), 'Someone', 'fr');
-        $user->setPlatformOperator($operator);
+        $user = new User(Email::fromString($email), 'Someone', 'fr', new \DateTimeImmutable());
+        $user->setPlatformOperator($operator, new \DateTimeImmutable());
         if ($secondFactor) {
-            $user->beginTotpEnrolment('sealed-secret');
-            $user->confirmTotpEnrolment(1);
+            $user->beginTotpEnrolment('sealed-secret', new \DateTimeImmutable());
+            $user->confirmTotpEnrolment(1, new \DateTimeImmutable());
         }
         $this->users->save($user);
 

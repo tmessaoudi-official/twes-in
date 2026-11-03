@@ -24,6 +24,7 @@ use App\Identity\Application\Session\ManageSessions;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Transactions;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -44,6 +45,7 @@ final readonly class ConfirmTotpReplacement implements DeclaresAuditActions
         private Transactions $transactions,
         private ManageSessions $sessions,
         private SecurityNotices $notices,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -53,9 +55,9 @@ final readonly class ConfirmTotpReplacement implements DeclaresAuditActions
      * @throws SecondFactorRefused    when no replacement waits or the code is not the new app's
      * @throws SecondFactorUnreadable when the waiting secret was sealed under a key since rotated
      */
-    public function handle(Uuid $userId, string $code, string $currentSessionId, ?\DateTimeImmutable $now = null): array
+    public function handle(Uuid $userId, string $code, string $currentSessionId): array
     {
-        $now ??= new \DateTimeImmutable();
+        $now = $this->clock->now();
         $waiting = $this->users->ofId($userId)?->getTotpReplacementSecret() ?? throw new SecondFactorRefused();
 
         try {

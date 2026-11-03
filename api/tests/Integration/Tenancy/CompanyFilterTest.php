@@ -44,13 +44,13 @@ final class CompanyFilterTest extends KernelTestCase
         $this->em = static::getContainer()->get(EntityManagerInterface::class);
         $now = new \DateTimeImmutable();
 
-        $mine = new Company('Mine', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $theirs = new Company('Theirs', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $mine = new Company('Mine', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $theirs = new Company('Theirs', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $ours = ProductCategory::create($mine, 'Ours', null, $now);
         $their = ProductCategory::create($theirs, 'Theirs only', null, $now);
-        $user = new User(Email::fromString('member@twes.local'), 'Member', 'fr');
-        $role = new Role('tester', ['*'], $mine);
-        foreach ([$mine, $theirs, $ours, $their, $user, $role, new Membership($user, $mine, $role)] as $entity) {
+        $user = new User(Email::fromString('member@twes.local'), 'Member', 'fr', new \DateTimeImmutable());
+        $role = new Role('tester', ['*'], $mine, new \DateTimeImmutable());
+        foreach ([$mine, $theirs, $ours, $their, $user, $role, new Membership($user, $mine, $role, new \DateTimeImmutable())] as $entity) {
             $this->em->persist($entity);
         }
         $this->em->flush();

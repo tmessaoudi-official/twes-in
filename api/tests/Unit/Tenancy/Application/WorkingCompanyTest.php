@@ -44,15 +44,15 @@ final class WorkingCompanyTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $this->user = new User(Email::fromString('u@example.test'), 'U', 'fr', new \DateTimeImmutable());
         $this->memberships = new InMemoryMemberships();
         $this->current = new InMemoryCurrentCompany();
     }
 
     public function testOneMembershipBecomesTheSessionCompany(): void
     {
-        $company = new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership($this->user, $company, new Role(Role::OWNER, ['*'])));
+        $company = new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($this->user, $company, new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
 
         (new ChooseWorkingCompany($this->memberships, $this->current))->for($this->user->getId());
 
@@ -66,18 +66,18 @@ final class WorkingCompanyTest extends TestCase
         $chooser->for($this->user->getId());
         self::assertNull($this->current->id());
 
-        $b = new Company('B', 'FR', 'EUR', 'fr', 'Europe/Paris');
-        $a = new Company('A', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership($this->user, $b, new Role(Role::MEMBER, [])));
-        $this->memberships->save(new Membership($this->user, $a, new Role(Role::MEMBER, [])));
+        $b = new Company('B', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $a = new Company('A', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($this->user, $b, new Role(Role::MEMBER, [], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
+        $this->memberships->save(new Membership($this->user, $a, new Role(Role::MEMBER, [], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
         $chooser->for($this->user->getId());
         self::assertTrue($a->getId()->equals($this->current->id()), 'several companies, none used yet: the first by name');
     }
 
     public function testTheWorkingContextDescribesTheCompanyTheRoleAndThePermissions(): void
     {
-        $company = new Company('Demo', 'tn', 'tnd', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership($this->user, $company, new Role(Role::ADMIN, ['invoice.read', 'invoice.write'])));
+        $company = new Company('Demo', 'tn', 'tnd', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($this->user, $company, new Role(Role::ADMIN, ['invoice.read', 'invoice.write'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
         $this->current->set($company->getId());
 
         $logos = $this->logos();
@@ -104,7 +104,7 @@ final class WorkingCompanyTest extends TestCase
         $describe = new DescribeWorkingContext($this->memberships, $this->current, $this->logos(), SupportDoubles::access($this->memberships), SupportDoubles::permissions(), self::closingTerms());
         self::assertNull($describe->for($this->user->getId()));
 
-        $this->current->set((new Company('Other', 'FR', 'EUR', 'fr', 'Europe/Paris'))->getId());
+        $this->current->set((new Company('Other', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable()))->getId());
         self::assertNull($describe->for($this->user->getId()), 'a session company the user is no longer a member of yields nothing');
     }
 

@@ -54,7 +54,7 @@ final class NumberingSeriesTest extends TestCase
 
     public function testAnEstablishmentCodeIsShortAndPlain(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
 
         $this->expectException(InvalidEstablishment::class);
 
@@ -200,7 +200,7 @@ final class NumberingSeriesTest extends TestCase
     public function testTheAllowanceNeverTakesASeriesBackIntoAnEarlierPeriodItCountsIn(): void
     {
         $now = new \DateTimeImmutable('2026-11-20 10:00');
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $establishment = Establishment::create($company, '000', 'Siège', true, $now);
         $monthly = NumberingSeries::create($company, $establishment, 'invoice', new NumberFormat('FAC-{YYYY}{MM}-{SEQ:4}'), ResetPeriod::Monthly, true, $now);
         $monthly->allocate(new \DateTimeImmutable('2026-12-01'), $now);
@@ -252,7 +252,7 @@ final class NumberingSeriesTest extends TestCase
 
     public function testASeriesThatStartsAgainPrintsThePeriodItStartsAgainIn(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $establishment = Establishment::create($company, '000', 'Siège', true, new \DateTimeImmutable());
         foreach ([
             'a yearly reset without the year' => ['FAC-{SEQ:5}', ResetPeriod::Yearly],
@@ -282,7 +282,7 @@ final class NumberingSeriesTest extends TestCase
 
     private static function series(): NumberingSeries
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $establishment = Establishment::create($company, '000', 'Siège', true, new \DateTimeImmutable());
 
         return NumberingSeries::create($company, $establishment, 'invoice', new NumberFormat('FAC-{YYYY}-{SEQ:5}'), ResetPeriod::Yearly, true, new \DateTimeImmutable());

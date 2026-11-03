@@ -22,7 +22,7 @@ final class UnitTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->now = new \DateTimeImmutable('2026-09-13 10:00:00');
     }
 

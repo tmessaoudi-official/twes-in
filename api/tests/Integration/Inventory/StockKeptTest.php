@@ -40,7 +40,7 @@ final class StockKeptTest extends KernelTestCase
         self::bootKernel();
         $answers = [];
         foreach (['on' => true, 'off' => false, 'unset' => null] as $name => $atCompany) {
-            $company = new Company('Quincaillerie '.$name, 'TN', 'TND', 'fr', 'Africa/Tunis');
+            $company = new Company('Quincaillerie '.$name, 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
             $this->em()->persist($company);
             $this->em()->flush();
             static::getContainer()->get(ProvisionCompany::class)->handle($company);

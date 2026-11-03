@@ -77,7 +77,7 @@ final class MfaEnrolmentTest extends ApiTestCase
     public function testAnAccountHeldForWantOfAFactorCanProveItselfAndEnrol(): void
     {
         $company = $this->createCompany('Secure');
-        $company->requireMfa(true);
+        $company->requireMfa(true, new \DateTimeImmutable());
         $this->createUser('someone@twes.local', self::PASSWORD, $company);
         $this->login('someone@twes.local', self::PASSWORD);
 
@@ -258,7 +258,7 @@ final class MfaEnrolmentTest extends ApiTestCase
     public function testACompanyThatRequiresAFactorBlocksAMemberWhoHasNoneUntilTheyEnrol(): void
     {
         $company = $this->createCompany('Strict');
-        $company->requireMfa(true);
+        $company->requireMfa(true, new \DateTimeImmutable());
         $this->em()->flush();
         $this->createUser('someone@twes.local', self::PASSWORD, $company);
         $this->login('someone@twes.local', self::PASSWORD);
@@ -323,7 +323,7 @@ final class MfaEnrolmentTest extends ApiTestCase
     public function testTheAuthenticatorACompanyRequiresIsKept(): void
     {
         $company = $this->createCompany('Secure');
-        $company->requireMfa(true);
+        $company->requireMfa(true, new \DateTimeImmutable());
         $this->createUser('someone@twes.local', self::PASSWORD, $company, authenticator: true);
         $this->login('someone@twes.local', self::PASSWORD);
 
@@ -366,7 +366,7 @@ final class MfaEnrolmentTest extends ApiTestCase
         // A member of one strict company and one relaxed one must enrol either way, or the company switcher
         // would be the way around it (ruling of 2026-09-10).
         $strict = $this->createCompany('Strict');
-        $strict->requireMfa(true);
+        $strict->requireMfa(true, new \DateTimeImmutable());
         $relaxed = $this->createCompany('Relaxed');
         $this->em()->flush();
 

@@ -180,7 +180,7 @@ final readonly class DemoDataset
         };
         $clock = Clock::get();
         try {
-            $timeline = new Timeline(new \DateTimeImmutable('today', new \DateTimeZone($demo->timezone)), $settle);
+            $timeline = new Timeline($clock->now()->setTimezone(new \DateTimeZone($demo->timezone))->setTime(0, 0), $settle);
             Clock::set(new MockClock($timeline->day(self::FIRST_DAY)->setTime(9, 0)));
             $opened = $open($demo);
             $companyId = $opened->companyId;

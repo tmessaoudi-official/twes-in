@@ -118,7 +118,7 @@ final class SubscriptionsTest extends ApiTestCase
         self::assertInstanceOf(Role::class, $role);
         $acme = $this->em()->find(Company::class, $company->getId());
         self::assertInstanceOf(Company::class, $acme);
-        $this->em()->persist(new Membership($coOwner, $acme, $role));
+        $this->em()->persist(new Membership($coOwner, $acme, $role, new \DateTimeImmutable()));
         $this->em()->flush();
         $this->createUser('clerk@twes.local', 'password-1234', $company, ['sale.write'], 'clerk');
 

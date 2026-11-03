@@ -244,7 +244,7 @@ final class PlatformOwnersTest extends ApiTestCase
 
     private function pendingCompany(): Company
     {
-        $company = Company::pending('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = Company::pending('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->em()->persist($company);
         $this->em()->flush();
 

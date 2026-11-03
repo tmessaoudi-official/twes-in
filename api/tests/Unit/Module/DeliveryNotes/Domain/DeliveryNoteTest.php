@@ -69,8 +69,8 @@ final class DeliveryNoteTest extends TestCase
         $this->taxes = new InMemoryTaxComponents();
         $this->establishments = new InMemoryEstablishments();
         $provision = $this->provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock);
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $provision->handle($this->company);
         $provision->handle($this->globex);
         $this->customer = $this->customer($this->company);
@@ -99,14 +99,14 @@ final class DeliveryNoteTest extends TestCase
 
     public function testValidatingFreezesTheSellerAsTheNotePrintsIt(): void
     {
-        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme SARL', addressLine1: '10 rue de Marseille', city: 'Tunis'));
+        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme SARL', addressLine1: '10 rue de Marseille', city: 'Tunis'), new \DateTimeImmutable());
         $note = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [
             new DeliveryNoteLineDetails(null, 'Pose', '1', $this->unit('C62'), '40', []),
         ], $this->now);
         self::assertNull($note->getSellerSnapshot(), 'a draft prints the seller as it is today');
 
         $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), KeptNames::of($note), $this->now);
-        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
+        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'), new \DateTimeImmutable());
 
         self::assertSame(['Acme SARL', 'Tunis'], [$note->getSellerSnapshot()?->name, $note->getSellerSnapshot()?->address->city]);
     }
@@ -510,7 +510,7 @@ final class DeliveryNoteTest extends TestCase
     /** A day a draft expects reads back as that day wherever the company is, west of Greenwich, where UTC's midnight is still the day before, too. */
     public function testAnExpectedDayReadsBackAsTheSameDayOnTheCompanysClock(): void
     {
-        $montreal = new Company('Érable', 'TN', 'TND', 'fr', 'America/Montreal');
+        $montreal = new Company('Érable', 'TN', 'TND', 'fr', 'America/Montreal', new \DateTimeImmutable());
         $this->provision->handle($montreal);
 
         $note = DeliveryNote::create($montreal, $this->establishments->ofCompany($montreal->getId())[0], $this->customer($montreal), new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-30')), [], $this->now);

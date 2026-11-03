@@ -43,7 +43,7 @@ final class ManageContactsTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->manage = new ManageContacts(new InMemoryContacts(), $this->customers, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions(), new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()));
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->customer = $this->customerOf($this->company, 'CLI-0001');
     }
 
@@ -94,7 +94,7 @@ final class ManageContactsTest extends TestCase
     {
         $leila = $this->manage->add($this->company, $this->customer->getId(), self::details('Leila'), true, null);
         $other = $this->customerOf($this->company, 'CLI-0002');
-        $theirs = $this->customerOf(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'CLI-0001');
+        $theirs = $this->customerOf(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'CLI-0001');
 
         try {
             $this->manage->revise($this->company, $other->getId(), $leila->getId(), self::details('Leila'), true, null);

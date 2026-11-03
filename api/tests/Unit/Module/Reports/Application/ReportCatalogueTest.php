@@ -32,7 +32,7 @@ final class ReportCatalogueTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->states = new InMemoryModuleStates();
         $this->modules = new ModuleStates(new ModuleCatalog([new CustomersModule(), new ProductsModule(), new InvoicesModule(), new ReportsModule()]), $this->states);
     }

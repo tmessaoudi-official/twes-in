@@ -30,7 +30,7 @@ final class VenueStructureTest extends TestCase
 
     protected function setUp(): void
     {
-        $company = new Company('Quincaillerie Ben Ali', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Quincaillerie Ben Ali', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->now = new \DateTimeImmutable('2026-09-22 09:00:00');
         $establishment = Establishment::create($company, '000', 'Bab Saadoun', true, $this->now);
         $this->ground = VenueArea::create($establishment, 'Rez-de-chaussée', 0, $this->now);

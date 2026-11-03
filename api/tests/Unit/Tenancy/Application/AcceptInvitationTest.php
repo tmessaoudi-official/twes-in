@@ -62,9 +62,9 @@ final class AcceptInvitationTest extends TestCase
         $this->transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->roles = new InMemoryRoles();
-        $this->roles->save(new Role(Role::OWNER, [Permission::WILDCARD]));
-        $this->roles->save(new Role(Role::MEMBER, ['company.read']));
-        $this->company = Company::pending('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->roles->save(new Role(Role::OWNER, [Permission::WILDCARD], null, new \DateTimeImmutable()));
+        $this->roles->save(new Role(Role::MEMBER, ['company.read'], null, new \DateTimeImmutable()));
+        $this->company = Company::pending('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->companies->save($this->company);
     }
 
@@ -178,7 +178,7 @@ final class AcceptInvitationTest extends TestCase
     public function testAnAddressThatGainedAnAccountMeanwhileJoinsWithoutItsPasswordBeingTouched(): void
     {
         $token = $this->openInvitation(Role::MEMBER);
-        $existing = new User(Email::fromString('stranger@twes.local'), 'Already Here', 'fr');
+        $existing = new User(Email::fromString('stranger@twes.local'), 'Already Here', 'fr', new \DateTimeImmutable());
         $existing->setPasswordHash('their-own-hash', new \DateTimeImmutable(self::NOW));
         $this->users->save($existing);
 
@@ -194,7 +194,7 @@ final class AcceptInvitationTest extends TestCase
     public function testAnExistingAccountAcceptsWithNothingFilledIn(): void
     {
         $token = $this->openInvitation(Role::MEMBER);
-        $existing = new User(Email::fromString('stranger@twes.local'), 'Already Here', 'fr');
+        $existing = new User(Email::fromString('stranger@twes.local'), 'Already Here', 'fr', new \DateTimeImmutable());
         $existing->setPasswordHash('their-own-hash', new \DateTimeImmutable(self::NOW));
         $this->users->save($existing);
 
@@ -244,7 +244,7 @@ final class AcceptInvitationTest extends TestCase
     /** The account's language is what its mails are written in, so only one the screens speak, whatever the company prints in. */
     public function testANewAccountTakesTheCompanysLanguageOnlyWhenTheScreensSpeakIt(): void
     {
-        $this->company = Company::pending('Souk', 'TN', 'TND', 'de', 'Africa/Tunis');
+        $this->company = Company::pending('Souk', 'TN', 'TND', 'de', 'Africa/Tunis', new \DateTimeImmutable());
         $this->companies->save($this->company);
         $token = $this->openInvitation(Role::MEMBER);
 

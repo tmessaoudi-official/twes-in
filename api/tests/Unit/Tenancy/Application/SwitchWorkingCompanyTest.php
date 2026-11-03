@@ -38,7 +38,7 @@ final class SwitchWorkingCompanyTest extends TestCase
         $this->memberships = new InMemoryMemberships();
         $this->currentCompany = new InMemoryCurrentCompany();
         $this->switch = new SwitchWorkingCompany($this->memberships, $this->currentCompany, new MockClock('2026-09-25 09:00:00'), SupportDoubles::access($this->memberships), SupportDoubles::visits());
-        $this->user = new User(Email::fromString('user@twes.local'), 'Someone', 'fr');
+        $this->user = new User(Email::fromString('user@twes.local'), 'Someone', 'fr', new \DateTimeImmutable());
     }
 
     public function testWorkingCompanyBecomesTheOneChosen(): void
@@ -73,9 +73,9 @@ final class SwitchWorkingCompanyTest extends TestCase
 
     public function testAnotherUsersMembershipDoesNotOpenTheCompany(): void
     {
-        $theirs = new Company('Theirs', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $other = new User(Email::fromString('other@twes.local'), 'Other', 'fr');
-        $this->memberships->save(new Membership($other, $theirs, new Role(Role::OWNER, [Permission::WILDCARD])));
+        $theirs = new Company('Theirs', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $other = new User(Email::fromString('other@twes.local'), 'Other', 'fr', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($other, $theirs, new Role(Role::OWNER, [Permission::WILDCARD], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
 
         $this->expectException(NotAMember::class);
         $this->switch->to($this->user->getId(), $theirs->getId());
@@ -83,8 +83,8 @@ final class SwitchWorkingCompanyTest extends TestCase
 
     private function join(string $name): Company
     {
-        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership($this->user, $company, new Role(Role::OWNER, [Permission::WILDCARD])));
+        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($this->user, $company, new Role(Role::OWNER, [Permission::WILDCARD], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
 
         return $company;
     }

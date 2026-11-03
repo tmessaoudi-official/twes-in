@@ -273,7 +273,7 @@ final class CompanyApprovalTest extends ApiTestCase
 
     private function pendingCompany(string $name, string $ownerEmail): Company
     {
-        $company = Company::pending($name, 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = Company::pending($name, 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->em()->persist($company);
         $this->em()->flush();
         $this->createUser($ownerEmail, 'password-1234', $company);

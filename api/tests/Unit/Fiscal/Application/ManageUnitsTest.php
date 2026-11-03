@@ -37,7 +37,7 @@ final class ManageUnitsTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->manage = new ManageUnits($this->units, $this->audit, new MockClock('2026-09-13 10:00:00'), $transactions, new InMemoryRecordVersions(), new DocumentLanguageNames(ShippedLanguages::catalogue()));
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 
     public function testACompanyAddsAUnitAndTheAdditionIsAudited(): void
@@ -70,7 +70,7 @@ final class ManageUnitsTest extends TestCase
 
     public function testAnotherCompanysUnitIsNotFound(): void
     {
-        $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), new UnitDraft('TNE', 'Tonne', 3, 90), null);
+        $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), new UnitDraft('TNE', 'Tonne', 3, 90), null);
 
         $this->expectException(UnitNotFound::class);
         $this->manage->revise($this->company, $theirs->getId(), new UnitChanges('Tonne', 3, true, 90), null);

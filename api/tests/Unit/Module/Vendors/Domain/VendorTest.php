@@ -31,7 +31,7 @@ final class VendorTest extends TestCase
     public function testANumberIsLettersDigitsAndSeparators(string $number): void
     {
         try {
-            Vendor::create(new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'), $number, new VendorProfile('Sotumag'), new \DateTimeImmutable('2026-10-15 10:40:00'));
+            Vendor::create(new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), $number, new VendorProfile('Sotumag'), new \DateTimeImmutable('2026-10-15 10:40:00'));
             self::fail("The number \"$number\" was accepted.");
         } catch (InvalidVendor $refused) {
             self::assertSame(['number', 'invalid_number'], [$refused->field, $refused->reason], 'said as the import says a number it refuses');
@@ -61,7 +61,7 @@ final class VendorTest extends TestCase
     #[DataProvider('refusedProfiles')]
     public function testAProfileIsRefusedWhereverItIsWrittenUnderTheFieldItNames(VendorProfile $profile, string $field, string $reason, array $params): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $now = new \DateTimeImmutable('2026-10-15 10:40:00');
         foreach (['created' => static fn () => Vendor::create($company, 'FRN-001', $profile, $now), 'revised' => static fn () => Vendor::create($company, 'FRN-001', new VendorProfile('Sotumag'), $now)->revise('FRN-001', $profile, true, $now)] as $how => $write) {
             try {
@@ -75,7 +75,7 @@ final class VendorTest extends TestCase
 
     public function testAVendorStoredBeforeARuleStillReads(): void
     {
-        $vendor = Vendor::create(new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'FRN-001', new VendorProfile('Sotumag'), new \DateTimeImmutable('2026-10-15 10:40:00'));
+        $vendor = Vendor::create(new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'FRN-001', new VendorProfile('Sotumag'), new \DateTimeImmutable('2026-10-15 10:40:00'));
         new \ReflectionProperty(Vendor::class, 'iban')->setValue($vendor, 'TN00');
 
         self::assertSame('TN00', $vendor->getProfile()->iban);

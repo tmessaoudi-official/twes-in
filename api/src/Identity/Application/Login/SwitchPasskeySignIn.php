@@ -24,6 +24,7 @@ use App\Identity\Domain\Repository\UserRepository;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -44,6 +45,7 @@ final readonly class SwitchPasskeySignIn implements DeclaresAuditActions
         private AuditTrail $audit,
         private Transactions $transactions,
         private SecurityNotices $notices,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -51,9 +53,9 @@ final readonly class SwitchPasskeySignIn implements DeclaresAuditActions
      * @throws StepUpRequired       when switching it on without a fresh proof
      * @throws PasskeySignInRefused when it cannot be switched on for this account
      */
-    public function handle(Uuid $userId, bool $on, ?\DateTimeImmutable $now = null): void
+    public function handle(Uuid $userId, bool $on): void
     {
-        $now ??= new \DateTimeImmutable();
+        $now = $this->clock->now();
         if ($on && !$this->stepUp->isRecent($userId)) {
             throw new StepUpRequired();
         }

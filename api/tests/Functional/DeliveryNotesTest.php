@@ -643,7 +643,7 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $company->reviseProfile(new CompanyProfile(legalName: 'Acme Holding', addressLine1: '99 avenue Nouvelle', city: 'Sousse'));
+        $company->reviseProfile(new CompanyProfile(legalName: 'Acme Holding', addressLine1: '99 avenue Nouvelle', city: 'Sousse'), new \DateTimeImmutable());
         $this->em()->flush();
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseIsSuccessful();

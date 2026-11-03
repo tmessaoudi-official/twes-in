@@ -41,7 +41,7 @@ final class RecordFailedLoginTest extends TestCase
 
     public function testAWrongPasswordCountsAgainstTheAccountAndIsAudited(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr', new \DateTimeImmutable());
         $this->users->save($user);
 
         $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'BadCredentialsException', wrongCredential: true));
@@ -58,7 +58,7 @@ final class RecordFailedLoginTest extends TestCase
 
     public function testTheFifthWrongPasswordLocksTheAccount(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr', new \DateTimeImmutable());
         $this->users->save($user);
 
         for ($i = 0; $i < 5; ++$i) {
@@ -73,7 +73,7 @@ final class RecordFailedLoginTest extends TestCase
     /** Its owner is told once, when the lock is set, with when it ends; never once per guess. */
     public function testTheOwnerIsToldOnceWhenTheLockIsSet(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr', new \DateTimeImmutable());
         $this->users->save($user);
 
         for ($i = 0; $i < 4; ++$i) {
@@ -93,7 +93,7 @@ final class RecordFailedLoginTest extends TestCase
     /** Wrong codes are typed after the right password: the lock they set says so, as its owner has more to do than wait. */
     public function testALockSetByAWrongSecondFactorIsToldAsOne(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr', new \DateTimeImmutable());
         $this->users->save($user);
 
         for ($i = 0; $i < 4; ++$i) {
@@ -107,7 +107,7 @@ final class RecordFailedLoginTest extends TestCase
 
     public function testARefusalThatIsNotAWrongPasswordLeavesTheCounterAlone(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr', new \DateTimeImmutable());
         $this->users->save($user);
 
         // Already locked, disabled, throttled: retrying must not extend the lock without end.

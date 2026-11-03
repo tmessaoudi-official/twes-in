@@ -47,10 +47,10 @@ final class RemoveMemberTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->remove = new RemoveMember($this->memberships, new RoleBounds($this->memberships), $this->audit, new MockClock('2026-09-09 10:00:00'), $transactions, new InMemoryNotifications());
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->owner = new Role(Role::OWNER, [Permission::WILDCARD]);
-        $this->member = new Role(Role::MEMBER, ['company.read']);
-        $this->admin = new Role(Role::ADMIN, ['user.read', 'user.write']);
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->owner = new Role(Role::OWNER, [Permission::WILDCARD], null, new \DateTimeImmutable());
+        $this->member = new Role(Role::MEMBER, ['company.read'], null, new \DateTimeImmutable());
+        $this->admin = new Role(Role::ADMIN, ['user.read', 'user.write'], null, new \DateTimeImmutable());
     }
 
     public function testAMemberIsRemoved(): void
@@ -176,7 +176,7 @@ final class RemoveMemberTest extends TestCase
 
     private function join(string $email, Role $role): Membership
     {
-        $membership = new Membership(new User(Email::fromString($email), 'Someone', 'fr'), $this->company, $role);
+        $membership = new Membership(new User(Email::fromString($email), 'Someone', 'fr', new \DateTimeImmutable()), $this->company, $role, new \DateTimeImmutable());
         $this->memberships->save($membership);
 
         return $membership;

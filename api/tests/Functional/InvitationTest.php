@@ -244,8 +244,8 @@ final class InvitationTest extends ApiTestCase
         $em = $this->em();
         $company = $em->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $low = new Role('low', ['customer.read'], $company);
-        $cashier = new Role('cashier', ['customer.read', 'invoice.issue'], $company);
+        $low = new Role('low', ['customer.read'], $company, new \DateTimeImmutable());
+        $cashier = new Role('cashier', ['customer.read', 'invoice.issue'], $company, new \DateTimeImmutable());
         $em->persist($low);
         $em->persist($cashier);
         $em->flush();
@@ -536,7 +536,7 @@ final class InvitationTest extends ApiTestCase
 
     private function createPendingCompany(): Company
     {
-        $company = Company::pending('Waiting', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = Company::pending('Waiting', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->em()->persist($company);
         $this->em()->flush();
 

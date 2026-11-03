@@ -98,8 +98,8 @@ final class ManageProductsTest extends TestCase
         $products = new InMemoryProducts();
         $this->references = new ProductReferences(new InMemoryProductReferenceSequences(), $products, $this->categories, new ReadSetting($resolve), $transactions);
         $this->manage = new ManageProducts($products, $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions, $this->vendors, new ReadSetting($resolve), $this->costHistory, $this->references, new InMemoryRecordVersions(), new PriceOnCostMove(new ReadSetting($resolve), ShippedFiscalPresets::scales(), new InMemoryEffects()));
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $provision->handle($this->company);
         $provision->handle($this->globex);
     }

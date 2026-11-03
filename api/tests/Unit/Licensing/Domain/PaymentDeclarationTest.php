@@ -136,7 +136,7 @@ final class PaymentDeclarationTest extends TestCase
 
     private function declaration(): PaymentDeclaration
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $payment = new DeclaredPayment('600.000', 'TND', PaymentMethod::Cash, new \DateTimeImmutable('2026-09-16T00:00:00+00:00'), 'REC-12', null);
 
         return new PaymentDeclaration($company, $payment, Uuid::v7(), new \DateTimeImmutable(self::NOW));
@@ -144,7 +144,7 @@ final class PaymentDeclarationTest extends TestCase
 
     private function subscription(?string $paidUntil = null, ?int $holdDays = null): Subscription
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $terms = new SubscriptionTerms(
             new BillingPeriod(1, PeriodUnit::Month),
             null,

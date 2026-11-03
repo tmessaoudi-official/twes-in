@@ -50,7 +50,7 @@ final class ManageEstablishmentsTest extends TestCase
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->provision = new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), new InMemoryUnits(), $this->establishments, $this->series, ShippedFiscalPresets::scales(), $clock);
         $this->manage = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), $this->audit, $clock, $transactions, new InMemoryRecordVersions(), $phones = new TypedPhones(new LibPhoneNumbers(new IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), new \App\Shared\Application\StoredContacts($phones));
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($this->company);
     }
 
@@ -175,7 +175,7 @@ final class ManageEstablishmentsTest extends TestCase
 
     public function testAnotherCompanysEstablishmentIsNotFound(): void
     {
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($globex);
         $theirs = $this->manage->list($globex)[0];
 

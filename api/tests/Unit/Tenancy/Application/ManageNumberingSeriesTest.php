@@ -44,7 +44,7 @@ final class ManageNumberingSeriesTest extends TestCase
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->provision = new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), new InMemoryUnits(), new InMemoryEstablishments(), $this->series, ShippedFiscalPresets::scales(), $clock);
         $this->manage = new ManageNumberingSeries($this->series, $this->audit, $clock, $transactions, new InMemoryRecordVersions());
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($this->company);
     }
 
@@ -78,7 +78,7 @@ final class ManageNumberingSeriesTest extends TestCase
 
     public function testAnotherCompanysSeriesIsNotFound(): void
     {
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($globex);
 
         $this->expectException(NumberingSeriesNotFound::class);

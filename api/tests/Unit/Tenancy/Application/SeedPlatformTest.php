@@ -149,7 +149,7 @@ final class SeedPlatformTest extends TestCase
 
     public function testACustomCompanyRoleWithABuiltInNameIsNotTouched(): void
     {
-        $company = new \App\Tenancy\Domain\Model\Company('Other', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new \App\Tenancy\Domain\Model\Company('Other', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $custom = new Role(Role::ADMIN, ['company.read'], $company, new \DateTimeImmutable());
         $this->roles->save($custom);
 
@@ -196,7 +196,7 @@ final class SeedPlatformTest extends TestCase
     public function testEveryCompanyCreatedBeforeTheFiscalPresetsGetsItsTaxesAndUnitsOnTheNextRun(): void
     {
         // The migration records a preset for every existing company but cannot read the preset files.
-        $other = new \App\Tenancy\Domain\Model\Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $other = new \App\Tenancy\Domain\Model\Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->companies->save($other);
 
         $created = $this->seed->seed($this->request(password: 'secret'));
@@ -211,7 +211,7 @@ final class SeedPlatformTest extends TestCase
 
     public function testACompanySeededBeforeTheFiscalPresetsGetsItsTaxesOnTheNextRun(): void
     {
-        $this->companies->save(new \App\Tenancy\Domain\Model\Company('Seeded', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+        $this->companies->save(new \App\Tenancy\Domain\Model\Company('Seeded', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
 
         $created = $this->seed->seed($this->request(password: 'secret'));
 
@@ -253,7 +253,7 @@ final class SeedPlatformTest extends TestCase
         // Signing in right after the seed must work: the step the enrolment spent is older than the current one.
         $now = new \DateTimeImmutable('2026-09-09 12:00:00');
         $codes = new OtphpTotpCodes();
-        $operator->useTotpTimestep($codes->verify(self::TOTP_SECRET, $codes->codeAt(self::TOTP_SECRET, $now), $now) ?? self::fail('the code for now is refused'));
+        $operator->useTotpTimestep($codes->verify(self::TOTP_SECRET, $codes->codeAt(self::TOTP_SECRET, $now), $now) ?? self::fail('the code for now is refused'), new \DateTimeImmutable());
     }
 
     public function testAnOperatorWhoAlreadyHasAnAuthenticatorKeepsIt(): void

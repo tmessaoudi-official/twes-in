@@ -60,6 +60,6 @@ final class PrintedNamesTest extends TestCase
 
     private function unit(string $code): Unit
     {
-        return Unit::create(new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'), $code, $code, 0, 0, new \DateTimeImmutable('2026-10-19'));
+        return Unit::create(new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), $code, $code, 0, 0, new \DateTimeImmutable('2026-10-19'));
     }
 }

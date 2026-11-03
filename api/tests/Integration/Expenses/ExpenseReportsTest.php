@@ -49,8 +49,8 @@ final class ExpenseReportsTest extends KernelTestCase
     {
         self::bootKernel();
         $provision = static::getContainer()->get(ProvisionCompany::class);
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         foreach ([$this->company, $globex] as $company) {
             $this->em()->persist($company);
             $this->em()->flush();

@@ -61,7 +61,7 @@ final class InvoiceMentionsTest extends TestCase
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), $this->clock, $transactions, new RecordingDomainEvents(), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), new \App\Tests\Support\RecordingLiveChanges());
         $presets = ShippedFiscalPresets::presets();
         $this->mentions = new InvoiceMentions($presets, new ExcludedTaxFamilies($presets), ShippedMentionWording::wording(), new ReadSetting($resolve));
-        $this->atelier = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->atelier = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
     }
 
     public function testAFrenchInvoiceWithoutItsLatePaymentRateIsRefusedNamingTheSetting(): void
@@ -86,7 +86,7 @@ final class InvoiceMentionsTest extends TestCase
 
     public function testTheCompanysOwnLatePenaltyTextStandsForTheMentionAndIsNotPrintedTwice(): void
     {
-        $this->atelier->reviseProfile(new CompanyProfile(latePenaltyText: 'Pénalités : trois fois le taux légal.'));
+        $this->atelier->reviseProfile(new CompanyProfile(latePenaltyText: 'Pénalités : trois fois le taux légal.'), new \DateTimeImmutable());
         $customer = $this->customer($this->atelier, 'standard', null);
 
         $printed = $this->mentions->forIssue($this->atelier, $customer, InvoiceType::Invoice, 'fr');
@@ -131,7 +131,7 @@ final class InvoiceMentionsTest extends TestCase
 
     public function testATunisianMentionWaitsForNothing(): void
     {
-        $shop = new Company('Boutique', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $shop = new Company('Boutique', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $customer = $this->customer($shop, 'exempt', 'fiscal.mention.tn.exempt');
 
         self::assertEquals(new PrintedMentions(['fiscal.mention.tn.exempt']), $this->mentions->forIssue($shop, $customer, InvoiceType::Invoice, 'fr'));

@@ -106,9 +106,8 @@ class User
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
-    public function __construct(Email $email, string $displayName, string $locale, ?\DateTimeImmutable $now = null)
+    public function __construct(Email $email, string $displayName, string $locale, \DateTimeImmutable $now)
     {
-        $now ??= new \DateTimeImmutable();
         $this->id = Uuid::v7();
         $this->email = $email;
         $this->displayName = $displayName;
@@ -139,13 +138,13 @@ class User
     }
 
     /** The language this account's mails and the API's own words are written in. */
-    public function changeLocale(string $locale): void
+    public function changeLocale(string $locale, \DateTimeImmutable $now): void
     {
         if ($locale === $this->locale) {
             return;
         }
         $this->locale = $locale;
-        $this->touch();
+        $this->touch($now);
     }
 
     public function isActive(): bool
@@ -153,10 +152,10 @@ class User
         return $this->isActive;
     }
 
-    public function setActive(bool $active): void
+    public function setActive(bool $active, \DateTimeImmutable $now): void
     {
         $this->isActive = $active;
-        $this->touch();
+        $this->touch($now);
     }
 
     public function isPlatformOperator(): bool
@@ -164,10 +163,10 @@ class User
         return $this->isPlatformOperator;
     }
 
-    public function setPlatformOperator(bool $operator): void
+    public function setPlatformOperator(bool $operator, \DateTimeImmutable $now): void
     {
         $this->isPlatformOperator = $operator;
-        $this->touch();
+        $this->touch($now);
     }
 
     public function getLastLoginAt(): ?\DateTimeImmutable
@@ -280,10 +279,10 @@ class User
     }
 
     /** The same password hashed with newer parameters: not a change the user made. */
-    public function upgradePasswordHash(string $hash): void
+    public function upgradePasswordHash(string $hash, \DateTimeImmutable $now): void
     {
         $this->passwordHash = $hash;
-        $this->touch();
+        $this->touch($now);
     }
 
     public function getSecurityStamp(): string
@@ -292,10 +291,10 @@ class User
     }
 
     /** Invalidates every existing session of this user on its next request. */
-    public function rotateSecurityStamp(): void
+    public function rotateSecurityStamp(\DateTimeImmutable $now): void
     {
         $this->securityStamp = bin2hex(random_bytes(16));
-        $this->touch();
+        $this->touch($now);
     }
 
     public function getCreatedAt(): \DateTimeImmutable
@@ -308,16 +307,16 @@ class User
         return $this->updatedAt;
     }
 
-    private function touch(?\DateTimeImmutable $now = null): void
+    private function touch(\DateTimeImmutable $now): void
     {
-        $this->updatedAt = $now ?? new \DateTimeImmutable();
+        $this->updatedAt = $now;
     }
 
     /**
      * Stores a freshly generated secret as pending, replacing an earlier pending one. Refused while an authenticator
      * is in force: starting over would switch it off, and a session is all it takes to start.
      */
-    public function beginTotpEnrolment(string $cipherSecret, ?\DateTimeImmutable $now = null): void
+    public function beginTotpEnrolment(string $cipherSecret, \DateTimeImmutable $now): void
     {
         if ($this->hasTotp()) {
             throw new \DomainException('An authenticator is already in force; it has to be removed before another is enrolled.');
@@ -326,7 +325,7 @@ class User
         $this->totpSecret = $cipherSecret;
         $this->totpConfirmedAt = null;
         $this->totpLastTimestep = null;
-        $this->updatedAt = $now ?? new \DateTimeImmutable();
+        $this->updatedAt = $now;
     }
 
     /**
@@ -343,13 +342,12 @@ class User
     }
 
     /** Turns the pending secret into a real factor. The timestep is the one the confirming code came from, and is spent. */
-    public function confirmTotpEnrolment(int $timestep, ?\DateTimeImmutable $now = null): void
+    public function confirmTotpEnrolment(int $timestep, \DateTimeImmutable $now): void
     {
         if (null === $this->totpSecret) {
             throw new \DomainException('There is no pending enrolment to confirm.');
         }
 
-        $now ??= new \DateTimeImmutable();
         $this->totpConfirmedAt = $now;
         $this->totpLastTimestep = $timestep;
         $this->updatedAt = $now;
@@ -359,7 +357,7 @@ class User
      * Spends a timestep. Refuses anything not strictly newer than the last one, which is what stops a code
      * being replayed while it is still arithmetically valid.
      */
-    public function useTotpTimestep(int $timestep, ?\DateTimeImmutable $now = null): void
+    public function useTotpTimestep(int $timestep, \DateTimeImmutable $now): void
     {
         if (!$this->hasTotp()) {
             throw new \DomainException('This account has no confirmed second factor.');
@@ -370,34 +368,33 @@ class User
         }
 
         $this->totpLastTimestep = $timestep;
-        $this->updatedAt = $now ?? new \DateTimeImmutable();
+        $this->updatedAt = $now;
     }
 
     /**
      * Stores a new app's secret beside the one in force, replacing one still waiting. Nothing about signing in changes:
      * the app in force keeps working until confirmTotpReplacement.
      */
-    public function beginTotpReplacement(string $cipherSecret, ?\DateTimeImmutable $now = null): void
+    public function beginTotpReplacement(string $cipherSecret, \DateTimeImmutable $now): void
     {
         if (!$this->hasTotp()) {
             throw new \DomainException('There is no authenticator in force to replace.');
         }
 
         $this->totpReplacementSecret = $cipherSecret;
-        $this->updatedAt = $now ?? new \DateTimeImmutable();
+        $this->updatedAt = $now;
     }
 
     /**
      * The new app takes the place of the old in one step, never leaving the account without one: the timestep is the
      * one the confirming code came from, spent as an enrolment's is.
      */
-    public function confirmTotpReplacement(int $timestep, ?\DateTimeImmutable $now = null): void
+    public function confirmTotpReplacement(int $timestep, \DateTimeImmutable $now): void
     {
         if (!$this->hasTotp() || null === $this->totpReplacementSecret) {
             throw new \DomainException('There is no replacement waiting to confirm.');
         }
 
-        $now ??= new \DateTimeImmutable();
         $this->totpSecret = $this->totpReplacementSecret;
         $this->totpReplacementSecret = null;
         $this->totpConfirmedAt = $now;
@@ -420,13 +417,13 @@ class User
         return $this->totpReplacementSecret;
     }
 
-    public function disableTotp(?\DateTimeImmutable $now = null): void
+    public function disableTotp(\DateTimeImmutable $now): void
     {
         $this->totpSecret = null;
         $this->totpReplacementSecret = null;
         $this->totpConfirmedAt = null;
         $this->totpLastTimestep = null;
-        $this->updatedAt = $now ?? new \DateTimeImmutable();
+        $this->updatedAt = $now;
     }
 
     public function hasTotp(): bool

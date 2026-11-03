@@ -225,7 +225,7 @@ final class SensitiveChangesStepUpTest extends ApiTestCase
      */
     private function signedInWhereASecondFactorIsRequired(): void
     {
-        $this->company->requireMfa(true);
+        $this->company->requireMfa(true, new \DateTimeImmutable());
         $this->createUser('guarded@twes.local', self::PASSWORD, $this->company, ['*'], 'guardian', authenticator: true);
         $this->login('guarded@twes.local', self::PASSWORD);
     }

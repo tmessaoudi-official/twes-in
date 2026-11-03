@@ -40,7 +40,7 @@ final class AllocateNumberTest extends TestCase
         $this->series = new InMemoryNumberingSeries();
         $this->transactions = new FakeTransactions();
         new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), new InMemoryUnits(), $establishments, $this->series, ShippedFiscalPresets::scales(), $clock)
-            ->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+            ->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
         $this->head = $establishments->ofCompany($this->company->getId())[0];
         $this->allocate = new AllocateNumber($this->series, $this->transactions, $clock);
     }

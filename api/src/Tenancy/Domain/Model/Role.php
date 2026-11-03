@@ -55,13 +55,13 @@ class Role
     private int $version = 1;
 
     /** @param list<string> $permissions */
-    public function __construct(string $name, array $permissions, ?Company $company = null, ?\DateTimeImmutable $now = null)
+    public function __construct(string $name, array $permissions, ?Company $company, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
         $this->name = $name;
         $this->permissions = array_values(array_unique($permissions));
         $this->company = $company;
-        $this->createdAt = $now ?? new \DateTimeImmutable();
+        $this->createdAt = $now;
     }
 
     public function getId(): Uuid

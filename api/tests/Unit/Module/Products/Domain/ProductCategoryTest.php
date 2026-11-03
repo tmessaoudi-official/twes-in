@@ -21,7 +21,7 @@ final class ProductCategoryTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->now = new \DateTimeImmutable('2026-09-14 09:00:00');
     }
 
@@ -50,7 +50,7 @@ final class ProductCategoryTest extends TestCase
 
     public function testAParentOfAnotherCompanyIsRefused(): void
     {
-        $theirs = ProductCategory::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'Matériel', null, $this->now);
+        $theirs = ProductCategory::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'Matériel', null, $this->now);
 
         $this->expectExceptionObject(new InvalidProductCategory('parentId', 'A category sits under a category of its own company.'));
         ProductCategory::create($this->company, 'Portables', $theirs, $this->now);

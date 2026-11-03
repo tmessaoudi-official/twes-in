@@ -149,7 +149,7 @@ final class ProductCheckTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->now = new \DateTimeImmutable('2026-10-21 07:00:00');
         $this->piece = Unit::create($this->company, 'C62', 'pièce', 0, 0, $this->now);
     }

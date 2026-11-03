@@ -34,7 +34,7 @@ final class ProductTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->now = new \DateTimeImmutable('2026-09-14 09:00:00');
         $this->piece = Unit::create($this->company, 'C62', 'pièce', 0, 0, $this->now);
     }
@@ -107,7 +107,7 @@ final class ProductTest extends TestCase
 
     public function testAUnitOrACategoryOfAnotherCompanyIsRefused(): void
     {
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
 
         try {
             Product::create($this->company, 'ART-001', self::details(), Unit::create($globex, 'C62', 'pièce', 0, 0, $this->now), null, [], $this->now);
@@ -234,7 +234,7 @@ final class ProductTest extends TestCase
     public function testASupplierOfAnotherCompanyIsRefused(): void
     {
         $product = Product::create($this->company, 'ART-001', self::details(), $this->piece, null, [], $this->now);
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
 
         $this->expectExceptionObject(new InvalidProduct('barcodes.0.supplierId', 'A product\'s supplier code names a supplier of its own company.'));
         $product->replaceBarcodes([new BarcodeLine(BarcodeRole::Supplier, new Barcode('SOT-4471'), 6, Vendor::create($globex, 'F-001', new VendorProfile('Sotupa'), $this->now))], $this->now);
@@ -287,7 +287,7 @@ final class ProductTest extends TestCase
     public function testAVendorOfAnotherCompanyIsNotLinked(): void
     {
         $product = Product::create($this->company, 'ART-001', self::details(), $this->piece, null, [], $this->now);
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
 
         $this->expectExceptionObject(new InvalidProduct('vendors.0', 'A product\'s vendor is a vendor of its own company.'));
         $product->replaceVendors([Vendor::create($globex, 'F-001', new VendorProfile('Sotupa'), $this->now)], $this->now);

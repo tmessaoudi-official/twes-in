@@ -60,7 +60,7 @@ final class DataErasureTest extends TestCase
     {
         foreach ([[], ['drafts', 'drafts']] as $parts) {
             try {
-                new DataErasure(Uuid::v7(), new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'), $parts, [], null, new \DateTimeImmutable(self::AT), new \DateInterval('PT24H'));
+                new DataErasure(Uuid::v7(), new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), $parts, [], null, new \DateTimeImmutable(self::AT), new \DateInterval('PT24H'));
                 self::fail('refused: '.json_encode($parts));
             } catch (\InvalidArgumentException) {
                 $this->addToAssertionCount(1);
@@ -70,7 +70,7 @@ final class DataErasureTest extends TestCase
 
     private function erasure(): DataErasure
     {
-        return new DataErasure(Uuid::v7(), new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'), ['stock_map'], ['stock_map' => ['floors' => 1]], Uuid::v7(), new \DateTimeImmutable(self::AT), new \DateInterval('PT24H'));
+        return new DataErasure(Uuid::v7(), new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), ['stock_map'], ['stock_map' => ['floors' => 1]], Uuid::v7(), new \DateTimeImmutable(self::AT), new \DateInterval('PT24H'));
     }
 
     private function assertRefused(callable $undo): void

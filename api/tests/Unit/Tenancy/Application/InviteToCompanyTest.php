@@ -64,9 +64,9 @@ final class InviteToCompanyTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $roles = new InMemoryRoles();
-        $roles->save(new Role(Role::OWNER, [Permission::WILDCARD]));
-        $roles->save(new Role(Role::MEMBER, ['company.read']));
-        $roles->save(new Role(Role::ADMIN, ['user.read', 'user.write']));
+        $roles->save(new Role(Role::OWNER, [Permission::WILDCARD], null, new \DateTimeImmutable()));
+        $roles->save(new Role(Role::MEMBER, ['company.read'], null, new \DateTimeImmutable()));
+        $roles->save(new Role(Role::ADMIN, ['user.read', 'user.write'], null, new \DateTimeImmutable()));
         $this->roles = $roles;
         $clock = new MockClock('2026-09-09 10:00:00');
         // The worker's part runs as soon as an invitation is queued: what these cases read is the mail it sends.
@@ -88,7 +88,7 @@ final class InviteToCompanyTest extends TestCase
             $transactions,
         );
 
-        $this->company = Company::pending('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = Company::pending('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->companies->save($this->company);
     }
 
@@ -105,7 +105,7 @@ final class InviteToCompanyTest extends TestCase
 
     public function testAnAddressThatAlreadyHasAnAccountIsInvitedByMailAndJoinsNothingYet(): void
     {
-        $user = new User(Email::fromString('joiner@twes.local'), 'Joiner', 'fr');
+        $user = new User(Email::fromString('joiner@twes.local'), 'Joiner', 'fr', new \DateTimeImmutable());
         $this->users->save($user);
 
         $this->invite->handle($this->request('joiner@twes.local'), null);
@@ -118,7 +118,7 @@ final class InviteToCompanyTest extends TestCase
 
     public function testAnExistingAccountIsToldOfTheInvitationWithoutTheLink(): void
     {
-        $user = new User(Email::fromString('joiner@twes.local'), 'Joiner', 'fr');
+        $user = new User(Email::fromString('joiner@twes.local'), 'Joiner', 'fr', new \DateTimeImmutable());
         $this->users->save($user);
 
         $this->invite->handle($this->request('joiner@twes.local'), null);
@@ -283,8 +283,8 @@ final class InviteToCompanyTest extends TestCase
 
     public function testNobodyInvitesIntoACustomRoleThatHoldsWhatTheyDoNot(): void
     {
-        $this->roles->save(new Role('Gestion', ['invoice.issue'], $this->company));
-        $this->roles->save(new Role('Lecture', ['user.read'], $this->company));
+        $this->roles->save(new Role('Gestion', ['invoice.issue'], $this->company, new \DateTimeImmutable()));
+        $this->roles->save(new Role('Lecture', ['user.read'], $this->company, new \DateTimeImmutable()));
         $admin = $this->memberOfTheCompany('admin@twes.local', Role::ADMIN);
         $owner = $this->memberOfTheCompany('owner@twes.local', Role::OWNER);
 
@@ -303,11 +303,11 @@ final class InviteToCompanyTest extends TestCase
 
     private function memberOfTheCompany(string $email, string $roleName): User
     {
-        $user = new User(Email::fromString($email), 'Someone', 'fr');
+        $user = new User(Email::fromString($email), 'Someone', 'fr', new \DateTimeImmutable());
         $this->users->save($user);
         $role = $this->roles->builtIn($roleName);
         self::assertNotNull($role);
-        $this->memberships->save(new Membership($user, $this->company, $role));
+        $this->memberships->save(new Membership($user, $this->company, $role, new \DateTimeImmutable()));
 
         return $user;
     }

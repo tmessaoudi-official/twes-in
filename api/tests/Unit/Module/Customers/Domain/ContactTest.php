@@ -57,7 +57,7 @@ final class ContactTest extends TestCase
         $now = new \DateTimeImmutable();
 
         return Customer::create(
-            new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'),
+            new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()),
             'CLI-0001',
             new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'),
             null,

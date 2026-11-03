@@ -157,7 +157,7 @@ final class CompanyProofTest extends ApiTestCase
         $this->postJson('/api/auth/mfa/passkeys', ['name' => 'Laptop', 'credential' => $authenticator->register($this->json(), residentKey: true)]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $second = $this->fresh($this->second);
-        $second->requireMfa(true);
+        $second->requireMfa(true, new \DateTimeImmutable());
         $this->em()->flush();
         // A company that takes no passkey to enter still takes it as the second factor it requires.
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($second), CompanyEntrySettings::PASSKEY, SettingLevel::Company, false, null);
@@ -179,7 +179,7 @@ final class CompanyProofTest extends ApiTestCase
 
     public function testACompanyRequiringASecondFactorAsksTheCodeBesideThePassword(): void
     {
-        $this->second->requireMfa(true);
+        $this->second->requireMfa(true, new \DateTimeImmutable());
         $this->em()->flush();
         $this->memberOfBoth(authenticator: true);
         $this->enter($this->second);

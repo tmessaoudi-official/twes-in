@@ -41,7 +41,7 @@ final class ResolveUnitPriceTest extends TestCase
     protected function setUp(): void
     {
         $this->now = new \DateTimeImmutable('2026-10-02 09:00:00');
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->lists = new InMemoryPriceLists();
         $this->customers = new InMemoryCustomers();
         $this->resolve = new ResolveUnitPrice($this->lists, $this->customers);
@@ -156,7 +156,7 @@ final class ResolveUnitPriceTest extends TestCase
 
     public function testAListOfAnotherCompanyNeverPricesThisOne(): void
     {
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $theirs = PriceList::create($globex, 'Public', null, null, null, null, true, $this->now);
         $this->lists->save($theirs);
 

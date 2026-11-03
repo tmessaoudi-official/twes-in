@@ -52,7 +52,7 @@ final class DescribeInvitationTest extends TestCase
     public function testALinkForAnAddressWithAnAccountSaysSoSoThePageAsksForNothing(): void
     {
         $token = $this->open();
-        $this->users->save(new User(Email::fromString('stranger@twes.local'), 'Already Here', 'fr'));
+        $this->users->save(new User(Email::fromString('stranger@twes.local'), 'Already Here', 'fr', new \DateTimeImmutable()));
 
         $summary = $this->describe()->for($token->raw);
 
@@ -79,7 +79,7 @@ final class DescribeInvitationTest extends TestCase
 
     public function testASuspendedCompanyIsSaidSuspendedWithItsReason(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $company->suspend(new \DateTimeImmutable(self::NOW), 'Règlement en attente');
         $summary = $this->describe()->for($this->open($company)->raw);
 
@@ -116,9 +116,9 @@ final class DescribeInvitationTest extends TestCase
     {
         $token = InvitationToken::generate();
         $this->invitations->save(new Invitation(
-            $company ?? new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'),
+            $company ?? new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()),
             Email::fromString('stranger@twes.local'),
-            new Role(Role::MEMBER, []),
+            new Role(Role::MEMBER, [], null, new \DateTimeImmutable()),
             $token,
             new \DateTimeImmutable(self::NOW),
             new \DateInterval('P7D'),

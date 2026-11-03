@@ -36,7 +36,7 @@ final class ResolveSettingsTest extends TestCase
     {
         $this->settings = new InMemorySettings();
         $this->resolve = new ResolveSettings(new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), $this->settings);
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->roleId = Uuid::v7();
         $this->userId = Uuid::v7();
     }
@@ -69,7 +69,7 @@ final class ResolveSettingsTest extends TestCase
 
         self::assertSame('dark', $this->find('presentation.scheme')->value);
         self::assertSame(SettingLevel::Role, $this->find('presentation.scheme')->source);
-        $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), $this->roleId, $this->userId);
+        $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), $this->roleId, $this->userId);
         self::assertSame('auto', $this->find('presentation.scheme', $elsewhere)->value);
         $anotherRole = new SettingContext($this->company, Uuid::v7(), $this->userId);
         self::assertSame('auto', $this->find('presentation.scheme', $anotherRole)->value);
@@ -79,7 +79,7 @@ final class ResolveSettingsTest extends TestCase
     {
         $this->store(SettingAddress::user($this->userId), 'presentation.density', 'compact');
 
-        $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), null, $this->userId);
+        $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), null, $this->userId);
         self::assertSame('compact', $this->find('presentation.density', $elsewhere)->value);
     }
 

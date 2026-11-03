@@ -59,7 +59,7 @@ final class StoreIssuedDeliveryNotePdfTest extends TestCase
         $clock = new MockClock('2026-09-15 09:00:00');
         $units = new InMemoryUnits();
         $establishments = new InMemoryEstablishments();
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock)->handle($company);
         $notes = new InMemoryDeliveryNotes();
         $records = new InMemoryStoredFiles();

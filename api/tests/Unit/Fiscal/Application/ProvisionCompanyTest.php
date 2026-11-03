@@ -44,7 +44,7 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testATunisianCompanyGetsItsPresetsTaxesAndUnits(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
 
         $copied = $this->provision->handle($company);
 
@@ -56,7 +56,7 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testTheCopiedValuesAreThePresetsWithTheirKindsAndFlags(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($company);
 
         $fodec = $this->components->ofCodeInCompany('FODEC', $company->getId());
@@ -75,8 +75,8 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testNamesAreCopiedInTheCompanysLanguage(): void
     {
-        $french = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $english = new Company('Globex', 'TN', 'TND', 'en', 'Africa/Tunis');
+        $french = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $english = new Company('Globex', 'TN', 'TND', 'en', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($french);
         $this->provision->handle($english);
 
@@ -89,7 +89,7 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testEveryOtherLanguageDocumentsPrintInIsGivenThePresetsNameAndTheCompanysOwnIsTheName(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($company);
 
         $piece = $this->units->ofCodeInCompany('C62', $company->getId());
@@ -101,14 +101,14 @@ final class ProvisionCompanyTest extends TestCase
         self::assertSame('Droit de timbre', $stamp->getName());
         self::assertSame(['ar' => 'معلوم الطابع الجبائي', 'en' => 'Stamp duty'], $stamp->getNames());
 
-        $english = new Company('Globex', 'TN', 'TND', 'en', 'Africa/Tunis');
+        $english = new Company('Globex', 'TN', 'TND', 'en', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($english);
         self::assertSame(['ar' => 'وحدة', 'fr' => 'Unité'], $this->units->ofCodeInCompany('C62', $english->getId())?->getNames());
     }
 
     public function testUnitsAndTaxesFromBeforeNamesByLanguageAreGivenThemOnceKeepingTheCompanysName(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($company);
         $piece = $this->units->ofCodeInCompany('C62', $company->getId());
         $stamp = $this->components->ofCodeInCompany('TIMBRE', $company->getId());
@@ -136,7 +136,7 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testAFrenchCompanyGetsTheFrenchRates(): void
     {
-        $company = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $company = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
 
         $this->provision->handle($company);
 
@@ -146,7 +146,7 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testASecondRunCopiesNothingAndKeepsTheCompanysEdits(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($company);
         $stamp = $this->components->ofCodeInCompany('TIMBRE', $company->getId());
         self::assertNotNull($stamp);
@@ -159,7 +159,7 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testACompanyThatHasUnitsButNoTaxesGetsOnlyTheTaxes(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->units->save(Unit::create($company, 'C62', 'Pièce', 0, 0, new \DateTimeImmutable()));
 
         self::assertSame(['tax components of Acme', 'establishments of Acme', 'numbering series of Acme'], $this->provision->handle($company));
@@ -168,7 +168,7 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testACountryWithNoPresetIsRefusedBeforeAnythingIsWritten(): void
     {
-        $company = new Company('Weiss', 'DE', 'EUR', 'de', 'Europe/Berlin');
+        $company = new Company('Weiss', 'DE', 'EUR', 'de', 'Europe/Berlin', new \DateTimeImmutable());
 
         try {
             $this->provision->handle($company);
@@ -184,8 +184,8 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testACompanyGetsOneDefaultEstablishmentCodedByItsPreset(): void
     {
-        $tunisian = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $french = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $tunisian = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $french = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->provision->handle($tunisian);
         $this->provision->handle($french);
 
@@ -199,7 +199,7 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testTheDefaultEstablishmentNumbersEachDocumentTypeThePresetsWay(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($company);
 
         $series = $this->series->ofCompany($company->getId());
@@ -217,7 +217,7 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testAnEstablishmentAndSeriesAlreadyThereAreLeftAlone(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($company);
 
         self::assertSame([], $this->provision->handle($company));
@@ -227,7 +227,7 @@ final class ProvisionCompanyTest extends TestCase
 
     public function testADocumentTypeThePresetNumbersSinceIsGivenItsSeriesAloneAndTheOthersAreLeftAlone(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($company);
         $quote = array_find($this->series->series, static fn (NumberingSeries $s): bool => 'quote' === $s->getDocumentType());
         self::assertNotNull($quote);

@@ -48,7 +48,7 @@ final class ManageCustomerGroupsTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->manage = new ManageCustomerGroups($this->groups, $this->customers, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions());
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 
     public function testAGroupIsCreatedAndAuditedWithoutItsValues(): void
@@ -68,7 +68,7 @@ final class ManageCustomerGroupsTest extends TestCase
     {
         $this->manage->create($this->company, 'Grossistes', null, null);
         $retail = $this->manage->create($this->company, 'Détaillants', null, null);
-        $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'Export', null, null);
+        $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'Export', null, null);
 
         $this->manage->revise($this->company, $retail->getId(), 'Détaillants', 'Magasins', null);
         $this->manage->create($this->company, 'Export', null, null);
@@ -127,7 +127,7 @@ final class ManageCustomerGroupsTest extends TestCase
 
     public function testAnotherCompanysGroupIsNotFound(): void
     {
-        $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'Grossistes', null, null);
+        $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'Grossistes', null, null);
 
         try {
             $this->manage->revise($this->company, $theirs->getId(), 'Mine now', null, null);

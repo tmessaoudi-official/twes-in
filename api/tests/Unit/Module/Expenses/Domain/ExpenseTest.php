@@ -36,7 +36,7 @@ final class ExpenseTest extends TestCase
     protected function setUp(): void
     {
         $this->now = new \DateTimeImmutable('2026-09-15 09:00:00');
-        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->vat19 = $this->percentage($this->acme, 'TVA19', '19', 3);
         $this->fuel = ExpenseCategory::create($this->acme, 'Carburant', null, $this->now);
     }
@@ -47,7 +47,7 @@ final class ExpenseTest extends TestCase
 
         self::assertSame(['100.005', '19.000', '19.001', '119.006', 'TND'], [$expense->getAmountNet(), $expense->getTaxes()[0]->getRate(), $expense->getTaxAmount(), $expense->getAmountGross(), $expense->getCurrency()]);
 
-        $globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $vat5 = $this->percentage($globex, 'TVA5', '5', 2);
         $tie = $this->create($globex, '0.10', null, null, $vat5, 2);
         self::assertSame(['0.100', '0.010', '0.110', 'EUR'], [$tie->getAmountNet(), $tie->getTaxAmount(), $tie->getAmountGross(), $tie->getCurrency()], '0.005 is a tie, rounded away from zero');
@@ -74,7 +74,7 @@ final class ExpenseTest extends TestCase
         $stamp = TaxComponent::create($this->acme, 'TIMBRE', 'Timbre', TaxFamily::Stamp, null, '1.000', null, false, false, null, 0, 3, $this->now);
         $this->assertRefused('lines[0].taxComponentIds', fn () => $this->create($this->acme, '10', null, null, $stamp, 3), 'a stamp');
 
-        $theirs = $this->percentage(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'TVA19', '19', 3);
+        $theirs = $this->percentage(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'TVA19', '19', 3);
         $this->assertRefused('lines[0].taxComponentIds', fn () => $this->create($this->acme, '10', null, null, $theirs, 3), 'another company’s');
 
         $this->vat19->revise('TVA 19 %', '19', null, null, false, false, false, null, 0, 3, $this->now);
@@ -83,7 +83,7 @@ final class ExpenseTest extends TestCase
 
     public function testTheVendorAndTheCategoryAreTheCompanysAndActive(): void
     {
-        $theirVendor = Vendor::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'FRN-0001', new VendorProfile('Autre'), $this->now);
+        $theirVendor = Vendor::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'FRN-0001', new VendorProfile('Autre'), $this->now);
         $this->assertRefused('vendorId', fn () => $this->create($this->acme, '10', $theirVendor, null, null, 3), 'another company’s vendor');
 
         $retired = Vendor::create($this->acme, 'FRN-0002', new VendorProfile('Ancien'), $this->now);
@@ -192,7 +192,7 @@ final class ExpenseTest extends TestCase
         $exempt->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, '0', 3, TejOperationCode::Rs7_000006);
         self::assertSame([null, TejOperationCode::Rs7_000006], [$exempt->getWithholdingRate(), $exempt->getWithholdingOperationCode()], 'a supplier exempt from withholding is still declared, at 0 %');
 
-        $french = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $french = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $abroad = $this->create($french, '1000', null, ExpenseCategory::create($french, 'Loyer', null, $this->now), null, 2);
         $abroad->record($this->now);
         $this->assertRefused('withholdingOperationCode', fn () => $abroad->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, null, 2, TejOperationCode::Rs1_000002), 'a TEJ code outside Tunisia');

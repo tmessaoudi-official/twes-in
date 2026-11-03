@@ -48,12 +48,12 @@ final class CompanyDirectoryTest extends TestCase
     {
         $this->memberships = new InMemoryMemberships();
         $this->invitations = new InMemoryInvitations();
-        $this->owner = new Role(Role::OWNER, [Permission::WILDCARD]);
+        $this->owner = new Role(Role::OWNER, [Permission::WILDCARD], null, new \DateTimeImmutable());
     }
 
     public function testTheSwitcherSeesEveryCompanyTheUserBelongsTo(): void
     {
-        $user = new User(Email::fromString('user@twes.local'), 'Someone', 'fr');
+        $user = new User(Email::fromString('user@twes.local'), 'Someone', 'fr', new \DateTimeImmutable());
         $first = $this->join($user, 'Acme');
         $second = $this->join($user, 'Globex');
 
@@ -73,8 +73,8 @@ final class CompanyDirectoryTest extends TestCase
 
     public function testAnotherUsersCompaniesAreNotListed(): void
     {
-        $mine = new User(Email::fromString('mine@twes.local'), 'Mine', 'fr');
-        $theirs = new User(Email::fromString('theirs@twes.local'), 'Theirs', 'fr');
+        $mine = new User(Email::fromString('mine@twes.local'), 'Mine', 'fr', new \DateTimeImmutable());
+        $theirs = new User(Email::fromString('theirs@twes.local'), 'Theirs', 'fr', new \DateTimeImmutable());
         $this->join($mine, 'Acme');
         $this->join($theirs, 'Globex');
 
@@ -86,9 +86,9 @@ final class CompanyDirectoryTest extends TestCase
 
     public function testTheMemberListNamesEveryoneInTheCompany(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership(new User(Email::fromString('one@twes.local'), 'One', 'fr'), $company, $this->owner));
-        $this->memberships->save(new Membership(new User(Email::fromString('two@twes.local'), 'Two', 'fr'), $company, $this->owner));
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->memberships->save(new Membership(new User(Email::fromString('one@twes.local'), 'One', 'fr', new \DateTimeImmutable()), $company, $this->owner, new \DateTimeImmutable()));
+        $this->memberships->save(new Membership(new User(Email::fromString('two@twes.local'), 'Two', 'fr', new \DateTimeImmutable()), $company, $this->owner, new \DateTimeImmutable()));
 
         $members = $this->listMembers()->for($company->getId());
 
@@ -99,10 +99,10 @@ final class CompanyDirectoryTest extends TestCase
 
     public function testAnotherCompanysMembersAreNotListed(): void
     {
-        $mine = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $theirs = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership(new User(Email::fromString('mine@twes.local'), 'Mine', 'fr'), $mine, $this->owner));
-        $this->memberships->save(new Membership(new User(Email::fromString('theirs@twes.local'), 'Theirs', 'fr'), $theirs, $this->owner));
+        $mine = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $theirs = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->memberships->save(new Membership(new User(Email::fromString('mine@twes.local'), 'Mine', 'fr', new \DateTimeImmutable()), $mine, $this->owner, new \DateTimeImmutable()));
+        $this->memberships->save(new Membership(new User(Email::fromString('theirs@twes.local'), 'Theirs', 'fr', new \DateTimeImmutable()), $theirs, $this->owner, new \DateTimeImmutable()));
 
         $members = $this->listMembers()->for($mine->getId());
 
@@ -112,12 +112,12 @@ final class CompanyDirectoryTest extends TestCase
 
     public function testAnOpenInvitationIsListedWithoutANameUntilItIsAccepted(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership(new User(Email::fromString('one@twes.local'), 'One', 'fr'), $company, $this->owner));
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->memberships->save(new Membership(new User(Email::fromString('one@twes.local'), 'One', 'fr', new \DateTimeImmutable()), $company, $this->owner, new \DateTimeImmutable()));
         $this->invite($company, 'open@twes.local', '2026-09-09 09:00:00');
         $this->invite($company, 'expired@twes.local', '2026-08-01 09:00:00');
         $this->invite($company, 'used@twes.local', '2026-09-09 09:00:00')->accept(new \DateTimeImmutable('2026-09-09 09:30:00'));
-        $this->invite(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'theirs@twes.local', '2026-09-09 09:00:00');
+        $this->invite(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'theirs@twes.local', '2026-09-09 09:00:00');
 
         $members = $this->listMembers()->for($company->getId());
 
@@ -131,7 +131,7 @@ final class CompanyDirectoryTest extends TestCase
 
     private function invite(Company $company, string $email, string $at): Invitation
     {
-        $invitation = new Invitation($company, Email::fromString($email), new Role(Role::MEMBER, []), InvitationToken::generate(), new \DateTimeImmutable($at), new \DateInterval('P7D'), null);
+        $invitation = new Invitation($company, Email::fromString($email), new Role(Role::MEMBER, [], null, new \DateTimeImmutable()), InvitationToken::generate(), new \DateTimeImmutable($at), new \DateInterval('P7D'), null);
         $this->invitations->save($invitation);
 
         return $invitation;
@@ -167,8 +167,8 @@ final class CompanyDirectoryTest extends TestCase
 
     private function join(User $user, string $name): Company
     {
-        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership($user, $company, $this->owner));
+        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($user, $company, $this->owner, new \DateTimeImmutable()));
 
         return $company;
     }

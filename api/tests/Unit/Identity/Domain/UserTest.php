@@ -31,10 +31,10 @@ final class UserTest extends TestCase
 
     public function testANewPasswordForcesEverySessionOutAndARehashDoesNot(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr', new \DateTimeImmutable());
         $stamp = $user->getSecurityStamp();
 
-        $user->upgradePasswordHash('same-password-newer-parameters');
+        $user->upgradePasswordHash('same-password-newer-parameters', new \DateTimeImmutable());
         self::assertSame($stamp, $user->getSecurityStamp());
 
         $user->setPasswordHash('a-new-password', new \DateTimeImmutable('2026-09-15 12:00:00'));
@@ -44,7 +44,7 @@ final class UserTest extends TestCase
     public function testTheAccountLocksOnTheNthConsecutiveFailureAndOnlyUntilTheDeadline(): void
     {
         $now = new \DateTimeImmutable('2026-09-09 12:00:00');
-        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr', new \DateTimeImmutable());
 
         for ($i = 1; $i <= 4; ++$i) {
             $user->recordFailedLogin($now, 5, new \DateInterval('PT15M'));
@@ -62,7 +62,7 @@ final class UserTest extends TestCase
     public function testASuccessfulLoginResetsTheCounterAndTheLock(): void
     {
         $now = new \DateTimeImmutable('2026-09-09 12:00:00');
-        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr', new \DateTimeImmutable());
         for ($i = 0; $i < 5; ++$i) {
             $user->recordFailedLogin($now, 5, new \DateInterval('PT15M'));
         }
@@ -84,17 +84,17 @@ final class UserTest extends TestCase
         self::assertSame('hash-1', $user->getPasswordHash());
         self::assertEquals($changed, $user->getPasswordChangedAt());
 
-        $user->upgradePasswordHash('hash-2');
+        $user->upgradePasswordHash('hash-2', new \DateTimeImmutable());
         self::assertSame('hash-2', $user->getPasswordHash());
         self::assertEquals($changed, $user->getPasswordChangedAt(), 'a rehash with new parameters is not a password change');
     }
 
     public function testRotatingTheSecurityStampChangesIt(): void
     {
-        $user = new User(Email::fromString('u@example.test'), 'U', 'fr');
+        $user = new User(Email::fromString('u@example.test'), 'U', 'fr', new \DateTimeImmutable());
         $before = $user->getSecurityStamp();
 
-        $user->rotateSecurityStamp();
+        $user->rotateSecurityStamp(new \DateTimeImmutable());
 
         self::assertNotSame($before, $user->getSecurityStamp());
     }

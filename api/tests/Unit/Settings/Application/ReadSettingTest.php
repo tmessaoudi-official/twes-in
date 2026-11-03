@@ -26,7 +26,7 @@ final class ReadSettingTest extends TestCase
     public function testCodeReadsTheValueInForce(): void
     {
         $settings = new InMemorySettings();
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $settings->save(new Setting(SettingAddress::company($company), 'presentation.scheme', 'dark', new \DateTimeImmutable()));
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue())]), $settings));
 

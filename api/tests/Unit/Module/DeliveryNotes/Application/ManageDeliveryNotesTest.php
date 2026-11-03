@@ -100,8 +100,8 @@ final class ManageDeliveryNotesTest extends TestCase
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents(), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), new \App\Tests\Support\RecordingLiveChanges());
         $this->manage = new ManageDeliveryNotes($this->notes = new InMemoryDeliveryNotes(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemoryRecordVersions(), NoQuotesToDeliver::lines($this->notes), NoInvoicesToDeliver::lines($this->notes), new ChooseReceiver($this->contacts = new InMemoryReceiverContacts()), new ReadSetting($resolve));
         $this->notes->transactions = $transactions;
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $provision->handle($this->company);
         $provision->handle($this->globex);
     }
@@ -126,9 +126,9 @@ final class ManageDeliveryNotesTest extends TestCase
 
     public function testACompanyOnAVatFreeRegimeChargesNoVatToAnyCustomer(): void
     {
-        $this->company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock)->handle($this->company);
-        $this->company->reviseProfile(new CompanyProfile(vatRegime: 'franchise'));
+        $this->company->reviseProfile(new CompanyProfile(vatRegime: 'franchise'), new \DateTimeImmutable());
         $customer = $this->customer();
 
         $note = $this->manage->create($this->company, $this->input($customer, [new DeliveryNoteLineInput($this->product(taxes: ['TVA20'])->getId(), null, '1')]), null);

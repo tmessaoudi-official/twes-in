@@ -47,7 +47,7 @@ final class ConfirmStepUpTest extends TestCase
     protected function setUp(): void
     {
         $this->users = new InMemoryUsers();
-        $this->user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr');
+        $this->user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr', new \DateTimeImmutable());
         $this->user->setPasswordHash('hash:'.self::PASSWORD, new \DateTimeImmutable('2026-09-01'));
         $this->users->save($this->user);
         $this->clock = new MockClock('2026-10-06 09:00:00');

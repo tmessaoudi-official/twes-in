@@ -57,7 +57,7 @@ final class CustomerTaxRegimesTest extends ApiTestCase
 
     public function testAFrenchCompanySeesTheFrenchRegimes(): void
     {
-        $dupont = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $dupont = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->em()->persist($dupont);
         $this->em()->flush();
         $this->signedIn($dupont, 'fr');
@@ -98,12 +98,12 @@ final class CustomerTaxRegimesTest extends ApiTestCase
     private function signedIn(Company $company, string $locale): void
     {
         $em = $this->em();
-        $user = new User(Email::fromString('accountant@twes.local'), 'Accountant', $locale);
+        $user = new User(Email::fromString('accountant@twes.local'), 'Accountant', $locale, new \DateTimeImmutable());
         $user->setPasswordHash(static::getContainer()->get(PasswordHasher::class)->hash('password-1234'), new \DateTimeImmutable());
-        $role = new Role('accountant', ['fiscal.read'], $company);
+        $role = new Role('accountant', ['fiscal.read'], $company, new \DateTimeImmutable());
         $em->persist($user);
         $em->persist($role);
-        $em->persist(new Membership($user, $company, $role));
+        $em->persist(new Membership($user, $company, $role, new \DateTimeImmutable()));
         $em->flush();
         $this->login('accountant@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();

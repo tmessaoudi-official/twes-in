@@ -52,7 +52,7 @@ final class ArrangeVenueTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Quincaillerie Ben Ali', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Quincaillerie Ben Ali', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->clock = new MockClock('2026-09-21 09:00:00');
         $this->establishment = Establishment::create($this->company, '000', 'Bab Saadoun', true, $this->clock->now());
         $establishments = new InMemoryEstablishments();
@@ -179,7 +179,7 @@ final class ArrangeVenueTest extends TestCase
         self::assertSame([], $this->venue->structuresOf($this->company, $ground->getId()));
         self::assertSame(ArrangeVenue::STRUCTURE_DELETED, $this->lastEntry()->action);
         $this->expectException(VenueStructureNotFound::class);
-        $this->venue->removeStructure(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), $post->getId(), $this->actor);
+        $this->venue->removeStructure(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), $post->getId(), $this->actor);
     }
 
     private function lastEntry(): AuditEntry
@@ -193,7 +193,7 @@ final class ArrangeVenueTest extends TestCase
     {
         $ground = $this->venue->addArea($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, $this->actor);
         $spot = $this->venue->place($this->company, $ground->getId(), new PlanRect('1', '1', '2', '1', 0, '2'), $this->actor);
-        $other = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $other = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
 
         self::assertSame([], $this->venue->areas($other));
         $this->expectException(VenueSpotNotFound::class);

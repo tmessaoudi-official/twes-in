@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Passkey;
 
+use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Uid\Uuid;
@@ -26,21 +27,22 @@ final readonly class PasskeyChallenges
         private RequestStack $requestStack,
         #[Autowire(param: 'app.mfa.pending_ttl')]
         private string $ttl,
+        private ClockInterface $clock,
     ) {
     }
 
-    public function remember(string $purpose, ?Uuid $userId, string $optionsJson, ?\DateTimeImmutable $now = null): void
+    public function remember(string $purpose, ?Uuid $userId, string $optionsJson): void
     {
         $this->requestStack->getSession()->set(self::KEY, [
             'purpose' => $purpose,
             'user' => $userId?->toRfc4122(),
             'options' => $optionsJson,
-            'until' => ($now ?? new \DateTimeImmutable())->add(new \DateInterval($this->ttl))->getTimestamp(),
+            'until' => $this->clock->now()->add(new \DateInterval($this->ttl))->getTimestamp(),
         ]);
     }
 
     /** @return string|null the options, or null when there are none for this purpose and account, or they expired */
-    public function take(string $purpose, ?Uuid $userId, ?\DateTimeImmutable $now = null): ?string
+    public function take(string $purpose, ?Uuid $userId): ?string
     {
         $session = $this->requestStack->getSession();
         $ceremony = $session->get(self::KEY);
@@ -50,7 +52,7 @@ final readonly class PasskeyChallenges
             || $purpose !== ($ceremony['purpose'] ?? null)
             || $userId?->toRfc4122() !== ($ceremony['user'] ?? null)
             || !\is_int($ceremony['until'] ?? null)
-            || ($now ?? new \DateTimeImmutable())->getTimestamp() > $ceremony['until']
+            || $this->clock->now()->getTimestamp() > $ceremony['until']
             || !\is_string($ceremony['options'] ?? null)
         ) {
             return null;

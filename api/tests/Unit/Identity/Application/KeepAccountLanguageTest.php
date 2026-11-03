@@ -16,6 +16,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryUsers;
 use App\Tests\Support\ShippedLanguages;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 final class KeepAccountLanguageTest extends TestCase
@@ -27,8 +28,8 @@ final class KeepAccountLanguageTest extends TestCase
     protected function setUp(): void
     {
         $this->users = new InMemoryUsers();
-        $this->keep = new KeepAccountLanguage($this->users, new FakeTransactions(), ShippedLanguages::catalogue());
-        $this->user = new User(Email::fromString('someone@twes.local'), 'Someone', 'fr');
+        $this->keep = new KeepAccountLanguage($this->users, new FakeTransactions(), ShippedLanguages::catalogue(), new MockClock());
+        $this->user = new User(Email::fromString('someone@twes.local'), 'Someone', 'fr', new \DateTimeImmutable());
         $this->users->save($this->user);
     }
 

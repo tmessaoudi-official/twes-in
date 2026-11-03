@@ -30,8 +30,8 @@ final class ChooseReceiptReceiverTest extends TestCase
     {
         $this->members = new InMemoryReceivingMembers();
         $this->choose = new ChooseReceiptReceiver($this->members);
-        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 
     public function testAMemberIsCopiedByTheNameTheyBearNowWithTheirAccountBesideIt(): void

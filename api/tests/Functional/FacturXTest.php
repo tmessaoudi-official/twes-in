@@ -48,7 +48,7 @@ final class FacturXTest extends ApiTestCase
             city: 'Lyon',
             iban: 'FR7630006000011234567890189',
             bic: 'AGRIFRPP',
-        ));
+        ), new \DateTimeImmutable());
         $this->em()->flush();
         // A French invoice states its late payment penalties' rate, or it is not issued (FrenchMentionsTest).
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->company), 'document.late_payment_rate', SettingLevel::Company, 'trois fois le taux d’intérêt légal', null);
@@ -144,7 +144,7 @@ final class FacturXTest extends ApiTestCase
         // What is judged is the seller as issuing froze it, so the gaps must be there when the invoice is issued.
         $this->company = $this->reloaded();
         // Named as issuing asks, but short of what EN 16931 asks beyond it: the VAT number and the postal code.
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074'], addressLine1: '12 rue des Forges', city: 'Lyon'));
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074'], addressLine1: '12 rue des Forges', city: 'Lyon'), new \DateTimeImmutable());
         $this->em()->flush();
         $id = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
 
@@ -178,7 +178,7 @@ final class FacturXTest extends ApiTestCase
             postalCode: '13002',
             city: 'Marseille',
             iban: 'FR7612345000019876543210987',
-        ));
+        ), new \DateTimeImmutable());
         $this->em()->flush();
 
         $this->client->request('GET', $this->path($id).'/factur-x.xml');
@@ -364,7 +364,7 @@ final class FacturXTest extends ApiTestCase
 
     private function frenchCompany(string $name): Company
     {
-        $company = new Company($name, 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $company = new Company($name, 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->em()->persist($company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($company);

@@ -168,7 +168,7 @@ final class ChangeProductCostTest extends TestCase
         $this->effects = new InMemoryEffects();
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new ProductPriceSettings()]), $this->settings));
         $this->change = new ChangeProductCost($this->products, $this->history, $this->audit, new MockClock('2026-10-03 10:00:00'), $transactions, new PriceOnCostMove($read, ShippedFiscalPresets::scales(), $this->effects));
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, new \DateTimeImmutable());
     }
 

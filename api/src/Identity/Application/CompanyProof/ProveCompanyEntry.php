@@ -29,7 +29,6 @@ use App\Tenancy\Application\Session\CompanyEntry;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Repository\CompanyRepository;
 use App\Tenancy\Domain\Repository\MembershipRepository;
-use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -52,7 +51,6 @@ final readonly class ProveCompanyEntry implements DeclaresAuditActions
         private BeginPasskeyAssertion $passkeyAssertion,
         private AuditTrail $audit,
         private Transactions $transactions,
-        private ClockInterface $clock,
     ) {
     }
 
@@ -84,7 +82,7 @@ final readonly class ProveCompanyEntry implements DeclaresAuditActions
         }
         if ($asked->code) {
             try {
-                $this->secondFactor->handle($userId, $code ?? '', $this->clock->now());
+                $this->secondFactor->handle($userId, $code ?? '');
             } catch (SecondFactorRefused|SecondFactorUnreadable) {
                 $this->stepUp->countWrong($userId, 'code');
 

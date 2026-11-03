@@ -21,6 +21,7 @@ use App\Identity\Domain\Repository\RecoveryCodeRepository;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\Email;
 use App\Shared\Application\Transactions;
+use Psr\Clock\ClockInterface;
 
 /**
  * The way back for an account that lost every factor it could sign in with, run by whoever runs the installation:
@@ -40,6 +41,7 @@ final readonly class ReplaceSecondFactors implements DeclaresAuditActions
         private AuditTrail $audit,
         private Transactions $transactions,
         private SecurityNotices $notices,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -57,12 +59,13 @@ final readonly class ReplaceSecondFactors implements DeclaresAuditActions
                 return $replaced;
             }
 
-            $user->disableTotp();
+            $now = $this->clock->now();
+            $user->disableTotp($now);
             $this->recoveryCodes->replaceAll($user, []);
             foreach ($passkeys as $passkey) {
                 $this->passkeys->remove($passkey);
             }
-            $user->rotateSecurityStamp();
+            $user->rotateSecurityStamp($now);
             $this->users->save($user);
             // Which kinds of factor went, never how many or which device: the trail says what happened, not what was held.
             $this->audit->record(new AuditEntry('user', $user->getId(), self::REPLACED, null, ['factors' => $replaced->kinds()]));

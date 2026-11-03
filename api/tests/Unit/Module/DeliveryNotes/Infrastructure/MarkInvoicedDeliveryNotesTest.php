@@ -66,7 +66,7 @@ final class MarkInvoicedDeliveryNotesTest extends TestCase
         $taxes = new InMemoryTaxComponents();
         $establishments = new InMemoryEstablishments();
         new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock)
-            ->handle($company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+            ->handle($company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
         $notes = new InMemoryDeliveryNotes();
         $transactions = new FakeTransactions();
         $notes->transactions = $transactions;

@@ -173,9 +173,8 @@ class Company
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
-    public function __construct(string $name, string $countryCode, string $currency, string $locale, string $timezone, ?\DateTimeImmutable $now = null)
+    public function __construct(string $name, string $countryCode, string $currency, string $locale, string $timezone, \DateTimeImmutable $now)
     {
-        $now ??= new \DateTimeImmutable();
         $this->id = Uuid::v7();
         $this->name = $name;
         $this->countryCode = strtoupper($countryCode);
@@ -193,7 +192,7 @@ class Company
      * A company an operator creates has no owner yet, so nobody can sign into it: it waits, and its first
      * owner accepting the invitation activates it (docs/SPEC.md § 7, 2026-09-09).
      */
-    public static function pending(string $name, string $countryCode, string $currency, string $locale, string $timezone, ?\DateTimeImmutable $now = null): self
+    public static function pending(string $name, string $countryCode, string $currency, string $locale, string $timezone, \DateTimeImmutable $now): self
     {
         $company = new self($name, $countryCode, $currency, $locale, $timezone, $now);
         $company->status = self::STATUS_PENDING;
@@ -204,7 +203,7 @@ class Company
 
     /** Idempotent: a company that is already active stays active, and its timestamp does not move. */
     /** @throws CompanyClosedDown nothing but its owner's reopening brings a closed company back */
-    public function activate(?\DateTimeImmutable $now = null): void
+    public function activate(\DateTimeImmutable $now): void
     {
         $this->refuseWhenClosedDown();
         $this->changeStatusTo(self::STATUS_ACTIVE, $now);
@@ -217,7 +216,7 @@ class Company
      *
      * @throws CompanyClosedDown
      */
-    public function suspend(?\DateTimeImmutable $now = null, ?string $reason = null): void
+    public function suspend(\DateTimeImmutable $now, ?string $reason = null): void
     {
         if (null !== $reason && mb_strlen($reason) > self::SUSPENSION_REASON_MAX) {
             throw new \InvalidArgumentException(\sprintf('A reason holds at most %d characters.', self::SUSPENSION_REASON_MAX));
@@ -300,13 +299,13 @@ class Company
         }
     }
 
-    private function changeStatusTo(string $status, ?\DateTimeImmutable $now): void
+    private function changeStatusTo(string $status, \DateTimeImmutable $now): void
     {
         if ($status === $this->status) {
             return;
         }
         $this->status = $status;
-        $this->updatedAt = $now ?? new \DateTimeImmutable();
+        $this->updatedAt = $now;
     }
 
     public function getId(): Uuid
@@ -392,7 +391,7 @@ class Company
     }
 
     /** @return bool whether this changed anything, so a caller records a revision only when there was one */
-    public function reviseProfile(CompanyProfile $profile, ?\DateTimeImmutable $now = null): bool
+    public function reviseProfile(CompanyProfile $profile, \DateTimeImmutable $now): bool
     {
         if ($this->getProfile()->equals($profile)) {
             return false;
@@ -414,7 +413,7 @@ class Company
         $this->invoiceFooterText = $profile->invoiceFooterText;
         $this->latePenaltyText = $profile->latePenaltyText;
         $this->vatOnDebits = $profile->vatOnDebits;
-        $this->updatedAt = $now ?? new \DateTimeImmutable();
+        $this->updatedAt = $now;
 
         return true;
     }
@@ -425,14 +424,14 @@ class Company
     }
 
     /** @return bool whether this changed anything, so a caller can stay quiet when it did not */
-    public function requireMfa(bool $required, ?\DateTimeImmutable $now = null): bool
+    public function requireMfa(bool $required, \DateTimeImmutable $now): bool
     {
         if ($this->mfaRequired === $required) {
             return false;
         }
 
         $this->mfaRequired = $required;
-        $this->updatedAt = $now ?? new \DateTimeImmutable();
+        $this->updatedAt = $now;
 
         return true;
     }
@@ -452,7 +451,7 @@ class Company
      *
      * @throws InvalidClosing
      */
-    public function closeThrough(\DateTimeImmutable $day, \DateTimeImmutable $today, ?\DateTimeImmutable $now = null): bool
+    public function closeThrough(\DateTimeImmutable $day, \DateTimeImmutable $today, \DateTimeImmutable $now): bool
     {
         $asked = $day->format('Y-m-d');
         if ($asked >= $today->format('Y-m-d')) {
@@ -466,7 +465,7 @@ class Company
             return false;
         }
         $this->closedThrough = new \DateTimeImmutable($asked, new \DateTimeZone('UTC'));
-        $this->updatedAt = $now ?? new \DateTimeImmutable();
+        $this->updatedAt = $now;
 
         return true;
     }

@@ -51,7 +51,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         $units = new InMemoryUnits();
         $taxes = new InMemoryTaxComponents();
         $establishments = new InMemoryEstablishments();
-        $company = new Company('Acme Distribution', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme Distribution', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock)->handle($company);
         $customer = Customer::create($company, 'CLI-0007', new CustomerProfile(
             CustomerKind::Company,
@@ -155,7 +155,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
     public function testTheCustomersExemptionMentionPrintsWithItsReference(): void
     {
         $now = new \DateTimeImmutable('2026-09-15 09:00:00');
-        $exempt = CustomerSnapshot::of(Customer::create(new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris'), 'CLI-0008', new CustomerProfile(CustomerKind::Company, 'Clinique Pasteur'), null, new CustomerTaxRegime('FR', 'exempt', 'fiscal.regime.exempt', [], 'fiscal.mention.fr.exempt', 0, $now), [], $now));
+        $exempt = CustomerSnapshot::of(Customer::create(new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable()), 'CLI-0008', new CustomerProfile(CustomerKind::Company, 'Clinique Pasteur'), null, new CustomerTaxRegime('FR', 'exempt', 'fiscal.regime.exempt', [], 'fiscal.mention.fr.exempt', 0, $now), [], $now));
 
         self::assertStringContainsString('<p class="mention">Exonération de TVA, article 261-4-1° du CGI.</p>', $this->html(null, false, 'fr', '', customer: $exempt, exemptionReference: 'article 261-4-1° du CGI'));
         self::assertStringContainsString('<p class="mention">Exonération de TVA, article 5 (taux 0 %).</p>', $this->html(null, false, 'fr', '', customer: $exempt, exemptionReference: 'article 5 (taux 0 %)'));

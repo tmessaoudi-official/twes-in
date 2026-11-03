@@ -51,7 +51,7 @@ final class ManagePriceListsTest extends TestCase
     protected function setUp(): void
     {
         $this->now = new \DateTimeImmutable('2026-10-02 09:00:00');
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->lists = new InMemoryPriceLists();
         $this->products = new InMemoryProducts();
         $this->customers = new InMemoryCustomers();
@@ -79,7 +79,7 @@ final class ManagePriceListsTest extends TestCase
     public function testANameTheCompanyAlreadyUsesIsRefusedButAnotherCompanysIsNot(): void
     {
         $this->manage->create($this->company, $this->input('Public'), null);
-        $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), $this->input('Public'), null);
+        $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), $this->input('Public'), null);
 
         $this->expectException(PriceListNameTaken::class);
         $this->manage->create($this->company, $this->input(' Public '), null);
@@ -97,7 +97,7 @@ final class ManagePriceListsTest extends TestCase
 
     public function testACustomerOrGroupOfAnotherCompanyIsRefusedNamingTheField(): void
     {
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $theirGroup = CustomerGroup::create($globex, 'Revendeurs', null, $this->now);
         $this->groups->save($theirGroup);
         $theirCustomer = $this->customerIn($globex, $theirGroup);
@@ -129,7 +129,7 @@ final class ManagePriceListsTest extends TestCase
 
     public function testAProductOfAnotherCompanyIsRefusedAtItsRowNaming(): void
     {
-        $theirs = $this->productIn(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'ART-009');
+        $theirs = $this->productIn(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'ART-009');
 
         try {
             $this->manage->create($this->company, $this->input('Public', items: [new PriceListItemInput($this->screw->getId(), '1', '1'), new PriceListItemInput($theirs->getId(), '1', '1')]), null);
@@ -205,7 +205,7 @@ final class ManagePriceListsTest extends TestCase
 
     public function testAListOfAnotherCompanyIsNotFound(): void
     {
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $theirs = $this->manage->create($globex, $this->input('Public'), null);
 
         $this->expectException(PriceListNotFound::class);

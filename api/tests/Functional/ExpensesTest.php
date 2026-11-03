@@ -532,7 +532,7 @@ final class ExpensesTest extends ApiTestCase
 
     public function testACompanyOutsideTunisiaIsOfferedNoTejOperation(): void
     {
-        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->em()->persist($durand);
         $this->em()->flush();
         $this->createUser('achats@durand.fr', 'password-1234', $durand, ['expense.read'], 'member');
@@ -556,7 +556,7 @@ final class ExpensesTest extends ApiTestCase
             $this->arrayAt($this->json(), 'withholdings'),
         ));
 
-        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->em()->persist($durand);
         $this->em()->flush();
         $this->createUser('retenues@durand.fr', 'password-1234', $durand, ['expense.read'], 'member');
@@ -569,7 +569,7 @@ final class ExpensesTest extends ApiTestCase
     /** A euro has two decimals: a net finer than that is told two, however much finer it is. */
     public function testANetFinerThanTheCurrencyIsToldTheCurrencysDecimals(): void
     {
-        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->em()->persist($durand);
         $this->em()->flush();
         $this->createUser('achats@durand.fr', 'password-1234', $durand, ['expense.read', 'expense.write'], 'member');

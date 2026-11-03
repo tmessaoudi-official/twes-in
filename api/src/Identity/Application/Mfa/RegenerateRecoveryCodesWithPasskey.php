@@ -20,6 +20,7 @@ use App\Identity\Application\Security\SecurityChange;
 use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Transactions;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -36,6 +37,7 @@ final readonly class RegenerateRecoveryCodesWithPasskey implements DeclaresAudit
         private AuditTrail $audit,
         private Transactions $transactions,
         private SecurityNotices $notices,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -44,9 +46,9 @@ final readonly class RegenerateRecoveryCodesWithPasskey implements DeclaresAudit
      *
      * @throws PasskeyRefused when the credential is not one of the account's passkeys answering the options
      */
-    public function handle(Uuid $userId, string $optionsJson, string $credentialJson, ?\DateTimeImmutable $now = null): array
+    public function handle(Uuid $userId, string $optionsJson, string $credentialJson): array
     {
-        $now ??= new \DateTimeImmutable();
+        $now = $this->clock->now();
         $user = $this->users->ofId($userId) ?? throw new PasskeyRefused();
 
         return $this->transactions->run(function () use ($user, $optionsJson, $credentialJson, $now): array {

@@ -27,7 +27,7 @@ final class UserMfaTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->user = new User(Email::fromString('someone@twes.local'), 'Someone', 'fr');
+        $this->user = new User(Email::fromString('someone@twes.local'), 'Someone', 'fr', new \DateTimeImmutable());
     }
 
     public function testAFreshUserHasNoSecondFactor(): void
@@ -38,7 +38,7 @@ final class UserMfaTest extends TestCase
 
     public function testAPendingEnrolmentIsNotYetASecondFactor(): void
     {
-        $this->user->beginTotpEnrolment('ciphertext');
+        $this->user->beginTotpEnrolment('ciphertext', new \DateTimeImmutable());
 
         self::assertFalse($this->user->hasTotp());
         self::assertSame('ciphertext', $this->user->getTotpSecret());
@@ -46,8 +46,8 @@ final class UserMfaTest extends TestCase
 
     public function testConfirmingTheEnrolmentTurnsItOn(): void
     {
-        $this->user->beginTotpEnrolment('ciphertext');
-        $this->user->confirmTotpEnrolment(58582080);
+        $this->user->beginTotpEnrolment('ciphertext', new \DateTimeImmutable());
+        $this->user->confirmTotpEnrolment(58582080, new \DateTimeImmutable());
 
         self::assertTrue($this->user->hasTotp());
     }
@@ -55,35 +55,35 @@ final class UserMfaTest extends TestCase
     public function testConfirmingWithNothingPendingIsRefused(): void
     {
         $this->expectException(\DomainException::class);
-        $this->user->confirmTotpEnrolment(58582080);
+        $this->user->confirmTotpEnrolment(58582080, new \DateTimeImmutable());
     }
 
     public function testAConfirmedCodeCannotBeUsedASecondTime(): void
     {
         // The whole point of carrying the timestep: within its window the code stays arithmetically valid,
         // so replay is refusable only by remembering which step was already spent.
-        $this->user->beginTotpEnrolment('ciphertext');
-        $this->user->confirmTotpEnrolment(58582080);
+        $this->user->beginTotpEnrolment('ciphertext', new \DateTimeImmutable());
+        $this->user->confirmTotpEnrolment(58582080, new \DateTimeImmutable());
 
         $this->expectException(\DomainException::class);
-        $this->user->useTotpTimestep(58582080);
+        $this->user->useTotpTimestep(58582080, new \DateTimeImmutable());
     }
 
     public function testAnOlderTimestepIsRefusedToo(): void
     {
-        $this->user->beginTotpEnrolment('ciphertext');
-        $this->user->confirmTotpEnrolment(58582080);
+        $this->user->beginTotpEnrolment('ciphertext', new \DateTimeImmutable());
+        $this->user->confirmTotpEnrolment(58582080, new \DateTimeImmutable());
 
         $this->expectException(\DomainException::class);
-        $this->user->useTotpTimestep(58582079);
+        $this->user->useTotpTimestep(58582079, new \DateTimeImmutable());
     }
 
     public function testTheNextTimestepIsAccepted(): void
     {
-        $this->user->beginTotpEnrolment('ciphertext');
-        $this->user->confirmTotpEnrolment(58582080);
+        $this->user->beginTotpEnrolment('ciphertext', new \DateTimeImmutable());
+        $this->user->confirmTotpEnrolment(58582080, new \DateTimeImmutable());
 
-        $this->user->useTotpTimestep(58582081);
+        $this->user->useTotpTimestep(58582081, new \DateTimeImmutable());
 
         self::assertSame(58582081, $this->user->getTotpLastTimestep());
     }
@@ -91,15 +91,15 @@ final class UserMfaTest extends TestCase
     public function testUsingAFactorThatIsNotOnIsRefused(): void
     {
         $this->expectException(\DomainException::class);
-        $this->user->useTotpTimestep(58582081);
+        $this->user->useTotpTimestep(58582081, new \DateTimeImmutable());
     }
 
     public function testDisablingClearsEverySignOfIt(): void
     {
-        $this->user->beginTotpEnrolment('ciphertext');
-        $this->user->confirmTotpEnrolment(58582080);
+        $this->user->beginTotpEnrolment('ciphertext', new \DateTimeImmutable());
+        $this->user->confirmTotpEnrolment(58582080, new \DateTimeImmutable());
 
-        $this->user->disableTotp();
+        $this->user->disableTotp(new \DateTimeImmutable());
 
         self::assertFalse($this->user->hasTotp());
         self::assertNull($this->user->getTotpSecret());
@@ -108,9 +108,9 @@ final class UserMfaTest extends TestCase
 
     public function testStartingAgainBeforeConfirmingReplacesThePendingSecret(): void
     {
-        $this->user->beginTotpEnrolment('first');
+        $this->user->beginTotpEnrolment('first', new \DateTimeImmutable());
 
-        $this->user->beginTotpEnrolment('second');
+        $this->user->beginTotpEnrolment('second', new \DateTimeImmutable());
 
         self::assertFalse($this->user->hasTotp());
         self::assertSame('second', $this->user->getTotpSecret());
@@ -118,11 +118,11 @@ final class UserMfaTest extends TestCase
 
     public function testAnAuthenticatorInForceIsNotSwitchedOffByStartingAnotherEnrolment(): void
     {
-        $this->user->beginTotpEnrolment('first');
-        $this->user->confirmTotpEnrolment(58582080);
+        $this->user->beginTotpEnrolment('first', new \DateTimeImmutable());
+        $this->user->confirmTotpEnrolment(58582080, new \DateTimeImmutable());
 
         try {
-            $this->user->beginTotpEnrolment('second');
+            $this->user->beginTotpEnrolment('second', new \DateTimeImmutable());
             self::fail('starting an enrolment over a confirmed authenticator must be refused');
         } catch (\DomainException) {
         }

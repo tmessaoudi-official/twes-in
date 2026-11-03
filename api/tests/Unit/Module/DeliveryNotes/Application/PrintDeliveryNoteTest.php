@@ -82,7 +82,7 @@ final class PrintDeliveryNoteTest extends TestCase
         $this->units = new InMemoryUnits();
         $this->establishments = new InMemoryEstablishments();
         new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes = new InMemoryTaxComponents(), $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock)
-            ->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+            ->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
         $this->notes = new InMemoryDeliveryNotes();
         $this->storage = new InMemoryFileStorage();
         $this->records = new InMemoryStoredFiles();
@@ -155,7 +155,7 @@ final class PrintDeliveryNoteTest extends TestCase
         self::assertCount(1, $this->renderer->rendered);
 
         $this->expectException(DeliveryNoteNotFound::class);
-        $this->print->pdf(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), $note->getId());
+        $this->print->pdf(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), $note->getId());
     }
 
     public function testWhenTheRendererFailedAtIssueTheFirstDownloadStoresThePdf(): void

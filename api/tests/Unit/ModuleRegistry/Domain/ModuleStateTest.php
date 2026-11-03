@@ -17,7 +17,7 @@ final class ModuleStateTest extends TestCase
 {
     public function testAModuleSwitchedOnRemembersSinceWhenAndSwitchedOffForgetsIt(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $morning = new \DateTimeImmutable('2026-09-14 09:00:00');
         $noon = new \DateTimeImmutable('2026-09-14 12:00:00');
 

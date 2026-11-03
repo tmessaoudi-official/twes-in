@@ -32,7 +32,7 @@ final class RefuseALockedPasswordTest extends TestCase
     public function testALockedPasswordIsRefusedAndAWayInWithoutOneIsNot(): void
     {
         $clock = new MockClock('2026-10-29 12:00:00');
-        $user = new User(Email::fromString('owner@example.test'), 'Owner', 'fr');
+        $user = new User(Email::fromString('owner@example.test'), 'Owner', 'fr', new \DateTimeImmutable());
         $user->recordFailedLogin($clock->now(), 1, new \DateInterval('PT15M'));
         $account = SecurityUser::of($user);
         $badge = new UserBadge('owner@example.test', static fn (): SecurityUser => $account);

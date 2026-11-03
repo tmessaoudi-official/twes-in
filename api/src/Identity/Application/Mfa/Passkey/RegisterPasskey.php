@@ -23,6 +23,7 @@ use App\Identity\Domain\Model\Passkey;
 use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Transactions;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -45,13 +46,14 @@ final readonly class RegisterPasskey implements DeclaresAuditActions
         private AuditTrail $audit,
         private Transactions $transactions,
         private SecurityNotices $notices,
+        private ClockInterface $clock,
     ) {
     }
 
     /** @throws PasskeyRefused when the credential does not verify or is already registered */
-    public function handle(Uuid $userId, string $optionsJson, string $credentialJson, string $name, ?\DateTimeImmutable $now = null): RegisteredPasskey
+    public function handle(Uuid $userId, string $optionsJson, string $credentialJson, string $name): RegisteredPasskey
     {
-        $now ??= new \DateTimeImmutable();
+        $now = $this->clock->now();
         $user = $this->users->ofId($userId) ?? throw new PasskeyRefused();
         $verified = $this->ceremonies->verifyRegistration($optionsJson, $credentialJson);
 

@@ -41,7 +41,7 @@ final class ChangePasswordTest extends TestCase
         $this->users = new InMemoryUsers();
         $this->transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($this->transactions);
-        $this->user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr');
+        $this->user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr', new \DateTimeImmutable());
         $this->user->setPasswordHash('hash:'.self::CURRENT, new \DateTimeImmutable('2026-09-01'));
         $this->users->save($this->user);
     }

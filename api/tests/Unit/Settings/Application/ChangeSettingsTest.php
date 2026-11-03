@@ -50,7 +50,7 @@ final class ChangeSettingsTest extends TestCase
         $this->audit = new InMemoryAuditTrail($transactions);
         $catalog = new SettingCatalog([new PresentationSettings(\App\Tests\Support\ShippedLanguages::catalogue()), new PhoneSettings()]);
         $this->change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, $this->events = new RecordingDomainEvents($transactions), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), $this->liveChanges = new RecordingLiveChanges($transactions));
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->userId = Uuid::v7();
         $this->context = new SettingContext($this->company, Uuid::v7(), $this->userId);
     }

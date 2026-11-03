@@ -176,7 +176,7 @@ final class OverrideTextTest extends KernelTestCase
     private function company(string $name): Company
     {
         self::bootKernel();
-        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $entityManager = static::getContainer()->get(EntityManagerInterface::class);
         $entityManager->persist($company);
         $entityManager->flush();

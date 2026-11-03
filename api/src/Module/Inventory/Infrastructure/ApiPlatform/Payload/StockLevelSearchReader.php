@@ -34,6 +34,7 @@ final class StockLevelSearchReader
         $useBy = $filters->dateRange('lotExpiresOn');
 
         return new StockLevelSearch(
+            $now->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'),
             $text,
             $filters->uuids('locationId'),
             $filters->uuids('establishmentId'),
@@ -43,7 +44,6 @@ final class StockLevelSearchReader
             [] === $negative ? null : 'yes' === $negative[0],
             [] === $expired ? null : 'yes' === $expired[0],
             $useBy->isOpen() ? null : $useBy,
-            $now->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'),
         );
     }
 }

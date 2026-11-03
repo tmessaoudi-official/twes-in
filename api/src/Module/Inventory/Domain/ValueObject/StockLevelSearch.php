@@ -38,9 +38,10 @@ final readonly class StockLevelSearch
      * @param bool|null                   $negative       true: what is on hand fell below zero; false: it did not; null: either
      * @param bool|null                   $expired        true: a lot past its use-by day and not released; false: anything else
      * @param DateRange|null              $lotExpiresOn   the lot's use-by day; a row without a lot or without a day is left out by any end
-     * @param string|null                 $today          the company's day, which « past its use-by day » is read against
+     * @param string                      $today          the company's day, which « past its use-by day » is read against
      */
     public function __construct(
+        public string $today,
         public ?string $text = null,
         public array $locations = [],
         public array $establishments = [],
@@ -50,7 +51,6 @@ final readonly class StockLevelSearch
         public ?bool $negative = null,
         public ?bool $expired = null,
         public ?DateRange $lotExpiresOn = null,
-        public ?string $today = null,
     ) {
     }
 
@@ -62,6 +62,6 @@ final readonly class StockLevelSearch
      */
     public function widened(array $locations, array $categories): self
     {
-        return new self($this->text, $locations, $this->establishments, $this->order, $this->products, $categories, $this->negative, $this->expired, $this->lotExpiresOn, $this->today);
+        return new self($this->today, $this->text, $locations, $this->establishments, $this->order, $this->products, $categories, $this->negative, $this->expired, $this->lotExpiresOn);
     }
 }

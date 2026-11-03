@@ -12,6 +12,7 @@ namespace App\Identity\Application\Account;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Languages;
 use App\Shared\Application\Transactions;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -20,7 +21,7 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class KeepAccountLanguage
 {
-    public function __construct(private UserRepository $users, private Transactions $transactions, private Languages $languages)
+    public function __construct(private UserRepository $users, private Transactions $transactions, private Languages $languages, private ClockInterface $clock)
     {
     }
 
@@ -34,7 +35,7 @@ final readonly class KeepAccountLanguage
             if (null === $user) {
                 return;
             }
-            $user->changeLocale($tag);
+            $user->changeLocale($tag, $this->clock->now());
             $this->users->save($user);
         });
     }

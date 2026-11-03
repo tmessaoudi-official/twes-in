@@ -27,8 +27,8 @@ final class TellStockKeepersTest extends TestCase
     {
         $memberships = new InMemoryMemberships();
         $notifications = new InMemoryNotifications();
-        $acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $owner = $this->member($memberships, 'owner@acme.test', $acme, [Permission::WILDCARD]);
         $keeper = $this->member($memberships, 'keeper@acme.test', $acme, ['stock.read', 'stock.write']);
         $this->member($memberships, 'reader@acme.test', $acme, ['stock.read', 'delivery_note.validate']);
@@ -51,8 +51,8 @@ final class TellStockKeepersTest extends TestCase
     /** @param list<string> $permissions */
     private function member(InMemoryMemberships $memberships, string $email, Company $company, array $permissions): Uuid
     {
-        $user = new User(Email::fromString($email), 'Someone', 'fr');
-        $memberships->save(new Membership($user, $company, new Role(Role::MEMBER, $permissions, $company)));
+        $user = new User(Email::fromString($email), 'Someone', 'fr', new \DateTimeImmutable());
+        $memberships->save(new Membership($user, $company, new Role(Role::MEMBER, $permissions, $company, new \DateTimeImmutable()), new \DateTimeImmutable()));
 
         return $user->getId();
     }

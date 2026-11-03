@@ -294,7 +294,7 @@ final class AuthTest extends ApiTestCase
         self::assertResponseStatusCodeSame(200);
 
         $user = $this->reload($user);
-        $user->rotateSecurityStamp();
+        $user->rotateSecurityStamp(new \DateTimeImmutable());
         $this->em()->flush();
 
         $this->client->request('GET', '/api/auth/me');
@@ -307,7 +307,7 @@ final class AuthTest extends ApiTestCase
         $this->login('owner@example.test', self::PASSWORD);
 
         $user = $this->reload($user);
-        $user->setActive(false);
+        $user->setActive(false, new \DateTimeImmutable());
         $this->em()->flush();
 
         $this->client->request('GET', '/api/auth/me');

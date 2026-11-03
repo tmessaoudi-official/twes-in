@@ -53,8 +53,8 @@ final class ExcludedTaxFamiliesTest extends TestCase
     public function testACompanyWhosePresetHasNoSuchRegimeLeavesNothingOutOfItsOwn(): void
     {
         // A regime the TN preset does not declare, as a profile written before the preset changed would hold.
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfait'));
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(vatRegime: 'forfait'), new \DateTimeImmutable());
 
         self::assertNull($this->excluded->companyRegime($company));
         self::assertSame([], $this->excluded->of($company, $this->regime('standard', [])));
@@ -63,8 +63,8 @@ final class ExcludedTaxFamiliesTest extends TestCase
 
     private function company(string $vatRegime): Company
     {
-        $company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris');
-        $company->reviseProfile(new CompanyProfile(vatRegime: $vatRegime));
+        $company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(vatRegime: $vatRegime), new \DateTimeImmutable());
 
         return $company;
     }

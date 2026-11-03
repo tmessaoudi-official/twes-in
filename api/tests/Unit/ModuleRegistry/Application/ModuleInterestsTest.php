@@ -53,8 +53,8 @@ final class ModuleInterestsTest extends TestCase
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->memberships = new InMemoryMemberships();
         $this->notifications = new InMemoryNotifications();
-        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
     }
 
     public function testAskingRecordsTheCompanysInterestOnceAndIsAudited(): void
@@ -169,8 +169,8 @@ final class ModuleInterestsTest extends TestCase
     /** @param list<string> $permissions */
     private function member(string $email, Company $company, array $permissions): Uuid
     {
-        $user = new User(Email::fromString($email), 'Someone', 'fr');
-        $this->memberships->save(new Membership($user, $company, new Role(Role::MEMBER, $permissions, $company)));
+        $user = new User(Email::fromString($email), 'Someone', 'fr', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($user, $company, new Role(Role::MEMBER, $permissions, $company, new \DateTimeImmutable()), new \DateTimeImmutable()));
 
         return $user->getId();
     }

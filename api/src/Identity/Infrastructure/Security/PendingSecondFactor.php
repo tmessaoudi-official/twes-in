@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Uid\Uuid;
@@ -29,18 +30,19 @@ final readonly class PendingSecondFactor
         private RequestStack $requestStack,
         #[Autowire(param: 'app.mfa.pending_ttl')]
         private string $ttl,
+        private ClockInterface $clock,
     ) {
     }
 
-    public function open(Uuid $userId, ?\DateTimeImmutable $now = null): void
+    public function open(Uuid $userId): void
     {
         $session = $this->requestStack->getSession();
         $session->set(self::KEY, $userId->toRfc4122());
-        $session->set(self::EXPIRY_KEY, ($now ?? new \DateTimeImmutable())->add(new \DateInterval($this->ttl))->getTimestamp());
+        $session->set(self::EXPIRY_KEY, $this->clock->now()->add(new \DateInterval($this->ttl))->getTimestamp());
     }
 
     /** @return Uuid|null the user waiting to finish, or null when there is none or it has expired */
-    public function waiting(?\DateTimeImmutable $now = null): ?Uuid
+    public function waiting(): ?Uuid
     {
         $session = $this->requestStack->getSession();
         $raw = $session->get(self::KEY);
@@ -50,7 +52,7 @@ final readonly class PendingSecondFactor
             return null;
         }
 
-        if (($now ?? new \DateTimeImmutable())->getTimestamp() > $until) {
+        if ($this->clock->now()->getTimestamp() > $until) {
             $this->close();
 
             return null;

@@ -32,7 +32,7 @@ final class FilesTest extends TestCase
         $this->records = new InMemoryStoredFiles();
         $this->clock = new MockClock('2026-09-15 09:00:00');
         $this->files = new Files($this->storage, $this->records, $this->clock);
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 
     public function testAFileIsWrittenUnderItsCompanyAndRecordedWithWhatProvesItsBytes(): void

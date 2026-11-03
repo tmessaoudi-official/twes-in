@@ -30,7 +30,7 @@ final class VenueSpotTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Quincaillerie Ben Ali', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Quincaillerie Ben Ali', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->establishment = Establishment::create($this->company, '000', 'Bab Saadoun', true, $this->now = new \DateTimeImmutable('2026-09-21 09:00:00'));
     }
 

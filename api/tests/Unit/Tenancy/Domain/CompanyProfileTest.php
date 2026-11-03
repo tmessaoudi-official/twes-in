@@ -83,6 +83,6 @@ final class CompanyProfileTest extends TestCase
 
     private static function company(): Company
     {
-        return new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        return new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 }

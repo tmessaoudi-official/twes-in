@@ -89,7 +89,7 @@ final class TextsInForceTest extends KernelTestCase
     private function company(): Company
     {
         self::bootKernel();
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $em = static::getContainer()->get(EntityManagerInterface::class);
         $em->persist($company);
         $em->flush();

@@ -66,8 +66,8 @@ final class DescribeFacturXTest extends TestCase
         $this->units = new InMemoryUnits();
         $this->taxes = new InMemoryTaxComponents();
         $this->establishments = new InMemoryEstablishments();
-        $this->company = $this->provisioned(new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris'));
-        $this->company->reviseProfile(self::sellerProfile());
+        $this->company = $this->provisioned(new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable()));
+        $this->company->reviseProfile(self::sellerProfile(), new \DateTimeImmutable());
         $this->invoices = new InMemoryInvoices();
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
         $this->describe = new DescribeFacturX($this->invoices, $this->totals, ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
@@ -190,7 +190,7 @@ final class DescribeFacturXTest extends TestCase
 
     public function testADocumentLackingWhatTheStandardAsksForIsRefusedNamingEveryGap(): void
     {
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siret' => '73282932000074'], addressLine1: '12 rue des Forges'));
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siret' => '73282932000074'], addressLine1: '12 rue des Forges'), new \DateTimeImmutable());
         $exempt = $this->customer('exempt', [TaxFamily::Vat], country: null);
         $invoice = $this->issued($exempt, [$this->line('Formation', '1', 'C62', '500', null)]);
 
@@ -232,7 +232,7 @@ final class DescribeFacturXTest extends TestCase
             self::assertSame(['not_issued', ['status' => 'draft'], []], [$refused->reason, $refused->params, $refused->gaps]);
         }
 
-        $tunisian = $this->provisioned(new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+        $tunisian = $this->provisioned(new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
         $vat = $this->taxes->ofCodeInCompany('TVA19', $tunisian->getId());
         $unit = $this->units->ofCodeInCompany('C62', $tunisian->getId());
         self::assertNotNull($vat);

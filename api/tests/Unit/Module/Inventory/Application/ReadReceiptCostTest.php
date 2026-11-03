@@ -111,7 +111,7 @@ final class ReadReceiptCostTest extends TestCase
         $lots->transactions = $transactions;
         $locations = new InMemoryStockLocations();
         $establishments = new InMemoryEstablishments();
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $main = Establishment::create($this->company, '000', 'Siège', true, $now);
         $establishments->save($main);
         $this->site = new ManageStockLocations($locations, $movements, $establishments, new InMemoryAuditTrail($transactions), $this->clock, $transactions, new InMemoryRecordVersions())->defaultOf($main);

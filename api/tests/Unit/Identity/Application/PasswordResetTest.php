@@ -51,7 +51,7 @@ final class PasswordResetTest extends TestCase
         $this->transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->clock = new MockClock('2026-10-02 12:00:00');
-        $this->user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr');
+        $this->user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr', new \DateTimeImmutable());
         $this->user->setPasswordHash('hash:old', new \DateTimeImmutable('2026-09-01'));
         $this->users->save($this->user);
     }
@@ -71,7 +71,7 @@ final class PasswordResetTest extends TestCase
     public function testAnUnknownOrDeactivatedAddressGetsNothingAndSaysNothing(): void
     {
         $this->request()->handle(Email::fromString('nobody@example.test'), 'fr');
-        $this->user->setActive(false);
+        $this->user->setActive(false, new \DateTimeImmutable());
         $this->request()->handle(Email::fromString('someone@example.test'), 'fr');
 
         self::assertSame([], $this->mailer->sent);

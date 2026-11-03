@@ -23,6 +23,7 @@ use App\Identity\Application\Security\SecurityNotices;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Transactions;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -43,6 +44,7 @@ final readonly class ConfirmTotpEnrolment implements DeclaresAuditActions
         private AuditTrail $audit,
         private Transactions $transactions,
         private SecurityNotices $notices,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -52,9 +54,9 @@ final readonly class ConfirmTotpEnrolment implements DeclaresAuditActions
      * @throws SecondFactorRefused    when the code does not match the pending secret
      * @throws SecondFactorUnreadable when the current key cannot read the pending secret
      */
-    public function handle(Uuid $userId, string $code, ?\DateTimeImmutable $now = null): array
+    public function handle(Uuid $userId, string $code): array
     {
-        $now ??= new \DateTimeImmutable();
+        $now = $this->clock->now();
         $user = $this->users->ofId($userId);
         $pending = $user?->getTotpSecret();
 

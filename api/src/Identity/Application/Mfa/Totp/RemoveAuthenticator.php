@@ -22,6 +22,7 @@ use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Mfa\MfaRequirement;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -40,6 +41,7 @@ final readonly class RemoveAuthenticator implements DeclaresAuditActions
         private Transactions $transactions,
         private ConfirmStepUp $stepUp,
         private SecurityNotices $notices,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -59,7 +61,7 @@ final readonly class RemoveAuthenticator implements DeclaresAuditActions
             // Again inside: a company may have required it while the proof was given.
             $user = $this->refuseWhatCannotGo($userId);
 
-            $user->disableTotp();
+            $user->disableTotp($this->clock->now());
             $this->users->save($user);
             $this->audit->record(new AuditEntry('user', $user->getId(), self::REMOVED, $user->getId(), []));
             $this->notices->tell($user->getId(), SecurityChange::AuthenticatorRemoved);

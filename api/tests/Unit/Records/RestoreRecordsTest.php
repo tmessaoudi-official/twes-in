@@ -47,7 +47,7 @@ final class RestoreRecordsTest extends TestCase
     protected function setUp(): void
     {
         $this->clock = new MockClock('2026-11-02 10:00:00');
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->person = Uuid::v7();
     }
 

@@ -57,7 +57,7 @@ final class RunImportTest extends TestCase
         $this->transactions = new FakeTransactions();
         $this->changes = new RecordingLiveChanges($this->transactions);
         $this->declaration = new RecordingSubject();
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->runs = new InMemoryImportRuns();
         $this->clock = new MockClock('2026-10-09 10:00:00');
         // The platform's cap, set low so a file passes it in a few lines.

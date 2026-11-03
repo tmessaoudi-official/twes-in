@@ -40,7 +40,7 @@ final class StockMovementTest extends TestCase
     protected function setUp(): void
     {
         $this->now = new \DateTimeImmutable('2026-09-15 09:00:00');
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->site = StockLocation::defaultOf(Establishment::create($this->company, '000', 'Siège', true, $this->now), $this->now);
         $piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, $this->now);
         $kilogram = Unit::create($this->company, 'KGM', 'Kilogramme', 3, 2, $this->now);
@@ -287,7 +287,7 @@ final class StockMovementTest extends TestCase
 
     public function testOnlyGoodsMoveAndOnlyInALocationOfTheirCompany(): void
     {
-        $theirs = StockLocation::defaultOf(Establishment::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), '000', 'Globex', true, $this->now), $this->now);
+        $theirs = StockLocation::defaultOf(Establishment::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), '000', 'Globex', true, $this->now), $this->now);
 
         foreach ([[$this->support, $this->site, 'productId'], [$this->laptop, $theirs, 'locationId']] as [$product, $location, $field]) {
             try {

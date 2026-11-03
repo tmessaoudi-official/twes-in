@@ -19,6 +19,7 @@ use App\Identity\Application\PasskeyCeremonies;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\Repository\PasskeyRepository;
 use App\Shared\Application\Transactions;
+use Psr\Clock\ClockInterface;
 
 /**
  * A sign-in with a passkey alone: the device found the passkey without an address typed, and its user verification (a
@@ -37,6 +38,7 @@ final readonly class SignInWithPasskey implements DeclaresAuditActions
         private SwitchPasskeySignIn $switch,
         private AuditTrail $audit,
         private Transactions $transactions,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -47,9 +49,9 @@ final readonly class SignInWithPasskey implements DeclaresAuditActions
     }
 
     /** @throws PasskeyRefused whatever the reason, which the trail records */
-    public function handle(string $optionsJson, string $credentialJson, ?\DateTimeImmutable $now = null): User
+    public function handle(string $optionsJson, string $credentialJson): User
     {
-        $now ??= new \DateTimeImmutable();
+        $now = $this->clock->now();
         $credentialId = $this->ceremonies->credentialIdOf($credentialJson);
         $passkey = null === $credentialId ? null : $this->passkeys->ofCredentialId($credentialId);
         if (null === $passkey) {

@@ -36,14 +36,14 @@ final class ActivityByMemberReportTest extends KernelTestCase
     {
         self::bootKernel();
         $em = static::getContainer()->get(EntityManagerInterface::class);
-        $acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $amina = new User(Email::fromString('amina@acme.test'), 'Amina', 'fr');
-        $bilel = new User(Email::fromString('bilel@acme.test'), 'Bilel', 'fr');
-        $former = new User(Email::fromString('former@acme.test'), 'Ancien', 'fr');
-        $role = new Role('tester', ['*'], $acme);
-        $theirRole = new Role('tester', ['*'], $globex);
-        foreach ([$acme, $globex, $amina, $bilel, $former, $role, $theirRole, new Membership($amina, $acme, $role), new Membership($bilel, $acme, $role), new Membership($amina, $globex, $theirRole)] as $entity) {
+        $acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $amina = new User(Email::fromString('amina@acme.test'), 'Amina', 'fr', new \DateTimeImmutable());
+        $bilel = new User(Email::fromString('bilel@acme.test'), 'Bilel', 'fr', new \DateTimeImmutable());
+        $former = new User(Email::fromString('former@acme.test'), 'Ancien', 'fr', new \DateTimeImmutable());
+        $role = new Role('tester', ['*'], $acme, new \DateTimeImmutable());
+        $theirRole = new Role('tester', ['*'], $globex, new \DateTimeImmutable());
+        foreach ([$acme, $globex, $amina, $bilel, $former, $role, $theirRole, new Membership($amina, $acme, $role, new \DateTimeImmutable()), new Membership($bilel, $acme, $role, new \DateTimeImmutable()), new Membership($amina, $globex, $theirRole, new \DateTimeImmutable())] as $entity) {
             $em->persist($entity);
         }
         $journal = [

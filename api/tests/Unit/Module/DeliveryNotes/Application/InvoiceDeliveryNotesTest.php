@@ -95,8 +95,8 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $this->establishments = new InMemoryEstablishments();
         $this->series = new InMemoryNumberingSeries();
         $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, $this->series, ShippedFiscalPresets::scales(), $this->clock);
-        $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
-        $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+        $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
+        $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
         $this->notes = new InMemoryDeliveryNotes();
         $this->invoices = new InMemoryInvoices();
         $this->transactions = new FakeTransactions();

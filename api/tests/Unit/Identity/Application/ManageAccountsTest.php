@@ -148,7 +148,7 @@ final class ManageAccountsTest extends TestCase
     public function testReactivatingOpensTheAccountAgainAndIsAuditedOnce(): void
     {
         $user = $this->account('nadia@acme.test', 'Nadia');
-        $user->setActive(false);
+        $user->setActive(false, new \DateTimeImmutable());
 
         $view = $this->accounts->reactivate($user->getId(), $this->operator->getId());
         $this->accounts->reactivate($user->getId(), $this->operator->getId());
@@ -174,7 +174,7 @@ final class ManageAccountsTest extends TestCase
 
     private function account(string $email, string $name): User
     {
-        $user = new User(Email::fromString($email), $name, 'fr');
+        $user = new User(Email::fromString($email), $name, 'fr', new \DateTimeImmutable());
         $this->users->save($user);
 
         return $user;

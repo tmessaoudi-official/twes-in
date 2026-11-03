@@ -40,7 +40,7 @@ final class ManageTaxComponentsTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->manage = new ManageTaxComponents($this->components, ShippedFiscalPresets::scales(), $this->audit, new MockClock('2026-09-13 10:00:00'), $transactions, new InMemoryRecordVersions(), new DocumentLanguageNames(ShippedLanguages::catalogue()));
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 
     public function testACompanyAddsATaxAndTheAdditionIsAudited(): void
@@ -69,7 +69,7 @@ final class ManageTaxComponentsTest extends TestCase
     {
         $this->manage->create($this->company, self::draft('TVA12'), null);
 
-        $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), self::draft('TVA12'), null);
+        $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), self::draft('TVA12'), null);
 
         self::assertCount(2, $this->components->components);
     }
@@ -82,7 +82,7 @@ final class ManageTaxComponentsTest extends TestCase
 
     public function testTheCurrencyDecidesHowFineAnAmountMayBe(): void
     {
-        $euro = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $euro = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
 
         $this->expectException(InvalidFiscalValue::class);
         $this->manage->create($euro, new TaxComponentDraft('STAMP', 'Stamp', 'stamp', null, '1.005', null, false, false, null, 0), null);
@@ -103,7 +103,7 @@ final class ManageTaxComponentsTest extends TestCase
 
     public function testAnotherCompanysTaxIsNotFound(): void
     {
-        $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), self::draft('TVA12'), null);
+        $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), self::draft('TVA12'), null);
 
         $this->expectException(TaxComponentNotFound::class);
         $this->manage->revise($this->company, $theirs->getId(), self::changes('5'), null);

@@ -29,7 +29,7 @@ final class StockLocationTest extends TestCase
     protected function setUp(): void
     {
         $this->now = new \DateTimeImmutable('2026-09-15 09:00:00');
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->main = Establishment::create($this->company, '000', 'Siège de Tunis', true, $this->now);
     }
 

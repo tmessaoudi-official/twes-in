@@ -458,7 +458,7 @@ final class MembersTest extends ApiTestCase
         $em = $this->em();
         $company = $em->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $em->persist(new Role('cashier', ['customer.read', 'invoice.issue'], $company));
+        $em->persist(new Role('cashier', ['customer.read', 'invoice.issue'], $company, new \DateTimeImmutable()));
         $em->flush();
         $this->createUser('joiner@twes.local', 'password-1234');
 
@@ -486,7 +486,7 @@ final class MembersTest extends ApiTestCase
         $em = $this->em();
         $owner = $em->find(Company::class, ($company ?? $this->company)->getId());
         self::assertNotNull($owner);
-        $role = new Role($name, ['customer.read'], $owner);
+        $role = new Role($name, ['customer.read'], $owner, new \DateTimeImmutable());
         $em->persist($role);
         $em->flush();
 
@@ -597,7 +597,7 @@ final class MembersTest extends ApiTestCase
             // A second owner shares the first one's role: a company holds one role of each name.
             $role = $this->em()->getRepository(Membership::class)->findOneBy(['user' => $owner])?->getRole();
             self::assertNotNull($role);
-            $this->em()->persist(new Membership($this->createUser('second@twes.local', 'password-1234'), $this->company, $role));
+            $this->em()->persist(new Membership($this->createUser('second@twes.local', 'password-1234'), $this->company, $role, new \DateTimeImmutable()));
             $this->em()->flush();
         }
         $this->login('owner@twes.local', 'password-1234');
@@ -662,7 +662,7 @@ final class MembersTest extends ApiTestCase
         self::assertNotNull($company);
         self::assertNotNull($adminRole);
         self::assertNotNull($otherAdminUser);
-        $em->persist(new Membership($otherAdminUser, $company, $adminRole));
+        $em->persist(new Membership($otherAdminUser, $company, $adminRole, new \DateTimeImmutable()));
         $em->flush();
 
         $this->postJson($this->path(), ['email' => 'next-owner@twes.local', 'role' => Role::OWNER]);
@@ -871,7 +871,7 @@ final class MembersTest extends ApiTestCase
         self::assertInstanceOf(Role::class, $role);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertInstanceOf(Company::class, $company);
-        $this->em()->persist(new Membership($user, $company, $role));
+        $this->em()->persist(new Membership($user, $company, $role, new \DateTimeImmutable()));
         $this->em()->flush();
 
         return $user;

@@ -84,7 +84,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
     {
         return $this->transactions->run(function () use ($userId, $operatorId): AccountView {
             $user = $this->accountOf($userId);
-            $user->rotateSecurityStamp();
+            $user->rotateSecurityStamp($this->clock->now());
             $this->users->save($user);
             $this->record($user, self::SESSIONS_ENDED, $operatorId);
             $this->notices->tell($user->getId(), SecurityChange::OperatorEndedSessions);
@@ -102,8 +102,9 @@ final readonly class ManageAccounts implements DeclaresAuditActions
                 throw new OwnAccount('An operator cannot deactivate their own account.');
             }
             if ($user->isActive()) {
-                $user->setActive(false);
-                $user->rotateSecurityStamp();
+                $now = $this->clock->now();
+                $user->setActive(false, $now);
+                $user->rotateSecurityStamp($now);
                 $this->users->save($user);
                 $this->record($user, self::DEACTIVATED, $operatorId);
                 $this->accounts->said($user->getId(), self::DEACTIVATED);
@@ -120,7 +121,7 @@ final readonly class ManageAccounts implements DeclaresAuditActions
         return $this->transactions->run(function () use ($userId, $operatorId): AccountView {
             $user = $this->accountOf($userId);
             if (!$user->isActive()) {
-                $user->setActive(true);
+                $user->setActive(true, $this->clock->now());
                 $this->users->save($user);
                 $this->record($user, self::REACTIVATED, $operatorId);
                 $this->accounts->said($user->getId(), self::REACTIVATED);

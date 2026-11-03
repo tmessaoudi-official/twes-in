@@ -42,8 +42,8 @@ final class SellerSnapshotTest extends TestCase
 
     public function testAnEstablishmentWithoutAnAddressPrintsTheCompanysAndATradeNameStandsInForAMissingLegalName(): void
     {
-        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
-        $company->reviseProfile(new CompanyProfile(addressLine1: '12 rue des Forges', postalCode: '69002', city: 'Lyon'));
+        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(addressLine1: '12 rue des Forges', postalCode: '69002', city: 'Lyon'), new \DateTimeImmutable());
         $seller = SellerSnapshot::of($company, Establishment::create($company, 'SIEGE', 'Siège', true, $this->now));
 
         self::assertSame(['Atelier Durand', null, 'EUR'], [$seller->name, $seller->legalForm, $seller->currency]);
@@ -78,7 +78,7 @@ final class SellerSnapshotTest extends TestCase
 
     private function company(): Company
     {
-        $company = new Company('Carthage Conseil', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Carthage Conseil', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $company->reviseProfile(new CompanyProfile(
             legalName: 'Carthage Conseil SARL',
             legalForm: 'SARL',
@@ -91,7 +91,7 @@ final class SellerSnapshotTest extends TestCase
             iban: 'TN59 1000 6035 1835 9847 8831',
             bic: 'BSTUTNTT',
             vatRegime: 'exempt',
-        ));
+        ), new \DateTimeImmutable());
 
         return $company;
     }

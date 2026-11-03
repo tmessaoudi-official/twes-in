@@ -68,7 +68,7 @@ final class AccountDeletionTest extends ApiTestCase
         $this->addMembership($this->leaving, $alone, Role::OWNER);
         $shared = $this->createCompany('Partagée SARL');
         $this->createUser('partner@twes.local', self::PASSWORD, $shared);
-        $this->em()->persist(new Membership($this->leaving, $shared, $this->em()->getRepository(Role::class)->findOneBy(['company' => $shared]) ?? throw new \LogicException('no owner role')));
+        $this->em()->persist(new Membership($this->leaving, $shared, $this->em()->getRepository(Role::class)->findOneBy(['company' => $shared]) ?? throw new \LogicException('no owner role'), new \DateTimeImmutable()));
         $this->em()->flush();
         $this->login(self::LEAVING, self::PASSWORD);
         $this->stepUp(self::PASSWORD);

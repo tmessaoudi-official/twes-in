@@ -932,7 +932,7 @@ final class InvoicesTest extends ApiTestCase
         $charged = $issued([$this->taxId('TVA19')]);
         $company = $this->em()->find(Company::class, $this->company->getId());
         self::assertNotNull($company);
-        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', postalCode: '1000', city: 'Tunis', vatRegime: 'forfaitaire'));
+        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', postalCode: '1000', city: 'Tunis', vatRegime: 'forfaitaire'), new \DateTimeImmutable());
         $this->em()->flush();
 
         $creditId = $credited($charged, [$this->taxId('TVA19')]);
@@ -1998,7 +1998,7 @@ final class InvoicesTest extends ApiTestCase
 
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
         $yesterday = new \DateTimeImmutable($today)->modify('-1 day');
-        $company->closeThrough($yesterday, new \DateTimeImmutable($today));
+        $company->closeThrough($yesterday, new \DateTimeImmutable($today), new \DateTimeImmutable());
         $this->em()->flush();
         $this->postJson($this->path().'/bulk-payments', [...$body, 'date' => $yesterday->format('Y-m-d')]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a day of a closed period');

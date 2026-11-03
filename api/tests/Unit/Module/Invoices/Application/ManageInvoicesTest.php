@@ -110,7 +110,7 @@ final class ManageInvoicesTest extends TestCase
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions, new RecordingDomainEvents(), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), new \App\Tests\Support\RecordingLiveChanges());
         $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new DeliveryNoteRoom($this->sourceLines = new InMemorySourceDeliveryNoteLines(), $this->invoices), ShippedDepositDeductions::of($this->invoices, $this->totals), ShippedFiscalPresets::presets(), new InMemoryRecordVersions(), new ParameterListLimits([ListLimits::DOCUMENT_LINES => self::LINES_MOST]), new ChooseReceiver($this->contacts = new InMemoryReceiverContacts()), new ReadSetting($resolve));
         $this->invoices->transactions = $transactions;
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($this->company);
     }
 
@@ -193,9 +193,9 @@ final class ManageInvoicesTest extends TestCase
 
     public function testACompanyOnAVatFreeRegimeChargesNoVatToAnyCustomer(): void
     {
-        $this->company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->provision->handle($this->company);
-        $this->company->reviseProfile(new CompanyProfile(vatRegime: 'franchise'));
+        $this->company->reviseProfile(new CompanyProfile(vatRegime: 'franchise'), new \DateTimeImmutable());
         $customer = $this->customer();
 
         $invoice = $this->manage->create($this->company, $this->input($customer, [new InvoiceLineInput($this->product(['TVA20'])->getId(), null, '1')]), null);
@@ -234,7 +234,7 @@ final class ManageInvoicesTest extends TestCase
         $this->assertRefused('discountAmount', fn () => $this->manage->create($this->company, $this->input($this->customer(), [$line], [], new InvoiceHeader(discountAmount: '900.001')), null));
         self::assertSame('900.000', $this->totals->of($this->manage->create($this->company, $this->input($this->customer(), [$line], [], new InvoiceHeader(discountAmount: '900')), null))->documentDiscount);
 
-        $euros = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $euros = new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->provision->handle($euros);
         $regime = new CustomerTaxRegime('FR', 'standard', 'fiscal.regime.standard', [], null, 0, $this->clock->now());
         $client = Customer::create($euros, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Dupont SA'), null, $regime, [], $this->clock->now());
@@ -343,7 +343,7 @@ final class ManageInvoicesTest extends TestCase
 
     public function testAnotherCompanysInvoiceIsNotFound(): void
     {
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->provision->handle($globex);
         $invoice = $this->manage->create($this->company, $this->input($this->customer(), [], []), null);
 

@@ -30,7 +30,7 @@ final class StockLotTest extends TestCase
     protected function setUp(): void
     {
         $this->now = new \DateTimeImmutable('2026-09-23 09:00:00');
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $piece = Unit::create($company, 'C62', 'Pièce', 0, 1, $this->now);
         $this->glue = Product::create($company, 'COL-01', new ProductDetails('Colle', null, ProductKind::Goods, '12'), $piece, null, [], $this->now);
         $this->glue->track(ProductTracking::Lot, $this->now);

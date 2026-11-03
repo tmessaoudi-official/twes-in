@@ -49,7 +49,7 @@ final class CompanyStatusAccessTest extends ApiTestCase
     public function testASuspendedCompanyIsClosedToItsOwnMembers(): void
     {
         $company = $this->createCompany('Acme');
-        $company->suspend();
+        $company->suspend(new \DateTimeImmutable());
         $this->em()->flush();
         $this->createUser('owner@twes.local', 'password-1234', $company);
         $this->login('owner@twes.local', 'password-1234');
@@ -76,7 +76,7 @@ final class CompanyStatusAccessTest extends ApiTestCase
 
     private function pendingCompany(): Company
     {
-        $company = Company::pending('Waiting', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = Company::pending('Waiting', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->em()->persist($company);
         $this->em()->flush();
 

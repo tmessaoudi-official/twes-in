@@ -61,7 +61,7 @@ final class FirstStepsTest extends ApiTestCase
         self::assertSame(7, $this->json()['remaining'] ?? null);
 
         $company = $this->managed();
-        $company->reviseProfile(new CompanyProfile('Quincaillerie SARL', 'SARL', ['matricule_fiscal' => '1234567A/B/M/000'], '12 rue de Rome', null, '1001', 'Tunis'));
+        $company->reviseProfile(new CompanyProfile('Quincaillerie SARL', 'SARL', ['matricule_fiscal' => '1234567A/B/M/000'], '12 rue de Rome', null, '1001', 'Tunis'), new \DateTimeImmutable());
         $this->em()->flush();
         $this->getJson($this->path());
         self::assertSame(['company.profile'], $this->done());

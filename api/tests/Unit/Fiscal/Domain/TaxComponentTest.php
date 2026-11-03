@@ -24,7 +24,7 @@ final class TaxComponentTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->now = new \DateTimeImmutable('2026-09-13 10:00:00');
     }
 
@@ -74,7 +74,7 @@ final class TaxComponentTest extends TestCase
     public function testAnAmountFinerThanTheCurrencyIsRefused(): void
     {
         $this->expectException(InvalidFiscalValue::class);
-        TaxComponent::create(new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris'), 'STAMP', 'Stamp', TaxFamily::Stamp, null, '1.005', null, false, false, null, 0, 2, $this->now);
+        TaxComponent::create(new Company('Dupont', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable()), 'STAMP', 'Stamp', TaxFamily::Stamp, null, '1.005', null, false, false, null, 0, 2, $this->now);
     }
 
     public function testACodeIsCapitalsDigitsAndUnderscores(): void

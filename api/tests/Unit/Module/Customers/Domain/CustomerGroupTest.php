@@ -52,6 +52,6 @@ final class CustomerGroupTest extends TestCase
 
     private static function company(): Company
     {
-        return new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        return new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 }

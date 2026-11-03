@@ -30,11 +30,11 @@ final class CompanyEntryTest extends TestCase
     protected function setUp(): void
     {
         $this->memberships = new InMemoryMemberships();
-        $this->user = new User(Email::fromString('m@example.test'), 'M', 'fr');
-        $this->first = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->second = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership($this->user, $this->first, new Role(Role::OWNER, ['*'])));
-        $this->memberships->save(new Membership($this->user, $this->second, new Role(Role::OWNER, ['*'])));
+        $this->user = new User(Email::fromString('m@example.test'), 'M', 'fr', new \DateTimeImmutable());
+        $this->first = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->second = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($this->user, $this->first, new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
+        $this->memberships->save(new Membership($this->user, $this->second, new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
     }
 
     public function testAProofUsedEveryTwentyNineMinutesEndsTwelveHoursAfterItWasGiven(): void
@@ -80,11 +80,11 @@ final class CompanyEntryTest extends TestCase
     public function testOnlyAMemberOfTwoCompaniesOrMoreIsAsked(): void
     {
         $entry = SupportDoubles::entry($this->memberships);
-        $stranger = new Company('Initech', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $stranger = new Company('Initech', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         self::assertFalse($entry->awaitsProof($this->user->getId(), $stranger->getId()), 'whoever is not a member is refused elsewhere');
 
-        $alone = new User(Email::fromString('a@example.test'), 'A', 'fr');
-        $this->memberships->save(new Membership($alone, $stranger, new Role(Role::OWNER, ['*'])));
+        $alone = new User(Email::fromString('a@example.test'), 'A', 'fr', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($alone, $stranger, new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
         self::assertFalse($entry->awaitsProof($alone->getId(), $stranger->getId()));
         self::assertSame([], $entry->awaitingProof($alone->getId()));
     }

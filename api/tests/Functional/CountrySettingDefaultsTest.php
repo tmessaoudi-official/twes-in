@@ -24,7 +24,7 @@ final class CountrySettingDefaultsTest extends ApiTestCase
     public function testEachCountryStartsFromItsPresetsDefaultWhichTheCompanyMayChange(): void
     {
         $tunis = $this->createCompany('Carthage');
-        $paris = new Company('Lutèce', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $paris = new Company('Lutèce', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $this->em()->persist($paris);
         $this->em()->flush();
         foreach ([$tunis, $paris] as $company) {

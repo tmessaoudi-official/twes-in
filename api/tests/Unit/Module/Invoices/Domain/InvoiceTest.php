@@ -65,8 +65,8 @@ final class InvoiceTest extends TestCase
         $this->taxes = new InMemoryTaxComponents();
         $this->establishments = new InMemoryEstablishments();
         $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new \Symfony\Component\Clock\MockClock($this->now));
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $provision->handle($this->company);
         $provision->handle($this->globex);
     }
@@ -231,12 +231,12 @@ final class InvoiceTest extends TestCase
 
     public function testIssuingFreezesTheSellerAsTheDocumentPrintsIt(): void
     {
-        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme SARL', addressLine1: '10 rue de Marseille', city: 'Tunis'));
+        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme SARL', addressLine1: '10 rue de Marseille', city: 'Tunis'), new \DateTimeImmutable());
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine(taxes: [$this->tax('TVA19')])], [], $this->now);
         self::assertNull($invoice->getSellerSnapshot(), 'a draft prints the seller as it is today');
 
         $invoice->issue(new \App\Module\Invoices\Domain\ValueObject\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($invoice)), fn (Invoice $i) => $this->figures(), $this->now);
-        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
+        $this->company->reviseProfile(new \App\Tenancy\Domain\ValueObject\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'), new \DateTimeImmutable());
 
         $seller = $invoice->getSellerSnapshot();
         self::assertSame(['Acme SARL', '10 rue de Marseille', 'Tunis', 'TND'], [$seller?->name, $seller?->address->line1, $seller?->address->city, $seller?->currency]);

@@ -51,7 +51,7 @@ final class ManageModulesTest extends TestCase
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->states = new ModuleStates($catalog, $this->rows);
         $this->manage = new ManageModules($catalog, $this->rows, $this->states, $this->audit, new MockClock('2026-09-14 10:00:00'), $transactions);
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 
     public function testEveryModuleIsOnUntilTheCompanySwitchesItOff(): void
@@ -75,7 +75,7 @@ final class ManageModulesTest extends TestCase
         self::assertFalse($this->states->isEnabled($this->company->getId(), 'invoices'));
         self::assertSame(['customers', 'products'], $this->states->enabledKeys($this->company->getId()));
         self::assertSame([['customers', true], ['invoices', false], ['products', true], ['quotes', false]], self::summary($this->manage->list($this->company)));
-        $globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         self::assertTrue($this->states->isEnabled($globex->getId(), 'invoices'));
 
         self::assertCount(1, $this->audit->entries);

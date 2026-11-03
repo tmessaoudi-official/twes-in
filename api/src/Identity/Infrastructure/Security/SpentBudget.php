@@ -26,6 +26,7 @@ final class SpentBudget
     {
         $at = $limit->getRetryAfter();
         // Rounded up to the second, so a client coming back on the dot never finds the window still spent.
+        // system-clock: the rate limiter dates its retry on the system's own time, so the wait is measured against it
         $seconds = (int) $at->format('U') - time() + ('000000' === $at->format('u') ? 0 : 1);
 
         return self::answerIn($seconds);

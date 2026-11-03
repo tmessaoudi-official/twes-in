@@ -47,7 +47,7 @@ final class ArticleLevelsTest extends TestCase
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $this->resolve = new ResolveSettings($catalog, $this->settings);
         $this->change = new ChangeSettings($catalog, $this->settings, $this->resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), new MockClock('2026-09-14 09:00:00'), $transactions, new RecordingDomainEvents(), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), new \App\Tests\Support\RecordingLiveChanges());
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->categoryId = Uuid::v7();
         $this->productId = Uuid::v7();
     }
@@ -75,7 +75,7 @@ final class ArticleLevelsTest extends TestCase
         $this->change->change(new SettingContext($this->company, productId: $this->productId), self::UNIT, SettingLevel::Product, 'KGM', null);
 
         $sibling = new SettingContext($this->company, productId: Uuid::v7());
-        $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), productId: $this->productId);
+        $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), productId: $this->productId);
 
         self::assertSame('C62', $this->resolve->one($sibling, self::UNIT)->value);
         self::assertSame('C62', $this->resolve->one($elsewhere, self::UNIT)->value);
@@ -85,7 +85,7 @@ final class ArticleLevelsTest extends TestCase
     {
         $this->settings->save(new Setting(SettingAddress::productCategory($this->company, $this->categoryId), self::TRACKING, true, new \DateTimeImmutable()));
 
-        $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), productCategoryId: $this->categoryId);
+        $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), productCategoryId: $this->categoryId);
 
         self::assertFalse($this->resolve->one($elsewhere, self::TRACKING)->value);
     }

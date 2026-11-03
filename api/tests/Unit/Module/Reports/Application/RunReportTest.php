@@ -29,7 +29,7 @@ final class RunReportTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->context = new ReportContext(new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'), new \DateTimeImmutable('2026-10-18'), static fn (string $permission): bool => true);
+        $this->context = new ReportContext(new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), new \DateTimeImmutable('2026-10-18'), static fn (string $permission): bool => true);
         $this->october = new ReportPeriod(new \DateTimeImmutable('2026-10-01'), new \DateTimeImmutable('2026-10-31'));
     }
 

@@ -108,9 +108,9 @@ final class InvitationTest extends TestCase
     private function invite(?InvitationToken $token = null): Invitation
     {
         return new Invitation(
-            new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'),
+            new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()),
             Email::fromString('joiner@twes.local'),
-            new Role(Role::MEMBER, []),
+            new Role(Role::MEMBER, [], null, new \DateTimeImmutable()),
             $token ?? InvitationToken::generate(),
             new \DateTimeImmutable(self::NOW),
             new \DateInterval('P7D'),

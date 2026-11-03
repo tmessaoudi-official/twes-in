@@ -62,7 +62,7 @@ final class RepeatStockDrawingTest extends TestCase
         $clock = new MockClock('2026-09-21 09:00:00');
         $transactions = new FakeTransactions();
         $audit = new InMemoryAuditTrail($transactions);
-        $this->company = new Company('Quincaillerie Ben Ali', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Quincaillerie Ben Ali', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->establishment = Establishment::create($this->company, '000', 'Bab Saadoun', true, $clock->now());
         $establishments = new InMemoryEstablishments();
         $establishments->save($this->establishment);

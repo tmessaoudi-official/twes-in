@@ -30,7 +30,7 @@ final class CompanyStatusTest extends TestCase
     public function testAPendingCompanyBecomesActive(): void
     {
         $company = self::pending();
-        $company->activate();
+        $company->activate(new \DateTimeImmutable());
 
         self::assertSame(Company::STATUS_ACTIVE, $company->getStatus());
     }
@@ -38,7 +38,7 @@ final class CompanyStatusTest extends TestCase
     public function testActivatingAnActiveCompanyChangesNothing(): void
     {
         $company = self::company();
-        $company->activate();
+        $company->activate(new \DateTimeImmutable());
 
         self::assertSame(Company::STATUS_ACTIVE, $company->getStatus());
     }
@@ -46,10 +46,10 @@ final class CompanyStatusTest extends TestCase
     public function testASuspendedCompanyCanBeActivatedAgain(): void
     {
         $company = self::company();
-        $company->suspend();
+        $company->suspend(new \DateTimeImmutable());
         self::assertSame(Company::STATUS_SUSPENDED, $company->getStatus());
 
-        $company->activate();
+        $company->activate(new \DateTimeImmutable());
         self::assertSame(Company::STATUS_ACTIVE, $company->getStatus());
     }
 
@@ -84,7 +84,7 @@ final class CompanyStatusTest extends TestCase
         foreach (['activate', 'suspend'] as $change) {
             $company = self::closed();
             try {
-                $company->{$change}();
+                $company->{$change}(new \DateTimeImmutable());
                 self::fail("$change moved a closed company");
             } catch (CompanyClosedDown) {
             }
@@ -132,11 +132,11 @@ final class CompanyStatusTest extends TestCase
 
     private static function company(): Company
     {
-        return new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        return new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 
     private static function pending(): Company
     {
-        return Company::pending('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        return Company::pending('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 }

@@ -82,8 +82,8 @@ final class QuoteWorkflowTest extends TestCase
         $series = new InMemoryNumberingSeries();
         $taxes = new InMemoryTaxComponents();
         $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $this->units, $this->establishments, $series, ShippedFiscalPresets::scales(), $this->clock);
-        $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
-        $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+        $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
+        $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $settings = new InMemorySettings();

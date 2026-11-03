@@ -170,11 +170,11 @@ final class ScanPairingTest extends TestCase
 
     private function company(): Company
     {
-        return new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        return new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 
     private function user(): User
     {
-        return new User(Email::fromString('amel@twes.local'), 'Amel', 'fr');
+        return new User(Email::fromString('amel@twes.local'), 'Amel', 'fr', new \DateTimeImmutable());
     }
 }

@@ -71,8 +71,8 @@ final class ManageInstrumentsTest extends TestCase
         $this->units = new InMemoryUnits();
         $this->establishments = new InMemoryEstablishments();
         $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock);
-        $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
-        $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+        $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
+        $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
         $this->transactions = new FakeTransactions();
         $this->invoices = new InMemoryInvoices();
         $this->invoices->transactions = $this->transactions;

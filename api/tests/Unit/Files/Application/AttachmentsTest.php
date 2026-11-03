@@ -39,7 +39,7 @@ final class AttachmentsTest extends TestCase
         $this->files = new InMemoryStoredFiles();
         $this->records = new InMemoryAttachments();
         $this->attachments = new Attachments(new Files($this->storage, $this->files, $clock), $this->records, $clock, 1024, ['application/pdf', 'image/png'], 2);
-        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->expenseId = Uuid::v7();
     }
 
@@ -95,7 +95,7 @@ final class AttachmentsTest extends TestCase
     public function testAnAttachmentIsFoundOnlyForItsCompanyAndEntityAndDetachingKeepsTheBytes(): void
     {
         $attachment = $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'a.pdf', self::PDF, null);
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
 
         self::assertSame($attachment, $this->attachments->find($this->acme, 'expense', $this->expenseId, $attachment->getId()));
         self::assertNull($this->attachments->find($globex, 'expense', $this->expenseId, $attachment->getId()));
@@ -155,7 +155,7 @@ final class AttachmentsTest extends TestCase
         $attachment = $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'a.pdf', self::PDF, null);
         $live = $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'b.pdf', self::PDF, null);
         $this->attachments->detach($attachment);
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
 
         self::assertNull($this->attachments->restore($globex, 'expense', $this->expenseId, $attachment->getId()));
         self::assertNull($this->attachments->restore($this->acme, 'expense', Uuid::v7(), $attachment->getId()));

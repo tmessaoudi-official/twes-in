@@ -238,7 +238,7 @@ final class MoveStockOnInvoicesTest extends TestCase
         $this->movements = new InMemoryStockMovements();
         $this->failures = new InMemoryStockMoveFailures();
         $now = new \DateTimeImmutable('2026-09-15 09:00:00');
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->establishment = Establishment::create($this->company, '000', 'Siège', true, $now);
         $this->piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, $now);
         $this->laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '1250'), $this->piece, null, [], $now);
@@ -265,7 +265,7 @@ final class MoveStockOnInvoicesTest extends TestCase
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), new InMemoryModuleStates());
         $move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $transactions, $clock, new InMemoryProductHomeLocations(), new InMemoryStockLots());
         $memberships = new InMemoryMemberships();
-        $memberships->save(new Membership(new User(Email::fromString('keeper@acme.test'), 'Keeper', 'fr'), $this->company, new Role(Role::MEMBER, ['stock.write'], $this->company)));
+        $memberships->save(new Membership(new User(Email::fromString('keeper@acme.test'), 'Keeper', 'fr', new \DateTimeImmutable()), $this->company, new Role(Role::MEMBER, ['stock.write'], $this->company, new \DateTimeImmutable()), new \DateTimeImmutable()));
         $logger = new class extends AbstractLogger {
             /** @var list<array{string, string}> */
             public array $logged = [];

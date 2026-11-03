@@ -40,8 +40,8 @@ final class StockCountReadsTest extends KernelTestCase
     {
         self::bootKernel();
         $provision = static::getContainer()->get(ProvisionCompany::class);
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         foreach ([$this->company, $this->globex] as $company) {
             $this->em()->persist($company);
             $this->em()->flush();

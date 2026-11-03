@@ -39,7 +39,7 @@ final class ManageCustomFieldsTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->manage = new ManageCustomFields($this->fields, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions());
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 
     public function testAFieldIsDeclaredAndAudited(): void
@@ -65,7 +65,7 @@ final class ManageCustomFieldsTest extends TestCase
     public function testAnotherCompanyMayUseTheSameKey(): void
     {
         $this->manage->create($this->company, self::sector(), null);
-        $globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
 
         $this->manage->create($globex, self::sector(), null);
 
@@ -114,7 +114,7 @@ final class ManageCustomFieldsTest extends TestCase
     public function testAnotherCompanysFieldIsNotFound(): void
     {
         $field = $this->manage->create($this->company, self::sector(), null);
-        $globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
 
         $this->expectException(CustomFieldNotFound::class);
         $this->manage->revise($globex, $field->getId(), self::sector(), null);

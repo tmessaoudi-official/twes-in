@@ -15,6 +15,7 @@ use App\Identity\Application\StepUp\ConfirmStepUp;
 use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Repository\UserRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
@@ -34,6 +35,7 @@ final readonly class BeginTotpEnrolment
         private ConfirmStepUp $stepUp,
         #[Autowire(param: 'app.mfa.issuer')]
         private string $issuer,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -54,7 +56,7 @@ final readonly class BeginTotpEnrolment
         }
 
         $secret = $this->totp->generateSecret();
-        $user->beginTotpEnrolment($this->cipher->encrypt($secret));
+        $user->beginTotpEnrolment($this->cipher->encrypt($secret), $this->clock->now());
         $this->users->save($user);
 
         // The plaintext secret leaves here exactly once, to be shown to its owner and never stored in clear.

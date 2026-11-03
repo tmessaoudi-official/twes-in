@@ -44,7 +44,7 @@ final class TwigQuoteTemplateTest extends KernelTestCase
         $units = new InMemoryUnits();
         $taxes = new InMemoryTaxComponents();
         $establishments = new InMemoryEstablishments();
-        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new MockClock($now))->handle($company);
         $customer = Customer::create($company, 'CLI-0007', new CustomerProfile(CustomerKind::Company, 'Garage Martin'), null, new CustomerTaxRegime('FR', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $units->ofCodeInCompany('C62', $company->getId());
@@ -98,7 +98,7 @@ final class TwigQuoteTemplateTest extends KernelTestCase
         $units = new InMemoryUnits();
         $taxes = new InMemoryTaxComponents();
         $establishments = new InMemoryEstablishments();
-        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new MockClock($now))->handle($company);
         $customer = Customer::create($company, 'CLI-0007', new CustomerProfile(CustomerKind::Company, 'Garage Martin'), null, new CustomerTaxRegime('FR', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $units->ofCodeInCompany('C62', $company->getId());
@@ -136,7 +136,7 @@ final class TwigQuoteTemplateTest extends KernelTestCase
         $units = new InMemoryUnits();
         $taxes = new InMemoryTaxComponents();
         $establishments = new InMemoryEstablishments();
-        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new MockClock($now))->handle($company);
         $customer = Customer::create($company, 'CLI-0008', new CustomerProfile(CustomerKind::Company, 'Clinique Pasteur'), null, new CustomerTaxRegime('FR', 'exempt', 'fiscal.regime.exempt', [], 'fiscal.mention.fr.exempt', 0, $now), [], $now);
         $unit = $units->ofCodeInCompany('C62', $company->getId());

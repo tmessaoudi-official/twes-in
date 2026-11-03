@@ -88,7 +88,7 @@ final readonly class SeedPlatform
         if (null === $operator) {
             $operator = new User($email, $request->operatorName, $request->locale, $now);
             $operator->setPasswordHash($this->hasher->hash((string) $request->operatorPassword), $now);
-            $operator->setPlatformOperator(true);
+            $operator->setPlatformOperator(true, $now);
             $this->users->save($operator);
             $created[] = "operator $email";
         }

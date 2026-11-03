@@ -374,16 +374,16 @@ final class SecondFactorTest extends ApiTestCase
         // Built here rather than pulled from the container: these are ports, so nothing injects them until
         // the use cases do, and the test container prunes what nothing injects. The key is .env.test's.
         $this->secret = $codes->generateSecret();
-        $user->beginTotpEnrolment((new SodiumSecretCipher($key))->encrypt($this->secret));
+        $user->beginTotpEnrolment((new SodiumSecretCipher($key))->encrypt($this->secret), new \DateTimeImmutable());
 
         // Confirmed one step in the past, so the code these tests use now is newer than the one already spent.
         $earlier = new \DateTimeImmutable('-30 seconds');
-        $user->confirmTotpEnrolment($codes->verify($this->secret, $codes->codeAt($this->secret, $earlier), $earlier) ?? 0);
+        $user->confirmTotpEnrolment($codes->verify($this->secret, $codes->codeAt($this->secret, $earlier), $earlier) ?? 0, new \DateTimeImmutable());
 
         $raw = [];
         foreach (RecoveryCode::generateSet(10) as $code) {
             $raw[] = $code->raw;
-            $this->em()->persist(new RecoveryCodeEntry($user, $code->hash()));
+            $this->em()->persist(new RecoveryCodeEntry($user, $code->hash(), new \DateTimeImmutable()));
         }
         $this->em()->flush();
 

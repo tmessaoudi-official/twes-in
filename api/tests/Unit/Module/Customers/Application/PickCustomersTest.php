@@ -29,7 +29,7 @@ final class PickCustomersTest extends TestCase
 {
     public function testARowLeavesOutWhatTheCustomersRegimeAndTheCompanysOwnDoNotCharge(): void
     {
-        $company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         $customers = new InMemoryCustomers();
         $now = new \DateTimeImmutable('2026-09-25');
         $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Maison Durand'), null, new CustomerTaxRegime('FR', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
@@ -38,7 +38,7 @@ final class PickCustomersTest extends TestCase
 
         self::assertSame([], $pick->byIds($company, [$customer->getId()])[0]['excludedFamilies']);
 
-        $company->reviseProfile(new CompanyProfile(vatRegime: 'franchise'));
+        $company->reviseProfile(new CompanyProfile(vatRegime: 'franchise'), new \DateTimeImmutable());
         self::assertSame(['vat'], $pick->byIds($company, [$customer->getId()])[0]['excludedFamilies']);
         self::assertSame(['vat'], $pick->matching($company, 'Durand')[0]['excludedFamilies']);
     }

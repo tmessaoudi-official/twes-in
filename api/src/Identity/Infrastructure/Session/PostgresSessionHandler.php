@@ -115,7 +115,7 @@ final class PostgresSessionHandler implements \SessionHandlerInterface, \Session
     /** Pushes the expiry forward, writing nothing when the last push is less than a minute old. */
     private function refresh(string $id): bool
     {
-        $now = time();
+        $now = time(); // system-clock: PdoSessionHandler reads a row's expiry against its own time()
         $limit = $this->idleLimit();
         $this->pdo()->prepare('UPDATE sessions SET sess_lifetime = :expiry, sess_time = :now WHERE sess_id = :id AND sess_lifetime < :stale')
             ->execute(['expiry' => $now + $limit, 'now' => $now, 'id' => $id, 'stale' => $now + $limit - self::REFRESH_AFTER]);

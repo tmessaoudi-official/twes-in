@@ -87,7 +87,7 @@ final class KeepStockTest extends TestCase
         $this->lots->transactions = $this->transactions;
         $locations = $this->locations = new InMemoryStockLocations();
         $establishments = new InMemoryEstablishments();
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $main = Establishment::create($this->company, '000', 'Siège', true, $now);
         $establishments->save($main);
         $this->site = new ManageStockLocations($locations, $this->movements, $establishments, new InMemoryAuditTrail($this->transactions), $this->clock, $this->transactions, new InMemoryRecordVersions())->defaultOf($main);
@@ -208,7 +208,7 @@ final class KeepStockTest extends TestCase
     public function testASplitReceiptWithAPlaceThatIsNotTheCompanysWritesNothing(): void
     {
         $this->track(SettingAddress::company($this->company), true);
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $theirs = StockLocation::defaultOf(Establishment::create($globex, '000', 'Globex', true, $this->clock->now()), $this->clock->now());
 
         try {
@@ -259,7 +259,7 @@ final class KeepStockTest extends TestCase
     {
         $this->track(SettingAddress::company($this->company), true);
         $this->track(SettingAddress::product($this->company, $this->laptop->getId()), false);
-        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $theirs = StockLocation::defaultOf(Establishment::create($globex, '000', 'Globex', true, $this->clock->now()), $this->clock->now());
 
         foreach ([
@@ -317,7 +317,7 @@ final class KeepStockTest extends TestCase
         $second = $this->page($ofLaptop, new PageRequest(2, 1));
         self::assertSame([[$received], 2], [$second->items, $second->total]);
 
-        $other = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $other = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         self::assertSame([], $this->keep->searchMovements($other, $ofLaptop, new PageRequest(1, 25))->items);
     }
 

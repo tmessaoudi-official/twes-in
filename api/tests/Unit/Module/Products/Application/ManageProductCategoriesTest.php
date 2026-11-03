@@ -38,7 +38,7 @@ final class ManageProductCategoriesTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->manage = new ManageProductCategories($this->categories, $this->products, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions, new InMemoryRecordVersions());
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
     }
 
     public function testACategoryIsCreatedUnderAnotherAndAuditedWithoutItsName(): void
@@ -60,7 +60,7 @@ final class ManageProductCategoriesTest extends TestCase
 
     public function testAParentNotOfTheCompanyIsRefusedNamingTheField(): void
     {
-        $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'Matériel', null, null);
+        $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'Matériel', null, null);
 
         try {
             $this->manage->create($this->company, 'Portables', $theirs->getId(), null);
@@ -75,7 +75,7 @@ final class ManageProductCategoriesTest extends TestCase
     {
         $this->manage->create($this->company, 'Matériel', null, null);
         $software = $this->manage->create($this->company, 'Logiciel', null, null);
-        $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'Services', null, null);
+        $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'Services', null, null);
 
         $this->manage->revise($this->company, $software->getId(), 'Logiciel', null, null);
         $this->manage->create($this->company, 'Services', null, null);
@@ -106,7 +106,7 @@ final class ManageProductCategoriesTest extends TestCase
 
     public function testAnotherCompanysCategoryIsNotFound(): void
     {
-        $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'Matériel', null, null);
+        $theirs = $this->manage->create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'Matériel', null, null);
 
         $this->expectException(ProductCategoryNotFound::class);
         $this->manage->revise($this->company, $theirs->getId(), 'Mine now', null, null);

@@ -21,6 +21,7 @@ use App\Identity\Domain\Repository\RecoveryCodeRepository;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\RecoveryCode;
 use App\Shared\Application\Transactions;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -46,6 +47,7 @@ final readonly class VerifySecondFactor implements DeclaresAuditActions
         private AuditTrail $audit,
         private SecondFactors $secondFactors,
         private Transactions $transactions,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -53,9 +55,9 @@ final readonly class VerifySecondFactor implements DeclaresAuditActions
      * @throws SecondFactorRefused    when the code is wrong, spent or there is no factor
      * @throws SecondFactorUnreadable when neither a recovery code nor the stored secret, which the current key cannot read, verifies
      */
-    public function handle(Uuid $userId, string $code, ?\DateTimeImmutable $now = null): User
+    public function handle(Uuid $userId, string $code): User
     {
-        $now ??= new \DateTimeImmutable();
+        $now = $this->clock->now();
         $outcome = $this->transactions->run(fn (): User|SecondFactorRefused|SecondFactorUnreadable => $this->spend($userId, $code, $now));
 
         if ($outcome instanceof User) {

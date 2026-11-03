@@ -33,7 +33,7 @@ final class QuantityTotalsTest extends TestCase
 
     public function testEachUnitIsNamedAsTheDocumentNamesIt(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $now = new \DateTimeImmutable('2026-10-19 10:00:00');
         $piece = Unit::create($company, 'C62', 'Unité', 0, 10, $now, ['ar' => 'وحدة']);
         $kilo = Unit::create($company, 'KGM', 'Kilogramme', 3, 20, $now);

@@ -59,7 +59,7 @@ class Passkey
     #[ORM\Column(nullable: true)]
     private ?bool $discoverable;
 
-    public function __construct(User $user, string $credentialId, string $record, string $name, ?\DateTimeImmutable $now = null, ?bool $discoverable = null)
+    public function __construct(User $user, string $credentialId, string $record, string $name, \DateTimeImmutable $now, ?bool $discoverable = null)
     {
         $this->discoverable = $discoverable;
         $this->id = Uuid::v7();
@@ -69,7 +69,7 @@ class Passkey
         $name = TypedText::trimmed($name);
         // A name only helps the person tell their devices apart, so an empty one is given a neutral default.
         $this->name = '' === $name ? 'Passkey' : mb_substr($name, 0, self::NAME_MAX);
-        $this->createdAt = $now ?? new \DateTimeImmutable();
+        $this->createdAt = $now;
     }
 
     /** A verified sign-in: the record carries the new signature counter, which a cloned key could not advance past. */

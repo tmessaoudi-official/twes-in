@@ -82,8 +82,8 @@ final class MailInvitationTest extends TestCase
 
     private function invitation(): Invitation
     {
-        $company = Company::pending('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $invitation = new Invitation($company, Email::fromString('joiner@twes.local'), new Role(Role::MEMBER, []), InvitationToken::generate(), $this->clock->now(), new \DateInterval('P7D'), null);
+        $company = Company::pending('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $invitation = new Invitation($company, Email::fromString('joiner@twes.local'), new Role(Role::MEMBER, [], null, new \DateTimeImmutable()), InvitationToken::generate(), $this->clock->now(), new \DateInterval('P7D'), null);
         $this->invitations->save($invitation);
 
         return $invitation;

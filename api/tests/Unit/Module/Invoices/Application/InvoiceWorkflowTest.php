@@ -119,8 +119,8 @@ final class InvoiceWorkflowTest extends TestCase
         $this->establishments = new InMemoryEstablishments();
         $this->series = new InMemoryNumberingSeries();
         $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, $this->series, ShippedFiscalPresets::scales(), $this->clock);
-        $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
-        $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+        $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
+        $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
         $this->invoices = new InMemoryInvoices();
         $this->transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($this->transactions);
@@ -154,7 +154,7 @@ final class InvoiceWorkflowTest extends TestCase
             new AllowingSaleStock(),
         );
         foreach ([$this->company, $this->globex] as $company) {
-            $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));
+            $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'), new \DateTimeImmutable());
         }
     }
 
@@ -260,7 +260,7 @@ final class InvoiceWorkflowTest extends TestCase
         $atCustomer = new SettingContext($this->company, customerId: $customer->getId());
         $this->change->change($atCustomer, 'document.language', SettingLevel::Customer, 'en', null);
         $this->change->change($atCustomer, 'document.payment_terms_days', SettingLevel::Customer, 60, null);
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis', invoiceFooterText: 'Merci de votre confiance', latePenaltyText: 'Pénalité de retard : 1 % par mois'));
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis', invoiceFooterText: 'Merci de votre confiance', latePenaltyText: 'Pénalité de retard : 1 % par mois'), new \DateTimeImmutable());
         $invoice = $this->draft($customer);
         $actor = Uuid::v7();
 
@@ -560,7 +560,7 @@ final class InvoiceWorkflowTest extends TestCase
     {
         $customer = $this->customer('standard', null);
         $draft = $this->draft($customer);
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis', vatRegime: 'forfaitaire'));
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis', vatRegime: 'forfaitaire'), new \DateTimeImmutable());
 
         try {
             $this->workflow->issue($this->company, $draft->getId(), null);
@@ -570,7 +570,7 @@ final class InvoiceWorkflowTest extends TestCase
         }
         self::assertSame([InvoiceStatus::Draft, null, [], 0], [$draft->getStatus(), $draft->getNumber(), $this->audit->entries, $this->transactions->committed]);
 
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'), new \DateTimeImmutable());
         $exported = $this->draft($customer);
         $now = $this->clock->now();
         $customer->revise($customer->getNumber(), $customer->getProfile(), $customer->getGroup(), new CustomerTaxRegime('TN', 'export', 'fiscal.regime.export', [TaxFamily::Vat], 'fiscal.mention.tn.export', 0, $now), [], $customer->isActive(), $now);
@@ -603,7 +603,7 @@ final class InvoiceWorkflowTest extends TestCase
     public function testACreditNoteGivesBackTheTaxesItsInvoiceChargedWhateverTheRegimeIsNow(): void
     {
         $invoice = $this->workflow->issue($this->company, $this->draft($this->customer('standard', null))->getId(), null);
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis', vatRegime: 'forfaitaire'));
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis', vatRegime: 'forfaitaire'), new \DateTimeImmutable());
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $this->invoices->save($credit);
 
@@ -615,8 +615,8 @@ final class InvoiceWorkflowTest extends TestCase
     public function testAMentionThatCannotBeFilledRefusesTheIssueBeforeANumberIsTakenAndWhatFillsItIsKept(): void
     {
         new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, $this->series, ShippedFiscalPresets::scales(), $this->clock)
-            ->handle($atelier = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris'));
-        $atelier->reviseProfile(new CompanyProfile(legalName: 'Atelier SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074'], addressLine1: '12 rue des Forges', postalCode: '69007', city: 'Lyon'));
+            ->handle($atelier = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable()));
+        $atelier->reviseProfile(new CompanyProfile(legalName: 'Atelier SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074'], addressLine1: '12 rue des Forges', postalCode: '69007', city: 'Lyon'), new \DateTimeImmutable());
         $now = $this->clock->now();
         $customer = Customer::create($atelier, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Garage Martin', identifiers: ['siren' => '542065479'], billingAddress: new PostalAddress('3 avenue Foch', null, '75016', 'Paris', 'FR')), null, new CustomerTaxRegime('FR', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $this->units->ofCodeInCompany('C62', $atelier->getId());

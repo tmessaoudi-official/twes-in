@@ -19,6 +19,7 @@ use App\Tests\Support\InMemoryUsers;
 use App\Tests\Support\ShippedLanguages;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\Component\Clock\MockClock;
 
 final class KeepAccountLanguageOnSettingsTest extends TestCase
 {
@@ -26,9 +27,9 @@ final class KeepAccountLanguageOnSettingsTest extends TestCase
     public function testOnlyTheScreenLanguageMovesTheAccount(): void
     {
         $users = new InMemoryUsers();
-        $user = new User(Email::fromString('someone@twes.local'), 'Someone', 'fr');
+        $user = new User(Email::fromString('someone@twes.local'), 'Someone', 'fr', new \DateTimeImmutable());
         $users->save($user);
-        $listener = new KeepAccountLanguageOnSettings(new KeepAccountLanguage($users, new FakeTransactions(), ShippedLanguages::catalogue()), new NullLogger());
+        $listener = new KeepAccountLanguageOnSettings(new KeepAccountLanguage($users, new FakeTransactions(), ShippedLanguages::catalogue(), new MockClock()), new NullLogger());
 
         $listener->onChanged(new PersonalSettingChanged($user->getId(), 'presentation.date-format', 'en'));
         self::assertSame('fr', $user->getLocale());
@@ -41,9 +42,9 @@ final class KeepAccountLanguageOnSettingsTest extends TestCase
     public function testGoingBackTakesTheLanguageInForce(): void
     {
         $users = new InMemoryUsers();
-        $user = new User(Email::fromString('someone@twes.local'), 'Someone', 'ar');
+        $user = new User(Email::fromString('someone@twes.local'), 'Someone', 'ar', new \DateTimeImmutable());
         $users->save($user);
-        $listener = new KeepAccountLanguageOnSettings(new KeepAccountLanguage($users, new FakeTransactions(), ShippedLanguages::catalogue()), new NullLogger());
+        $listener = new KeepAccountLanguageOnSettings(new KeepAccountLanguage($users, new FakeTransactions(), ShippedLanguages::catalogue(), new MockClock()), new NullLogger());
 
         $listener->onChanged(new PersonalSettingChanged($user->getId(), 'presentation.language', null, 'fr'));
 

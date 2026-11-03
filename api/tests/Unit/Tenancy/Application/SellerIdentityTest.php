@@ -21,39 +21,39 @@ final class SellerIdentityTest extends TestCase
 {
     public function testAnEmptyProfileLacksTheLegalNameTheAddressAndTheMatricule(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
 
         self::assertSame(['legalName', 'addressLine1', 'city', 'identifiers.matricule_fiscal'], $this->missing($company));
     }
 
     public function testATunisianSellerWithItsNameAddressAndMatriculeLacksNothing(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', city: 'Tunis'));
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', city: 'Tunis'), new \DateTimeImmutable());
 
         self::assertSame([], $this->missing($company));
     }
 
     public function testAMatriculeOfTheWrongShapeIsNamedAsMissing(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567'], addressLine1: 'Rue de Marseille', city: 'Tunis'));
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567'], addressLine1: 'Rue de Marseille', city: 'Tunis'), new \DateTimeImmutable());
 
         self::assertSame(['identifiers.matricule_fiscal'], $this->missing($company));
     }
 
     public function testAFrenchSellerNeedsItsSirenAndSiret(): void
     {
-        $company = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
-        $company->reviseProfile(new CompanyProfile(legalName: 'Durand SARL', identifiers: ['siren' => '732829320'], addressLine1: '12 rue des Forges', postalCode: '69007', city: 'Lyon'));
+        $company = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(legalName: 'Durand SARL', identifiers: ['siren' => '732829320'], addressLine1: '12 rue des Forges', postalCode: '69007', city: 'Lyon'), new \DateTimeImmutable());
 
         self::assertSame(['identifiers.siret'], $this->missing($company));
     }
 
     public function testTheIssuingEstablishmentsAddressStandsForTheCompanysWhenItHasOne(): void
     {
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000']));
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000']), new \DateTimeImmutable());
         $now = new \DateTimeImmutable('2026-10-08 09:00:00');
         $shop = Establishment::create($company, 'SFX', 'Sfax', false, $now);
 

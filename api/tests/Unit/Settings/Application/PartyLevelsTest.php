@@ -46,7 +46,7 @@ final class PartyLevelsTest extends TestCase
         $catalog = new SettingCatalog([new BusinessDefaultSettings(\App\Tests\Support\ShippedLanguages::catalogue())]);
         $this->resolve = new ResolveSettings($catalog, $this->settings);
         $this->change = new ChangeSettings($catalog, $this->settings, $this->resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), new MockClock('2026-09-14 09:00:00'), $transactions, new RecordingDomainEvents(), new \App\Shared\Application\Phones\TypedPhones(new \App\Shared\Infrastructure\Intl\LibPhoneNumbers(new \Symfony\Component\Translation\IdentityTranslator()), new \App\Tests\Support\FixedPhonePolicy()), new \App\Tests\Support\RecordingLiveChanges());
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->groupId = Uuid::v7();
         $this->customerId = Uuid::v7();
     }
@@ -72,7 +72,7 @@ final class PartyLevelsTest extends TestCase
     {
         $this->settings->save(new Setting(SettingAddress::customerGroup($this->company, $this->groupId), self::TERMS, 45, new \DateTimeImmutable()));
 
-        $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), customerGroupId: $this->groupId);
+        $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), customerGroupId: $this->groupId);
 
         self::assertSame(30, $this->resolve->one($elsewhere, self::TERMS)->value);
     }

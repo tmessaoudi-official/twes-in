@@ -27,14 +27,14 @@ final class PriceListTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->now = new \DateTimeImmutable('2026-10-02 09:00:00');
     }
 
     public function testARowPricesOnlyAProductOfItsListsCompany(): void
     {
         $list = PriceList::create($this->company, 'Public', null, null, null, null, true, $this->now);
-        $theirs = $this->product(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'ART-009');
+        $theirs = $this->product(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'ART-009');
 
         try {
             new PriceListItem($list, $theirs, '1', '1');

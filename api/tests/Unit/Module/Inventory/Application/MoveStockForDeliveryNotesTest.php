@@ -86,7 +86,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $this->movements->transactions = $this->transactions;
         $establishments = new InMemoryEstablishments();
         $products = new InMemoryProducts();
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $establishments->save(Establishment::create($this->company, '000', 'Siège', true, $now));
         $this->depot = Establishment::create($this->company, '001', 'Dépôt de Sfax', false, $now);
         $establishments->save($this->depot);

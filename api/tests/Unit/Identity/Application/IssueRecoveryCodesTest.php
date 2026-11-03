@@ -61,7 +61,7 @@ final class IssueRecoveryCodesTest extends TestCase
                 return \count($this->stored);
             }
         };
-        $user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr');
+        $user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr', new \DateTimeImmutable());
 
         $raw = new IssueRecoveryCodes($repository, $perSet)->handle($user, new \DateTimeImmutable('2026-11-02 12:00:00'));
 

@@ -49,13 +49,13 @@ class Membership
     #[ORM\Column(options: ['default' => false])]
     private bool $openedAtSignIn = false;
 
-    public function __construct(User $user, Company $company, Role $role, ?\DateTimeImmutable $now = null)
+    public function __construct(User $user, Company $company, Role $role, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
         $this->user = $user;
         $this->company = $company;
         $this->role = $role;
-        $this->createdAt = $now ?? new \DateTimeImmutable();
+        $this->createdAt = $now;
     }
 
     public function getId(): Uuid

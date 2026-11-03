@@ -33,11 +33,11 @@ final class ReceiptDocumentsTest extends TestCase
     protected function setUp(): void
     {
         $now = new \DateTimeImmutable('2026-09-15 09:00:00');
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $vendors = new InMemoryVendors();
         $this->vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), $now);
         $vendors->save($this->vendor);
-        $vendors->save(Vendor::create(new Company('Other', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'FRN-0002', new VendorProfile('Ailleurs'), $now));
+        $vendors->save(Vendor::create(new Company('Other', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'FRN-0002', new VendorProfile('Ailleurs'), $now));
         $this->states = new InMemoryModuleStates();
         $this->documents = new ReceiptDocuments($vendors, new ModuleStates(new ModuleCatalog([new VendorsModule()]), $this->states));
     }

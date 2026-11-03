@@ -32,7 +32,7 @@ final class DoctrinePaymentDeclarationRepositoryTest extends KernelTestCase
         $entityManager = static::getContainer()->get(EntityManagerInterface::class);
         $declarations = static::getContainer()->get(PaymentDeclarationRepository::class);
 
-        $company = new Company('Race', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Race', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $entityManager->persist($company);
         $entityManager->flush();
 

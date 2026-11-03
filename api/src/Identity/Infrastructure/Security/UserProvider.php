@@ -11,6 +11,7 @@ namespace App\Identity\Infrastructure\Security;
 
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Domain\ValueObject\Email;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\Exception\UserNotFoundException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -26,7 +27,7 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
  */
 final readonly class UserProvider implements UserProviderInterface, PasswordUpgraderInterface
 {
-    public function __construct(private UserRepository $users)
+    public function __construct(private UserRepository $users, private ClockInterface $clock)
     {
     }
 
@@ -66,7 +67,7 @@ final readonly class UserProvider implements UserProviderInterface, PasswordUpgr
         if (null === $account) {
             return;
         }
-        $account->upgradePasswordHash($newHashedPassword);
+        $account->upgradePasswordHash($newHashedPassword, $this->clock->now());
         $this->users->save($account);
     }
 

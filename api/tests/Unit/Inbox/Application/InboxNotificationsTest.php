@@ -239,7 +239,7 @@ final class InboxNotificationsTest extends TestCase
 
     private function user(string $email): User
     {
-        $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'), 'fr');
+        $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'), 'fr', new \DateTimeImmutable());
         $this->users->save($user);
 
         return $user;
@@ -247,7 +247,7 @@ final class InboxNotificationsTest extends TestCase
 
     private function company(string $name): Company
     {
-        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->companies->save($company);
 
         return $company;
@@ -256,7 +256,7 @@ final class InboxNotificationsTest extends TestCase
     private function member(string $email, Company $company): User
     {
         $user = $this->user($email);
-        $this->memberships->save(new Membership($user, $company, new Role(Role::MEMBER, ['company.read'], $company)));
+        $this->memberships->save(new Membership($user, $company, new Role(Role::MEMBER, ['company.read'], $company, new \DateTimeImmutable()), new \DateTimeImmutable()));
 
         return $user;
     }

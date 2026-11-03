@@ -38,7 +38,7 @@ final class MergedCustomerCreditLockTest extends KernelTestCase
         self::bootKernel();
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $em = static::getContainer()->get(EntityManagerInterface::class);
-        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $em->persist($company);
         $em->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($company);

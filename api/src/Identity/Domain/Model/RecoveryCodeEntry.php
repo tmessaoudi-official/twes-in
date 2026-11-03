@@ -41,12 +41,12 @@ class RecoveryCodeEntry
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
-    public function __construct(User $user, string $codeHash, ?\DateTimeImmutable $now = null)
+    public function __construct(User $user, string $codeHash, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
         $this->user = $user;
         $this->codeHash = $codeHash;
-        $this->createdAt = $now ?? new \DateTimeImmutable();
+        $this->createdAt = $now;
     }
 
     public function getId(): Uuid

@@ -50,7 +50,7 @@ final class SupportAccessTest extends ApiTestCase
         // A second owner shares the first one's role: a company holds one role of each name.
         $role = $this->em()->getRepository(Membership::class)->findOneBy(['user' => $owner])?->getRole();
         self::assertNotNull($role);
-        $this->em()->persist(new Membership($this->createUser(self::CO_OWNER, self::PASSWORD), $this->company, $role));
+        $this->em()->persist(new Membership($this->createUser(self::CO_OWNER, self::PASSWORD), $this->company, $role, new \DateTimeImmutable()));
         $this->em()->flush();
         $this->createUser(self::MANAGER, self::PASSWORD, $this->company, ['company.settings', 'customer.read', 'customer.write'], 'manager');
         $this->createUser(self::OPERATOR, self::PASSWORD, operator: true);

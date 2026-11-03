@@ -52,8 +52,8 @@ final class DeclareTejWithholdingsTest extends TestCase
     protected function setUp(): void
     {
         $this->now = new \DateTimeImmutable('2026-09-20 09:00:00');
-        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->acme->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000']));
+        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->acme->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000']), new \DateTimeImmutable());
         $this->vat19 = TaxComponent::create($this->acme, 'TVA19', 'TVA19', TaxFamily::Vat, '19', null, null, false, false, null, 0, 3, $this->now);
         $this->purchases = ExpenseCategory::create($this->acme, 'Achats', null, $this->now);
         $this->sotumag = Vendor::create($this->acme, 'FRN-0001', new VendorProfile(
@@ -160,12 +160,12 @@ final class DeclareTejWithholdingsTest extends TestCase
         self::assertSame(['nothing_to_declare', ['year' => 2026, 'month' => 9]], [($r = $this->refused(2026, 9))->reason, $r->params]);
 
         $this->paid('1500', '2026-09-02', '1', TejOperationCode::Rs7_000002);
-        $this->acme->reviseProfile(new CompanyProfile(legalName: 'Acme SARL'));
+        $this->acme->reviseProfile(new CompanyProfile(legalName: 'Acme SARL'), new \DateTimeImmutable());
         self::assertSame('company_matricule_missing', $this->refused(2026, 9)->reason);
-        $this->acme->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/Q/000']));
+        $this->acme->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/Q/000']), new \DateTimeImmutable());
         self::assertSame('company_matricule_unreadable', $this->refused(2026, 9)->reason);
 
-        $french = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $french = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         try {
             (new DeclareTejWithholdings($this->repository()))->declare($french, 2026, 9);
             self::fail('a French company was declared to TEJ');

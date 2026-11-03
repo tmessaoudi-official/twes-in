@@ -33,7 +33,7 @@ final class DoctrineSettingRepositoryTest extends KernelTestCase
         $entityManager = static::getContainer()->get(EntityManagerInterface::class);
         $settings = static::getContainer()->get(SettingRepository::class);
 
-        $company = new Company('Race', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Race', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $entityManager->persist($company);
         $entityManager->flush();
         $address = SettingAddress::company($company);
@@ -54,7 +54,7 @@ final class DoctrineSettingRepositoryTest extends KernelTestCase
         $entityManager = static::getContainer()->get(EntityManagerInterface::class);
         $settings = static::getContainer()->get(SettingRepository::class);
 
-        $company = new Company('Last word', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Last word', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $entityManager->persist($company);
         $entityManager->flush();
         $address = SettingAddress::company($company);

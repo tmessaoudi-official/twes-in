@@ -340,11 +340,11 @@ final class NotificationMailTest extends ApiTestCase
     public function testWhatACompanyIsToldOfSomebodysActIsNotToldToThatPersonNorMailedToThem(): void
     {
         $em = $this->em();
-        $owner = new User(Email::fromString('owner@twes.local'), 'Owner', 'fr');
+        $owner = new User(Email::fromString('owner@twes.local'), 'Owner', 'fr', new \DateTimeImmutable());
         $em->persist($owner);
-        $role = new Role('barista', ['company.read'], $this->acme);
+        $role = new Role('barista', ['company.read'], $this->acme, new \DateTimeImmutable());
         $em->persist($role);
-        $em->persist(new Membership($owner, $this->acme, $role));
+        $em->persist(new Membership($owner, $this->acme, $role, new \DateTimeImmutable()));
         $em->flush();
 
         $this->notifications()->publish(new Notification(
@@ -421,13 +421,13 @@ final class NotificationMailTest extends ApiTestCase
     private function member(string $email, string $locale, string $roleName = Role::MEMBER, ?array $permissions = ['stock.write', 'stock.read', 'company.read']): User
     {
         $em = $this->em();
-        $user = new User(Email::fromString($email), 'Keeper', $locale);
+        $user = new User(Email::fromString($email), 'Keeper', $locale, new \DateTimeImmutable());
         $user->setPasswordHash(static::getContainer()->get(PasswordHasher::class)->hash('password-1234'), new \DateTimeImmutable());
         $em->persist($user);
-        $role = null === $permissions ? $em->getRepository(Role::class)->findOneBy(['name' => $roleName, 'company' => $this->acme]) : new Role($roleName, $permissions, $this->acme);
+        $role = null === $permissions ? $em->getRepository(Role::class)->findOneBy(['name' => $roleName, 'company' => $this->acme]) : new Role($roleName, $permissions, $this->acme, new \DateTimeImmutable());
         self::assertInstanceOf(Role::class, $role);
         $em->persist($role);
-        $em->persist(new Membership($user, $this->acme, $role));
+        $em->persist(new Membership($user, $this->acme, $role, new \DateTimeImmutable()));
         $em->flush();
 
         return $user;

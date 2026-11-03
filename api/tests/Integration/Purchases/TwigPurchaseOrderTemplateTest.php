@@ -46,7 +46,7 @@ final class TwigPurchaseOrderTemplateTest extends KernelTestCase
         $now = $clock->now();
         $units = new InMemoryUnits();
         $establishments = new InMemoryEstablishments();
-        $company = new Company('Acme Distribution', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Acme Distribution', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock)->handle($company);
         $piece = $units->ofCodeInCompany('C62', $company->getId());
         $kilogram = $units->ofCodeInCompany('KGM', $company->getId());

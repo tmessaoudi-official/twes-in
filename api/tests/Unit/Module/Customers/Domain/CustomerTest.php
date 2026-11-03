@@ -31,7 +31,7 @@ final class CustomerTest extends TestCase
     protected function setUp(): void
     {
         $this->now = new \DateTimeImmutable('2026-09-14 09:00:00');
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->standard = new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $this->now);
     }
 
@@ -137,7 +137,7 @@ final class CustomerTest extends TestCase
 
     public function testAGroupOfAnotherCompanyIsRefused(): void
     {
-        $theirs = CustomerGroup::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'Grossistes', null, $this->now);
+        $theirs = CustomerGroup::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'Grossistes', null, $this->now);
 
         try {
             Customer::create($this->company, 'CLI-0001', self::profile(), $theirs, $this->standard, [], $this->now);

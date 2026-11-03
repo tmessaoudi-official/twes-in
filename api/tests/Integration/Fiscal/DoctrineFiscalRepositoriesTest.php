@@ -32,8 +32,8 @@ final class DoctrineFiscalRepositoriesTest extends KernelTestCase
     {
         self::bootKernel();
         $companies = static::getContainer()->get(CompanyRepository::class);
-        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $companies->save($this->acme);
         $companies->save($this->globex);
     }

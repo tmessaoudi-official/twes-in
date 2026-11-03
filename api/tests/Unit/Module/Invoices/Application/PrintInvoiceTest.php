@@ -90,7 +90,7 @@ final class PrintInvoiceTest extends TestCase
         $this->taxes = new InMemoryTaxComponents();
         $this->establishments = new InMemoryEstablishments();
         new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock)
-            ->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+            ->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()));
         $this->invoices = new InMemoryInvoices();
         $this->storage = new InMemoryFileStorage();
         $this->records = new InMemoryStoredFiles();
@@ -137,7 +137,7 @@ final class PrintInvoiceTest extends TestCase
         $atCustomer = new SettingContext($this->company, customerId: $customer->getId());
         $this->change->change($atCustomer, 'document.language', SettingLevel::Customer, 'en', null);
         $this->change->change(new SettingContext($this->company), 'document.printed_notes', SettingLevel::Company, 'Payable by transfer.', null);
-        $this->company->reviseProfile(new CompanyProfile(invoiceFooterText: 'Merci', latePenaltyText: 'Pénalité de retard : 1 % par mois'));
+        $this->company->reviseProfile(new CompanyProfile(invoiceFooterText: 'Merci', latePenaltyText: 'Pénalité de retard : 1 % par mois'), new \DateTimeImmutable());
 
         $this->print->pdf($this->company, $this->draft($customer)->getId());
 
@@ -254,7 +254,7 @@ final class PrintInvoiceTest extends TestCase
         self::assertCount(1, $this->renderer->rendered, 'a stored PDF is served, never rendered again');
 
         $this->expectException(InvoiceNotFound::class);
-        $this->print->pdf(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), $invoice->getId());
+        $this->print->pdf(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), $invoice->getId());
     }
 
     public function testWhenTheRendererFailedAtIssueTheFirstDownloadStoresThePdf(): void
@@ -279,7 +279,7 @@ final class PrintInvoiceTest extends TestCase
     public function testAPdfFirstRenderedAfterTheCompanyMovedPrintsTheSellerAsItWasIssued(): void
     {
         $invoice = $this->issued($this->customer('standard', null));
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme Holding', addressLine1: '99 avenue Nouvelle', city: 'Sousse'));
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme Holding', addressLine1: '99 avenue Nouvelle', city: 'Sousse'), new \DateTimeImmutable());
         $draft = $this->draft($this->customer('standard', null));
 
         $this->print->pdf($this->company, $invoice->getId());

@@ -35,7 +35,7 @@ final class ManageSessionsTest extends TestCase
         $this->transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->clock = new MockClock('2026-10-02 12:00:00');
-        $this->user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr');
+        $this->user = new User(Email::fromString('someone@example.test'), 'Someone', 'fr', new \DateTimeImmutable());
         $this->users = new InMemoryUsers();
         $this->users->save($this->user);
     }
@@ -105,7 +105,7 @@ final class ManageSessionsTest extends TestCase
 
         self::assertFalse($this->manage()->end($this->user, $id, 'session-a'), 'ending this one is signing out');
 
-        $other = new User(Email::fromString('other@example.test'), 'Other', 'fr');
+        $other = new User(Email::fromString('other@example.test'), 'Other', 'fr', new \DateTimeImmutable());
         self::assertFalse($this->manage()->end($other, $id, 'session-z'), 'another account\'s session is not found');
         self::assertSame(SessionStanding::Active, $this->manage()->seen($this->user->getId(), 'session-a', $this->sessions->ofSessionId('session-a'), 'Firefox', '203.0.113.7'));
     }

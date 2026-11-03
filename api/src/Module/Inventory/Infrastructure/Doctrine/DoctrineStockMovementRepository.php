@@ -698,7 +698,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             // What the stock list marks « périmé »: past its use-by day and not released, which a delivery note does not take.
             $expired = 'lt.expiresOn IS NOT NULL AND lt.expiresOn < :today AND lt.releasedAt IS NULL';
             $query->andWhere($search->expired ? $expired : "NOT ($expired)")
-                ->setParameter('today', new \DateTimeImmutable($search->today ?? 'today'), Types::DATE_IMMUTABLE);
+                ->setParameter('today', new \DateTimeImmutable($search->today), Types::DATE_IMMUTABLE);
         }
         Intervals::days($query, 'lt.expiresOn', 'useBy', $search->lotExpiresOn);
 

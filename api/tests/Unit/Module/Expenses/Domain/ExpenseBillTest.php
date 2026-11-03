@@ -42,7 +42,7 @@ final class ExpenseBillTest extends TestCase
     protected function setUp(): void
     {
         $this->now = new \DateTimeImmutable('2026-09-15 09:00:00');
-        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->acme = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->vat19 = TaxComponent::create($this->acme, 'TVA19', 'TVA 19 %', TaxFamily::Vat, '19', null, null, false, false, null, 0, 3, $this->now);
         $this->vat7 = TaxComponent::create($this->acme, 'TVA7', 'TVA 7 %', TaxFamily::Vat, '7', null, null, false, false, null, 1, 3, $this->now);
         $this->fodec = TaxComponent::create($this->acme, 'FODEC', 'FODEC', TaxFamily::Levy, '1', null, null, true, false, null, 2, 3, $this->now);
@@ -110,7 +110,7 @@ final class ExpenseBillTest extends TestCase
     public function testABillNamesAtLeastOneLineOfItsCompanysActiveRatesAndOnlyFixedChargesBesideThem(): void
     {
         $withholding = TaxComponent::create($this->acme, 'RS1', 'Retenue', TaxFamily::Withholding, '1', null, '1000', false, false, null, 4, 3, $this->now);
-        $theirs = TaxComponent::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'TVA19', 'TVA 19 %', TaxFamily::Vat, '19', null, null, false, false, null, 0, 3, $this->now);
+        $theirs = TaxComponent::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'TVA19', 'TVA 19 %', TaxFamily::Vat, '19', null, null, false, false, null, 0, 3, $this->now);
 
         $this->assertRefused('lines', static fn () => new ExpenseAmounts([]), 'no line');
         $this->assertRefused('amountNet', static fn () => new ExpenseAmountLine('0', [], 3), 'a net of zero, named by the line alone');

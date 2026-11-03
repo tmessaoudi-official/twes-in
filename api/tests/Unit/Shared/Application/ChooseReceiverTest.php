@@ -31,7 +31,7 @@ final class ChooseReceiverTest extends TestCase
     {
         $this->contacts = new InMemoryReceiverContacts();
         $this->choose = new ChooseReceiver($this->contacts);
-        $this->company = new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->customer = Uuid::v7();
     }
 

@@ -37,7 +37,7 @@ final class PermissionVoterTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->company = new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->memberships = new InMemoryMemberships();
         $this->currentCompany = new InMemoryCurrentCompany($this->company->getId());
         $this->access = new FixedCompanyAccess();
@@ -46,40 +46,40 @@ final class PermissionVoterTest extends TestCase
 
     public function testAMemberWhoseRoleListsThePermissionIsGranted(): void
     {
-        $user = $this->member(new Role(Role::MEMBER, ['invoice.read', 'invoice.write']));
+        $user = $this->member(new Role(Role::MEMBER, ['invoice.read', 'invoice.write'], null, new \DateTimeImmutable()));
 
         self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($user), null, ['invoice.write']));
     }
 
     public function testAMemberWhoseRoleDoesNotListThePermissionIsDenied(): void
     {
-        $user = $this->member(new Role(Role::MEMBER, ['invoice.read']));
+        $user = $this->member(new Role(Role::MEMBER, ['invoice.read'], null, new \DateTimeImmutable()));
 
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), null, ['invoice.issue']));
     }
 
     public function testTheWildcardGrantsEveryCompanyPermission(): void
     {
-        $user = $this->member(new Role(Role::OWNER, ['*']));
+        $user = $this->member(new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()));
 
         self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($user), null, ['company.delete']));
     }
 
     public function testACompanyThatIsNotActiveGrantsItsMembersNothing(): void
     {
-        $user = $this->member(new Role(Role::OWNER, ['*']));
+        $user = $this->member(new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()));
 
-        $this->company->suspend();
+        $this->company->suspend(new \DateTimeImmutable());
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), null, ['invoice.read']));
 
-        $pending = Company::pending('Waiting', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $this->memberships->save(new Membership($user, $pending, new Role(Role::OWNER, ['*'])));
+        $pending = Company::pending('Waiting', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($user, $pending, new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), $pending, ['invoice.read']));
     }
 
     public function testAClosedCompanyLetsItsMembersReadAndTakeItsBooksWhateverItsSubscription(): void
     {
-        $owner = $this->member(new Role(Role::OWNER, ['*']));
+        $owner = $this->member(new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()));
         $this->company->closeDown(new \DateTimeImmutable(), new \DateTimeImmutable('2036-12-31'));
         $this->access->access = Access::Locked;
 
@@ -91,7 +91,7 @@ final class PermissionVoterTest extends TestCase
 
     public function testAnUnpaidSubscriptionNarrowsWhatTheRoleGrantsJudgedOnThePermissionAskedFor(): void
     {
-        $owner = $this->member(new Role(Role::OWNER, ['*']));
+        $owner = $this->member(new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()));
 
         $this->access->access = Access::ReadOnly;
         self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($owner), null, ['invoice.read']));
@@ -104,14 +104,14 @@ final class PermissionVoterTest extends TestCase
 
     public function testAUserWithoutAMembershipInTheCurrentCompanyIsDenied(): void
     {
-        $user = new User(Email::fromString('x@example.test'), 'X', 'fr');
+        $user = new User(Email::fromString('x@example.test'), 'X', 'fr', new \DateTimeImmutable());
 
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), null, ['invoice.read']));
     }
 
     public function testWithoutACurrentCompanyEveryCompanyPermissionIsDenied(): void
     {
-        $user = $this->member(new Role(Role::OWNER, ['*']));
+        $user = $this->member(new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()));
         $this->currentCompany->set(null);
 
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), null, ['invoice.read']));
@@ -119,9 +119,9 @@ final class PermissionVoterTest extends TestCase
 
     public function testAnExplicitCompanySubjectOverridesTheSessionCompany(): void
     {
-        $user = new User(Email::fromString('m@example.test'), 'M', 'fr');
-        $other = new Company('Other', 'FR', 'EUR', 'fr', 'Europe/Paris');
-        $this->memberships->save(new Membership($user, $other, new Role(Role::MEMBER, ['invoice.read'])));
+        $user = new User(Email::fromString('m@example.test'), 'M', 'fr', new \DateTimeImmutable());
+        $other = new Company('Other', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($user, $other, new Role(Role::MEMBER, ['invoice.read'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
 
         self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($user), $other, ['invoice.read']));
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), null, ['invoice.read']));
@@ -129,11 +129,11 @@ final class PermissionVoterTest extends TestCase
 
     public function testPlatformPermissionsBelongToOperatorsOnlyRegardlessOfMemberships(): void
     {
-        $owner = $this->member(new Role(Role::OWNER, ['*']));
+        $owner = $this->member(new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()));
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($owner), null, ['platform.company.create']));
 
-        $operator = new User(Email::fromString('op@example.test'), 'Op', 'fr');
-        $operator->setPlatformOperator(true);
+        $operator = new User(Email::fromString('op@example.test'), 'Op', 'fr', new \DateTimeImmutable());
+        $operator->setPlatformOperator(true, new \DateTimeImmutable());
         self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($operator), null, ['platform.company.create']));
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($operator), null, ['invoice.read']), 'operator scope is outside memberships: no company permission comes with it');
     }
@@ -149,8 +149,8 @@ final class PermissionVoterTest extends TestCase
     {
         $proofs = new InMemoryCompanyProofs();
         $voter = new PermissionVoter($this->memberships, $this->currentCompany, $this->access, SupportDoubles::access($this->memberships), SupportDoubles::entry($this->memberships, $proofs));
-        $user = $this->member(new Role(Role::OWNER, ['*']));
-        $this->memberships->save(new Membership($user, new Company('Other', 'TN', 'TND', 'fr', 'Africa/Tunis'), new Role(Role::OWNER, ['*'])));
+        $user = $this->member(new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()));
+        $this->memberships->save(new Membership($user, new Company('Other', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), new Role(Role::OWNER, ['*'], null, new \DateTimeImmutable()), new \DateTimeImmutable()));
 
         self::assertSame(VoterInterface::ACCESS_DENIED, $voter->vote($this->token($user), null, ['invoice.read']));
 
@@ -160,8 +160,8 @@ final class PermissionVoterTest extends TestCase
 
     private function member(Role $role): User
     {
-        $user = new User(Email::fromString('m@example.test'), 'M', 'fr');
-        $this->memberships->save(new Membership($user, $this->company, $role));
+        $user = new User(Email::fromString('m@example.test'), 'M', 'fr', new \DateTimeImmutable());
+        $this->memberships->save(new Membership($user, $this->company, $role, new \DateTimeImmutable()));
 
         return $user;
     }

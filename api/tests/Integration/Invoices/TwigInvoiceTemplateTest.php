@@ -68,7 +68,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         $units = new InMemoryUnits();
         $taxes = new InMemoryTaxComponents();
         $establishments = new InMemoryEstablishments();
-        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new \Symfony\Component\Clock\MockClock($now))->handle($company);
         $customer = Customer::create($company, 'CLI-0007', new CustomerProfile(CustomerKind::Company, 'Garage Martin'), null, new CustomerTaxRegime('FR', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $units->ofCodeInCompany('C62', $company->getId());
@@ -267,7 +267,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         $units = new InMemoryUnits();
         $taxes = new InMemoryTaxComponents();
         $establishments = new InMemoryEstablishments();
-        $company = new Company('Quincaillerie Ben Salah', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Quincaillerie Ben Salah', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new \Symfony\Component\Clock\MockClock($now))->handle($company);
         $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Société Mansour'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $units->ofCodeInCompany('C62', $company->getId());
@@ -300,7 +300,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         $units = new InMemoryUnits();
         $taxes = new InMemoryTaxComponents();
         $establishments = new InMemoryEstablishments();
-        $company = new Company('Quincaillerie Ben Salah', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $company = new Company('Quincaillerie Ben Salah', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         new ProvisionCompany(ShippedFiscalPresets::presets(), $taxes, $units, $establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new \Symfony\Component\Clock\MockClock($now))->handle($company);
         $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Société Mansour'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $units->ofCodeInCompany('C62', $company->getId());
@@ -455,7 +455,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
     public function testTheSellerIsNamedWithItsLegalFormOnceOnEveryDocument(): void
     {
         self::bootKernel();
-        $this->invoice->getCompany()->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SAS', legalForm: 'SAS'));
+        $this->invoice->getCompany()->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SAS', legalForm: 'SAS'), new \DateTimeImmutable());
 
         self::assertStringContainsString('<div class="company-name">Atelier Durand SAS</div>', $this->html(new DocumentDesign(), [], []));
         foreach (['invoice', 'quote', 'delivery_note', 'statement'] as $document) {

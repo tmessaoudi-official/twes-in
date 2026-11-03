@@ -90,7 +90,7 @@ final class IssueIdentityTest extends ApiTestCase
 
     private function nameTheCompany(): void
     {
-        $this->company()->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', city: 'Tunis'));
+        $this->company()->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', city: 'Tunis'), new \DateTimeImmutable());
         $this->em()->flush();
     }
 

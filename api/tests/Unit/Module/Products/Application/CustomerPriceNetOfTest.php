@@ -52,7 +52,7 @@ final class CustomerPriceNetOfTest extends TestCase
     public function testTheNetPriceIsTheOneTheWholeSearchFinds(): void
     {
         $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, new InMemoryUnits(), new InMemoryEstablishments(), new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), new MockClock('2026-10-28 20:00:00', 'UTC'));
-        $companies = ['TN' => new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'FR' => new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris')];
+        $companies = ['TN' => new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), 'FR' => new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris', new \DateTimeImmutable())];
         foreach ($companies as $company) {
             $provision->handle($company);
         }

@@ -100,7 +100,7 @@ final readonly class ManageRoles implements DeclaresAuditActions
             $this->assertKnown($permissions);
             $this->assertHeld($permissions, $actorMay);
 
-            $role = new Role($name, $permissions, $company);
+            $role = new Role($name, $permissions, $company, $this->clock->now());
             $this->roles->save($role);
             $this->record($company, $role, self::CREATED, $actorUserId);
 

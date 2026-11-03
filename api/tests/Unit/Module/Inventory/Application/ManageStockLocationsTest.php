@@ -55,7 +55,7 @@ final class ManageStockLocationsTest extends TestCase
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->clock = new MockClock('2026-09-15 09:00:00');
         $this->manage = new ManageStockLocations($this->locations, $this->movements, $this->establishments, $this->audit, $this->clock, $transactions, new InMemoryRecordVersions());
-        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable());
         $this->main = Establishment::create($this->company, '000', 'Siège', true, $this->clock->now());
         $this->depot = Establishment::create($this->company, '001', 'Dépôt de Sfax', false, $this->clock->now());
         $this->establishments->save($this->main);
@@ -107,7 +107,7 @@ final class ManageStockLocationsTest extends TestCase
         }
         self::assertSame([], $this->manage->revise($this->company, $zone->getId(), null, StockLocationKind::Zone, 'Z1', 'Zone 1', null), 'a location keeps its own code');
 
-        $globex = Establishment::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), '000', 'Globex', true, $this->clock->now());
+        $globex = Establishment::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis', new \DateTimeImmutable()), '000', 'Globex', true, $this->clock->now());
         $this->establishments->save($globex);
         $theirs = $this->manage->defaultOf($globex);
         foreach ([
