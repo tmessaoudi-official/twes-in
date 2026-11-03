@@ -213,6 +213,11 @@ async function chooseExisting(page: Page): Promise<void> {
   await page.getByRole('option', { name: 'Un emplacement existant' }).click();
 }
 
+/** The browser's own full screen, which the map asks for on F, is given back only once its exit settles. */
+async function browserFullScreenLeft(page: Page): Promise<void> {
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
+}
+
 test.describe('the drawn stock map', () => {
   test('adds a floor, draws a rack on it in metres, moves it and erases it', async ({ page }) => {
     const stamp = Date.now().toString().slice(-8);
@@ -962,7 +967,9 @@ test.describe('the drawn stock map', () => {
       await expect(page.getByTestId('stock-map-full')).toBeFocused();
       await expect(page.getByTestId('stock-map-selection')).toContainText(code);
 
-      // Between a phone and a wide screen too; the browser refuses a resize while it holds its own full screen.
+      // Between a phone and a wide screen too; the browser refuses a resize while it holds its own full screen, which
+      // it gives back only once exitFullscreen() settles, after the page has already dropped its class.
+      await browserFullScreenLeft(page);
       await page.setViewportSize({ width: 900, height: 800 });
       await page.getByTestId('stock-map-board').focus();
       await page.keyboard.press('f');
@@ -970,6 +977,7 @@ test.describe('the drawn stock map', () => {
       expect(await barMisfits(page)).toEqual([]);
       await page.keyboard.press('Escape');
       await expect(layer).not.toHaveClass(/twes-map-full/);
+      await browserFullScreenLeft(page);
       await page.setViewportSize(viewport);
     } finally {
       if (!page.isClosed()) await clean(page, fixture, floorName);
