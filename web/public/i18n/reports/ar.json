@@ -136,7 +136,7 @@
       "last_active": "آخر إجراء",
       "last_sold": "آخر بيع",
       "late": "أيام التأخير: من {{from}} إلى {{to}}",
-      "late_last": "أيام التأخير: أكثر من {{after}}",
+      "late_last": "أيام التأخير: أكثر من {after, plural, zero {{{after}}} one {{{after}}} two {{{after}}} few {{{after}}} many {{{after}}} other {{{after}}}}",
       "lost": "الخسائر",
       "margin": "الهامش",
       "member": "العضو",

@@ -672,8 +672,8 @@
       "stock_count_difference": "وجد عدّ {{product}} ({{reference}}) في {{location}} فارقًا قدره {{difference}}.",
       "stock_low": "انخفض {{product}} ({{reference}}) إلى {{on_hand}} في {{establishment}}، أي عند عتبة إعادة التزوّد البالغة {{point}} أو دونها.",
       "invoice_credit_limit_passed": "تجاوز {{customer}} حدّ ائتمانه: {{owed}} {{currency}} مستحقة مقابل حدّ قدره {{limit}} بعد الفاتورة {{number}}.",
-      "invoice_late_fee_drafted": "تذكير {{stage}} يجب إرساله: الفاتورة {{number}} الخاصة بـ{{customer}}، بمبلغ {{amount_due}} {{currency}}، متأخرة؛ عدد أيام التأخير: {{days_late}}. أُعدّت مصاريف تأخير بقيمة {{late_fee}} {{currency}} كمسودة.",
-      "invoice_reminder_due": "تذكير {{stage}} يجب إرساله: الفاتورة {{number}} الخاصة بـ{{customer}}، بمبلغ {{amount_due}} {{currency}}، متأخرة؛ عدد أيام التأخير: {{days_late}}.",
+      "invoice_late_fee_drafted": "تذكير {{stage}} يجب إرساله: الفاتورة {{number}} الخاصة بـ{{customer}}، بمبلغ {{amount_due}} {{currency}}، {days_late, plural, zero {دون تأخير} one {متأخرة بيوم واحد} two {متأخرة بيومين} few {متأخرة بـ{{days_late}} أيام} many {متأخرة بـ{{days_late}} يومًا} other {متأخرة بـ{{days_late}} يوم}}. أُعدّت مصاريف تأخير بقيمة {{late_fee}} {{currency}} كمسودة.",
+      "invoice_reminder_due": "تذكير {{stage}} يجب إرساله: الفاتورة {{number}} الخاصة بـ{{customer}}، بمبلغ {{amount_due}} {{currency}}، {days_late, plural, zero {دون تأخير} one {متأخرة بيوم واحد} two {متأخرة بيومين} few {متأخرة بـ{{days_late}} أيام} many {متأخرة بـ{{days_late}} يومًا} other {متأخرة بـ{{days_late}} يوم}}.",
       "invoice_recurring_drafted": "فاتورة دورية لـ{{customer}}: مسودة منسوخة من الفاتورة {{number}} في انتظار إصدارها.",
       "invoice_recurring_stopped": "أُوقفت مؤقتًا الفاتورة الدورية لـ{{customer}}: لم يعد بالإمكان نسخ الفاتورة {{number}} التي تنسخها.",
       "expense_recurring_drafted": "مصروف دوري « {{description}} »: مسودة في انتظار التحقق منها وحفظها.",
@@ -1309,7 +1309,7 @@
     },
     "sheet": {
       "label": "معاينة {{number}}",
-      "terms": "{{days}} يومًا",
+      "terms": "{days, plural, zero {0 يوم} one {يوم واحد} two {يومان} few {{{days}} أيام} many {{{days}} يومًا} other {{{days}} يوم}}",
       "open": "فتح",
       "close": "إغلاق المعاينة",
       "unreadable": "تتعذّر قراءة هذه الوثيقة."

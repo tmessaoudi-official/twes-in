@@ -136,7 +136,7 @@
       "last_active": "Dernière action",
       "last_sold": "Dernière vente",
       "late": "{{from}} à {{to}} jours de retard",
-      "late_last": "Plus de {{after}} jours de retard",
+      "late_last": "Plus de {{after}} {after, plural, one {jour} other {jours}} de retard",
       "lost": "Pertes",
       "margin": "Marge",
       "member": "Membre",

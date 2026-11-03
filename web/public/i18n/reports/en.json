@@ -136,7 +136,7 @@
       "last_active": "Last action",
       "last_sold": "Last sale",
       "late": "{{from}} to {{to}} days late",
-      "late_last": "Over {{after}} days late",
+      "late_last": "Over {{after}} {after, plural, one {day} other {days}} late",
       "lost": "Losses",
       "margin": "Margin",
       "member": "Member",

@@ -547,3 +547,91 @@ describe('translation files', () => {
     expect(JSON.stringify(load('en'))).not.toMatch(/VAT to declare|VAT return/i);
   });
 });
+
+/** The counts of time the screens say today, in French and in English: a file's worth lost reds. */
+const COUNTED_TIME_FLOOR = 56;
+
+/**
+ * A count of time takes its noun's form on every screen, as it does in the mails and printed documents
+ * (ApiCountedTextsTest): « 1 jour de retard », never « 1 jours ». A parameter followed by a time noun is chosen over;
+ * only a range (« de {{from}} à {{to}} jours ») stays plural, as its upper bound always passes one. A unit symbol
+ * (« s », « j », « d », « ms ») and the French « mois » do not change with their count.
+ */
+describe('counted time', () => {
+  const nouns: Record<string, string> = {
+    fr: 'jours?|heures?|minutes?|secondes?|semaines?|années?|ans?',
+    en: 'days?|hours?|minutes?|seconds?|weeks?|months?|years?',
+  };
+  const gap = '[ \\u00a0\\u202f]+';
+  const counted = (lang: string): RegExp =>
+    new RegExp(
+      `(\\{\\{\\s?\\w+\\s?\\}\\}${gap}(?:à|to|–)${gap})?\\{\\{\\s?(\\w+)\\s?\\}\\}(?:${gap}\\p{L}+)?${gap}(?:${nouns[lang] ?? ''})(?!\\p{L})`,
+      'gu',
+    );
+  const chosenTime = (lang: string): RegExp =>
+    new RegExp(`\\{\\w+,\\s*plural,[^]*?(?:${nouns[lang] ?? ''})(?!\\p{L})`, 'u');
+
+  it('chooses the noun of every count of time it says, in French and in English', () => {
+    for (const lang of ['fr', 'en']) {
+      const bare = entriesOf(load(lang)).filter(([, text]) =>
+        [...text.matchAll(counted(lang))].some(
+          ([, range, name]) => range === undefined && !choicesOf(text).includes(name ?? ''),
+        ),
+      );
+      expect(
+        bare.map(([key]) => key),
+        lang,
+      ).toEqual([]);
+    }
+  });
+
+  it('reads the counts of time it holds to that, so losing a file of them reds', () => {
+    const read = ['fr', 'en'].flatMap((lang) =>
+      entriesOf(load(lang)).filter(
+        ([, text]) => counted(lang).test(text) || chosenTime(lang).test(text),
+      ),
+    );
+    expect(read.length).toBeGreaterThanOrEqual(COUNTED_TIME_FLOOR);
+  });
+
+  it.each([
+    [
+      'notifications.types.invoice_reminder_due',
+      'days_late',
+      ['a 0 jour de retard', 'a 1 jour de retard', 'a 2 jours de retard'],
+      ['is 0 days late', 'is 1 day late', 'is 2 days late'],
+    ],
+    [
+      'notifications.types.invoice_late_fee_drafted',
+      'days_late',
+      ['a 0 jour de retard', 'a 1 jour de retard', 'a 2 jours de retard'],
+      ['is 0 days late', 'is 1 day late', 'is 2 days late'],
+    ],
+    [
+      'invoices.sheet.terms',
+      'days',
+      ['0 jour', '1 jour', '2 jours'],
+      ['0 days', '1 day', '2 days'],
+    ],
+    [
+      'reports.columns.late_last',
+      'after',
+      ['Plus de 0 jour de retard', 'Plus de 1 jour de retard', 'Plus de 2 jours de retard'],
+      ['Over 0 days late', 'Over 1 day late', 'Over 2 days late'],
+    ],
+  ])('says %s in its form at 0, 1 and 2', (key, count, french, english) => {
+    const compiler = new PluralCompiler();
+    for (const [lang, expected] of [
+      ['fr', french],
+      ['en', english],
+    ] as const) {
+      const text = new Map(entriesOf(load(lang))).get(key) ?? '';
+      const said = compiler.compile(text, lang);
+      expect(typeof said, `${lang} ${key}`).toBe('function');
+      [0, 1, 2].forEach((value, index) => {
+        const sentence = (said as (params: object) => string)({ [count]: value });
+        expect(sentence, `${lang} ${key} ${value}`).toContain(expected[index]);
+      });
+    }
+  });
+});
