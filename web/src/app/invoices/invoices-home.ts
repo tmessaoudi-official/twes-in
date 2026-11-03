@@ -17,6 +17,7 @@ import { formatMonth } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { withSessionKinds } from '../shared/session/session-kinds';
 import { KpiTile } from '../shared/ui/kpi-tile';
 import { versus } from '../shared/ui/versus';
 import { agingBars, chaseDue, collectedBars, initials } from './invoice-summary-view';
@@ -106,9 +107,10 @@ export class InvoicesHome {
       }
     });
     // A payment, a credit note or an invoice issued by a colleague moves what is to collect and to chase at once
-    // (payments are recorded as `invoice`), and a customer renamed changes a line to chase.
+    // (payments are recorded as `invoice`), and a customer renamed changes a line to chase. The margin is the API's
+    // only for a reader of costs, so a role or membership changed reads it again too.
     inject(LiveChanges).reloadOn(
-      ['invoice', 'customer'],
+      withSessionKinds(['invoice', 'customer']),
       async () => {
         const companyId = this.companyId();
         if (companyId !== null) await this.facade.loadSummary(companyId);

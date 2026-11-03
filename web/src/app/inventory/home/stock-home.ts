@@ -15,6 +15,7 @@ import { AuthFacade } from '../../auth/auth-facade';
 import { HOME_TEXTS } from '../../shared/i18n/home-texts';
 import { TextsParts } from '../../shared/i18n/texts-part';
 import { LiveChanges } from '../../shared/realtime/live-changes';
+import { withSessionKinds } from '../../shared/session/session-kinds';
 import { KpiTile } from '../../shared/ui/kpi-tile';
 import { InventoryApi } from '../inventory-api';
 import type { StockSearch } from '../inventory-types';
@@ -55,7 +56,7 @@ const COUNT_ONLY: StockSearch = {
         <p role="alert" class="text-error" data-testid="home-stock-error">
           {{ 'home.stock.error' | translate }}
         </p>
-      } @else if (figures(); as f) {
+      } @else if (shown(); as f) {
         <app-kpi-tile
           data-testid="home-stock"
           [icon]="'warehouse'"
@@ -127,14 +128,21 @@ export class StockHome implements OnInit {
       : (new Intl.NumberFormat(undefined, { style: 'currency', currency }).resolvedOptions()
           .maximumFractionDigits ?? null);
   });
+  /** What the stock is worth shows only while the session still holds the right to read costs, not until the next read. */
+  protected readonly shown = computed(() => {
+    const figures = this.figures();
+    if (figures === null || this.auth.hasPermission('product.cost.read')) return figures;
+    return { ...figures, value: null };
+  });
   private requests = 0;
 
   async ngOnInit(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
     if (!companyId) return;
-    // A receipt, a sale, a count or a cost changed by a teammate moves the stock and what it is worth.
+    // A receipt, a sale, a count or a cost changed by a teammate moves the stock and what it is worth; a role or a
+    // membership changed grants or takes away the right to read what it is worth.
     this.live.reloadOn(
-      ['stock', 'delivery_note', 'invoice', 'product'],
+      withSessionKinds(['stock', 'delivery_note', 'invoice', 'product']),
       () => this.load(companyId),
       this.destroyRef,
     );

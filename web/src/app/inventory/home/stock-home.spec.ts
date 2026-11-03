@@ -34,14 +34,14 @@ const TEXTS = {
 };
 
 describe('StockHome', () => {
-  let costs = false;
+  const costs = signal(false);
   const reloadOn = vi.fn();
   const open = vi.fn();
   const levels = vi.fn();
   const valuation = vi.fn();
 
   beforeEach(() => {
-    costs = false;
+    costs.set(false);
     reloadOn.mockReset();
     open.mockReset().mockResolvedValue(undefined);
     levels
@@ -63,7 +63,7 @@ describe('StockHome', () => {
               user: { id: 'u1' },
               company: { id: 'c1', currency: 'TND', countryCode: 'TN' },
             }).asReadonly(),
-            hasPermission: (permission: string) => costs && permission === 'product.cost.read',
+            hasPermission: (permission: string) => costs() && permission === 'product.cost.read',
           },
         },
         { provide: Session, useExisting: AuthFacade },
@@ -91,10 +91,38 @@ describe('StockHome', () => {
     };
   }
 
-  it('opens the home’s texts and reads the stock again when a teammate moves it', async () => {
+  it('opens the home’s texts and reads the stock again when a teammate moves it or the session changes', async () => {
     await render();
     expect(open).toHaveBeenCalledWith('home');
-    expect(reloadOn.mock.calls[0]?.[0]).toEqual(['stock', 'delivery_note', 'invoice', 'product']);
+    const kinds = reloadOn.mock.calls[0]?.[0] as string[];
+    for (const kind of [
+      'stock',
+      'delivery_note',
+      'invoice',
+      'product',
+      'role',
+      'membership',
+      'module',
+    ]) {
+      expect(kinds).toContain(kind);
+    }
+  });
+
+  it('takes the stock’s worth away the moment the right to read costs is, before any reload', async () => {
+    costs.set(true);
+    const { fixture, find } = await render();
+    expect(find('home-stock')?.querySelector('[data-part="figure"]')).not.toBeNull();
+
+    costs.set(false);
+    fixture.detectChanges();
+
+    expect(find('home-stock')?.querySelector('[data-part="figure"]')).toBeNull();
+    expect(find('home-stock')?.querySelector('[data-part="label"]')?.textContent?.trim()).toBe(
+      'Stock',
+    );
+    expect(find('home-stock')?.querySelector('[data-part="see"]')?.getAttribute('href')).toBe(
+      '/stock',
+    );
   });
 
   it('never asks what the stock is worth without the right to read costs, and shows what is wrong in it', async () => {
@@ -112,7 +140,7 @@ describe('StockHome', () => {
   });
 
   it('shows what the stock is worth to a reader of costs, said to be partly estimated, and leads to the valuation', async () => {
-    costs = true;
+    costs.set(true);
     const { find } = await render();
 
     expect(valuation).toHaveBeenCalledWith('c1');

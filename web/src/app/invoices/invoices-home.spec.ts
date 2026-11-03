@@ -192,8 +192,8 @@ describe('InvoicesHome', () => {
     expect(facade.loadSummary).toHaveBeenLastCalledWith('c2');
   });
 
-  it.each(['invoice', 'customer'])(
-    'reads the summary again when %s changes elsewhere, as a payment a colleague records',
+  it.each(['invoice', 'customer', 'role', 'membership', 'module'])(
+    'reads the summary again when %s changes elsewhere, as a payment a colleague records or a role that loses the costs and with them the margin',
     async (kind) => {
       // The owner chased a customer a colleague had just recorded paid (hunt C1).
       facade.loadSummary.mockClear().mockResolvedValue(undefined);
