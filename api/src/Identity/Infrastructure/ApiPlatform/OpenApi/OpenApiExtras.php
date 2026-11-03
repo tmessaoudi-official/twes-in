@@ -20,18 +20,26 @@ use ApiPlatform\OpenApi\OpenApi;
 use App\Identity\Application\Login\PasskeySignInRefused;
 use App\Identity\Infrastructure\ApiPlatform\Resource\Me;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * POST /api/auth/login and POST /api/auth/logout are firewall endpoints (json_login, logout) and GET /api/health
  * is a plain controller, so API Platform does not know them. This adds them to the OpenAPI document, which is
  * where the TypeScript client's types come from: LoginRequest, the error shape, the health shape, and the
- * fact that a login answers a Me.
+ * fact that a login answers a Me. A duration it states is the operator's parameter, said as the operator set it.
  */
 #[AsDecorator('api_platform.openapi.factory')]
 final readonly class OpenApiExtras implements OpenApiFactoryInterface
 {
-    public function __construct(private OpenApiFactoryInterface $decorated)
-    {
+    public function __construct(
+        private OpenApiFactoryInterface $decorated,
+        #[Autowire(param: 'app.company_proof.idle')]
+        private string $companyProofIdle,
+        #[Autowire(param: 'app.company_proof.lifetime')]
+        private string $companyProofLifetime,
+        #[Autowire(param: 'app.mfa.pending_ttl')]
+        private string $pendingTtl,
+    ) {
     }
 
     public function __invoke(array $context = []): OpenApi
@@ -343,7 +351,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             operationId: 'passkeyRegistrationOptions',
             tags: ['Auth'],
             responses: [
-                '200' => $jsonOf('PublicKeyCredentialOptionsJson', 'Creation options, answerable once within five minutes'),
+                '200' => $jsonOf('PublicKeyCredentialOptionsJson', \sprintf('Creation options, answerable once within %s (app.mfa.pending_ttl)', $this->pendingTtl)),
                 '401' => $errorResponse('Not signed in'),
             ],
             summary: 'Start registering a passkey',
@@ -489,7 +497,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             operationId: 'proveCompanyEntry',
             tags: ['Auth'],
             responses: [
-                '204' => new Response('The company is proved for this sign-in, until sign-out, 30 minutes left alone (app.company_proof.idle) or 12 hours (app.company_proof.lifetime)'),
+                '204' => new Response(\sprintf('The company is proved for this sign-in, until sign-out, %s left alone (app.company_proof.idle) or %s in all (app.company_proof.lifetime)', $this->companyProofIdle, $this->companyProofLifetime)),
                 '401' => $errorResponse('Not signed in, or `step_up_exhausted`: that wrong answer was the last this sign-in may give (app.step_up.attempts), which is now signed out'),
                 '404' => $errorResponse('Not a company of the account'),
                 '422' => $errorResponse('`invalid_credentials`: the password is not the account\'s; `invalid_code`: the company asks the authenticator code and it is missing or wrong; `passkey_required`: the company requires a second factor and the account\'s is a passkey, which alone enters it'),

@@ -9,14 +9,17 @@
 parameters:
     # Empty: production logs go to STDERR (docs/SPEC.md § 7, 2026-09-17).
     env(LOG_DIRECTORY): ''
-    # Session limits in seconds: 30 minutes idle, 12 hours absolute (docs/SPEC.md § 3 Auth).
+    # Session limits in seconds: 30 minutes idle, 12 hours absolute (docs/SPEC.md § 3 Auth). Checked when the container is
+    # built (SessionBounds): 300 to 1,800 idle and 3,600 to 43,200 in all; the ceilings are the ruled values, which an
+    # operator may only shorten.
     app.session.idle_ttl: 1800
     app.session.absolute_ttl: 43200
     # How closely a session's record knows its last use: it is written again at most this often, so a request costs one
     # read and a write only now and then. « Où vous êtes connecté » and the demo's sweep read the use this closely.
     # Checked when the container is built (SessionBounds): PT1M to PT15M.
     app.session.touch_every: 'PT5M'
-    # Account lockout: after this many consecutive failures the account is locked for this long.
+    # Account lockout: after this many consecutive failures the account is locked for this long. The duration is checked
+    # when the container is built (LockoutBounds): PT5M to PT24H.
     app.auth.lock_after_failures: 5
     app.auth.lock_duration: 'PT15M'
     # The rate limiters' budgets, how many over how long (config/packages/rate_limiter.yaml says what each guards), and
@@ -68,7 +71,8 @@ parameters:
     # origin the SPA is served from, because the link is opened from a mail client with no session. The duration is
     # checked when the container is built (InvitationBounds): P1D to P30D.
     app.invitation.valid_for: 'P7D'
-    # How long the members list keeps an invitation whose link ran out unused, marked expired, to be sent again.
+    # How long the members list keeps an invitation whose link ran out unused, marked expired, to be sent again. Checked
+    # when the container is built (InvitationBounds): P1D to P90D.
     app.invitation.expired_shown_for: 'P30D'
     app.invitation.accept_url: '%env(DEFAULT_URI)%/invitations/{token}'
     app.signup.link_url: '%env(DEFAULT_URI)%/signup/{token}'
@@ -89,7 +93,8 @@ parameters:
     # its undo, the restore of what the undo took, a printed selection. The rows a file may hold are the platform's setting
     # (ImportSettings), whose ceiling is the largest file one request bears: 5,000 product rows took 35 s on a developer's
     # machine, release kernel, and 100 drafts printed 37 s; a shop's small computer may take several times that. PHP's own
-    # limit is lifted to it on those routes alone, never shortened, and infra/web/nginx.conf waits as long for the answer.
+    # limit is lifted to it on those routes alone, never shortened, and infra/web/nginx.conf waits as long for the answer
+    # (LongRequestRoutesTest). Checked when the container is built (LongRequestBounds): 60 to 900.
     app.long_request.max_seconds: 240
     # The hours a key sent with a write that adds is kept, with what the write answered, for a retry to be answered again
     # rather than made again (SubmissionGuard): a lost answer is retried within minutes; the hourly purge forgets the rest.
@@ -116,6 +121,7 @@ parameters:
     app.watch.product_check_left_out: ['barcode_missing', 'category_missing']
     # The hours a draft delivery note with lines waits, unsaved, before « À surveiller » tells whoever may validate it
     # (DeliveryNoteWatch): long enough for a clerk to finish writing it, short enough for the customer still waiting.
+    # Checked when the container is built (DraftWatchBounds): 1 to 72.
     app.watch.drafts_to_validate_after_hours: 2
     # Text overrides (docs/plans/text-overrides.plan.md). The screens' texts as shipped: the image's copy of the web's
     # public/i18n, mounted over it in live mode, read from the tree itself in tests.
@@ -147,8 +153,10 @@ parameters:
     # The nightly run that removes the closed companies whose retention has ended (RemoveClosedCompanies).
     app.company.removal_at: '03:30'
     # How many days before that night a closed company's owners are told it goes (TellClosedCompaniesNearRemoval).
+    # Checked when the container is built (RemovalNoticeBounds): 7 to 90.
     app.company.removal_notice_days: 30
-    # How many days before the time a company paid for ends its owners are told (TellLapsingSubscriptions).
+    # How many days before the time a company paid for ends its owners are told (TellLapsingSubscriptions). Checked when
+    # the container is built (LapseNoticeBounds): 1 to 30.
     app.subscription.lapse_notice_days: 7
     # Mail the API sends itself.
     app.mail.sender: '%env(MAILER_SENDER)%'
@@ -162,7 +170,8 @@ parameters:
     # Encrypts TOTP secrets at rest (ruling of 2026-09-10). Not APP_SECRET: that one rotates for unrelated
     # reasons, and rotating this one means every enrolled authenticator has to be enrolled again.
     app.mfa.key: '%env(APP_MFA_KEY)%'
-    # How long the half-authenticated state between password and second factor survives.
+    # How long the half-authenticated state between password and second factor survives, and a passkey's options wait
+    # for their answer. Checked when the container is built (PendingSecondFactorBounds): PT1M to PT15M.
     app.mfa.pending_ttl: 'PT5M'
     # How long a confirmed step-up opens what the API checks it for (the step-up list, docs/SPEC.md § 7), within the
     # same sign-in, and how many wrong answers a sign-in may give before it ends. A deployment's to set, within bounds
@@ -184,7 +193,9 @@ parameters:
     # (a branch code, a client's reference). A pattern PHP cannot compile refuses the container (ErrorReportingMasksBounds).
     app.error_reporting.extra_masks: []
     # How long a company an account with several companies has proved itself for stays open to this sign-in: as long as it
-    # is used within the idle time, and no longer than the lifetime in all; signing out forgets it at once.
+    # is used within the idle time, and no longer than the lifetime in all; signing out forgets it at once. Checked when the
+    # container is built (CompanyProofBounds): PT5M to PT30M idle and PT1H to PT12H in all; the ceilings are the ruled
+    # values, which an operator may only shorten.
     app.company_proof.idle: 'PT30M'
     app.company_proof.lifetime: 'PT12H'
     # How long « Effacer des données » keeps what it took, for its undo; then the copy and the files only it named go.
@@ -195,12 +206,15 @@ parameters:
     app.records.undoable_for: 'PT24H'
     # How many hours at most an operator lets a company's series take a day before their last number's, after its
     # computer's clock ran ahead (app:numbering:allow-earlier-days): long enough to issue the day's documents again.
+    # Checked when the container is built (EarlierNumberingDaysBounds): 1 to 72, which an operator may only shorten.
     app.numbering.earlier_days_hours_max: 72
     # How long a demo sandbox may stay half built before it is taken away, its company and owner with it, so its country
-    # is queued again: a build takes under a minute, and a stuck one would keep that country's demo closed.
+    # is queued again: a build takes under a minute, and a stuck one would keep that country's demo closed. Checked when
+    # the container is built (DemoBounds): PT10M to PT6H.
     app.demo.build_gives_up_after: 'PT1H'
     # How long a demo's visitor may step away and stay signed in, in seconds (a real account's is app.session.idle_ttl);
-    # once that session ends, at sign-out or here, the worker takes its sandbox away.
+    # once that session ends, at sign-out or here, the worker takes its sandbox away. Checked when the container is built
+    # (DemoBounds): from 1,800 to app.session.absolute_ttl, which ends a demo's session as it ends anyone's.
     app.demo.idle_ttl: 7200
     # The issuer an authenticator app shows beside the account.
     app.mfa.issuer: '%app.product_name%'
@@ -211,7 +225,8 @@ parameters:
     # Realtime notifications through Centrifugo (docs/SPEC.md § 7, 2026-09-13). The token key signs the browser's
     # connection token and is the same secret Centrifugo holds as client.token.hmac_secret_key; the API key
     # authorises publishing through its HTTP API. The token is short-lived: the browser asks for a new one, which a
-    # session ended no longer gets, so a connection that escaped its close hears at most this many seconds more.
+    # session ended no longer gets, so a connection that escaped its close hears at most this many seconds more. The
+    # lifetime is checked when the container is built (RealtimeTokenBounds): 60 to 300.
     app.realtime.token_key: '%env(REALTIME_TOKEN_KEY)%'
     app.realtime.token_lifetime: 120
     app.realtime.api_url: '%env(REALTIME_API_URL)%'
@@ -228,7 +243,8 @@ parameters:
     # Files live on a local volume through Flysystem, or in an S3-compatible bucket when FILES_STORAGE=s3 (docs/SPEC.md § 2 Files).
     app.files.directory: '%env(resolve:FILES_DIRECTORY)%'
     # What /api/health/deep fails on (docs/START.md § 15): a message due for the worker and waiting longer than this, and
-    # less than this share of the disk under the stored files left free.
+    # less than this share of the disk under the stored files left free. The wait is checked when the container is built
+    # (HealthBounds): 60 to 3,600.
     app.health.oldest_waiting_seconds: 600
     app.health.disk_free_minimum: 0.2
     # Where the api's start keeps a start step that failed (infra/api/docker-entrypoint.sh, TWES_START_STEPS_DIR), which

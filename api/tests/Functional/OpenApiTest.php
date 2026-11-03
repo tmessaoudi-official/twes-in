@@ -83,6 +83,27 @@ final class OpenApiTest extends KernelTestCase
         self::assertContains(['type' => 'null'], $company['anyOf'], 'company is required but may be null');
     }
 
+    /** A duration the operator sets is said in the contract as the operator set it, never as the value shipped. */
+    public function testTheDurationsTheContractStatesAreTheOperators(): void
+    {
+        self::bootKernel();
+        $container = static::getContainer();
+        $paths = $container->get(OpenApiFactoryInterface::class)()->getPaths();
+
+        $proved = $paths->getPath('/api/companies/{companyId}/proof')?->getPost()?->getResponses()['204'] ?? null;
+        self::assertInstanceOf(Response::class, $proved);
+        $said = $proved->getDescription();
+        self::assertNotNull($said);
+        self::assertStringContainsString($container->getParameter('app.company_proof.idle').' left alone (app.company_proof.idle)', $said);
+        self::assertStringContainsString($container->getParameter('app.company_proof.lifetime').' in all (app.company_proof.lifetime)', $said);
+
+        $options = $paths->getPath('/api/auth/mfa/passkeys/options')?->getPost()?->getResponses()['200'] ?? null;
+        self::assertInstanceOf(Response::class, $options);
+        $said = $options->getDescription();
+        self::assertNotNull($said);
+        self::assertStringContainsString('within '.$container->getParameter('app.mfa.pending_ttl').' (app.mfa.pending_ttl)', $said);
+    }
+
     /**
      * A field the web reads with a default of its own (`?? true`) would turn quietly wrong if a stale metadata pool left
      * it out of the document the types are generated from: each read shape of these resources names it.

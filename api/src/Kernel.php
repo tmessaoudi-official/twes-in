@@ -9,19 +9,30 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Demo\Infrastructure\Http\DemoBounds;
 use App\Erasure\Infrastructure\Http\ErasureUndoBounds;
+use App\Identity\Infrastructure\Mfa\PendingSecondFactorBounds;
 use App\Identity\Infrastructure\Mfa\RecoveryCodeBounds;
 use App\Identity\Infrastructure\Password\PasswordResetBounds;
+use App\Identity\Infrastructure\Security\LockoutBounds;
 use App\Identity\Infrastructure\Session\SessionBounds;
 use App\Identity\Infrastructure\StepUp\StepUpBounds;
+use App\Licensing\Infrastructure\Scheduler\LapseNoticeBounds;
+use App\Module\DeliveryNotes\Infrastructure\Watch\DraftWatchBounds;
 use App\Records\Infrastructure\Http\RecordUndoBounds;
 use App\Records\Infrastructure\Http\RestoreStepUpBounds;
 use App\Shared\Infrastructure\DevelopmentKeys;
 use App\Shared\Infrastructure\ErrorReporting\ClientErrorBounds;
 use App\Shared\Infrastructure\ErrorReporting\ErrorReportingMasksBounds;
+use App\Shared\Infrastructure\Health\HealthBounds;
+use App\Shared\Infrastructure\Http\LongRequestBounds;
+use App\Shared\Infrastructure\Realtime\RealtimeTokenBounds;
 use App\Shared\Infrastructure\Submissions\SubmissionRetryBounds;
+use App\Tenancy\Infrastructure\Console\EarlierNumberingDaysBounds;
 use App\Tenancy\Infrastructure\Http\SupportVisitBounds;
 use App\Tenancy\Infrastructure\Invitation\InvitationBounds;
+use App\Tenancy\Infrastructure\Scheduler\RemovalNoticeBounds;
+use App\Tenancy\Infrastructure\Session\CompanyProofBounds;
 use App\Tenancy\Infrastructure\Signup\SignupBounds;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -59,6 +70,17 @@ class Kernel extends BaseKernel
         $container->addCompilerPass(new SignupBounds());
         $container->addCompilerPass(new RecordUndoBounds());
         $container->addCompilerPass(new ErasureUndoBounds());
+        $container->addCompilerPass(new LockoutBounds());
+        $container->addCompilerPass(new PendingSecondFactorBounds());
+        $container->addCompilerPass(new CompanyProofBounds());
+        $container->addCompilerPass(new RealtimeTokenBounds());
+        $container->addCompilerPass(new DemoBounds());
+        $container->addCompilerPass(new LongRequestBounds());
+        $container->addCompilerPass(new HealthBounds());
+        $container->addCompilerPass(new DraftWatchBounds());
+        $container->addCompilerPass(new RemovalNoticeBounds());
+        $container->addCompilerPass(new LapseNoticeBounds());
+        $container->addCompilerPass(new EarlierNumberingDaysBounds());
     }
 
     /**
