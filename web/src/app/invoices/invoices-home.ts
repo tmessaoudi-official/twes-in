@@ -17,6 +17,7 @@ import { formatMonth } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { KpiTile } from '../shared/ui/kpi-tile';
 import { versus } from '../shared/ui/versus';
 import { agingBars, chaseDue, collectedBars, initials } from './invoice-summary-view';
 import { InvoicesFacade } from './invoices-facade';
@@ -39,7 +40,7 @@ const AGING_COLOURS: Readonly<Record<AgingBucket, string>> = {
  */
 @Component({
   selector: 'app-invoices-home',
-  imports: [MatCardModule, RouterLink, TranslatePipe, AmountPipe],
+  imports: [MatCardModule, RouterLink, TranslatePipe, AmountPipe, KpiTile],
   templateUrl: './invoices-home.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -73,17 +74,6 @@ export class InvoicesHome {
   protected readonly withheldVersus = computed(() => {
     const s = this.summary();
     return s === null ? null : versus(s.withheldMonth, s.withheldLastMonth);
-  });
-  protected readonly topRow = computed(() => {
-    const s = this.summary();
-    const cards = 1 + (s?.costsVisible ? 1 : 0) + (this.withholds() ? 1 : 0);
-    // Three cards make a row of three from the large breakpoint; between small and large the third takes the whole row
-    // rather than sitting alone at half width.
-    return cards === 3
-      ? 'sm:grid-cols-2 lg:grid-cols-3 sm:[&>:last-child]:col-span-2 lg:[&>:last-child]:col-span-1'
-      : cards === 2
-        ? 'sm:grid-cols-2'
-        : '';
   });
   protected readonly marginVersus = computed(() => {
     const s = this.summary();

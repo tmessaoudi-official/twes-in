@@ -1,1 +1,15 @@
-{}
+{
+  "home": {
+    "stock": {
+      "title": "Stock",
+      "value": "Valeur du stock",
+      "see": "Voir",
+      "value_caption": "au coût moyen de ce qui est entré",
+      "value_estimated": "dont une part estimée au coût actuel des articles",
+      "negative": "{{count}} {count, plural, one {ligne} other {lignes}} sous zéro",
+      "expired": "{{count}} {count, plural, one {lot périmé} other {lots périmés}}",
+      "clear": "Ni stock sous zéro ni lot périmé.",
+      "error": "Le stock n’a pas pu être lu. Réessayez dans un instant."
+    }
+  }
+}

@@ -139,7 +139,7 @@ fi
 # DESIGN_TOKENS_HEADINGS_FLOOR and DESIGN_TOKENS_CARDS_FLOOR: the fewest of each a tree reads, so a parser that stops
 # finding them reds rather than passing over nothing.
 headings_floor=${DESIGN_TOKENS_HEADINGS_FLOOR:-214}
-cards_floor=${DESIGN_TOKENS_CARDS_FLOOR:-95}
+cards_floor=${DESIGN_TOKENS_CARDS_FLOOR:-88}
 headings_read=0; cards_read=0
 if ((${#templates[@]})); then
   role_out=$(cd "$root" && perl -0777 -ne '

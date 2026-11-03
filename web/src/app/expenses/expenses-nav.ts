@@ -67,6 +67,7 @@ export const EXPENSES_HOME: readonly HomePanel[] = [
     key: 'expenses',
     permission: 'expense.read',
     module: EXPENSES_MODULE,
+    span: 'half',
     load: () => import('./expenses-home').then((feature) => feature.ExpensesHome),
   },
 ];

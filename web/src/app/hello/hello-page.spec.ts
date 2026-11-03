@@ -11,7 +11,9 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanyFacade } from '../company/company-facade';
+import { InventoryApi } from '../inventory/inventory-api';
 import { InvoicesFacade } from '../invoices/invoices-facade';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { INVOICES_HOME } from '../invoices/invoices-nav';
 import { todayIn } from '../shared/i18n/format';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
@@ -91,6 +93,10 @@ describe('HelloPage', () => {
     error: signal(null).asReadonly(),
     loadSummary: vi.fn().mockResolvedValue(undefined),
   };
+  const inventory = {
+    levels: vi.fn().mockResolvedValue({ rows: [], total: 0 }),
+    valuation: vi.fn().mockResolvedValue({ total: '0.000', estimated: false, lines: [] }),
+  };
 
   beforeEach(async () => {
     me.set(owner);
@@ -111,6 +117,8 @@ describe('HelloPage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: CompanyFacade, useValue: { companies: companies.asReadonly() } },
         { provide: InvoicesFacade, useValue: invoices },
+        { provide: InventoryApi, useValue: inventory },
+        { provide: TextsParts, useValue: { open: vi.fn().mockResolvedValue(undefined) } },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         provideTranslateService({
@@ -160,6 +168,47 @@ describe('HelloPage', () => {
       expect(reader.el.querySelector('app-invoices-home')).not.toBeNull();
     });
     expect(invoices.loadSummary).toHaveBeenCalledWith('c1');
+  });
+
+  /**
+   * A hardware shop keeping its stock saw no stock figure on its home (design review D4, « a module contributes no home
+   * panel »): the stock module brings its own panel, under the stock's own gates.
+   */
+  it('shows the stock panel to a reader of the stock in a company that keeps it, and to nobody else', async () => {
+    const without = await render();
+    await new Promise((resolve) => setTimeout(resolve));
+    without.fixture.detectChanges();
+    expect(without.el.querySelector('app-stock-home')).toBeNull();
+    without.fixture.destroy();
+
+    hasPermission.mockImplementation((permission: string) => permission === 'stock.read');
+    hasModule.mockImplementation((module: string) => module === 'inventory');
+    const reader = await render();
+    await vi.waitFor(() => {
+      reader.fixture.detectChanges();
+      expect(reader.el.querySelector('app-stock-home')).not.toBeNull();
+    });
+    expect(reader.el.querySelector('app-invoices-home')).toBeNull();
+  });
+
+  it('lays its panels on twelve columns, a half-width panel taking half of them from a laptop up', async () => {
+    hasPermission.mockImplementation((permission: string) =>
+      ['stock.read', 'invoice.read'].includes(permission),
+    );
+    hasModule.mockImplementation((module: string) => ['inventory', 'invoices'].includes(module));
+    const { fixture, el } = await render();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(el.querySelector('app-stock-home')).not.toBeNull();
+    });
+
+    const grid = el.querySelector('[data-testid="home-panels"]')!;
+    expect(grid.classList).toContain('grid-cols-12');
+    const slotOf = (selector: string) => el.querySelector(selector)!.closest('[data-panel]')!;
+    expect(slotOf('app-invoices-home').classList).toContain('col-span-12');
+    expect(slotOf('app-invoices-home').className).not.toMatch(/lg:col-span-6/);
+    expect(slotOf('app-stock-home').classList).toContain('col-span-12');
+    expect(slotOf('app-stock-home').classList).toContain('lg:col-span-6');
   });
 
   it('says so when the user has no company, and shows the operator line', async () => {

@@ -1,1 +1,15 @@
-{}
+{
+  "home": {
+    "stock": {
+      "title": "Stock",
+      "value": "Stock value",
+      "see": "View",
+      "value_caption": "at the average cost of what came in",
+      "value_estimated": "part of it estimated at the products’ current cost",
+      "negative": "{{count}} {count, plural, one {line} other {lines}} below zero",
+      "expired": "{{count}} expired {count, plural, one {lot} other {lots}}",
+      "clear": "No stock below zero and no expired lot.",
+      "error": "The stock could not be read. Try again in a moment."
+    }
+  }
+}

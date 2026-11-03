@@ -10,6 +10,7 @@ export const WATCH_HOME: readonly HomePanel[] = [
   {
     key: 'watch',
     permission: 'company.read',
+    span: 'half',
     load: () => import('./watch-home').then((feature) => feature.WatchHome),
   },
 ];

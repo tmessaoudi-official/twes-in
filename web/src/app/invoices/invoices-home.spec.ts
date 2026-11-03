@@ -247,6 +247,9 @@ describe('InvoicesHome', () => {
     await settle();
     expect(text('home-margin')).toContain('La marge apparaît dès qu’une ligne émise a un coût.');
     expect(text('home-margin')).not.toContain('sur les mêmes jours');
+    // A figure with nothing behind it is left out (2026-09-25): the sentence says it, never a dash standing for a figure.
+    expect(text('home-margin')).not.toContain('—');
+    expect(q('home-margin')?.querySelector('[data-part="figure"]')).toBeNull();
 
     current.set({
       ...summary,
@@ -258,6 +261,27 @@ describe('InvoicesHome', () => {
     await settle();
     expect(q('home-margin')).toBeNull();
     expect(q('home-invoiced')).not.toBeNull();
+  });
+
+  it('draws its figures as the home’s tiles, the margin first and larger, no change coloured with the accent', () => {
+    for (const id of [
+      'home-margin',
+      'home-invoiced',
+      'home-collected',
+      'home-outstanding',
+      'home-overdue',
+      'home-vat',
+    ]) {
+      expect(q(id)?.tagName, id).toBe('APP-KPI-TILE');
+    }
+    expect(q('home-margin')?.querySelector('[data-part="tile"]')?.getAttribute('data-hero')).toBe(
+      'true',
+    );
+    const deltas = [
+      ...fixture.nativeElement.querySelectorAll('[data-part="delta"]'),
+    ] as HTMLElement[];
+    expect(deltas.length).toBeGreaterThanOrEqual(3);
+    for (const delta of deltas) expect(delta.outerHTML).not.toMatch(/accent/);
   });
 
   it('lists the invoices to chase, each opening its invoice, with how late or how soon', () => {

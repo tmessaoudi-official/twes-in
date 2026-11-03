@@ -39,8 +39,18 @@
       </div>
     }
 
-    @for (component of components(); track component) {
-      <ng-container *ngComponentOutlet="component" />
-    }
+    <div class="grid grid-cols-12 gap-4 lg:gap-6" data-testid="home-panels">
+      @for (panel of components(); track panel.key) {
+        <!-- A panel drawing nothing (the install offer on a laptop, the first steps once done) leaves no gap: its host
+             holds only Angular's comment anchors then, which :empty matches. -->
+        <div
+          class="col-span-12 min-w-0 has-[>:empty]:hidden"
+          [class.lg:col-span-6]="panel.half"
+          [attr.data-panel]="panel.key"
+        >
+          <ng-container *ngComponentOutlet="panel.component" />
+        </div>
+      }
+    </div>
   </section>
 }

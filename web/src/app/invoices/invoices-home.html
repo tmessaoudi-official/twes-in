@@ -4,351 +4,322 @@
   </p>
 }
 @if (summary(); as s) {
-  <div class="flex flex-col gap-4">
-    <div class="grid gap-4 {{ topRow() }}">
-      @if (s.costsVisible) {
-        <mat-card appearance="outlined" data-testid="home-margin">
-          <mat-card-content>
-            <div class="flex flex-col gap-3">
-              <span class="text-sm text-on-surface-variant">{{
-                'invoices.home.margin' | translate: { month: month() }
-              }}</span>
-              @if (s.margin !== null) {
-                <span class="text-4xl font-semibold tabular-nums">
-                  {{ s.margin | amount: s.currencyScale }}
-                  <span class="text-base font-normal text-on-surface-variant"
-                    ><bdi>{{ s.currency }}</bdi></span
-                  >
-                </span>
-                @if (marginVersus(); as v) {
-                  <span class="text-sm tabular-nums text-on-surface-variant">{{
-                    'invoices.home.versus.' + v.kind
-                      | translate: { amount: (v.amount | amount: s.currencyScale) }
-                  }}</span>
-                }
+  <!-- Twelve columns, every tile the whole row on a phone: the margin and what was invoiced, then three figures, the
+       invoices to chase beside the payments, and the VAT beside the withholding (the approved home, plan row S7.5). -->
+  @let marginChange = marginVersus();
+  @let invoicedChange = invoicedVersus();
+  @let collectedChange = collectedVersus();
+  @let withheldChange = withheldVersus();
+  <div class="grid grid-cols-12 gap-4">
+    @if (s.costsVisible) {
+      <app-kpi-tile
+        class="col-span-12 md:col-span-6"
+        data-testid="home-margin"
+        [icon]="'savings'"
+        [hero]="true"
+        [label]="'invoices.home.margin' | translate: { month: month() }"
+        [figure]="s.margin"
+        [scale]="s.currencyScale"
+        [currency]="s.currency"
+        [blank]="'invoices.home.margin_blank' | translate"
+        [delta]="
+          marginChange
+            ? {
+                kind: marginChange.kind,
+                words:
+                  'invoices.home.versus.' + marginChange.kind
+                  | translate: { amount: (marginChange.amount | amount: s.currencyScale) },
+              }
+            : null
+        "
+        [caption]="
+          s.margin !== null
+            ? ('invoices.home.margin_basis'
+              | translate
+                : {
+                    amount: (s.marginBasis ?? '0' | amount: s.currencyScale),
+                    currency: s.currency,
+                  })
+            : null
+        "
+      />
+    }
+    <app-kpi-tile
+      class="col-span-12"
+      [class.md:col-span-6]="s.costsVisible"
+      data-testid="home-invoiced"
+      [icon]="'receipt_long'"
+      [hero]="!s.costsVisible"
+      [label]="'invoices.home.invoiced' | translate: { month: month() }"
+      [figure]="s.invoicedMonth"
+      [scale]="s.currencyScale"
+      [currency]="s.currency"
+      [delta]="
+        invoicedChange
+          ? {
+              kind: invoicedChange.kind,
+              words:
+                'invoices.home.versus.' + invoicedChange.kind
+                | translate: { amount: (invoicedChange.amount | amount: s.currencyScale) },
+            }
+          : null
+      "
+      [caption]="'invoices.home.invoiced_note' | translate"
+    />
+
+    <app-kpi-tile
+      class="col-span-12 sm:col-span-6 lg:col-span-4"
+      data-testid="home-collected"
+      [icon]="'payments'"
+      [label]="'invoices.home.collected' | translate: { month: month() }"
+      [figure]="thisMonth()"
+      [scale]="s.currencyScale"
+      [currency]="s.currency"
+      [delta]="
+        collectedChange
+          ? {
+              kind: collectedChange.kind,
+              words:
+                'invoices.home.versus.' + collectedChange.kind
+                | translate: { amount: (collectedChange.amount | amount: s.currencyScale) },
+            }
+          : null
+      "
+    />
+    <app-kpi-tile
+      class="col-span-12 sm:col-span-6 lg:col-span-4"
+      data-testid="home-outstanding"
+      [icon]="'account_balance_wallet'"
+      [label]="'invoices.home.outstanding' | translate"
+      [figure]="s.outstanding"
+      [scale]="s.currencyScale"
+      [currency]="s.currency"
+    >
+      <dl class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <div class="flex items-center gap-2">
+          <span aria-hidden="true" class="twes-dot twes-dot-info"></span>
+          <dt class="text-on-surface-variant">
+            {{ 'invoices.home.not_yet_due' | translate }}
+          </dt>
+          <dd class="tabular-nums">{{ s.notYetDue | amount: s.currencyScale }}</dd>
+        </div>
+        <div class="flex items-center gap-2">
+          <span aria-hidden="true" class="twes-dot twes-dot-danger"></span>
+          <dt class="text-on-surface-variant">{{ 'invoices.home.overdue' | translate }}</dt>
+          <dd class="tabular-nums">{{ s.overdue | amount: s.currencyScale }}</dd>
+        </div>
+      </dl>
+    </app-kpi-tile>
+    <app-kpi-tile
+      class="col-span-12 lg:col-span-4"
+      data-testid="home-overdue"
+      [icon]="'schedule'"
+      [label]="'invoices.home.overdue' | translate"
+      [figure]="s.overdueCount > 0 ? s.overdue : null"
+      [figureStage]="s.overdueCount > 0 ? 'alarm' : null"
+      [scale]="s.currencyScale"
+      [currency]="s.currency"
+      [blank]="'invoices.home.overdue_none' | translate"
+      [caption]="
+        s.overdueCount > 0
+          ? ('invoices.home.overdue_detail'
+            | translate: { count: s.overdueCount, days: s.oldestOverdueDays })
+          : null
+      "
+      [see]="
+        s.overdueCount > 0 ? { route: '/invoices', label: 'invoices.home.see' | translate } : null
+      "
+    />
+
+    <mat-card appearance="outlined" class="col-span-12 xl:col-span-7" data-testid="home-to-chase">
+      <mat-card-content>
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <div class="flex flex-col">
+              <h2 class="text-section">{{ 'invoices.home.to_chase' | translate }}</h2>
+              @if (s.toChaseCount > 0) {
                 <span class="text-sm tabular-nums text-on-surface-variant">{{
-                  'invoices.home.margin_basis'
+                  'invoices.home.to_chase_detail'
                     | translate
                       : {
-                          amount: (s.marginBasis ?? '0' | amount: s.currencyScale),
+                          count: s.toChaseCount,
+                          amount: (s.toChaseAmount | amount: s.currencyScale),
                           currency: s.currency,
                         }
                 }}</span>
-              } @else {
-                <span class="text-4xl font-semibold text-on-surface-variant">—</span>
-                <span class="text-sm text-on-surface-variant">{{
-                  'invoices.home.margin_blank' | translate
-                }}</span>
               }
             </div>
-          </mat-card-content>
-        </mat-card>
-      }
-      <mat-card appearance="outlined" data-testid="home-invoiced">
-        <mat-card-content>
-          <div class="flex flex-col gap-3">
-            <span class="text-sm text-on-surface-variant">{{
-              'invoices.home.invoiced' | translate: { month: month() }
-            }}</span>
-            <span class="text-3xl font-semibold tabular-nums">
-              {{ s.invoicedMonth | amount: s.currencyScale }}
-              <span class="text-base font-normal text-on-surface-variant"
-                ><bdi>{{ s.currency }}</bdi></span
+            <a routerLink="/invoices" class="text-sm font-medium text-accent-text">{{
+              'invoices.home.all_unpaid' | translate
+            }}</a>
+          </div>
+
+          @if (aging().length > 0) {
+            <div class="flex flex-col gap-2">
+              <div
+                aria-hidden="true"
+                class="flex h-2 w-full overflow-hidden rounded-full bg-surface-container"
               >
-            </span>
-            @if (invoicedVersus(); as v) {
-              <span class="text-sm tabular-nums text-on-surface-variant">{{
-                'invoices.home.versus.' + v.kind
-                  | translate: { amount: (v.amount | amount: s.currencyScale) }
-              }}</span>
-            }
-            <span class="text-sm text-on-surface-variant">{{
-              'invoices.home.invoiced_note' | translate
-            }}</span>
-          </div>
-        </mat-card-content>
-      </mat-card>
-      @if (withholds()) {
-        <mat-card appearance="outlined" data-testid="home-withheld">
-          <mat-card-content>
-            <div class="flex flex-col gap-3">
-              <span class="text-sm text-on-surface-variant">{{
-                'invoices.home.withheld' | translate: { month: month() }
-              }}</span>
-              <span class="text-3xl font-semibold tabular-nums">
-                {{ s.withheldMonth | amount: s.currencyScale }}
-                <span class="text-base font-normal text-on-surface-variant"
-                  ><bdi>{{ s.currency }}</bdi></span
-                >
-              </span>
-              @if (withheldVersus(); as v) {
-                <span class="text-sm tabular-nums text-on-surface-variant">{{
-                  'invoices.home.versus.' + v.kind
-                    | translate: { amount: (v.amount | amount: s.currencyScale) }
-                }}</span>
-              }
-              <span class="text-sm text-on-surface-variant">{{
-                'invoices.home.withheld_note' | translate
-              }}</span>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      }
-    </div>
-
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <mat-card appearance="outlined" data-testid="home-outstanding">
-        <mat-card-content>
-          <div class="flex flex-col gap-3">
-            <span class="text-sm text-on-surface-variant">{{
-              'invoices.home.outstanding' | translate
-            }}</span>
-            <span class="text-3xl font-semibold tabular-nums">
-              {{ s.outstanding | amount: s.currencyScale }}
-              <span class="text-base font-normal text-on-surface-variant"
-                ><bdi>{{ s.currency }}</bdi></span
-              >
-            </span>
-            <dl class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-              <div class="flex items-center gap-2">
-                <span aria-hidden="true" class="twes-dot twes-dot-info"></span>
-                <dt class="text-on-surface-variant">
-                  {{ 'invoices.home.not_yet_due' | translate }}
-                </dt>
-                <dd class="tabular-nums">{{ s.notYetDue | amount: s.currencyScale }}</dd>
-              </div>
-              <div class="flex items-center gap-2">
-                <span aria-hidden="true" class="twes-dot twes-dot-danger"></span>
-                <dt class="text-on-surface-variant">{{ 'invoices.home.overdue' | translate }}</dt>
-                <dd class="tabular-nums">{{ s.overdue | amount: s.currencyScale }}</dd>
-              </div>
-            </dl>
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card appearance="outlined" data-testid="home-overdue">
-        <mat-card-content>
-          <div class="flex flex-col gap-3">
-            <span class="text-sm text-on-surface-variant">{{
-              'invoices.home.overdue' | translate
-            }}</span>
-            @if (s.overdueCount > 0) {
-              <span class="text-3xl font-semibold tabular-nums text-error">
-                {{ s.overdue | amount: s.currencyScale }}
-                <span class="text-base font-normal"
-                  ><bdi>{{ s.currency }}</bdi></span
-                >
-              </span>
-              <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <span class="text-on-surface-variant">{{
-                  'invoices.home.overdue_detail'
-                    | translate: { count: s.overdueCount, days: s.oldestOverdueDays }
-                }}</span>
-                <a routerLink="/invoices" class="font-medium text-accent-text">{{
-                  'invoices.home.see' | translate
-                }}</a>
-              </div>
-            } @else {
-              <span class="text-lg">{{ 'invoices.home.overdue_none' | translate }}</span>
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card appearance="outlined" data-testid="home-collected">
-        <mat-card-content>
-          <div class="flex flex-col gap-3">
-            <span class="text-sm text-on-surface-variant">{{
-              'invoices.home.collected' | translate: { month: month() }
-            }}</span>
-            <span class="text-3xl font-semibold tabular-nums">
-              {{ thisMonth() | amount: s.currencyScale }}
-              <span class="text-base font-normal text-on-surface-variant"
-                ><bdi>{{ s.currency }}</bdi></span
-              >
-            </span>
-            @if (collectedVersus(); as v) {
-              <span class="text-sm tabular-nums text-on-surface-variant">{{
-                'invoices.home.versus.' + v.kind
-                  | translate: { amount: (v.amount | amount: s.currencyScale) }
-              }}</span>
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card appearance="outlined" data-testid="home-vat">
-        <mat-card-content>
-          <div class="flex flex-col gap-3">
-            <span class="text-sm text-on-surface-variant">{{
-              'invoices.home.vat' | translate: { month: month() }
-            }}</span>
-            <span class="text-3xl font-semibold tabular-nums">
-              {{ s.vatTotal | amount: s.currencyScale }}
-              <span class="text-base font-normal text-on-surface-variant"
-                ><bdi>{{ s.currency }}</bdi></span
-              >
-            </span>
-            @if (s.vat.length > 0) {
-              <ul class="flex flex-wrap gap-x-3 gap-y-1 text-sm text-on-surface-variant">
-                @for (tax of s.vat; track tax.code + tax.rate) {
-                  <li class="tabular-nums">
-                    @if (tax.name) {
-                      {{ tax.name }}
-                    } @else {
-                      {{ tax.code }} {{ tax.rate | amount: 0 }}&nbsp;%
-                    }
-                    {{ tax.amount | amount: s.currencyScale }}
-                  </li>
-                }
-              </ul>
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
-
-    <div class="grid gap-4 xl:grid-cols-[3fr_2fr]">
-      <mat-card appearance="outlined" data-testid="home-to-chase">
-        <mat-card-content>
-          <div class="flex flex-col gap-4">
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <div class="flex flex-col">
-                <h2 class="text-section">{{ 'invoices.home.to_chase' | translate }}</h2>
-                @if (s.toChaseCount > 0) {
-                  <span class="text-sm tabular-nums text-on-surface-variant">{{
-                    'invoices.home.to_chase_detail'
-                      | translate
-                        : {
-                            count: s.toChaseCount,
-                            amount: (s.toChaseAmount | amount: s.currencyScale),
-                            currency: s.currency,
-                          }
-                  }}</span>
+                @for (bar of aging(); track bar.bucket) {
+                  <span
+                    class="h-full"
+                    [style.width.%]="bar.share"
+                    [style.background]="bar.colour"
+                  ></span>
                 }
               </div>
-              <a routerLink="/invoices" class="text-sm font-medium text-accent-text">{{
-                'invoices.home.all_unpaid' | translate
-              }}</a>
-            </div>
-
-            @if (aging().length > 0) {
-              <div class="flex flex-col gap-2">
-                <div
-                  aria-hidden="true"
-                  class="flex h-2 w-full overflow-hidden rounded-full bg-surface-container"
-                >
-                  @for (bar of aging(); track bar.bucket) {
+              <dl class="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                @for (bar of aging(); track bar.bucket) {
+                  <div
+                    class="flex items-center gap-2 whitespace-nowrap"
+                    [attr.data-testid]="'home-aging-' + bar.bucket"
+                  >
                     <span
-                      class="h-full"
-                      [style.width.%]="bar.share"
+                      aria-hidden="true"
+                      class="twes-dot"
                       [style.background]="bar.colour"
                     ></span>
-                  }
-                </div>
-                <dl class="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-                  @for (bar of aging(); track bar.bucket) {
-                    <div
-                      class="flex items-center gap-2 whitespace-nowrap"
-                      [attr.data-testid]="'home-aging-' + bar.bucket"
-                    >
-                      <span
-                        aria-hidden="true"
-                        class="twes-dot"
-                        [style.background]="bar.colour"
-                      ></span>
-                      <dt class="text-on-surface-variant">
-                        {{ 'invoices.home.aging.' + bar.bucket | translate }}
-                      </dt>
-                      <dd class="tabular-nums">{{ bar.amount | amount: s.currencyScale }}</dd>
-                    </div>
-                  }
-                </dl>
-              </div>
-            }
-
-            @if (chase().length > 0) {
-              <ul class="-mx-2 flex flex-col">
-                @for (row of chase(); track row.invoiceId) {
-                  <li>
-                    <a
-                      [routerLink]="['/invoices', row.invoiceId]"
-                      class="flex items-center gap-3 rounded-lg px-2 py-2 text-inherit no-underline hover:bg-surface-container focus-visible:bg-surface-container"
-                      [attr.data-testid]="'home-chase-' + row.invoiceId"
-                    >
-                      <span
-                        aria-hidden="true"
-                        class="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-xs font-semibold"
-                        ><bdi>{{ row.initials }}</bdi></span
-                      >
-                      <span class="flex min-w-0 flex-1 flex-col">
-                        <span class="twes-value font-medium" dir="auto">{{
-                          row.customerName
-                        }}</span>
-                        <span
-                          class="twes-value text-sm tabular-nums text-on-surface-variant"
-                          dir="auto"
-                          >{{ row.number }}</span
-                        >
-                      </span>
-                      <span class="flex shrink-0 flex-col items-end">
-                        <span class="font-medium tabular-nums">{{
-                          row.amountDue | amount: s.currencyScale
-                        }}</span>
-                        <span
-                          class="text-sm"
-                          [class.text-error]="row.daysLate > 0"
-                          [class.text-on-surface-variant]="row.daysLate <= 0"
-                          >{{ row.due.key | translate: { days: row.due.days } }}</span
-                        >
-                      </span>
-                    </a>
-                  </li>
+                    <dt class="text-on-surface-variant">
+                      {{ 'invoices.home.aging.' + bar.bucket | translate }}
+                    </dt>
+                    <dd class="tabular-nums">{{ bar.amount | amount: s.currencyScale }}</dd>
+                  </div>
                 }
-              </ul>
-            } @else {
-              <p class="text-on-surface-variant">
-                {{ 'invoices.home.to_chase_none' | translate }}
-              </p>
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card appearance="outlined" data-testid="home-collections">
-        <mat-card-content>
-          <div class="flex flex-col gap-4">
-            <div class="flex flex-col">
-              <h2 class="text-section">{{ 'invoices.home.collections' | translate }}</h2>
-              <span class="text-sm text-on-surface-variant">{{
-                'invoices.home.six_months' | translate
-              }}</span>
+              </dl>
             </div>
-            <ol class="flex h-44 items-end gap-3">
-              @for (bar of bars(); track bar.month) {
-                <li
-                  class="flex h-full flex-1 flex-col items-center justify-end gap-1"
-                  [attr.data-testid]="'home-month-' + bar.month"
-                  [attr.data-current]="bar.current"
-                >
-                  <span class="sr-only">{{ bar.amount | amount: s.currencyScale }}</span>
-                  <span
-                    aria-hidden="true"
-                    class="w-full max-w-10 rounded-t-md"
-                    [style.height.%]="bar.height"
-                    [style.min-height.px]="2"
-                    [class.bg-accent-indicator]="bar.current"
-                    [class.bg-surface-container-highest]="!bar.current"
-                  ></span>
-                  <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
-                  <span class="text-xs text-on-surface-variant">{{ bar.label }}</span>
+          }
+
+          @if (chase().length > 0) {
+            <ul class="-mx-2 flex flex-col">
+              @for (row of chase(); track row.invoiceId) {
+                <li>
+                  <a
+                    [routerLink]="['/invoices', row.invoiceId]"
+                    class="flex items-center gap-3 rounded-lg px-2 py-2 text-inherit no-underline hover:bg-surface-container focus-visible:bg-surface-container"
+                    [attr.data-testid]="'home-chase-' + row.invoiceId"
+                  >
+                    <span
+                      aria-hidden="true"
+                      class="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-xs font-semibold"
+                      ><bdi>{{ row.initials }}</bdi></span
+                    >
+                    <span class="flex min-w-0 flex-1 flex-col">
+                      <span class="twes-value font-medium" dir="auto">{{ row.customerName }}</span>
+                      <span
+                        class="twes-value text-sm tabular-nums text-on-surface-variant"
+                        dir="auto"
+                        >{{ row.number }}</span
+                      >
+                    </span>
+                    <span class="flex shrink-0 flex-col items-end">
+                      <span class="font-medium tabular-nums">{{
+                        row.amountDue | amount: s.currencyScale
+                      }}</span>
+                      <span
+                        class="text-sm"
+                        [class.text-error]="row.daysLate > 0"
+                        [class.text-on-surface-variant]="row.daysLate <= 0"
+                        >{{ row.due.key | translate: { days: row.due.days } }}</span
+                      >
+                    </span>
+                  </a>
                 </li>
               }
-            </ol>
+            </ul>
+          } @else {
+            <p class="text-on-surface-variant">
+              {{ 'invoices.home.to_chase_none' | translate }}
+            </p>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card
+      appearance="outlined"
+      class="col-span-12 xl:col-span-5"
+      data-testid="home-collections"
+    >
+      <mat-card-content>
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-col">
+            <h2 class="text-section">{{ 'invoices.home.collections' | translate }}</h2>
+            <span class="text-sm text-on-surface-variant">{{
+              'invoices.home.six_months' | translate
+            }}</span>
           </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
+          <ol class="flex h-44 items-end gap-3">
+            @for (bar of bars(); track bar.month) {
+              <li
+                class="flex h-full flex-1 flex-col items-center justify-end gap-1"
+                [attr.data-testid]="'home-month-' + bar.month"
+                [attr.data-current]="bar.current"
+              >
+                <span class="sr-only">{{ bar.amount | amount: s.currencyScale }}</span>
+                <span
+                  aria-hidden="true"
+                  class="w-full max-w-10 rounded-t-md"
+                  [style.height.%]="bar.height"
+                  [style.min-height.px]="2"
+                  [class.bg-accent-indicator]="bar.current"
+                  [class.bg-surface-container-highest]="!bar.current"
+                ></span>
+                <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
+                <span class="text-xs text-on-surface-variant">{{ bar.label }}</span>
+              </li>
+            }
+          </ol>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <app-kpi-tile
+      class="col-span-12"
+      [class.md:col-span-6]="withholds()"
+      data-testid="home-vat"
+      [icon]="'percent'"
+      [label]="'invoices.home.vat' | translate: { month: month() }"
+      [figure]="s.vatTotal"
+      [scale]="s.currencyScale"
+      [currency]="s.currency"
+    >
+      @if (s.vat.length > 0) {
+        <ul class="flex flex-wrap gap-x-3 gap-y-1 text-sm text-on-surface-variant">
+          @for (tax of s.vat; track tax.code + tax.rate) {
+            <li class="tabular-nums">
+              @if (tax.name) {
+                {{ tax.name }}
+              } @else {
+                {{ tax.code }} {{ tax.rate | amount: 0 }}&nbsp;%
+              }
+              {{ tax.amount | amount: s.currencyScale }}
+            </li>
+          }
+        </ul>
+      }
+    </app-kpi-tile>
+    <!-- A company that has never had a withholding is shown no tile for it: a figure with nothing behind it is left out. -->
+    @if (withholds()) {
+      <app-kpi-tile
+        class="col-span-12 md:col-span-6"
+        data-testid="home-withheld"
+        [icon]="'account_balance'"
+        [label]="'invoices.home.withheld' | translate: { month: month() }"
+        [figure]="s.withheldMonth"
+        [scale]="s.currencyScale"
+        [currency]="s.currency"
+        [delta]="
+          withheldChange
+            ? {
+                kind: withheldChange.kind,
+                words:
+                  'invoices.home.versus.' + withheldChange.kind
+                  | translate: { amount: (withheldChange.amount | amount: s.currencyScale) },
+              }
+            : null
+        "
+        [caption]="'invoices.home.withheld_note' | translate"
+      />
+    }
   </div>
 }

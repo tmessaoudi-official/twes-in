@@ -58,15 +58,26 @@ export class HelloPage {
           (module) => this.auth.hasModule(module),
         ),
   );
-  /** The shown panels' components, once loaded. */
-  protected readonly components = signal<readonly Type<unknown>[]>([]);
+  /**
+   * The shown panels' components, once loaded, each with its place on the home's twelve columns: the whole row on a
+   * phone and a tablet, half of it from a laptop up for a half-width panel.
+   */
+  protected readonly components = signal<
+    readonly { readonly key: string; readonly component: Type<unknown>; readonly half: boolean }[]
+  >([]);
 
   constructor() {
     let asked = 0;
     effect(async () => {
       const panels = this.panels();
       const ask = ++asked;
-      const loaded = await Promise.all(panels.map((panel) => panel.load()));
+      const loaded = await Promise.all(
+        panels.map(async (panel) => ({
+          key: panel.key,
+          component: await panel.load(),
+          half: panel.span === 'half',
+        })),
+      );
       // A later change of company or permissions may have asked again while these loaded; its answer wins.
       if (ask === asked) this.components.set(loaded);
     });

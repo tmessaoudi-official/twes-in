@@ -8,14 +8,13 @@ import {
   inject,
   type OnInit,
 } from '@angular/core';
-import { MatCardModule } from '@angular/material/card';
-import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { formatMonth } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { KpiTile } from '../shared/ui/kpi-tile';
 import { versus } from '../shared/ui/versus';
 import { ExpensesFacade } from './expenses-facade';
 
@@ -26,7 +25,7 @@ import { ExpensesFacade } from './expenses-facade';
  */
 @Component({
   selector: 'app-expenses-home',
-  imports: [MatCardModule, RouterLink, TranslatePipe, AmountPipe],
+  imports: [KpiTile, TranslatePipe, AmountPipe],
   templateUrl: './expenses-home.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

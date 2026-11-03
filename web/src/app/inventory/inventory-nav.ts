@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { HomePanel } from '../shell/home-manifest';
 import type { NavEntry } from '../shell/nav-manifest';
 import type { PageTab } from '../shared/ui/page-tabs';
 
@@ -16,6 +17,20 @@ export const INVENTORY_NAV: readonly NavEntry[] = [
     section: 'manage',
     permission: 'stock.read',
     module: INVENTORY_MODULE,
+  },
+];
+
+/**
+ * What the module shows on the home: what the stock is worth to a reader of costs, and for every reader of the stock
+ * the lines below zero and the lots past their day.
+ */
+export const INVENTORY_HOME: readonly HomePanel[] = [
+  {
+    key: 'stock',
+    permission: 'stock.read',
+    module: INVENTORY_MODULE,
+    span: 'half',
+    load: () => import('./stock-home').then((feature) => feature.StockHome),
   },
 ];
 

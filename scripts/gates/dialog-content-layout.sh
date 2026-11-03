@@ -23,7 +23,7 @@ done
 # Each host's attribute forms and the floor counted when its reading was written.
 case $element in
   mat-dialog-content) attributes='mat-dialog-content|matDialogContent'; floor=20 ;;
-  mat-card-content) attributes='mat-card-content'; floor=90 ;;
+  mat-card-content) attributes='mat-card-content'; floor=87 ;;
   *) echo "dialog-content-layout: unknown element $element" >&2; exit 2 ;;
 esac
 min=${min:-$floor}

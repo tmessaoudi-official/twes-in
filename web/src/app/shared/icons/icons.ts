@@ -7,6 +7,8 @@
  * template writes out; both refuse an icon this list does not hold. Kept in alphabetical order.
  */
 export const ICONS = [
+  'account_balance',
+  'account_balance_wallet',
   'add',
   'add_box',
   'add_link',
@@ -147,6 +149,9 @@ export const ICONS = [
   'sync_problem',
   'table_restaurant',
   'translate',
+  'trending_down',
+  'trending_flat',
+  'trending_up',
   'tune',
   'undo',
   'unfold_more',
