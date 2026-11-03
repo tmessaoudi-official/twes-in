@@ -21,6 +21,12 @@ interface ImportRunRepository
     public function lastOf(Uuid $companyId, string $subject, string $contentHash): ?ImportRun;
 
     /**
+     * Holds this file of this subject of this company until the transaction ends: a second import of the same file at the
+     * same moment waits here for the first to commit, so it reads it and is told, as one coming after it is.
+     */
+    public function holdFile(Uuid $companyId, string $subject, string $contentHash): void;
+
+    /**
      * The pairing of the latest committed import into this subject of this company that needed one, or none.
      *
      * @return array<string, string>

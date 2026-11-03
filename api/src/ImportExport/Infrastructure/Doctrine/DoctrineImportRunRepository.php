@@ -22,6 +22,15 @@ final readonly class DoctrineImportRunRepository implements ImportRunRepository
     {
     }
 
+    public function holdFile(Uuid $companyId, string $subject, string $contentHash): void
+    {
+        $connection = $this->entityManager->getConnection();
+        if (!$connection->isTransactionActive()) {
+            throw new \LogicException('A file is held inside the transaction that imports it.');
+        }
+        $connection->executeQuery('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', ['import-file:'.$companyId->toRfc4122().':'.$subject.':'.$contentHash]);
+    }
+
     public function lastOf(Uuid $companyId, string $subject, string $contentHash): ?ImportRun
     {
         /** @var ImportRun|null $run */

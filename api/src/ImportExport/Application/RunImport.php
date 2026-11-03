@@ -66,11 +66,16 @@ final readonly class RunImport
     public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId, string $contentHash, array $ticked = [], array $pairing = [], array $chosen = []): ImportReport
     {
         [$records, $paired] = $this->records($subject, $rows, $pairing);
-        $already = $this->runs->lastOf($company->getId(), $declaration->key(), $contentHash)?->getAt();
         $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked), $dryRun, $subject->keys(), $chosen);
 
         try {
-            return $this->transactions->run(function () use ($declaration, $subject, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $already, $paired): ImportReport {
+            return $this->transactions->run(function () use ($declaration, $subject, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $paired): ImportReport {
+                if (!$dryRun) {
+                    // The same file sent twice at once: the later run waits here for the first to commit, then reads it
+                    // below and is told, as the run after it is; a preview never waits.
+                    $this->runs->holdFile($company->getId(), $declaration->key(), $contentHash);
+                }
+                $already = $this->runs->lastOf($company->getId(), $declaration->key(), $contentHash)?->getAt();
                 $report = $this->apply($declaration, $subject, $company, $records, $mode, $actorUserId, $context);
                 if ($dryRun || [] !== $report->rejected) {
                     throw new ImportRolledBack(new ImportReport(false, $report->created, $report->updated, $report->rejected, $report->notes, $already, $report->changes, $report->unchanged));

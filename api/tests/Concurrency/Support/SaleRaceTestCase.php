@@ -32,7 +32,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 abstract class SaleRaceTestCase extends ApiTestCase
 {
-    private const array SELLING = ['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'invoice.read', 'invoice.write', 'invoice.issue', 'quote.read', 'quote.write', 'purchase.read', 'purchase.write', 'company.read'];
+    private const array SELLING = ['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'quote.read', 'quote.write', 'purchase.read', 'purchase.write', 'company.read'];
 
     protected Company $company;
     protected string $productId;

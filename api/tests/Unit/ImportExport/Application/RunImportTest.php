@@ -335,6 +335,10 @@ final class InMemoryImportRuns implements ImportRunRepository
         return $found;
     }
 
+    public function holdFile(Uuid $companyId, string $subject, string $contentHash): void
+    {
+    }
+
     public function lastPairingOf(Uuid $companyId, string $subject): array
     {
         $found = [];

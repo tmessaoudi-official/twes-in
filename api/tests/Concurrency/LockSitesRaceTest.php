@@ -61,6 +61,11 @@ use Symfony\Component\Uid\Uuid;
  * | Inventory DoctrineStockLotRepository::lock (advisory, product and code)    | testOneSerialNumberReceivedTwiceAtOnceIsInStockOnce         | a serial number in stock once, its lot opened once      |
  * | Products DoctrineProductRepository::lockedOfIdInCompany (FOR UPDATE)       | testTwoCostChangesOfOneProductAtOnceAreBothKeptInOrder       | each cost change taken in, its history one chain        |
  * | ImportExport DoctrineImportRunRepository::lockedOfId (FOR UPDATE)          | testOneImportUndoneTwiceAtOnceIsUndoneOnce                  | an import taken back once                               |
+ * | ImportExport DoctrineImportRunRepository::holdFile (advisory, company,      | ImportRaceTest's stock file                                 | the later of two runs of one file told it was imported  |
+ * |   subject and the file's SHA-256), first of an import's locks, before any  |                                                             |                                                         |
+ * |   stock lock; taken by nothing else, and never by a preview                |                                                             |                                                         |
+ * | Invoices DoctrineInvoiceRepository::ofLineIdsInCompany (FOR UPDATE), held  | DeliverableRaceTest                                         | a note never delivers goods a credit note took back     |
+ * |   by DeliveryNoteWorkflow::stillDeliverable, against a credit note's issue |                                                             |                                                         |
  * | Records DbalRecordStore::lockedLabels (FOR UPDATE OF the records)          | testTheSameRecordsDeletedTwiceAtOnceGoOnce                  | one delete per record, one removal in the bin           |
  * | Recurring DoctrineRecurringInvoiceRepository::lockedOfIdInCompany (FOR UPDATE) | testTheRecurringPassRunTwiceAtOnceDraftsOnce            | an occurrence drafted once                              |
  * | Invoices AdvisoryCreditAccountsHeld::hold (advisory, company and customer), | CreditAlertRaceTest's two-series cases                      | a credit limit's crossing told once, never by nobody    |
