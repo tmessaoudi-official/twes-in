@@ -61,7 +61,7 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
             'type' => 'object',
             'required' => ['error', 'detail'],
             'properties' => [
-                'error' => ['type' => 'string', 'enum' => ['invalid_body', 'unknown_text', 'language', 'locked', 'empty', 'too_long', 'placeholders', 'plural'], 'description' => 'Why the text is refused; the screen words it.'],
+                'error' => ['type' => 'string', 'enum' => ['invalid_body', 'unknown_text', 'language', 'locked', 'empty', 'too_long', 'placeholders', 'plural', 'forms'], 'description' => 'Why the text is refused; the screen words it.'],
                 'detail' => ['type' => 'string'],
             ],
         ]);

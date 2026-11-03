@@ -29,6 +29,8 @@ final readonly class NotificationKind
      * @param list<string> $quantities the payload's quantities, decimal strings written with no trailing zero
      * @param string|null  $unit       the payload's field holding the unit the quantities are counted in, written after
      *                                 each (« -3 kg » is not « -3 » pieces); required of a kind that says a quantity
+     * @param string|null  $count      the payload's field whose number chooses the form of the noun its mail counts with it
+     *                                 (« 1 jour », « 2 jours »), handed to the sentence as %count%
      */
     public function __construct(
         public string $type,
@@ -42,6 +44,7 @@ final readonly class NotificationKind
         public array $moments = [],
         public array $quantities = [],
         public ?string $unit = null,
+        public ?string $count = null,
     ) {
         if ([] !== $quantities && null === $unit) {
             throw new \LogicException(\sprintf('The notification kind "%s" says a quantity without naming the field of its unit.', $type));

@@ -67,6 +67,9 @@ final class OverrideTextTest extends KernelTestCase
         yield 'a filled-in name lost' => [new TextAddress('fr', 'screen', self::PASSKEY), 'Utilisez le code.', 'placeholders'];
         yield 'a plural broken' => [new TextAddress('fr', 'screen', 'company.unread'), '{{count}} {count, plural, one {non lue}}', 'plural'];
         yield 'too long' => [new TextAddress('fr', 'pdf', 'invoice.title'), str_repeat('x', 2001), 'too_long'];
+        // A mail's text with its two forms that no count would choose from: the signup mail would fail when sent.
+        yield 'forms on a count no interval holds' => [new TextAddress('fr', 'emails', 'signup.expires'), '{0} Valable %hours% heure.|{1} Valable %hours% heures.', 'forms'];
+        yield 'forms on an interval left open' => [new TextAddress('en', 'pdf', 'invoice.payment_terms'), '[1,5] Within %days% days|{0} Now', 'forms'];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('refusals')]
@@ -80,6 +83,25 @@ final class OverrideTextTest extends KernelTestCase
             self::assertSame($reason, $refused->reason);
         }
         self::assertSame(0, Rows::int($this->db()->fetchOne('SELECT count(*) FROM text_override WHERE company_id = ?', [$company->getId()->toRfc4122()])));
+    }
+
+    /**
+     * A text giving its singular and its plural keeps any wording whose forms some count chooses from, its own two or a
+     * single one; a text with no forms keeps today's rules, since its code hands it no count and never reads a « | ».
+     */
+    public function testFormsThatEveryCountChoosesFromAreKeptAndATextWithoutFormsKeepsTodaysRules(): void
+    {
+        $company = $this->company('Formes');
+        $kept = [
+            [new TextAddress('fr', 'emails', 'signup.expires'), 'Lien valable %hours% heure.|Lien valable %hours% heures.'],
+            [new TextAddress('en', 'emails', 'password_reset.expires'), 'Works for %minutes% minutes, once.'],
+            [new TextAddress('fr', 'pdf', 'invoice.payment_terms'), '{0} À réception|{1} À %days% jour|]1,Inf[ À %days% jours'],
+            [new TextAddress('fr', 'pdf', 'invoice.title'), '{0} Facture|{1} Note'],
+        ];
+        foreach ($kept as [$address, $value]) {
+            $this->overrideText()->override($company, $address, $value, 0, null);
+        }
+        self::assertSame(4, Rows::int($this->db()->fetchOne('SELECT count(*) FROM text_override WHERE company_id = ?', [$company->getId()->toRfc4122()])));
     }
 
     public function testATextIsWrittenOverTheVersionItReadAndAChangeMadeSinceIsRefused(): void

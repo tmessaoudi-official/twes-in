@@ -87,6 +87,11 @@ export interface TextDialogData {
             'texts.refusals.' + refusalShown() | translate
           }}</mat-error>
         </mat-form-field>
+        @if (hasForms) {
+          <p class="text-sm" data-testid="text-dialog-forms">
+            {{ 'texts.dialog.forms' | translate }}
+          </p>
+        }
       </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -113,6 +118,11 @@ export class TextDialog {
     validators: [Validators.required, notBlank],
   });
   protected readonly saving = signal(false);
+  /**
+   * Whether the original gives its singular and its plural, « …1 heure…|…2 heures… », as a mail or a printed document
+   * may: the number chooses one, and a wording no number chooses from is refused (`forms`). « || » is a « | » itself.
+   */
+  protected readonly hasForms = /(?<!\|)\|(?!\|)/.test(this.data.original);
   /** What the API refused the text for; typing again clears it with the control's errors. */
   private readonly refusal = signal<TextRefusalCode | null>(null);
 

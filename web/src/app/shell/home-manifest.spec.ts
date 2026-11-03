@@ -7,7 +7,7 @@ import { FirstStepsHome } from '../first-steps/first-steps-home';
 import { INSTALL_HOME } from '../install/install-nav';
 import { InstallHome } from '../install/install-home';
 import { INVENTORY_HOME } from '../inventory/inventory-nav';
-import { StockHome } from '../inventory/stock-home';
+import { StockHome } from '../inventory/home/stock-home';
 import { INVOICES_HOME } from '../invoices/invoices-nav';
 import { InvoicesHome } from '../invoices/invoices-home';
 import { WATCH_HOME } from '../watch/watch-nav';

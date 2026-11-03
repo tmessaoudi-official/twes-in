@@ -1,4 +1,5 @@
 # What a printed document says (templates/pdf). pdf.en.yaml carries the same keys (ApiTranslationParityTest).
+# A count of days gives its singular and its plural, « singular|plural », chosen by %count% (ApiCountedTextsTest).
 format:
     date: 'd/m/Y'
     decimal_point: ','
@@ -41,7 +42,7 @@ invoice:
     deposit_share_line: 'Acompte de %share% % sur le devis %number%'
     deposit_line: 'Acompte sur le devis %number%'
     deduction_line: 'Acompte déjà facturé : facture %number% du %date%'
-    late_fee_line: 'Frais de retard : facture %number%, relance %stage% (%days% jours de retard)'
+    late_fee_line: 'Frais de retard : facture %number%, relance %stage% (%days% jour de retard)|Frais de retard : facture %number%, relance %stage% (%days% jours de retard)'
     credit_note_title: 'Avoir'
     corrects: 'Avoir sur la facture %number% du %date%'
     reason: 'Motif : %reason%'
@@ -59,7 +60,7 @@ invoice:
     received_by: 'Reçu par'
     payment: 'Paiement'
     credit_transfer: 'Excédent d’avoir'
-    payment_terms: 'À %days% jours'
+    payment_terms: 'À %days% jour|À %days% jours'
     remarks: 'Remarques'
 quote:
     title: 'Devis'

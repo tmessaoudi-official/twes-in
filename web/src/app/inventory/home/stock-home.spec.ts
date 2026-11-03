@@ -4,17 +4,17 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
-import { AuthFacade } from '../auth/auth-facade';
-import { TextsParts } from '../shared/i18n/texts-part';
-import { LiveChanges } from '../shared/realtime/live-changes';
-import { Session } from '../shared/session/session';
-import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { AuthFacade } from '../../auth/auth-facade';
+import { TextsParts } from '../../shared/i18n/texts-part';
+import { LiveChanges } from '../../shared/realtime/live-changes';
+import { Session } from '../../shared/session/session';
+import { BrowserStorageSettings } from '../../shared/settings/browser-storage-settings';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
   SettingsFacade,
-} from '../shared/settings/settings-facade';
-import { InventoryApi } from './inventory-api';
+} from '../../shared/settings/settings-facade';
+import { InventoryApi } from '../inventory-api';
 import { StockHome } from './stock-home';
 
 const TEXTS = {

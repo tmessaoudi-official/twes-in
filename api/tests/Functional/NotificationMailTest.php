@@ -89,6 +89,22 @@ final class NotificationMailTest extends ApiTestCase
         self::assertStringContainsString("Atlas, 12\u{a0}000 JPY, a 12 jours de retard. Frais de retard de 35 JPY préparés", $bodies[2]);
     }
 
+    public function testDaysLateChooseTheFormOfTheirNoun(): void
+    {
+        $lea = $this->member('lea@twes.local', 'fr', 'invoicer', ['invoice.issue', 'invoice.read', 'company.read']);
+        $sam = $this->member('sam@twes.local', 'en', 'invoicer', null);
+        // As RemindLateInvoices sends it: the days late a number, the count the kind names.
+        $told = ['customer' => 'Atlas', 'number' => 'F-7', 'stage' => 1, 'days_late' => 1, 'amount_due' => '100', 'currency' => 'TND', 'scale' => 3];
+        $this->tell($lea, 'invoice.reminder_due', $told);
+        $this->tell($sam, 'invoice.late_fee_drafted', $told + ['late_fee' => '5']);
+        self::assertSame(2, $this->deliverQueued());
+
+        $bodies = $this->bodiesTo();
+        self::assertStringContainsString('100,000 TND, a 1 jour de retard.', $bodies['lea@twes.local']);
+        self::assertStringContainsString('100.000 TND, is 1 day late. A late fee', $bodies['sam@twes.local']);
+        self::assertStringNotContainsString('|', $bodies['lea@twes.local'].$bodies['sam@twes.local']);
+    }
+
     public function testAnOlderNoticeWithoutItsDecimalsKeepsItsAmountsAsSent(): void
     {
         $lea = $this->member('lea@twes.local', 'fr', 'invoicer', ['invoice.issue', 'invoice.read', 'company.read']);

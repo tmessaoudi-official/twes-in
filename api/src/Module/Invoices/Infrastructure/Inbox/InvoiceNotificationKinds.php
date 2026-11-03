@@ -23,8 +23,8 @@ final readonly class InvoiceNotificationKinds implements DeclaresNotificationKin
     {
         return [
             new NotificationKind(TellCreditWatchers::LIMIT_PASSED, NotificationAudience::Company, InvoicesModule::KEY, TellCreditWatchers::PERMISSION, amounts: ['owed', 'limit']),
-            new NotificationKind(RemindLateInvoices::REMINDER_DUE, NotificationAudience::Company, InvoicesModule::KEY, RemindLateInvoices::PERMISSION, amounts: ['amount_due']),
-            new NotificationKind(RemindLateInvoices::LATE_FEE_DRAFTED, NotificationAudience::Company, InvoicesModule::KEY, RemindLateInvoices::PERMISSION, amounts: ['amount_due', 'late_fee']),
+            new NotificationKind(RemindLateInvoices::REMINDER_DUE, NotificationAudience::Company, InvoicesModule::KEY, RemindLateInvoices::PERMISSION, amounts: ['amount_due'], count: 'days_late'),
+            new NotificationKind(RemindLateInvoices::LATE_FEE_DRAFTED, NotificationAudience::Company, InvoicesModule::KEY, RemindLateInvoices::PERMISSION, amounts: ['amount_due', 'late_fee'], count: 'days_late'),
         ];
     }
 }

@@ -21,4 +21,9 @@ enum TextRefusal: string
     case Placeholders = 'placeholders';
     /** A plural choice is lost, made on another count, without « other », with a form no language has, or unclosed. */
     case Plural = 'plural';
+    /**
+     * A text the API writes giving its singular and its plural, « …1 heure…|…2 heures… », worded so that some count
+     * chooses no form: the mail or the printed document would fail to be written.
+     */
+    case Forms = 'forms';
 }

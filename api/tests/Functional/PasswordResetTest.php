@@ -83,6 +83,9 @@ final class PasswordResetTest extends ApiTestCase
         $message = self::getMailerMessage();
         self::assertInstanceOf(Email::class, $message);
         self::assertStringContainsString('<html lang="en" dir="ltr">', (string) $message->getHtmlBody());
+        // The count chooses the noun's form, one of the two the text gives (app.password_reset.valid_for, PT1H).
+        self::assertStringContainsString('This link is valid for 60 minutes and works once.', (string) $message->getHtmlBody());
+        self::assertStringNotContainsString('|', (string) $message->getHtmlBody());
     }
 
     public function testAnAskInArabicIsMailedInArabicReadRightToLeft(): void

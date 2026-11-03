@@ -9,16 +9,19 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Shared\Infrastructure\DependencyInjection;
 
+use App\Erasure\Infrastructure\Http\ErasureUndoBounds;
 use App\Identity\Infrastructure\Mfa\RecoveryCodeBounds;
 use App\Identity\Infrastructure\Password\PasswordResetBounds;
 use App\Identity\Infrastructure\Session\SessionBounds;
 use App\Kernel;
+use App\Records\Infrastructure\Http\RecordUndoBounds;
 use App\Records\Infrastructure\Http\RestoreStepUpBounds;
 use App\Shared\Infrastructure\ErrorReporting\ClientErrorBounds;
 use App\Shared\Infrastructure\ErrorReporting\ErrorReportingMasksBounds;
 use App\Shared\Infrastructure\Submissions\SubmissionRetryBounds;
 use App\Tenancy\Infrastructure\Http\SupportVisitBounds;
 use App\Tenancy\Infrastructure\Invitation\InvitationBounds;
+use App\Tenancy\Infrastructure\Signup\SignupBounds;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
@@ -32,7 +35,8 @@ use Symfony\Component\Yaml\Yaml;
  * the shipped value gives (a session's use noted an hour late, a support visit's pages unrecorded, a recovery set of
  * three codes, a reset link open for a week, an invitation open for a year, a mask that is no regular expression, a restore
  * switch written as text, a browser's report cut to nothing or sent without end, a lost write's key held past the API's
- * own memory of it).
+ * own memory of it, a signup link gone before its mail arrives, a delete or an erasure that cannot be taken back, or
+ * whose copy outlives what the bin is for).
  */
 final class OperatorParameterBoundsTest extends TestCase
 {
@@ -56,6 +60,10 @@ final class OperatorParameterBoundsTest extends TestCase
         // The web's SUBMISSION_KEY_KEPT_MS (15 minutes) before it was the API's, below the day the API keeps a key.
         self::assertSame(15, $parameters['app.submissions.retry_minutes']);
         self::assertSame(24, $parameters['app.submissions.kept_hours']);
+        // docs/START.md's « valid 24 hours », and the Corbeille's day of row 162.
+        self::assertSame('PT24H', $parameters['app.signup.valid_for']);
+        self::assertSame('PT24H', $parameters['app.records.undoable_for']);
+        self::assertSame('PT24H', $parameters['app.erasure.undoable_for']);
 
         $container = new ContainerBuilder();
         foreach ($parameters as $name => $value) {
@@ -105,6 +113,12 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'twenty reports from a page' => ['app.client_errors.per_page', 20];
         yield 'a lost write retried within a minute' => ['app.submissions.retry_minutes', 1];
         yield 'a lost write retried within a minute less than a day' => ['app.submissions.retry_minutes', 1_439];
+        yield 'a signup link for an hour' => ['app.signup.valid_for', 'PT1H'];
+        yield 'a signup link for a week' => ['app.signup.valid_for', 'P7D'];
+        yield 'a delete taken back within an hour' => ['app.records.undoable_for', 'PT1H'];
+        yield 'a delete taken back within thirty days' => ['app.records.undoable_for', 'P30D'];
+        yield 'an erasure taken back within an hour' => ['app.erasure.undoable_for', 'PT1H'];
+        yield 'an erasure taken back within a week' => ['app.erasure.undoable_for', 'P7D'];
         yield 'a mask of the operator' => ['app.error_reporting.extra_masks', [['pattern' => '/\bTN\d{2}\b/', 'replacement' => '[branch]']]];
     }
 
@@ -155,6 +169,15 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'a lost write retried as long as the API keeps it' => ['app.submissions.retry_minutes', 1_440];
         yield 'a lost write retried longer than the API keeps it' => ['app.submissions.retry_minutes', 2_000];
         yield 'a lost write retried as text' => ['app.submissions.retry_minutes', '15'];
+        yield 'a signup link for 59 minutes' => ['app.signup.valid_for', 'PT59M'];
+        yield 'a signup link for eight days' => ['app.signup.valid_for', 'P8D'];
+        yield 'a signup link by no duration' => ['app.signup.valid_for', '24 hours'];
+        yield 'a delete taken back within 59 minutes' => ['app.records.undoable_for', 'PT59M'];
+        yield 'a delete taken back within 31 days' => ['app.records.undoable_for', 'P31D'];
+        yield 'a delete taken back by no duration' => ['app.records.undoable_for', 'a day'];
+        yield 'an erasure taken back within 59 minutes' => ['app.erasure.undoable_for', 'PT59M'];
+        yield 'an erasure taken back within eight days' => ['app.erasure.undoable_for', 'P8D'];
+        yield 'an erasure taken back by no duration' => ['app.erasure.undoable_for', 'PT24'];
         // The window is held below what the API keeps, so what the API keeps must be a number to compare with.
         yield 'keys kept for no hour' => ['app.submissions.kept_hours', 0];
         yield 'keys kept as text' => ['app.submissions.kept_hours', '24'];
@@ -177,7 +200,7 @@ final class OperatorParameterBoundsTest extends TestCase
     /** @return list<CompilerPassInterface> */
     private static function passes(): array
     {
-        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds()];
+        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds(), new SignupBounds(), new RecordUndoBounds(), new ErasureUndoBounds()];
     }
 
     /** @param array<mixed>|bool|float|int|string|null $value */
@@ -198,7 +221,7 @@ final class OperatorParameterBoundsTest extends TestCase
         $file = Yaml::parseFile(__DIR__.'/../../../../../config/services.yaml', Yaml::PARSE_CONSTANT | Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($file);
         self::assertIsArray($file['parameters'] ?? null);
-        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours'];
+        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours', 'app.signup.valid_for', 'app.records.undoable_for', 'app.erasure.undoable_for'];
         $shipped = [];
         foreach ($names as $name) {
             self::assertArrayHasKey($name, $file['parameters']);

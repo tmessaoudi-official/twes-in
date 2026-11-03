@@ -124,6 +124,7 @@ final class AccountDeletionTest extends ApiTestCase
         self::assertCount(1, $mails);
         self::assertSame(self::LEAVING, $mails[0]->getTo()[0]->getAddress());
         self::assertStringContainsString('7', (string) $mails[0]->getHtmlBody());
+        self::assertStringNotContainsString('|', (string) $mails[0]->getHtmlBody(), 'the count chose one of the forms its text gives');
 
         $this->getJson('/api/auth/me');
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED, 'the session that asked is over too');

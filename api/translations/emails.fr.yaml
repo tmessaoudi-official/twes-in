@@ -1,4 +1,6 @@
 # Subjects and body strings of the mail the API sends. The SPA’s own strings live in web/public/i18n.
+# A count of time gives its singular and its plural, « …1 heure…|…2 heures… », chosen by the %count% the code hands
+# (ApiCountedTextsTest).
 invitation:
     subject: 'Rejoignez %company% sur %product%'
     heading: 'Vous êtes invité à rejoindre %company%'
@@ -12,7 +14,7 @@ signup:
     heading: 'Terminez votre inscription'
     intro: "Quelqu’un, sans doute vous, a demandé à ouvrir un compte %product% avec cette adresse."
     call_to_action: "Terminer l’inscription"
-    expires: "Ce lien est valable %hours% heures et ne sert qu’une fois."
+    expires: "Ce lien est valable %hours% heure et ne sert qu’une fois.|Ce lien est valable %hours% heures et ne sert qu’une fois."
     ignore: "Si vous n’avez rien demandé, ignorez ce message : aucun compte n’est créé."
     account_exists:
         subject: 'Votre compte %product%'
@@ -25,7 +27,7 @@ password_reset:
     heading: 'Choisissez un nouveau mot de passe'
     intro: 'Quelqu’un, sans doute vous, a demandé à réinitialiser le mot de passe de votre compte %product%.'
     call_to_action: 'Choisir un nouveau mot de passe'
-    expires: 'Ce lien est valable %minutes% minutes et ne sert qu’une fois.'
+    expires: 'Ce lien est valable %minutes% minute et ne sert qu’une fois.|Ce lien est valable %minutes% minutes et ne sert qu’une fois.'
     ignore: 'Si vous n’êtes pas à l’origine de cette demande, ignorez ce message : votre mot de passe n’a pas changé.'
 company_approved:
     subject: '%company% est ouverte sur %product%'
@@ -123,8 +125,8 @@ notification:
         stock_imported: 'Un import de stock a trouvé des écarts (écarts : %differences%, comptages : %counted%).'
         stock_low: '%product% (%reference%) est tombé à %on_hand% à %establishment%, au niveau ou sous son seuil de réapprovisionnement de %point%.'
         invoice_credit_limit_passed: '%customer% dépasse sa limite de crédit : %owed% %currency% dus pour %limit% après la facture %number%.'
-        invoice_reminder_due: 'Relance %stage% à faire : la facture %number% de %customer%, %amount_due% %currency%, a %days_late% jours de retard.'
-        invoice_late_fee_drafted: 'Relance %stage% à faire : la facture %number% de %customer%, %amount_due% %currency%, a %days_late% jours de retard. Frais de retard de %late_fee% %currency% préparés en brouillon.'
+        invoice_reminder_due: 'Relance %stage% à faire : la facture %number% de %customer%, %amount_due% %currency%, a %days_late% jour de retard.|Relance %stage% à faire : la facture %number% de %customer%, %amount_due% %currency%, a %days_late% jours de retard.'
+        invoice_late_fee_drafted: 'Relance %stage% à faire : la facture %number% de %customer%, %amount_due% %currency%, a %days_late% jour de retard. Frais de retard de %late_fee% %currency% préparés en brouillon.|Relance %stage% à faire : la facture %number% de %customer%, %amount_due% %currency%, a %days_late% jours de retard. Frais de retard de %late_fee% %currency% préparés en brouillon.'
         invoice_recurring_drafted: 'Facture récurrente de %customer% : un brouillon copié de la facture %number% attend d’être émis.'
         invoice_recurring_stopped: 'Facture récurrente de %customer% mise en pause : la facture %number% qu’elle copie ne peut plus l’être.'
         expense_recurring_drafted: 'Dépense récurrente « %description% » : un brouillon du %dueOn% attend d’être vérifié et enregistré.'
@@ -174,7 +176,7 @@ account_deletion:
     subject: 'Votre compte %product% sera supprimé'
     heading: 'Votre compte est fermé'
     intro: 'Vous avez demandé la suppression de votre compte %product%. Il est fermé dès maintenant et toutes vos sessions sont terminées.'
-    final: 'La suppression sera définitive dans %days% jours, le %date% : votre compte et vos préférences seront alors effacés, et votre adresse retirée du journal.'
+    final: 'La suppression sera définitive dans %days% jour, le %date% : votre compte et vos préférences seront alors effacés, et votre adresse retirée du journal.|La suppression sera définitive dans %days% jours, le %date% : votre compte et vos préférences seront alors effacés, et votre adresse retirée du journal.'
     cancel: 'Pour garder votre compte, reconnectez-vous avant cette date : la suppression sera annulée.'
     not_you: 'Si vous n’êtes pas à l’origine de cette demande, reconnectez-vous et changez votre mot de passe.'
 security_notice:

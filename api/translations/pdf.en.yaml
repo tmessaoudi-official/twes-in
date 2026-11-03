@@ -1,4 +1,5 @@
 # What a printed document says (templates/pdf). pdf.fr.yaml carries the same keys (ApiTranslationParityTest).
+# A count of days gives its singular and its plural, « singular|plural », chosen by %count% (ApiCountedTextsTest).
 format:
     date: 'd/m/Y'
     decimal_point: '.'
@@ -41,7 +42,7 @@ invoice:
     deposit_share_line: '%share%% deposit on quote %number%'
     deposit_line: 'Deposit on quote %number%'
     deduction_line: 'Deposit already invoiced: invoice %number% of %date%'
-    late_fee_line: 'Late fee: invoice %number%, reminder %stage% (%days% days late)'
+    late_fee_line: 'Late fee: invoice %number%, reminder %stage% (%days% day late)|Late fee: invoice %number%, reminder %stage% (%days% days late)'
     credit_note_title: 'Credit note'
     corrects: 'Credit note for invoice %number% of %date%'
     reason: 'Reason: %reason%'
@@ -59,7 +60,7 @@ invoice:
     received_by: 'Received by'
     payment: 'Payment'
     credit_transfer: 'Credit note excess'
-    payment_terms: 'Within %days% days'
+    payment_terms: 'Within %days% day|Within %days% days'
     remarks: 'Remarks'
 quote:
     title: 'Quote'

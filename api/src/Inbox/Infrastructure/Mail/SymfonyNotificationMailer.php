@@ -83,7 +83,8 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
      * @return array<string, string> each value under its %name%, as the sentence reads it; a thing named by its
      *                               translation key (`label_key`, as the screen reads it) is named in the mail's language as %label%;
      *                               an amount, a quantity, a day or a moment its kind names is written as the reader writes it, an
-     *                               amount at the payload's `scale` and kept as sent by an older notice that has none
+     *                               amount at the payload's `scale` and kept as sent by an older notice that has none; the
+     *                               number the kind counts with is handed as %count%, which chooses the form of its noun
      */
     private function parameters(NotificationMail $mail): array
     {
@@ -106,6 +107,12 @@ final readonly class SymfonyNotificationMailer implements NotificationMailer
                 \in_array($name, $kind->moments, true) => $this->figures->moment($value, $mail->locale, $mail->dateFormat),
                 default => $value,
             };
+        }
+
+        // The number the kind counts with chooses its noun's form; a payload that says a count of its own keeps it.
+        $counted = null === $kind?->count ? null : $payload[$kind->count] ?? null;
+        if (is_numeric($counted) && !\array_key_exists('count', $payload)) {
+            $parameters['%count%'] = (string) $counted;
         }
 
         if (\is_string($payload['label_key'] ?? null)) {

@@ -63,7 +63,11 @@ final class SignupTest extends ApiTestCase
         $this->postJson('/api/signup', ['email' => self::ADDRESS, 'locale' => 'en']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
-        $token = self::tokenIn($this->lastMailTo(self::ADDRESS));
+        $html = $this->lastMailTo(self::ADDRESS);
+        // The count chooses the noun's form, one of the two the text gives (app.signup.valid_for, PT24H).
+        self::assertStringContainsString('This link is valid for 24 hours and works once.', $html);
+        self::assertStringNotContainsString('|', $html);
+        $token = self::tokenIn($html);
 
         $this->getJson('/api/signup/'.$token);
         self::assertResponseIsSuccessful();

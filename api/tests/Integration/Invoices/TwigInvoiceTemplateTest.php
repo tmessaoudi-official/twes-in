@@ -211,6 +211,20 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
      * « Cancelled » across the page agrees with the document it stamps: an invoice is feminine in French and in Arabic,
      * where a quote or a delivery note sharing the plain word is not.
      */
+    /** The payment terms' days choose their noun's form: « À 1 jour », « Within 30 days », never both forms. */
+    public function testThePaymentTermsCountTheirDaysInTheFormTheCountTakes(): void
+    {
+        self::bootKernel();
+        foreach ([[1, 'fr', 'À 1 jour<'], [30, 'fr', 'À 30 jours<'], [1, 'en', 'Within 1 day<'], [30, 'en', 'Within 30 days<']] as [$days, $language, $said]) {
+            $this->invoice = Invoice::create($this->invoice->getCompany(), $this->invoice->getEstablishment(), $this->invoice->getCustomer(), new InvoiceHeader(paymentTermsDays: $days), [new InvoiceLineDetails(null, 'Réglage du tour', '2', $this->invoice->getLines()[0]->getUnit(), '150', null, [])], [], new \DateTimeImmutable('2026-10-07 09:00:00'));
+            $html = $this->html(new DocumentDesign(), [], [], language: $language);
+
+            self::assertStringContainsString($said, $html, "$days days in $language");
+            self::assertStringNotContainsString('jour|', $html);
+            self::assertStringNotContainsString('day|', $html);
+        }
+    }
+
     public function testACancelledInvoiceIsStampedInTheFeminine(): void
     {
         self::bootKernel();

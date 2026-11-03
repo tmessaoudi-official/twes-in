@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# The web folders already past folder-cap.sh's 25 files, each with the count it holds and why it is not split yet:
+# <folder> <count> <reason>. None may grow; a file one loses lowers its count; under the cap a folder leaves the list.
+web/src/app/products 59 to be split into sub-feature folders (docs/SPEC.md § 7, 2026-10-16 17:17), not yet done
+web/src/app/company 55 to be split into sub-feature folders (docs/SPEC.md § 7, 2026-10-16 17:17), not yet done
+web/src/app/inventory 48 to be split into sub-feature folders (docs/SPEC.md § 7, 2026-10-16 17:17), not yet done
+web/src/app/invoices 46 to be split into sub-feature folders (docs/SPEC.md § 7, 2026-10-16 17:17), not yet done
+web/src/app/shared/form 50 the form canon's controls, directives and vectors, outside the four the ruling named; split by capability (fields, refusals, save bar) pending

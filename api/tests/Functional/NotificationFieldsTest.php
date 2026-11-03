@@ -45,4 +45,29 @@ final class NotificationFieldsTest extends KernelTestCase
         }
         self::assertGreaterThan(60, $checked, 'the sentences were read');
     }
+
+    /**
+     * A sentence giving its forms, « …1 jour…|…2 jours… », chooses one only on the %count% its kind names the field of;
+     * without it the mail writes both, pipe and all. A count named is one the sentence writes.
+     */
+    public function testASentenceWithFormsIsCountedByItsKind(): void
+    {
+        $kinds = static::getContainer()->get(NotificationKinds::class);
+        $translator = static::getContainer()->get(TranslatorInterface::class);
+        self::assertInstanceOf(TranslatorBagInterface::class, $translator);
+        $withForms = 0;
+        foreach ($kinds->all() as $kind) {
+            foreach (ShippedLanguages::catalogue()->interface() as $language) {
+                $sentence = $translator->getCatalogue($language)->get('notification.types.'.str_replace('.', '_', $kind->type), 'emails');
+                if (str_contains($sentence, '|')) {
+                    ++$withForms;
+                    self::assertNotNull($kind->count, "$kind->type ($language) gives forms but its kind names no count");
+                }
+                if (null !== $kind->count) {
+                    self::assertStringContainsString('%'.$kind->count.'%', $sentence, "$kind->type ($language) is counted on what it never writes");
+                }
+            }
+        }
+        self::assertGreaterThanOrEqual(4, $withForms, 'the reminders give their forms in French and English');
+    }
 }

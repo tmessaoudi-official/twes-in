@@ -273,6 +273,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/build-extra-ca.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/sort-directions.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/folder-cap.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/domain-refusals.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/list-limits.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/typed-trims.test.sh
@@ -360,6 +361,7 @@ in-gate-licences:
 	bash scripts/gates/float-casts.sh
 	bash scripts/gates/build-extra-ca.sh
 	bash scripts/gates/sort-directions.sh
+	bash scripts/gates/folder-cap.sh
 	bash scripts/gates/domain-refusals.sh
 	bash scripts/gates/list-limits.sh
 	bash scripts/gates/typed-trims.sh

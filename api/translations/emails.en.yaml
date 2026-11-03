@@ -1,3 +1,5 @@
+# Subjects and body strings of the mail the API sends. A count of time gives its singular and its plural,
+# « …1 hour…|…2 hours… », chosen by the %count% the code hands (ApiCountedTextsTest).
 invitation:
     subject: 'Join %company% on %product%'
     heading: 'You are invited to join %company%'
@@ -11,7 +13,7 @@ signup:
     heading: 'Finish signing up'
     intro: 'Someone, most likely you, asked to open a %product% account with this address.'
     call_to_action: 'Finish signing up'
-    expires: 'This link is valid for %hours% hours and works once.'
+    expires: 'This link is valid for %hours% hour and works once.|This link is valid for %hours% hours and works once.'
     ignore: 'If you did not ask for this, ignore this message: no account is created.'
     account_exists:
         subject: 'Your %product% account'
@@ -24,7 +26,7 @@ password_reset:
     heading: 'Choose a new password'
     intro: 'Someone, most likely you, asked to reset the password of your %product% account.'
     call_to_action: 'Choose a new password'
-    expires: 'This link is valid for %minutes% minutes and works once.'
+    expires: 'This link is valid for %minutes% minute and works once.|This link is valid for %minutes% minutes and works once.'
     ignore: 'If you did not ask for this, ignore this message: your password has not changed.'
 company_approved:
     subject: '%company% is open on %product%'
@@ -122,8 +124,8 @@ notification:
         stock_imported: 'A stock import found differences (differences: %differences%, counts: %counted%).'
         stock_low: '%product% (%reference%) is down to %on_hand% at %establishment%, at or under its reorder point of %point%.'
         invoice_credit_limit_passed: '%customer% is over their credit limit: %owed% %currency% owed against %limit% after invoice %number%.'
-        invoice_reminder_due: 'Reminder %stage% to send: invoice %number% of %customer%, %amount_due% %currency%, is %days_late% days late.'
-        invoice_late_fee_drafted: 'Reminder %stage% to send: invoice %number% of %customer%, %amount_due% %currency%, is %days_late% days late. A late fee of %late_fee% %currency% is prepared as a draft.'
+        invoice_reminder_due: 'Reminder %stage% to send: invoice %number% of %customer%, %amount_due% %currency%, is %days_late% day late.|Reminder %stage% to send: invoice %number% of %customer%, %amount_due% %currency%, is %days_late% days late.'
+        invoice_late_fee_drafted: 'Reminder %stage% to send: invoice %number% of %customer%, %amount_due% %currency%, is %days_late% day late. A late fee of %late_fee% %currency% is prepared as a draft.|Reminder %stage% to send: invoice %number% of %customer%, %amount_due% %currency%, is %days_late% days late. A late fee of %late_fee% %currency% is prepared as a draft.'
         invoice_recurring_drafted: 'Recurring invoice for %customer%: a draft copied from invoice %number% is waiting to be issued.'
         invoice_recurring_stopped: 'Recurring invoice for %customer% paused: invoice %number%, which it copies, can no longer be copied.'
         expense_recurring_drafted: 'Recurring expense “%description%”: a draft dated %dueOn% is waiting to be checked and recorded.'
@@ -173,7 +175,7 @@ account_deletion:
     subject: 'Your %product% account will be deleted'
     heading: 'Your account is closed'
     intro: 'You asked for your %product% account to be deleted. It is closed from now on and all your sessions have ended.'
-    final: 'The deletion becomes final in %days% days, on %date%: your account and preferences will then be erased, and your address taken out of the journal.'
+    final: 'The deletion becomes final in %days% day, on %date%: your account and preferences will then be erased, and your address taken out of the journal.|The deletion becomes final in %days% days, on %date%: your account and preferences will then be erased, and your address taken out of the journal.'
     cancel: 'To keep your account, sign in again before that date: the deletion will be cancelled.'
     not_you: 'If you did not ask for this, sign in and change your password.'
 security_notice:

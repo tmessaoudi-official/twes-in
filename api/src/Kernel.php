@@ -9,10 +9,12 @@ declare(strict_types=1);
 
 namespace App;
 
+use App\Erasure\Infrastructure\Http\ErasureUndoBounds;
 use App\Identity\Infrastructure\Mfa\RecoveryCodeBounds;
 use App\Identity\Infrastructure\Password\PasswordResetBounds;
 use App\Identity\Infrastructure\Session\SessionBounds;
 use App\Identity\Infrastructure\StepUp\StepUpBounds;
+use App\Records\Infrastructure\Http\RecordUndoBounds;
 use App\Records\Infrastructure\Http\RestoreStepUpBounds;
 use App\Shared\Infrastructure\DevelopmentKeys;
 use App\Shared\Infrastructure\ErrorReporting\ClientErrorBounds;
@@ -20,6 +22,7 @@ use App\Shared\Infrastructure\ErrorReporting\ErrorReportingMasksBounds;
 use App\Shared\Infrastructure\Submissions\SubmissionRetryBounds;
 use App\Tenancy\Infrastructure\Http\SupportVisitBounds;
 use App\Tenancy\Infrastructure\Invitation\InvitationBounds;
+use App\Tenancy\Infrastructure\Signup\SignupBounds;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
@@ -53,6 +56,9 @@ class Kernel extends BaseKernel
         $container->addCompilerPass(new RestoreStepUpBounds());
         $container->addCompilerPass(new ClientErrorBounds());
         $container->addCompilerPass(new SubmissionRetryBounds());
+        $container->addCompilerPass(new SignupBounds());
+        $container->addCompilerPass(new RecordUndoBounds());
+        $container->addCompilerPass(new ErasureUndoBounds());
     }
 
     /**

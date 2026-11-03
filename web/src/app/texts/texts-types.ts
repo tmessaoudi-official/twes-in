@@ -59,6 +59,7 @@ export const TEXT_REFUSALS = [
   'too_long',
   'placeholders',
   'plural',
+  'forms',
   'locked',
   'unknown_text',
   'language',

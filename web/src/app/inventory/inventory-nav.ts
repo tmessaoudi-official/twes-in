@@ -30,7 +30,7 @@ export const INVENTORY_HOME: readonly HomePanel[] = [
     permission: 'stock.read',
     module: INVENTORY_MODULE,
     span: 'half',
-    load: () => import('./stock-home').then((feature) => feature.StockHome),
+    load: () => import('./home/stock-home').then((feature) => feature.StockHome),
   },
 ];
 

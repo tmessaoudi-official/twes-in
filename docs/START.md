@@ -368,7 +368,7 @@ Signup is **off** by default.
 1. As the operator, open **Platform** → **Signup** and switch on **Anyone may sign up**. **A company that signs up
    waits for approval** is on by default. Leave it on to try the approval flow.
 2. Signed out, open http://localhost:8090/signup, enter an address, then **Send me a link** (*Recevoir le lien*).
-3. In Mailpit, follow the link (`/signup/<token>`, valid 24 hours). Fill in your name, a password, the company
+3. In Mailpit, follow the link (`/signup/<token>`, valid 24 hours: `app.signup.valid_for`, an hour to a week). Fill in your name, a password, the company
    name, its country and time zone.
 4. With approval on, the company waits: its owner can sign in and sees that it is waiting. As the operator, go to
    **Platform** → **Waiting for approval** → **Approve** (the owner is mailed) or **Reject** (the company is suspended).

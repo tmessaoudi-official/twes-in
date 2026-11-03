@@ -15,8 +15,12 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       texts: {
-        dialog: { marks: 'Gardez : {{marks}}' },
-        refusals: { empty: 'Écrivez un texte.', placeholders: 'Gardez les repères.' },
+        dialog: { marks: 'Gardez : {{marks}}', forms: 'Deux formes séparées par « | ».' },
+        refusals: {
+          empty: 'Écrivez un texte.',
+          placeholders: 'Gardez les repères.',
+          forms: 'Gardez deux formes.',
+        },
       },
     });
   }
@@ -107,6 +111,27 @@ describe('TextDialog', () => {
     expect((q('text-dialog-value') as HTMLTextAreaElement).value).toBe('Facture');
     type('Facture %number%');
     expect(q('text-dialog-refusal')).toBeNull();
+  });
+
+  it('says beside a text with forms that they are separated by « | », and says nothing of them elsewhere', async () => {
+    await open({ original: 'Valable %hours% heure.|Valable %hours% heures.', marks: ['%hours%'] });
+    expect(q('text-dialog-forms')?.textContent?.trim()).toBe('Deux formes séparées par « | ».');
+    fixture.destroy();
+    TestBed.resetTestingModule();
+
+    await open({ original: 'Facture || avoir %number%' });
+    expect(q('text-dialog-forms')).toBeNull();
+  });
+
+  it('says a refusal of forms no count chooses from under the field', async () => {
+    await open({ original: 'Valable %hours% heure.|Valable %hours% heures.', marks: ['%hours%'] });
+    save.mockResolvedValue({ kept: false, refusal: 'forms' });
+    type('{0} Valable %hours% heure.|{1} Valable %hours% heures.');
+
+    await press('text-dialog-save');
+
+    expect(close).not.toHaveBeenCalled();
+    expect(q('text-dialog-refusal')?.textContent?.trim()).toBe('Gardez deux formes.');
   });
 
   it('refuses a text of spaces alone without asking the API', async () => {

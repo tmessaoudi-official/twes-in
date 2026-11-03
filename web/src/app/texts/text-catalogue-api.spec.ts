@@ -90,6 +90,13 @@ describe('TextCatalogueApi', () => {
       );
     await expect(placeholders).rejects.toEqual(new TextRefused('placeholders'));
 
+    // A mail's text whose forms no count would choose from, which would fail when the mail is sent.
+    const forms = api.write(company, 'fr', title, '{0} Facture|{1} Factures', 1);
+    http
+      .expectOne('/api/companies/c1/texts/fr/pdf/invoice.title')
+      .flush({ error: 'forms', detail: 'x' }, { status: 422, statusText: 'Unprocessable Entity' });
+    await expect(forms).rejects.toEqual(new TextRefused('forms'));
+
     const since = api.write(company, 'fr', title, 'Facture', 1);
     http
       .expectOne('/api/companies/c1/texts/fr/pdf/invoice.title')

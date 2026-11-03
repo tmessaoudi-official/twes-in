@@ -38,6 +38,7 @@
       "installation": "Installation's text",
       "value": "Your text",
       "marks": "Keep these marks as they are: {{marks}}",
+      "forms": "This text has two forms separated by “|”: the singular, then the plural. The number chooses the form.",
       "close": "Close",
       "save": "Save"
     },
@@ -46,6 +47,7 @@
       "too_long": "This text is too long: shorten it.",
       "placeholders": "Keep the same marks as the original text, no more and no fewer, written the same way.",
       "plural": "Keep the same forms as the original text for a number (one, other…), each within its braces.",
+      "forms": "Keep one or two forms separated by “|”: the singular, then the plural, with nothing before them.",
       "locked": "This text cannot be changed: the law or the application sets it.",
       "unknown_text": "This text no longer exists in this version: open the list again.",
       "language": "This language is not offered for the screens.",

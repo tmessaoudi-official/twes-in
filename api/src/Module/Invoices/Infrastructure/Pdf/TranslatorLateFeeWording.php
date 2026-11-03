@@ -21,6 +21,6 @@ final readonly class TranslatorLateFeeWording implements LateFeeWording
 
     public function lateFeeLine(string $language, string $invoiceNumber, int $stage, int $daysLate): string
     {
-        return $this->translator->trans('invoice.late_fee_line', ['%number%' => $invoiceNumber, '%stage%' => $stage, '%days%' => $daysLate], 'pdf', $language);
+        return $this->translator->trans('invoice.late_fee_line', ['%number%' => $invoiceNumber, '%stage%' => $stage, '%days%' => $daysLate, '%count%' => $daysLate], 'pdf', $language);
     }
 }

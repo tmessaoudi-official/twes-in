@@ -11,13 +11,13 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { AuthFacade } from '../auth/auth-facade';
-import { HOME_TEXTS } from '../shared/i18n/home-texts';
-import { TextsParts } from '../shared/i18n/texts-part';
-import { LiveChanges } from '../shared/realtime/live-changes';
-import { KpiTile } from '../shared/ui/kpi-tile';
-import { InventoryApi } from './inventory-api';
-import type { StockSearch } from './inventory-types';
+import { AuthFacade } from '../../auth/auth-facade';
+import { HOME_TEXTS } from '../../shared/i18n/home-texts';
+import { TextsParts } from '../../shared/i18n/texts-part';
+import { LiveChanges } from '../../shared/realtime/live-changes';
+import { KpiTile } from '../../shared/ui/kpi-tile';
+import { InventoryApi } from '../inventory-api';
+import type { StockSearch } from '../inventory-types';
 
 /** What the panel read: the stock's worth for whoever may read costs, and what is wrong in it for every reader. */
 interface StockFigures {
