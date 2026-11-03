@@ -17,6 +17,8 @@ export interface TextRow {
   readonly version: number;
   /** The writer's own wording was written over another original than this release ships. */
   readonly originalChanged: boolean;
+  /** Its code hands it a count, in every language, which chooses among the forms a « | » separates. */
+  readonly counted: boolean;
 }
 
 /** What the catalogue is asked for: the words looked for, one place, only the texts whose original changed, a page. */

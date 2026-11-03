@@ -27,6 +27,6 @@ final class SubmissionRetryBounds implements CompilerPassInterface
     {
         // A whole number of hours first: the window below is measured against it.
         ParameterBounds::whole($container, self::KEPT_HOURS, 1, \PHP_INT_MAX);
-        ParameterBounds::whole($container, self::RETRY_MINUTES, 1, $container->getParameter(self::KEPT_HOURS) * 60 - 1);
+        ParameterBounds::whole($container, self::RETRY_MINUTES, 1, $container->getParameter(self::KEPT_HOURS) * 60 - 1, 'less than '.self::KEPT_HOURS.' in minutes');
     }
 }

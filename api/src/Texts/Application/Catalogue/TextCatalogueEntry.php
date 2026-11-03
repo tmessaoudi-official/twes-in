@@ -12,7 +12,7 @@ namespace App\Texts\Application\Catalogue;
 /**
  * One text a writer may word otherwise: the original shipped, the installation's wording and the company's (null where
  * none), the version of the writer's own level (0 for none), and whether the original changed since the writer's own
- * was written.
+ * was written, and whether its code hands it a count that chooses among its forms (`CountedTexts`).
  */
 final readonly class TextCatalogueEntry
 {
@@ -24,6 +24,7 @@ final readonly class TextCatalogueEntry
         public ?string $company,
         public int $version,
         public bool $originalChanged,
+        public bool $counted,
     ) {
     }
 }

@@ -20,11 +20,11 @@ use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Texts\Domain\Model\TextOverride;
 use App\Texts\Domain\Repository\TextOverrideRepository;
+use App\Texts\Domain\Service\CountedTexts;
 use App\Texts\Domain\Service\OverrideRules;
 use App\Texts\Domain\Service\TextLocks;
 use App\Texts\Domain\ValueObject\TextAddress;
 use App\Texts\Domain\ValueObject\TextRefusal;
-use App\Texts\Domain\ValueObject\TextSyntax;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -38,8 +38,6 @@ final readonly class OverrideText implements DeclaresAuditActions
     public const string ENTITY_TYPE = 'text';
     public const string OVERRIDDEN = 'text.overridden';
     public const string RESET = 'text.reset';
-    /** A « | » standing alone: what separates the forms of a text the API writes (« || » is a « | » written out). */
-    private const string FORMS = '/(?<!\|)\|(?!\|)/';
 
     public function __construct(
         private ShippedTexts $shipped,
@@ -67,9 +65,9 @@ final readonly class OverrideText implements DeclaresAuditActions
         if (null !== $refusal) {
             throw TextOverrideRefused::because($refusal, $address);
         }
-        // Its code hands such a text the count that chooses a form; written so that a count chooses none, it would throw
-        // when the mail is sent, long after this save said nothing.
-        if (TextSyntax::Api === $address->syntax() && 1 === preg_match(self::FORMS, $original) && !$this->forms->everyCountChooses($value, $address->language)) {
+        // Its code hands such a text the count that chooses a form, in every language and whatever the original holds;
+        // written so that a count chooses none, it would throw when the mail is sent, long after this save said nothing.
+        if (CountedTexts::counted($address) && !$this->forms->everyCountChooses($value, $address->language)) {
             throw TextOverrideRefused::because(TextRefusal::Forms, $address);
         }
 

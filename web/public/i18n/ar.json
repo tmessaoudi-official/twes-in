@@ -3920,7 +3920,8 @@
     "inventory_lots": "دفعات المخزون",
     "inventory_serials": "الأرقام التسلسلية في المخزون",
     "files_stored": "الملفات المحفوظة",
-    "submissions_stuck": "إرسالات بقيت دون ردّ"
+    "submissions_stuck": "إرسالات بقيت دون ردّ",
+    "texts_forms": "صيغ النصوص المعدّلة"
   },
   "support_access": {
     "title": "وصول الدعم",

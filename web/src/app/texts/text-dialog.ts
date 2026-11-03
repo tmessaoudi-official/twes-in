@@ -19,6 +19,8 @@ export interface TextDialogData {
   readonly value: string;
   /** The marks the text keeps, `{{name}}` or `%name%`. */
   readonly marks: readonly string[];
+  /** Its code hands it a count, in every language: a « | » there separates forms the count chooses from. */
+  readonly counted: boolean;
   readonly save: (value: string) => Promise<TextOutcome<SavedText>>;
 }
 
@@ -119,10 +121,11 @@ export class TextDialog {
   });
   protected readonly saving = signal(false);
   /**
-   * Whether the original gives its singular and its plural, « …1 heure…|…2 heures… », as a mail or a printed document
-   * may: the number chooses one, and a wording no number chooses from is refused (`forms`). « || » is a « | » itself.
+   * Whether its code hands the text a count, as a mail or a printed document may, whatever its original looks like
+   * (Arabic's gives one form): the number chooses among the forms written, and a wording leaving some number none is
+   * refused (`forms`). The API's test, `CountedTexts`, so the hint and the refusal never disagree.
    */
-  protected readonly hasForms = /(?<!\|)\|(?!\|)/.test(this.data.original);
+  protected readonly hasForms = this.data.counted;
   /** What the API refused the text for; typing again clears it with the control's errors. */
   private readonly refusal = signal<TextRefusalCode | null>(null);
 

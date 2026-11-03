@@ -14,6 +14,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Texts\Application\ShippedTexts;
 use App\Texts\Domain\Model\TextOverride;
 use App\Texts\Domain\Repository\TextOverrideRepository;
+use App\Texts\Domain\Service\CountedTexts;
 use App\Texts\Domain\Service\TextLocks;
 use App\Texts\Domain\ValueObject\TextAddress;
 
@@ -41,7 +42,8 @@ final readonly class TextCatalogue
                 continue;
             }
             foreach ($this->shipped->texts($language, $domain) as $key => $original) {
-                if ($this->locks->locked(new TextAddress($language, $domain, $key))) {
+                $at = new TextAddress($language, $domain, $key);
+                if ($this->locks->locked($at)) {
                     continue;
                 }
                 $address = $domain.'|'.$key;
@@ -54,6 +56,7 @@ final readonly class TextCatalogue
                     null === $company ? null : $mine?->getValue(),
                     $mine?->getVersion() ?? 0,
                     null !== $mine && $mine->getOriginal() !== $original,
+                    CountedTexts::counted($at),
                 );
                 if (($query->originalChanged && !$entry->originalChanged) || !self::says($entry, $wanted)) {
                     continue;

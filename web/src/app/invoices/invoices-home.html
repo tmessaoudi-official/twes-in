@@ -1,7 +1,10 @@
 @if (error(); as code) {
-  <p role="alert" data-testid="home-invoices-error" class="text-error">
-    {{ 'invoices.errors.' + code | translate }}
-  </p>
+  <div role="alert" data-testid="home-invoices-error" class="flex flex-wrap items-center gap-2">
+    <span class="text-error">{{ 'invoices.errors.' + code | translate }}</span>
+    <button mat-button type="button" (click)="retry()" data-testid="home-invoices-retry">
+      {{ 'feedback.retry' | translate }}
+    </button>
+  </div>
 }
 @if (summary(); as s) {
   <!-- Twelve columns, every tile the whole row on a phone: the margin and what was invoiced, then three figures, the
@@ -127,7 +130,13 @@
           : null
       "
       [see]="
-        s.overdueCount > 0 ? { route: '/invoices', label: 'invoices.home.see' | translate } : null
+        s.overdueCount > 0
+          ? {
+              route: '/invoices',
+              queryParams: { status: 'overdue' },
+              label: 'invoices.home.see' | translate,
+            }
+          : null
       "
     />
 

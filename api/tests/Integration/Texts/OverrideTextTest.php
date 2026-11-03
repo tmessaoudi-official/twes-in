@@ -70,6 +70,17 @@ final class OverrideTextTest extends KernelTestCase
         // A mail's text with its two forms that no count would choose from: the signup mail would fail when sent.
         yield 'forms on a count no interval holds' => [new TextAddress('fr', 'emails', 'signup.expires'), '{0} Valable %hours% heure.|{1} Valable %hours% heures.', 'forms'];
         yield 'forms on an interval left open' => [new TextAddress('en', 'pdf', 'invoice.payment_terms'), '[1,5] Within %days% days|{0} Now', 'forms'];
+        // Its code hands the count whatever the original says: Arabic's original has one form, and two forms leave the
+        // count of 30 days, Arabic's fifth form, nothing to choose.
+        yield 'two forms in Arabic, which has six' => [new TextAddress('ar', 'pdf', 'invoice.payment_terms'), 'الأجل يوم %days%|الأجل %days% أيام', 'forms'];
+        yield 'two forms in Arabic on the data check mail' => [new TextAddress('ar', 'emails', 'notification.types.data_check_failed'), '« %label% » %company%: %count%|« %label% » %company%: %count% حالات', 'forms'];
+        // No original of the data check mail has forms, yet its count is handed: one interval leaves every other count out.
+        yield 'one interval no count below it' => [new TextAddress('fr', 'emails', 'notification.types.data_check_failed'), ']1,Inf[ Le contrôle « %label% » a trouvé %count% anomalies chez %company%.', 'forms'];
+        // A last interval that stops leaves every count above it to nothing: an invoice 101 days late, terms of 120 days.
+        yield 'a last interval closed at 100' => [new TextAddress('fr', 'pdf', 'invoice.payment_terms'), '{0} À réception|{1} À %days% jour|]1,100] À %days% jours', 'forms'];
+        yield 'a set of the counts once tried' => [new TextAddress('fr', 'pdf', 'invoice.payment_terms'), '{0,1,2,5,21,100} À %days% jours', 'forms'];
+        yield 'a gap between a set and an open interval' => [new TextAddress('fr', 'pdf', 'invoice.payment_terms'), '{0,1,2,5,21,100} À %days% jours|[101,Inf[ À %days% jours', 'forms'];
+        yield 'a standard form above a closed interval' => [new TextAddress('en', 'pdf', 'invoice.payment_terms'), '[0,100] Within %days% days|Within %days% days', 'forms'];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('refusals')]
@@ -97,11 +108,14 @@ final class OverrideTextTest extends KernelTestCase
             [new TextAddress('en', 'emails', 'password_reset.expires'), 'Works for %minutes% minutes, once.'],
             [new TextAddress('fr', 'pdf', 'invoice.payment_terms'), '{0} À réception|{1} À %days% jour|]1,Inf[ À %days% jours'],
             [new TextAddress('fr', 'pdf', 'invoice.title'), '{0} Facture|{1} Note'],
+            [new TextAddress('ar', 'pdf', 'invoice.payment_terms'), 'مدة الدفع بالأيام: %days%'],
+            [new TextAddress('en', 'pdf', 'invoice.late_fee_line'), '{0} Late fee %number%, stage %stage%|[1,Inf[ Late fee %number%, stage %stage%, %days% days late'],
+            [new TextAddress('ar', 'emails', 'notification.types.data_check_failed'), 'التثبّت « %label% » لدى %company%، عدد الحالات: %count%.'],
         ];
         foreach ($kept as [$address, $value]) {
             $this->overrideText()->override($company, $address, $value, 0, null);
         }
-        self::assertSame(4, Rows::int($this->db()->fetchOne('SELECT count(*) FROM text_override WHERE company_id = ?', [$company->getId()->toRfc4122()])));
+        self::assertSame(7, Rows::int($this->db()->fetchOne('SELECT count(*) FROM text_override WHERE company_id = ?', [$company->getId()->toRfc4122()])));
     }
 
     public function testATextIsWrittenOverTheVersionItReadAndAChangeMadeSinceIsRefused(): void

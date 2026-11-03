@@ -33,12 +33,19 @@ final class ParameterBounds
         }
     }
 
-    /** @throws InvalidArgumentException when the parameter is no whole number within the bounds */
-    public static function whole(ContainerBuilder $container, string $parameter, int $fewest, int $most): void
+    /**
+     * @param string|null $mostFrom where a ceiling read from another parameter comes from, as a person reads it, « at
+     *                              most app.session.absolute_ttl »: the operator who changed that one is refused a
+     *                              value they did not touch, and reads which
+     *
+     * @throws InvalidArgumentException when the parameter is no whole number within the bounds
+     */
+    public static function whole(ContainerBuilder $container, string $parameter, int $fewest, int $most, ?string $mostFrom = null): void
     {
         $value = $container->getParameter($parameter);
         if (!\is_int($value) || $value < $fewest || $value > $most) {
-            throw new InvalidArgumentException(\sprintf('%s is a whole number from %d to %d; %s is not.', $parameter, $fewest, $most, json_encode($value)));
+            $from = null === $mostFrom ? '' : ' ('.$mostFrom.')';
+            throw new InvalidArgumentException(\sprintf('%s is a whole number from %d to %d%s; %s is not.', $parameter, $fewest, $most, $from, json_encode($value)));
         }
     }
 

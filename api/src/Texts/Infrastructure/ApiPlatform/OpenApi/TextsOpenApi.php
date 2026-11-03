@@ -68,7 +68,7 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
 
         $schemas['TextCatalogueEntry'] = new \ArrayObject([
             'type' => 'object',
-            'required' => ['domain', 'key', 'original', 'installation', 'company', 'version', 'originalChanged'],
+            'required' => ['domain', 'key', 'original', 'installation', 'company', 'version', 'originalChanged', 'counted'],
             'properties' => [
                 'domain' => ['type' => 'string'],
                 'key' => ['type' => 'string'],
@@ -77,6 +77,7 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
                 'company' => ['type' => ['string', 'null'], 'description' => 'The company\'s own wording; always null in the installation\'s catalogue.'],
                 'version' => ['type' => 'integer', 'description' => 'The version of the reader\'s own level, 0 where it words nothing.'],
                 'originalChanged' => ['type' => 'boolean', 'description' => 'The reader\'s own wording was written over another original than this release ships.'],
+                'counted' => ['type' => 'boolean', 'description' => 'Its code hands it a count, in every language: a « | » or a leading interval separates forms the count chooses from, and a wording leaving some count none is refused (`forms`).'],
             ],
         ]);
         $schemas['TextCataloguePage'] = new \ArrayObject([

@@ -171,6 +171,7 @@ data_checks:
     inventory_serials: 'Serial numbers in stock'
     files_stored: 'Stored files'
     submissions_stuck: 'Submissions left unanswered'
+    texts_forms: 'Forms of reworded texts'
 account_deletion:
     subject: 'Your %product% account will be deleted'
     heading: 'Your account is closed'

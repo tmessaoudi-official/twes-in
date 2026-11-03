@@ -3920,7 +3920,8 @@
     "inventory_lots": "Lots du stock",
     "inventory_serials": "Numéros de série en stock",
     "files_stored": "Fichiers enregistrés",
-    "submissions_stuck": "Envois restés sans réponse"
+    "submissions_stuck": "Envois restés sans réponse",
+    "texts_forms": "Formes des textes modifiés"
   },
   "support_access": {
     "title": "Accès du support",

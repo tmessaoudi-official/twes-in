@@ -9,6 +9,7 @@ import {
   inject,
   untracked,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -41,7 +42,7 @@ const AGING_COLOURS: Readonly<Record<AgingBucket, string>> = {
  */
 @Component({
   selector: 'app-invoices-home',
-  imports: [MatCardModule, RouterLink, TranslatePipe, AmountPipe, KpiTile],
+  imports: [MatButtonModule, MatCardModule, RouterLink, TranslatePipe, AmountPipe, KpiTile],
   templateUrl: './invoices-home.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -111,11 +112,14 @@ export class InvoicesHome {
     // only for a reader of costs, so a role or membership changed reads it again too.
     inject(LiveChanges).reloadOn(
       withSessionKinds(['invoice', 'customer']),
-      async () => {
-        const companyId = this.companyId();
-        if (companyId !== null) await this.facade.loadSummary(companyId);
-      },
+      () => this.retry(),
       inject(DestroyRef),
     );
+  }
+
+  /** Reads the summary again: on a live change, or from the error line when it could not be read. */
+  protected async retry(): Promise<void> {
+    const companyId = this.companyId();
+    if (companyId !== null) await this.facade.loadSummary(companyId);
   }
 }

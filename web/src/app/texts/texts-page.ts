@@ -249,6 +249,7 @@ export class TextsPage implements OnInit {
       installation: this.installation() ? null : row.installation,
       value: before ?? row.installation ?? row.original,
       marks: marksOf(row.original, row.domain),
+      counted: row.counted,
       save: (value) => this.facade.write(level, language, row, value, row.version),
     };
     const ref = this.dialog.open<TextDialog, TextDialogData, SavedText | null>(TextDialog, {

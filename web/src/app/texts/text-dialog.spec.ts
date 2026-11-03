@@ -53,6 +53,7 @@ describe('TextDialog', () => {
             installation: 'Facture de vente %number%',
             value: 'Facture de vente %number%',
             marks: ['%number%'],
+            counted: false,
             save,
             ...data,
           } satisfies TextDialogData,
@@ -113,18 +114,38 @@ describe('TextDialog', () => {
     expect(q('text-dialog-refusal')).toBeNull();
   });
 
-  it('says beside a text with forms that they are separated by « | », and says nothing of them elsewhere', async () => {
-    await open({ original: 'Valable %hours% heure.|Valable %hours% heures.', marks: ['%hours%'] });
+  it('says beside a text its code counts with how its forms are written, and says nothing of them elsewhere', async () => {
+    await open({
+      original: 'Valable %hours% heure.|Valable %hours% heures.',
+      marks: ['%hours%'],
+      counted: true,
+    });
     expect(q('text-dialog-forms')?.textContent?.trim()).toBe('Deux formes séparées par « | ».');
     fixture.destroy();
     TestBed.resetTestingModule();
 
-    await open({ original: 'Facture || avoir %number%' });
+    // Arabic's original has one form, yet its count is handed all the same: a « | » typed there splits it.
+    await open({
+      language: 'ar',
+      original: 'الأجل بالأيام: %days%',
+      marks: ['%days%'],
+      counted: true,
+    });
+    expect(q('text-dialog-forms')).not.toBeNull();
+    fixture.destroy();
+    TestBed.resetTestingModule();
+
+    // A « | » in a text no count reaches is written as typed.
+    await open({ original: 'Facture|avoir %number%', counted: false });
     expect(q('text-dialog-forms')).toBeNull();
   });
 
   it('says a refusal of forms no count chooses from under the field', async () => {
-    await open({ original: 'Valable %hours% heure.|Valable %hours% heures.', marks: ['%hours%'] });
+    await open({
+      original: 'Valable %hours% heure.|Valable %hours% heures.',
+      marks: ['%hours%'],
+      counted: true,
+    });
     save.mockResolvedValue({ kept: false, refusal: 'forms' });
     type('{0} Valable %hours% heure.|{1} Valable %hours% heures.');
 

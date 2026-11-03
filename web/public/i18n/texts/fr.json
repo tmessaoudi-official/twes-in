@@ -38,7 +38,7 @@
       "installation": "Texte de l’installation",
       "value": "Votre texte",
       "marks": "Gardez ces repères tels quels : {{marks}}",
-      "forms": "Ce texte a deux formes séparées par « | » : le singulier, puis le pluriel. Le nombre choisit la forme.",
+      "forms": "Le nombre choisit la forme : écrivez le singulier puis le pluriel, séparés par « | », par exemple « À %days% jour|À %days% jours ». En arabe, une seule forme, le nombre après son libellé : « الأجل بالأيام: %days% ».",
       "close": "Fermer",
       "save": "Enregistrer"
     },
@@ -47,7 +47,7 @@
       "too_long": "Ce texte est trop long : raccourcissez-le.",
       "placeholders": "Gardez les mêmes repères que le texte d’origine, ni plus ni moins, écrits de la même façon.",
       "plural": "Gardez les mêmes formes que le texte d’origine pour un nombre (one, other…), chacune entre ses accolades.",
-      "forms": "Gardez une ou deux formes séparées par « | » : le singulier, puis le pluriel, sans rien devant.",
+      "forms": "Ce texte laisse certains nombres sans forme : écrivez le singulier puis le pluriel, séparés par « | », par exemple « À %days% jour|À %days% jours ». En arabe, écrivez une seule forme, le nombre après son libellé : « الأجل بالأيام: %days% ».",
       "locked": "Ce texte ne peut pas être modifié : il est fixé par la loi ou par l’application.",
       "unknown_text": "Ce texte n’existe plus dans cette version : rouvrez la liste.",
       "language": "Cette langue n’est pas proposée pour les écrans.",

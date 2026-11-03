@@ -31,6 +31,7 @@ const TEXTS = {
       error: 'Le stock n’a pas pu être lu.',
     },
   },
+  feedback: { retry: 'Réessayer' },
 };
 
 describe('StockHome', () => {
@@ -168,5 +169,21 @@ describe('StockHome', () => {
 
     expect(find('home-stock-error')?.getAttribute('role')).toBe('alert');
     expect(find('home-stock')).toBeNull();
+  });
+
+  it('offers to read the stock again where it says it could not, and shows it once read', async () => {
+    levels.mockRejectedValue(new Error('down'));
+    const { fixture, find } = await render();
+    levels.mockReset().mockResolvedValue({ rows: [], total: 0 });
+
+    const retry = find('home-stock-retry');
+    expect(retry?.textContent?.trim()).toBe('Réessayer');
+    retry?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(levels).toHaveBeenCalledWith('c1', expect.objectContaining({ negative: 'yes' }));
+    expect(find('home-stock-error')).toBeNull();
+    expect(find('home-stock')).not.toBeNull();
   });
 });

@@ -33,7 +33,7 @@ final class DemoBounds implements CompilerPassInterface
         // A whole number first, rather than trusting the order passes run in: the ceiling below is measured against it.
         // Its own range is SessionBounds'.
         ParameterBounds::whole($container, SessionBounds::ABSOLUTE_TTL, 1, \PHP_INT_MAX);
-        ParameterBounds::whole($container, self::IDLE_TTL, 1_800, $container->getParameter(SessionBounds::ABSOLUTE_TTL));
+        ParameterBounds::whole($container, self::IDLE_TTL, 1_800, $container->getParameter(SessionBounds::ABSOLUTE_TTL), 'at most '.SessionBounds::ABSOLUTE_TTL);
         ParameterBounds::duration($container, self::BUILD_GIVES_UP_AFTER, 600, 6 * 3_600, 'ten minutes to six hours (PT10M to PT6H)');
     }
 }

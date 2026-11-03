@@ -171,6 +171,7 @@ data_checks:
     inventory_serials: 'الأرقام التسلسلية في المخزون'
     files_stored: 'الملفات المحفوظة'
     submissions_stuck: 'إرسالات بقيت دون ردّ'
+    texts_forms: 'صيغ النصوص المعدّلة'
 account_deletion:
     subject: 'سيُحذف حسابك على %product%'
     heading: 'أُغلق حسابك'

@@ -45,6 +45,7 @@ describe('TextCatalogueApi', () => {
       company: 'Facture client',
       version: 3,
       originalChanged: false,
+      counted: true,
     };
     request.flush({ items: [row], total: 1, page: 2, itemsPerPage: 50 });
 

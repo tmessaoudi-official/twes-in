@@ -317,6 +317,32 @@ final class OperatorParameterBoundsTest extends TestCase
         }
     }
 
+    /** @return iterable<string, array{string, int, array<string, int>, string}> */
+    public static function boundByAnother(): iterable
+    {
+        yield 'a demo visitor away longer than a session lasts' => ['app.demo.idle_ttl', 7_200, ['app.session.absolute_ttl' => 3_600], 'app.demo.idle_ttl is a whole number from 1800 to 3600 (at most app.session.absolute_ttl); 7200 is not.'];
+        yield 'a lost write retried longer than the API keeps it' => ['app.submissions.retry_minutes', 2_000, [], 'app.submissions.retry_minutes is a whole number from 1 to 1439 (less than app.submissions.kept_hours in minutes); 2000 is not.'];
+    }
+
+    /**
+     * A ceiling read from another parameter says which: an operator who shortened that one is refused a value they did
+     * not touch, and reads where the ceiling came from.
+     *
+     * @param array<string, int> $beside
+     */
+    #[DataProvider('boundByAnother')]
+    public function testACeilingTakenFromAnotherParameterNamesIt(string $parameter, int $value, array $beside, string $said): void
+    {
+        $container = $this->withShipped($parameter, $value, $beside);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage($said);
+
+        foreach (self::passes() as $pass) {
+            $pass->process($container);
+        }
+    }
+
     /** @return list<CompilerPassInterface> */
     private static function passes(): array
     {

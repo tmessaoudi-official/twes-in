@@ -42,7 +42,7 @@ final class TextsOpenApiTest extends KernelTestCase
         self::assertSame(['value', 'version'], self::plain($schemas['TextOverrideChange'])['required'] ?? null);
         self::assertSame(['value', 'original', 'version'], self::plain($schemas['TextOverride'])['required'] ?? null);
         self::assertSame(['error', 'detail'], self::plain($schemas['TextOverrideRefusal'])['required'] ?? null);
-        self::assertSame(['domain', 'key', 'original', 'installation', 'company', 'version', 'originalChanged'], self::plain($schemas['TextCatalogueEntry'])['required'] ?? null);
+        self::assertSame(['domain', 'key', 'original', 'installation', 'company', 'version', 'originalChanged', 'counted'], self::plain($schemas['TextCatalogueEntry'])['required'] ?? null);
         self::assertSame(['items', 'total', 'page', 'itemsPerPage'], self::plain($schemas['TextCataloguePage'])['required'] ?? null);
     }
 

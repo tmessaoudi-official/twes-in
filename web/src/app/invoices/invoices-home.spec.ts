@@ -69,6 +69,7 @@ class StaticLoader implements TranslateLoader {
           },
         },
       },
+      feedback: { retry: 'Réessayer' },
     });
   }
 }
@@ -317,7 +318,25 @@ describe('InvoicesHome', () => {
     current.set(null);
     error.set('network');
     await settle();
-    expect(text('home-invoices-error')).toBe('Le serveur est injoignable.');
+    expect(text('home-invoices-error')).toContain('Le serveur est injoignable.');
     expect(q('home-outstanding')).toBeNull();
+  });
+
+  it('offers to read the summary again where it says it could not be read', async () => {
+    current.set(null);
+    error.set('network');
+    await settle();
+    facade.loadSummary.mockClear().mockResolvedValue(undefined);
+
+    q('home-invoices-retry')?.click();
+    await settle();
+
+    expect(text('home-invoices-retry')).toBe('Réessayer');
+    expect(facade.loadSummary).toHaveBeenCalledWith('c1');
+  });
+
+  it('opens the late invoices alone from what is late', () => {
+    const see = q('home-overdue')?.querySelector('[data-part="see"]');
+    expect(see?.getAttribute('href')).toBe('/invoices?status=overdue');
   });
 });

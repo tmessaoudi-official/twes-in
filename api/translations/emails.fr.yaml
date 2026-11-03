@@ -172,6 +172,7 @@ data_checks:
     inventory_serials: 'Numéros de série en stock'
     files_stored: 'Fichiers enregistrés'
     submissions_stuck: 'Envois restés sans réponse'
+    texts_forms: 'Formes des textes modifiés'
 account_deletion:
     subject: 'Votre compte %product% sera supprimé'
     heading: 'Votre compte est fermé'

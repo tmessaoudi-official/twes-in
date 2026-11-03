@@ -163,6 +163,7 @@ final readonly class TextsController
                 'company' => $entry->company,
                 'version' => $entry->version,
                 'originalChanged' => $entry->originalChanged,
+                'counted' => $entry->counted,
             ], $found['items']),
             'total' => $found['total'],
             'page' => $query->page,

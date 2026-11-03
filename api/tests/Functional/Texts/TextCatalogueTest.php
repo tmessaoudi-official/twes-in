@@ -38,6 +38,7 @@ final class TextCatalogueTest extends ApiTestCase
             'company' => 'Facture client',
             'version' => 1,
             'originalChanged' => false,
+            'counted' => false,
         ]], $this->json()['items'] ?? null);
 
         $this->getJson($catalogue.'?q=VERIFICATION%20en%20deux');
@@ -72,6 +73,10 @@ final class TextCatalogueTest extends ApiTestCase
         self::assertSame('invalid_query', $this->json()['error'] ?? null);
         $this->getJson("/api/companies/{$shop->getId()}/texts/de/catalogue");
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        // A text its code counts with says so in every language, Arabic's single form included, for the forms hint.
+        $this->getJson("/api/companies/{$shop->getId()}/texts/ar/catalogue?domain=pdf&q=invoice.payment_terms");
+        self::assertTrue($this->boolAt($this->firstItem(), 'counted'));
     }
 
     public function testAnOriginalAReleaseChangedIsFlaggedForTheLevelThatWordedIt(): void
@@ -90,7 +95,7 @@ final class TextCatalogueTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame([], $this->found(), 'the installation\'s own was written over today\'s original');
         $this->getJson('/api/platform/texts/fr/catalogue?domain=pdf&q=invoice.title');
-        self::assertSame(['domain' => 'pdf', 'key' => 'invoice.title', 'original' => 'Facture', 'installation' => 'Facture de vente', 'company' => null, 'version' => 1, 'originalChanged' => false], $this->firstItem());
+        self::assertSame(['domain' => 'pdf', 'key' => 'invoice.title', 'original' => 'Facture', 'installation' => 'Facture de vente', 'company' => null, 'version' => 1, 'originalChanged' => false, 'counted' => false], $this->firstItem());
 
         // « Garder le mien »: the same words written again over today's original.
         $this->login('owner@shop.tn', self::PASSWORD);

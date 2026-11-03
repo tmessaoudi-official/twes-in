@@ -9,6 +9,7 @@ import {
   type OnInit,
   signal,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../../auth/auth-facade';
@@ -49,13 +50,16 @@ const COUNT_ONLY: StockSearch = {
  */
 @Component({
   selector: 'app-stock-home',
-  imports: [KpiTile, RouterLink, TranslatePipe],
+  imports: [KpiTile, MatButtonModule, RouterLink, TranslatePipe],
   template: `
     @if (ready()) {
       @if (failed()) {
-        <p role="alert" class="text-error" data-testid="home-stock-error">
-          {{ 'home.stock.error' | translate }}
-        </p>
+        <div role="alert" class="flex flex-wrap items-center gap-2" data-testid="home-stock-error">
+          <span class="text-error">{{ 'home.stock.error' | translate }}</span>
+          <button mat-button type="button" (click)="retry()" data-testid="home-stock-retry">
+            {{ 'feedback.retry' | translate }}
+          </button>
+        </div>
       } @else if (shown(); as f) {
         <app-kpi-tile
           data-testid="home-stock"
@@ -147,6 +151,12 @@ export class StockHome implements OnInit {
       this.destroyRef,
     );
     await Promise.all([this.openTexts(), this.load(companyId)]);
+  }
+
+  /** Reads the stock again from the line saying it could not be read. */
+  protected async retry(): Promise<void> {
+    const companyId = this.auth.me()?.company?.id;
+    if (companyId) await this.load(companyId);
   }
 
   private async openTexts(): Promise<void> {

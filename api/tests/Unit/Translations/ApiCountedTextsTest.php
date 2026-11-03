@@ -139,7 +139,8 @@ final class ApiCountedTextsTest extends TestCase
         foreach (['templates', 'src'] as $root) {
             $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(self::TRANSLATIONS.'/../'.$root, \FilesystemIterator::SKIP_DOTS));
             foreach ($files as $file) {
-                if ($file instanceof \SplFileInfo && \in_array($file->getExtension(), ['php', 'twig'], true)) {
+                // « Textes »' list of the counted texts names them without writing them.
+                if ($file instanceof \SplFileInfo && \in_array($file->getExtension(), ['php', 'twig'], true) && 'CountedTexts.php' !== $file->getFilename()) {
                     $sources[$file->getPathname()] = (string) file_get_contents($file->getPathname());
                 }
             }

@@ -49,6 +49,7 @@ const TITLE: TextRow = {
   company: null,
   version: 0,
   originalChanged: false,
+  counted: false,
 };
 
 /**
