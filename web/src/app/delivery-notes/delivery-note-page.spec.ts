@@ -501,14 +501,16 @@ describe('DeliveryNotePage', () => {
     expect(summary!.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('asks nothing of a validated note, nor of a new one before it names its customer', async () => {
+  // One page a case: two pages in one case outran Vitest's five seconds under a gate's load.
+  it('asks nothing of a validated note', async () => {
     note.set(validated);
     await open('n1');
     await figuresAnswered();
     expect(facade.preview).not.toHaveBeenCalled();
     expect(text('delivery-note-total')).toContain('2 975,000');
+  });
 
-    fixture.destroy();
+  it('asks nothing of a new note before it names its customer', async () => {
     note.set(null);
     await open(undefined);
     type('line-0-price', '10');
@@ -1497,15 +1499,16 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-awaits-validation')?.textContent).toContain(
       'delivery_notes.awaits_validation',
     );
-    fixture.destroy();
+  });
 
-    granted.add('delivery_note.validate');
-    await open('n1');
-    expect(q('delivery-note-awaits-validation')).toBeNull();
-    fixture.destroy();
-
-    granted.delete('delivery_note.validate');
-    note.set(validated);
+  // One page a case: three pages in one case outran Vitest's five seconds under a gate's load.
+  it.each([
+    { whom: 'to whoever may validate the draft', validates: true, record: () => draft },
+    { whom: 'of a note validated already', validates: false, record: () => validated },
+  ])('says nothing waits $whom', async ({ validates, record }) => {
+    if (validates) granted.add('delivery_note.validate');
+    else granted.delete('delivery_note.validate');
+    note.set(record());
     await open('n1');
     expect(q('delivery-note-awaits-validation')).toBeNull();
   });

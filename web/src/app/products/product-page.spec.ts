@@ -1036,40 +1036,57 @@ describe('ProductPage', () => {
     expect(selected.textContent).toContain('products.tabs.barcodes');
   });
 
-  it('offers it on no new product, without stock, and to nobody who may not read stock', async () => {
-    await open(undefined);
-    expect(q('product-tab-homes')).toBeNull();
-
-    auth.hasModule.mockReturnValue(false);
-    product.set(laptop);
-    await open('p1');
-    expect(q('product-tab-homes')).toBeNull();
-
-    auth.hasModule.mockReturnValue(true);
-    auth.hasPermission.mockImplementation((name: string) => name !== 'stock.read');
-    await open('p1');
+  // One page a case: three pages in one case outran Vitest's five seconds under a gate's load.
+  it.each([
+    { on: 'no new product', saved: false, stockOn: true, mayRead: true },
+    { on: 'a product without stock', saved: true, stockOn: false, mayRead: true },
+    {
+      on: 'a product to nobody who may not read stock',
+      saved: true,
+      stockOn: true,
+      mayRead: false,
+    },
+  ])('offers it on $on', async ({ saved, stockOn, mayRead }) => {
+    auth.hasModule.mockReturnValue(stockOn);
+    if (!mayRead) auth.hasPermission.mockImplementation((name: string) => name !== 'stock.read');
+    if (saved) product.set(laptop);
+    await open(saved ? 'p1' : undefined);
     expect(q('product-tab-homes')).toBeNull();
   });
 
-  it('keeps the cost history to a saved product, for whoever may read costs and sees them', async () => {
-    const hasTab = (): boolean =>
-      Array.from(
-        fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLElement>,
-      ).some((tab) => (tab.textContent ?? '').includes('products.tabs.costs'));
+  const hasCostsTab = (): boolean =>
+    Array.from(
+      fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLElement>,
+    ).some((tab) => (tab.textContent ?? '').includes('products.tabs.costs'));
 
-    await open(undefined);
-    expect(hasTab()).toBe(false);
-
-    product.set(laptop);
-    await open('p1');
-    expect(hasTab()).toBe(true);
-
-    auth.hasPermission.mockImplementation(
-      (permission: string) => permission !== 'product.cost.read',
-    );
-    await open('p1');
-    expect(hasTab()).toBe(false);
-  });
+  // One page a case: three pages in one case outran Vitest's five seconds under a gate's load.
+  it.each([
+    { product: 'a new product', saved: false, readsCosts: true, shown: false },
+    {
+      product: 'a saved product, for whoever may read costs',
+      saved: true,
+      readsCosts: true,
+      shown: true,
+    },
+    {
+      product: 'a saved product, for whoever may not read costs',
+      saved: true,
+      readsCosts: false,
+      shown: false,
+    },
+  ])(
+    'keeps the cost history to a saved product, for whoever may read costs and sees them: $product',
+    async ({ saved, readsCosts, shown }) => {
+      if (!readsCosts) {
+        auth.hasPermission.mockImplementation(
+          (permission: string) => permission !== 'product.cost.read',
+        );
+      }
+      if (saved) product.set(laptop);
+      await open(saved ? 'p1' : undefined);
+      expect(hasCostsTab()).toBe(shown);
+    },
+  );
 
   // Audit 2026-10-06, B-9: the price per pack is the product's own packs, counted for the working company.
   it("asks the calculator's taxes for a unit and for each of the product's packs", async () => {

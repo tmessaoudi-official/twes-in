@@ -946,17 +946,23 @@ describe('InvoicePage', () => {
 
     expect(inventory.onHand).not.toHaveBeenCalled();
     expect(q('line-0-stock')).toBeNull();
+  });
 
-    // The same draft as an invoice does say it.
+  // The other half of the case above, a page of its own: two pages in one case outran five seconds under load.
+  it('says the stock under the line of the same draft as an invoice', async () => {
+    modulesOn.add('inventory');
+    granted.add('stock.read');
+    inventory.onHand.mockResolvedValue([{ productId: 'p1', unitId: 'u1', onHand: '5.000' }]);
     invoice.set(draft);
     await open('i1');
     await settle();
     expect(q('line-0-stock')).not.toBeNull();
   });
 
+  const creditedLine = { ...draft.lines[0], discountAmount: '50.000', creditedLineId: 'l0' };
+
   it('shows the share a credit line gives back of its invoice line’s discount, which nobody types', async () => {
-    const line = { ...draft.lines[0], discountAmount: '50.000', creditedLineId: 'l0' };
-    invoice.set({ ...draft, type: 'credit_note', correctsInvoiceId: 'i0', lines: [line] });
+    invoice.set({ ...draft, type: 'credit_note', correctsInvoiceId: 'i0', lines: [creditedLine] });
     await open('i1');
     await settle();
 
@@ -964,13 +970,14 @@ describe('InvoicePage', () => {
     expect((q('line-0-discount-kind') as HTMLButtonElement).disabled).toBe(true);
     expect(q('line-0-discount-share')).not.toBeNull();
     expect(q('field-discountAmount')).toBeNull();
+  });
 
-    // A line of its own, naming no invoice line, is discounted as any line is.
+  it('discounts a credit line of its own, naming no invoice line, as any line is', async () => {
     invoice.set({
       ...draft,
       type: 'credit_note',
       correctsInvoiceId: 'i0',
-      lines: [{ ...line, creditedLineId: null }],
+      lines: [{ ...creditedLine, creditedLineId: null }],
     });
     await open('i1');
     await settle();
@@ -1132,35 +1139,39 @@ describe('InvoicePage', () => {
     expect(message).toMatch(/2\s?143/);
   });
 
-  it('says before issuing a French invoice what its operations will be, the choice typed first, or that one is needed', async () => {
-    optionsShown.set({ ...options, operationCategory: true });
-    facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: 'both' });
-    invoice.set(draft);
-    await open('i1');
-    q('document-action-issue')!.click();
-    await settle();
-    expect(over('confirm-message')?.textContent).toContain('N° FAC-2026-00143 · biens et services');
-    over('confirm-keep')!.click();
-    await settle();
-
+  // One page a case: three pages in one case outran Vitest's five seconds under a gate's load.
+  it.each([
+    {
+      on: 'the operations the API works out',
+      typed: undefined,
+      answered: 'both',
+      says: 'N° FAC-2026-00143 · biens et services',
+    },
     // A choice made in the form and not yet saved is what issuing will send, so it is what the question says.
-    fixture.destroy();
-    invoice.set({ ...draft, id: 'i2', operationCategory: 'services' });
-    await open('i2');
-    q('document-action-issue')!.click();
-    await settle();
-    expect(over('confirm-message')?.textContent).toContain('N° FAC-2026-00143 · services');
-    over('confirm-keep')!.click();
-    await settle();
-
-    facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: null });
-    fixture.destroy();
-    invoice.set({ ...draft, id: 'i3' });
-    await open('i3');
-    q('document-action-issue')!.click();
-    await settle();
-    expect(over('confirm-message')?.textContent).toContain('nature à choisir');
-  });
+    {
+      on: 'the choice typed first',
+      typed: 'services',
+      answered: 'both',
+      says: 'N° FAC-2026-00143 · services',
+    },
+    { on: 'that one is needed', typed: undefined, answered: null, says: 'nature à choisir' },
+  ] as const)(
+    'says before issuing a French invoice what its operations will be: $on',
+    async ({ typed, answered, says }) => {
+      optionsShown.set({ ...options, operationCategory: true });
+      facade.nextNumber.mockResolvedValue({
+        number: 'FAC-2026-00143',
+        operationCategory: answered,
+      });
+      invoice.set(typed === undefined ? draft : { ...draft, operationCategory: typed });
+      await open('i1');
+      q('document-action-issue')!.click();
+      await settle();
+      expect(over('confirm-message')?.textContent).toContain(says);
+      over('confirm-keep')!.click();
+      await settle();
+    },
+  );
 
   // The question quotes what will be issued, never the draft as last saved: issuing numbers it for good.
   it('saves what is typed before asking, so the question quotes the total and customer that will be issued', async () => {
@@ -1498,7 +1509,7 @@ describe('InvoicePage', () => {
     expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-9');
   });
 
-  it('leads back to each delivery note its lines were taken from, and says nothing when none', async () => {
+  it('leads back to each delivery note its lines were taken from', async () => {
     invoice.set({
       ...draft,
       deliveryNotes: [
@@ -1515,8 +1526,9 @@ describe('InvoicePage', () => {
       'invoices.delivery_note_unnumbered',
     );
     expect(q('invoice-delivery-note-n2')?.getAttribute('href')).toBe('/delivery-notes/n2');
+  });
 
-    fixture.destroy();
+  it('says nothing of delivery notes when its lines were taken from none', async () => {
     invoice.set({ ...draft, deliveryNotes: [] });
     await open('i1');
     expect(q('invoice-delivery-notes')).toBeNull();
@@ -1874,7 +1886,7 @@ describe('InvoicePage', () => {
   });
 
   /** Factur-X is written for a French company's issued documents only, so nobody else is offered it. */
-  it('offers the Factur-X files of a French company’s issued invoice, and of nothing else', async () => {
+  it('offers the Factur-X files of a French company’s issued invoice', async () => {
     country = 'FR';
     invoice.set(issued);
     await open('i1');
@@ -1882,29 +1894,26 @@ describe('InvoicePage', () => {
     await settle();
     expect(over('document-menu-factur-x-pdf')).not.toBeNull();
     expect(over('document-menu-factur-x-xml')).not.toBeNull();
+  });
 
-    // The menu opened above would stay open, and the next page would read it as its own.
-    fixture.destroy();
-    invoice.set(draft);
+  // One page a case: four pages in one case outran Vitest's five seconds under a gate's load.
+  it.each([
+    { of: 'a French draft', place: 'FR', record: () => draft, menu: 'shown' },
+    // A cancelled invoice was issued once, but the API writes Factur-X only of what stands. With what is coming hidden,
+    // it may have nothing to fold into « ⋮ » at all.
+    {
+      of: 'a French cancelled invoice',
+      place: 'FR',
+      record: () => ({ ...issued, status: 'cancelled' as const }),
+      menu: 'maybe',
+    },
+    { of: 'a Tunisian issued invoice', place: 'TN', record: () => issued, menu: 'shown' },
+  ] as const)('offers no Factur-X file of $of', async ({ place, record, menu }) => {
+    country = place;
+    invoice.set(record());
     await open('i1');
-    q('document-more')!.click();
-    await settle();
-    expect(over('document-menu-factur-x-pdf')).toBeNull();
-
-    // A cancelled invoice was issued once, but the API writes Factur-X only of what stands.
-    fixture.destroy();
-    invoice.set({ ...issued, status: 'cancelled' });
-    await open('i1');
-    // With what is coming hidden, a cancelled invoice may have nothing to fold into « ⋮ » at all.
-    q('document-more')?.click();
-    await settle();
-    expect(over('document-menu-factur-x-pdf')).toBeNull();
-
-    fixture.destroy();
-    country = 'TN';
-    invoice.set(issued);
-    await open('i1');
-    q('document-more')!.click();
+    if (menu === 'shown') q('document-more')!.click();
+    else q('document-more')?.click();
     await settle();
     expect(over('document-menu-factur-x-pdf')).toBeNull();
     expect(over('document-menu-factur-x-xml')).toBeNull();
@@ -2153,21 +2162,29 @@ describe('InvoicePage', () => {
     expect(text('invoice-status')).toContain('En retard');
   });
 
-  it('keeps a credit note and an invoice of delivery notes with their customer, and says why', async () => {
-    invoice.set({ ...draft, type: 'credit_note', correctsInvoiceId: 'i0' });
+  // One page a case: three pages in one case outran Vitest's five seconds under a gate's load.
+  it.each([
+    {
+      kind: 'a credit note',
+      record: () => ({ ...draft, type: 'credit_note' as const, correctsInvoiceId: 'i0' }),
+      why: 'invoices.form.customer_locked_credit_note',
+    },
+    {
+      kind: 'an invoice of delivery notes',
+      record: () => ({
+        ...draft,
+        lines: [{ ...draft.lines[0]!, sourceDeliveryNoteLineId: 'dl1' }],
+      }),
+      why: 'invoices.form.customer_locked_delivery_notes',
+    },
+  ])('keeps $kind with its customer, and says why', async ({ record, why }) => {
+    invoice.set(record());
     await open('i1');
     expect((q('invoice-customer') as HTMLInputElement).disabled).toBe(true);
-    expect(document.getElementById('invoice-customer-hint')?.textContent).toContain(
-      'invoices.form.customer_locked_credit_note',
-    );
+    expect(document.getElementById('invoice-customer-hint')?.textContent).toContain(why);
+  });
 
-    invoice.set({ ...draft, lines: [{ ...draft.lines[0]!, sourceDeliveryNoteLineId: 'dl1' }] });
-    await open('i1');
-    expect((q('invoice-customer') as HTMLInputElement).disabled).toBe(true);
-    expect(document.getElementById('invoice-customer-hint')?.textContent).toContain(
-      'invoices.form.customer_locked_delivery_notes',
-    );
-
+  it('lets a draft of its own change its customer', async () => {
     invoice.set(draft);
     await open('i1');
     expect((q('invoice-customer') as HTMLInputElement).disabled).toBe(false);
@@ -2489,7 +2506,8 @@ describe('InvoicePage', () => {
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i2']));
   });
 
-  it('leaves a credit note to a manager: a clerk who issues invoices is offered neither its drafting nor its issuing', async () => {
+  // One page a case: three pages in one case outran Vitest's five seconds under a gate's load.
+  it('leaves a credit note to a manager: a clerk who issues invoices is not offered its drafting', async () => {
     granted.delete('invoice.credit');
     invoice.set(issued);
     await open('i1');
@@ -2498,13 +2516,18 @@ describe('InvoicePage', () => {
     await settle();
     expect(over('document-menu-credit-note')).toBeNull();
     expect(over('document-menu-print-duplicate')).not.toBeNull();
+  });
 
-    invoice.set({
-      ...draft,
-      type: 'credit_note',
-      correctsInvoiceId: 'i0',
-      creditNoteReason: 'Retour',
-    });
+  const creditNoteDraft = (): InvoiceRow => ({
+    ...draft,
+    type: 'credit_note',
+    correctsInvoiceId: 'i0',
+    creditNoteReason: 'Retour',
+  });
+
+  it('leaves a credit note to a manager: a clerk who issues invoices is offered neither its issuing, revising nor cancelling', async () => {
+    granted.delete('invoice.credit');
+    invoice.set(creditNoteDraft());
     await open('i1');
     expect(q('document-action-issue')).toBeNull();
     // Nor its revising or cancelling: the API answers either as it would a stranger.
@@ -2512,8 +2535,11 @@ describe('InvoicePage', () => {
     q('document-more')?.click();
     await settle();
     expect(over('document-menu-cancel')).toBeNull();
+  });
 
+  it('offers a manager a credit note draft to issue, revise and cancel', async () => {
     granted.add('invoice.credit');
+    invoice.set(creditNoteDraft());
     await open('i1');
     expect(q('document-action-issue')).not.toBeNull();
     expect(q('document-action-save')).not.toBeNull();
@@ -3282,12 +3308,13 @@ describe('InvoicePage', () => {
       expect(totals).not.toMatch(/[−-]\s*(10|21,330)/);
     });
 
+    const leftOut = (reason: ChargeLeftOutReason, code = 'TIMBRE'): PreviewBody => ({
+      ...twice,
+      fixedTaxes: [],
+      chargesLeftOut: [{ code, reason }],
+    });
+
     it('says on a credit note leaving the stamp out that the note completing the invoice gives it back', async () => {
-      const leftOut = (reason: ChargeLeftOutReason, code = 'TIMBRE'): PreviewBody => ({
-        ...twice,
-        fixedTaxes: [],
-        chargesLeftOut: [{ code, reason }],
-      });
       const unstamped = leftOut('given_back_by_completing_note');
       // A withholding chosen beside it is never a fixed charge, and holds nothing back.
       invoice.set({
@@ -3341,27 +3368,35 @@ describe('InvoicePage', () => {
       type('line-0-quantity', '5');
       await rested();
       expect(q('document-taxes-stamp-held-back')).toBeNull();
-
-      // A credit note with no stamp chosen holds none back.
-      invoice.set({
-        ...draft,
-        type: 'credit_note',
-        correctsInvoiceId: 'i0',
-        documentTaxComponentIds: [],
-      });
-      await open('i1');
-      facade.preview.mockResolvedValue(unstamped);
-      type('line-0-quantity', '3');
-      await rested();
-      expect(q('document-taxes-stamp-held-back')).toBeNull();
-
-      // Nor does an invoice, whatever its figures say: it is giving nothing back.
-      invoice.set(draft);
-      await open('i1');
-      type('line-0-quantity', '4');
-      await rested();
-      expect(q('document-taxes-stamp-held-back')).toBeNull();
     });
+
+    // The two documents the API's « given back » never speaks for, one page a case: three pages in the case above
+    // outran Vitest's five seconds under a gate's load.
+    it.each([
+      // A credit note with no stamp chosen holds none back.
+      {
+        document: 'a credit note with no stamp chosen',
+        record: () => ({
+          ...draft,
+          type: 'credit_note' as const,
+          correctsInvoiceId: 'i0',
+          documentTaxComponentIds: [],
+        }),
+        quantity: '3',
+      },
+      // Nor does an invoice, whatever its figures say: it is giving nothing back.
+      { document: 'an invoice', record: () => draft, quantity: '4' },
+    ])(
+      'says no stamp is held back on $document, whatever its figures say',
+      async ({ record, quantity }) => {
+        invoice.set(record());
+        await open('i1');
+        facade.preview.mockResolvedValue(leftOut('given_back_by_completing_note'));
+        type('line-0-quantity', quantity);
+        await rested();
+        expect(q('document-taxes-stamp-held-back')).toBeNull();
+      },
+    );
 
     it('says what the discounts save as it is typed, and nothing when none is given', async () => {
       invoice.set(draft);
