@@ -22,6 +22,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Model\Unit;
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
 use App\Module\Invoices\Application\Credit\CreditExcessTo;
+use App\Module\Invoices\Application\Credit\TellCreditWatchers;
 use App\Module\Invoices\Application\Deposit\DepositDeductions;
 use App\Module\Invoices\Application\Deposit\DepositQuotes;
 use App\Module\Invoices\Application\Print\InvoiceMentions;
@@ -89,6 +90,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
         private ExcludedTaxFamilies $excluded,
         private DeliveryNoteRoom $noteRoom,
         private SaleStock $stock,
+        private TellCreditWatchers $creditWatchers,
     ) {
     }
 
@@ -213,6 +215,9 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
                 }
                 $this->audit->record(new AuditEntry(ManageInvoices::ENTITY_TYPE, $corrected->getId(), self::CREDITED, $actorUserId, $changes, $company->getId()));
             }
+            // Last, after the series' and the stock's locks: whether this invoice took its customer past their credit
+            // limit is read from what was owed before it, under the account's hold, and told once this commits.
+            $this->creditWatchers->whileIssuing($company, $invoice);
 
             return $invoice;
         });

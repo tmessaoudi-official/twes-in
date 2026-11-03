@@ -22,6 +22,9 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\Invoices\Application\Chain\SealInvoiceChains;
+use App\Module\Invoices\Application\Credit\CreditAccountsHeld;
+use App\Module\Invoices\Application\Credit\CreditAlerts;
+use App\Module\Invoices\Application\Credit\TellCreditWatchers;
 use App\Module\Invoices\Application\DeliveryNoteRoom;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
@@ -31,6 +34,8 @@ use App\Module\Invoices\Application\Print\MentionDatumMissing;
 use App\Module\Invoices\Application\Print\PartyIdentity;
 use App\Module\Invoices\Application\Receiver\CorrectInvoiceReceiver;
 use App\Module\Invoices\Application\Receiver\InvoiceReceiverSettings;
+use App\Module\Invoices\Application\Statement\RunningAccount;
+use App\Module\Invoices\Application\Statement\StatementSource;
 use App\Module\Invoices\Domain\Event\InvoiceIssued;
 use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
@@ -54,6 +59,7 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Shared\Application\Notification;
 use App\Shared\Application\Receivers\ChooseReceiver;
 use App\Shared\Application\Receivers\ReceiverChoice;
 use App\Shared\Domain\Model\PostalAddress;
@@ -75,6 +81,7 @@ use App\Tests\Support\InMemoryDepositQuotes;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryInvoiceChains;
 use App\Tests\Support\InMemoryInvoices;
+use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryReceiverContacts;
 use App\Tests\Support\InMemorySettings;
@@ -152,6 +159,34 @@ final class InvoiceWorkflowTest extends TestCase
             new ExcludedTaxFamilies(ShippedFiscalPresets::presets()),
             new DeliveryNoteRoom(new InMemorySourceDeliveryNoteLines(), $this->invoices),
             new AllowingSaleStock(),
+            // No company here sets a credit limit: the watchers return before they read any account.
+            new TellCreditWatchers(
+                new RunningAccount(new class implements StatementSource {
+                    public function balanceBefore(Uuid $companyId, Uuid $customerId, \DateTimeImmutable $day): string
+                    {
+                        throw new \LogicException('No credit limit is set, so no account is read.');
+                    }
+
+                    public function entries(Uuid $companyId, Uuid $customerId, \DateTimeImmutable $from, \DateTimeImmutable $to): array
+                    {
+                        throw new \LogicException('No credit limit is set, so no account is read.');
+                    }
+                }, new InMemoryCustomerCredits(), $this->invoices, new ReadSetting($resolve), $this->clock, ShippedFiscalPresets::scales()),
+                new InMemoryMemberships(),
+                new class implements CreditAlerts {
+                    public function onceCommitted(Notification ...$notifications): void
+                    {
+                        throw new \LogicException('No credit limit is set, so nobody is told.');
+                    }
+                },
+                ShippedFiscalPresets::scales(),
+                new class implements CreditAccountsHeld {
+                    public function hold(Uuid $companyId, Uuid $keptCustomerId): void
+                    {
+                        throw new \LogicException('No credit limit is set, so no account is held.');
+                    }
+                },
+            ),
         );
         foreach ([$this->company, $this->globex] as $company) {
             $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'), new \DateTimeImmutable());

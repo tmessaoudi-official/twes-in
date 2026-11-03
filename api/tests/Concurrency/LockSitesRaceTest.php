@@ -63,6 +63,8 @@ use Symfony\Component\Uid\Uuid;
  * | ImportExport DoctrineImportRunRepository::lockedOfId (FOR UPDATE)          | testOneImportUndoneTwiceAtOnceIsUndoneOnce                  | an import taken back once                               |
  * | Records DbalRecordStore::lockedLabels (FOR UPDATE OF the records)          | testTheSameRecordsDeletedTwiceAtOnceGoOnce                  | one delete per record, one removal in the bin           |
  * | Recurring DoctrineRecurringInvoiceRepository::lockedOfIdInCompany (FOR UPDATE) | testTheRecurringPassRunTwiceAtOnceDraftsOnce            | an occurrence drafted once                              |
+ * | Invoices AdvisoryCreditAccountsHeld::hold (advisory, company and customer), | CreditAlertRaceTest's two-series cases                      | a credit limit's crossing told once, never by nobody    |
+ * |   held by TellCreditWatchers::whileIssuing, last of an issue's locks       |                                                             |                                                         |
  * | FC#80: the invoice's row (issue) against the merge's moves                 | testACustomerMergedWhileItsDraftIsIssuedLeavesOneTruth      | an issued invoice bills whom it printed, no draft left  |
  * |                                                                            |                                                             | on a customer merged away, never a 500 carrying SQL     |
  */
