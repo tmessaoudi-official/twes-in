@@ -22,11 +22,6 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  */
 final class HeardKindsTest extends KernelTestCase
 {
-    /** A kind said that no screen hears, each with why no screen needs to. */
-    private const array UNHEARD = [
-        'legal_text' => 'written by the operators with no company, and not a platform kind: the legal pages read it when opened',
-    ];
-
     public function testEveryKindAScreenHearsIsSaidAndEveryKindSaidIsHeard(): void
     {
         $root = \dirname(__DIR__, 4);
@@ -38,14 +33,10 @@ final class HeardKindsTest extends KernelTestCase
         foreach ($heard as $kind => $where) {
             self::assertArrayHasKey($kind, $said, \sprintf('%s hears the kind %s, which nothing in the API says', $where, $kind));
         }
+        // Every kind said is heard: the last one no screen heard, the legal texts, is heard by « Pages légales ». A kind
+        // that truly needs no screen would bring back a list of such kinds, each with its reason.
         foreach ($said as $kind => $where) {
-            if (!\array_key_exists($kind, $heard)) {
-                self::assertArrayHasKey($kind, self::UNHEARD, \sprintf('%s says the kind %s, which no screen hears: name it in a reloadOn, or here with why', $where, $kind));
-            }
-        }
-        foreach (array_keys(self::UNHEARD) as $kind) {
-            self::assertArrayNotHasKey($kind, $heard, "$kind is heard now: take it off the list");
-            self::assertArrayHasKey($kind, $said, "$kind is no longer said: take it off the list");
+            self::assertArrayHasKey($kind, $heard, \sprintf('%s says the kind %s, which no screen hears: name it in a reloadOn', $where, $kind));
         }
     }
 

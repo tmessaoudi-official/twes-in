@@ -26,3 +26,16 @@ export async function announcePlatformSettingMoved(): Promise<void> {
   });
   await new Promise((resolve) => setTimeout(resolve, LIVE_BATCH_MS + 10));
 }
+
+/** Announces, as the installation's channel would, a change said to every signed-in screen by kind and action alone. */
+export async function announceToEveryone(kind: string, action: string): Promise<void> {
+  TestBed.inject(LiveChanges).receive({
+    type: 'changed',
+    kind,
+    id: null,
+    action,
+    actor: null,
+    origin: null,
+  });
+  await new Promise((resolve) => setTimeout(resolve, LIVE_BATCH_MS + 10));
+}

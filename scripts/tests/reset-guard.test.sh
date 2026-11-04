@@ -10,7 +10,18 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
 mkdir -p "$TMPDIR/bin"
-printf '#!/usr/bin/env bash\necho "docker $*" >> "$TMPDIR/docker.calls"\nexit 1\n' > "$TMPDIR/bin/docker"
+# The stand-in answers as a shop's stack would when asked: SHOP_ENV, a container of the project started with
+# APP_INSTALLATION=onprem; SHOP_VOLUME, the volume a shop's local backups go to.
+cat > "$TMPDIR/bin/docker" <<'FAKE'
+#!/usr/bin/env bash
+echo "docker $*" >> "$TMPDIR/docker.calls"
+case "$1 $2" in
+  "volume inspect") [[ -n "${SHOP_VOLUME:-}" && "$3" == twes-in_backup-local ]] && exit 0; exit 1 ;;
+  "ps -aq") [[ "$*" == *label=com.docker.compose.project=twes-in* ]] && echo c0ffee; exit 0 ;;
+  "inspect --format") echo DEPLOY_ENV=prod; [[ -z "${SHOP_ENV:-}" ]] || echo APP_INSTALLATION=onprem; exit 0 ;;
+esac
+exit 1
+FAKE
 chmod +x "$TMPDIR/bin/docker"
 tree() { # a copy of what make reset reads, and a home whose values file is the one given (none when empty)
   local d; d=$(mktemp -d); mkdir -p "$d/scripts" "$d/home/.twes-in"
@@ -38,6 +49,14 @@ check "  the values file's last word decides, as twes reads it" $? 2 "$out" "ref
 
 d=$(tree "TWES_INSTALL=server\n"); out=$(reset "$d" CONFIRM=yes); check "a server's values: reset goes on" 0 0 "$(calls)" "docker compose down --volumes"
 d=$(tree ""); out=$(reset "$d" CONFIRM=yes); check "no values at all, the developer's machine: reset goes on" 0 0 "$(calls)" "docker compose down --volumes"
+
+# The values file is the caller's home: whoever runs make, a shop's stack is the shop's. Docker is asked too.
+d=$(tree ""); out=$(SHOP_ENV=1 reset "$d" CONFIRM=yes)
+check "no values here, but the project's containers were started as a shop's: refused" $? 2 "$out" "APP_INSTALLATION=onprem"
+[[ "$(calls)" != *"down --volumes"* ]]; check "  nothing deleted" $? 0 "$(calls)" ""
+d=$(tree ""); out=$(SHOP_VOLUME=1 reset "$d" CONFIRM=yes)
+check "no values here, but the shop's local backup volume exists: refused" $? 2 "$out" "twes-in_backup-local"
+[[ "$(calls)" != *"down --volumes"* ]]; check "  nothing deleted" $? 0 "$(calls)" ""
 
 d=$(tree "TWES_INSTALL=onprem\n"); mv "$d/home/.twes-in/install.env" "$TMPDIR/elsewhere.env"
 out=$(cd "$d" && TWES_VALUES="$TMPDIR/elsewhere.env" HOME="$d/home" PATH="$TMPDIR/bin:$PATH" make --no-print-directory reset CONFIRM=yes 2>&1 < /dev/null)

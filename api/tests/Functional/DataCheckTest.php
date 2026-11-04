@@ -21,6 +21,7 @@ use App\Module\Vendors\Infrastructure\Scheduler\MarkKeptVendorContactsEveryNight
 use App\Tenancy\Domain\Model\Company;
 use App\Tests\Support\ShippedLanguages;
 use Doctrine\DBAL\Connection;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\ApplicationTester;
 use Symfony\Component\HttpFoundation\Response;
@@ -138,6 +139,35 @@ final class DataCheckTest extends ApiTestCase
         $this->renumber([$ids[3]], [['2026-02-20', 'FAC-2026-02-00001']]);
 
         self::assertContains('invoices.numbering', $this->checksFound());
+    }
+
+    /**
+     * A shop's clock ran ahead, then was put right and an operator allowed earlier days: a number given after another may
+     * be dated before it. The numbers are read in the order they were given, which the day no longer tells.
+     *
+     * @param list<array{string, string}> $days
+     */
+    #[DataProvider('numberedOnAllowedEarlierDays')]
+    public function testANumberGivenOnAnEarlierDayAnOperatorAllowedIsReadInTheOrderItWasGiven(array $days, bool $gap): void
+    {
+        $ids = array_map(fn (): string => $this->draft('100'), $days);
+        foreach ($ids as $id) {
+            $this->issue($id);
+        }
+        $this->renumber($ids, $days);
+
+        $gap ? self::assertContains('invoices.numbering', $this->checksFound())
+            : self::assertNotContains('invoices.numbering', $this->checksFound());
+    }
+
+    /** @return iterable<string, array{list<array{string, string}>, bool}> */
+    public static function numberedOnAllowedEarlierDays(): iterable
+    {
+        yield 'within a month' => [[['2026-03-10', 'FAC-2026-03-00001'], ['2026-03-12', 'FAC-2026-03-00002'], ['2026-03-11', 'FAC-2026-03-00003']], false];
+        yield 'into the next month' => [[['2026-03-30', 'FAC-2026-03-00005'], ['2026-04-01', 'FAC-2026-04-00001'], ['2026-03-31', 'FAC-2026-04-00002']], false];
+        yield 'a yearly series over the new year' => [[['2026-11-10', 'FAC-2026-00001'], ['2026-12-30', 'FAC-2026-00002'], ['2027-01-02', 'FAC-2027-00001'], ['2027-01-03', 'FAC-2027-00002']], false];
+        yield 'a format revised: the numbers go on' => [[['2026-03-10', 'FAC-00007'], ['2026-03-12', 'AAA-00008'], ['2026-03-11', 'AAA-00009']], false];
+        yield 'a number skipped, the days out of order' => [[['2026-03-10', 'FAC-2026-03-00001'], ['2026-03-12', 'FAC-2026-03-00002'], ['2026-03-11', 'FAC-2026-03-00004']], true];
     }
 
     public function testAReferenceIntoAnotherCompanyIsFound(): void

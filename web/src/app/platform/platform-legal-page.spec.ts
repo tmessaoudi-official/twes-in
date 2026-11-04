@@ -20,7 +20,7 @@ import type { LegalLanguage } from '../shared/legal/legal-api';
 import { LEGAL_PAGES, type LegalPage } from '../shared/legal/legal-pages';
 import { Session, type SessionState } from '../shared/session/session';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
-import { announcePlatformSettingMoved } from '../shared/testing/live';
+import { announcePlatformSettingMoved, announceToEveryone } from '../shared/testing/live';
 import { PlatformLegalFacade } from './platform-legal-facade';
 import { PlatformLegalPage } from './platform-legal-page';
 import type { LegalStatusRow, LegalVersionRow } from './platform-legal-types';
@@ -126,6 +126,7 @@ describe('PlatformLegalPage', () => {
     country: ReturnType<typeof signal<string | null>>;
     load: ReturnType<typeof vi.fn>;
     rereadCountry: ReturnType<typeof vi.fn>;
+    rereadTexts: ReturnType<typeof vi.fn>;
     saveIdentity: ReturnType<typeof vi.fn>;
     open: ReturnType<typeof vi.fn>;
     write: ReturnType<typeof vi.fn>;
@@ -197,6 +198,7 @@ describe('PlatformLegalPage', () => {
       country: signal<string | null>('TN'),
       load: vi.fn(async () => undefined),
       rereadCountry: vi.fn(async () => undefined),
+      rereadTexts: vi.fn(async () => undefined),
       saveIdentity: vi.fn(async () => 'saved'),
       open: vi.fn(async (page: string, language: string) => {
         facade.versions.set(histories[`${page}.${language}`] ?? []);
@@ -267,6 +269,16 @@ describe('PlatformLegalPage', () => {
     expect(facade.rereadCountry).toHaveBeenCalledTimes(1);
     expect(facade.load).toHaveBeenCalledTimes(1);
     expect((q('legal-identity-publisher.name') as HTMLInputElement).value).toBe('twes SARL');
+  });
+
+  it('reads the legal texts again when another operator writes or validates one', async () => {
+    await render();
+
+    await announceToEveryone('legal_text', 'legal_text.validated');
+    await settle();
+
+    expect(facade.rereadTexts).toHaveBeenCalledTimes(1);
+    expect(facade.load).toHaveBeenCalledTimes(1);
   });
 
   it('lists every page with where it stands in the chosen language, the screen one first', async () => {

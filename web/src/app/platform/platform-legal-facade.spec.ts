@@ -56,6 +56,20 @@ describe('PlatformLegalFacade', () => {
     expect(facade.failed()).toBe(false);
   });
 
+  it("reads the pages' overview and the open page's versions again when another operator wrote or validated one", async () => {
+    await facade.open('mentions', 'fr');
+    const row = { page: 'mentions', language: 'fr' } as never;
+    const version = { id: 'v2' } as never;
+    api.overview.mockResolvedValueOnce([row]);
+    api.versions.mockResolvedValueOnce([version]);
+
+    await facade.rereadTexts();
+
+    expect(api.versions).toHaveBeenLastCalledWith('mentions', 'fr');
+    expect(facade.overview()).toEqual([row]);
+    expect(facade.versions()).toEqual([version]);
+  });
+
   it("reads the platform's country again and leaves the identity and its versions as read", async () => {
     await facade.load();
     api.identity.mockResolvedValueOnce({

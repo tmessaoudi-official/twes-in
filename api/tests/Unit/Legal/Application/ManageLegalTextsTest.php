@@ -15,9 +15,11 @@ use App\Legal\Application\ManageLegalTexts;
 use App\Legal\Domain\Model\LegalText;
 use App\Legal\Domain\ValueObject\LegalLanguage;
 use App\Legal\Domain\ValueObject\LegalPage;
+use App\Shared\Application\LiveChange;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryLegalTexts;
+use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -29,6 +31,7 @@ final class ManageLegalTextsTest extends TestCase
     private MockClock $clock;
     private ManageLegalTexts $manage;
     private Uuid $operator;
+    private RecordingLiveChanges $liveChanges;
 
     protected function setUp(): void
     {
@@ -36,7 +39,7 @@ final class ManageLegalTextsTest extends TestCase
         $this->texts = new InMemoryLegalTexts();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->clock = new MockClock('2026-09-27 10:00');
-        $this->manage = new ManageLegalTexts($this->texts, $this->audit, $transactions, $this->clock, \App\Tests\Support\ShippedLanguages::legal());
+        $this->manage = new ManageLegalTexts($this->texts, $this->audit, $transactions, $this->clock, \App\Tests\Support\ShippedLanguages::legal(), $this->liveChanges = new RecordingLiveChanges($transactions));
         $this->operator = Uuid::v7();
     }
 
@@ -93,5 +96,18 @@ final class ManageLegalTextsTest extends TestCase
         self::assertEquals([LegalPage::Mentions, LegalLanguage::of('fr'), null], [$overview[0]->page, $overview[0]->language, $overview[0]->latest]);
         $cookies = array_values(array_filter($overview, static fn ($row) => LegalPage::Cookies === $row->page && $row->language->equals(LegalLanguage::of('fr'))));
         self::assertSame($latest, $cookies[0]->latest);
+    }
+
+    /** The legal pages are public and every operator's « Pages légales » shows their state: a change is said to everyone, by kind alone. */
+    public function testWritingAndValidatingAreSaidToEveryScreenAndAValidationThatChangesNothingIsNot(): void
+    {
+        $this->manage->write(LegalPage::Cookies, LegalLanguage::of('en'), 'text', $this->operator, 'operator@twes.local');
+        $this->manage->validate(LegalPage::Cookies, LegalLanguage::of('en'), $this->operator, 'reviewer@twes.local');
+        $this->manage->validate(LegalPage::Cookies, LegalLanguage::of('en'), $this->operator, 'someone@twes.local');
+
+        self::assertEquals([
+            LiveChange::everyone('legal_text', 'legal_text.written'),
+            LiveChange::everyone('legal_text', 'legal_text.validated'),
+        ], $this->liveChanges->staged);
     }
 }

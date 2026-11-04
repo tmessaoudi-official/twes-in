@@ -285,6 +285,13 @@ only_start_steps() {
   [[ "$(sed -n 's/.*"failing":\[\([^]]*\)\].*/\1/p' "$state/health.json")" == '"startSteps"' ]]
 }
 
+# Whether the reading whose verdict is $1 fails a check beyond the start steps while the episode written down is of the
+# start steps alone.
+episode_widened() {
+  local steps_alone='^startSteps( \(.*\))?$'
+  [[ "$(cat "$state/unhealthy")" =~ $steps_alone ]] && ! only_start_steps "$1"
+}
+
 # --- Commands ----------------------------------------------------------------------------------------------------------
 
 # At logon Docker Desktop comes up after the session that runs this, with no way to be waited for but asking: its daemon
@@ -922,10 +929,12 @@ tick() {
   # Unhealthy, the installation is started again once, as a container Docker left stopped comes back with compose up;
   # still unhealthy, the developer and the operators are told. Once per episode: a start that does not mend it is not
   # repeated every quarter hour, and a start or a waking just made is left its ten minutes to settle.
+  # An episode of the start steps alone (an update kept on one, F13) hides nothing else: a check beyond them failing
+  # later is an episode of its own. One whose other check mended, the steps still failing, narrows to them.
   if failing=$(deep_health 1); then
     rm -f "$state/unhealthy"
-  elif [[ -f "$state/unhealthy" ]]; then
-    :
+  elif [[ -f "$state/unhealthy" ]] && ! episode_widened "$failing"; then
+    ! only_start_steps "$failing" || echo "$failing" > "$state/unhealthy"
   elif (($(now) - awake < 600)); then
     say "unhealthy ($failing) within ten minutes of a start or a waking: read again at the next tick"
   else

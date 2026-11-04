@@ -60,6 +60,18 @@ export class PlatformLegalFacade {
   }
 
   /**
+   * The pages' overview again, and the open page's versions, which another operator may have written or validated: the
+   * text being typed is the page's own and stays.
+   */
+  async rereadTexts(): Promise<void> {
+    const opened = this.opened;
+    await this.run(async () => {
+      if (opened === null) this.overviewSignal.set(await this.api.overview());
+      else await this.refresh(opened.page, opened.language);
+    }, true);
+  }
+
+  /**
    * Saves every placeholder changed, together or not at all. `saved_since`: another operator saved one of them since it
    * was read, nothing was kept, and the identity is read again so the form shows what is saved. `refused`: the API
    * refused a field, nothing was kept, and `identityRefusals` says which and why.

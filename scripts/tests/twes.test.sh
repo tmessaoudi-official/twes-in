@@ -396,6 +396,15 @@ check "  the developer told which steps failed" 0 0 "$(mailed)" "startSteps (app
 check "  and the operators" 0 0 "$(told)" "installation.unhealthy check=startSteps (app:invoices:seal-chain, app:platform:converge)"
 ! grep -qsx "$NEW" "$d/etc/state/failed-releases"; check "  not written down as a failed release" $? 0 "" ""
 out=$(STEP_FAILS=1 ALL_BAD=1 twes "$d" tick); [[ "$(told)" != *installation.unhealthy* ]]; check "  the next tick tells it no second time" $? 0 "$(told)" ""
+# That episode is the start steps alone: a failure of anything else later is a new one, which the watch must not miss.
+out=$(AT=$((NOON + 900)) ALL_BAD=1 twes "$d" tick); check "  the queue failing later: started again once" $? 0 "$(deployed)" "--again"
+check "    and told" 0 0 "$(told)" "installation.unhealthy check=queue"
+d=$(installed)
+out=$(STEP_FAILS=mixed ALL_BAD=1 twes "$d" tick); check "an episode of a check beside the start steps: told" $? 0 "$(told)" "check=queue,startSteps (app:invoices:seal-chain)"
+out=$(AT=$((NOON + 900)) STEP_FAILS=1 ALL_BAD=1 twes "$d" tick); [[ "$(told)" != *installation.unhealthy* && "$(deployed)" != *--again* ]]
+check "  the check mended, the steps still failing: nothing started, nobody told again" $? 0 "$(told)$(deployed)" ""
+out=$(AT=$((NOON + 1800)) ALL_BAD=1 twes "$d" tick); check "  then the queue failing anew: started again once" $? 0 "$(deployed)" "--again"
+check "    and told" 0 0 "$(told)" "installation.unhealthy check=queue"
 
 d=$(installed)
 out=$(STEP_FAILS=mixed BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" update); check "a start step failing beside another check: rolled back" $? 1 "$out" "starting $OLD again"

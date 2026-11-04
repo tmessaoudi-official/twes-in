@@ -41,17 +41,28 @@ final readonly class SeriesGaps
     {
         $rows = $this->connection->iterateAssociative(<<<SQL
             WITH documents AS ({$documents}),
-            numbered AS (
-                SELECT d.company_id, d.establishment_id, d.document_type, d.number, d.issue_date,
+            sequenced AS (
+                SELECT d.company_id, d.establishment_id, d.document_type, d.number, d.issue_date, d.id,
                        substring(d.number FROM '([0-9]+)$')::bigint AS sequence,
-                       LAG(substring(d.number FROM '([0-9]+)$')::bigint) OVER issued AS previous,
-                       LAG(d.issue_date) OVER issued AS previous_day,
-                       ROW_NUMBER() OVER issued AS nth
+                       regexp_replace(d.number, '[0-9]+$', '') AS prefix
                 FROM documents d
                 JOIN numbering_series s ON s.establishment_id = d.establishment_id AND s.document_type = d.document_type AND s.is_default
                 WHERE d.number IS NOT NULL AND s.format ~ '\\{SEQ(:[0-9]+)?\\}$'
-                -- The order issuing gave them: by day, then by number within it, the shorter first where it is not padded.
-                WINDOW issued AS (PARTITION BY d.company_id, d.establishment_id, d.document_type ORDER BY d.issue_date, LENGTH(d.number), d.number, d.id)
+            ),
+            begun AS (
+                SELECT q.*, MIN(q.issue_date) OVER (PARTITION BY q.company_id, q.establishment_id, q.document_type, q.prefix) AS prefix_began
+                FROM sequenced q
+            ),
+            numbered AS (
+                SELECT b.company_id, b.establishment_id, b.document_type, b.number, b.issue_date, b.sequence,
+                       LAG(b.sequence) OVER issued AS previous,
+                       LAG(b.issue_date) OVER issued AS previous_day,
+                       ROW_NUMBER() OVER issued AS nth
+                FROM begun b
+                -- The order issuing gave them, which the day alone no longer tells once an operator allowed earlier days:
+                -- what the number prints before its sequence (its period, which a resetting series must print) in the
+                -- order each was first used, then the sequence.
+                WINDOW issued AS (PARTITION BY b.company_id, b.establishment_id, b.document_type ORDER BY b.prefix_began, b.prefix, b.sequence, b.id)
             )
             SELECT company_id, establishment_id, document_type, number, previous
             FROM numbered

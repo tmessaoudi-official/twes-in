@@ -240,13 +240,15 @@ export class PlatformLegalPage implements OnInit {
   constructor() {
     inject(UnsavedChanges).declare(this.unsaved);
     // The phones start on the platform's country, which another operator may move while this page is open: only the
-    // country is read again, never the identity being typed. The legal texts are read when a page is opened: only the
-    // operators write them, and the platform's channel does not say them.
+    // country is read again, never the identity being typed. A legal text another operator writes or validates is said
+    // to every screen: the statuses and the open page's versions are read again, never the text being typed.
+    const destroyRef = inject(DestroyRef);
     inject(LiveChanges).reloadOn(
       ['platform_setting'],
       () => this.facade.rereadCountry(),
-      inject(DestroyRef),
+      destroyRef,
     );
+    inject(LiveChanges).reloadOn(['legal_text'], () => this.facade.rereadTexts(), destroyRef);
   }
 
   ngOnInit(): void {

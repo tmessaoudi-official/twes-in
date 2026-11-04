@@ -18,6 +18,8 @@ use App\Legal\Domain\Model\LegalText;
 use App\Legal\Domain\Repository\LegalTextRepository;
 use App\Legal\Domain\ValueObject\LegalLanguage;
 use App\Legal\Domain\ValueObject\LegalPage;
+use App\Shared\Application\LiveChange;
+use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\TypedText;
 use Psr\Clock\ClockInterface;
@@ -42,6 +44,7 @@ final readonly class ManageLegalTexts implements DeclaresAuditActions
         private Transactions $transactions,
         private ClockInterface $clock,
         private LegalLanguages $languages,
+        private LiveChanges $liveChanges,
     ) {
     }
 
@@ -58,6 +61,7 @@ final readonly class ManageLegalTexts implements DeclaresAuditActions
             $text = LegalText::draft($page, $language, $body, $actorEmail, $this->clock->now());
             $this->texts->add($text);
             $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $text->getId(), self::WRITTEN, $actorUserId, self::about($page, $language)));
+            $this->liveChanges->stage(self::moved(self::WRITTEN));
 
             return $text;
         });
@@ -74,6 +78,7 @@ final readonly class ManageLegalTexts implements DeclaresAuditActions
             $text->validate($actorEmail, $this->clock->now());
             $this->texts->save($text);
             $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $text->getId(), self::VALIDATED, $actorUserId, self::about($page, $language)));
+            $this->liveChanges->stage(self::moved(self::VALIDATED));
 
             return $text;
         });
@@ -103,6 +108,15 @@ final readonly class ManageLegalTexts implements DeclaresAuditActions
         }
 
         return $overview;
+    }
+
+    /**
+     * The legal pages are public, and every operator's « Pages légales » shows their versions: a change reaches every
+     * signed-in screen by kind and action alone, as the platform's settings do, and a screen reads them again.
+     */
+    private static function moved(string $action): LiveChange
+    {
+        return LiveChange::everyone(self::ENTITY_TYPE, $action);
     }
 
     /** @return array{page: string, language: string} */
