@@ -18,6 +18,7 @@ use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Output\DeliveryNoteView;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\DeliveryNoteResource;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePermission;
+use App\Shared\Domain\Service\WrittenDay;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -35,9 +36,8 @@ final readonly class DeliverDeliveryNoteProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): DeliveryNoteResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::WRITE);
-        // day-parse: Assert\DateTime(format: LOCAL_MOMENT) on the field has refused a day or time the calendar lacks
-        $delivered = null === $data->delivered ? null : \DateTimeImmutable::createFromFormat('!'.DeliveryNoteResource::LOCAL_MOMENT, $data->delivered, new \DateTimeZone($company->getTimezone()));
-        if (false === $delivered) {
+        $delivered = null === $data->delivered ? null : WrittenDay::parsed($data->delivered, DeliveryNoteResource::LOCAL_MOMENT, new \DateTimeZone($company->getTimezone()));
+        if (null !== $data->delivered && null === $delivered) {
             throw new UnprocessableEntityHttpException('delivered: not a day and a time.');
         }
 

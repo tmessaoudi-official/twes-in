@@ -12,6 +12,7 @@ namespace App\Module\AccountingExport\Infrastructure\Export;
 use App\ImportExport\Application\Export\ExportQuery;
 use App\Module\AccountingExport\Application\JournalPeriod;
 use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Domain\Service\WrittenDay;
 
 /** The period a file asks for, `from` and `to`, each a day written YYYY-MM-DD; both are required. */
 final class PeriodAsked
@@ -25,9 +26,8 @@ final class PeriodAsked
     private static function day(ExportQuery $query, string $key): \DateTimeImmutable
     {
         $written = $query->text($key) ?? throw new InvalidFilter($key, 'The period names its first and last day.');
-        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', $written, new \DateTimeZone('UTC'));
-        // A day the calendar does not have rolls over rather than failing: compare it with what was written.
-        if (false === $day || $day->format('Y-m-d') !== $written) {
+        $day = WrittenDay::parsed($written, zone: new \DateTimeZone('UTC'));
+        if (null === $day) {
             throw new InvalidFilter($key, 'A day is written YYYY-MM-DD.');
         }
 

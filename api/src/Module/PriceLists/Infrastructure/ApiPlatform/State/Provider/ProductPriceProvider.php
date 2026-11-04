@@ -15,6 +15,7 @@ use App\Module\PriceLists\Application\ResolveUnitPrice;
 use App\Module\PriceLists\Infrastructure\ApiPlatform\Resource\ProductPriceResource;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
+use App\Shared\Domain\Service\WrittenDay;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -53,8 +54,8 @@ final readonly class ProductPriceProvider implements ProviderInterface
     /** A real day: `2026-13-45` is refused, where the format alone would roll it over into another month. */
     private static function dayOf(string $day): \DateTimeImmutable
     {
-        $parsed = \DateTimeImmutable::createFromFormat('!Y-m-d', $day);
-        if (false === $parsed || $parsed->format('Y-m-d') !== $day) {
+        $parsed = WrittenDay::parsed($day);
+        if (null === $parsed) {
             throw new UnprocessableEntityHttpException('on: A day is written YYYY-MM-DD.');
         }
 

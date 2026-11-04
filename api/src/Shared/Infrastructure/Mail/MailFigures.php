@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Shared\Infrastructure\Mail;
 
+use App\Shared\Domain\Service\WrittenDay;
 use App\Shared\Infrastructure\Twig\DecimalExtension;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -39,17 +40,17 @@ final readonly class MailFigures
     /** A day sent as `Y-m-d`. */
     public function day(string $value, string $locale, string $dateFormat): string
     {
-        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', $value, new \DateTimeZone('UTC'));
+        $day = WrittenDay::parsed($value, zone: new \DateTimeZone('UTC'));
 
-        return false === $day || $day->format('Y-m-d') !== $value ? $value : $day->format($this->pattern($locale, $dateFormat));
+        return null === $day ? $value : $day->format($this->pattern($locale, $dateFormat));
     }
 
     /** A moment sent as `Y-m-d H:i`, already in the time zone it is read in. */
     public function moment(string $value, string $locale, string $dateFormat): string
     {
-        $moment = \DateTimeImmutable::createFromFormat('!Y-m-d H:i', $value, new \DateTimeZone('UTC'));
+        $moment = WrittenDay::parsed($value, 'Y-m-d H:i', new \DateTimeZone('UTC'));
 
-        return false === $moment || $moment->format('Y-m-d H:i') !== $value ? $value : $moment->format($this->pattern($locale, $dateFormat).' H:i');
+        return null === $moment ? $value : $moment->format($this->pattern($locale, $dateFormat).' H:i');
     }
 
     private function pattern(string $locale, string $dateFormat): string

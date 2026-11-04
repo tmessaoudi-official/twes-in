@@ -14,6 +14,7 @@ use App\Module\Inventory\Domain\ValueObject\ReceiptDocument;
 use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\Service\WrittenDay;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\Uid\Uuid;
 
@@ -63,9 +64,8 @@ final readonly class ReceiptDocuments
         if (null === $text || '' === TypedText::trimmed($text)) {
             return null;
         }
-        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', TypedText::trimmed($text));
-        // `2026-13-45` is not refused by the parser: it rolls into the next year, so the day must read back as typed.
-        if (false === $day || $day->format('Y-m-d') !== TypedText::trimmed($text)) {
+        $day = WrittenDay::parsed(TypedText::trimmed($text));
+        if (null === $day) {
             throw new InvalidStockMovement('receivedOn', 'A day is written year-month-day, as 2026-09-12.', reason: 'not_a_date');
         }
 

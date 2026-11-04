@@ -13,6 +13,7 @@ use App\CustomFields\Domain\Exception\InvalidCustomFieldValue;
 use App\CustomFields\Domain\ValueObject\CustomFieldRule;
 use App\CustomFields\Domain\ValueObject\CustomFieldType;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\Service\WrittenDay;
 
 /**
  * A record's custom field values checked against its company's fields. A key no field declares is refused, a required
@@ -95,8 +96,6 @@ final class CustomFieldValues
 
     private static function isDate(string $value): bool
     {
-        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
-
-        return false !== $date && $date->format('Y-m-d') === $value;
+        return null !== WrittenDay::parsed($value);
     }
 }

@@ -11,6 +11,7 @@ namespace App\Shared\Domain\ValueObject;
 
 use App\Shared\Domain\Exception\InvalidFilter;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\Service\WrittenDay;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -155,8 +156,7 @@ final readonly class ListFilters
         if (1 !== preg_match(self::DAY, $day)) {
             return false;
         }
-        $parsed = \DateTimeImmutable::createFromFormat('!Y-m-d', $day);
 
-        return false !== $parsed && $parsed->format('Y-m-d') === $day;
+        return null !== WrittenDay::parsed($day);
     }
 }

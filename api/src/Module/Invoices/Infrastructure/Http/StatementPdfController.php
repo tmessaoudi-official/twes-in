@@ -15,6 +15,7 @@ use App\Module\Invoices\Application\Statement\InvalidStatementPeriod;
 use App\Module\Invoices\Application\Statement\PrintStatement;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Domain\Service\WrittenDay;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -72,8 +73,8 @@ final readonly class StatementPdfController
         if (!\is_string($value) || '' === $value) {
             return null;
         }
-        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
-        if (false === $day || $day->format('Y-m-d') !== $value) {
+        $day = WrittenDay::parsed($value);
+        if (null === $day) {
             throw new UnprocessableEntityHttpException($name.': A day is written YYYY-MM-DD.');
         }
 

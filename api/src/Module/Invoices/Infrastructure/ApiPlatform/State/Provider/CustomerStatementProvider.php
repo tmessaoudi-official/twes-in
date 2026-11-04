@@ -17,6 +17,7 @@ use App\Module\Invoices\Application\Statement\InvalidStatementPeriod;
 use App\Module\Invoices\Application\Statement\StatementOfAccount;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\CustomerStatementResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Shared\Domain\Service\WrittenDay;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -54,9 +55,8 @@ final readonly class CustomerStatementProvider implements ProviderInterface
         if (!\is_string($value) || '' === $value) {
             return null;
         }
-        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
-        // createFromFormat rolls 2026-13-40 over into a later date: only a day that reads back as written is one.
-        if (false === $day || $day->format('Y-m-d') !== $value) {
+        $day = WrittenDay::parsed($value);
+        if (null === $day) {
             throw new UnprocessableEntityHttpException($name.': A day is written YYYY-MM-DD.');
         }
 

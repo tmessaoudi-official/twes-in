@@ -20,6 +20,7 @@ use App\Licensing\Domain\ValueObject\PaymentMethod;
 use App\Licensing\Infrastructure\ApiPlatform\State\Processor\DecidePaymentProcessor;
 use App\Licensing\Infrastructure\ApiPlatform\State\Processor\DeclarePaymentProcessor;
 use App\Licensing\Infrastructure\ApiPlatform\State\Provider\WaitingPaymentsProvider;
+use App\Shared\Domain\Service\WrittenDay;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
@@ -175,8 +176,8 @@ final class PaymentDeclarationResource
     public function payment(): DeclaredPayment
     {
         $method = PaymentMethod::tryFrom($this->method) ?? throw new InvalidPayment('method: cash, transfer, cheque or other.');
-        $paidOn = 1 === preg_match(self::DAY, $this->paidOn) ? \DateTimeImmutable::createFromFormat('!Y-m-d', $this->paidOn) : false;
-        if (false === $paidOn || $paidOn->format('Y-m-d') !== $this->paidOn) {
+        $paidOn = 1 === preg_match(self::DAY, $this->paidOn) ? WrittenDay::parsed($this->paidOn) : null;
+        if (null === $paidOn) {
             throw new InvalidPayment('paidOn: a day written YYYY-MM-DD.');
         }
 

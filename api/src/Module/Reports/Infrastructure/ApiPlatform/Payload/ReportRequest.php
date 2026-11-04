@@ -16,6 +16,7 @@ use App\Module\Reports\Application\InvalidReportRequest;
 use App\Module\Reports\Application\ReportComparison;
 use App\Module\Reports\Application\ReportContext;
 use App\Module\Reports\Application\ReportPeriod;
+use App\Shared\Domain\Service\WrittenDay;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
@@ -108,8 +109,7 @@ final readonly class ReportRequest
         if (!\is_string($value)) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: a calendar day, YYYY-MM-DD.', $key));
         }
-        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
-        if (false === $day || $day->format('Y-m-d') !== $value) {
+        if (null === WrittenDay::parsed($value)) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: a calendar day, YYYY-MM-DD.', $key));
         }
 

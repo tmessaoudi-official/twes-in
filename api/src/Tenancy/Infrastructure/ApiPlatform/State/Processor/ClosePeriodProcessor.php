@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Shared\Domain\Service\WrittenDay;
 use App\Tenancy\Application\Closing\ClosePeriod;
 use App\Tenancy\Domain\Exception\InvalidClosing;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -29,9 +30,8 @@ final readonly class ClosePeriodProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): CompanyClosingResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
-        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $data->closedThrough, new \DateTimeZone('UTC'));
-        // A day the calendar does not have rolls over rather than failing: compare it with what was sent.
-        if (false === $day || $day->format('Y-m-d') !== $data->closedThrough) {
+        $day = WrittenDay::parsed((string) $data->closedThrough, zone: new \DateTimeZone('UTC'));
+        if (null === $day) {
             throw new UnprocessableEntityHttpException('closedThrough: a day written YYYY-MM-DD.');
         }
 

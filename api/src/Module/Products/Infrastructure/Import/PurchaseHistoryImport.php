@@ -34,6 +34,7 @@ use App\Module\Vendors\Domain\Repository\VendorRepository;
 use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Domain\Service\WrittenDay;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Doctrine\ORM\EntityManagerInterface;
@@ -233,10 +234,9 @@ final readonly class PurchaseHistoryImport implements DeclaresImport
             return null;
         }
         $written = TypedText::trimmed(ImportCells::day($cell));
-        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', $written, new \DateTimeZone($company->getTimezone()));
+        $day = WrittenDay::parsed($written, zone: new \DateTimeZone($company->getTimezone()));
         $today = $this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d');
-        // A day that rolls over (2025-13-45) comes back as another: only one read back as written is a day.
-        if (false === $day || $day->format('Y-m-d') !== $written || $written < self::EARLIEST || $written > $today) {
+        if (null === $day || $written < self::EARLIEST || $written > $today) {
             $notes->note('date', 'date_kept_unknown', ['date' => $cell]);
 
             return null;

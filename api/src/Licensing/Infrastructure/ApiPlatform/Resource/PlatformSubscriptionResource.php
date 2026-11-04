@@ -25,6 +25,7 @@ use App\Licensing\Domain\ValueObject\UnpaidMode;
 use App\Licensing\Infrastructure\ApiPlatform\State\Processor\SetSubscriptionProcessor;
 use App\Licensing\Infrastructure\ApiPlatform\State\Processor\StopSubscriptionProcessor;
 use App\Licensing\Infrastructure\ApiPlatform\State\Provider\PlatformSubscriptionProvider;
+use App\Shared\Domain\Service\WrittenDay;
 use App\Shared\Infrastructure\ApiPlatform\Payload\DeleteVersion;
 use App\Shared\Infrastructure\ApiPlatform\Payload\RecordVersion;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -203,8 +204,8 @@ final class PlatformSubscriptionResource
         if (null === $day) {
             return null;
         }
-        $start = 1 === preg_match(self::DAY, $day) ? \DateTimeImmutable::createFromFormat('!Y-m-d', $day, $zone) : false;
-        if (false === $start || $start->format('Y-m-d') !== $day) {
+        $start = 1 === preg_match(self::DAY, $day) ? WrittenDay::parsed($day, zone: $zone) : null;
+        if (null === $start) {
             throw new InvalidSubscription(\sprintf('%s: a day written YYYY-MM-DD.', $field));
         }
 
