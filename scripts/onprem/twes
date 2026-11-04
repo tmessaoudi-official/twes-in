@@ -242,9 +242,9 @@ alert() {
 
 # --- Health ------------------------------------------------------------------------------------------------------------
 
-# The deep health check through the edge, as the shop's browser reaches it, trusting the installation's own authority.
-# Prints what fails when it fails; a release just started gets three minutes to settle.
-# Whether the demo is open on this computer, as the sign-in page reads it: closed unless an operator opened it.
+# Whether the demo is open on this computer, as the sign-in page reads it: closed unless an operator opened it. It
+# trusts the installation's authority that deep_health fetches, so it runs after it, as status does: when the edge did
+# not answer, it says the application does not answer.
 demo_said() {
   local code
   code=$(curl -sS --max-time 10 --cacert "$state/root.crt" -o "$state/demo.json" -w '%{http_code}' https://localhost/api/auth/demo 2>/dev/null) || code=000
@@ -254,6 +254,8 @@ demo_said() {
   fi
 }
 
+# The deep health check through the edge, as the shop's browser reaches it, trusting the installation's own authority.
+# Prints what fails when it fails; a release just started gets three minutes to settle.
 deep_health() {
   local tries=${1:-1} code
   curl -fsS --max-time 10 -o "$state/root.crt" http://localhost/root.crt || { echo edge; return 1; }
