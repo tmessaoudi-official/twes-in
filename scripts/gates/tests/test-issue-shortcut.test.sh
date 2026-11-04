@@ -54,6 +54,27 @@ out=$(run "$d"); check "a reason on the line passes" $? 0 "$out" "OK — 2"
 d=$(tree); add "$d/api/tests/Functional/Empty.php" "\$c->executeStatement(\"UPDATE invoice SET status = 'paid' WHERE id = ?\", [\$id]); // issue-shortcut:"
 out=$(run "$d"); check "a reason left empty is no reason" $? 1 "$out" "Empty.php:2"
 
+d=$(tree); add "$d/api/tests/Functional/Dbal.php" "\$this->em()->getConnection()->update('purchase_order', ['status' => 'sent'], ['id' => \$id]);"
+out=$(run "$d"); check "an order sent through DBAL's table API is refused" $? 1 "$out" "Dbal.php:2"
+
+d=$(tree); add "$d/api/tests/Functional/DbalInsert.php" "\$c->insert(\"invoice\", ['id' => \$id, 'number' => 'F-1', \"status\" => 'issued']);"
+out=$(run "$d"); check "an invoice inserted through DBAL's table API with a status is refused" $? 1 "$out" "DbalInsert.php:2"
+
+d=$(tree); add "$d/api/tests/Functional/DbalLines.php" "\$c->insert('quote', [
+    'id' => \$id,
+    'status' => 'sent',
+]);"
+out=$(run "$d"); check "a table-API call whose array runs over several lines is read whole" $? 1 "$out" "DbalLines.php:2"
+
+d=$(tree); add "$d/api/tests/Functional/DbalSaid.php" "// issue-shortcut: sending prints and numbers the order, which is not what is tested here
+\$c->update('purchase_order', ['status' => 'sent'], ['id' => \$id]);"
+out=$(run "$d"); check "a table-API shortcut that says why passes" $? 0 "$out" "OK — 2"
+
+d=$(tree); add "$d/api/tests/Functional/DbalOther.php" "\$c->update('invoice', ['number' => 'F-1'], ['status' => 'draft', 'id' => \$id]);
+\$c->update('payment_declaration', ['status' => 'rejected'], ['id' => \$id]);
+\$c->insert('invoice_line', ['id' => \$id, 'status' => 'x']);"
+out=$(run "$d"); check "a status the criteria read, or another table's, is not a document's written" $? 0 "$out" "OK — 1"
+
 d=$(tree); rm -r "$d/api/tests"
 out=$(run "$d"); check "a missing api/tests is refused, not skipped" $? 1 "$out" "found no api/tests"
 

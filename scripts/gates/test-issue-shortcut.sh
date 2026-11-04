@@ -28,6 +28,29 @@ updated="update[[:space:]]+${tables}[[:space:]]+set[[:space:]]"
 assigned='(^|[^a-z_])status[[:space:]]*='
 inserted="insert[[:space:]]+into[[:space:]]+${tables}[[:space:]]*\\([^)]*[^a-z_]status[^a-z_]"
 said='//[[:space:]]*issue-shortcut:[[:space:]]*[^[:space:]]'
+# DBAL builds the same UPDATE or INSERT from the table's name and a data array: only that array writes, the criteria
+# array after it reads.
+table_api="(->|::)(update|insert)\\([[:space:]]*['\"]${tables}['\"][[:space:]]*,"
+keyed="['\"]status['\"][[:space:]]*=>"
+
+# The data array of a table-API call starting at line $1 of `lines`: from its opening bracket to the one that closes it.
+data_array() {
+  local i=$1 text='' depth=0 started=0 ch j k
+  for ((j = i; j < ${#lines[@]} && j < i + 40; j++)); do
+    local chunk=${lines[j],,}
+    ((j == i)) && { [[ "$chunk" =~ $table_api ]]; chunk=${chunk#*"${BASH_REMATCH[0]}"}; }
+    for ((k = 0; k < ${#chunk}; k++)); do
+      ch=${chunk:k:1}
+      if [[ "$ch" == '[' ]]; then depth=$((depth + 1)); started=1
+      elif [[ "$ch" == ']' ]]; then depth=$((depth - 1))
+      fi
+      ((started)) && text+=$ch
+      ((started && depth == 0)) && { printf '%s' "$text"; return; }
+    done
+    ((started)) && text+=' '
+  done
+  printf '%s' "$text"
+}
 read_files=0
 said_count=0
 
@@ -46,6 +69,8 @@ else
         set_part=${lower#*"${BASH_REMATCH[0]}"}
         set_part=${set_part%%" where "*}
         [[ "$set_part" =~ $assigned ]] || continue
+      elif [[ ("$lower" == *'update('* || "$lower" == *'insert('*) && "$lower" =~ $table_api ]]; then
+        [[ "$(data_array "$i")" =~ $keyed ]] || continue
       elif ! [[ "$lower" =~ $inserted ]]; then continue
       fi
       previous=''; ((i > 0)) && previous=${lines[i - 1]}

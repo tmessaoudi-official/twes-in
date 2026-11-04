@@ -536,6 +536,7 @@ final class VendorMergeTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
         if ($sent) {
+            // issue-shortcut: sending prints and numbers the order, which is not what a merge test reads
             $this->em()->getConnection()->update('purchase_order', ['status' => 'sent'], ['id' => $id]);
         }
 
