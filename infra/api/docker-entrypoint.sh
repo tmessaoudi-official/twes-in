@@ -11,16 +11,19 @@ set -e
 # the start goes on. A later start that runs it through clears it.
 steps_dir=${TWES_START_STEPS_DIR:-var/start-steps}
 # Its output is printed as it comes, so a long seal-chain does not read as a hang; sh has no PIPESTATUS, so the step's
-# own status travels through a file beside its output.
+# own status travels through a file beside its output. The pipeline's left side is a subshell of its own, where errexit
+# would end it at a failing step before the status is written: it runs without, and the main shell keeps it.
 start_step() {
 	name=$1
 	shift
 	out=$(mktemp)
-	{ "$@" 2>&1; echo $? > "$out.status"; } | tee "$out"
-	if [ "$(cat "$out.status")" = 0 ]; then
+	{ set +e; "$@" 2>&1; echo $? > "$out.status"; } | tee "$out"
+	# A status file missing means the subshell was killed before writing it: read as the failure it is.
+	status=$(cat "$out.status" 2>/dev/null) || status=unread
+	if [ "$status" = 0 ]; then
 		rm -f "$steps_dir/$name.failed"
 	else
-		echo "The start step $name failed; the server starts all the same and /api/health/deep names it."
+		echo "The start step $name failed (status $status); the server starts all the same and /api/health/deep names it."
 		mkdir -p "$steps_dir"
 		tail -n 20 "$out" > "$steps_dir/$name.failed"
 	fi

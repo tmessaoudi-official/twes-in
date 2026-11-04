@@ -59,6 +59,8 @@ out=$(start env -u TWES_RELEASE_STEPS FAIL_STEP=app:invoices:seal-chain sh "$HER
 check "a step that fails: the server starts all the same" $? 0 "$(ran | tail -n 1)" "started frankenphp run"
 check "  the steps after it still run" 0 0 "$(ran)" "console app:invoices:seal-chain"
 check "  what failed is said in the log" 0 0 "$out" "app:invoices:seal-chain failed"
+check "  with the step's own status, read from the file it travels through" 0 0 "$out" "failed (status 1)"
+[[ "$out" != *"No such file"* ]]; check "  and nothing else is said about that file" $? 0 "$out" ""
 check "  and kept for the deep health, with its last lines" 0 0 "$(cat "$TMPDIR/steps/app:invoices:seal-chain.failed" 2>&1)" "the chain broke at FA-2026-0412"
 out=$(start env -u TWES_RELEASE_STEPS FAIL_STEP=app:platform:converge sh "$HERE/docker-entrypoint.sh" frankenphp run)
 check "an early step that fails: the later ones run" $? 0 "$(ran)" "console app:legal:seed-drafts"
