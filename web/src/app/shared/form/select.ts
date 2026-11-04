@@ -26,6 +26,7 @@ import type { IconName } from '../icons/icons';
 import type { StatusTone } from '../theme/accent-theme';
 import { CountBadge, type CountKind } from '../ui/count-badge';
 import { WINDOW_CLASS } from '../ui/window-class';
+import { typedText } from './typed-text';
 
 /** One thing a Select offers: the value a control holds, and the words a person reads for it. */
 export interface SelectOption {
@@ -405,7 +406,7 @@ export class Select implements ControlValueAccessor {
 
   /** The options the search lets through, in the order they were given. */
   protected readonly shown = computed(() => {
-    const words = fold(this.query().trim());
+    const words = fold(typedText(this.query()));
     return words === ''
       ? this.items()
       : this.items().filter(

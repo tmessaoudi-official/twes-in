@@ -39,6 +39,7 @@ import { LEGAL_PAGES, type LegalPage } from '../shared/legal/legal-pages';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { PlatformLegalFacade } from './platform-legal-facade';
 import type { LegalStatusRow, LegalVersionRow } from './platform-legal-types';
+import { typedText } from '../shared/form/typed-text';
 
 interface Opened {
   readonly page: LegalPage;
@@ -168,7 +169,7 @@ export class PlatformLegalPage implements OnInit {
     () => this.facade.versions()[0] ?? null,
   );
   protected readonly changed = computed(
-    () => this.text().trim() !== '' && this.text() !== (this.latest()?.body ?? ''),
+    () => typedText(this.text()) !== '' && this.text() !== (this.latest()?.body ?? ''),
   );
 
   /** The identity as typed, until saved: the saved one again after every load or save. */
@@ -200,7 +201,7 @@ export class PlatformLegalPage implements OnInit {
     }
     if (this.identityTried()) {
       for (const [placeholder, value] of Object.entries(this.identityDraft())) {
-        if (this.addressField(placeholder) && value.trim() !== '' && !emailTaken(value)) {
+        if (this.addressField(placeholder) && typedText(value) !== '' && !emailTaken(value)) {
           refused.set(placeholder, { field: placeholder, reason: 'invalid_email', params: {} });
         }
         // A phone kept from before the rule is left as it is until it is typed again, as every form leaves it.
@@ -232,7 +233,7 @@ export class PlatformLegalPage implements OnInit {
   /** What the preview fills the placeholders with: the saved identity, as the public page will. */
   protected readonly filled = computed(() =>
     Object.fromEntries(
-      Object.entries(this.facade.identity()).filter(([, value]) => value.trim() !== ''),
+      Object.entries(this.facade.identity()).filter(([, value]) => typedText(value) !== ''),
     ),
   );
 

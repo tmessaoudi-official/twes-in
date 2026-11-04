@@ -24,6 +24,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { debounceTime } from 'rxjs';
 import { ScanGap } from '../scan/scan-gap';
+import { typedText } from './typed-text';
 
 /** One thing a person may pick: what they type to find it, and what they read to recognise it. */
 export interface PickOption {
@@ -196,7 +197,7 @@ export class PickField {
   );
   private readonly wanted = computed(() => {
     const value = this.words();
-    return typeof value === 'string' ? value.trim() : '';
+    return typeof value === 'string' ? typedText(value) : '';
   });
 
   constructor() {
@@ -260,7 +261,7 @@ export class PickField {
   protected async resolve(event: Event): Promise<void> {
     if (!this.scanning()) return;
     const typed = this.typed.value;
-    const words = typeof typed === 'string' ? typed.trim() : '';
+    const words = typeof typed === 'string' ? typedText(typed) : '';
     if (words === '') return;
 
     event.preventDefault();

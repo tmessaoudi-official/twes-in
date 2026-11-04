@@ -51,6 +51,7 @@ import {
 } from './quotes-types';
 import { refusedFor } from '../shared/errors/said-already';
 import type { ReceiverChoice, ReceiverContact } from '../shared/receivers/receiver';
+import { typedText } from '../shared/form/typed-text';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class QuotesRefused extends Error {
@@ -223,7 +224,7 @@ export class QuotesApi {
 
   /** The customer's no, why when they said, and who answered; the reason never enters the audit trail. */
   async refuse(companyId: string, id: string, answer: QuoteAnswer): Promise<QuoteRow> {
-    const reason = answer.refusalReason?.trim() ?? '';
+    const reason = typedText(answer.refusalReason ?? '');
     const body: QuoteRefuseBody = {
       answeredOn: day(answer.answeredOn),
       refusalReason: reason === '' ? null : reason,
@@ -453,7 +454,7 @@ function deliveryCodeOf(error: unknown): QuotesError {
 }
 
 /** An empty day is the API's own today, sent as no day at all. */
-const day = (value: string): string | null => (value.trim() === '' ? null : value.trim());
+const day = (value: string): string | null => (typedText(value) === '' ? null : typedText(value));
 
 const companyPath = (companyId: string): string =>
   `/api/companies/${encodeURIComponent(companyId)}`;
@@ -467,7 +468,7 @@ const attachmentsPath = (companyId: string, id: string): string =>
 /** Only what the search asks for: an absent parameter is the API's own default, never an empty one. */
 function toSearchParams(search: QuoteSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   for (const status of search.status) params = params.append('status[]', status);
   params = narrowing(params, search);
   if (search.order !== null)
@@ -487,7 +488,7 @@ function narrowing(params: HttpParams, search: QuoteSearch): HttpParams {
 /** The chips narrow by status themselves, and a count has no page or order. */
 function toCountParams(search: QuoteSearch): HttpParams {
   let params = new HttpParams();
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   return narrowing(params, search);
 }
 

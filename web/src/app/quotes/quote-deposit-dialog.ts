@@ -16,6 +16,7 @@ import { FormStep } from '../shared/form/form-step';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import type { DepositShare, QuoteRow } from './quotes-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** The fields a deposit's refusal names, all said under the one value the dialog asks. */
 const SHARE_FIELDS = new Set(['percentage', 'amount', 'depositPercentage', 'depositAmount']);
@@ -137,7 +138,7 @@ export class QuoteDepositDialog {
    * amount with at most the currency's.
    */
   protected readonly share = computed<DepositShare | null>(() => {
-    const text = this.value().trim();
+    const text = typedText(this.value());
     if (this.by() === 'percentage') {
       if (!/^(0|[1-9]\d?)(\.\d{1,3})?$/.test(text) || Number(text) === 0) return null;
       return { percentage: text };

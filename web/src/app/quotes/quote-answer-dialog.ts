@@ -33,6 +33,7 @@ import {
 } from '../shared/receivers/receiver';
 import { ReceiverField } from '../shared/receivers/receiver-field';
 import { REFUSAL_REASON_MAX } from './quote-forms';
+import { typedText } from '../shared/form/typed-text';
 
 export interface QuoteAnswerDialogData {
   kind: 'accept' | 'refuse';
@@ -181,7 +182,7 @@ export class QuoteAnswerDialog {
   protected readonly reason = signal('');
   /** A reason past its limit, kept whole as pasted and said under the field; the answer waits until it fits. */
   protected readonly reasonTooLong = computed(() =>
-    lengthSaid(this.reason().trim(), REFUSAL_REASON_MAX),
+    lengthSaid(typedText(this.reason()), REFUSAL_REASON_MAX),
   );
   protected readonly signed = signal<File | null>(null);
   protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
@@ -203,7 +204,7 @@ export class QuoteAnswerDialog {
     if (this.data.kind === 'refuse' && this.reasonTooLong() !== null) return;
     const answered: QuoteAnswered = {
       answeredOn: this.day.value,
-      refusalReason: this.data.kind === 'refuse' ? this.reason().trim() : '',
+      refusalReason: this.data.kind === 'refuse' ? typedText(this.reason()) : '',
       signed: this.data.kind === 'accept' ? this.signed() : null,
       receivedBy: receiver === null ? null : receiverChoice(receiver),
     };

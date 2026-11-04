@@ -19,6 +19,7 @@ import type {
   VendorSearch,
   VendorSortKey,
 } from './vendors-types';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'vendors.fields';
 /** A registration number's field, where a refusal of it is said too. */
@@ -388,8 +389,8 @@ export function vendorInput(
   const days = text(values['paymentTermsDays']);
 
   return {
-    number: String(values['number'] ?? '').trim(),
-    name: String(values['name'] ?? '').trim(),
+    number: typedText(String(values['number'] ?? '')),
+    name: typedText(String(values['name'] ?? '')),
     legalName: text(values['legalName']),
     identifiers,
     email: text(values['email']),
@@ -418,6 +419,6 @@ export function vendorInput(
 }
 
 function text(value: FieldValue | undefined): string | null {
-  const trimmed = String(value ?? '').trim();
+  const trimmed = typedText(String(value ?? ''));
   return trimmed === '' ? null : trimmed;
 }

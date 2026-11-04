@@ -14,6 +14,7 @@ import {
   type PurchaseOrderSearch,
   type PurchaseOrderSortKey,
 } from './purchases-types';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'purchases.fields';
 /** The API's longest text on an order and on a line. */
@@ -252,7 +253,7 @@ export function linesArray(lines: readonly PurchaseOrderLine[] | null): FormArra
 }
 
 function text(value: FieldValue | undefined): string | null {
-  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+  return typeof value === 'string' && typedText(value) !== '' ? typedText(value) : null;
 }
 
 /**

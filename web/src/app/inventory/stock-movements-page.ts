@@ -54,6 +54,7 @@ import { INVENTORY_TABS } from './inventory-nav';
 import { countAddress, type StockMovementSearch } from './inventory-types';
 import { ReceiptCostDialog, type ReceiptCostDialogData } from './receipt-cost-dialog';
 import { LossFilesDialog, type LossFilesDialogData } from './loss-files-dialog';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * How stock moved: one product's movements when the address names it, one lot's or serial number's when it names that
@@ -252,7 +253,7 @@ export class StockMovementsPage {
 
   /** Opens the movements of the lot or serial number typed into the search. */
   protected findLot(code: string): void {
-    const lot = code.trim();
+    const lot = typedText(code);
     if (lot !== '') void this.router.navigate(['/stock/movements'], { queryParams: { lot } });
   }
 
@@ -297,7 +298,7 @@ export class StockMovementsPage {
     },
     location: {
       search: async (words) => {
-        const wanted = words.trim().toLocaleLowerCase();
+        const wanted = typedText(words).toLocaleLowerCase();
         return this.locationChoices().filter((each) =>
           `${each.code} ${each.name}`.toLocaleLowerCase().includes(wanted),
         );

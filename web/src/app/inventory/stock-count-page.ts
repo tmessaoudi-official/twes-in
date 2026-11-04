@@ -49,6 +49,7 @@ import {
 import { InventoryFacade } from './inventory-facade';
 import { locationLabels, QUANTITY_PATTERN } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * Count mode (docs/SPEC.md § 7, 2026-09-23 slice 8): walking the shelves with a scanner. The location counted is the
@@ -235,7 +236,7 @@ export class StockCountPage implements OnInit {
 
   protected submit(event: Event): void {
     event.preventDefault();
-    const code = this.code().trim();
+    const code = typedText(this.code());
     if (code === '') return;
     this.code.set('');
     void this.bus.receive(code, 'wedge');
@@ -299,7 +300,7 @@ export class StockCountPage implements OnInit {
       return {
         kind: 'refused',
         key: 'inventory.scan.location_ambiguous',
-        params: { code: scan.code.trim() },
+        params: { code: typedText(scan.code) },
       };
     }
     if (located !== null) {

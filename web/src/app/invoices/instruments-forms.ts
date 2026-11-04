@@ -2,6 +2,7 @@
 
 import type { FieldValue, FormDescriptor, FormValues } from '../shared/form/form-types';
 import { INSTRUMENT_KINDS, type InstrumentInput } from './instruments-types';
+import { typedText } from '../shared/form/typed-text';
 
 const AMOUNT_PATTERN = '(0|[1-9][0-9]{0,11})([.][0-9]{1,3})?';
 
@@ -64,6 +65,6 @@ export function instrumentInput(values: FormValues): InstrumentInput {
 }
 
 function text(value: FieldValue | undefined): string | null {
-  const trimmed = String(value ?? '').trim();
+  const trimmed = typedText(String(value ?? ''));
   return trimmed === '' ? null : trimmed;
 }

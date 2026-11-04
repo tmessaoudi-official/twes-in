@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { typedText } from '../form/typed-text';
+
 /**
  * What one of a line's units comes to: its amount over its quantity, at the currency's scale, rounded half away from
  * zero, in exact decimals and never through `Number`. Null for a quantity of nothing, which has no price per unit.
@@ -27,7 +29,7 @@ export function minus(from: string, taken: string): string {
 
 /** A decimal as a whole number of its smallest unit, and how many decimals that unit is; an empty one is nought. */
 function units(value: string): [bigint, number] {
-  const trimmed = value.trim();
+  const trimmed = typedText(value);
   if (trimmed === '') return [0n, 0];
   const negative = trimmed.startsWith('-');
   const [whole, fraction = ''] = trimmed.replace(/^[-+]/, '').split('.');

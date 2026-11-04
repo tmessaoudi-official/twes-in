@@ -15,6 +15,7 @@ import {
   type QuoteShownStatus,
   type QuoteSortKey,
 } from './quotes-types';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'quotes.fields';
 /** An amount as the API takes it: at most twelve digits, then at most three decimals. */
@@ -244,7 +245,7 @@ export function quoteValues(row: QuoteRow | null, options: InvoiceOptions): Form
 }
 
 const text = (value: unknown): string | null => {
-  const trimmed = String(value ?? '').trim();
+  const trimmed = typedText(String(value ?? ''));
   return trimmed === '' ? null : trimmed;
 };
 
@@ -259,10 +260,10 @@ export function quoteInput(values: FormValues, lines: LinesArray, customerId: st
     discountAmount: text(values['discountAmount']),
     lines: lines.getRawValue().map((line) => ({
       productId: line.productId === '' ? null : line.productId,
-      description: line.description.trim(),
-      quantity: line.quantity.trim(),
+      description: typedText(line.description),
+      quantity: typedText(line.quantity),
       unitId: line.unitId,
-      unitPriceNet: line.unitPriceNet.trim(),
+      unitPriceNet: typedText(line.unitPriceNet),
       ...lineDiscount(line),
       taxComponentIds: [...line.taxComponentIds],
     })),

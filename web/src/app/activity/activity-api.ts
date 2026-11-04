@@ -12,6 +12,7 @@ import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import type { ActivityError, ActivityRow, ActivitySearch } from './activity-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { typedText } from '../shared/form/typed-text';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ActivityRefused extends Error {
@@ -55,7 +56,7 @@ function codeOf(error: unknown): ActivityError {
 
 export function toSearchParams(search: ActivitySearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   for (const id of search.actorIds) params = params.append('actorId[]', id);
   for (const type of search.entityTypes) params = params.append('entityType[]', type);
   if (search.entityId !== null) params = params.set('entityId', search.entityId);

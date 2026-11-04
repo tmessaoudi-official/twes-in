@@ -41,6 +41,7 @@ import { RefusedField } from '../shared/form/refused-field';
 import { ArticleDefaults } from '../products/article-defaults';
 import type { ArticleSubject } from '../shared/settings/settings-types';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { typedText } from '../shared/form/typed-text';
 
 /** What a role's name keeps, as the API holds it. */
 const ROLE_NAME_MAX = 64;
@@ -195,7 +196,7 @@ export class RolesPage implements OnInit {
     const role = this.open();
     const savedName = role === null ? '' : this.openName();
     const savedTicks = role === null ? '' : tickText(role.permissions);
-    const name = this.draftName().trim() === savedName.trim() ? 0 : 1;
+    const name = typedText(this.draftName()) === typedText(savedName) ? 0 : 1;
     return name + (tickText([...this.ticks()]) === savedTicks ? 0 : 1);
   });
   /** The editor's bar, beside its title: the matrix runs well below the first screen. */
@@ -283,7 +284,7 @@ export class RolesPage implements OnInit {
 
   protected async save(): Promise<void> {
     const companyId = this.company()?.id;
-    const name = this.draftName().trim();
+    const name = typedText(this.draftName());
     if (name === '') {
       // Spaces alone pass `required`: the name is said needed here, under its field, where the cursor goes.
       this.nameModel()?.control.setErrors({ required: true });

@@ -132,7 +132,7 @@ function periodsOf(payment: WaitingPayment): PlatformNumber {
 
 /** How many of these typed texts hold something. */
 function filled(texts: readonly string[]): number {
-  return texts.filter((text) => text.trim() !== '').length;
+  return texts.filter((text) => typedText(text) !== '').length;
 }
 
 const LIST_PARAMS = ['q', 'status', 'country', 'state', 'sort', 'page', 'size', 'company'] as const;
@@ -430,7 +430,7 @@ export class PlatformPage implements OnInit {
   protected readonly supportActions: Readonly<Record<string, FieldAction>> = {
     whatsapp: {
       label: 'platform.support.same_as_phone',
-      disabled: () => String(this.supportGroup()?.controls['phone']?.value ?? '').trim() === '',
+      disabled: () => typedText(String(this.supportGroup()?.controls['phone']?.value ?? '')) === '',
       run: () => {
         const group = this.supportGroup();
         const whatsapp = group?.controls['whatsapp'];
@@ -958,7 +958,7 @@ export class PlatformPage implements OnInit {
     if (saved === null) return;
     const changes = Object.fromEntries(
       SUPPORT_CHANNELS.flatMap((channel) => {
-        const typed = String(values[channel] ?? '').trim();
+        const typed = typedText(String(values[channel] ?? ''));
         return typed === saved[channel] ? [] : [[channel, typed]];
       }),
     );
@@ -1064,7 +1064,7 @@ export class PlatformPage implements OnInit {
     );
     if (typeof reason !== 'string') return;
     const done = company.status === 'pending' ? 'rejected' : 'suspended';
-    if (await this.platform.reject(company.id, reason.trim() === '' ? null : reason)) {
+    if (await this.platform.reject(company.id, typedText(reason) === '' ? null : reason)) {
       this.feedback.effect(
         `platform.companies.done.${done}`,
         { name: company.name },

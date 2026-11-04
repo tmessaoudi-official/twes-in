@@ -16,6 +16,7 @@ import {
   type StockStructureShape,
   type StructureKind,
 } from './inventory-types';
+import { typedText } from '../shared/form/typed-text';
 
 const FLOOR_FIELDS = 'inventory.plan.floor_fields';
 const DRAWING_FIELDS = 'inventory.plan.drawing_fields';
@@ -371,7 +372,7 @@ function metres(value: number): string {
 }
 
 function text(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === 'string' ? typedText(value) : '';
 }
 
 /**
@@ -383,7 +384,7 @@ function text(value: unknown): string {
  * rather than offer one the API would answer 422 to.
  */
 export function nextCodes(firstCode: string, count: number): string[] {
-  const found = /^(.*?)(\d+)$/.exec(firstCode.trim());
+  const found = /^(.*?)(\d+)$/.exec(typedText(firstCode));
   if (found === null || count < 1) return [];
   const [, stem, number] = found;
 

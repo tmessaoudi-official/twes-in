@@ -14,6 +14,7 @@ import { DecimalInput } from '../form/decimal-input';
 import { FormStep } from '../form/form-step';
 import { RefusalFigures } from '../form/refusal-figures';
 import { AmountPipe } from '../i18n/format-pipes';
+import { typedText } from '../form/typed-text';
 
 /** A line a note may deliver part of: its id, what it says, and what is left to deliver of it. */
 export interface DeliverableLine {
@@ -124,7 +125,7 @@ export class DeliverPartDialog {
   protected chosen(): Record<string, string> {
     const kept: Record<string, string> = {};
     for (const [lineId, quantity] of Object.entries(this.quantities())) {
-      const text = quantity.trim().replace(',', '.');
+      const text = typedText(quantity).replace(',', '.');
       if (!isNothing(text)) kept[lineId] = text;
     }
     return kept;
@@ -185,7 +186,7 @@ export function quantityRefusals(
 
 /** Blank, zero, or below it: nothing to deliver. */
 function isNothing(value: string): boolean {
-  return /^-?0*(\.0*)?$/.test(value) || value.trim().startsWith('-');
+  return /^-?0*(\.0*)?$/.test(value) || typedText(value).startsWith('-');
 }
 
 /** "4.500" as "4.5": the zeros the API pads a quantity with say nothing to the person reading it. */

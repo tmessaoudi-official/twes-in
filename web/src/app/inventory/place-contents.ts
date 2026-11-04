@@ -28,6 +28,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { InventoryFacade } from './inventory-facade';
 import type { StockLevelRow } from './inventory-types';
 import type { MovementAsked } from './place-movement';
+import { typedText } from '../shared/form/typed-text';
 
 /** What a line was asked to do, for the map's panel to open its movement. */
 export type PlaceAct = MovementAsked;
@@ -159,7 +160,7 @@ export class PlaceContents {
     const place = this.locationId();
     this.searchTimer = setTimeout(() => {
       this.searchTimer = null;
-      if (this.locationId() === place) this.searched.set(words.trim());
+      if (this.locationId() === place) this.searched.set(typedText(words));
     }, CONTENTS_SEARCH_PAUSE_MS);
   }
 }

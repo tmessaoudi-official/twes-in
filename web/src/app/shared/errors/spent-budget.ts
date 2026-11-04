@@ -4,6 +4,7 @@ import { computed, inject, Injectable, Injector, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { FormatFacade } from '../i18n/format-facade';
 import { TextsParts } from '../i18n/texts-part';
+import { typedText } from '../form/typed-text';
 
 /** The texts saying when to come back, opened into the root by the first spent budget heard. */
 export const SPENT_BUDGET_TEXTS = 'spent-budget';
@@ -37,7 +38,7 @@ export class SpentBudget {
   /** What a 429 said: its `Retry-After`, or null. A later answer always replaces the earlier wait, even with none. */
   heard(retryAfter: string | null): void {
     const seconds =
-      retryAfter !== null && /^\d+$/.test(retryAfter.trim()) ? Number(retryAfter) : null;
+      retryAfter !== null && /^\d+$/.test(typedText(retryAfter)) ? Number(retryAfter) : null;
     this.until.set(seconds === null ? null : new Date(Date.now() + seconds * 1000).toISOString());
     if (seconds !== null && !this.worded()) {
       void this.injector

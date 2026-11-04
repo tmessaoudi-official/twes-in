@@ -36,6 +36,7 @@ import {
   type ProductSortKey,
   type ProductTracking,
 } from './products-types';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'products.fields';
 /** The API's shape of a price, anchored by the form: at most ten digits, then at most four decimals. */
@@ -570,13 +571,13 @@ export function productInput(
     ? (values['kind'] as ProductKind)
     : 'goods';
   return {
-    reference: String(values['reference'] ?? '').trim(),
-    name: String(values['name'] ?? '').trim(),
+    reference: typedText(String(values['reference'] ?? '')),
+    name: typedText(String(values['name'] ?? '')),
     description: text(values['description']),
     substitutionGroup: text(values['substitutionGroup']),
     kind,
     unitId: String(values['unitId'] ?? ''),
-    unitPriceNet: String(values['unitPriceNet'] ?? '').trim(),
+    unitPriceNet: typedText(String(values['unitPriceNet'] ?? '')),
     costPrice: 'costPrice' in values ? text(values['costPrice']) : (kept?.costPrice ?? null),
     categoryId: text(values['categoryId']),
     defaultTaxComponentIds: offeredTaxes(options, values['defaultTaxComponentIds']),
@@ -712,10 +713,10 @@ export function categoryValues(row: ProductCategoryRow | null): FormValues {
 }
 
 export function categoryInput(values: FormValues): ProductCategoryInput {
-  return { name: String(values['name'] ?? '').trim(), parentId: text(values['parentId']) };
+  return { name: typedText(String(values['name'] ?? '')), parentId: text(values['parentId']) };
 }
 
 function text(value: FieldValue | undefined): string | null {
-  const trimmed = String(value ?? '').trim();
+  const trimmed = typedText(String(value ?? ''));
   return trimmed === '' ? null : trimmed;
 }

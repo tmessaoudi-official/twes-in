@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { typedText } from './typed-text';
 
 /** What each accepted type is called on screen, by the MIME type or extension a file input's `accept` names it with. */
 const TYPE_NAMES: Record<string, string> = {
@@ -91,7 +92,7 @@ export class FileDrop {
   private readonly tokens = computed(() =>
     this.accept()
       .split(',')
-      .map((token) => token.trim().toLowerCase())
+      .map((token) => typedText(token).toLowerCase())
       .filter((token) => token !== ''),
   );
 

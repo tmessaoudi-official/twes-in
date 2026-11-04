@@ -264,7 +264,7 @@
         <button
           mat-flat-button
           type="submit"
-          [disabled]="viewName().trim() === ''"
+          [disabled]="typedText(viewName()) === ''"
           data-testid="list-view-save"
         >
           {{ 'list.view_save' | translate }}

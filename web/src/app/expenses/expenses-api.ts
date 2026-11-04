@@ -46,6 +46,7 @@ import type {
   TejRefusalCode,
 } from './expenses-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { typedText } from '../shared/form/typed-text';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ExpensesRefused extends Error {
@@ -467,7 +468,7 @@ function toExpense(raw: ExpenseExpenseRead | ExpenseJsonldExpenseRead): ExpenseR
 /** Only what the search asks for: an absent parameter is the API's own default, never an empty one. */
 function toSearchParams(search: ExpenseSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   for (const status of search.status) params = params.append('status[]', status);
   params = narrowing(params, search);
   if (search.order !== null)
@@ -491,7 +492,7 @@ function narrowing(params: HttpParams, search: ExpenseSearch): HttpParams {
 /** The chips narrow by status themselves, and a count has no page or order. */
 function toCountParams(search: ExpenseSearch): HttpParams {
   let params = new HttpParams();
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   return narrowing(params, search);
 }
 

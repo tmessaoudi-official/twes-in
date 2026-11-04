@@ -14,6 +14,7 @@ import { SignupFacade } from './signup-facade';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { heldToPasswordRule } from '../shared/password/password-rule';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * The page a signup link opens, logged out: the account, and the company it will own. Finishing starts no session,
@@ -90,11 +91,11 @@ export class FinishSignupPage implements OnInit {
     }
     const value = this.form.getRawValue();
     await this.signup.complete(this.token(), {
-      displayName: value.displayName.trim(),
+      displayName: typedText(value.displayName),
       password: value.password,
-      companyName: value.companyName.trim(),
+      companyName: typedText(value.companyName),
       countryCode: value.countryCode,
-      timezone: value.timezone.trim(),
+      timezone: typedText(value.timezone),
     });
   }
 }

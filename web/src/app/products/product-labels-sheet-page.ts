@@ -22,6 +22,7 @@ import { LabelCopies } from './label-copies';
 import { labelCode, ProductLabel } from './product-label';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { LabelCode, LabelledProduct, ProductsError } from './products-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** A product selected that gets no label, and why: no longer found, or holding no code of its own to print. */
 export interface LeftOutProduct {
@@ -74,7 +75,7 @@ export class ProductLabelsSheetPage {
             {
               product,
               code,
-              price: `${this.format.amount(code.priceGross, null)} ${currency}`.trim(),
+              price: typedText(`${this.format.amount(code.priceGross, null)} ${currency}`),
             },
           ];
     });

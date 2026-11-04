@@ -20,6 +20,7 @@ import {
   TextRefused,
   type TextRow,
 } from './texts-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** The HTTP edge of « Textes »: the only code here that knows where a level's texts are read and written. */
 @Injectable({ providedIn: 'root' })
@@ -28,7 +29,7 @@ export class TextCatalogueApi {
 
   async page(level: TextLevel, language: string, query: TextQuery): Promise<TextPage> {
     let params = new HttpParams().set('page', query.page).set('itemsPerPage', query.itemsPerPage);
-    if (query.words.trim() !== '') params = params.set('q', query.words.trim());
+    if (typedText(query.words) !== '') params = params.set('q', typedText(query.words));
     if (query.place !== null) params = params.set('domain', query.place);
     if (query.changed) params = params.set('changed', '1');
     const found = await firstValueFrom(

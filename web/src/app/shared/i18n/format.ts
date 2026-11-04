@@ -261,7 +261,7 @@ function dayOrder(locale: string, style: DateFormat): DayOrder {
  * is never taken for another. An impossible date is refused, never rolled over into the next month.
  */
 export function parseDay(text: string, locale: string, style: DateFormat = 'auto'): string | null {
-  const parts = text.trim().split(/[\s/.-]+/);
+  const parts = typedText(text).split(/[\s/.-]+/);
   if (parts.length !== 3 || parts.some((part) => !/^\d{1,4}$/.test(part))) return null;
   const order = parts[0]!.length === 4 ? 'ymd' : dayOrder(locale, style);
   const byLetter: Record<string, string> = {};

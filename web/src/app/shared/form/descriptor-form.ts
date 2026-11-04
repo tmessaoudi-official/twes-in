@@ -41,6 +41,7 @@ import type { FieldValue, FormDescriptor, FormField, FormSection, FormValues } f
 import { applicableValues, applyVisibility, fieldApplies } from './form-visibility';
 import { RefusalFigures } from './refusal-figures';
 import { refusedError } from './refusal-words';
+import { typedText } from './typed-text';
 
 /** What a field offers under it to fill it from elsewhere, named by a translation key. */
 export interface FieldAction {
@@ -160,8 +161,8 @@ export class DescriptorForm {
     if (from !== null) {
       this.revision();
       const own: unknown = this.form().controls[from]?.value;
-      if (typeof own === 'string' && /^[A-Za-z]{2}$/.test(own.trim())) {
-        return own.trim().toUpperCase();
+      if (typeof own === 'string' && /^[A-Za-z]{2}$/.test(typedText(own))) {
+        return typedText(own).toUpperCase();
       }
     }
     return this.phoneCountryOf() ?? this.session?.me()?.company?.countryCode ?? '';
@@ -304,9 +305,9 @@ export class DescriptorForm {
   protected suggested(field: FormField): readonly string[] {
     this.revision();
     const values = this.suggestions()[field.id] ?? [];
-    const typed = String(this.form().controls[field.id]?.value ?? '')
-      .trim()
-      .toLocaleLowerCase();
+    const typed = typedText(
+      String(this.form().controls[field.id]?.value ?? ''),
+    ).toLocaleLowerCase();
     return values.filter((value) => {
       const known = value.toLocaleLowerCase();
       return known !== typed && known.includes(typed);
@@ -435,5 +436,5 @@ export class DescriptorForm {
 function isBlank(value: FieldValue | undefined): boolean {
   if (value === null || value === undefined) return true;
   if (Array.isArray(value)) return value.length === 0;
-  return typeof value === 'string' && value.trim() === '';
+  return typeof value === 'string' && typedText(value) === '';
 }

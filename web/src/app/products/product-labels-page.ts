@@ -23,6 +23,7 @@ import { LabelCopies } from './label-copies';
 import { labelCode, ProductLabel } from './product-label';
 import { ProductsApi } from './products-api';
 import type { LabelCode, LabelledProduct } from './products-types';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * Printed product labels: the product's name and reference, what a customer
@@ -64,7 +65,7 @@ export class ProductLabelsPage {
     return Object.fromEntries(
       this.codes().map((code) => [
         code.code,
-        `${this.format.amount(code.priceGross, null)} ${currency}`.trim(),
+        typedText(`${this.format.amount(code.priceGross, null)} ${currency}`),
       ]),
     );
   });

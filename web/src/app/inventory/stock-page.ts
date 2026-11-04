@@ -368,7 +368,7 @@ export class StockPage implements OnInit {
   });
   /** A place's share typed in a delivery shared over several places, unsaved like the form's own fields. */
   private readonly partsTyped = computed(() =>
-    this.split() ? this.parts().filter((part) => part.quantity.trim() !== '').length : 0,
+    this.split() ? this.parts().filter((part) => typedText(part.quantity) !== '').length : 0,
   );
 
   /** A person looked at the goods and let the lot leave: it is taken by delivery notes again. */
@@ -512,7 +512,7 @@ export class StockPage implements OnInit {
   private async askCost(form: DescriptorFormGroup): Promise<void> {
     const companyId = this.company()?.id;
     const values = form.getRawValue();
-    const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+    const text = (value: unknown): string => (typeof value === 'string' ? typedText(value) : '');
     const productId = text(values['productId']);
     if (!companyId || productId === '') {
       this.costView.set(null);
@@ -569,7 +569,7 @@ export class StockPage implements OnInit {
       return {
         kind: 'refused',
         key: 'inventory.scan.location_ambiguous',
-        params: { code: scan.code.trim() },
+        params: { code: typedText(scan.code) },
       };
     }
     if (located !== null) return this.located(form, located.id, scan.code);
@@ -642,7 +642,7 @@ export class StockPage implements OnInit {
     },
     location: {
       search: async (words) => {
-        const wanted = words.trim().toLocaleLowerCase();
+        const wanted = typedText(words).toLocaleLowerCase();
         return this.locationChoices().filter((each) =>
           `${each.code} ${each.name}`.toLocaleLowerCase().includes(wanted),
         );

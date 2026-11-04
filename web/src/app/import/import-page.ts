@@ -52,6 +52,7 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { tableCounts } from '../shared/records/record-tables';
 import { refusalParams } from '../shared/form/refusal-words';
+import { typedText } from '../shared/form/typed-text';
 
 /** How many of a preview's changes the table lists; the count by column says them all. */
 export const CHANGES_SHOWN = 200;
@@ -71,7 +72,7 @@ const NO_PAIRING: readonly ImportPairing[] = [];
 
 /** A heading as the file writes it, compared as the API compares it: trimmed, whatever its case. */
 const sameHeading = (one: string, other: string): boolean =>
-  one.trim().toLowerCase() === other.trim().toLowerCase();
+  typedText(one).toLowerCase() === typedText(other).toLowerCase();
 
 /** One of the file's headings on the screen: where it goes, what it may go to, and whether a pairing holds it. */
 interface PairingRow {

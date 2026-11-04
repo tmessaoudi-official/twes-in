@@ -41,6 +41,7 @@ import {
   type VendorOption,
 } from './purchases-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { typedText } from '../shared/form/typed-text';
 
 /** Thrown when the API refuses; carries the code the UI translates and, for a 422, the field it named. */
 export class PurchasesRefused extends Error {
@@ -333,7 +334,7 @@ const orderPath = (companyId: string, id?: string): string =>
 /** Only what the search asks for: an absent parameter is the API's own default, never an empty one. */
 function toSearchParams(search: PurchaseOrderSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   for (const status of search.status) params = params.append('status[]', status);
   params = narrowing(params, search);
   if (search.order !== null)
@@ -354,7 +355,7 @@ function narrowing(params: HttpParams, search: PurchaseOrderSearch): HttpParams 
 /** The chips narrow by status themselves, and a count has no page or order. */
 function toCountParams(search: PurchaseOrderSearch): HttpParams {
   let params = new HttpParams();
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   return narrowing(params, search);
 }
 

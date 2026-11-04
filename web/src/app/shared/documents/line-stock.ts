@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { typedText } from '../form/typed-text';
+
 /** What an establishment holds of a product whose stock is kept, counted in its stock unit. */
 export interface OnHand {
   readonly unitId: string;
@@ -27,13 +29,13 @@ const QUANTITY = /^(0|[1-9][0-9]{0,9})([.][0-9]{1,3})?$/;
 
 /** A non-negative decimal string as thousandths, so quantities add exactly, never as floats. */
 function thousandths(value: string): bigint {
-  const [whole, fraction = ''] = value.trim().split('.');
+  const [whole, fraction = ''] = typedText(value).split('.');
   return BigInt(whole || '0') * 1000n + BigInt((fraction + '000').slice(0, 3));
 }
 
 /** A signed decimal string as thousandths, exactly. */
 function signedThousandths(value: string): bigint {
-  const trimmed = value.trim();
+  const trimmed = typedText(value);
   return trimmed.startsWith('-') ? -thousandths(trimmed.slice(1)) : thousandths(trimmed);
 }
 
@@ -58,7 +60,7 @@ export function stockOfLines(
   const taken = new Map<string, bigint>();
   for (const line of lines) {
     const stock = onHand.get(line.productId);
-    if (stock === undefined || !moves(line, stock) || !QUANTITY.test(line.quantity.trim()))
+    if (stock === undefined || !moves(line, stock) || !QUANTITY.test(typedText(line.quantity)))
       continue;
     taken.set(line.productId, (taken.get(line.productId) ?? 0n) + thousandths(line.quantity));
   }

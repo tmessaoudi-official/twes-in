@@ -30,6 +30,7 @@ import {
 } from './price-calculator-math';
 import { ProductsFacade } from './products-facade';
 import type { PricePreviewLine } from './products-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** How long typing must pause before a price is counted with its taxes, so a burst of keys asks once. */
 export const PRICE_PREVIEW_DELAY = new InjectionToken<number>('PRICE_PREVIEW_DELAY', {
@@ -347,7 +348,7 @@ export class PriceCalculator {
   protected readonly targetWithTax = this.preview(() => this.target());
 
   protected wantedShown(): string {
-    return this.wanted().trim().replace('.', ',');
+    return typedText(this.wanted()).replace('.', ',');
   }
 
   constructor() {
@@ -357,7 +358,7 @@ export class PriceCalculator {
         this.cost.set(amountOf(String(form.get('costPrice')?.value ?? '')));
         this.costText.set(String(form.get('costPrice')?.value ?? ''));
         this.price.set(amountOf(String(form.get('unitPriceNet')?.value ?? '')));
-        const text = String(form.get('unitPriceNet')?.value ?? '').trim();
+        const text = typedText(String(form.get('unitPriceNet')?.value ?? ''));
         this.priceText.set(PRICE.test(text) ? text : null);
         const taxes: unknown = form.get('defaultTaxComponentIds')?.value;
         this.taxIds.set(

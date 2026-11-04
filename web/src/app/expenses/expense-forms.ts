@@ -28,6 +28,7 @@ import {
   type PaymentMethod,
   EXPENSE_STATUS_TONES,
 } from './expenses-types';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'expenses.fields';
 
@@ -367,9 +368,9 @@ export function expenseInput(
 ): ExpenseHeader {
   const vendorId = 'vendorId' in values ? text(values['vendorId']) : keptVendorId;
   return {
-    date: String(values['date'] ?? '').trim(),
+    date: typedText(String(values['date'] ?? '')),
     reference: text(values['reference']),
-    description: String(values['description'] ?? '').trim(),
+    description: typedText(String(values['description'] ?? '')),
     vendorId,
     payee: vendorId === null ? text(values['payee']) : null,
     categoryId: text(values['categoryId']),
@@ -406,13 +407,13 @@ export type SavedBill = Pick<
 function matching(pattern: string): ValidatorFn {
   const whole = new RegExp(`^(${pattern})$`);
   return (control) => {
-    const value = String(control.value ?? '').trim();
+    const value = typedText(String(control.value ?? ''));
     return value === '' || whole.test(value) ? null : { pattern: true };
   };
 }
 
 const netGiven: ValidatorFn = (control) => {
-  const value = String(control.value ?? '').trim();
+  const value = typedText(String(control.value ?? ''));
   if (value === '') return { required: true };
   return /^[0.]+$/.test(value) ? { positive: true } : null;
 };
@@ -492,12 +493,12 @@ export function billInput(
     bill.lines.flatMap((line) => line.taxComponentIds.map((id) => codes.get(id) ?? id)),
   );
   const printedTaxes: PrintedTax[] = Object.entries(bill.printed).flatMap(([code, amount]) => {
-    const given = amount.trim();
+    const given = typedText(amount);
     return given !== '' && carried.has(code) ? [{ code, amount: given }] : [];
   });
   return {
     lines: bill.lines.map((line) => ({
-      amountNet: line.amountNet.trim(),
+      amountNet: typedText(line.amountNet),
       taxComponentIds: [...line.taxComponentIds],
     })),
     documentTaxComponentIds: [...bill.charges],
@@ -643,7 +644,7 @@ function comesTo(net: bigint, { levies, vat }: { levies: bigint[]; vat: bigint }
 
 /** An amount in the currency's smallest unit; null for what is not one at its scale. */
 function units(text: string, scale: number): bigint | null {
-  const typed = text.trim();
+  const typed = typedText(text);
   if (!new RegExp(`^${amountPattern(scale)}$`).test(typed)) return null;
   const [whole, fraction = ''] = typed.split('.');
   return BigInt(whole! + fraction.padEnd(scale, '0'));
@@ -815,7 +816,7 @@ function plainRate(rate: string | null): string {
 export function paymentInput(values: FormValues): ExpensePayment {
   return {
     paymentMethod: String(values['paymentMethod'] ?? 'transfer') as PaymentMethod,
-    paidOn: String(values['paidOn'] ?? '').trim(),
+    paidOn: typedText(String(values['paidOn'] ?? '')),
     // Always said: an empty field withholds nothing, rather than letting the API apply its default.
     withholdingRate: text(values['withholdingRate'])?.replace(',', '.') ?? '0',
     ...operation(values),
@@ -951,14 +952,14 @@ export function categoryValues(row: ExpenseCategoryRow | null): FormValues {
 
 export function categoryInput(values: FormValues): ExpenseCategoryInput {
   return {
-    name: String(values['name'] ?? '').trim(),
+    name: typedText(String(values['name'] ?? '')),
     parentId: text(values['parentId']),
     isActive: values['isActive'] === true,
   };
 }
 
 function text(value: FieldValue | undefined): string | null {
-  const trimmed = String(value ?? '').trim();
+  const trimmed = typedText(String(value ?? ''));
   return trimmed === '' ? null : trimmed;
 }
 

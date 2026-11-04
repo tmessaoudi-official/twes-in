@@ -37,6 +37,7 @@ import {
   type CustomerSearch,
   type CustomerSortKey,
 } from './customers-types';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'customers.fields';
 /** A registration number's field, where a refusal of it is said too. */
@@ -317,7 +318,7 @@ export function linkShippingToBilling(form: FormGroup): Subscription | null {
   return same.valueChanges.subscribe((value) => {
     const shipping = ADDRESS_PARTS.map((part) => form.controls[`shipping${part}`]);
     if (value === false) {
-      if (shipping.some((control) => String(control?.value ?? '').trim() !== '')) return;
+      if (shipping.some((control) => typedText(String(control?.value ?? '')) !== '')) return;
       for (const part of ADDRESS_PARTS) {
         form.controls[`shipping${part}`]?.setValue(form.controls[`billing${part}`]?.value ?? '');
       }
@@ -553,11 +554,11 @@ export function customerInput(
   const shipping = address(values, 'shipping');
 
   return {
-    number: String(values['number'] ?? '').trim(),
+    number: typedText(String(values['number'] ?? '')),
     kind,
     customerGroupId: text(values['customerGroupId']),
     taxRegime: String(values['taxRegime'] ?? ''),
-    name: String(values['name'] ?? '').trim(),
+    name: typedText(String(values['name'] ?? '')),
     legalName: text(values['legalName']),
     identifiers,
     email: text(values['email']),
@@ -639,7 +640,10 @@ export function groupValues(row: CustomerGroupRow | null): FormValues {
 }
 
 export function groupInput(values: FormValues): CustomerGroupInput {
-  return { name: String(values['name'] ?? '').trim(), description: text(values['description']) };
+  return {
+    name: typedText(String(values['name'] ?? '')),
+    description: text(values['description']),
+  };
 }
 
 const CONTACT_FIELDS = 'customers.contacts.fields';
@@ -753,6 +757,6 @@ function offeredTaxes(options: CustomerOptions, held: FieldValue | undefined): s
 }
 
 function text(value: FieldValue | undefined): string | null {
-  const trimmed = String(value ?? '').trim();
+  const trimmed = typedText(String(value ?? ''));
   return trimmed === '' ? null : trimmed;
 }

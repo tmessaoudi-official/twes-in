@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { typedText } from '../form/typed-text';
 
 /** Whether a customer's documents name who received them: never, when the person recording wishes, or always. */
 export type ReceiverRule = 'off' | 'optional' | 'required';
@@ -58,6 +59,6 @@ export const NOBODY: ReceiverChoice = { contactId: null, name: null, addToContac
 export function receiverChoice(form: ReceiverForm): ReceiverChoice | null {
   const { name, contactId, addToContacts } = form.getRawValue();
   if (contactId !== null) return { contactId, name: null, addToContacts: false };
-  const typed = name.trim();
+  const typed = typedText(name);
   return typed === '' ? null : { contactId: null, name: typed, addToContacts };
 }

@@ -95,9 +95,11 @@ module.exports = defineConfig([
     },
   },
   // A dialog's data is a contract: named at the open, a field added to the dialog is asked of every caller.
+  // What a person typed or pasted loses its ends as the API's TypedText::trimmed takes them: String.trim() leaves the
+  // zero-width spaces and direction marks a paste brings, and a code then reads as refused with nothing to see.
   {
     files: ['src/**/*.ts'],
-    ignores: ['**/*.spec.ts'],
+    ignores: ['**/*.spec.ts', 'src/app/shared/form/typed-text.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -106,6 +108,12 @@ module.exports = defineConfig([
             "CallExpression[callee.property.name='open']:not([typeArguments])[arguments.1.type='ObjectExpression']:has(Property[key.name='data'])",
           message:
             'A dialog opened with data names its types, open<Dialog, Data, Result>, so a field the dialog adds is asked for.',
+        },
+        {
+          selector:
+            'CallExpression[arguments.length=0][callee.property.name=/^(trim|trimStart|trimEnd|trimLeft|trimRight)$/]',
+          message:
+            'typedText() (shared/form/typed-text) takes the ends of what was typed as the API does: String.trim() keeps the zero-width and direction marks a paste brings.',
         },
       ],
     },

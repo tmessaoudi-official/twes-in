@@ -29,6 +29,7 @@ import {
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { refusedFor } from '../shared/errors/said-already';
+import { typedText } from '../shared/form/typed-text';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class VendorsRefused extends Error {
@@ -179,7 +180,7 @@ const path = (companyId: string, collection: string, id?: string): string =>
 
 function toSearchParams(search: VendorSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   if (search.isActive !== null) params = params.set('isActive', search.isActive);
   if (search.toCheck !== null) params = params.set('toCheck', search.toCheck);
   for (const [key, value] of Object.entries(search.intervals)) {

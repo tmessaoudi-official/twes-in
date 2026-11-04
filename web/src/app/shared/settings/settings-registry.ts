@@ -8,6 +8,7 @@ import { DEFAULT_THEME_PRESET, type ThemePreset } from '../theme/neutral-ramp';
 import type { ListFilterValues, ListPreferences, ListSort, ListView } from '../list/list-types';
 import { NO_LIST_PREFERENCES } from '../list/list-types';
 import { type SettingDefinition, UnregisteredSetting } from './settings-facade';
+import { typedText } from '../form/typed-text';
 
 export type Density = 'comfortable' | 'compact';
 /** What a person chose: a scheme, or Automatique, which follows the device (docs/SPEC.md § 7, 2026-09-16 review). */
@@ -241,7 +242,7 @@ function parseFilterValues(raw: unknown): ListFilterValues | undefined {
 function parseView(raw: unknown): ListView | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const { id, name, query, filters, layout } = raw as Record<string, unknown>;
-  if (typeof id !== 'string' || id === '' || typeof name !== 'string' || name.trim() === '')
+  if (typeof id !== 'string' || id === '' || typeof name !== 'string' || typedText(name) === '')
     return undefined;
   if (typeof query !== 'string') return undefined;
   const parsedFilters = parseFilterValues(filters);

@@ -13,6 +13,7 @@ import { LanguageFacade } from '../shared/i18n/language-facade';
 import { CountBadge } from '../shared/ui/count-badge';
 import { companyLogoUrl } from './company-api';
 import { CompanyFacade } from './company-facade';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * Where the user is working, and the way to somewhere else. Renders nothing at all when there is only one
@@ -62,7 +63,7 @@ export class CompanySwitcher implements OnInit {
 
   /** The first letter of the company's name, which stands for it where the name does not fit. */
   protected readonly initial = computed(
-    () => [...(this.current()?.name.trim() ?? '')][0]?.toLocaleUpperCase() ?? '?',
+    () => [...typedText(this.current()?.name ?? '')][0]?.toLocaleUpperCase() ?? '?',
   );
 
   /** « 🇹🇳 Tunisie · TND »: the country as every screen names it, and the currency the company counts in. */

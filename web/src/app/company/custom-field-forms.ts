@@ -9,6 +9,7 @@ import {
 } from '../shared/custom-fields/custom-fields-types';
 import type { FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'company.custom_fields.fields';
 /** The API's rule for a key, anchored by the form. */
@@ -172,15 +173,15 @@ export function definitionInput(
     definition?.type ?? CUSTOM_FIELD_TYPES.find((each) => each === values['type']) ?? 'text';
   return {
     entity: definition?.entity ?? entity,
-    key: definition?.key ?? String(values['key'] ?? '').trim(),
-    label: String(values['label'] ?? '').trim(),
+    key: definition?.key ?? typedText(String(values['key'] ?? '')),
+    label: typedText(String(values['label'] ?? '')),
     type,
     required: values['required'] === true,
     choices:
       type === 'choice'
         ? String(values['choices'] ?? '')
             .split('\n')
-            .map((choice) => choice.trim())
+            .map((choice) => typedText(choice))
             .filter((choice) => choice !== '')
         : [],
     sortOrder: Number(values['sortOrder'] ?? 0) || 0,

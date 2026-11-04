@@ -2,6 +2,7 @@
 
 import type { AbstractControl, FormControl } from '@angular/forms';
 import type { ScanOutcome } from './scan-bus';
+import { typedText } from '../form/typed-text';
 
 /** The controls a document line must have for a scan to land on it. */
 export interface LineFields {
@@ -88,7 +89,7 @@ export function scanIntoLines<L extends AbstractControl>(
     return (
       productId.value === scanned.productId &&
       unitId.value === scanned.unitId &&
-      (lotCode === undefined || lotCode.value.trim() === lot)
+      (lotCode === undefined || typedText(lotCode.value) === lot)
     );
   });
   if (same !== -1 && scanned.serial === true && lot !== '') {
@@ -123,7 +124,7 @@ export function scanIntoLines<L extends AbstractControl>(
   fields(line).lotCode?.setValue(lot);
   const blank = lines.controls.findIndex((each) => {
     const { productId, description } = fields(each);
-    return productId.value === '' && description.value.trim() === '';
+    return productId.value === '' && typedText(description.value) === '';
   });
   if (blank !== -1) {
     const replaced = lines.at(blank);
@@ -159,7 +160,7 @@ export function scanIntoLines<L extends AbstractControl>(
  * not a number yet counts as none.
  */
 export function addCount(quantity: string, count: number): string {
-  const match = /^(\d+)(?:\.(\d+))?$/.exec(quantity.trim());
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(typedText(quantity));
   if (match === null) return String(count);
   const whole = (BigInt(match[1]) + BigInt(count)).toString();
   return match[2] === undefined ? whole : `${whole}.${match[2]}`;

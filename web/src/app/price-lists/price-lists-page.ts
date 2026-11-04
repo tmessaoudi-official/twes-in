@@ -64,6 +64,7 @@ import {
   type PriceListScope,
 } from './price-lists-types';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { typedText } from '../shared/form/typed-text';
 
 const SCOPES: readonly PriceListScope[] = ['everyone', 'group', 'customer'];
 
@@ -514,7 +515,7 @@ export class PriceListsPage implements OnInit {
       productName: option?.name ?? '',
     });
     const shelf = option === null ? undefined : this.facade.figures().get(option.id);
-    if (shelf !== undefined && row.controls.unitPriceNet.value.trim() === '') {
+    if (shelf !== undefined && typedText(row.controls.unitPriceNet.value) === '') {
       row.controls.unitPriceNet.setValue(shelf.unitPriceNet);
     }
     row.markAsDirty();
@@ -561,7 +562,7 @@ export class PriceListsPage implements OnInit {
     };
     const scope = this.scope();
     const input: PriceListInput = {
-      name: value.name.trim(),
+      name: typedText(value.name),
       customerGroupId:
         scope === 'group' && value.customerGroupId !== '' ? value.customerGroupId : null,
       customerId: scope === 'customer' ? (this.customer()?.id ?? null) : null,

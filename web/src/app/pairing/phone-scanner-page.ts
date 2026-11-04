@@ -30,6 +30,7 @@ import {
 import { PageMemoryStorage, type SettingsStorage } from '../shared/settings/settings-facade';
 import { PhotoShrinker } from '../shared/scan/photo-shrinker';
 import { Feedback } from '../shared/feedback/feedback';
+import { typedText } from '../shared/form/typed-text';
 
 /** Where this phone keeps its pairing for a reload of this tab: the tab's own session storage, never shared. */
 export const PAIRING_STORAGE = new InjectionToken<SettingsStorage>('PAIRING_STORAGE', {
@@ -167,7 +168,7 @@ export class PhoneScannerPage implements OnInit {
   }
 
   protected submit(): void {
-    const code = this.code.trim();
+    const code = typedText(this.code);
     this.code = '';
     if (code !== '') void this.send(code);
   }

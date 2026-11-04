@@ -35,6 +35,7 @@ import {
   type TaxOption,
   INVOICE_STATUS_TONES,
 } from './invoices-types';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'invoices.fields';
 /** The API's longest line description. */
@@ -522,18 +523,18 @@ export function namesALot(line: LineGroup): boolean {
 
 /** Unlike Validators.required, a value made only of spaces is missing too. */
 const notBlank: ValidatorFn = (control) =>
-  String(control.value ?? '').trim() === '' ? { required: true } : null;
+  typedText(String(control.value ?? '')) === '' ? { required: true } : null;
 
 /** The whole trimmed value matches, so a stray space around a number is not a mistake. */
 const matches =
   (pattern: RegExp): ValidatorFn =>
   (control) => {
-    const value = String(control.value ?? '').trim();
+    const value = typedText(String(control.value ?? ''));
     return value === '' || pattern.test(value) ? null : { pattern: true };
   };
 
 const positive: ValidatorFn = (control) => {
-  const value = String(control.value ?? '').trim();
+  const value = typedText(String(control.value ?? ''));
   return value !== '' && /^[0.]+$/.test(value) ? { positive: true } : null;
 };
 
@@ -542,7 +543,10 @@ function fitsUnit(options: InvoiceOptions): ValidatorFn {
   return (control) => {
     const line = control as LineGroup;
     const unit = options.units.find((each) => each.id === line.controls.unitId.value);
-    const decimals = (line.controls.quantity.value.trim().split('.')[1] ?? '').replace(/0+$/, '');
+    const decimals = (typedText(line.controls.quantity.value).split('.')[1] ?? '').replace(
+      /0+$/,
+      '',
+    );
     return unit !== undefined && decimals.length > unit.decimals
       ? { quantityDecimals: true }
       : null;
@@ -559,13 +563,13 @@ export function sourceLeftOf(line: LineGroup): string | null {
 
 /** A non-negative decimal string as thousandths, so two quantities compare exactly, never as floats. */
 function thousandths(value: string): bigint {
-  const [whole, fraction = ''] = value.trim().split('.');
+  const [whole, fraction = ''] = typedText(value).split('.');
   return BigInt(whole || '0') * 1000n + BigInt((fraction + '000').slice(0, 3));
 }
 
 /** A non-negative decimal string as a whole number of units of 10^-`scale`, read exactly. */
 function scaled(value: string, scale: number): bigint {
-  const [whole, fraction = ''] = value.trim().split('.');
+  const [whole, fraction = ''] = typedText(value).split('.');
   return (
     BigInt(whole || '0') * 10n ** BigInt(scale) +
     BigInt((fraction + '0'.repeat(scale)).slice(0, scale))
@@ -588,12 +592,12 @@ function discountWithinLine(options: InvoiceOptions): ValidatorFn {
     if (
       discountKind.value !== 'amount' ||
       discountAmount.invalid ||
-      discountAmount.value.trim() === ''
+      typedText(discountAmount.value) === ''
     )
       return null;
     if (
-      !QUANTITY_PATTERN.test(quantity.value.trim()) ||
-      !PRICE_PATTERN.test(unitPriceNet.value.trim())
+      !QUANTITY_PATTERN.test(typedText(quantity.value)) ||
+      !PRICE_PATTERN.test(typedText(unitPriceNet.value))
     )
       return null;
     // Thousandths × ten-thousandths: the line exact, to the ten-millionth.
@@ -610,8 +614,8 @@ export function lineDiscount(line: {
   discountRate: string;
   discountAmount: string;
 }): { discountRate: string | null; discountAmount: string | null } {
-  const rate = line.discountKind === 'rate' ? line.discountRate.trim() : '';
-  const amount = line.discountKind === 'amount' ? line.discountAmount.trim() : '';
+  const rate = line.discountKind === 'rate' ? typedText(line.discountRate) : '';
+  const amount = line.discountKind === 'amount' ? typedText(line.discountAmount) : '';
   return { discountRate: rate === '' ? null : rate, discountAmount: amount === '' ? null : amount };
 }
 
@@ -642,7 +646,7 @@ export function lineStock(
 const withinSource: ValidatorFn = (control) => {
   const line = control as LineGroup;
   const left = SOURCE_LEFT.get(line);
-  const quantity = line.controls.quantity.value.trim();
+  const quantity = typedText(line.controls.quantity.value);
   if (left === undefined || !QUANTITY_PATTERN.test(quantity)) return null;
   return thousandths(quantity) > thousandths(left) ? { aboveSource: true } : null;
 };
@@ -858,10 +862,10 @@ export function invoiceInput(
     documentTaxComponentIds: [...documentTaxComponentIds],
     lines: lines.getRawValue().map((line) => ({
       productId: line.productId === '' ? null : line.productId,
-      description: line.description.trim(),
-      quantity: line.quantity.trim(),
+      description: typedText(line.description),
+      quantity: typedText(line.quantity),
       unitId: line.unitId,
-      unitPriceNet: line.unitPriceNet.trim(),
+      unitPriceNet: typedText(line.unitPriceNet),
       ...lineDiscount(line),
       taxComponentIds: [...line.taxComponentIds],
       sourceDeliveryNoteLineId:
@@ -982,8 +986,8 @@ export function paymentValues(today: string, amountDue: string): FormValues {
 export function paymentInput(values: FormValues): PaymentInput {
   const method = PAYMENT_METHODS.find((each) => each === values['method']) ?? 'other';
   return {
-    date: String(values['date'] ?? '').trim(),
-    amount: String(values['amount'] ?? '').trim(),
+    date: typedText(String(values['date'] ?? '')),
+    amount: typedText(String(values['amount'] ?? '')),
     method: method satisfies PaymentMethod,
     reference: text(values['reference']),
     notes: text(values['notes']),
@@ -991,6 +995,6 @@ export function paymentInput(values: FormValues): PaymentInput {
 }
 
 function text(value: FieldValue | undefined): string | null {
-  const trimmed = String(value ?? '').trim();
+  const trimmed = typedText(String(value ?? ''));
   return trimmed === '' ? null : trimmed;
 }

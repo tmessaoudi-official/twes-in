@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { typedText } from '../form/typed-text';
 
 export interface WordmarkSegment {
   readonly text: string;
@@ -15,7 +16,7 @@ const JOINER = /[\s\-·.]/;
  * last "i" replaced by a rising arrow. A name without an "i" carries the arrow over its last letter instead.
  */
 export function wordmarkSegments(name: string): WordmarkSegment[] {
-  const characters = name.trim() === '' ? [] : [...name.toLocaleLowerCase()];
+  const characters = typedText(name) === '' ? [] : [...name.toLocaleLowerCase()];
   let arrowAt = characters.lastIndexOf('i');
   for (let index = characters.length - 1; arrowAt === -1 && index >= 0; index--) {
     if (!JOINER.test(characters[index])) {

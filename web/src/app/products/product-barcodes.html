@@ -44,7 +44,7 @@
         type="button"
         class="!mr-2"
         data-testid="product-barcode-add"
-        [disabled]="pending().trim() === ''"
+        [disabled]="typedText(pending()) === ''"
         (click)="add(scan)"
       >
         {{ 'products.barcodes.add' | translate }}

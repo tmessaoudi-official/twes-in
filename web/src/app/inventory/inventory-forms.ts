@@ -28,6 +28,7 @@ import {
   type StockEstablishmentOption,
 } from './inventory-types';
 import { toReceiptParts } from './split-receipt';
+import { typedText } from '../shared/form/typed-text';
 
 const LOCATION_FIELDS = 'inventory.locations.fields';
 const STOCK_FIELDS = 'inventory.stock.fields';
@@ -1042,5 +1043,5 @@ function documentOf(
 }
 
 function text(value: FieldValue | undefined): string {
-  return String(value ?? '').trim();
+  return typedText(String(value ?? ''));
 }

@@ -37,6 +37,7 @@ import {
   receiverForm,
 } from '../shared/receivers/receiver';
 import { ReceiverField } from '../shared/receivers/receiver-field';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * When a note was delivered, asked when delivering rather than sitting as a field in the action bar. It opens on now
@@ -249,7 +250,7 @@ export class DeliverDialog {
   /** '' for now, or the moment written. */
   private moment(): string {
     const day = this.form.controls.day.value;
-    const time = this.form.controls.time.value.trim();
+    const time = typedText(this.form.controls.time.value);
     const untouched = day === this.opened.day && time === this.opened.time;
     return untouched || (day === '' && time === '') ? '' : `${day}T${wallClock(time)}`;
   }
@@ -257,19 +258,19 @@ export class DeliverDialog {
 
 /** A field left empty while the other is filled: a moment needs both its day and its time. */
 function neededBeside(control: AbstractControl, other: 'day' | 'time'): ValidationErrors | null {
-  const own = String(control.value).trim();
-  const beside = String(control.parent?.get(other)?.value ?? '').trim();
+  const own = typedText(String(control.value));
+  const beside = typedText(String(control.parent?.get(other)?.value ?? ''));
   return own === '' && beside !== '' ? { required: true } : null;
 }
 
 function timeOfDay(control: AbstractControl): ValidationErrors | null {
-  const text = String(control.value).trim();
+  const text = typedText(String(control.value));
   return text === '' || wallClock(text) !== null ? null : { time: true };
 }
 
 /** A time of day on 24 hours as a person writes it, « 9h05 », « 9:05 » or « 0905 », as `HH:MM`; null otherwise. */
 function wallClock(text: string): string | null {
-  const match = /^(\d{1,2})[:hH.]?(\d{2})$/.exec(text.trim());
+  const match = /^(\d{1,2})[:hH.]?(\d{2})$/.exec(typedText(text));
   if (match === null) return null;
   const [hours, minutes] = [Number(match[1]), Number(match[2])];
   return hours < 24 && minutes < 60

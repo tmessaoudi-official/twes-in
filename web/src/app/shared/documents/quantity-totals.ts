@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, input, signal } f
 import type { Observable } from 'rxjs';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AmountPipe } from '../i18n/format-pipes';
+import { typedText } from '../form/typed-text';
 
 /** A line as the quantities read it: its unit, its quantity as typed, and whether it gives a deposit back. */
 export interface QuantityLine {
@@ -35,7 +36,7 @@ export interface QuantityTotal {
 const THOUSANDTHS = /^(\d+)(?:\.(\d{1,3}))?$/;
 
 function thousandths(quantity: string): bigint | null {
-  const parts = THOUSANDTHS.exec(quantity.trim());
+  const parts = THOUSANDTHS.exec(typedText(quantity));
   return parts === null
     ? null
     : BigInt(parts[1]!) * 1000n + BigInt((parts[2] ?? '').padEnd(3, '0'));

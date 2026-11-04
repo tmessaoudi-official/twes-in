@@ -7,6 +7,7 @@ import { CustomerDisplay } from '../shared/customer-display/customer-display';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { Session } from '../shared/session/session';
 import { SettingsApi } from '../shared/settings/settings-api';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * The customer display (docs/SPEC.md § 7, 2026-09-23 slice 6): a window turned towards the customer, with nothing to
@@ -49,6 +50,6 @@ export class CustomerDisplayPage {
   }
 
   protected price(value: string, currency: string): string {
-    return `${this.format.amount(value, null)} ${currency}`.trim();
+    return typedText(`${this.format.amount(value, null)} ${currency}`);
   }
 }

@@ -3,6 +3,7 @@
 import { CapitalizePipe } from '../shared/i18n/capitalize-pipe';
 import type { FormatFacade } from '../shared/i18n/format-facade';
 import type { WatchRow } from './watch-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** One row as the table shows it: each figure already written as the screen writes figures, keyed by what it is. */
 export interface WatchRowView {
@@ -81,7 +82,7 @@ export function watchRowView(
   }
   if ('amount' in params) {
     const currency = text(params, 'currency');
-    cells['amount'] = `${figures.amount(text(params, 'amount'), null)} ${currency}`.trim();
+    cells['amount'] = typedText(`${figures.amount(text(params, 'amount'), null)} ${currency}`);
   }
   // A moved margin: the prices as the screen writes amounts, the margins as it writes decimals, with their sign.
   for (const name of ['price', 'cost', 'previousCost'] as const) {
@@ -94,7 +95,7 @@ export function watchRowView(
   const unit = text(params, 'unit');
   for (const name of ['quantity', 'onHand', 'point'] as const) {
     if (name in params)
-      cells[name] = `${figures.amount(plainQuantity(text(params, name)), null)} ${unit}`.trim();
+      cells[name] = typedText(`${figures.amount(plainQuantity(text(params, name)), null)} ${unit}`);
   }
   if ('expiresOn' in params) cells['expiresOn'] = figures.day(text(params, 'expiresOn'));
   if ('receivedOn' in params) cells['receivedOn'] = figures.day(text(params, 'receivedOn'));

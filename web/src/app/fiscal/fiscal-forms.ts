@@ -19,6 +19,7 @@ import {
   type UnitInput,
   type UnitRow,
 } from './fiscal-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** A percentage the API stores as NUMERIC(6,3). */
 const RATE = '\\d{1,3}(\\.\\d{1,3})?';
@@ -62,7 +63,7 @@ function namesInput(values: FormValues): LanguageNames {
   return Object.fromEntries(
     DOCUMENT_LANGUAGES.map((language) => [
       language,
-      String(values[nameField(language)] ?? '').trim(),
+      typedText(String(values[nameField(language)] ?? '')),
     ]).filter(([, name]) => name !== ''),
   );
 }
@@ -225,7 +226,7 @@ export function taxFormValues(row: TaxComponentRow): FormValues {
 }
 
 const text = (value: FieldValue | undefined): string | null =>
-  typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+  typeof value === 'string' && typedText(value) !== '' ? typedText(value) : null;
 
 /** What the API receives: a field that does not apply to the family is sent as null. */
 export function taxInput(

@@ -12,6 +12,7 @@ import {
   type NumberingSeriesRow,
 } from './company-types';
 import { NUMBER_FORMAT_MAX_LENGTH } from './number-format';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'company.establishments.fields';
 
@@ -171,14 +172,14 @@ export function establishmentFormValues(row: EstablishmentRow): FormValues {
 }
 
 const text = (value: FieldValue | undefined): string | null => {
-  const trimmed = String(value ?? '').trim();
+  const trimmed = typedText(String(value ?? ''));
   return trimmed === '' ? null : trimmed;
 };
 
 export function establishmentInput(values: FormValues): EstablishmentInput {
   return {
-    code: String(values['code'] ?? '').trim(),
-    name: String(values['name'] ?? '').trim(),
+    code: typedText(String(values['code'] ?? '')),
+    name: typedText(String(values['name'] ?? '')),
     addressLine1: text(values['addressLine1']),
     addressLine2: text(values['addressLine2']),
     postalCode: text(values['postalCode']),

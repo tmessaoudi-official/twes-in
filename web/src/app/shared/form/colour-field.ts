@@ -21,6 +21,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
 import { arrowAlongLine } from '../i18n/inline-direction';
 import { ACCENT_PRESETS } from '../theme/accent-presets';
+import { typedText } from './typed-text';
 
 const HEX = /^#[0-9a-f]{6}$/;
 
@@ -170,7 +171,7 @@ export class ColourField implements ControlValueAccessor, Validator {
   }
 
   protected typed(event: Event): void {
-    const value = (event.target as HTMLInputElement).value.trim().toLowerCase();
+    const value = typedText((event.target as HTMLInputElement).value).toLowerCase();
     this.text.set(value);
     this.changed(value);
   }

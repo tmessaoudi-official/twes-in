@@ -46,6 +46,7 @@ import {
   type ExpenseSearch,
   type ExpenseStatus,
 } from './expenses-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** The expenses of the company being worked in, the latest first. */
 @Component({
@@ -117,7 +118,7 @@ export class ExpensesPage implements OnInit {
     },
     category: {
       search: async (words) => {
-        const wanted = words.trim().toLocaleLowerCase();
+        const wanted = typedText(words).toLocaleLowerCase();
         return this.categoryChoices().filter((each) =>
           each.name.toLocaleLowerCase().includes(wanted),
         );

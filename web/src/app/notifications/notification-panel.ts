@@ -25,6 +25,7 @@ import {
   sentenceKey,
 } from './notifications-types';
 import { Label } from '../shared/a11y/label';
+import { typedText } from '../shared/form/typed-text';
 
 type Filter = 'all' | 'unread';
 
@@ -120,7 +121,9 @@ export class NotificationPanel {
     );
     const unit = record.unit === undefined ? undefined : entry.payload[record.unit];
     write(record.quantities, (value) =>
-      `${this.format.amount(value.includes('.') ? value.replace(/\.?0+$/, '') : value, null)} ${typeof unit === 'string' ? unit : ''}`.trim(),
+      typedText(
+        `${this.format.amount(value.includes('.') ? value.replace(/\.?0+$/, '') : value, null)} ${typeof unit === 'string' ? unit : ''}`,
+      ),
     );
     write(record.moments, (value) => {
       const [, day, time] = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/.exec(value) ?? [];

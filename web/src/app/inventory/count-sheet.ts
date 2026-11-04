@@ -114,14 +114,14 @@ export function locationScanned(
   locations: readonly StockLocationRow[],
   near: string | null,
 ): ScannedLocation | null {
-  const address = LOCATION_ADDRESS.exec(code.trim());
+  const address = LOCATION_ADDRESS.exec(typedText(code));
   if (address) {
     const found = locations.find(
       (location) => location.id.toLowerCase() === address[1].toLowerCase(),
     );
     return found ? { kind: 'found', id: found.id } : null;
   }
-  const named = locations.filter((location) => location.code === code.trim());
+  const named = locations.filter((location) => location.code === typedText(code));
   if (named.length <= 1) return named[0] ? { kind: 'found', id: named[0].id } : null;
   const establishment = locations.find((location) => location.id === near)?.establishmentId;
   const here = named.find((location) => location.establishmentId === establishment);
@@ -134,8 +134,8 @@ const QUANTITY = new RegExp(`^(?:${QUANTITY_PATTERN})$`);
 export function readyToRecord(line: CountLine): boolean {
   return (
     line.locationId !== '' &&
-    QUANTITY.test(line.counted.trim()) &&
-    (line.tracking === 'none' || line.lotCode.trim() !== '')
+    QUANTITY.test(typedText(line.counted)) &&
+    (line.tracking === 'none' || typedText(line.lotCode) !== '')
   );
 }
 
@@ -145,8 +145,8 @@ export function countInputs(lines: readonly CountLine[]): StockMovementInput[] {
     operation: 'count',
     productId: line.productId,
     locationId: line.locationId,
-    quantity: line.counted.trim(),
-    ...(line.lotCode.trim() === '' ? {} : { lotCode: line.lotCode.trim() }),
+    quantity: typedText(line.counted),
+    ...(typedText(line.lotCode) === '' ? {} : { lotCode: typedText(line.lotCode) }),
   }));
 }
 

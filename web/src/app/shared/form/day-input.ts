@@ -19,6 +19,7 @@ import {
 } from '@angular/forms';
 import { parseDay } from '../i18n/format';
 import { FormatFacade } from '../i18n/format-facade';
+import { typedText } from './typed-text';
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -94,7 +95,7 @@ export class DayInput implements ControlValueAccessor, Validator {
   }
 
   protected typed(): void {
-    const text = this.element.nativeElement.value.trim();
+    const text = typedText(this.element.nativeElement.value);
     this.value =
       text === '' ? '' : (parseDay(text, this.format.locale(), this.format.dateFormat()) ?? text);
     this.changed(this.value);

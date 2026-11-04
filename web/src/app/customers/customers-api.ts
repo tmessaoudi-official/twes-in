@@ -44,6 +44,7 @@ import {
   type TaxFamily,
 } from './customers-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { typedText } from '../shared/form/typed-text';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CustomersRefused extends Error {
@@ -332,7 +333,7 @@ const contactsPath = (companyId: string, customerId: string): string =>
 
 function toSearchParams(search: CustomerSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   for (const kind of search.kinds) params = params.append('kind[]', kind);
   for (const id of search.groupIds) params = params.append('customerGroupId[]', id);
   for (const code of search.regimes) params = params.append('taxRegime[]', code);

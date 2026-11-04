@@ -696,6 +696,13 @@ describe('invoice forms', () => {
       line.patchValue({ lotCode: 'SN 7' });
       expect(line.controls.lotCode.hasError('pattern')).toBe(true);
 
+      // Pasted with a zero-width space and a direction mark at its ends: nothing anyone can see is refused.
+      line.patchValue({ lotCode: '​SN-7‏' });
+      expect(line.valid).toBe(true);
+      expect(invoiceInput(invoiceValues(null, options), lines, [], 'k1').lines[0].lotCode).toBe(
+        'SN-7',
+      );
+
       // Another product, not tracked: the serial typed for the first one is not sent with it.
       line.patchValue({ lotCode: 'SN-7' });
       applyProduct(line, { ...design, id: 'p2' }, options, []);

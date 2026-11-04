@@ -4,6 +4,7 @@ import { BIC_PATTERN, IBAN_PATTERN, PHONE_PATTERN } from '../shared/form/contact
 import { IDENTIFIER_FIELD_PREFIX } from '../shared/form/field-refusals';
 import type { FormDescriptor, FormField, FormSection, FormValues } from '../shared/form/form-types';
 import type { CompanyProfile, CompanyProfileChanges } from './company-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** The fields a person types, with the limits the API checks again (CompanyProfileResource). */
 const TEXT_FIELDS = [
@@ -200,7 +201,7 @@ export function profileValues(profile: CompanyProfile): FormValues {
 export function profileChanges(profile: CompanyProfile, values: FormValues): CompanyProfileChanges {
   const text = (id: string): string | null => {
     const value = values[id];
-    return typeof value === 'string' && value.trim() !== '' ? value : null;
+    return typeof value === 'string' && typedText(value) !== '' ? value : null;
   };
   const identifiers: Record<string, string> = {};
   for (const field of profile.identifierFields) {

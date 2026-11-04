@@ -2,6 +2,7 @@
 
 import type { FieldValue, FormDescriptor, FormValues } from '../shared/form/form-types';
 import type { PlatformSubscriptionRow, SubscriptionTerms } from './platform-types';
+import { typedText } from '../shared/form/typed-text';
 
 const TEXTS = 'platform.subscription';
 const UNITS: readonly SubscriptionTerms['periodUnit'][] = ['day', 'month', 'year'];
@@ -102,7 +103,7 @@ export function subscriptionTerms(values: FormValues): SubscriptionTerms {
 }
 
 function text(value: FieldValue | undefined): string | null {
-  const trimmed = typeof value === 'string' ? value.trim() : '';
+  const trimmed = typeof value === 'string' ? typedText(value) : '';
   return trimmed === '' ? null : trimmed;
 }
 

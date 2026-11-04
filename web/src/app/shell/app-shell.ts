@@ -117,6 +117,7 @@ import { comingEntries, plannedCommands } from './planned-nav';
 import { signInAddress } from '../shared/session/return-to';
 import { Immersive } from '../shared/ui/immersive';
 import { SETTINGS_BESIDE_WINDOW, WINDOW_CLASS } from '../shared/ui/window-class';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * The window classes of the approved design (docs/SPEC.md § 7, 2026-09-16), as Material 3 draws them: a phone gets a
@@ -128,7 +129,7 @@ const BOTTOM_BAR_DESTINATIONS = 3;
 
 /** "Amel Ben Salah" → "AS": the first and last word, which is how people recognise their own initials. */
 export function initialsOf(displayName: string): string {
-  const words = displayName.trim().split(/\s+/).filter(Boolean);
+  const words = typedText(displayName).split(/\s+/).filter(Boolean);
   if (words.length === 0) {
     return '?';
   }

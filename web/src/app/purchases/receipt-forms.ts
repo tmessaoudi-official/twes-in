@@ -8,6 +8,7 @@ import type {
   ReceiptLine,
   Receiving,
 } from './purchases-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** A supplier reference as the API keeps it, and a lot code. */
 export const SUPPLIER_REFERENCE_MAX = 60;
@@ -66,19 +67,19 @@ export function receiveRows(
 export function serialsOf(row: ReceiveRow): string[] {
   return row.serials
     .split(/\r?\n/)
-    .map((serial) => serial.trim())
+    .map((serial) => typedText(serial))
     .filter((serial) => serial !== '');
 }
 
 /** Whether a row brings anything: a row left at nothing is not part of this receipt. */
 export function bringsGoods(row: ReceiveRow): boolean {
   if (row.line.productTracking === 'serial') return serialsOf(row).length > 0;
-  return row.quantity.trim() !== '' && thousandths(row.quantity) !== 0n;
+  return typedText(row.quantity) !== '' && thousandths(row.quantity) !== 0n;
 }
 
 export function rowProblem(row: ReceiveRow, seesCost: boolean): RowProblem | null {
   if (!bringsGoods(row)) {
-    return row.quantity.trim() === '' || isQuantity(row.quantity) ? null : 'quantity';
+    return typedText(row.quantity) === '' || isQuantity(row.quantity) ? null : 'quantity';
   }
   if (row.locationId === '') return 'place';
   if (row.line.productTracking === 'serial') {
@@ -90,11 +91,15 @@ export function rowProblem(row: ReceiveRow, seesCost: boolean): RowProblem | nul
     if (!isQuantity(row.quantity)) return 'quantity';
     if (thousandths(row.quantity) > thousandths(row.line.outstanding)) return 'over';
     if (row.line.productTracking === 'lot') {
-      if (row.lotCode.trim() === '') return 'lot';
-      if (row.lotCode.trim().length > LOT_CODE_MAX) return 'lot_length';
+      if (typedText(row.lotCode) === '') return 'lot';
+      if (typedText(row.lotCode).length > LOT_CODE_MAX) return 'lot_length';
     }
   }
-  if (seesCost && row.unitCost.trim() !== '' && !matches(PRICE_PATTERN, row.unitCost.trim())) {
+  if (
+    seesCost &&
+    typedText(row.unitCost) !== '' &&
+    !matches(PRICE_PATTERN, typedText(row.unitCost))
+  ) {
     return 'unit_cost';
   }
   return null;
@@ -116,7 +121,7 @@ export function receiptInput(
   const sources: number[] = [];
   rows.forEach((row, index) => {
     if (!bringsGoods(row)) return;
-    const unitCost = seesCost && row.unitCost.trim() !== '' ? row.unitCost.trim() : null;
+    const unitCost = seesCost && typedText(row.unitCost) !== '' ? typedText(row.unitCost) : null;
     const base = {
       orderLineId: row.line.id,
       locationId: row.locationId,
@@ -130,16 +135,16 @@ export function receiptInput(
       }
       return;
     }
-    const lot = row.line.productTracking === 'lot' ? row.lotCode.trim() : '';
+    const lot = row.line.productTracking === 'lot' ? typedText(row.lotCode) : '';
     lines.push({
       ...base,
-      quantity: row.quantity.trim(),
+      quantity: typedText(row.quantity),
       lotCode: lot === '' ? null : lot,
       lotExpiresOn: lot === '' || row.lotExpiresOn === '' ? null : row.lotExpiresOn,
     });
     sources.push(index);
   });
-  const reference = supplierReference.trim();
+  const reference = typedText(supplierReference);
   const costed = lines.some((line) => line.unitCost !== null);
   return {
     input: {
@@ -165,7 +170,7 @@ export function receiptRefusal(
 }
 
 function isQuantity(value: string): boolean {
-  return matches(QUANTITY_PATTERN, value.trim());
+  return matches(QUANTITY_PATTERN, typedText(value));
 }
 
 function matches(pattern: string, value: string): boolean {
@@ -177,7 +182,7 @@ function matches(pattern: string, value: string): boolean {
  * is not a quantity counts as nothing, which `rowProblem` reports before comparing.
  */
 function thousandths(value: string): bigint {
-  const trimmed = value.trim();
+  const trimmed = typedText(value);
   if (!matches(QUANTITY_PATTERN, trimmed)) return 0n;
   const [units = '0', fraction = ''] = trimmed.split('.');
   return BigInt(units) * 1000n + BigInt(fraction.padEnd(3, '0'));

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { FormGroup } from '@angular/forms';
+import { typedText } from './typed-text';
 
 /**
  * Which field of a form each part of an address goes to, for an address another record already holds and a form
@@ -33,7 +34,7 @@ export function holdsAddress<T extends object>(
   return (
     source !== null &&
     (Object.keys(fields) as (keyof T & string)[]).some(
-      (part) => String(source[part] ?? '').trim() !== '',
+      (part) => typedText(String(source[part] ?? '')) !== '',
     )
   );
 }

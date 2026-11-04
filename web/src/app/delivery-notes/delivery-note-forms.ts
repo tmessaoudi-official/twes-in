@@ -31,6 +31,7 @@ import {
 } from '../products/products-types';
 import { type LineStock, type OnHand, stockOfLines } from '../shared/documents/line-stock';
 import type { ReceiverChoice } from '../shared/receivers/receiver';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'delivery_notes.fields';
 /** The API's longest line description. */
@@ -364,18 +365,18 @@ export type LinesArray = FormArray<LineGroup>;
 
 /** Unlike Validators.required, a value made only of spaces is missing too. */
 const notBlank: ValidatorFn = (control) =>
-  String(control.value ?? '').trim() === '' ? { required: true } : null;
+  typedText(String(control.value ?? '')) === '' ? { required: true } : null;
 
 /** The whole trimmed value matches, so a stray space around a number is not a mistake. */
 const matches =
   (pattern: RegExp): ValidatorFn =>
   (control) => {
-    const value = String(control.value ?? '').trim();
+    const value = typedText(String(control.value ?? ''));
     return value === '' || pattern.test(value) ? null : { pattern: true };
   };
 
 const positive: ValidatorFn = (control) => {
-  const value = String(control.value ?? '').trim();
+  const value = typedText(String(control.value ?? ''));
   return value !== '' && /^[0.]+$/.test(value) ? { positive: true } : null;
 };
 
@@ -384,7 +385,10 @@ function fitsUnit(options: DeliveryNoteOptions): ValidatorFn {
   return (control) => {
     const line = control as LineGroup;
     const unit = options.units.find((each) => each.id === line.controls.unitId.value);
-    const decimals = (line.controls.quantity.value.trim().split('.')[1] ?? '').replace(/0+$/, '');
+    const decimals = (typedText(line.controls.quantity.value).split('.')[1] ?? '').replace(
+      /0+$/,
+      '',
+    );
     return unit !== undefined && decimals.length > unit.decimals
       ? { quantityDecimals: true }
       : null;
@@ -563,10 +567,10 @@ export function deliveryNoteInput(
     notesInternal: text(values['notesInternal']),
     lines: lines.getRawValue().map((line) => ({
       productId: line.productId === '' ? null : line.productId,
-      description: line.description.trim(),
-      quantity: line.quantity.trim(),
+      description: typedText(line.description),
+      quantity: typedText(line.quantity),
       unitId: line.unitId,
-      unitPriceNet: line.unitPriceNet.trim(),
+      unitPriceNet: typedText(line.unitPriceNet),
       taxComponentIds: [...line.taxComponentIds],
       lotCode:
         line.productTracking === 'lot' || line.productTracking === 'serial'
@@ -580,6 +584,6 @@ export function deliveryNoteInput(
 }
 
 function text(value: FieldValue | undefined): string | null {
-  const trimmed = String(value ?? '').trim();
+  const trimmed = typedText(String(value ?? ''));
   return trimmed === '' ? null : trimmed;
 }

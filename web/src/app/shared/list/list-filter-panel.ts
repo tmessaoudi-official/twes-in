@@ -18,6 +18,7 @@ import type {
   ListPickSource,
   ListRangeFilter,
 } from './list-types';
+import { typedText } from '../form/typed-text';
 
 /**
  * The « Filtres » panel of a list (docs/SPEC.md § 7, 2026-10-06): the pickers and the intervals that do not fit among
@@ -152,7 +153,7 @@ export class ListFilterPanel {
     value: unknown,
   ): void {
     const key = this.key(range, end);
-    const typed = typeof value === 'string' ? value.trim() : '';
+    const typed = typeof value === 'string' ? typedText(value) : '';
     const valid = typed !== '' && validRangeValue(range.kind, typed);
     this.drafts.update((drafts) => {
       const next = { ...drafts };

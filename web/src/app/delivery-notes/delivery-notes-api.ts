@@ -54,6 +54,7 @@ import { InvoicesApi, refusedField } from '../invoices/invoices-api';
 import { trackingOf } from '../products/products-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { SHORT_SALE_CONFIRMED } from '../inventory/short-sales';
+import { typedText } from '../shared/form/typed-text';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class DeliveryNotesRefused extends Error {
@@ -461,7 +462,7 @@ const notePath = (companyId: string, id?: string): string =>
 /** Only what the search asks for: an absent parameter is the API's own default, never an empty one. */
 function toSearchParams(search: DeliveryNoteSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   for (const status of search.status) params = params.append('status[]', status);
   params = narrowing(params, search);
   if (search.order !== null)
@@ -482,7 +483,7 @@ function narrowing(params: HttpParams, search: DeliveryNoteSearch): HttpParams {
 /** The chips narrow by status themselves, and a count has no page or order. */
 function toCountParams(search: DeliveryNoteSearch): HttpParams {
   let params = new HttpParams();
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   return narrowing(params, search);
 }
 

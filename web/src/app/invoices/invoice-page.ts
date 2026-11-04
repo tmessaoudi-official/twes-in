@@ -105,6 +105,7 @@ import { StockMoveFailures } from '../inventory/stock-move-failures';
 import { ShortSales } from '../inventory/short-sale-dialog';
 import { RecordColumns } from '../shared/ui/record-columns';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * One invoice or credit note: a new draft to fill in, a draft to revise, issue or cancel, or an issued document to
@@ -721,8 +722,9 @@ export class InvoicePage {
           : `invoices.actions.issue_message_numbered_${operations ?? 'unsaid'}`,
       messageParams: {
         number: preview.number,
-        total:
-          `${this.format.amount(current.total, scale)} ${this.options()?.currency ?? ''}`.trim(),
+        total: typedText(
+          `${this.format.amount(current.total, scale)} ${this.options()?.currency ?? ''}`,
+        ),
         customer: current.customerName,
       },
     };

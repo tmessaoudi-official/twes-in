@@ -87,6 +87,7 @@ import type { PlanStep } from './stock-plan-draft';
 import { refusedFor } from '../shared/errors/said-already';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { formRefusalsIn } from '../shared/form/form-refusals-api';
+import { typedText } from '../shared/form/typed-text';
 
 /** How many products one question about stock on hand may name (`StockOnHandResource::MOST`). */
 const ON_HAND_MOST = 100;
@@ -895,7 +896,7 @@ function toOptions(raw: StockOptionsStockOptionsRead): StockOptions {
 /** Only what the search asks for: an absent parameter is the API's own default, never an empty one. */
 function toSearchParams(search: StockSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   for (const id of search.locationIds) params = params.append('locationId[]', id);
   for (const id of search.establishmentIds) params = params.append('establishmentId[]', id);
   for (const id of search.productIds) params = params.append('productId[]', id);
@@ -912,7 +913,7 @@ function toSearchParams(search: StockSearch): HttpParams {
 /** Only what the search asks for: an absent parameter is the API's own default, never an empty one. */
 function toMovementParams(search: StockMovementSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   for (const id of search.productIds) params = params.append('productId[]', id);
   for (const id of search.locationIds) params = params.append('locationId[]', id);
   for (const kind of search.kinds) params = params.append('kind[]', kind);
@@ -923,8 +924,8 @@ function toMovementParams(search: StockMovementSearch): HttpParams {
   for (const [key, value] of Object.entries(search.intervals)) {
     params = params.set(apiRangeKey(key), value);
   }
-  if (search.lot !== null && search.lot.trim() !== '')
-    params = params.set('lot', search.lot.trim());
+  if (search.lot !== null && typedText(search.lot) !== '')
+    params = params.set('lot', typedText(search.lot));
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;

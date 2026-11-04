@@ -26,6 +26,7 @@ import { PartConflict } from '../shared/form/part-conflict';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { ProductReorderPoints, type ReorderPointWrite } from './product-reorder-points-facade';
 import type { ProductReorderPointRow } from './products-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** A quantity from 0 with at most three decimals, as the API takes it; whether the unit counts that finely is its rule. */
 const QUANTITY = /^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/;
@@ -85,7 +86,8 @@ export class ProductReorderPointsSection implements OnInit {
     const typed = this.typed();
     return this.rows().filter(
       (row) =>
-        row.establishmentId in typed && typed[row.establishmentId].trim() !== plain(row.quantity),
+        row.establishmentId in typed &&
+        typedText(typed[row.establishmentId]) !== plain(row.quantity),
     ).length;
   });
 
@@ -130,19 +132,19 @@ export class ProductReorderPointsSection implements OnInit {
 
   /** Whether what is typed is a quantity the API would take, and differs from what is kept. */
   protected savable(row: ProductReorderPointRow): boolean {
-    const value = this.valueOf(row).trim();
+    const value = typedText(this.valueOf(row));
     return QUANTITY.test(value) && value !== plain(row.quantity);
   }
 
   protected malformed(row: ProductReorderPointRow): boolean {
-    const value = this.valueOf(row).trim();
+    const value = typedText(this.valueOf(row));
     return value !== '' && !QUANTITY.test(value);
   }
 
   protected async save(row: ProductReorderPointRow): Promise<void> {
     const companyId = this.companyId();
     if (companyId === null || !this.savable(row)) return;
-    const quantity = this.valueOf(row).trim();
+    const quantity = typedText(this.valueOf(row));
     const outcome = await this.points.set(
       companyId,
       this.productId(),

@@ -10,6 +10,7 @@ import { type PairingEcho, PairingApi, PairingRefused } from './pairing-api';
 import { ScanBus, type ScanOutcome } from './scan-bus';
 import { SCAN_DETAILS } from './scan-details';
 import { type ScanOffer, ScanOffers } from './scan-offers';
+import { typedText } from '../form/typed-text';
 
 /** How often the tab says it is still there; the API lets a pairing lapse after 90 seconds without a word. */
 export const HEARTBEAT_MS = 30_000;
@@ -259,7 +260,7 @@ export class PhonePairing {
     const currency = this.session.me()?.company?.currency ?? '';
     return {
       name: product.name,
-      price: `${this.format.amount(product.unitPrice, null)} ${currency}`.trim(),
+      price: typedText(`${this.format.amount(product.unitPrice, null)} ${currency}`),
     };
   }
 

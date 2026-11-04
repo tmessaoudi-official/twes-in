@@ -35,6 +35,7 @@ import {
   rememberPlace,
 } from './customer-screen-place';
 import type { ScreenPlace, ScreenProduct } from './customer-screen-types';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * The customer screen (docs/SPEC.md § 7, 2026-10-03 08:20): the one screen a customer may be left in front of. Opening
@@ -163,7 +164,7 @@ export class CustomerScreenPage {
 
   protected async search(event: Event): Promise<void> {
     event.preventDefault();
-    const words = this.words().trim();
+    const words = typedText(this.words());
     const companyId = this.session.me()?.company?.id;
     if (words === '' || companyId === undefined) return;
     const turn = ++this.turn;

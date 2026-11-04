@@ -31,6 +31,7 @@ import {
   recordLink,
 } from './activity-list';
 import { unnamedActorKey, type ActivitySearch } from './activity-types';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * « Journal d'activité » (docs/SPEC.md § 7, 2026-09-26 23:04): what was done in the company, by whom and to which
@@ -76,7 +77,7 @@ export class ActivityPage implements OnInit {
   protected readonly pickSources: Readonly<Record<string, ListPickSource>> = {
     actor: {
       search: async (words) => {
-        const wanted = words.trim().toLocaleLowerCase();
+        const wanted = typedText(words).toLocaleLowerCase();
         return this.people().filter((person) =>
           `${person.name} ${person.code}`.toLocaleLowerCase().includes(wanted),
         );

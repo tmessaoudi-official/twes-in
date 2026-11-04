@@ -111,6 +111,7 @@ import { runAction } from '../actions/run-action';
 import { ConfirmDialog } from '../ui/confirm-dialog';
 import type { ActionConfirm } from '../actions/screen-action';
 import { TextFactor, WINDOW_CLASS } from '../ui/window-class';
+import { typedText } from '../form/typed-text';
 
 /** `<ng-template appDataListCell="columnId" let-row>`: how one column's cell renders instead of its plain value. */
 @Directive({ selector: 'ng-template[appDataListCell]' })
@@ -175,7 +176,7 @@ function valueWidth(cell: HTMLElement, range: Range): number {
   if (typeof range.getBoundingClientRect !== 'function') return 0;
   const texts = cell.ownerDocument.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
   for (let text = texts.nextNode(); text !== null; text = texts.nextNode()) {
-    if ((text.textContent ?? '').trim() === '') continue;
+    if (typedText(text.textContent ?? '') === '') continue;
     range.selectNodeContents(text);
     take(range.getBoundingClientRect());
   }
@@ -407,6 +408,7 @@ export class DataList<Row> implements OnInit {
   /** What each picked record is called, by id, for its chip. */
   protected readonly pickNames = signal<Readonly<Record<string, string>>>({});
   protected readonly viewName = signal('');
+  protected readonly typedText = typedText;
   /** A view's name past its limit, kept whole as pasted and said under the field; saving waits until it fits. */
   protected readonly viewNameTooLong = computed(() => lengthSaid(this.viewName(), VIEW_NAME_MAX));
   protected readonly pageIndex = signal(0);
@@ -1298,7 +1300,7 @@ export class DataList<Row> implements OnInit {
   protected titleIfCut(event: Event): void {
     const cell = (event.target as Element | null)?.closest<HTMLElement>('td.mat-mdc-cell');
     if (!cell || cell.classList.contains('twes-row-actions')) return;
-    if (cell.scrollWidth > cell.clientWidth) cell.title = cell.textContent?.trim() ?? '';
+    if (cell.scrollWidth > cell.clientWidth) cell.title = typedText(cell.textContent ?? '');
     else cell.removeAttribute('title');
   }
 
@@ -1453,7 +1455,7 @@ export class DataList<Row> implements OnInit {
   /** Saves the text filter, the filter options and the column layout under the typed name. */
   protected onSaveView(event: Event): void {
     event.preventDefault();
-    if (this.viewName().trim() === '' || this.viewNameTooLong() !== null) return;
+    if (typedText(this.viewName()) === '' || this.viewNameTooLong() !== null) return;
     const draft = {
       name: this.viewName(),
       query: this.query(),

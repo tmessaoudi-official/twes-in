@@ -3,6 +3,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
+import { typedText } from '../form/typed-text';
 import { AmountPipe } from '../i18n/format-pipes';
 import { WINDOW_CLASS } from './window-class';
 
@@ -59,14 +60,14 @@ export class IssuedLines {
 
   /** The line's discount rate without its trailing zeros, or `null` when it takes none. */
   protected discountOf(line: IssuedLine): string | null {
-    const rate = line.discountRate?.trim() ?? '';
+    const rate = typedText(line.discountRate ?? '');
     if (rate === '' || Number(rate) === 0) return null;
     return rate.includes('.') ? rate.replace(/0+$/, '').replace(/\.$/, '') : rate;
   }
 
   /** The amount the line's discount takes off, or `null` when it is given as a rate or takes none. */
   protected amountOffOf(line: IssuedLine): string | null {
-    const amount = line.discountAmount?.trim() ?? '';
+    const amount = typedText(line.discountAmount ?? '');
     return amount === '' || /^[0.]+$/.test(amount) ? null : amount;
   }
 }

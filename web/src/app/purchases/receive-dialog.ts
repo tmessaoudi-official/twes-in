@@ -48,6 +48,7 @@ import {
   serialsOf,
   SUPPLIER_REFERENCE_MAX,
 } from './receipt-forms';
+import { typedText } from '../shared/form/typed-text';
 
 export interface ReceiveDialogData {
   readonly lines: readonly PurchaseOrderLine[];
@@ -116,9 +117,10 @@ export class ReceiveDialog {
 
   protected readonly referenceMax = SUPPLIER_REFERENCE_MAX;
   protected readonly lengthSaid = lengthSaid;
+  protected readonly typedText = typedText;
   /** A reference past its limit, kept whole as pasted and said under its field. */
   protected readonly referenceTooLong = computed(() =>
-    lengthSaid(this.supplierReference().trim(), SUPPLIER_REFERENCE_MAX),
+    lengthSaid(typedText(this.supplierReference()), SUPPLIER_REFERENCE_MAX),
   );
   protected readonly lotMax = LOT_CODE_MAX;
   protected readonly plain = plainDecimal;
@@ -176,7 +178,7 @@ export class ReceiveDialog {
     () =>
       this.bringing() > 0 &&
       this.dayProblem() === null &&
-      this.supplierReference().trim().length <= SUPPLIER_REFERENCE_MAX &&
+      typedText(this.supplierReference()).length <= SUPPLIER_REFERENCE_MAX &&
       this.problems().every((problem) => problem === null),
   );
 

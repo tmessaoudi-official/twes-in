@@ -73,6 +73,7 @@ import {
 } from './invoices-types';
 import { refusedFor } from '../shared/errors/said-already';
 import { SHORT_SALE_CONFIRMED } from '../inventory/short-sales';
+import { typedText } from '../shared/form/typed-text';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class InvoicesRefused extends Error {
@@ -666,7 +667,7 @@ const ids = (values: readonly (string | null | undefined)[] | null | undefined):
 
 function toSearchParams(search: InvoiceSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   for (const status of search.status) params = params.append('status[]', status);
   params = narrowing(params, search);
   if (search.order !== null)
@@ -688,7 +689,7 @@ function narrowing(params: HttpParams, search: InvoiceSearch): HttpParams {
 /** The search as a count reads it: all but the status, which the chips count themselves, and the page and order. */
 function toCountParams(search: InvoiceSearch): HttpParams {
   let params = new HttpParams();
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   return narrowing(params, search);
 }
 

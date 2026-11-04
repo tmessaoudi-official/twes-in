@@ -41,6 +41,7 @@ import {
 } from './barcode-rows';
 import { ProductBarcodes } from './product-barcodes-facade';
 import { BARCODE_ROLES, type BarcodeRole, type ProductBarcode } from './products-types';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * The codes a product answers to (docs/SPEC.md § 7, 2026-09-22 11:05): its unit code, the packs that enter several at
@@ -90,6 +91,7 @@ export class ProductBarcodesSection implements OnInit {
   protected readonly suppliers = this.facade.suppliers;
   /** What the scan field holds, not yet a row: « Ajouter » and « Enregistrer » both take it. */
   protected readonly pending = signal('');
+  protected readonly typedText = typedText;
   /** The row a scan found already listed, pointed at instead of added twice. */
   protected readonly duplicate = signal<number | null>(null);
 
@@ -158,12 +160,12 @@ export class ProductBarcodesSection implements OnInit {
   /** A code scanned and not added, and every field of the rows that differs from what is saved. */
   private readonly unsaved = computed(
     () =>
-      (this.pending().trim() === '' ? 0 : 1) +
+      (typedText(this.pending()) === '' ? 0 : 1) +
       (this.changed() ? dirtyCount(this.rows(), this.saved()) : 0),
   );
   protected readonly savable = computed(
     () =>
-      (this.changed() || this.pending().trim() !== '') &&
+      (this.changed() || typedText(this.pending()) !== '') &&
       !this.busy() &&
       this.problems().every((problem) => problem === null),
   );
@@ -284,7 +286,7 @@ export class ProductBarcodesSection implements OnInit {
   protected async save(field: HTMLInputElement): Promise<void> {
     const companyId = this.companyId();
     if (companyId === null || !this.savable()) return;
-    if (field.value.trim() !== '') {
+    if (typedText(field.value) !== '') {
       this.add(field);
       if (!this.savable()) return;
     }

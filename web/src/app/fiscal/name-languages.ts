@@ -7,6 +7,7 @@ import { DOCUMENT_LANGUAGES, type Language } from '../shared/i18n/languages';
 import { SettingsApi } from '../shared/settings/settings-api';
 import { nameField } from './fiscal-forms';
 import type { LanguageNames } from './fiscal-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** What the company prints in: its own documents' language, and those its customers and their groups hold. */
 interface InUse {
@@ -96,7 +97,7 @@ export class NameLanguages {
     this.added.set(
       new Set(
         Object.entries(names)
-          .filter(([tag, name]) => isDocumentLanguage(tag) && name.trim() !== '')
+          .filter(([tag, name]) => isDocumentLanguage(tag) && typedText(name) !== '')
           .map(([tag]) => tag),
       ),
     );

@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ACTION_KIND_ICONS, isDanger, type ActionConfirm } from '../actions/screen-action';
 import { RefusedField } from '../form/refused-field';
+import { typedText } from '../form/typed-text';
 
 /**
  * A typed word compared as a person means it: case, the spaces around and between words, the composition of an
@@ -16,13 +17,13 @@ import { RefusedField } from '../form/refused-field';
  */
 export function sameTyped(typed: string, expected: string): boolean {
   const plain = (text: string) =>
-    text
-      .normalize('NFC')
-      .replace(/[\u2018\u2019\u02bc]/g, "'")
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLocaleLowerCase();
-  return expected.trim() !== '' && plain(typed) === plain(expected);
+    typedText(
+      text
+        .normalize('NFC')
+        .replace(/[\u2018\u2019\u02bc]/g, "'")
+        .replace(/\s+/g, ' '),
+    ).toLocaleLowerCase();
+  return typedText(expected) !== '' && plain(typed) === plain(expected);
 }
 
 /**

@@ -379,6 +379,13 @@ describe('delivery note forms', () => {
     line.patchValue({ lotCode: 'L 24' });
     expect(line.controls.lotCode.hasError('pattern')).toBe(true);
 
+    // Pasted with a zero-width space and a direction mark at its ends: nothing anyone can see is refused.
+    line.patchValue({ lotCode: '​L-2409‏' });
+    expect(line.valid).toBe(true);
+    expect(
+      deliveryNoteInput(deliveryNoteValues(null, options), lines, carthage.id).lines[0].lotCode,
+    ).toBe('L-2409');
+
     // Another product, not tracked: the lot typed for the first one is not sent with it.
     line.patchValue({ lotCode: 'L-2409' });
     applyProduct(line, laptop, options, []);

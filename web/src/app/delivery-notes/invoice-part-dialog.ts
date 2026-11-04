@@ -14,6 +14,7 @@ import type { FieldError } from '../shared/form/form-builder';
 import { FormStep } from '../shared/form/form-step';
 import { RefusalFigures } from '../shared/form/refusal-figures';
 import { AmountPipe } from '../shared/i18n/format-pipes';
+import { typedText } from '../shared/form/typed-text';
 
 /** One line of the note as the dialog offers it: what it says, and what is still to invoice of it. */
 export interface InvoicePartLine {
@@ -129,7 +130,7 @@ export class InvoicePartDialog {
   protected chosen(): Record<string, string> {
     const kept: Record<string, string> = {};
     for (const [lineId, quantity] of Object.entries(this.quantities())) {
-      const text = quantity.trim().replace(',', '.');
+      const text = typedText(quantity).replace(',', '.');
       if (!/^-?0*(\.0*)?$/.test(text)) kept[lineId] = text;
     }
     return kept;

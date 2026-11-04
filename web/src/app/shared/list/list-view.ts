@@ -12,6 +12,7 @@ import type {
   ListViewDraft,
 } from './list-types';
 import { filterValues } from './list-filters';
+import { typedText } from '../form/typed-text';
 
 /**
  * What a list screen shows, as pure functions of its descriptor, a person's preferences and the rows:
@@ -109,7 +110,7 @@ export function filterRows<Row>(
   columns: readonly ListColumn<Row>[],
   query: string,
 ): Row[] {
-  const needle = fold(query.trim());
+  const needle = fold(typedText(query));
   if (needle === '') return [...rows];
   const searched = columns.filter((column) => column.filterable);
 
@@ -197,7 +198,7 @@ export function saveView(
   draft: ListViewDraft,
   newId: string,
 ): ListView[] {
-  const name = draft.name.trim();
+  const name = typedText(draft.name);
   if (name === '') throw new InvalidViewName();
   const existing = views.find((view) => fold(view.name) === fold(name));
   const saved: ListView = { ...draft, name, id: existing?.id ?? newId };

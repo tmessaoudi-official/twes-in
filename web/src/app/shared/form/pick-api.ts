@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpParams } from '@angular/common/http';
+import { typedText } from './typed-text';
 
 /**
  * The HTTP edge of a picker's contract — named for the `*-api.ts` family because that is the only place HTTP may be
@@ -19,6 +20,6 @@ export function pickParams(asked: PickAsked): HttpParams {
     for (const id of asked.ids) params = params.append('ids[]', id);
     return params;
   }
-  const words = asked.words.trim();
+  const words = typedText(asked.words);
   return words === '' ? new HttpParams() : new HttpParams().set('q', words);
 }

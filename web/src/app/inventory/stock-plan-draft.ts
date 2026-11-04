@@ -9,6 +9,7 @@ import type {
   StructureKind,
 } from './inventory-types';
 import type { PlanRectangle } from './stock-map-geometry';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * A floor's plan as it is being arranged and not saved yet. Every gesture and every typed measurement lands here, on
@@ -513,8 +514,8 @@ export function stepOf(
     } else {
       step.newPlaces.push({
         kind: one.place.kind,
-        code: one.place.code.trim(),
-        name: one.place.name.trim(),
+        code: typedText(one.place.code),
+        name: typedText(one.place.name),
         ...textOf(one.rect),
       });
       sources.newPlaces.push(one.key);
@@ -551,7 +552,7 @@ export function stepOf(
 
 /** The shape a refusal names (`moves[2].x` → that rectangle's id or key), or null when it names none of them. */
 export function sourceOf(sources: PlanStepSources, refusal: string): string | null {
-  const found = /^([A-Za-z]+)\[(\d+)\]/.exec(refusal.trim());
+  const found = /^([A-Za-z]+)\[(\d+)\]/.exec(typedText(refusal));
   if (found === null) return null;
   const list = sources[found[1] as keyof PlanStepSources] as string[] | undefined;
 

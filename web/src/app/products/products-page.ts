@@ -40,6 +40,7 @@ import { PageTabs } from '../shared/ui/page-tabs';
 import { PRODUCTS_TABS } from './products-nav';
 import type { ProductSearch } from './products-types';
 import { FormatFacade } from '../shared/i18n/format-facade';
+import { typedText } from '../shared/form/typed-text';
 
 /** The products of the company being worked in, with a hidden column per custom field of theirs. */
 @Component({
@@ -116,7 +117,7 @@ export class ProductsPage implements OnInit {
   protected readonly pickSources: Readonly<Record<string, ListPickSource>> = {
     category: {
       search: async (words) => {
-        const wanted = words.trim().toLocaleLowerCase();
+        const wanted = typedText(words).toLocaleLowerCase();
         return this.categoryChoices().filter((each) =>
           each.name.toLocaleLowerCase().includes(wanted),
         );

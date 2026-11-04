@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { FieldValue, FormField, FormValues } from '../form/form-types';
+import { typedText } from '../form/typed-text';
 
 /** How far apart the occurrences are counted, as the API names it. */
 export const SCHEDULE_UNITS = ['day', 'week', 'month', 'year'] as const;
@@ -141,8 +142,8 @@ export function scheduleFields(locale: string, startsOn: string): FormField[] {
 }
 
 function whole(value: FieldValue | undefined): number | null {
-  const number = typeof value === 'number' ? value : Number(String(value ?? '').trim());
-  return String(value ?? '').trim() === '' || !Number.isInteger(number) ? null : number;
+  const number = typeof value === 'number' ? value : Number(typedText(String(value ?? '')));
+  return typedText(String(value ?? '')) === '' || !Number.isInteger(number) ? null : number;
 }
 
 /** What the fields hold as the schedule the API takes: every figure its anchor does not read left null. */

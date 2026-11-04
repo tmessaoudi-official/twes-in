@@ -2,6 +2,7 @@
 
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { PAYMENT_METHODS, type DeclaredPayment, type PaymentMethod } from './subscription-types';
+import { typedText } from '../shared/form/typed-text';
 
 const FIELDS = 'licensing.payment.fields';
 
@@ -86,7 +87,7 @@ function method(value: unknown): PaymentMethod {
 }
 
 function text(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === 'string' ? typedText(value) : '';
 }
 
 function optional(value: unknown): string | null {

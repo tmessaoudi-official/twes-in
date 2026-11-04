@@ -69,6 +69,7 @@ import {
   type ProductVendor,
 } from './products-types';
 import { refusedFor } from '../shared/errors/said-already';
+import { typedText } from '../shared/form/typed-text';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class ProductsRefused extends Error {
@@ -633,7 +634,7 @@ const path = (companyId: string, collection: string, id?: string): string =>
 
 function toSearchParams(search: ProductSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (typedText(search.q) !== '') params = params.set('q', typedText(search.q));
   for (const kind of search.kinds) params = params.append('kind[]', kind);
   for (const tracking of search.trackings) params = params.append('tracking[]', tracking);
   for (const id of search.categoryIds) params = params.append('categoryId[]', id);

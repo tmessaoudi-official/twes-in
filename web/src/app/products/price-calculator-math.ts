@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { typedText } from '../shared/form/typed-text';
+
 /** How a percentage is counted: on the selling price (margin) or on the cost (markup). */
 export type PercentBasis = 'margin' | 'markup';
 
 /** A money field as the form holds it, "12.5" or "", read as a number; null when it is not an amount. */
 export function amountOf(text: string | null | undefined): number | null {
-  const trimmed = (text ?? '').trim();
+  const trimmed = typedText(text ?? '');
   if (trimmed === '') return null;
   const value = Number(trimmed);
   return Number.isFinite(value) ? value : null;
@@ -51,7 +53,7 @@ export function exactPriceFor(
   basis: PercentBasis,
   scale: number,
 ): string | null {
-  const [cost, percent] = [costText.trim(), percentText.trim()];
+  const [cost, percent] = [typedText(costText), typedText(percentText)];
   if (!COST.test(cost) || !PERCENT.test(percent)) return null;
   const [c, cUnit] = scaled(cost);
   const [p, pUnit] = scaled(percent);

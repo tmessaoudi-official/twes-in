@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ListDescriptor, ListFilterValues } from './list-types';
+import { typedText } from '../form/typed-text';
 
 /**
  * The filters of a list that combine (docs/SPEC.md § 7, 2026-10-06), as pure functions: a list query keeps one string
@@ -19,7 +20,7 @@ export type RangeKind = 'day' | 'amount';
 export function filterValues(value: string | undefined): string[] {
   return (value ?? '')
     .split(SEPARATOR)
-    .map((part) => part.trim())
+    .map((part) => typedText(part))
     .filter((part) => part !== '');
 }
 

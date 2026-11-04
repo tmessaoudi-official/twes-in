@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { typedText } from '../form/typed-text';
+
 /**
  * The keyboard half of a screen's declaration (docs/SPEC.md § 7, 2026-09-16 and row 45): a screen says once what
  * it offers, and the shortcut, the toolbar, the palette and the "?" sheet all read that one list.
@@ -81,7 +83,7 @@ export type ShellKeyRefusal = 'length' | 'browser' | 'interface' | 'screen' | 'c
  */
 export function shellKeyRefusal(key: string): ShellKeyRefusal | null {
   // Length first: most of the browser's keys are NAMED ("Enter"), and what a person typed there is not one key.
-  if ([...key].length !== 1 || key.trim() === '') return 'length';
+  if ([...key].length !== 1 || typedText(key) === '') return 'length';
   if (BROWSER_KEYS.includes(key)) return 'browser';
   if (INTERFACE_KEYS.includes(key)) return 'interface';
   if (SCREEN_KEYS.includes(key)) return 'screen';

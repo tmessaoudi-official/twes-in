@@ -60,6 +60,7 @@ import { movementAddress } from '../inventory/inventory-types';
 import { RecordBar } from '../shared/form/record-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { typedText } from '../shared/form/typed-text';
 
 /** One product: a new one to fill in, or an existing one to revise. */
 @Component({
@@ -394,7 +395,7 @@ export class ProductPage {
         categoryId === '' ? null : categoryId,
       );
       if (mine !== asked || shown === null) return;
-      const typed = String(reference.value ?? '').trim();
+      const typed = typedText(String(reference.value ?? ''));
       const before = untracked(this.proposal);
       this.proposal.set(shown);
       if (typed === '' || typed === before) reference.setValue(shown);

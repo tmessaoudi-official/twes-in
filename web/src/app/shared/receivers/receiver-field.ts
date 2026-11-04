@@ -9,10 +9,11 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { lengthSaidOf } from '../form/length-said';
 import { type ReceiverContact, type ReceiverForm } from './receiver';
+import { typedText } from '../form/typed-text';
 
 /** A name as two people write it alike: case and the spaces around and between its words set aside. */
 function sameName(name: string): string {
-  return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  return typedText(name).replace(/\s+/g, ' ').toLocaleLowerCase();
 }
 
 /**
@@ -99,7 +100,7 @@ export class ReceiverField {
 
   /** The contacts whose name holds what is typed, whatever its case; all of them before anything is. */
   protected offered(): readonly ReceiverContact[] {
-    const typed = this.form().controls.name.value.trim().toLocaleLowerCase();
+    const typed = typedText(this.form().controls.name.value).toLocaleLowerCase();
     return typed === ''
       ? this.contacts()
       : this.contacts().filter((contact) => contact.name.toLocaleLowerCase().includes(typed));

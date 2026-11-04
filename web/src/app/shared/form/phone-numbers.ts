@@ -174,10 +174,7 @@ const WRITTEN = /^\+?[0-9 ().\-/]+$/;
  * the two to the same answers.
  */
 export function phoneVerdict(typed: string, country: string | null): PhoneVerdict {
-  const written = plain(typed)
-    .replace(/[\p{Z}\p{Cc}]+/gu, ' ')
-    .trim()
-    .replace(/^00/, '+');
+  const written = typedText(plain(typed).replace(/[\p{Z}\p{Cc}]+/gu, ' ')).replace(/^00/, '+');
   if (written === '' || !WRITTEN.test(written) || !/[0-9]/.test(written)) {
     return { verdict: 'not_a_number', e164: null };
   }

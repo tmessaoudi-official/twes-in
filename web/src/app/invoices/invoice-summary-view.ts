@@ -2,6 +2,7 @@
 
 import { formatMonth } from '../shared/i18n/format';
 import type { AgingAmount, AgingBucket, MonthCollected } from './invoices-types';
+import { typedText } from '../shared/form/typed-text';
 
 /** A bar of the payments chart: its height is a share of the best month, in percent. */
 export interface CollectedBar {
@@ -60,8 +61,7 @@ export function agingBars(aging: readonly AgingAmount[]): readonly AgingBar[] {
 
 /** Up to two initials of a name, for the avatar beside it. */
 export function initials(name: string): string {
-  const letters = name
-    .trim()
+  const letters = typedText(name)
     .split(/\s+/)
     .filter((word) => word !== '')
     .slice(0, 2)

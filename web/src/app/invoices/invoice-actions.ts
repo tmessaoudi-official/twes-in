@@ -48,6 +48,7 @@ import { FACTUR_X_COUNTRIES, type FacturXFormat, type InvoiceRow } from './invoi
 import { OverpaymentDialog, type OverpaymentDialogData } from './overpayment-dialog';
 import { overpaymentForm, overpaymentInput, overpaymentValues } from './overpayment-form';
 import { PaymentDialog, type PaymentDialogData } from './payment-dialog';
+import { typedText } from '../shared/form/typed-text';
 
 /** What the person working may do to invoices, and what the company has switched on: all the guards read besides the document. */
 export interface InvoiceRights {
@@ -72,7 +73,7 @@ function receiverAgain(before: Receiver | null): ReceiverChoice | null {
 
 /** A quantity the API wrote above zero, "0.500" or "4.000": something left. */
 function aboveZero(quantity: string): boolean {
-  return /[1-9]/.test(quantity) && !quantity.trim().startsWith('-');
+  return /[1-9]/.test(quantity) && !typedText(quantity).startsWith('-');
 }
 
 /** An amount the API wrote as zero at any scale, "0" or "0.000". */

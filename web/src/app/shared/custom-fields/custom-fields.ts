@@ -7,6 +7,7 @@ import type {
   CustomFieldType,
   CustomFieldValue,
 } from './custom-fields-types';
+import { typedText } from '../form/typed-text';
 
 /** The id prefix of a custom field in a form and of its column in a list. */
 export const CUSTOM_FIELD_PREFIX = 'custom__';
@@ -90,12 +91,12 @@ export function customFieldInput(
     if (definition.type === 'bool') {
       input[definition.key] = raw === true;
     } else if (definition.type === 'number') {
-      const number = typeof raw === 'number' ? raw : Number(String(raw ?? '').trim() || NaN);
+      const number = typeof raw === 'number' ? raw : Number(typedText(String(raw ?? '')) || NaN);
       if (Number.isFinite(number)) {
         input[definition.key] = number;
       }
     } else {
-      const text = typeof raw === 'string' ? raw.trim() : '';
+      const text = typeof raw === 'string' ? typedText(raw) : '';
       if (text !== '') {
         input[definition.key] = text;
       }

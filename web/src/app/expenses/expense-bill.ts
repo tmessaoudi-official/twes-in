@@ -43,6 +43,7 @@ import {
 } from './expense-forms';
 import type { ExpenseOptions } from './expenses-types';
 import { refusedError } from '../shared/form/refusal-words';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * A supplier's bill as it is printed: a line for each VAT rate, its net and the rates on it (a levy such as FODEC beside
@@ -267,7 +268,7 @@ export class ExpenseBill {
     if (control === undefined || net.valid || !(control.touched || net.touched)) return null;
     const refused = refusedOf(net);
     if (refused !== null) return refused;
-    const typed = control.value.trim();
+    const typed = typedText(control.value);
     if (typed === '') return { key: 'expenses.bill.gross_required' };
     if (!new RegExp(`^${amountPattern(this.options().currencyScale)}$`).test(typed)) {
       return { key: 'expenses.bill.net_pattern' };
@@ -332,7 +333,7 @@ export class ExpenseBill {
     const found =
       rates === null || charges === null
         ? null
-        : netOfLine(control.value.trim(), rates, charges, this.options().currencyScale);
+        : netOfLine(typedText(control.value), rates, charges, this.options().currencyScale);
     this.near.set(line, found !== null && !found.exact);
     const net = line.controls.amountNet;
     if (net.value !== (found?.net ?? '')) {
@@ -359,7 +360,7 @@ export class ExpenseBill {
     const rates = this.ratesOf(line);
     const charges = this.chargesFor();
     if (net.invalid || rates === null || charges === null) return null;
-    return grossOfLine(net.value.trim(), rates, charges, this.options().currencyScale);
+    return grossOfLine(typedText(net.value), rates, charges, this.options().currencyScale);
   }
 
   /** The rates on a line; null when one is no longer offered, whose rate is not known here. */

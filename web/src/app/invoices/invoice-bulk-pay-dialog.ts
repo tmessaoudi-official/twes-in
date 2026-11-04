@@ -30,6 +30,7 @@ import {
   type BulkPaid,
   type PaymentMethod,
 } from './invoices-types';
+import { typedText } from '../shared/form/typed-text';
 
 export interface BulkPayData {
   companyId: string;
@@ -248,7 +249,7 @@ export class InvoiceBulkPayDialog {
     if (day !== this.checkedDay || this.included().length === 0 || this.paying()) return;
     const values = this.group.getRawValue();
     const method = PAYMENT_METHODS.find((each) => each === values['method']) ?? 'other';
-    const reference = String(values['reference'] ?? '').trim();
+    const reference = typedText(String(values['reference'] ?? ''));
     this.paying.set(true);
     this.step.unplaced.set(null);
     try {
@@ -277,7 +278,7 @@ export class InvoiceBulkPayDialog {
 
   private day(): string | null {
     const control = this.group.controls['date']!;
-    const day = String(control.value ?? '').trim();
+    const day = typedText(String(control.value ?? ''));
     return control.valid && day !== '' ? day : null;
   }
 

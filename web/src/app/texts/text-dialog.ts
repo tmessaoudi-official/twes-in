@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import type { TextOutcome } from './texts-facade';
 import type { SavedText, TextRefusalCode } from './texts-types';
+import { typedText } from '../shared/form/typed-text';
 
 export interface TextDialogData {
   readonly language: string;
@@ -156,5 +157,5 @@ export class TextDialog {
 
 /** A text of spaces alone is empty, as the API reads it. */
 function notBlank(control: AbstractControl<string>): { required: true } | null {
-  return control.value.trim() === '' ? { required: true } : null;
+  return typedText(control.value) === '' ? { required: true } : null;
 }

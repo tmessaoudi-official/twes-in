@@ -30,6 +30,7 @@ import { lengthSaidOf } from '../shared/form/length-said';
 import { Feedback } from '../shared/feedback/feedback';
 import { typedCode } from '../shared/form/typed-code';
 import { SpentBudget } from '../shared/errors/spent-budget';
+import { typedText } from '../shared/form/typed-text';
 
 /**
  * Two-step verification for the signed-in account: an authenticator app, passkeys, and the recovery codes behind both.
@@ -201,7 +202,7 @@ export class TwoFactorPage {
     }
     this.submitting.set(true);
     this.passkeyError.set(null);
-    const name = this.passkeyForm.controls.name.value.trim();
+    const name = typedText(this.passkeyForm.controls.name.value);
     const outcome = await this.proven(() => this.auth.addPasskey(name));
     this.submitting.set(false);
     if (!outcome.ok) {

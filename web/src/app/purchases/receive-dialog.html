@@ -123,12 +123,12 @@
               <input
                 matInput
                 autocomplete="off"
-                [appRefused]="lengthSaid(row.lotCode.trim(), lotMax) !== null"
+                [appRefused]="lengthSaid(typedText(row.lotCode), lotMax) !== null"
                 [ngModel]="row.lotCode"
                 (ngModelChange)="update(i, { lotCode: $event })"
                 [attr.data-testid]="'receive-row-' + i + '-lot'"
               />
-              @if (lengthSaid(row.lotCode.trim(), lotMax); as error) {
+              @if (lengthSaid(typedText(row.lotCode), lotMax); as error) {
                 <mat-error [attr.data-testid]="'receive-row-' + i + '-lot-too-long'"
                   >{{ error.key | translate: error.params }} <bdi>{{ error.count }}</bdi></mat-error
                 >

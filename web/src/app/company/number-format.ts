@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { typedText } from '../shared/form/typed-text';
+
 /** The API's limit on a numbering format. */
 export const NUMBER_FORMAT_MAX_LENGTH = 64;
 
@@ -18,7 +20,7 @@ export function renderNumber(
   date: Date,
   establishmentCode: string,
 ): string | null {
-  if (format.trim() === '' || format.length > NUMBER_FORMAT_MAX_LENGTH) return null;
+  if (typedText(format) === '' || format.length > NUMBER_FORMAT_MAX_LENGTH) return null;
   if (!Number.isInteger(nextNumber) || nextNumber < 1) return null;
 
   let sequences = 0;

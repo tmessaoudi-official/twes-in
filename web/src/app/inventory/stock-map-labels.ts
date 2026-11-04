@@ -8,6 +8,7 @@
 // settings registry, where every key's permitted values live, and this file holds only what is written.
 
 import type { PlanLabelMode } from '../shared/settings/settings-registry';
+import { typedText } from '../shared/form/typed-text';
 
 /** What separates the two halves under `both`: the same middle dot the pickers and the lists already use. */
 const BETWEEN = ' · ';
@@ -22,8 +23,8 @@ const BETWEEN = ' · ';
  * rather than disappearing whenever the reader asks for codes.
  */
 export function planLabel(code: string, name: string, mode: PlanLabelMode): string {
-  const numbered = code.trim();
-  const called = name.trim();
+  const numbered = typedText(code);
+  const called = typedText(name);
 
   if (numbered === '') return called;
   if (called === '') return numbered;

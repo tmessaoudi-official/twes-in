@@ -172,6 +172,7 @@ import {
 } from './stock-map-labels';
 import { COARSE_POINTER } from '../shared/ui/pointer';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
+import { typedText } from '../shared/form/typed-text';
 
 /** Above this many metres a floor's grid is drawn every five metres rather than every one. */
 const GRID_FINE_LIMIT = 60;
@@ -1828,7 +1829,7 @@ export class StockMapPage implements OnInit {
    * before it is sent, and a spacing that did not parse is exactly that.
    */
   private readonly repeatGap = computed<number | null>(() => {
-    const typed = this.repeatSpacing().trim();
+    const typed = typedText(this.repeatSpacing());
     if (!/^\d+([.,]\d{1,3})?$/.test(typed)) return null;
 
     return Number(typed.replace(',', '.'));
@@ -1908,7 +1909,7 @@ export class StockMapPage implements OnInit {
       count: this.repeatCount(),
       spacing: String(this.repeatGap() ?? 0),
       way: this.repeatWay(),
-      firstCode: this.repeatCode().trim(),
+      firstCode: typedText(this.repeatCode()),
     });
     if (made) {
       this.repeating.set(false);

@@ -45,6 +45,7 @@ import { PLATFORM_COUNTRY, PLATFORM_PHONES, type PlatformPhones } from './platfo
 import { refusedFor } from '../shared/errors/said-already';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
 import { TextsParts } from '../shared/i18n/texts-part';
+import { typedText } from '../shared/form/typed-text';
 
 export class PlatformRefused extends Error {
   /** The fields a 422 named, each with its reason and params: a save refused says each on its own field. */
@@ -379,7 +380,7 @@ function totalOf(page: HydraPage<unknown>): number {
 
 function pagingParams(page: number, itemsPerPage: number, q: string): HttpParams {
   let params = new HttpParams().set('page', page).set('itemsPerPage', itemsPerPage);
-  if (q.trim() !== '') params = params.set('q', q.trim());
+  if (typedText(q) !== '') params = params.set('q', typedText(q));
   return params;
 }
 

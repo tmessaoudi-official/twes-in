@@ -10,6 +10,7 @@ import { FormStep } from '../shared/form/form-step';
 import type { DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor } from '../shared/form/form-types';
 import { RefusalFigures } from '../shared/form/refusal-figures';
+import { typedText } from '../shared/form/typed-text';
 
 export interface CreditNoteDialogData {
   descriptor: FormDescriptor;
@@ -69,7 +70,7 @@ export class CreditNoteDialog {
   /** Drafts through the page, which owns the company and the invoice; answers the credit note's id once drafted. */
   protected async create(): Promise<void> {
     const group = this.data.group;
-    const reason = String(group.getRawValue()['reason'] ?? '').trim();
+    const reason = typedText(String(group.getRawValue()['reason'] ?? ''));
     if (reason === '') group.controls['reason']?.setValue('');
     if (group.invalid) {
       group.markAllAsTouched();

@@ -2,6 +2,7 @@
 
 import type { FieldValue, FormDescriptor, FormValues } from '../shared/form/form-types';
 import type { OverpaymentInput } from './invoices-types';
+import { typedText } from '../shared/form/typed-text';
 
 const AMOUNT_PATTERN = '(0|[1-9][0-9]{0,11})([.][0-9]{1,3})?';
 
@@ -52,12 +53,12 @@ export function overpaymentValues(today: string): FormValues {
 
 export function overpaymentInput(values: FormValues): OverpaymentInput {
   const text = (value: FieldValue | undefined): string | null => {
-    const trimmed = String(value ?? '').trim();
+    const trimmed = typedText(String(value ?? ''));
     return trimmed === '' ? null : trimmed;
   };
   return {
-    date: String(values['date'] ?? '').trim(),
-    amount: String(values['amount'] ?? '').trim(),
+    date: typedText(String(values['date'] ?? '')),
+    amount: typedText(String(values['amount'] ?? '')),
     reference: text(values['reference']),
     notes: text(values['notes']),
   };
