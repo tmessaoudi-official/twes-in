@@ -1,4 +1,11 @@
-@if (summary(); as current) {
+@if (failed()) {
+  <div role="alert" class="flex flex-wrap items-center gap-2" data-testid="home-watch-error">
+    <span class="text-error">{{ 'feedback.panel_failed' | translate }}</span>
+    <button mat-button type="button" (click)="retry()" data-testid="home-watch-retry">
+      {{ 'feedback.retry' | translate }}
+    </button>
+  </div>
+} @else if (summary(); as current) {
   <mat-card appearance="outlined" data-testid="home-watch">
     <mat-card-content>
       <div class="flex flex-wrap items-center justify-between gap-3">

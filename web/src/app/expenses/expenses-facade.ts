@@ -85,11 +85,13 @@ export class ExpensesFacade {
   }
 
   /** The home's figure; a failed read leaves the last one, since the panel is secondary to the page it sits on. */
-  async loadSummary(companyId: string): Promise<void> {
+  /** Reads what the home shows; says whether it could, the last summary staying when it could not. */
+  async loadSummary(companyId: string): Promise<boolean> {
     try {
       this.summarySignal.set(await this.api.summary(companyId));
+      return true;
     } catch {
-      /* the last summary stays */
+      return false;
     }
   }
 

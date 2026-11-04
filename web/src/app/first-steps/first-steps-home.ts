@@ -9,6 +9,7 @@ import {
   type OnInit,
   signal,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -26,7 +27,7 @@ import { FIRST_STEP_LINKS, FIRST_STEPS_KINDS, type FirstSteps } from './first-st
  */
 @Component({
   selector: 'app-first-steps-home',
-  imports: [MatCardModule, MatIconModule, RouterLink, TranslatePipe],
+  imports: [MatButtonModule, MatCardModule, MatIconModule, RouterLink, TranslatePipe],
   templateUrl: './first-steps-home.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -38,7 +39,9 @@ export class FirstStepsHome implements OnInit {
 
   private readonly current = signal<FirstSteps | null>(null);
   protected readonly links = FIRST_STEP_LINKS;
-  /** Shown while something remains; a read that failed shows nothing rather than a stale list. */
+  /** The last read failed: said in place of the list, which a failed read never leaves stale. */
+  protected readonly failed = signal(false);
+  /** Shown while something remains. */
   protected readonly shown = computed(() => {
     const steps = this.current();
     return steps !== null && steps.remaining > 0 ? steps : null;
@@ -63,11 +66,19 @@ export class FirstStepsHome implements OnInit {
     return `first_steps.steps.${key}`;
   }
 
+  /** Reads the steps again from the line saying they could not be read. */
+  protected async retry(): Promise<void> {
+    const companyId = this.auth.me()?.company?.id;
+    if (companyId) await this.load(companyId);
+  }
+
   private async load(companyId: string): Promise<void> {
     try {
       this.current.set(await this.api.read(companyId));
+      this.failed.set(false);
     } catch {
       this.current.set(null);
+      this.failed.set(true);
     }
   }
 }

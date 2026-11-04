@@ -7,7 +7,9 @@ import {
   DestroyRef,
   inject,
   type OnInit,
+  signal,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { formatMonth } from '../shared/i18n/format';
@@ -25,7 +27,7 @@ import { ExpensesFacade } from './expenses-facade';
  */
 @Component({
   selector: 'app-expenses-home',
-  imports: [KpiTile, TranslatePipe, AmountPipe],
+  imports: [KpiTile, MatButtonModule, TranslatePipe, AmountPipe],
   templateUrl: './expenses-home.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -46,10 +48,24 @@ export class ExpensesHome implements OnInit {
     return summary === null ? null : versus(summary.month, summary.lastMonth);
   });
 
+  /** The last read failed: said only while nothing was ever read, a summary read before staying shown. */
+  protected readonly failed = computed(() => this.unread() && this.summary() === null);
+  private readonly unread = signal(false);
+
   async ngOnInit(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
     if (!companyId) return;
-    this.live.reloadOn(['expense'], () => this.facade.loadSummary(companyId), this.destroyRef);
-    await this.facade.loadSummary(companyId);
+    this.live.reloadOn(['expense'], () => this.load(companyId), this.destroyRef);
+    await this.load(companyId);
+  }
+
+  /** Reads the summary again from the line saying it could not be read. */
+  protected async retry(): Promise<void> {
+    const companyId = this.auth.me()?.company?.id;
+    if (companyId) await this.load(companyId);
+  }
+
+  private async load(companyId: string): Promise<void> {
+    this.unread.set(!(await this.facade.loadSummary(companyId)));
   }
 }

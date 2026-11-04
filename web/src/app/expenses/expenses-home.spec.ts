@@ -37,6 +37,7 @@ class StaticLoader implements TranslateLoader {
           },
         },
       },
+      feedback: { retry: 'Réessayer', panel_failed: 'Ce panneau n’a pas pu être lu.' },
     });
   }
 }
@@ -68,7 +69,7 @@ describe('ExpensesHome', () => {
   }
 
   beforeEach(() => {
-    facade.loadSummary.mockReset().mockResolvedValue(undefined);
+    facade.loadSummary.mockReset().mockResolvedValue(true);
     live.reloadOn.mockReset();
     current.set(summary);
     TestBed.configureTestingModule({
@@ -118,5 +119,36 @@ describe('ExpensesHome', () => {
     await open();
 
     expect(text().trim()).toBe('');
+  });
+
+  it('says the summary could not be read and reads it again from the line, never an empty panel', async () => {
+    current.set(null);
+    facade.loadSummary.mockResolvedValue(false);
+    await open();
+
+    const find = (id: string): HTMLElement | null =>
+      (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
+    expect(find('home-expenses-error')?.getAttribute('role')).toBe('alert');
+    expect(text()).toContain('Ce panneau n’a pas pu être lu.');
+
+    facade.loadSummary.mockImplementation(() => {
+      current.set(summary);
+      return Promise.resolve(true);
+    });
+    find('home-expenses-retry')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(facade.loadSummary).toHaveBeenCalledTimes(2);
+    expect(find('home-expenses-error')).toBeNull();
+    expect(text()).toContain('1 234,500');
+  });
+
+  it('keeps the summary it read when a later read fails', async () => {
+    facade.loadSummary.mockResolvedValue(false);
+    await open();
+
+    expect(text()).toContain('1 234,500');
+    expect(text()).not.toContain('Ce panneau n’a pas pu être lu.');
   });
 });

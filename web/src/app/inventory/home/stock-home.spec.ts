@@ -31,7 +31,7 @@ const TEXTS = {
       error: 'Le stock n’a pas pu être lu.',
     },
   },
-  feedback: { retry: 'Réessayer' },
+  feedback: { retry: 'Réessayer', panel_failed: 'Ce panneau n’a pas pu être lu.' },
 };
 
 describe('StockHome', () => {
@@ -183,6 +183,24 @@ describe('StockHome', () => {
     fixture.detectChanges();
 
     expect(levels).toHaveBeenCalledWith('c1', expect.objectContaining({ negative: 'yes' }));
+    expect(find('home-stock-error')).toBeNull();
+    expect(find('home-stock')).not.toBeNull();
+  });
+
+  it('says in the root’s words that the panel could not be read when its own texts did not come, and opens them again', async () => {
+    open.mockRejectedValue(new Error('down'));
+    const { fixture, el, find } = await render();
+
+    expect(find('home-stock-error')?.getAttribute('role')).toBe('alert');
+    expect(el.textContent).toContain('Ce panneau n’a pas pu être lu.');
+    expect(el.textContent).not.toContain('home.stock.');
+
+    open.mockReset().mockResolvedValue(undefined);
+    find('home-stock-retry')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(open).toHaveBeenCalledWith('home');
     expect(find('home-stock-error')).toBeNull();
     expect(find('home-stock')).not.toBeNull();
   });

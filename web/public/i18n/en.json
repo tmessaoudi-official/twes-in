@@ -2711,6 +2711,7 @@
     "slow": "This is taking longer than usual…",
     "unavailable": "The service cannot be reached right now. Trying again in {{seconds}} s.",
     "retry": "Try again",
+    "panel_failed": "This panel could not be read.",
     "offline": "You are offline: nothing can be saved for now.",
     "restored": "Connection restored.",
     "page_failed": "This page could not open. Reload it, then try again.",

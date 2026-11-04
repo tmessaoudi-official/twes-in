@@ -120,10 +120,10 @@ describe('ExpensesFacade', () => {
     };
     api.summary.mockResolvedValueOnce(summary).mockRejectedValueOnce(new Error('offline'));
 
-    await facade.loadSummary('c1');
+    expect(await facade.loadSummary('c1')).toBe(true);
     expect(facade.summary()).toEqual(summary);
 
-    await facade.loadSummary('c1');
+    expect(await facade.loadSummary('c1')).toBe(false);
     expect(facade.summary()).toEqual(summary);
   });
 

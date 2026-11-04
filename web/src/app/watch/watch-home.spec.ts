@@ -24,6 +24,7 @@ class StaticLoader implements TranslateLoader {
         count: 'À surveiller : {{count}}',
         none: 'Rien à surveiller.',
       },
+      feedback: { retry: 'Réessayer', panel_failed: 'Ce panneau n’a pas pu être lu.' },
     });
   }
 }
@@ -31,7 +32,8 @@ class StaticLoader implements TranslateLoader {
 // docs/SPEC.md § 7, 2026-09-24 12:10: the home shows how many conditions « À surveiller » holds, the whole count the API reports.
 describe('WatchHome', () => {
   const current = signal<WatchSummary | null>(null);
-  const facade = { summary: current.asReadonly(), load: vi.fn() };
+  const failure = signal<'unavailable' | null>(null);
+  const facade = { summary: current.asReadonly(), error: failure.asReadonly(), load: vi.fn() };
   const live = { reloadOn: vi.fn() };
   let fixture: ComponentFixture<WatchHome>;
 
@@ -47,6 +49,8 @@ describe('WatchHome', () => {
 
   beforeEach(() => {
     facade.load.mockReset().mockResolvedValue(undefined);
+    current.set(null);
+    failure.set(null);
     live.reloadOn.mockReset();
     TestBed.configureTestingModule({
       imports: [WatchHome],
@@ -80,5 +84,35 @@ describe('WatchHome', () => {
     await open();
 
     expect(q('home-watch')?.textContent).toContain('Rien à surveiller.');
+  });
+
+  it('says the count could not be read and reads it again from the line, rather than drawing nothing', async () => {
+    failure.set('unavailable');
+    await open();
+
+    expect(q('home-watch-error')?.getAttribute('role')).toBe('alert');
+    expect(q('home-watch-error')?.textContent).toContain('Ce panneau n’a pas pu être lu.');
+
+    facade.load.mockImplementation(() => {
+      failure.set(null);
+      current.set({ count: 0, subjects: [] });
+      return Promise.resolve();
+    });
+    q('home-watch-retry')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(facade.load).toHaveBeenLastCalledWith('k1');
+    expect(q('home-watch-error')).toBeNull();
+    expect(q('home-watch')?.textContent).toContain('Rien à surveiller.');
+  });
+
+  it('keeps the count it read when a later read fails', async () => {
+    current.set({ count: 3, subjects: [{ kind: 'a', count: 3 }] });
+    failure.set('unavailable');
+    await open();
+
+    expect(q('home-watch-error')).toBeNull();
+    expect(q('home-watch')?.textContent).toContain('À surveiller : 3');
   });
 });

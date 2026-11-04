@@ -27,6 +27,7 @@ class StaticLoader implements TranslateLoader {
           customers: { first: 'Un premier client' },
         },
       },
+      feedback: { retry: 'Réessayer', panel_failed: 'Ce panneau n’a pas pu être lu.' },
     });
   }
 }
@@ -111,5 +112,26 @@ describe('FirstStepsHome', () => {
     const row = fixture.nativeElement.querySelector('[data-step="later.step"]') as HTMLElement;
     expect(row).not.toBeNull();
     expect(row.querySelector('a')).toBeNull();
+  });
+
+  it('says the steps could not be read and reads them again from the line, rather than vanishing', async () => {
+    api.read.mockReset().mockRejectedValue(new Error('down'));
+    fixture = TestBed.createComponent(FirstStepsHome);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(q('home-first-steps-error')?.getAttribute('role')).toBe('alert');
+    expect(q('home-first-steps-error')?.textContent).toContain('Ce panneau n’a pas pu être lu.');
+
+    api.read
+      .mockReset()
+      .mockResolvedValue({ remaining: 1, steps: [{ key: 'company.profile', done: false }] });
+    q('home-first-steps-retry')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(q('home-first-steps-error')).toBeNull();
+    expect(q('home-first-steps')).not.toBeNull();
   });
 });

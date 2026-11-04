@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, type OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  type OnInit,
+} from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -14,7 +22,7 @@ import { WATCHED_KINDS } from './watch-types';
 /** The home's count of « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10), linked to the list itself. */
 @Component({
   selector: 'app-watch-home',
-  imports: [MatCardModule, MatIconModule, RouterLink, TranslatePipe],
+  imports: [MatButtonModule, MatCardModule, MatIconModule, RouterLink, TranslatePipe],
   templateUrl: './watch-home.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -25,6 +33,10 @@ export class WatchHome implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly summary = this.facade.summary;
+  /** The count could not be read: said only while none was ever read, a count read before staying shown. */
+  protected readonly failed = computed(
+    () => this.facade.error() !== null && this.summary() === null,
+  );
 
   async ngOnInit(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
@@ -35,5 +47,11 @@ export class WatchHome implements OnInit {
       this.destroyRef,
     );
     await this.facade.load(companyId);
+  }
+
+  /** Reads the count again from the line saying it could not be read. */
+  protected async retry(): Promise<void> {
+    const companyId = this.auth.me()?.company?.id;
+    if (companyId) await this.facade.load(companyId);
   }
 }

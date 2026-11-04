@@ -52,7 +52,14 @@ const COUNT_ONLY: StockSearch = {
   selector: 'app-stock-home',
   imports: [KpiTile, MatButtonModule, RouterLink, TranslatePipe],
   template: `
-    @if (ready()) {
+    @if (wordless()) {
+      <div role="alert" class="flex flex-wrap items-center gap-2" data-testid="home-stock-error">
+        <span class="text-error">{{ 'feedback.panel_failed' | translate }}</span>
+        <button mat-button type="button" (click)="retry()" data-testid="home-stock-retry">
+          {{ 'feedback.retry' | translate }}
+        </button>
+      </div>
+    } @else if (ready()) {
       @if (failed()) {
         <div role="alert" class="flex flex-wrap items-center gap-2" data-testid="home-stock-error">
           <span class="text-error">{{ 'home.stock.error' | translate }}</span>
@@ -119,6 +126,8 @@ export class StockHome implements OnInit {
   protected readonly figures = signal<StockFigures | null>(null);
   protected readonly failed = signal(false);
   private readonly opened = signal(false);
+  /** Its own words did not come: said in the root's words, which are always there, rather than a key or nothing. */
+  protected readonly wordless = signal(false);
   /** Drawn once its words are there, so it never shows a key, and once something was read. */
   protected readonly ready = computed(
     () => this.opened() && (this.figures() !== null || this.failed()),
@@ -156,16 +165,17 @@ export class StockHome implements OnInit {
   /** Reads the stock again from the line saying it could not be read. */
   protected async retry(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
-    if (companyId) await this.load(companyId);
+    if (!companyId) return;
+    await Promise.all([this.opened() ? Promise.resolve() : this.openTexts(), this.load(companyId)]);
   }
 
   private async openTexts(): Promise<void> {
     try {
       await this.texts.open(HOME_TEXTS);
       this.opened.set(true);
+      this.wordless.set(false);
     } catch {
-      // Words that did not come draw nothing rather than keys; the next screen needing them asks again.
-      this.failed.set(true);
+      this.wordless.set(true);
     }
   }
 
