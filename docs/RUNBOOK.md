@@ -247,6 +247,10 @@ Tried on the check stack (`make onprem-check`: a release with one migration more
 printed, in one block as a paste would, the database back to the backup made before the update, the operator still
 signing in, the deep health green). Untried on a shop's Windows computer.
 
+Never wipe a shop to start again: `make reset` refuses on a shop's computer (`scripts/reset-guard.sh`), and a bare
+`docker compose down --volumes` in its checkout deletes the shop's database and issued PDFs with no question, since its
+compose project is `twes-in` like development's. A shop goes back to a backup, through the commands below.
+
 A shop's update backs up first and keeps that backup's label; when the update and its own rollback both fail, the mail
 to `ALERT_EMAIL` carries the commands below, filled in. `twes restore-commands` prints them again at any time, for the
 last update made there. They may be pasted as one block: each restore reads no input (`< /dev/null`), since `docker <!-- run-input: the command named in prose, as the reason; nobody pastes it -->

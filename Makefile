@@ -135,7 +135,8 @@ api-types: api-openapi web-tools-image   ## regenerate web/src/app/api (types on
 down:          ## stop it, keep the database volume
 	docker compose down
 
-reset:         ## DESTRUCTIVE clean start (docs/START.md): deletes the database and stored files (both volumes), the host caches and the e2e session, then make up. Asks first; CONFIRM=yes skips the question.
+reset:         ## DESTRUCTIVE clean start (docs/START.md): deletes the database and stored files (both volumes), the host caches and the e2e session, then make up. Asks first; CONFIRM=yes skips the question. Refused on a shop's own computer (scripts/reset-guard.sh), CONFIRM or not.
+	@bash scripts/reset-guard.sh
 	@if [ "$(CONFIRM)" != yes ]; then \
 		printf 'make reset deletes the database and the stored files (issued PDFs) of compose project %s, api/var/cache and the saved e2e session. Type yes to go on: ' "$${COMPOSE_PROJECT_NAME:-twes-in}"; \
 		read -r answer; [ "$$answer" = yes ] || { echo 'Nothing deleted.'; exit 1; }; \
@@ -299,6 +300,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/new-monitor.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/deploy.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/reset-guard.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/wsl-engine.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow-interval.test.sh

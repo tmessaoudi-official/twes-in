@@ -441,6 +441,12 @@ It asks you to type `yes`, then:
    the generated `web/src/app/api`, and Playwright's saved operator session `web/playwright/.auth`;
 3. runs `make up`, which builds, migrates an empty database and seeds it (§ 2, § 4).
 
+On a shop's own computer (a values file at `~/.twes-in/install.env`, or the one `TWES_VALUES` names, saying
+`TWES_INSTALL=onprem`) `make reset` refuses before anything, `CONFIRM=yes` included (`scripts/reset-guard.sh`): the
+stack there is the shop's, whose compose project is `twes-in` too, and a shop goes back to a backup with
+`twes restore-commands`, never by a wipe. A bare `docker compose down --volumes` is the same wipe with no guard at all:
+never there.
+
 `make reset CONFIRM=yes` skips the question, for scripts. It keeps the Docker images (the rebuild is quick) and
 `api/vendor` and `web/node_modules`. To also drop the images: `docker compose down --volumes --rmi local`, then
 `make up`.
