@@ -1029,7 +1029,8 @@ doctor_network() {
   echo "platform:  $(platform)"
   if got=$(docker info --format '{{.ServerVersion}} {{.OperatingSystem}}' 2>/dev/null) && [[ -n "$got" ]]; then echo "engine:    $got"
   else echo "engine:    (not read: Docker does not answer)"; fi
-  if [[ "$(platform)" != wsl ]]; then got=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* via \([0-9.]*\).*/\1/p'); [[ -n "$got" ]] || got="no route"
+  # ip fails with no route (2) or where it is missing (127): under errexit that would end the command unsaid.
+  if [[ "$(platform)" != wsl ]]; then got=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* via \([0-9.]*\).*/\1/p') || got=''; [[ -n "$got" ]] || got="no route"
   elif got=$(windows_probe "($up_adapter).IPv4DefaultGateway.NextHop"); then :; fi # a failing probe answers its reason
   if [[ "$got" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then echo "gateway:   $got"; else echo "gateway:   (not read: $got)"; fi
   if got=$(windows_probe "\$a = $up_adapter; \$i = Get-NetIPAddress -InterfaceIndex \$a.InterfaceIndex -AddressFamily IPv4 | Select-Object -First 1; \"\$(\$i.PrefixOrigin) \$([long]\$i.ValidLifetime.TotalSeconds)\""); then

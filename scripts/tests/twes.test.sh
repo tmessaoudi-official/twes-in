@@ -781,6 +781,8 @@ done
 out=$(TWES_TAILSCALE=$TMPDIR/nowhere PLATFORM=wsl twes "$b" doctor --network); check "  tailscale absent is said" 0 0 "$out" "tailscale: not installed"
 out=$(twes "$b" doctor --network); check "  off Windows, Windows' probes say why" 0 0 "$out" "sleep:     (not read: not under Windows)"
 check "  and the gateway is read from Linux's route" 0 0 "$out" "gateway:   192.168.1.1"
+out=$(NO_ROUTE=1 twes "$b" doctor --network); check "  off Windows with no route, the gateway says so" $? 0 "$out" "gateway:   (not read: no route)"
+check "  and every probe after it still runs" 0 0 "$out" "ups:       (not read: not under Windows)"
 out=$(twes "$b" doctor); check "  doctor alone asks for --network" $? 2 "$out" "Usage"
 
 out=$(twes "$d" sometimes); check "an unknown command is refused" $? 2 "$out" "Usage"
