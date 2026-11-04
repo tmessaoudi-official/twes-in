@@ -15,8 +15,6 @@ use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
-use App\Module\Customers\Domain\ValueObject\CustomerKind;
-use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
@@ -54,7 +52,7 @@ final class DraftRemovalTest extends ApiTestCase
         self::assertNotNull($standard);
         self::assertNotNull($piece);
         $now = new \DateTimeImmutable();
-        $customer = Customer::create($this->company, 'C-001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $standard, [], $now);
+        $customer = Customer::create($this->company, 'C-001', self::aTunisianBusiness('Carthage Conseil'), null, $standard, [], $now);
         $product = Product::create($this->company, 'VIS-6', new ProductDetails('Vis 6', null, ProductKind::Goods, '0.500'), $piece, null, [$this->taxId('FODEC'), $this->taxId('TVA19')], $now);
         $this->em()->persist($customer);
         $this->em()->persist($product);
@@ -112,14 +110,15 @@ final class DraftRemovalTest extends ApiTestCase
     /** An issued invoice, a sent quote and a validated note are no drafts: each answers as a stranger's would, and stays. */
     public function testOnlyADraftIsDeleted(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
         $documents = [
-            'invoice' => [$this->anInvoice(), "UPDATE invoice SET status = 'issued', number = 'FAC-1', issued_at = now() WHERE id = ?"],
-            'quote' => [$this->aQuote(), "UPDATE quote SET status = 'sent', number = 'DEV-1' WHERE id = ?"],
-            'delivery_note' => [$this->aDeliveryNote(), "UPDATE delivery_note SET status = 'validated', number = 'BL-1' WHERE id = ?"],
+            'invoice' => [$this->anInvoice(), 'invoices/%s/issue'],
+            'quote' => [$this->aQuote(), 'quotes/%s/send'],
+            'delivery_note' => [$this->aDeliveryNote(), 'delivery-notes/%s/validate'],
         ];
-        foreach ($documents as $subject => [$id, $past]) {
-            $this->em()->getConnection()->executeStatement($past, [$id]);
+        foreach ($documents as $subject => [$id, $step]) {
+            $this->postJson($this->path(\sprintf($step, $id)), null);
+            self::assertResponseIsSuccessful($subject);
             $before = $this->rowsOf($subject, $id);
 
             $this->postJson($this->path('record-removals'), ['subject' => $subject, 'ids' => [$id]]);
@@ -133,9 +132,12 @@ final class DraftRemovalTest extends ApiTestCase
     public function testADraftAQuoteNamesIsRefusedAndKept(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'quote.read', 'quote.write']);
-        $draft = $this->anInvoice();
         $quote = $this->aQuote();
-        $this->em()->getConnection()->executeStatement("UPDATE quote SET status = 'accepted', number = 'DEV-1', invoice_id = ? WHERE id = ?", [$draft, $quote]);
+        foreach (['send' => null, 'accept' => ['answeredOn' => null], 'invoice' => null] as $step => $body) {
+            $this->postJson($this->path("quotes/$quote/$step"), $body);
+            self::assertResponseIsSuccessful($step);
+        }
+        $draft = $this->stringAt($this->json(), 'invoiceId');
         $before = $this->rowsOf('invoice', $draft);
 
         $this->postJson($this->path('record-removals'), ['subject' => 'invoice', 'ids' => [$draft]]);

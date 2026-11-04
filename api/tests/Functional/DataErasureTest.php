@@ -21,8 +21,6 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
 use App\Module\Customers\Domain\Model\Customer;
-use App\Module\Customers\Domain\ValueObject\CustomerKind;
-use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
@@ -73,7 +71,7 @@ final class DataErasureTest extends ApiTestCase
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, new \DateTimeImmutable()));
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
         $this->em()->persist($customer);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($unit);
@@ -369,9 +367,13 @@ final class DataErasureTest extends ApiTestCase
 
         $gone = $this->quote();
         $kept = $this->quote();
-        // Issuing takes a whole fiscal set-up this test is not about: the state is what an issued invoice leaves.
-        $issued = $this->invoice();
-        $this->em()->getConnection()->executeStatement("UPDATE invoice SET status = 'issued', number = 'F-2026-0001', quote_id = ? WHERE id = ?", [$kept, $issued]);
+        // The quote kept is the one an issued invoice came from, made the way a person makes it.
+        foreach (['send' => null, 'accept' => ['answeredOn' => null], 'invoice' => null] as $step => $body) {
+            $this->postJson($this->path("quotes/$kept/$step"), $body);
+            self::assertResponseIsSuccessful($step);
+        }
+        $this->postJson($this->path('invoices/'.$this->stringAt($this->json(), 'invoiceId').'/issue'), null);
+        self::assertResponseIsSuccessful('issue');
 
         return [$gone, $kept];
     }

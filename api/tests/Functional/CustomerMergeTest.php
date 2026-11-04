@@ -191,6 +191,7 @@ final class CustomerMergeTest extends ApiTestCase
         [$kept, $merged] = [$this->customerId('C-001'), $this->customerId('C-002')];
         $quote = $this->aQuote($merged);
         $merge = $this->stringAt($this->merged($kept, [$merged]), 'id');
+        // issue-shortcut: sent a moment after the merge, stamped on the API's second, which a send through the API cannot place
         $this->em()->getConnection()->executeStatement("UPDATE quote SET status = 'sent', updated_at = CAST(? AS timestamp) WHERE id = ?", [self::apiNow(), $quote]);
 
         $this->postJson($this->path("record-removals/$merge/restore"), null);
@@ -488,6 +489,7 @@ final class CustomerMergeTest extends ApiTestCase
         $issued = $this->anInvoice($merged, issued: true);
         $this->merged($kept, [$merged]);
         $this->aSetting($kept, 'document.language', 'en');
+        // issue-shortcut: three quotes accepted with numbers in one step, the merge reading only their state
         $this->em()->getConnection()->executeStatement("UPDATE quote SET status = 'accepted', number = 'DEV-' || right(id::text, 12) WHERE id IN (?, ?, ?)", [$quote, $quoteAdded, $quoteWithDeposit]);
 
         $this->postJson($this->path('invoices/from-delivery-notes/check'), ['deliveryNoteIds' => [$noteOfMerged, $noteOfKept]]);
@@ -685,7 +687,7 @@ final class CustomerMergeTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
         if ($issued) {
-            // The engine reads the document's state, not how it got there: issuing for real is the invoices' own tests.
+            // issue-shortcut: the merge reads the state, and these customers lack, on purpose, the identity an issue needs
             $this->em()->getConnection()->executeStatement("UPDATE invoice SET status = 'issued', issued_at = CAST(? AS timestamp), updated_at = CAST(? AS timestamp) WHERE id = ?", [self::apiNow(), self::apiNow(), $id]);
         }
 
@@ -710,6 +712,7 @@ final class CustomerMergeTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
         if ($sent) {
+            // issue-shortcut: sent a minute before the merge, which a send through the API cannot backdate
             $this->em()->getConnection()->executeStatement("UPDATE quote SET status = 'sent', updated_at = now() - interval '1 minute' WHERE id = ?", [$id]);
         }
 
@@ -722,6 +725,7 @@ final class CustomerMergeTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
         if ($validated) {
+            // issue-shortcut: validated a minute before the merge, which a validation through the API cannot backdate
             $this->em()->getConnection()->executeStatement("UPDATE delivery_note SET status = 'validated', updated_at = now() - interval '1 minute' WHERE id = ?", [$id]);
         }
 

@@ -71,6 +71,7 @@ final class DataCheckMembersTest extends ApiTestCase
         yield 'lines that no longer add up to their document' => ['invoices.lines', [
             'UPDATE invoice_line SET line_net = line_net + 1, line_gross = line_gross + 1 WHERE id = (SELECT l.id FROM invoice_line l JOIN invoice i ON i.id = l.invoice_id WHERE i.company_id = :c AND i.number IS NOT NULL AND COALESCE(i.document_discount, 0) = 0 LIMIT 1)',
         ]];
+        // issue-shortcut: a paid invoice still owing, a state no use case makes, which the check must notice
         yield 'an invoice paid while something is due' => ['invoices.settlement', ["UPDATE invoice SET status = 'paid' WHERE id = ($issuedInvoice AND status = 'issued' AND amount_due > 0 LIMIT 1)"]];
         yield 'a withdrawn draft that kept a number' => ['invoices.settlement', ["UPDATE invoice SET number = 'FAC-X-1' WHERE id = (SELECT id FROM invoice WHERE company_id = :c AND status = 'cancelled' LIMIT 1)"]];
         yield 'credit spent that was never held' => ['invoices.credit_balance', [

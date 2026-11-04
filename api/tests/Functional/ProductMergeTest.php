@@ -750,7 +750,7 @@ final class ProductMergeTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
         if ($issued) {
-            // The engine reads the document's state, not how it got there: issuing for real is the invoices' own tests.
+            // issue-shortcut: the merge reads the state; issuing for real is the invoices' own tests
             $this->em()->getConnection()->executeStatement("UPDATE invoice SET status = 'issued', issued_at = CAST(? AS timestamp) WHERE id = ?", [self::apiNow(), $id]);
         }
 
@@ -771,6 +771,7 @@ final class ProductMergeTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');
         if ($validated) {
+            // issue-shortcut: validated without the stock a real validation moves, which this merge test leaves out
             $this->em()->getConnection()->executeStatement("UPDATE delivery_note SET status = 'validated' WHERE id = ?", [$id]);
         }
 
