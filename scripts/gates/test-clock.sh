@@ -13,8 +13,9 @@
 # Usage: test-clock.sh [--root DIR] [--floor N]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-# Some 600 test files today: a reading that finds half of them has lost a directory.
-floor=300
+# 705 test files are read today, and the smallest directory, Fuzz, holds 4: a floor 3 below the count reds on losing any
+# directory or any 4 files. Lowered, with its reason, in the change that takes files away.
+floor=702
 while (($#)); do
   case $1 in
     --root) root=$2; shift 2 ;;

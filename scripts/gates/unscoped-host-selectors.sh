@@ -9,7 +9,9 @@
 # Usage: unscoped-host-selectors.sh [--root DIR] [--min N]
 set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-MIN=1
+# Two components are unscoped today, the signed-out layout and the record columns: losing either one reds. Lowered, with
+# its reason, in the change that encapsulates one of them.
+MIN=2
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --root) ROOT=$2; shift 2 ;;

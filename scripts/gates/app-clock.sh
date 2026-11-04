@@ -12,8 +12,9 @@
 # Usage: app-clock.sh [--root DIR] [--floor N]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-# Some 2,400 PHP files today: a reading that finds fewer than 2,000 has lost a context.
-floor=2000
+# 2,421 PHP files are read today, and the smallest context, Installation, holds 4: a floor 3 below the count reds on
+# losing any context or any 4 files. Lowered, with its reason, in the change that takes files away.
+floor=2418
 while (($#)); do
   case $1 in
     --root) root=$2; shift 2 ;;

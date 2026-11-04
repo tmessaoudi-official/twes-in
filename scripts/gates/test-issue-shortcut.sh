@@ -3,15 +3,18 @@
 # A test builds an issued invoice, a sent quote, a validated delivery note or a sent order the way a person does, through
 # the use case: a status written by SQL skips the numbering, the chain, the stock and every check the issue makes, and the
 # database guard on issued rows will refuse what follows it. Every SQL statement in api/tests that sets the status of an
-# invoice, a quote, a delivery note or a purchase order (`UPDATE <table> SET … status =`, or an `INSERT INTO <table>`
-# naming `status`) is refused unless its line or the one above says why the state cannot be reached for real:
+# invoice, a quote, a delivery note or a purchase order (`UPDATE <table> SET … status =`, an `INSERT INTO <table>`
+# naming `status`, or DBAL's table API, `->update('<table>', ['status' => …], …)` or `->insert('<table>', [… 'status' => …])`,
+# whose data array is read to its closing bracket over as many lines as it takes) is refused unless its line or the one
+# above says why the state cannot be reached for real:
 # `// issue-shortcut: <why>` (a data check proving it notices a state no use case makes, a merge test whose customers
 # lack the identity an issue needs on purpose).
 # Usage: test-issue-shortcut.sh [--root DIR] [--floor N]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-# The API's tests hold over 700 PHP files today: a reading that finds fewer than 650 has stopped reading them.
-floor=650
+# 705 test files are read today, and the smallest directory, Fuzz, holds 4: a floor 3 below the count reds on losing any
+# directory or any 4 files. Lowered, with its reason, in the change that takes files away.
+floor=702
 while (($#)); do
   case $1 in
     --root) root=$2; shift 2 ;;
