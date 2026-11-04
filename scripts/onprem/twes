@@ -244,6 +244,16 @@ alert() {
 
 # The deep health check through the edge, as the shop's browser reaches it, trusting the installation's own authority.
 # Prints what fails when it fails; a release just started gets three minutes to settle.
+# Whether the demo is open on this computer, as the sign-in page reads it: closed unless an operator opened it.
+demo_said() {
+  local code
+  code=$(curl -sS --max-time 10 --cacert "$state/root.crt" -o "$state/demo.json" -w '%{http_code}' https://localhost/api/auth/demo 2>/dev/null) || code=000
+  if [[ "$code" != 200 ]]; then echo "(the application does not answer)"
+  elif grep -q '"enabled":true' "$state/demo.json"; then echo "on, anyone reaching this computer may open a sandbox: /platform, Démo, to switch it off"
+  else echo off
+  fi
+}
+
 deep_health() {
   local tries=${1:-1} code
   curl -fsS --max-time 10 -o "$state/root.crt" http://localhost/root.crt || { echo edge; return 1; }
@@ -1064,6 +1074,7 @@ status() {
     echo "off site: off: a lost computer loses every backup; twes offsite on once a bucket's values are given"
   fi
   if failing=$(deep_health 1); then echo "health:   ok"; else echo "health:   failing ($failing)"; fi
+  echo "demo:     $(demo_said)"
   if [[ -s "$state/self-restarts" ]]; then
     t=$(tail -n 1 "$state/self-restarts")
     echo "          started again by tick: $(wc -l < "$state/self-restarts") time(s), last $(shop_day "$t") $(shop_time "$t")"

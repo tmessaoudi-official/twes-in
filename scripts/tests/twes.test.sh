@@ -88,6 +88,7 @@ case "$url" in
     if [[ -n "${ALL_BAD:-}" || "$tag" == "${BAD:-none}" ]] || ((reads <= ${HEALTH_FAILS:-0})); then if [[ "${STEP_FAILS:-}" == mixed ]]; then echo '{"status":"failing","failing":["queue","startSteps"],"readings":{"failedStartSteps":["app:invoices:seal-chain"],"oldestWaitingSeconds":0}}' > "$out"; elif [[ -n "${STEP_FAILS:-}" ]]; then echo '{"status":"failing","failing":["startSteps"],"readings":{"failedStartSteps":["app:invoices:seal-chain","app:platform:converge"],"oldestWaitingSeconds":0}}' > "$out"; else echo '{"status":"failing","failing":["queue"]}' > "$out"; fi; printf 503
     else echo '{"status":"ok","failing":[]}' > "$out"; printf 200; fi ;;
   https://api.ipify.org) [[ "${PUBLIC:-}" != silent ]] || exit 6; echo "${PUBLIC:-41.226.10.20}" ;;
+  */api/auth/demo) [[ -z "${DEMO_SILENT:-}" ]] || { printf 000; exit 7; }; echo "{\"enabled\":${DEMO_OPEN:-false},\"countries\":[]}" > "$out"; printf 200 ;;
   smtp*) cp "$upload" "$TMPDIR/mail.eml"; cp "$netrc" "$TMPDIR/mail.netrc"; echo "$url" > "$TMPDIR/mail.url"; exit "${MAIL_EXIT:-0}" ;;
 esac
 EOF
@@ -655,6 +656,9 @@ out=$(AT=$((NOON + 900)) OUTCOMES="copy 2026-10-21T01:00:00Z failed copy exited 
 check "  the next tick sends it" $? 0 "$(subject)" "Sauvegarde en échec : copy"
 check "  saying so" 0 0 "$out" "mailed to dev@example.test: [twes-in"
 [[ "$(twes "$d" status)" != *"mail(s)"* ]]; check "  and none is held any more" $? 0 "$(twes "$d" status)" ""
+check "  twes status says the demo is closed on this computer" 0 0 "$(twes "$d" status)" "demo:     off"
+check "  and says when an operator opened it, and where to close it" 0 0 "$(DEMO_OPEN=true twes "$d" status)" "demo:     on, anyone reaching this computer may open a sandbox: /platform, Démo, to switch it off"
+check "  and says when the application does not answer it" 0 0 "$(DEMO_SILENT=1 twes "$d" status)" "demo:     (the application does not answer)"
 out=$(AT=$((NOON + 1800)) OUTCOMES="copy 2026-10-21T01:00:00Z failed copy exited 1\ndue $NOON ran\n" twes "$d" tick); [[ -z "$(mailed)" ]]
 check "  sent once" $? 0 "$(mailed)" ""
 

@@ -216,6 +216,9 @@ parameters:
     # once that session ends, at sign-out or here, the worker takes its sandbox away. Checked when the container is built
     # (DemoBounds): from 1,800 to app.session.absolute_ttl, which ends a demo's session as it ends anyone's.
     app.demo.idle_ttl: 7200
+    # What this installation is: « server », a hosted one, or « onprem », a shop's own computer (compose.onprem.yaml),
+    # where the demo stays closed until an operator opens it (DemoSettings). Anything else is refused at the first read.
+    app.installation: '%env(APP_INSTALLATION)%'
     # The issuer an authenticator app shows beside the account.
     app.mfa.issuer: '%app.product_name%'
     # Passkeys are bound to a relying party: the registrable domain the SPA is served under, and every exact origin
@@ -288,6 +291,10 @@ services:
     App\Texts\Domain\Service\OverrideRules:
         arguments:
             $maxLength: '%app.texts.max_length%'
+    # Nor does an application service.
+    App\Demo\Application\DemoSettings:
+        arguments:
+            $installation: '%app.installation%'
 
     League\Flysystem\FilesystemOperator:
         factory: ['App\Files\Infrastructure\Flysystem\FilesystemFactory', 'create']

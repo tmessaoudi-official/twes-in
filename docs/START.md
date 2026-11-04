@@ -375,7 +375,9 @@ Signup is **off** by default.
 
 ### 5.4 Try the demo, and switch it
 
-The demo is **on** by default, a shop's own installation included. Signed out, http://localhost:8090/login offers
+The demo is **on** by default on a server and **off** on a shop's own computer (`APP_INSTALLATION=onprem`, which
+`compose.onprem.yaml` sets: there a visitor would own a sandbox on the shop's network), where `twes status` says
+`demo: off` until an operator opens it. Signed out, http://localhost:8090/login offers
 **Essayer la démo** with one button per country (Tunisia, France): a click signs you in, with no account, as the owner of
 a company of your own, written with months of history. Every page says it is a demo; every PDF carries the band
 « DÉMO — sans valeur fiscale »; a mail it would send is kept under **Courriers de la démo** (the banner's link), never

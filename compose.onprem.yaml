@@ -22,6 +22,8 @@ x-logging: &logging
 # worker sends the mails whose links must be the api's.
 x-onprem-environment: &onprem-environment
   DEPLOY_ENV: prod
+  # A shop's own computer: the API keeps the demo closed here until an operator opens it.
+  APP_INSTALLATION: onprem
   DEFAULT_URI: "https://${LAN_HOST:?set LAN_HOST, this machine's address on the shop's network (scripts/onprem/twes reads it)}"
   APP_WEBAUTHN_RP_ID: localhost
   APP_WEBAUTHN_ORIGINS: https://localhost

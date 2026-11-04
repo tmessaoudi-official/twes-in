@@ -172,9 +172,9 @@ previewed first; import it only when the preview says 0 refused.
 1. **The demo off, and how to reach you.** Bring your phone with an authenticator app: an operator must carry a second
    factor, and `twes install` made yours with a password alone, so the first sign-in sends you to « Vérification en
    deux étapes » to scan its code and keep the ten recovery codes (in your password manager, never on the shop's computer).
-   Then, signed in as the operator: `/platform`, card « Démo », untick « Démo
-   ouverte aux visiteurs (« Essayer la démo ») », save. A shop's own computer offers no demo to a visitor (ruled
-   2026-10-20 01:34). Then the card « Contact du support »: your phone, WhatsApp and e-mail, save.
+   Then, signed in as the operator: `/platform`, card « Démo »: « Démo ouverte aux visiteurs (« Essayer la démo ») »
+   is already unticked, since a shop's own computer offers no demo to a visitor (ruled 2026-10-20 01:34) and the API
+   keeps it closed there until an operator opens it; `twes status` says `demo: off`. Then the card « Contact du support »: your phone, WhatsApp and e-mail, save.
    - [ ] Done; signed out, the sign-in page offers no « Essayer la démo ».
 2. **The shop's company and its owner.** A shop's installation makes no company (docs/START.md § 5.1). Still the
    operator, `/platform`, « Entreprises »: the shop's name, country Tunisie, « Ouvrir l’entreprise » (it shows « En
