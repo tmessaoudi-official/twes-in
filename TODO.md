@@ -119,6 +119,8 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
 - [ ] A phone on the shop's network opens `http://<this computer's address>/root.crt` once, then the HTTPS address
       `twes status` names, and scans.
 - [ ] Docker Desktop restarted (its tray icon, « Restart »): `twes status` healthy again within two minutes, nothing done.
+- [ ] `wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes doctor --network`: send me its whole output. It
+      reads the shop's network without changing anything, and decides how the shop is reached from outside.
 - [ ] Once with `-HideWindows` (`powershell -ExecutionPolicy Bypass -File D:\install.ps1 -HideWindows`): no window shows
       when a task runs at the next quarter hour. Keep it only if so.
 
@@ -146,6 +148,8 @@ wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes status
 - [ ] `twes status` reads healthy, its backups due.
 - [ ] `https://localhost` opens in Edge without a warning; a phone opens `http://<this computer's address>/root.crt`
       once, then the HTTPS address `twes status` names, and scans.
+- [ ] `wsl -d Ubuntu --cd ~ -- bash twes-in/scripts/onprem/twes doctor --network`: send me its whole output (it
+      reads the shop's network without changing anything, and decides how the shop is reached from outside).
 - [ ] Installed as an application: signed in, in Edge on `https://localhost`, the account menu offers « Installer
       l’application » and opens Edge's own dialog; twes-in then opens from the Start menu in a window of its own. On the
       phone, over the HTTPS address: Android's Chrome shows the home's card (« Installer »), an iPhone's Safari its two

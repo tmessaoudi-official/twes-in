@@ -33,7 +33,7 @@
 # checkout carries, which whoever forged a tag could change too.
 set -euo pipefail
 usage() {
-  echo "Usage: twes install | start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands | hold (on | off) | pin-key <file> | schedule" >&2
+  echo "Usage: twes install | start | update | policy (auto HH:MM-HH:MM | notify | off) | offsite (on | off) | tick | status | restore-commands | hold (on | off) | pin-key <file> | schedule | doctor --network" >&2
   exit 2
 }
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -92,9 +92,12 @@ if [[ "${1:-}" == install && ! -f "$values" ]]; then
   mkdir -p "$(dirname "$values")"; chmod 700 "$(dirname "$values")"
   bash "$root/scripts/deploy/new-instance.sh" --onprem "$values" >&2
 fi
-[[ -f "$values" ]] || refuse "no values at $values (twes install writes them; TWES_VALUES names another)"
-[[ "$(value TWES_INSTALL)" == onprem ]] || refuse "$values are not a shop's (TWES_INSTALL=onprem)"
-mkdir -p "$state"
+# twes doctor reads the network before anything is installed, and writes nothing.
+if [[ "${1:-}" != doctor ]]; then
+  [[ -f "$values" ]] || refuse "no values at $values (twes install writes them; TWES_VALUES names another)"
+  [[ "$(value TWES_INSTALL)" == onprem ]] || refuse "$values are not a shop's (TWES_INSTALL=onprem)"
+  mkdir -p "$state"
+fi
 
 # This machine's address on the shop's network, as a phone reaches it: the router may hand out another one any morning.
 # Under WSL it is Windows', whose ports Docker Desktop publishes, never the Linux side's own. Without a network, only this
@@ -988,6 +991,66 @@ tick() {
   esac
 }
 
+# twes doctor --network: what the shop's network looks like from this computer, which decides how it may be reached from
+# outside (a provider's NAT, an address the router may move, a computer that sleeps). Read only: nothing is changed or
+# written, and it runs before twes install. Each probe answering nothing says so on its own line, never a guess.
+windows_probe() { # the PowerShell to run; prints its answer, or fails when there is none
+  local ps answer
+  [[ "$(platform)" == wsl ]] || { echo "not under Windows"; return 1; }
+  ps=$(windows_powershell) || { echo "no powershell.exe"; return 1; }
+  answer=$("$ps" -NoProfile -NonInteractive -Command "$1" 2>/dev/null | tr -d '\r' | sed -n '1p')
+  [[ -n "$answer" ]] || { echo "Windows answered nothing"; return 1; }
+  echo "$answer"
+}
+up_adapter='Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -ne $null -and $_.NetAdapter.Status -eq '"'Up'"' } | Select-Object -First 1'
+is_private() { [[ "$1" =~ ^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.) ]]; }
+is_shared() { [[ "$1" =~ ^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\. ]]; } # 100.64.0.0/10, a provider's NAT
+doctor_network() {
+  local got h hop hops origin left ts
+  echo "platform:  $(platform)"
+  if got=$(docker info --format '{{.ServerVersion}} {{.OperatingSystem}}' 2>/dev/null) && [[ -n "$got" ]]; then echo "engine:    $got"
+  else echo "engine:    (not read: Docker does not answer)"; fi
+  if [[ "$(platform)" != wsl ]]; then got=$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* via \([0-9.]*\).*/\1/p'); [[ -n "$got" ]] || got="no route"
+  elif got=$(windows_probe "($up_adapter).IPv4DefaultGateway.NextHop"); then :; fi # a failing probe answers its reason
+  if [[ "$got" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then echo "gateway:   $got"; else echo "gateway:   (not read: $got)"; fi
+  if got=$(windows_probe "\$a = $up_adapter; \$i = Get-NetIPAddress -InterfaceIndex \$a.InterfaceIndex -AddressFamily IPv4 | Select-Object -First 1; \"\$(\$i.PrefixOrigin) \$([long]\$i.ValidLifetime.TotalSeconds)\""); then
+    origin=${got%% *} left=${got#* }
+    if [[ "$origin" == Dhcp && "$left" =~ ^[0-9]+$ ]]; then echo "lease:     DHCP, $((left / 3600)) h left: a reservation at the router keeps this address"
+    elif [[ "$origin" == Manual ]]; then echo "lease:     fixed on this computer"
+    else echo "lease:     (not read: Windows said « $got »)"; fi
+  else echo "lease:     (not read: $got)"; fi
+  if got=$(curl -fsS --max-time 10 https://api.ipify.org 2>/dev/null) && [[ "$got" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then echo "public:    $got"
+  else echo "public:    (not read: api.ipify.org did not answer)"; fi
+  if got=$(windows_probe "(Test-NetConnection 1.1.1.1 -TraceRoute -Hops 4 -WarningAction SilentlyContinue).TraceRoute -join ' '"); then
+    hops=$got got="one router between this computer and the internet"
+    read -ra hop <<< "$hops"
+    for h in "${hop[@]:1}"; do
+      if is_shared "$h"; then got="behind the provider's NAT (CGNAT): no port opened at the router reaches this computer from outside"; break; fi
+      if is_private "$h"; then got="behind a second router: a port opened at the first does not reach this computer"; fi
+    done
+    echo "route:     $hops: $got"
+  else echo "route:     (not read: $got)"; fi
+  if got=$(windows_probe "\$g = Get-NetIPAddress -AddressFamily IPv6 | Where-Object { \$_.PrefixOrigin -in 'RouterAdvertisement','Dhcp' -and \$_.AddressState -eq 'Preferred' } | Select-Object -ExpandProperty IPAddress; if (\$g) { \$g -join ' ' } else { 'none' }"); then
+    if [[ "$got" == none ]]; then echo "ipv6:      no public IPv6 address"; else echo "ipv6:      $got: reachable from outside unless the router filters it"; fi
+  else echo "ipv6:      (not read: $got)"; fi
+  if got=$(windows_probe "\$m = (New-Object -ComObject HNetCfg.NATUPnP).StaticPortMappingCollection; if (\$m -eq \$null) { 'off' } else { 'on ' + \$m.Count }"); then
+    if [[ "$got" == off ]]; then echo "upnp:      off"; else echo "upnp:      on, ${got#on } mapping(s): a program here may open a port by itself"; fi
+  else echo "upnp:      (not read: $got)"; fi
+  ts=${TWES_TAILSCALE:-tailscale}
+  command -v "$ts" >/dev/null || ! command -v "$ts.exe" >/dev/null || ts=$ts.exe
+  if ! command -v "$ts" >/dev/null; then echo "tailscale: not installed"
+  elif got=$("$ts" netcheck 2>/dev/null | tr -d '\r' | grep -E 'UDP|IPv4|IPv6|MappingVariesByDestIP|Nearest DERP') && [[ -n "$got" ]]; then
+    echo "tailscale:"; sed 's/^[[:space:]]*/  /' <<< "$got"
+  else echo "tailscale: (not read: tailscale netcheck answered nothing)"; fi
+  # powercfg's words are Windows' language: the two values it ends on, mains then battery, are read instead.
+  if got=$(windows_probe "\$h = [regex]::Matches((powercfg /q SCHEME_CURRENT SUB_SLEEP STANDBYIDLE | Out-String), '0x[0-9a-fA-F]{8}'); [Convert]::ToInt64(\$h[\$h.Count - 2].Value, 16)") && [[ "$got" =~ ^[0-9]+$ ]]; then
+    if ((got == 0)); then echo "sleep:     never on mains"; else echo "sleep:     after $((got / 60)) min on mains: nobody reaches the shop while it sleeps"; fi
+  else echo "sleep:     (not read: $got)"; fi
+  if got=$(windows_probe "\$b = Get-CimInstance Win32_Battery | Select-Object -First 1; if (\$b) { 'battery ' + \$b.BatteryStatus } else { 'none' }"); then
+    if [[ "$got" == none ]]; then echo "ups:       none: a power cut stops the database mid-write"; else echo "ups:       a ${got% *} (status ${got#* })"; fi
+  else echo "ups:       (not read: $got)"; fi
+}
+
 status() {
   local failing t
   echo "release:  $(tag_of "$(running)")"
@@ -1023,5 +1086,6 @@ case "${1:-}" in
   pin-key) [[ $# -eq 2 ]] || usage; pin_key "$2" ;;
   install) [[ $# -eq 1 ]] || usage; install ;;
   schedule) [[ $# -eq 1 ]] || usage; schedule ;;
+  doctor) [[ $# -eq 2 && "$2" == --network ]] || usage; doctor_network ;;
   *) usage ;;
 esac

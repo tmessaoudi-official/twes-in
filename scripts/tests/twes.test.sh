@@ -87,12 +87,34 @@ case "$url" in
     reads=$(($(cat "$TMPDIR/health.reads" 2>/dev/null || echo 0) + 1)); echo "$reads" > "$TMPDIR/health.reads"
     if [[ -n "${ALL_BAD:-}" || "$tag" == "${BAD:-none}" ]] || ((reads <= ${HEALTH_FAILS:-0})); then if [[ "${STEP_FAILS:-}" == mixed ]]; then echo '{"status":"failing","failing":["queue","startSteps"],"readings":{"failedStartSteps":["app:invoices:seal-chain"],"oldestWaitingSeconds":0}}' > "$out"; elif [[ -n "${STEP_FAILS:-}" ]]; then echo '{"status":"failing","failing":["startSteps"],"readings":{"failedStartSteps":["app:invoices:seal-chain","app:platform:converge"],"oldestWaitingSeconds":0}}' > "$out"; else echo '{"status":"failing","failing":["queue"]}' > "$out"; fi; printf 503
     else echo '{"status":"ok","failing":[]}' > "$out"; printf 200; fi ;;
+  https://api.ipify.org) [[ "${PUBLIC:-}" != silent ]] || exit 6; echo "${PUBLIC:-41.226.10.20}" ;;
   smtp*) cp "$upload" "$TMPDIR/mail.eml"; cp "$netrc" "$TMPDIR/mail.netrc"; echo "$url" > "$TMPDIR/mail.url"; exit "${MAIL_EXIT:-0}" ;;
 esac
 EOF
 printf '#!/usr/bin/env bash\n[[ -z "${NO_ROUTE:-}" ]] || { echo "RTNETLINK answers: Network is unreachable" >&2; exit 2; }\necho "1.1.1.1 via 192.168.1.1 dev eth0 src ${ADDRESS:-192.168.1.20} uid 1000"\n' > "$TMPDIR/bin/ip"
-# powershell.exe: Windows' address, or asked its clock, Windows' time in seconds (WINDOWS_NOW, else the case's own).
-printf '#!/usr/bin/env bash\ncase "$*" in\n  *UtcNow*) [[ -n "${WINDOWS_NOW+set}" ]] || WINDOWS_NOW=$TWES_NOW; printf "%%s\\r\\n" "$WINDOWS_NOW" ;;\n  *) printf "%%s\\r\\n" "${ADDRESS:-192.168.1.30}" ;;\nesac\n' > "$TMPDIR/bin/powershell.exe"
+# powershell.exe: Windows' address, or asked its clock, Windows' time in seconds (WINDOWS_NOW, else the case's own); asked
+# one of twes doctor's network probes, what its variable says, and nothing at all when it says « silent ».
+cat > "$TMPDIR/bin/powershell.exe" <<'EOF'
+#!/usr/bin/env bash
+answer() { [[ "$1" == silent ]] || printf '%s\r\n' "$1"; }
+case "$*" in
+  *UtcNow*) [[ -n "${WINDOWS_NOW+set}" ]] || WINDOWS_NOW=$TWES_NOW; printf "%s\r\n" "$WINDOWS_NOW" ;;
+  *NextHop*) answer "${GATEWAY:-192.168.1.1}" ;;
+  *PrefixOrigin*ValidLifetime*) answer "${LEASE:-Dhcp 86400}" ;;
+  *TraceRoute*) answer "${HOPS:-192.168.1.1 197.0.0.1 197.0.0.9}" ;;
+  *"AddressFamily IPv6"*) answer "${IPV6:-none}" ;;
+  *NATUPnP*) answer "${UPNP:-off}" ;;
+  *STANDBYIDLE*) answer "${SLEEP:-0}" ;;
+  *Win32_Battery*) answer "${UPS:-none}" ;;
+  *) printf "%s\r\n" "${ADDRESS:-192.168.1.30}" ;;
+esac
+EOF
+# tailscale: its netcheck report, or nothing when TAILSCALE says « silent ».
+cat > "$TMPDIR/bin/tailscale" <<'EOF'
+#!/usr/bin/env bash
+[[ "$*" == netcheck && "${TAILSCALE:-}" != silent ]] || exit 1
+printf '\nReport:\n\t* UDP: true\n\t* IPv4: yes, 41.226.10.20:41641\n\t* IPv6: no, but OS has support\n\t* MappingVariesByDestIP: false\n\t* Nearest DERP: Frankfurt\n'
+EOF
 # docker: its daemon answers info once DOCKER_LATE tries have been made, never when it is "never"; asked its system, it
 # names DOCKER_OS, Docker Engine's Ubuntu by default.
 cat > "$TMPDIR/bin/docker" <<'EOF'
@@ -716,6 +738,37 @@ out=$(BAD=$NEW BACKUP_LABEL=$LABEL twes "$d" tick)
 out=$(AT=$((NOON + 600)) BACKUP_LABEL=$LABEL twes "$d" tick); [[ "$(deployed)" != *"--release"* ]]; check "auto tries once a day" $? 0 "$(deployed)" ""
 echo $((NOON + 86400 - 900)) > "$d/etc/state/last-tick" # on all day, ticking
 out=$(AT=$((NOON + 86400)) BACKUP_LABEL=$LABEL twes "$d" tick); check "  and never again a release that failed here" $? 0 "$out" "applied only by hand"
+
+# twes doctor --network: what the developer reads at the shop before choosing how it is reached from outside. It runs
+# before anything is installed, changes nothing, and a probe that answers nothing says so on its own line.
+b=$(bare); out=$(PLATFORM=wsl twes "$b" doctor --network); check "doctor --network runs before any install" $? 0 "$out" "platform:  wsl"
+for line in "engine:    Ubuntu 24.04.1 LTS" "gateway:   192.168.1.1" "lease:     DHCP, 24 h left: a reservation at the router keeps this address" \
+  "public:    41.226.10.20" "route:     192.168.1.1 197.0.0.1 197.0.0.9: one router between this computer and the internet" \
+  "ipv6:      no public IPv6 address" "upnp:      off" "  * UDP: true" "  * Nearest DERP: Frankfurt" "sleep:     never on mains" \
+  "ups:       none: a power cut stops the database mid-write"; do
+  check "  says $line" 0 0 "$out" "$line"
+done
+[[ ! -e "$b/etc" ]]; check "  and writes nothing" $? 0 "$(ls -A "$b")" ""
+b=$(bare)
+for probe in "GATEWAY|gateway:   (not read" "LEASE|lease:     (not read" "PUBLIC|public:    (not read" "HOPS|route:     (not read" \
+  "IPV6|ipv6:      (not read" "UPNP|upnp:      (not read" "TAILSCALE|tailscale: (not read" "SLEEP|sleep:     (not read" "UPS|ups:       (not read"; do
+  out=$(export "${probe%%|*}=silent"; PLATFORM=wsl twes "$b" doctor --network); check "  a ${probe%%|*} probe answering nothing says so" $? 0 "$out" "${probe#*|}"
+done
+out=$(DOCKER_LATE=never PLATFORM=wsl twes "$b" doctor --network); check "  an engine not answering says so" $? 0 "$out" "engine:    (not read: Docker does not answer)"
+out=$(HOPS="192.168.1.1 100.72.0.1 41.0.0.1" PLATFORM=wsl twes "$b" doctor --network)
+check "  a provider's shared address on the way out is CGNAT" 0 0 "$out" "behind the provider's NAT (CGNAT): no port opened at the router reaches this computer"
+out=$(HOPS="192.168.1.1 192.168.0.1 41.0.0.1" PLATFORM=wsl twes "$b" doctor --network)
+check "  a second private router on the way out is said" 0 0 "$out" "behind a second router: a port opened at the first does not reach this computer"
+out=$(LEASE="Manual 4294967295" IPV6="2a01:e0a::1" UPNP="on 2" SLEEP=1200 UPS="battery 2" PLATFORM=wsl twes "$b" doctor --network)
+for line in "lease:     fixed on this computer" "ipv6:      2a01:e0a::1: reachable from outside unless the router filters it" \
+  "upnp:      on, 2 mapping(s): a program here may open a port by itself" "sleep:     after 20 min on mains: nobody reaches the shop while it sleeps" \
+  "ups:       a battery (status 2)"; do
+  check "  says $line" 0 0 "$out" "$line"
+done
+out=$(TWES_TAILSCALE=$TMPDIR/nowhere PLATFORM=wsl twes "$b" doctor --network); check "  tailscale absent is said" 0 0 "$out" "tailscale: not installed"
+out=$(twes "$b" doctor --network); check "  off Windows, Windows' probes say why" 0 0 "$out" "sleep:     (not read: not under Windows)"
+check "  and the gateway is read from Linux's route" 0 0 "$out" "gateway:   192.168.1.1"
+out=$(twes "$b" doctor); check "  doctor alone asks for --network" $? 2 "$out" "Usage"
 
 out=$(twes "$d" sometimes); check "an unknown command is refused" $? 2 "$out" "Usage"
 d=$(installed); rm "$d/etc/install.env"; out=$(twes "$d" status); check "no values: refused, naming where they are looked for" $? 1 "$out" "twes install writes them"
