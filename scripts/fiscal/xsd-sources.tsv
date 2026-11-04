@@ -1,0 +1,4 @@
+set	variable	kind	source	ref	path	pin	names	entry	patch
+tej	TEJ_XSD_DIR	zip	https://jibaya.tn/wp-content/uploads/2026/09/plateforme-TEJ-shemas-xsd.zip	8df3544dfb331b258a24c8e5e74694de753e06ba9a6d152c52e31b8f23873461	plateforme-TEJ-shemas-xsd	-	dir	TEJDeclarationRS_v1.0.xsd	TEJISOPaysDevises.xsd:1580
+facturx	FACTURX_XSD_DIR	git	https://github.com/akretion/factur-x	8a90b84f67b0eff6a3a8f41317c18451468fe2b9	src/facturx/xsd_and_schematron/facturx-en16931	5faeeb871f7506fb05e224ed501cb46fe1438b3f	dir	Factur-X_EN16931.xsd	-
+cen-cii	EN16931_CII_XSD	git	https://github.com/ConnectingEurope/eInvoicing-EN16931	6e35e0ab8b09eb183f7d84b282e24ef95f9f5715	cii/schema/D16B SCRDM (Subset)/coupled clm/CII	8f1a51c1f28421601d404f0158a3bef778fef9f4	file	uncefact/data/standard/CrossIndustryInvoice_100pD16B.xsd	-

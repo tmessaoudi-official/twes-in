@@ -40,6 +40,10 @@ BUILD_ENV = $(shell bash scripts/build-version.sh --env)
 # A worker count handed in (`make test-api PARATEST_PROCESSES=4`) reaches the suite that reads it (api/tests/parallel.php).
 TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T $(if $(PARATEST_PROCESSES),-e PARATEST_PROCESSES=$(PARATEST_PROCESSES)) tools
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
+# Runs a command with the published fiscal schemas fetched anew into the toolchain's temporary directory, outside the
+# tree, and named by the variables their tests read (scripts/fiscal/fetch-xsd.sh): a source that does not answer is
+# said as not run, a schema changed at its source stops the run. Inside the tools container, where TOOLS_TMP is mounted.
+WITH_FISCAL_XSD := bash scripts/fiscal/fetch-xsd.sh $(TOOLS_TMP)/fiscal-xsd --
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
 .PHONY: stress playwright-browser tools web-tools php-lint up up-images live-refresh down reset backup-drill deploy-check monitor-check staging-check onprem-check update-rehearsal release-tag point-master logs migrate seed fixtures operator-code versions scale-data api-openapi api-types check mutants gate gate-snapshot commit-gated gate-api gate-web gate-web-checks gate-api-static gate-api-tests gate-web-static gate-web-tests gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image ps-tools-tag ps-tools-image gate-powershell in-gate-licences in-gate-api in-gate-api-static in-test-api in-api-openapi in-versions in-notices
@@ -301,6 +305,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/deploy.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/reset-guard.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/fiscal/tests/fetch-xsd.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/wsl-engine.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow-interval.test.sh
@@ -393,7 +398,7 @@ gate-api: tools-image
 in-gate-api:
 	mkdir -p api/vendor api/var var/tmp var/cache
 	cd api && composer install --no-interaction --no-progress --prefer-dist
-	cd api && composer gate
+	$(WITH_FISCAL_XSD) sh -c 'cd api && composer gate'
 
 gate-web: api-openapi web-tools-image   ## npm run gate starts with api:types, which reads api/var/openapi.json
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate'
@@ -408,7 +413,7 @@ in-gate-api-static:
 	cd api && composer gate:static
 gate-api-tests: tools-image
 	docker compose up -d --wait --no-recreate postgres
-	$(TOOLS) sh -c 'cd api && composer test'
+	$(TOOLS) $(WITH_FISCAL_XSD) sh -c 'cd api && composer test'
 gate-web-static: web-tools-image
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate:static'
 gate-web-tests: web-tools-image
@@ -424,7 +429,7 @@ test-api: tools-image
 	docker compose up -d --wait --no-recreate postgres
 	$(TOOLS) make --no-print-directory in-test-api
 in-test-api:   # composer test: the test database migrated, then the suite on paratest, a database copy a worker (api/tests/parallel.php)
-	cd api && composer test
+	$(WITH_FISCAL_XSD) sh -c 'cd api && composer test'
 
 test-web: web-tools-image
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx ng test --watch=false'

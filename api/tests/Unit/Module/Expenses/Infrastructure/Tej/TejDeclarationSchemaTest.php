@@ -83,9 +83,11 @@ final class TejDeclarationSchemaTest extends TestCase
     private function schemaDirectory(): string
     {
         $directory = (string) getenv('TEJ_XSD_DIR');
-        if ('' === $directory || !is_file($directory.'/TEJDeclarationRS_v1.0.xsd')) {
-            self::markTestSkipped('TEJ_XSD_DIR names no directory holding TEJDeclarationRS_v1.0.xsd and the two files it includes (TEJISOPaysDevises.xsd patched at line 1580); the schema is not in the tree.');
+        if ('' === $directory) {
+            self::markTestSkipped('TEJ_XSD_DIR is not set: the schema is not in the tree (scripts/fiscal/fetch-xsd.sh fetches it, and says « not run » when its source does not answer).');
         }
+        // A directory named without the schema is a broken fetch, which must fail rather than pass unseen as a skip.
+        self::assertFileExists($directory.'/TEJDeclarationRS_v1.0.xsd');
 
         return $directory;
     }

@@ -274,6 +274,8 @@ services:
       # the pinned signature, and lists a cloud branch's commits as pending land.sh's re-signing.
       GITHUB_REF_NAME: "${GITHUB_REF_NAME:-}"
       CLAUDE_CODE_REMOTE: "${CLAUDE_CODE_REMOTE:-}"
+      # On GitHub, a fiscal schema whose source did not answer is a warning on the run's page (scripts/fiscal/fetch-xsd.sh).
+      GITHUB_ACTIONS: "${GITHUB_ACTIONS:-}"
       HOST_REPO: "${HOST_REPO:-${PWD}}"
       HOST_UID: "${HOST_UID:-1000}"
       HOST_GID: "${HOST_GID:-1000}"
