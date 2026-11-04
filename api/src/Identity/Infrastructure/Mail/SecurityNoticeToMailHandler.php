@@ -23,6 +23,7 @@ final readonly class SecurityNoticeToMailHandler
 
     public function __invoke(SecurityNoticeToMail $message): void
     {
+        // day-parse: an ATOM moment MessengerSecurityNotices wrote itself with format(), never one a person typed
         $until = null === $message->until ? null : \DateTimeImmutable::createFromFormat(\DATE_ATOM, $message->until);
         $this->mail->handle(Uuid::fromString($message->userId), SecurityChange::from($message->change), $message->passkeyName, false === $until ? null : $until);
     }

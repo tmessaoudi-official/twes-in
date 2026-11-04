@@ -256,6 +256,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/row-defaults.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/database-clock.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/app-clock.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/day-parsing.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/coming-gated.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/live-reload.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/flow-outcomes-forgotten.test.sh
@@ -349,6 +350,7 @@ in-gate-licences:
 	bash scripts/gates/row-defaults.sh
 	bash scripts/gates/database-clock.sh
 	bash scripts/gates/app-clock.sh
+	bash scripts/gates/day-parsing.sh
 	bash scripts/gates/coming-gated.sh
 	bash scripts/gates/live-reload.sh
 	bash scripts/gates/flow-outcomes-forgotten.sh

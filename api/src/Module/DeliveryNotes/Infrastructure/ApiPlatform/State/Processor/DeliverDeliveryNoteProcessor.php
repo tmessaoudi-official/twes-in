@@ -35,6 +35,7 @@ final readonly class DeliverDeliveryNoteProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): DeliveryNoteResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::WRITE);
+        // day-parse: Assert\DateTime(format: LOCAL_MOMENT) on the field has refused a day or time the calendar lacks
         $delivered = null === $data->delivered ? null : \DateTimeImmutable::createFromFormat('!'.DeliveryNoteResource::LOCAL_MOMENT, $data->delivered, new \DateTimeZone($company->getTimezone()));
         if (false === $delivered) {
             throw new UnprocessableEntityHttpException('delivered: not a day and a time.');
