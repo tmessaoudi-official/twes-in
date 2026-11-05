@@ -93,8 +93,8 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
 | 6 | axe 4.14's Label in Name on master | S | done | efe7c9783 | web/src/** web/e2e/** web/public/i18n/** |
 | 5 | GitHub Actions | S | done | - | .github/workflows/** |
 | 7 | Outcome files written whole (CI red) | S | done | 9cbac74fc | infra/postgres/backup/twes-backup scripts/tests/backup-heartbeat.test.sh |
-| 8 | PHP packages, round 2 | M | doing | - | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
-| 9 | npm packages, round 2 | M | todo | - | web/package.json web/package-lock.json THIRD-PARTY-NOTICES.md |
+| 8 | PHP packages, round 2 | M | done | 388c23770 | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
+| 9 | npm packages, round 2 | M | doing | - | web/package.json web/package-lock.json THIRD-PARTY-NOTICES.md |
 | 10 | Trivy 0.76.1 | S | todo | - | scripts/security/image-scan.sh |
 | 11 | Image patches | M | todo | - | compose*.yaml infra/** |
 | 12 | Image minors | M | todo | - | compose.yaml infra/** scripts/backup/** |
@@ -103,6 +103,9 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
+- npm 11.20 warns that five packages run install scripts not covered by `allowScripts` (@parcel/watcher, esbuild, lmdb,
+  msgpackr-extract, protobufjs; they still run, 2026-11-05). Approving them is a supply-chain choice, for the developer,
+  before an npm release makes the list required.
 ### Needs research
 ### Fragile
 ### Known issues
