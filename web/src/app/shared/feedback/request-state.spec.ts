@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { effect } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { refusedFor } from '../errors/said-already';
 import type { FieldRefusal } from '../form/field-refusals';
@@ -178,6 +179,26 @@ describe('requestState', () => {
     expect(state.readFailed()).toBe(true);
     state.clearError();
     expect(state.readFailed()).toBe(false);
+  });
+
+  it('lets an effect start a read without hanging on whether a write was refused, so a refusal is never read away', async () => {
+    let reads = 0;
+    TestBed.runInInjectionContext(() =>
+      effect(() => {
+        reads++;
+        void quiet.quietly(() => state.read(async () => undefined));
+      }),
+    );
+    TestBed.tick();
+    await Promise.resolve();
+    expect(reads).toBe(1);
+
+    await state.write(() => Promise.reject(new Refused('not_found')));
+    TestBed.tick();
+    await Promise.resolve();
+
+    expect(reads).toBe(1);
+    expect(state.error()).toBe('not_found');
   });
 
   it('keeps a refusal a screen caught itself as a write’s, and says none an interceptor said', async () => {
