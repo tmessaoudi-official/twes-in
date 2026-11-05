@@ -177,7 +177,8 @@
       },
       "numbering_series": {
         "revised": "a modifié la numérotation",
-        "earlier_day_allowed": "a permis une date antérieure à la dernière numérotée"
+        "earlier_day_allowed": "a permis une date antérieure à la dernière numérotée",
+        "earlier_day_ended": "a mis fin à la date antérieure permise"
       },
       "tax_component": {
         "created": "a créé la taxe",

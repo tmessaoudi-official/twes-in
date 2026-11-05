@@ -177,7 +177,8 @@
       },
       "numbering_series": {
         "revised": "عدّل الترقيم",
-        "earlier_day_allowed": "سمح بتاريخ سابق لآخر تاريخ مرقَّم"
+        "earlier_day_allowed": "سمح بتاريخ سابق لآخر تاريخ مرقَّم",
+        "earlier_day_ended": "أنهى السماح بتاريخ سابق"
       },
       "tax_component": {
         "created": "أنشأ الأداء",

@@ -189,6 +189,7 @@ export const ACTIVITY_ACTIONS: readonly string[] = [
   'establishment.revised',
   'numbering_series.revised',
   'numbering_series.earlier_day_allowed',
+  'numbering_series.earlier_day_ended',
   'tax_component.created',
   'tax_component.revised',
   'unit.created',

@@ -228,6 +228,29 @@ final class NumberingSeriesTest extends TestCase
         self::series()->allowEarlierDays($now, $now);
     }
 
+    /** An allowance given too long, or to the wrong company, ends early: an earlier day is refused again at once. */
+    public function testAnAllowanceEndedEarlyRefusesAnEarlierDayAgainAndSaysWhetherOneWasInForce(): void
+    {
+        $now = new \DateTimeImmutable('2026-11-05 10:00');
+        $series = self::series();
+        // Later in the same month: the allowance lifts the day refused, never a period the sequence starts again in.
+        $series->allocate(new \DateTimeImmutable('2026-11-20'), $now);
+        $series->allowEarlierDays($now->modify('+72 hours'), $now);
+
+        self::assertTrue($series->endEarlierDays($now->modify('+1 hour')));
+        self::assertFalse($series->endEarlierDays($now->modify('+1 hour')), 'none in force any more');
+        $lapsed = self::series();
+        $lapsed->allowEarlierDays($now->modify('+1 hour'), $now);
+        self::assertFalse($lapsed->endEarlierDays($now->modify('+2 hours')), 'one that ran out by itself is not ended');
+
+        try {
+            $series->allocate(new \DateTimeImmutable('2026-11-05'), $now->modify('+2 hours'));
+            self::fail('The allowance outlived its end.');
+        } catch (InvalidNumbering $refused) {
+            self::assertSame('before_last_day', $refused->reason);
+        }
+    }
+
     public function testOnceADocumentCarriesANumberTheSequenceIsFrozenButItsFormatIsNot(): void
     {
         $series = self::series();

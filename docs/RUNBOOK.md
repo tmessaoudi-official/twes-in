@@ -378,9 +378,12 @@ again there (`before_last_period`). Nothing is lost; nothing new is numbered unt
    said there and alerted). Allowing earlier days on a clock still wrong moves the problem, it does not end it.
 2. Find the company: `docker compose … exec -T api bin/console app:numbering:allow-earlier-days --help`, and its id in
    « Plateforme › Entreprises » (the address of its page).
-3. `docker compose … exec -T api bin/console app:numbering:allow-earlier-days <company id> <hours>`: every series the
-   company numbers with takes a day before its last number's until then (at most
-   `app.numbering.earlier_days_hours_max`, 72), one line per series in its trail. It answers the moment it ends.
+3. `docker compose … exec -T api bin/console app:numbering:allow-earlier-days <company id> <hours> --reason='<why>'`:
+   every series the company numbers with takes a day before its last number's until then (at most
+   `app.numbering.earlier_days_hours_max`, 72), one line per series in its trail, with the reason and what the server's
+   clock read. It answers the moment it ends. Given to the wrong company, or no longer needed:
+   `docker compose … exec -T api bin/console app:numbering:allow-earlier-days <company id> --end --reason='<why>'` ends
+   it at once, said in the trail too.
 4. The documents numbered meanwhile keep their numbers in order, dated as issued: an invoice numbered after one dated
    on a day still to come carries an earlier date than it. Tell the company's accountant which numbers and days, from
    the invoices list sorted by number.

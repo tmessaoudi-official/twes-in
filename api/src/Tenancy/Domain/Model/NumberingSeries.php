@@ -192,6 +192,23 @@ class NumberingSeries implements CompanyOwned
     }
 
     /**
+     * Ends at once an allowance still in force, given too long or to the wrong company: an earlier day is refused again.
+     * One that ran out by itself, or none, is left as it is.
+     *
+     * @return bool whether one was in force
+     */
+    public function endEarlierDays(\DateTimeImmutable $now): bool
+    {
+        if (null === $this->earlierDayAllowedUntil || $now >= $this->earlierDayAllowedUntil) {
+            return false;
+        }
+        $this->earlierDayAllowedUntil = null;
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    /**
      * Where the sequence stands for a document issued on that day: at one again on the first number of a later year
      * (yearly) or month (monthly). The day is the company's today, read from the clock, so a day before the last number's
      * is a clock set back: within the month it would date a document before the one numbered just before it, and in an

@@ -177,7 +177,8 @@
       },
       "numbering_series": {
         "revised": "changed the numbering",
-        "earlier_day_allowed": "allowed a day before the last one numbered"
+        "earlier_day_allowed": "allowed a day before the last one numbered",
+        "earlier_day_ended": "ended the earlier day allowed"
       },
       "tax_component": {
         "created": "created the tax",
