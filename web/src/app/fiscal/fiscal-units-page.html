@@ -64,6 +64,7 @@
     [rows]="units()"
     [loading]="fiscal.busy()"
     [failed]="fiscal.error() !== null"
+    (retry)="readAgain()"
     testId="units-table"
     [rowTestId]="rowTestId"
     [empty]="emptyState()"

@@ -93,6 +93,13 @@ export class CustomerPage {
   protected readonly error = this.facade.error;
   protected readonly contacts = this.facade.contacts;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+
+  /** « Réessayer » on the contacts that could not be read. */
+  protected readContactsAgain(): void {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (companyId && id !== null) void this.facade.loadContacts(companyId, id);
+  }
   /** What the list says before it holds anything, offering the page's own create action where it is offered. */
   protected readonly contactEmpty = computed<EmptyState>(() => ({
     icon: 'contacts',

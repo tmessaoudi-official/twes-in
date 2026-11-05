@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltip } from '@angular/material/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
+import { RoleKeyPipe } from '../shared/i18n/role-key';
 import { NotificationsFacade } from '../notifications/notifications-facade';
 import { Label } from '../shared/a11y/label';
 import { countryName } from '../shared/i18n/country-names';
@@ -29,6 +30,7 @@ import { typedText } from '../shared/form/typed-text';
     MatMenuModule,
     MatTooltip,
     TranslatePipe,
+    RoleKeyPipe,
   ],
   templateUrl: './company-switcher.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

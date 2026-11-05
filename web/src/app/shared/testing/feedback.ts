@@ -91,6 +91,13 @@ export function failureToasts(): string[] {
     .map((toast) => toast.key);
 }
 
+/** The failures a spec's page has said so far, as `key` and its parameters, in order (needs `provideQuietFeedback()`). */
+export function failuresSaid(): { key: string; params?: Record<string, unknown> }[] {
+  return (TestBed.inject(Feedback) as RecordedFeedback).said
+    .filter((toast) => toast.kind === 'failure')
+    .map(({ key, params }) => (params === undefined ? { key } : { key, params }));
+}
+
 /** The consequential actions a spec's page has reported, as `key:kind` (needs `provideQuietFeedback()`). */
 export function effectToasts(): string[] {
   return (TestBed.inject(Feedback) as RecordedFeedback).said

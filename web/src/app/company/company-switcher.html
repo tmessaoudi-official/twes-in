@@ -81,7 +81,7 @@
             <span class="twes-company-option-name">
               <bdi>{{ company.name }}</bdi>
               &ngsp;<span class="text-on-surface-variant"
-                >— {{ 'roles.' + company.role | translate }}</span
+                >— {{ company.role | roleKey | translate }}</span
               >
             </span>
             <app-count-badge
@@ -146,7 +146,7 @@
           <span class="twes-company-option">
             <span class="twes-company-option-name">
               <bdi>{{ company.name }}</bdi>
-              &ngsp;<span class="opacity-60">— {{ 'roles.' + company.role | translate }}</span>
+              &ngsp;<span class="opacity-60">— {{ company.role | roleKey | translate }}</span>
             </span>
             <app-count-badge
               class="twes-company-option-count"

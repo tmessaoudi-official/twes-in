@@ -16,7 +16,7 @@
       "role_gone": "The role this invitation was sent for no longer exists in the company. Ask for a new invitation.",
       "invalid": "Invalid request.",
       "network": "The server could not be reached.",
-      "too_many": "Too many attempts with this link: try again in a few minutes."
+      "too_many": "Too many attempts with this link. {{retry}}"
     },
     "journal": "What you do at {{company}} is written in its activity journal, kept twelve months by default and read by those whose role allows it. See",
     "back_to_login": "Back to sign in"

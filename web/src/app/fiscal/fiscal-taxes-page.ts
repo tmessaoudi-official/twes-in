@@ -84,6 +84,12 @@ export class FiscalTaxesPage implements OnInit {
   protected readonly busy = this.fiscal.busy;
   protected readonly error = this.fiscal.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+
+  /** « Réessayer » on either list that could not be read: the taxes and the regimes are read together. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.fiscal.loadTaxes(companyId);
+  }
   /** What the list says before it holds anything. */
   protected readonly regimeEmpty: EmptyState = { icon: 'gavel', title: 'fiscal.regimes.none' };
   /** What the list says before it holds anything, offering the page's own create action where it is offered. */

@@ -4,7 +4,7 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { FormatFacade } from '../i18n/format-facade';
-import { noticeToasts, provideQuietFeedback } from '../testing/feedback';
+import { failuresSaid, noticeToasts, provideQuietFeedback } from '../testing/feedback';
 import { isNumberingRefused, numberingRefusedInterceptor } from './numbering-refused-interceptor';
 import { saidAlready } from './said-already';
 
@@ -64,8 +64,10 @@ describe('numberingRefusedInterceptor', () => {
       const failure = issueAnswered(refusal(reason, params));
       await Promise.resolve();
 
-      const toasts = noticeToasts();
+      // A refusal of the pressed action stays until closed: the screen says nothing of its own (`saidAlready`).
+      const toasts = failuresSaid();
       expect(toasts.map((toast) => toast.key)).toEqual([key]);
+      expect(noticeToasts()).toEqual([]);
       expect(toasts[0]?.params?.['today']).toBe(`day ${params.today}`);
       expect(isNumberingRefused(failure)).toBe(true);
       expect(saidAlready(failure)).toBe(true);
@@ -78,6 +80,7 @@ describe('numberingRefusedInterceptor', () => {
     await Promise.resolve();
 
     expect(noticeToasts()).toEqual([]);
+    expect(failuresSaid()).toEqual([]);
     expect(isNumberingRefused(other)).toBe(false);
     expect(saidAlready(unrelated)).toBe(false);
   });

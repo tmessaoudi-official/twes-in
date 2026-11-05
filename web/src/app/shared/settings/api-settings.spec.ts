@@ -194,6 +194,20 @@ describe('ApiSettings', () => {
     expect(scheme()).toBe('dark');
   });
 
+  it('reads the chain again when an operator moves a platform setting, said to every screen', async () => {
+    api.chain.mockResolvedValue([row('presentation.scheme', 'light', at('user', 'light'))]);
+    settings();
+    await settle();
+
+    const listener = heard.find((entry) => entry.kinds.includes('platform_setting'));
+    listener?.handler([
+      { kind: 'platform_setting', id: null, action: 'platform_setting.changed', actor: null },
+    ]);
+    await settle();
+
+    expect(api.chain).toHaveBeenCalledTimes(2);
+  });
+
   it('does not lose a choice made while the chain is still loading', async () => {
     const answer = deferred<SettingRow[]>();
     api.chain.mockReturnValue(answer.promise);

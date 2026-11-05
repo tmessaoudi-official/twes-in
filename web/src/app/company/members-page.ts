@@ -19,6 +19,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialog } from '@angular/material/dialog';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { RoleKeyPipe } from '../shared/i18n/role-key';
 import { firstValueFrom } from 'rxjs';
 import { Select } from '../shared/form/select';
 import { unsavedChanges } from '../shared/form/dirty-count';
@@ -111,6 +112,7 @@ export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow
     Select,
     MatButtonModule,
     TranslatePipe,
+    RoleKeyPipe,
     DataList,
     DataListCell,
     CapitalizePipe,
@@ -246,6 +248,12 @@ export class MembersPage implements OnInit {
   protected readonly busy = this.members.busy;
   protected readonly error = this.members.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+
+  /** « Réessayer » on the list that could not be read: read as on opening, the activity bar showing it. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.members.load(companyId);
+  }
   /** What the list says before it holds anything. */
   protected readonly emptyState: EmptyState = { icon: 'group', title: 'members.none' };
   protected readonly mayManage = computed(() => this.auth.hasPermission('user.write'));

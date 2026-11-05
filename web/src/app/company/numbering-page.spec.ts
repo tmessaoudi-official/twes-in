@@ -25,6 +25,7 @@ import { EstablishmentsFacade } from './establishments-facade';
 import { NumberingPage } from './numbering-page';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
@@ -259,4 +260,15 @@ describe('NumberingPage', () => {
       2,
     );
   });
+
+  it.each(['numbering_series', 'invoice', 'delivery_note', 'quote', 'purchase_order'])(
+    'reads the series again when a %s takes a number elsewhere',
+    async (kind) => {
+      facade.loadSeries.mockClear();
+
+      await announceSaved(kind, 'x1');
+
+      expect(facade.loadSeries).toHaveBeenCalledWith('c1');
+    },
+  );
 });

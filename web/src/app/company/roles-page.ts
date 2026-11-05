@@ -18,6 +18,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { RoleKeyPipe } from '../shared/i18n/role-key';
 import { AuthFacade } from '../auth/auth-facade';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
@@ -72,6 +73,7 @@ const ROLE_NAME_MAX = 64;
     RecordChanged,
     RefusedField,
     TranslatePipe,
+    RoleKeyPipe,
   ],
   templateUrl: './roles-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -94,6 +94,7 @@
     [rows]="establishments()"
     [loading]="facade.busy()"
     [failed]="facade.error() !== null"
+    (retry)="readAgain()"
     testId="establishments-table"
     [rowTestId]="rowTestId"
     [empty]="emptyState()"

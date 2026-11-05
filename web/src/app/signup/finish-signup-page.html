@@ -141,7 +141,7 @@
 
       @if (error(); as code) {
         <p role="alert" class="twes-auth-error" data-testid="signup-finish-error">
-          {{ 'signup.finish.errors.' + code | translate }}
+          {{ 'signup.finish.errors.' + code | translate: { retry: budget.retry() } }}
         </p>
       }
 
@@ -157,7 +157,9 @@
     </form>
   } @else if (!busy()) {
     <p role="alert" data-testid="signup-link-error">
-      {{ 'signup.finish.errors.' + (error() ?? 'not_usable') | translate }}
+      {{
+        'signup.finish.errors.' + (error() ?? 'not_usable') | translate: { retry: budget.retry() }
+      }}
     </p>
   }
   <!-- Done, the card's own button leads to the sign-in; until then this does. -->

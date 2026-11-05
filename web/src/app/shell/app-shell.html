@@ -212,7 +212,7 @@
               ('shell.user_menu' | translate) +
               ' — ' +
               me.user.displayName +
-              (me.company ? ', ' + ('roles.' + me.company.role | translate) : '')
+              (me.company ? ', ' + (me.company.role | roleKey | translate) : '')
             "
             [matTooltip]="me.user.displayName"
             matTooltipPosition="right"
@@ -232,7 +232,7 @@
                   <!-- A space between the two lines, which Angular would otherwise drop: without it the name and
                        role read as one word, to axe and to a screen reader alike. -->
                   &ngsp;<span class="twes-rail-member-role truncate">{{
-                    'roles.' + company.role | translate
+                    company.role | roleKey | translate
                   }}</span>
                 }
               </span>

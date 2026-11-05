@@ -378,6 +378,11 @@ export class DataList<Row> implements OnInit {
   readonly activeRowId = input<string | null>(null);
   /** What a list the API pages wants shown: emitted on opening and on every change a person makes. */
   readonly queryChange = output<ListQuery>();
+  /**
+   * « Réessayer » pressed on a list that could not be read: the screen reads it again by the way it reads it on a live
+   * change. A list the API pages also asks its page again through `queryChange`.
+   */
+  readonly retry = output<void>();
   /** The rows a person selected, by id: rows are read again on every live change, ids stay the same. */
   readonly selected = model<readonly string[]>([]);
 
@@ -941,13 +946,7 @@ export class DataList<Row> implements OnInit {
     });
     effect(() => {
       if (!this.byApi()) return;
-      const query: ListQuery = {
-        query: this.searched(),
-        filters: this.chosenFilters(),
-        sort: this.sort(),
-        pageIndex: this.pageIndex(),
-        pageSize: this.pageSize(),
-      };
+      const query = this.wanted();
       untracked(() => this.ask(query));
     });
     effect(() => {
@@ -1009,6 +1008,24 @@ export class DataList<Row> implements OnInit {
     if (descriptor.pageSizes.includes(size)) this.pageSize.set(size);
     const page = Number(params.get('page'));
     if (Number.isInteger(page) && page > 1) this.pageIndex.set(page - 1);
+  }
+
+  /** The page a person's choices ask for. */
+  private readonly wanted = computed<ListQuery>(() => ({
+    query: this.searched(),
+    filters: this.chosenFilters(),
+    sort: this.sort(),
+    pageIndex: this.pageIndex(),
+    pageSize: this.pageSize(),
+  }));
+
+  /** Reads a list that failed again: the same page, asked once more though it was asked already. */
+  protected tryAgain(): void {
+    if (this.byApi()) {
+      this.lastQuery = null;
+      this.ask(this.wanted());
+    }
+    this.retry.emit();
   }
 
   /**

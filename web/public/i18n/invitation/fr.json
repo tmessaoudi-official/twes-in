@@ -16,7 +16,7 @@
       "role_gone": "Le rôle de cette invitation n’existe plus dans l’entreprise. Demandez une nouvelle invitation.",
       "invalid": "Demande invalide.",
       "network": "Impossible de joindre le serveur.",
-      "too_many": "Trop de tentatives avec ce lien : réessayez dans quelques minutes."
+      "too_many": "Trop de tentatives avec ce lien. {{retry}}"
     },
     "journal": "Ce que vous ferez chez {{company}} sera inscrit dans son journal d’activité, conservé douze mois par défaut et lu par ceux que leur rôle autorise. Voir",
     "back_to_login": "Retour à la connexion"

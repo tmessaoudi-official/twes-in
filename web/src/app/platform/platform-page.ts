@@ -828,7 +828,10 @@ export class PlatformPage implements OnInit {
     }
   }
 
-  /** An invitation sent to a mistyped address is taken back before that address can join; the undo sends it again. */
+  /**
+   * An invitation sent to a mistyped address is taken back before that address can join. Sending it again makes a new
+   * one, with a new link and a new expiry, so it is offered as « Inviter de nouveau », never as an undo, and says it.
+   */
   protected async withdrawOwner(
     company: { readonly id: string },
     invitation: { readonly id: string; readonly email: string },
@@ -839,10 +842,16 @@ export class PlatformPage implements OnInit {
         { email: invitation.email },
         'corrigeable',
         {
-          key: 'platform.companies.undo',
-          run: () => void this.platform.inviteOwner(company.id, invitation.email),
+          key: 'platform.companies.invite_again',
+          run: () => void this.inviteAgain(company.id, invitation.email),
         },
       );
+    }
+  }
+
+  private async inviteAgain(companyId: string, email: string): Promise<void> {
+    if (await this.platform.inviteOwner(companyId, email)) {
+      this.feedback.success('platform.companies.invited', { email });
     }
   }
 

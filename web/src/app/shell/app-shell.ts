@@ -28,6 +28,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { RoleKeyPipe } from '../shared/i18n/role-key';
 import { filter, map } from 'rxjs';
 import { SETTINGS_INDEX } from './settings-area';
 import { ErasureBanner } from '../data-erasure/erasure-banner';
@@ -165,6 +166,7 @@ const TOP_BAR_HEIGHT = '--twes-top-bar-height';
     MatDividerModule,
     MatTooltipModule,
     TranslatePipe,
+    RoleKeyPipe,
     CompanySwitcher,
     NotificationBell,
     Label,

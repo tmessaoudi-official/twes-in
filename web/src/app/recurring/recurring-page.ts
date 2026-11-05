@@ -64,6 +64,12 @@ export class RecurringPage implements OnInit {
   protected readonly error = this.requests.error;
   protected readonly busy = signal(false);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+
+  /** « Réessayer » on the list that could not be read: read as on opening, the activity bar showing it. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.refresh(companyId);
+  }
   /** What the list says before it holds anything. */
   protected readonly emptyState: EmptyState = { icon: 'event_repeat', title: 'recurring.none' };
   protected readonly mayWrite = computed(() => this.auth.hasPermission('invoice.write'));

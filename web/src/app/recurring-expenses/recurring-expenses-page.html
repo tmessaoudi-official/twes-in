@@ -21,6 +21,7 @@
       [rows]="rows()"
       [loading]="loading()"
       [failed]="error() !== null"
+      (retry)="readListAgain()"
       testId="recurring-expenses-table"
       [rowTestId]="rowTestId"
       [empty]="emptyState"

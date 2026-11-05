@@ -96,6 +96,7 @@ const descriptor: ListDescriptor<Customer> = {
       [rows]="rows()"
       [loading]="loading()"
       [failed]="failed()"
+      (retry)="retries.push(1)"
       testId="customers-table"
       [rowTestId]="rowTestId"
       [empty]="empty()"
@@ -119,6 +120,7 @@ class Host {
   readonly rows = signal<Customer[]>(all);
   readonly loading = signal(false);
   readonly failed = signal(false);
+  readonly retries: number[] = [];
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
 }
 
@@ -133,7 +135,7 @@ class Host {
       [total]="total()"
       [facetCounts]="facetCounts()"
       [loading]="false"
-      [failed]="false"
+      [failed]="failed()"
       (queryChange)="queries.push($event)"
       testId="customers-table"
       [rowTestId]="rowTestId"
@@ -148,6 +150,7 @@ class ServerHost {
   readonly rows = signal<Customer[]>([...all].reverse().slice(0, 10));
   readonly total = signal(30);
   readonly facetCounts = signal<ListFacetCounts | null>(null);
+  readonly failed = signal(false);
   readonly queries: ListQuery[] = [];
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
 }
@@ -599,6 +602,25 @@ describe('DataList', () => {
 
     expect(q('list-failed')?.textContent?.trim()).toBe('The list could not be loaded.');
     expect(q('customers-empty')).toBeNull();
+  });
+
+  // A list that could not be read offers to read it again where it says so, as the home panels do, rather than sending
+  // the person to reload the whole page (conf-44).
+  it('offers to read a list that failed again, and shows its rows once they come', async () => {
+    fixture.componentInstance.rows.set([]);
+    fixture.componentInstance.failed.set(true);
+    await settle();
+
+    expect(q('list-failed-state')?.getAttribute('role')).toBe('alert');
+    q('list-retry')!.click();
+    await settle();
+    expect(fixture.componentInstance.retries).toHaveLength(1);
+
+    fixture.componentInstance.failed.set(false);
+    fixture.componentInstance.rows.set(all);
+    await settle();
+    expect(q('list-retry')).toBeNull();
+    expect(rowIds()).toHaveLength(10);
   });
 
   it('keeps the rows it shows while it reads them again', async () => {
@@ -1104,6 +1126,20 @@ describe('DataList', () => {
       await settleServer();
 
       expect((await facetReads()).options).toEqual(['All 30', 'Active 21', 'Archived']);
+    });
+
+    it('asks for the same page again when a person tries a list that failed again', async () => {
+      // A list that could not be read has no rows to show: the failure stands in their place.
+      server.componentInstance.rows.set([]);
+      server.componentInstance.failed.set(true);
+      await settleServer();
+      const before = queries().length;
+
+      q('list-retry')!.click();
+      await settleServer();
+
+      expect(queries()).toHaveLength(before + 1);
+      expect(queries().at(-1)).toEqual(queries().at(-2));
     });
 
     it('asks nothing again for what it already asked, such as an option picked twice', async () => {

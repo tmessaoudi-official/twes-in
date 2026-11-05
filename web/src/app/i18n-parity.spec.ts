@@ -440,6 +440,24 @@ describe('translation files', () => {
     }
   });
 
+  // A spent budget's refusal ends on when to come back (`SpentBudget.retry`: the hour, its day, or « plus tard »): the
+  // reset, sign-up, invitation and mail-stop texts said « dans un moment » while the API gave the hour (conf-28).
+  it('says when to try again in every text of a spent budget', () => {
+    let read = 0;
+    for (const lang of WRITTEN) {
+      const texts = load(lang);
+      for (const key of keysOf(texts).filter((key) => /\.too_many(_attempts)?$/.test(key))) {
+        const value = key
+          .split('.')
+          .reduce<unknown>((at, part) => (at as Record<string, unknown>)[part], texts);
+        expect(value, `${lang}: ${key}`).toMatch(/\{\{retry\}\}$/);
+        read++;
+      }
+    }
+    // Seven texts (sign-in, step-up, reset, two sign-up steps, invitation, mail stop) in each language written.
+    expect(read).toBeGreaterThanOrEqual(7 * WRITTEN.length);
+  });
+
   // docs/SPEC.md § 7, 2026-09-19: the stored status is `paid` whether payments, credit notes or both brought the amount
   // due to zero, so it reads as settled: a fully credited invoice reading "Payée" said the customer paid what they did not.
   // docs/SPEC.md § 7, 2026-09-19 21:55: a decimal field takes a comma or a point, so no message may ask for a point.

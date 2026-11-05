@@ -1,5 +1,7 @@
 {
   "spent_budget": {
-    "retry_at": "Try again at {{time}}."
+    "retry_at": "Try again at {{time}}.",
+    "retry_on": "Try again on {{day}} at {{time}}.",
+    "retry_later": "Try again later."
   }
 }

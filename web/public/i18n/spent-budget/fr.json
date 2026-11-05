@@ -1,5 +1,7 @@
 {
   "spent_budget": {
-    "retry_at": "Réessayez à {{time}}."
+    "retry_at": "Réessayez à {{time}}.",
+    "retry_on": "Réessayez le {{day}} à {{time}}.",
+    "retry_later": "Réessayez plus tard."
   }
 }

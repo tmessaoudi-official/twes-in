@@ -11,6 +11,7 @@ import { SignedOutLayout } from '../auth/signed-out-layout';
 import { PasswordResetFacade } from './password-reset-facade';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { heldToPasswordRule } from '../shared/password/password-rule';
+import { SpentBudget } from '../shared/errors/spent-budget';
 
 /**
  * The page a reset link opens, logged out: the new password, twice. Two entries that differ never reach the API, since a
@@ -35,6 +36,8 @@ export class ResetPasswordPage {
   /** Bound from the route parameter by withComponentInputBinding(). */
   readonly token = input('');
 
+  /** When a spent budget may be tried again, for a refusal's `retry`. */
+  protected readonly budget = inject(SpentBudget);
   private readonly reset = inject(PasswordResetFacade);
 
   constructor() {

@@ -54,7 +54,7 @@
       "owner_invitation_expired": "انتهت صلاحية دعوة المالك المرسلة إلى {{email}} في {{day}}: أعد الدعوة.",
       "withdraw_owner": "سحب",
       "owner_withdrawn": "سُحبت دعوة المالك المرسلة إلى {{email}}. رابطها لم يعد يعمل.",
-      "undo": "تراجع",
+      "invite_again": "دعوة من جديد",
       "actions": {
         "label": "إجراءات على الشركة",
         "approve": "موافقة",

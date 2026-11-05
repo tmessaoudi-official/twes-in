@@ -74,6 +74,12 @@ export class NumberingPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+
+  /** « Réessayer » on the list that could not be read: read as on opening, the activity bar showing it. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.facade.loadSeries(companyId);
+  }
   /** What the list says before it holds anything. */
   protected readonly emptyState: EmptyState = {
     icon: 'format_list_numbered',
@@ -140,8 +146,9 @@ export class NumberingPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
+      // Every document that takes a number from a series moves it.
       this.live.reloadOn(
-        ['numbering_series', 'invoice', 'delivery_note'],
+        ['numbering_series', 'invoice', 'delivery_note', 'quote', 'purchase_order'],
         () => this.facade.loadSeries(companyId),
         this.destroyRef,
       );

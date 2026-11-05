@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { type StopMailError, StopMailApi, StopMailRefused } from './stop-mail-api';
+import { SpentBudget } from '../shared/errors/spent-budget';
 
 /**
  * The page a notification mail's stop link opens, signed out. Opening it changes nothing, since mail clients and link
@@ -22,6 +23,8 @@ export class StopMailPage {
   /** Bound from the route parameter by withComponentInputBinding(). */
   readonly token = input('');
 
+  /** When a spent budget may be tried again, for a refusal's `retry`. */
+  protected readonly budget = inject(SpentBudget);
   private readonly api = inject(StopMailApi);
 
   protected readonly busy = signal(false);

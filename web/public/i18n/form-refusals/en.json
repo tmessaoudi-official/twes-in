@@ -114,8 +114,8 @@
       "stock_short": "{{name}}: {{wanted}} {{unit}} needed, the stock recorded holds {{on_hand}} {{unit}}. Count the stock or receive the goods first.",
       "stock_short_to_confirm": "{{name}}: {{wanted}} {{unit}} needed, the stock recorded holds {{on_hand}} {{unit}}. Confirm the sale to go on.",
       "after_now": "This moment has already passed: choose an end still to come.",
-      "before_last_day": "The last number was given on {{last}}, and this computer’s clock reads {{today}}: the document would be dated before the previous one. Check the computer’s date and time, then try again.",
-      "before_last_period": "The last number was given on {{last}}, and this computer’s clock reads {{today}}: nothing is numbered before the last numbered month. Check the computer’s date and time, then try again."
+      "before_last_day": "The last number was given on {{last}}, and the clock of the computer the application is installed on reads {{today}}: the document would be dated before the previous one. Correct its date and time, or tell the person who looks after that computer, then try again.",
+      "before_last_period": "The last number was given on {{last}}, and the clock of the computer the application is installed on reads {{today}}: nothing is numbered before the last numbered month. Correct its date and time, or tell the person who looks after that computer, then try again."
     }
   }
 }

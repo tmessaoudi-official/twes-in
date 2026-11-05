@@ -15,6 +15,7 @@ import { SignedOutLayout } from '../auth/signed-out-layout';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { heldToPasswordRule } from '../shared/password/password-rule';
 import { typedText } from '../shared/form/typed-text';
+import { SpentBudget } from '../shared/errors/spent-budget';
 
 /**
  * The page a signup link opens, logged out: the account, and the company it will own. Finishing starts no session,
@@ -40,6 +41,8 @@ export class FinishSignupPage implements OnInit {
   /** Bound from the route parameter by withComponentInputBinding(). */
   readonly token = input('');
 
+  /** When a spent budget may be tried again, for a refusal's `retry`. */
+  protected readonly budget = inject(SpentBudget);
   private readonly signup = inject(SignupFacade);
   private readonly language = inject(LanguageFacade);
 

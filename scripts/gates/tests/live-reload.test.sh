@@ -29,6 +29,15 @@ for verb in onHand stockTotals substitutes; do
   out=$(bash "$GATE" --root "$d" 2>&1); check "a component reading stock through $verb and never reloading is named" $? 1 "$out" "x/a-lines.ts"
 done
 rm "$d/web/src/app/x/a-lines.ts"; git -C "$d" add -A
+printf "@Component({}) export class ASection { init() { this.live.reloadOn(['product', 'stock_movement'], r, d); void this.substitutes.load(id); } }\n" > "$d/web/src/app/x/a-section.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a stock reader whose reloadOn names no stock kind is named" $? 1 "$out" "x/a-section.ts reads stock"
+printf "@Component({}) export class ASection { init() { this.live.reloadOn(['product', 'stock'], r, d); void this.substitutes.load(id); } }\n" > "$d/web/src/app/x/a-section.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a stock reader hearing stock passes" $? 0 "$out" "1 stock readers hear stock"
+printf "@Component({}) export class ASection { init() { this.live.reloadOn(\n      withSessionKinds(['stock']), r, d); void this.inventory.onHand(id, p); } }\n" > "$d/web/src/app/x/a-section.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a stock reader hearing stock with the session passes" $? 0 "$out" "1 stock readers hear stock"
+printf "export class AFacade { async refresh() { this.rows.set(await this.substitutes.load(id)); } }\n" > "$d/web/src/app/x/a-facade.ts"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a facade reading stock is not a screen" $? 0 "$out" "1 stock readers hear stock"
+rm "$d/web/src/app/x/a-section.ts"; git -C "$d" add -A
 d=$(repo); printf '@Component({}) export class LocationLabelsPage { init() { void this.facade.load(id); } }\n' > "$d/web/src/app/inventory/location-labels-page.ts"
 printf '@Component({}) export class APage { init() { this.live.reloadOn(["a"], r, d); void this.facade.load(id); } }\n' > "$d/web/src/app/x/a-page.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "a page listed with its reason is not asked" $? 0 "$out" "OK — 1 "

@@ -63,6 +63,7 @@
     [rows]="series()"
     [loading]="facade.busy()"
     [failed]="facade.error() !== null"
+    (retry)="readAgain()"
     testId="series-table"
     [rowTestId]="rowTestId"
     [empty]="emptyState"

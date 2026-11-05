@@ -17,7 +17,7 @@
               | translate
                 : {
                     company: company.name,
-                    role: ('roles.' + company.role | translate),
+                    role: (company.role | roleKey | translate),
                   }
           }}
         </p>

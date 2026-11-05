@@ -265,6 +265,9 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/test-issue-shortcut.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/coming-gated.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/live-reload.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/role-names.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/interceptor-failures.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/list-retry.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/flow-outcomes-forgotten.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/session-forgotten.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/signed-out-exits.test.sh
@@ -363,6 +366,9 @@ in-gate-licences:
 	bash scripts/gates/test-issue-shortcut.sh
 	bash scripts/gates/coming-gated.sh
 	bash scripts/gates/live-reload.sh
+	bash scripts/gates/role-names.sh
+	bash scripts/gates/interceptor-failures.sh
+	bash scripts/gates/list-retry.sh
 	bash scripts/gates/flow-outcomes-forgotten.sh
 	bash scripts/gates/session-forgotten.sh
 	bash scripts/gates/signed-out-exits.sh

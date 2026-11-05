@@ -68,9 +68,10 @@ export class ApiSettings extends SettingsFacade {
       const scope = this.scope();
       untracked(() => void this.load(scope));
     });
-    // A setting changed in another tab, or for the whole company: read the chain again, showing what is known meanwhile.
+    // A setting changed in another tab, for the whole company, or by an operator for the platform (said to everyone as
+    // `platform_setting`): read the chain again, showing what is known meanwhile.
     inject(LiveChanges).on(
-      ['setting'],
+      ['setting', 'platform_setting'],
       () => void this.load(this.scope(), false),
       inject(DestroyRef),
     );

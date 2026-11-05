@@ -799,7 +799,7 @@
       "inverted": "La fin précède le début : cet intervalle n’est pas appliqué."
     },
     "loading": "Chargement…",
-    "failed": "La liste n’a pas pu être chargée. Rechargez la page dans un instant.",
+    "failed": "La liste n’a pas pu être chargée.",
     "view_deleted": "La vue {{name}} a été supprimée.",
     "view_undo": "Annuler"
   },
@@ -1156,7 +1156,7 @@
     "title": "Factures",
     "add": "Nouvelle facture",
     "none": "Aucune facture pour l’instant.",
-    "none_sentence": "Vos factures apparaîtront ici dès la première émise.",
+    "none_sentence": "Vos factures apparaîtront ici dès la première créée.",
     "no_company": "Choisissez d’abord une société.",
     "new_title": "Nouvelle facture",
     "draft_title": "Facture en brouillon",
@@ -2649,7 +2649,7 @@
       "too_short": "Le mot de passe doit avoir au moins {{min}} caractères.",
       "breached": "Ce mot de passe figure dans des fuites de données connues. Choisissez-en un autre.",
       "mismatch": "Les deux mots de passe ne sont pas identiques.",
-      "too_many_attempts": "Trop de tentatives. Réessayez plus tard.",
+      "too_many_attempts": "Trop de tentatives. {{retry}}",
       "network": "Le serveur est injoignable.",
       "refused": "La demande a été refusée."
     }
@@ -2665,7 +2665,7 @@
       "sent": "Consultez votre boîte de réception : si cette adresse peut servir à s’inscrire, un lien pour terminer est en route. Il est valable {{duration}}.",
       "closed": "Les inscriptions ne sont pas ouvertes pour l’instant.",
       "errors": {
-        "too_many": "Trop de demandes depuis ici. Réessayez dans un moment.",
+        "too_many": "Trop de demandes depuis ici. {{retry}}",
         "refused": "Cette adresse e-mail n’est pas valide.",
         "not_usable": "Les inscriptions ne sont pas ouvertes pour l’instant.",
         "network": "Le serveur est injoignable."
@@ -2688,7 +2688,7 @@
       "errors": {
         "not_usable": "Ce lien n’est plus valable. Demandez-en un nouveau depuis la page d’inscription.",
         "refused": "Refusé : le nom de l’entreprise est peut-être déjà pris, ou le mot de passe est apparu dans une fuite de données.",
-        "too_many": "Trop de demandes. Réessayez dans un moment.",
+        "too_many": "Trop de demandes. {{retry}}",
         "network": "Le serveur est injoignable."
       }
     }
@@ -2720,8 +2720,8 @@
     "submission_unanswered": "Cet envoi a déjà été enregistré, mais sa réponse s’est perdue : rechargez la page pour le voir.",
     "busy": "Un autre enregistrement passait au même moment : rien n’a été enregistré. Envoyez-le à nouveau.",
     "numbering": {
-      "before_last_day": "Le dernier numéro a été donné le {{last}}, et l’horloge de cet ordinateur indique le {{today}} : le document serait daté avant le précédent. Vérifiez la date et l’heure de l’ordinateur, puis recommencez.",
-      "before_last_period": "Le dernier numéro a été donné le {{last}}, et l’horloge de cet ordinateur indique le {{today}} : rien n’est numéroté avant le dernier mois numéroté. Vérifiez la date et l’heure de l’ordinateur, puis recommencez."
+      "before_last_day": "Le dernier numéro a été donné le {{last}}, et l’horloge de l’ordinateur où l’application est installée indique le {{today}} : le document serait daté avant le précédent. Corrigez sa date et son heure, ou prévenez la personne qui s’occupe de cet ordinateur, puis recommencez.",
+      "before_last_period": "Le dernier numéro a été donné le {{last}}, et l’horloge de l’ordinateur où l’application est installée indique le {{today}} : rien n’est numéroté avant le dernier mois numéroté. Corrigez sa date et son heure, ou prévenez la personne qui s’occupe de cet ordinateur, puis recommencez."
     }
   },
   "live": {
@@ -3847,7 +3847,7 @@
     "account": "Ouvrir Mon compte › Notifications",
     "errors": {
       "link_not_usable": "Ce lien ne peut plus servir : ce type de notification ne vous est plus envoyé là. Choisissez vos e-mails dans Mon compte › Notifications.",
-      "too_many_attempts": "Trop d’essais. Réessayez dans quelques minutes.",
+      "too_many_attempts": "Trop d’essais. {{retry}}",
       "network": "Le serveur ne répond pas. Réessayez."
     }
   },

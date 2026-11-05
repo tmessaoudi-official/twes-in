@@ -15,6 +15,7 @@ import { SignupFacade } from './signup-facade';
 import { emailRule, emailTypo } from '../shared/form/email-rule';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { onTypedText, typedText } from '../shared/form/typed-text';
+import { SpentBudget } from '../shared/errors/spent-budget';
 
 /**
  * The first step of signup: an address, and a mailed link. What the page says afterwards is the same whether or not the
@@ -38,6 +39,8 @@ import { onTypedText, typedText } from '../shared/form/typed-text';
 })
 export class SignupPage implements OnInit {
   /** The operator's durations this screen states, never a fixed hour. */
+  /** When a spent budget may be tried again, for a refusal's `retry`. */
+  protected readonly budget = inject(SpentBudget);
   protected readonly parameters = inject(WebParameters);
   private readonly signup = inject(SignupFacade);
   private readonly language = inject(LanguageFacade);

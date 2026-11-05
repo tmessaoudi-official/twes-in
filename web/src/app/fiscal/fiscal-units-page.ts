@@ -79,6 +79,12 @@ export class FiscalUnitsPage implements OnInit {
   protected readonly busy = this.fiscal.busy;
   protected readonly error = this.fiscal.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
+
+  /** « Réessayer » on the list that could not be read: read as on opening, the activity bar showing it. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.fiscal.loadUnits(companyId);
+  }
   /** What the list says before it holds anything, offering the page's own create action where it is offered. */
   protected readonly emptyState = computed<EmptyState>(() => ({
     icon: 'straighten',

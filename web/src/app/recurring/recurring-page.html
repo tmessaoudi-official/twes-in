@@ -19,6 +19,7 @@
       [rows]="rows()"
       [loading]="loading()"
       [failed]="error() !== null"
+      (retry)="readAgain()"
       testId="recurring-table"
       [rowTestId]="rowTestId"
       [empty]="emptyState"

@@ -7,7 +7,7 @@
     <p data-testid="invitation-offer">
       {{
         'invitation.offer'
-          | translate: { company: offer.companyName, role: 'roles.' + offer.roleName | translate }
+          | translate: { company: offer.companyName, role: offer.roleName | roleKey | translate }
       }}
     </p>
     <p class="twes-auth-intro" data-testid="invitation-email">
@@ -116,13 +116,13 @@
     }
   } @else if (!busy()) {
     <p role="alert" data-testid="invitation-error">
-      {{ 'invitation.errors.' + (error() ?? 'not_usable') | translate }}
+      {{ 'invitation.errors.' + (error() ?? 'not_usable') | translate: { retry: budget.retry() } }}
     </p>
   }
 
   @if (offer() && error()) {
     <p role="alert" data-testid="invitation-form-error" class="twes-auth-error">
-      {{ 'invitation.errors.' + error() | translate }}
+      {{ 'invitation.errors.' + error() | translate: { retry: budget.retry() } }}
     </p>
   }
   <!-- Its own block, so it is projected under the card as the other signed-out screens' way back is. -->

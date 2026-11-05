@@ -805,7 +805,7 @@ describe('PlatformPage', () => {
   });
 
   // An owner invited at a mistyped address is taken back from the sheet, and the toast offers to send it again.
-  it('withdraws an owner invitation from the sheet, and its undo invites the same address again', async () => {
+  it('withdraws an owner invitation from the sheet, and « Inviter de nouveau » sends a new one and says so', async () => {
     companies.set([
       {
         ...row,
@@ -839,9 +839,19 @@ describe('PlatformPage', () => {
         effect: 'corrigeable',
       }),
     ]);
+    // A new link and a new expiry, mailed again: not an undo, so not named one.
+    expect(said[0].action?.key).toBe('platform.companies.invite_again');
     said[0].action?.run();
     await vi.waitFor(() =>
       expect(facade.inviteOwner).toHaveBeenCalledWith('c1', 'nadia@gmial.test'),
+    );
+    await vi.waitFor(() =>
+      expect(said[1]).toEqual(
+        expect.objectContaining({
+          key: 'platform.companies.invited',
+          params: { email: 'nadia@gmial.test' },
+        }),
+      ),
     );
   });
 

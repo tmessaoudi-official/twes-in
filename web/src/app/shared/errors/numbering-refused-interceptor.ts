@@ -17,7 +17,7 @@ const CLOCK_REFUSALS = new Set(['before_last_day', 'before_last_period']);
 /**
  * Says a numbering refused for the computer's clock in words, wherever the document was issued from: the day the last
  * number was given and the day the clock reads, as the screen writes days, and what to check. `saidAlready` then tells
- * the screen not to say it again as a conflict. The format is read when a refusal arrives, never when the interceptor
+ * the screen not to say it again as a conflict, so it is said as a failure, kept until closed. The format is read when a refusal arrives, never when the interceptor
  * is built: it needs the session, whose own requests pass through here.
  */
 export const numberingRefusedInterceptor: HttpInterceptorFn = (request, next) => {
@@ -34,7 +34,7 @@ export const numberingRefusedInterceptor: HttpInterceptorFn = (request, next) =>
             /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? format.day(String(value)) : value,
           ]),
         );
-        injector.get(Feedback).notice(`feedback.numbering.${refused.reason}`, days);
+        injector.get(Feedback).failure(`feedback.numbering.${refused.reason}`, days);
       },
     }),
   );

@@ -15,7 +15,7 @@ const DEFAULT_WAIT_S = 1;
  * Another write met this one in the database (the same number taken at once, a deadlock): the API kept nothing and
  * asks for the request again. It is sent once more after its `Retry-After`, unseen, which nearly always goes through or
  * meets what the other write left (the number now taken, said by the screen). Busy a second time, it is said here in
- * words, and `saidAlready` tells the screen not to say it again. Placed after the CSRF interceptor, so the second try
+ * words, kept until closed, and `saidAlready` tells the screen not to say it again. Placed after the CSRF interceptor, so the second try
  * carries what the first did, and before the submission keys, so it carries a key of its own: nothing was made.
  */
 export const busyInterceptor: HttpInterceptorFn = (request, next) => {
@@ -26,7 +26,7 @@ export const busyInterceptor: HttpInterceptorFn = (request, next) => {
       return timer(waitOf(first) * 1_000).pipe(
         switchMap(() => next(request)),
         catchError((second: unknown) => {
-          if (isBusy(second)) feedback.notice('feedback.busy');
+          if (isBusy(second)) feedback.failure('feedback.busy');
           return throwError(() => second);
         }),
       );

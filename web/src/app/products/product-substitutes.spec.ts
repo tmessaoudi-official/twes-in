@@ -92,7 +92,7 @@ describe('ProductSubstitutesSection', () => {
     expect(q('product-substitute-stock-ART-003')).toBeNull();
   });
 
-  it.each(['product', 'stock_movement'])(
+  it.each(['product', 'stock', 'delivery_note', 'invoice'])(
     'reads the substitutes again when %s changes elsewhere',
     async (kind) => {
       await open('Portables');

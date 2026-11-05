@@ -81,6 +81,7 @@
       [rows]="rows()"
       [loading]="facade.busy()"
       [failed]="facade.error() !== null"
+      (retry)="readAgain()"
       testId="product-categories-table"
       [rowTestId]="rowTestId"
       [empty]="emptyState()"

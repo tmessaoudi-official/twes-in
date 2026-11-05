@@ -13,6 +13,7 @@ import { SignedOutLayout } from '../auth/signed-out-layout';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { PasswordResetFacade } from './password-reset-facade';
 import { onTypedText, typedText } from '../shared/form/typed-text';
+import { SpentBudget } from '../shared/errors/spent-budget';
 
 /**
  * The first step of getting back into an account: an address, and a mailed link. What the page says afterwards is the
@@ -36,6 +37,8 @@ import { onTypedText, typedText } from '../shared/form/typed-text';
 })
 export class ForgotPasswordPage {
   /** The operator's durations this screen states, never a fixed hour. */
+  /** When a spent budget may be tried again, for a refusal's `retry`. */
+  protected readonly budget = inject(SpentBudget);
   protected readonly parameters = inject(WebParameters);
   private readonly reset = inject(PasswordResetFacade);
   private readonly language = inject(LanguageFacade);

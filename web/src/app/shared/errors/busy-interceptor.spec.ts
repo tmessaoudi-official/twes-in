@@ -8,7 +8,7 @@ import {
 } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { noticeToasts, provideQuietFeedback } from '../testing/feedback';
+import { failureToasts, noticeToasts, provideQuietFeedback } from '../testing/feedback';
 import { BUSY, busyInterceptor, isBusy } from './busy-interceptor';
 import { saidAlready } from './said-already';
 
@@ -55,6 +55,7 @@ describe('busyInterceptor', () => {
 
     expect(answer).toEqual({ id: 'c1' });
     expect(noticeToasts()).toEqual([]);
+    expect(failureToasts()).toEqual([]);
   });
 
   it('says it in words when the second try is busy too, and the screen says nothing more', () => {
@@ -69,7 +70,8 @@ describe('busyInterceptor', () => {
     busy(controller.expectOne(CUSTOMERS));
     controller.expectNone(CUSTOMERS);
 
-    expect(noticeToasts().map((toast) => toast.key)).toEqual(['feedback.busy']);
+    expect(failureToasts()).toEqual(['feedback.busy']);
+    expect(noticeToasts()).toEqual([]);
     expect(isBusy(failure)).toBe(true);
     expect(saidAlready(failure)).toBe(true);
   });
@@ -91,5 +93,6 @@ describe('busyInterceptor', () => {
     expect(isBusy(failure)).toBe(false);
     expect(saidAlready(failure)).toBe(false);
     expect(noticeToasts()).toEqual([]);
+    expect(failureToasts()).toEqual([]);
   });
 });

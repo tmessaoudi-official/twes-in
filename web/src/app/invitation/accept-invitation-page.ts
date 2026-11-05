@@ -7,11 +7,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { RoleKeyPipe } from '../shared/i18n/role-key';
 import { LegalLink } from '../shared/legal/legal-link';
 import { InvitationFacade } from './invitation-facade';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { heldToPasswordRule } from '../shared/password/password-rule';
+import { SpentBudget } from '../shared/errors/spent-budget';
 
 /**
  * The page an invitation link opens. It is reached logged out: the link comes from a mail client and, under
@@ -27,6 +29,7 @@ import { heldToPasswordRule } from '../shared/password/password-rule';
     MatInputModule,
     MatButtonModule,
     TranslatePipe,
+    RoleKeyPipe,
     LegalLink,
     RouterLink,
   ],
@@ -37,6 +40,8 @@ export class AcceptInvitationPage implements OnInit {
   /** Bound from the route parameter by withComponentInputBinding(). */
   readonly token = input('');
 
+  /** When a spent budget may be tried again, for a refusal's `retry`. */
+  protected readonly budget = inject(SpentBudget);
   private readonly invitation = inject(InvitationFacade);
   private readonly router = inject(Router);
 

@@ -68,5 +68,17 @@ for file in "${files[@]}"; do
     status=1
   fi
 done
+# A movement of stock is said as `stock`, whatever moved it (a sale, a receipt, a merge, an import undone): a stock reader
+# listening to another kind, `stock_movement` (a loss's attachments), kept the substitutes' on-hand as first read.
+stocked=0
+for file in "${files[@]}"; do
+  grep -q '@Component(' "$root/$file" 2>/dev/null || continue
+  perl -0ne 'exit(/this\.[A-Za-z]+\.(onHand|stockTotals|substitutes|levels|valuation)[A-Za-z]*\(|this\.substitutes\.(load|reload)\(/ ? 0 : 1)' "$root/$file" || continue
+  stocked=$((stocked + 1))
+  if ! perl -0ne 'exit(/reloadOn\(\s*(withSessionKinds\(\s*)?\[[^\]]*\x27stock\x27/ ? 0 : 1)' "$root/$file"; then
+    printf 'live-reload: FAIL — %s reads stock and no reloadOn names `stock`, the kind every movement is said as: its figures stay as first read\n' "$file"
+    status=1
+  fi
+done
 ((status)) && exit 1
-printf 'live-reload: OK — %d screens read again on a live change (%d exempt with a reason); %d lists kept by listRecord read again on their kind\n' "$checked" "${#exempt[@]}" "$lists"
+printf 'live-reload: OK — %d screens read again on a live change (%d exempt with a reason); %d lists kept by listRecord read again on their kind; %d stock readers hear stock\n' "$checked" "${#exempt[@]}" "$lists" "$stocked"

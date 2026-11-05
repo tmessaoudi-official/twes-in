@@ -14,6 +14,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { RoleKeyPipe } from '../shared/i18n/role-key';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanyFacade } from '../company/company-facade';
 import { formatLongDay, todayIn } from '../shared/i18n/format';
@@ -27,7 +28,7 @@ import { visibleEntries } from '../shell/nav-manifest';
  */
 @Component({
   selector: 'app-hello-page',
-  imports: [TranslatePipe, RouterLink, MatButtonModule, NgComponentOutlet],
+  imports: [TranslatePipe, RoleKeyPipe, RouterLink, MatButtonModule, NgComponentOutlet],
   templateUrl: './hello-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

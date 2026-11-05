@@ -45,9 +45,10 @@ export class ProductSubstitutesSection implements OnInit {
   protected readonly grouped = computed(() => (this.group() ?? '') !== '');
 
   constructor() {
-    // A product joining or leaving the group, or its stock moving, shows here at once.
+    // A product joining or leaving the group, or its stock moving (said as `stock`, whatever moved it: a sale, a
+    // receipt, a merge), shows here at once.
     inject(LiveChanges).reloadOn(
-      ['product', 'stock_movement'],
+      ['product', 'stock', 'delivery_note', 'invoice'],
       () => this.load(),
       inject(DestroyRef),
     );

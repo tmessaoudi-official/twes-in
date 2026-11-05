@@ -184,6 +184,7 @@
                 [rows]="contacts()"
                 [loading]="facade.busy()"
                 [failed]="facade.error() !== null"
+                (retry)="readContactsAgain()"
                 testId="contacts-table"
                 [rowTestId]="contactTestId"
                 [empty]="contactEmpty()"

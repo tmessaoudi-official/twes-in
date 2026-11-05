@@ -54,7 +54,7 @@
       "owner_invitation_expired": "The owner invitation sent to {{email}} ran out on {{day}}: invite again.",
       "withdraw_owner": "Withdraw",
       "owner_withdrawn": "The owner invitation sent to {{email}} is withdrawn. Its link no longer works.",
-      "undo": "Undo",
+      "invite_again": "Invite again",
       "actions": {
         "label": "Company actions",
         "approve": "Approve",

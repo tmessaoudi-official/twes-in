@@ -240,6 +240,7 @@ describe('MembersPage', () => {
 
     expect(text('member-barista@example.test')).toContain('barista');
     expect(text('member-barista@example.test')).not.toContain('Barista');
+    expect(text('member-barista@example.test')).not.toContain('roles.');
   });
 
   it('refuses to submit an address that is not one', async () => {

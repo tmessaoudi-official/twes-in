@@ -914,7 +914,16 @@
   @if (blank() === 'loading') {
     <span role="status" data-testid="list-loading">{{ 'list.loading' | translate }}</span>
   } @else if (blank() === 'failed') {
-    <span role="alert" data-testid="list-failed">{{ 'list.failed' | translate }}</span>
+    <div
+      role="alert"
+      class="flex flex-wrap items-center justify-center gap-2"
+      data-testid="list-failed-state"
+    >
+      <span data-testid="list-failed">{{ 'list.failed' | translate }}</span>
+      <button mat-button type="button" (click)="tryAgain()" data-testid="list-retry">
+        {{ 'feedback.retry' | translate }}
+      </button>
+    </div>
   } @else if (blank() === 'empty') {
     @if (empty(); as state) {
       <div class="flex flex-col items-center gap-3">
