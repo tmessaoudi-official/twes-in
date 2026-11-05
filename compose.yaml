@@ -211,7 +211,7 @@ services:
   gotenberg:
     logging: *logging
     restart: unless-stopped
-    image: gotenberg/gotenberg:8.38.1@sha256:aa552cc115db488e0f0bcb07446aac13071ad51505b642c84bb894500907b42b
+    image: gotenberg/gotenberg:8.39.0@sha256:13672f317b443c793e972b1bd2155ec62a3e7b6891b411e8196442cc053ee5f5
     # Its Chromium renders HTML written from what people typed, so one escaping mistake would hand it markup: shut in,
     # that markup can do nothing. No JavaScript; no URL but its own working files (the logo is a data URI, which is no
     # request); no download or webhook of its own; LibreOffice, which nothing here uses, closed. A wider allow-list would

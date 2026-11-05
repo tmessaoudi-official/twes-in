@@ -42,7 +42,9 @@ unauthenticated network actor can exploit with a fix to take today.
 | CVE-2026-6653 libxml2 (critical) | api | reachable, DoS | An uploaded xlsx is parsed by libxml2; with the demo on, any visitor can upload. No Debian fix. Fix in the app: refuse an OOXML part holding `<!DOCTYPE` (OOXML never has one), and switch the demo off on a shop. |
 | CVE-2026-6653 libxml2 | database, postgres, gotenberg | not reachable | no XML from outside reaches them; their ports are not published |
 | CVE-2026-93221 linux-libc-dev | api | not reachable | kernel headers left by the build toolchain; purging the toolchain from the prod image drops it and 59 HIGHs |
-| GHSA-cxf3-9h37-7rr8 labstack/echo | gotenberg | not reachable | the vulnerable proxy middleware is not compiled in; no Gotenberg release carries the fix yet |
+| GHSA-cxf3-9h37-7rr8 labstack/echo | gotenberg | fixed | the vulnerable proxy middleware was not compiled in; Gotenberg 8.39.0 carries the fix, and its Go binaries show nothing |
+| 70 chromium advisories (2 critical: Video, Forms) | gotenberg 8.39.0 | reachable, low | Chromium renders api-built HTML with JavaScript off, no URL but its own files, and the owner's raster logo; no port published; the documents carry no video and no form; fixed only by a Gotenberg release |
+| CVE-2026-109518 apt | gotenberg 8.39.0 | not reachable | nothing installs a package in a running Gotenberg; with the next Gotenberg |
 | CVE-2025-68121 Go stdlib in gosu | database, postgres | not reachable | gosu runs once at start and opens no connection; arrives with the next postgres rebuild |
 | CVE-2026-78669, CVE-2026-78667 Go stdlib | caddy (the edge) | reachable, DoS, low | HTTP/2 and range-request CPU floods on the only published port; no Caddy release carries Go 1.26.9 yet |
 | CVE-2026-116587 go-jose | caddy (the edge, the phone door, the monitor) | not reachable | a crafted JWK; no Caddyfile loads a JWT or JWK module and ACME reads none from outside; fixed in Caddy 2.11.9, whose image is not published yet |
