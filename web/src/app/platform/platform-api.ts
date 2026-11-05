@@ -451,6 +451,7 @@ function toRow(read: PlatformCompanyPlatformCompanyRead): PlatformCompanyRow {
       email: invitation.email,
       expiresAt: invitation.expiresAt,
       expired: invitation.expired,
+      mailFailed: invitation.mailFailed,
     })),
     opened: read.opened ?? true,
     subscription:

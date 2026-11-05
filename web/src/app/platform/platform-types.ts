@@ -45,6 +45,8 @@ export interface PlatformOwnerInvitation {
   readonly email: string;
   readonly expiresAt: string;
   readonly expired: boolean;
+  /** The worker gave up mailing it: never received, so sent again rather than waited on. */
+  readonly mailFailed: boolean;
 }
 
 /** A company as the platform's operators review it. */

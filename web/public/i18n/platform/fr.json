@@ -52,6 +52,8 @@
       "no_owner": "Aucun propriétaire.",
       "owner_invitation_open": "Invitation de propriétaire envoyée à {{email}}, valable jusqu’au {{day}}.",
       "owner_invitation_expired": "L’invitation de propriétaire envoyée à {{email}} a expiré le {{day}} : invitez de nouveau.",
+      "owner_invitation_unsent": "L’invitation de propriétaire à {{email}} n’a pas pu être envoyée : envoyez-la de nouveau.",
+      "send_again": "Envoyer de nouveau",
       "withdraw_owner": "Retirer",
       "owner_withdrawn": "L’invitation de propriétaire envoyée à {{email}} est retirée. Son lien ne fonctionne plus.",
       "invite_again": "Inviter de nouveau",

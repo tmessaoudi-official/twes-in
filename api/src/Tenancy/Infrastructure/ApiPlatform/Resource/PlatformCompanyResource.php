@@ -110,8 +110,8 @@ final class PlatformCompanyResource
     #[Groups([self::READ])]
     public array $owners = [];
 
-    /** @var list<array{id: string, email: string, expiresAt: string, expired: bool}> the owner invitations nobody used, open or run out lately */
-    #[ApiProperty(writable: false, schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['id', 'email', 'expiresAt', 'expired'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'email' => ['type' => 'string'], 'expiresAt' => ['type' => 'string', 'format' => 'date-time'], 'expired' => ['type' => 'boolean']]]])]
+    /** @var list<array{id: string, email: string, expiresAt: string, expired: bool, mailFailed: bool}> the owner invitations nobody used, open or run out lately, and whether the worker could not mail one */
+    #[ApiProperty(writable: false, schema: ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['id', 'email', 'expiresAt', 'expired', 'mailFailed'], 'properties' => ['id' => ['type' => 'string', 'format' => 'uuid'], 'email' => ['type' => 'string'], 'expiresAt' => ['type' => 'string', 'format' => 'date-time'], 'expired' => ['type' => 'boolean'], 'mailFailed' => ['type' => 'boolean']]]])]
     #[Groups([self::READ])]
     public array $ownerInvitations = [];
 
@@ -135,7 +135,7 @@ final class PlatformCompanyResource
         $resource->createdAt = $view->createdAt;
         $resource->opened = $view->opened;
         $resource->owners = $view->owners;
-        $resource->ownerInvitations = array_map(static fn (PlatformOwnerInvitationView $invitation): array => ['id' => $invitation->id, 'email' => $invitation->email, 'expiresAt' => $invitation->expiresAt, 'expired' => $invitation->expired], $view->ownerInvitations);
+        $resource->ownerInvitations = array_map(static fn (PlatformOwnerInvitationView $invitation): array => ['id' => $invitation->id, 'email' => $invitation->email, 'expiresAt' => $invitation->expiresAt, 'expired' => $invitation->expired, 'mailFailed' => $invitation->mailFailed], $view->ownerInvitations);
         $resource->subscription = null === $standing ? null : SubscriptionSummary::of($standing);
 
         return $resource;

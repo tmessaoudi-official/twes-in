@@ -181,6 +181,9 @@ class StaticLoader implements TranslateLoader {
           withdraw_owner: 'Retirer',
           owner_invitation_expired:
             'L’invitation de propriétaire envoyée à {{email}} a expiré le {{day}} : invitez de nouveau.',
+          owner_invitation_unsent:
+            'L’invitation de propriétaire à {{email}} n’a pas pu être envoyée : envoyez-la de nouveau.',
+          send_again: 'Envoyer de nouveau',
           statuses: {
             pending: 'En attente',
             active: 'Active',
@@ -782,12 +785,14 @@ describe('PlatformPage', () => {
             email: 'open@example.test',
             expiresAt: '2026-10-30T10:00:00+00:00',
             expired: false,
+            mailFailed: false,
           },
           {
             id: 'i2',
             email: 'late@example.test',
             expiresAt: '2026-10-01T10:00:00+00:00',
             expired: true,
+            mailFailed: false,
           },
         ],
       },
@@ -804,6 +809,58 @@ describe('PlatformPage', () => {
     expect(late.classList).toContain('text-error');
   });
 
+  // An invitation the worker could not mail is not « envoyée »: it says so, and it and a lapsed one are sent again there.
+  it('says an owner invitation that could not be mailed was not sent, and sends it or a lapsed one again from the sheet', async () => {
+    companies.set([
+      {
+        ...row,
+        status: 'active',
+        owners: [],
+        ownerInvitations: [
+          {
+            id: 'i1',
+            email: 'open@example.test',
+            expiresAt: '2026-10-30T10:00:00+00:00',
+            expired: false,
+            mailFailed: false,
+          },
+          {
+            id: 'i2',
+            email: 'lost@example.test',
+            expiresAt: '2026-10-30T10:00:00+00:00',
+            expired: false,
+            mailFailed: true,
+          },
+          {
+            id: 'i3',
+            email: 'late@example.test',
+            expiresAt: '2026-10-01T10:00:00+00:00',
+            expired: true,
+            mailFailed: false,
+          },
+        ],
+      },
+    ]);
+    facade.inviteOwner.mockResolvedValue(true);
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+
+    const lost = query('owner-invitation-lost@example.test')!;
+    expect(lost.textContent).toContain('à lost@example.test n’a pas pu être envoyée');
+    expect(lost.textContent).not.toContain('valable jusqu’au');
+    expect(lost.classList).toContain('text-error');
+    expect(query('send-owner-invitation-again-open@example.test')).toBeNull();
+
+    const again = query<HTMLButtonElement>('send-owner-invitation-again-lost@example.test')!;
+    expect(again.textContent?.trim()).toBe('Envoyer de nouveau');
+    again.click();
+    await fixture.whenStable();
+    expect(facade.inviteOwner).toHaveBeenCalledWith('c1', 'lost@example.test');
+
+    query<HTMLButtonElement>('send-owner-invitation-again-late@example.test')!.click();
+    await fixture.whenStable();
+    expect(facade.inviteOwner).toHaveBeenLastCalledWith('c1', 'late@example.test');
+  });
+
   // An owner invited at a mistyped address is taken back from the sheet, and the toast offers to send it again.
   it('withdraws an owner invitation from the sheet, and « Inviter de nouveau » sends a new one and says so', async () => {
     companies.set([
@@ -817,6 +874,7 @@ describe('PlatformPage', () => {
             email: 'nadia@gmial.test',
             expiresAt: '2026-10-30T10:00:00+00:00',
             expired: false,
+            mailFailed: false,
           },
         ],
       },

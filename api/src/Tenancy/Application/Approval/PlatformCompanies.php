@@ -93,7 +93,7 @@ final readonly class PlatformCompanies
 
     private static function invitation(Invitation $invitation, \DateTimeImmutable $now): PlatformOwnerInvitationView
     {
-        return new PlatformOwnerInvitationView($invitation->getId()->toRfc4122(), $invitation->getEmail()->value, $invitation->getExpiresAt()->format(\DateTimeInterface::ATOM), !$invitation->isUsableAt($now));
+        return new PlatformOwnerInvitationView($invitation->getId()->toRfc4122(), $invitation->getEmail()->value, $invitation->getExpiresAt()->format(\DateTimeInterface::ATOM), !$invitation->isUsableAt($now), null !== $invitation->getMailFailedAt());
     }
 
     /**

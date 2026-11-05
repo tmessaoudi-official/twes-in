@@ -19,6 +19,8 @@ final readonly class PlatformOwnerInvitationView
         /** ISO 8601 */
         public string $expiresAt,
         public bool $expired,
+        /** The worker gave up mailing it: it was never received, and is sent again rather than waited on. */
+        public bool $mailFailed,
     ) {
     }
 }

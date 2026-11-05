@@ -12,7 +12,13 @@ namespace App\Tests\Functional;
 use App\Identity\Domain\Model\User;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Infrastructure\Invitation\InvitationToMail;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
+use Symfony\Component\Messenger\Stamp\ReceivedStamp;
+use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 use Symfony\Component\Mime\Email as MimeEmail;
 
 /**
@@ -209,6 +215,29 @@ final class PlatformOwnersTest extends ApiTestCase
         $this->client->getCookieJar()->clear();
         $this->getJson('/api/invitations/'.$token);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * An owner invitation the worker gave up mailing is said as not sent beside the company, where the operator sends it
+     * again, never as sent and waiting.
+     */
+    public function testAnOwnerInvitationTheWorkerCouldNotMailIsSaidAsNotSent(): void
+    {
+        $company = $this->pendingCompany();
+        $this->signedInAsOperator();
+        $this->postJson($this->ownersOf($company), ['email' => 'nadia@carthage.test']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $invitation = $this->ownerInvitationsOf($company)[0] ?? [];
+        self::assertFalse($invitation['mailFailed'] ?? null, 'a mail on its way has not failed');
+        self::assertIsString($invitation['id'] ?? null);
+
+        static::getContainer()->get(EventDispatcherInterface::class)->dispatch(new WorkerMessageFailedEvent(
+            new Envelope(new InvitationToMail($invitation['id']), [new ReceivedStamp('async'), new RedeliveryStamp(3)]),
+            'async',
+            new \RuntimeException('The mail server is unreachable.'),
+        ));
+
+        self::assertTrue($this->ownerInvitationsOf($company)[0]['mailFailed'] ?? null);
     }
 
     /** The platform takes back an owner's invitation only: a member's is the company's to withdraw, and reads as none. */

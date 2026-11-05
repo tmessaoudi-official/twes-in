@@ -856,6 +856,11 @@ export class PlatformPage implements OnInit {
     }
   }
 
+  /** An owner invitation never received or run out, sent again: the new one replaces it. */
+  protected sendOwnerInvitationAgain(companyId: string, email: string): void {
+    void this.inviteAgain(companyId, email);
+  }
+
   private async inviteAgain(companyId: string, email: string): Promise<void> {
     if (await this.platform.inviteOwner(companyId, email)) {
       this.feedback.success('platform.companies.invited', { email });

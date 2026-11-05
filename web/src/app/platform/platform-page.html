@@ -608,18 +608,32 @@
                       <div class="flex flex-wrap items-center gap-2">
                         <span
                           class="text-sm"
-                          [class.text-error]="invitation.expired"
+                          [class.text-error]="invitation.expired || invitation.mailFailed"
                           [attr.data-testid]="'owner-invitation-' + invitation.email"
                         >
                           {{
                             (invitation.expired
                               ? 'platform.companies.owner_invitation_expired'
-                              : 'platform.companies.owner_invitation_open'
+                              : invitation.mailFailed
+                                ? 'platform.companies.owner_invitation_unsent'
+                                : 'platform.companies.owner_invitation_open'
                             )
                               | translate
                                 : { email: invitation.email, day: invitation.expiresAt | day }
                           }}
                         </span>
+                        <!-- Never received or run out: a new invitation replaces it, with a new link and a new expiry. -->
+                        @if (invitation.expired || invitation.mailFailed) {
+                          <button
+                            mat-button
+                            type="button"
+                            (click)="sendOwnerInvitationAgain(company.id, invitation.email)"
+                            [disabled]="busy()"
+                            [attr.data-testid]="'send-owner-invitation-again-' + invitation.email"
+                          >
+                            {{ 'platform.companies.send_again' | translate }}
+                          </button>
+                        }
                         <button
                           mat-button
                           type="button"

@@ -44,6 +44,7 @@ describe('PlatformApi', () => {
         email: 'late@example.test',
         expiresAt: '2026-10-01T10:00:00+00:00',
         expired: true,
+        mailFailed: true,
       },
     ],
     opened: false,

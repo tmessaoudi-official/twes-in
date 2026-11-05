@@ -52,6 +52,8 @@
       "no_owner": "لا مالك.",
       "owner_invitation_open": "دعوة مالك أُرسلت إلى {{email}}، صالحة حتى {{day}}.",
       "owner_invitation_expired": "انتهت صلاحية دعوة المالك المرسلة إلى {{email}} في {{day}}: أعد الدعوة.",
+      "owner_invitation_unsent": "تعذّر إرسال دعوة المالك إلى {{email}}: أعد إرسالها.",
+      "send_again": "إعادة الإرسال",
       "withdraw_owner": "سحب",
       "owner_withdrawn": "سُحبت دعوة المالك المرسلة إلى {{email}}. رابطها لم يعد يعمل.",
       "invite_again": "دعوة من جديد",
