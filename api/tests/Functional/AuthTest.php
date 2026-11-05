@@ -201,7 +201,8 @@ final class AuthTest extends ApiTestCase
         $this->login('ghost@example.test', 'wrong');
 
         self::assertResponseStatusCodeSame(429);
-        $this->assertTheWaitIsSaid(900);
+        // Symfony's login throttle says its wait in whole minutes (LoginThrottlingListener), which the answer turns into seconds.
+        $this->assertTheWaitIsSaid(900, roundedTo: 60);
         self::assertSame(['error' => 'too_many_attempts'], $this->json());
     }
 

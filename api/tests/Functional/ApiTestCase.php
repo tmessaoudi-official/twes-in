@@ -418,13 +418,18 @@ abstract class ApiTestCase extends WebTestCase
         return $page;
     }
 
-    /** A spent budget says when it may be tried again: `Retry-After` in whole seconds, within the budget's window. */
-    protected function assertTheWaitIsSaid(int $atMost): void
+    /**
+     * A spent budget says when it may be tried again: `Retry-After` in whole seconds, within the budget's window. The
+     * rate limiter dates the moment its window ends rounded up to the next whole second, so that no client comes back
+     * before it, and the wait counted to that moment may be the window and that one second more, never beyond. A wait
+     * the framework words in coarser steps, the sign-in throttle's whole minutes, may be the window and one such step.
+     */
+    protected function assertTheWaitIsSaid(int $window, int $roundedTo = 1): void
     {
         $wait = $this->client->getResponse()->headers->get('Retry-After');
         self::assertNotNull($wait, 'a spent budget says when to come back');
         self::assertMatchesRegularExpression('/^[1-9]\d*$/', $wait);
-        self::assertLessThanOrEqual($atMost, (int) $wait);
+        self::assertLessThanOrEqual($window + $roundedTo, (int) $wait, 'the wait is the window, rounded up by one step at most');
     }
 
     /** @return array<string, mixed> */
