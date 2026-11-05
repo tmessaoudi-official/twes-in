@@ -49,7 +49,7 @@ services:
     logging: *logging
     restart: unless-stopped
     labels: *mounts-digest
-    image: twinproduction/gatus:v5.37.0
+    image: twinproduction/gatus:v5.38.0
     # gatus.yaml names these as ${…}; Gatus fills them in when it reads the file.
     environment:
       TWES_HOST: "${TWES_HOST:?set TWES_HOST, the name the instance watched answers on}"

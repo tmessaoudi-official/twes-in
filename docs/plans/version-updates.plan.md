@@ -13,6 +13,7 @@ Procedure: docs/UPDATE.md, "After every bump" for each commit.
 - [2026-11-05 11:38] AGREED: pushes: the CI fix alone now, then each ecosystem committed after its own local gate and the bumps pushed once as one batch
 - [2026-11-05 11:38] AGREED: runs-on ubuntu-latest, docker-ce in a shop's WSL and Docker Desktop through winget stay unpinned on purpose, written in docs/UPDATE.md « Not pinned here on purpose »: a shop gets Docker's security fixes without a release from us
 - [2026-11-05 14:29] ASSUMED (review): pgBackRest 2.60.0 keeps its new default, a restore that stops on an invalid page checksum and an expire that refuses (rule: never silent; data checksums are on, show data_checksums = on); docs/RUNBOOK.md's two restores say to try an older --set, then --checksum-page-error=n with app:data:check and verify-chain. Alternatives: set checksum-page-error=n in pgbackrest.conf (warns only), or hold 2.59.3.
+- [2026-11-05 15:14] ASSUMED (review): Mailpit 1.33.0, Gatus 5.38.0 and SeaweedFS 4.52 go in one commit rather than one each: none runs where a shop or a server serves (development, the monitor, the drill's stand-in bucket), each is proven by its own check (an e2e reading mail, make monitor-check, make backup-drill), and one gate instead of three saves about 30 minutes. Alternative: one commit and gate each, as step 12 first said.
 
 ## Formal Plan
 Inventory on 2026-10-16 (`composer outdated --direct`, `npm outdated`, Packagist): Symfony 8.1.9 is the newest
