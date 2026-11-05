@@ -76,8 +76,8 @@ Review date: 2026-11-02 22:30   Validation mode: advisory   Core: .claude/rules/
 
 ## Evidence surfaces (what counts as proof here)
 - Money/tax: vectors + unit tests per tax component and state transition; Functional tests (happy, validation, unauthenticated, wrong company); Playwright on the real stack.
-- A test's day is the company's (`ApiTestCase::dayOf`): Tunis is on the next day from 23:00 UTC; read the clock once per test.  [CLAUDE.md lesson 2026-10-21, 2026-10-26]
-- Stock lock under concurrency: race a delivery note against an INVOICE (two series); two notes are serialized by the series' row lock.  [CLAUDE.md lesson 2026-11-01]
+- A test's day is the company's (`ApiTestCase::dayOf`): Tunis is on the next day from 23:00 UTC; read the clock once per test.  [the Lessons (CLAUDE.md and `.claude/rules/`) 2026-10-21, 2026-10-26]
+- Stock lock under concurrency: race a delivery note against an INVOICE (two series); two notes are serialized by the series' row lock.  [the Lessons (CLAUDE.md and `.claude/rules/`) 2026-11-01]
 - Printed output: the RENDERED PDF per regime/language, looked at.
 - Machine files: XML validated against the official XSD / schematron; round-trip from stored figures.
 - Fiscal claim: primary source + law-version date; "unvalidated" until an accountant confirms. Till/TTN claims without device or test account are [Unverified].

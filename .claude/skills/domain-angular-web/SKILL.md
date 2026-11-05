@@ -2,7 +2,7 @@
 name: domain-angular-web
 description: Use when a task touches the twes-in web app (Angular signals/zoneless, Material + Tailwind, descriptor lists/forms, a11y with axe, Playwright e2e, fr/en i18n, shell/nav, scan and till UI). How an expert works here - rules, tools, acceptance, failure modes, evidence.
 ---
-Review date: 2026-11-02 22:30   Validation mode: advisory   Core: .claude/rules/expertise-core.md. CLAUDE.md's Lessons and gates load every session: pointed at, never restated.
+Review date: 2026-11-02 22:30   Validation mode: advisory   Core: .claude/rules/expertise-core.md. the Lessons (CLAUDE.md and `.claude/rules/`) and gates load every session: pointed at, never restated.
 
 ## Roles and mental models
 - **Owner-manager UX (shop owner first)**: home answers money owed, overdue, what next; status colour carries meaning (six fixed tones); phone first-class. Colour style « calme » / « vif » is the person's (new accounts start on vif), text size the device's  [Ruled: user 2026-10-31 23:04, SPEC:5758]
@@ -28,7 +28,7 @@ Review date: 2026-11-02 22:30   Validation mode: advisory   Core: .claude/rules/
 | Refusals: a wrong value shows once its field is left, then live until right; a save shows every error and focuses the first wrong field (Material's default ErrorStateMatcher); the browser checks with the API's own rule; a refused field says the import's own text under itself, via one web mapper of one problem+json shape; form reasons in the `form-refusals` texts part | any form | [Ruled: user 2026-10-27 20:57, SPEC:5694; 2026-10-15 06:51, SPEC:5232; 2026-10-16 17:17, SPEC:5308; 2026-10-26 10:43, SPEC:5670] | 2026-11-02 |
 | Focus flow: on arrival (route, step, dialog, tab, sheet); after a refusal on the first field in error; back to the opener on close; next row after a removal; kept across saves and live reloads, never stolen by a toast; tab order follows the visual order, RTL too. Fine pointer: first field; coarse pointer: the title, but single-purpose typing pages focus their field; lists and scan pages focus the heading (search is « / ») | any screen | [Ruled: user 2026-10-14 12:05, SPEC:5184; 2026-10-15 20:00, SPEC:5276-5278] | 2026-11-02 |
 | Error copy is a code -> `<feature>.errors.<code>` key, never raw API text, shown `role="alert"`; icons only those declared in `shared/icons/icons.ts`, an icon-only button named by `appLabel` | any error state, any icon | r2-tech 2b; icons-declared, icon-buttons-named gates | 2026-10-02 |
-| Outcomes via `Feedback` toasts; a consequence beyond the subject said through `X-Effects` sayers (CLAUDE.md lessons) | save/create/delete result | outcomes-as-toasts gate; SPEC 2026-09-21 | 2026-10-02 |
+| Outcomes via `Feedback` toasts; a consequence beyond the subject said through `X-Effects` sayers (the Lessons (CLAUDE.md and `.claude/rules/`)) | save/create/delete result | outcomes-as-toasts gate; SPEC 2026-09-21 | 2026-10-02 |
 | Shell by window class (effective px): <600 bottom bar with Material 3 pill indicators (56x32 px, icon over word, links too; first four + Plus), 600-1199 icon rail, >=1200 labelled rail; `[` folds (>=1200), `]` the settings list; the page scrolls inside its panel, the folded rail never | layout work | SPEC §7 2026-09-16/26; [Ruled: user 2026-09-21 15:20, SPEC:1439; 2026-10-11 09:01, SPEC:5006] | 2026-11-02 |
 | Shortcuts: C create, N new doc, E next step, `/` search, Ctrl K; ignored in inputs; « Raccourcis à une touche » in Mon compte (on by default) turns every bare-letter key off (RGAA 12.10) | keyboard work | SPEC §7 2026-09-21; [Ruled: user 2026-10-11 08:26, SPEC:5004] | 2026-11-02 |
 | i18n: ngx-translate; fr, en, ar; texts split per feature (`textsPart`), each language's screen texts within 61,440 B gzip 6; a language is DATA (`languages.json`, BCP 47 tag, direction, plurals), never `'fr' \| 'en'` in code; the whole interface turns right to left (logical CSS only); language menu: code and own name, never a flag | any copy or layout | [Ruled: user 2026-10-13 00:17, SPEC:5137; 2026-10-12 00:29, SPEC:5060; 2026-10-17 00:27/00:30, SPEC:5336-5337; 2026-09-16, SPEC:843] | 2026-11-02 |
@@ -48,7 +48,7 @@ Review date: 2026-11-02 22:30   Validation mode: advisory   Core: .claude/rules/
 ## Tools of the trade (as configured)
 - Angular ^22.2 zoneless (no zone.js; Inferred), `withComponentInputBinding`, Material ^22.2, ngx-translate ^18, Tailwind ^4.3, TypeScript ~6.0 (7 held back), Vitest ^5 + jsdom via `ng test`, Playwright ^1.64 + `@axe-core/playwright` on Chromium and WebKit (`@phone`), ESLint ^10  [Observed: web/package.json, app.config.ts 2026-11-02; Ruled: user 2026-10-21 14:07, SPEC:5577]
 - All of it in the `web-tools` container (`make web-tools CMD=…`, already in `web/`), never host Node  [Source: CLAUDE.md "Run everything in Docker"]
-- Specs fake the API with `vi.fn()` via `{provide: XApi, useValue}`; e2e helpers `signIn`, `inACompany`, `axeAtRest`, `toast`, `sendProving`  [r2-tech 4; Source: CLAUDE.md lessons 2026-10-13, 2026-10-19]
+- Specs fake the API with `vi.fn()` via `{provide: XApi, useValue}`; e2e helpers `signIn`, `inACompany`, `axeAtRest`, `toast`, `sendProving`  [r2-tech 4; Source: the Lessons (CLAUDE.md and `.claude/rules/`) 2026-10-13, 2026-10-19]
 
 ## What "good" looks like (checkable)
 - Loading, empty (`EmptyState`: icon, title, create action), error are three states; error text from a key.
@@ -60,14 +60,14 @@ Review date: 2026-11-02 22:30   Validation mode: advisory   Core: .claude/rules/
 ## Classic failure modes (detection)
 - Found only in a real browser (folded rail, scrollbars, a list running 13 px sideways at 320 px and 125 %): look at it, at 125 % too  [Observed: f9dec22e3]
 - A flex part is never narrower than its longest word: an unbroken value widens a phone card  [Observed: dcc605d26]
-- An effect keyed on a session object re-runs on an unchanged re-read or on sign-out; keep unchanged parts as the same object  [Observed: 18c4cec4f; Source: CLAUDE.md lesson 2026-10-14]
+- An effect keyed on a session object re-runs on an unchanged re-read or on sign-out; keep unchanged parts as the same object  [Observed: 18c4cec4f; Source: the Lessons (CLAUDE.md and `.claude/rules/`) 2026-10-14]
 - Mid-tone accent fails AA on hover/ground (white 4.64:1 at rest, 4.07 hovered): compute every state's contrast  [Observed: accent-theme.spec; SPEC:3176 DECIDED (revisit)]
-- Gates check leaves not branches; interpolated keys are invisible to a grep gate  [Source: CLAUDE.md lessons 2026-09-20/21]
+- Gates check leaves not branches; interpolated keys are invisible to a grep gate  [Source: the Lessons (CLAUDE.md and `.claude/rules/`) 2026-09-20/21]
 - Superseded, do not re-apply: one file per language (now per feature, SPEC:5137), Arabic after the pilot (SPEC:5336), Arabic only once reviewed (SPEC:5531), « Bientôt » last in ⋮ everywhere (SPEC:4999).
 
 ## Evidence surfaces (what counts as proof)
-- `make check FILES=…` then `make gate-web` (or `make gate`), read from its own exit; `make check` skips specs reading a whole contract (i18n parity, settings rows, list-fit): run them too  [Source: CLAUDE.md lessons 2026-10-19, 10-22, 10-25/27, 10-28]
-- `make gate` never boots the app: one e2e on an image of the result before landing  [Source: CLAUDE.md lesson 2026-11-01]
+- `make check FILES=…` then `make gate-web` (or `make gate`), read from its own exit; `make check` skips specs reading a whole contract (i18n parity, settings rows, list-fit): run them too  [Source: the Lessons (CLAUDE.md and `.claude/rules/`) 2026-10-19, 10-22, 10-25/27, 10-28]
+- `make gate` never boots the app: one e2e on an image of the result before landing  [Source: the Lessons (CLAUDE.md and `.claude/rules/`) 2026-11-01]
 - Visible change: BEFORE and AFTER screenshots of the real result; jsdom alone is incomplete.
 - Contrast and focus claims only from an axe scan or a measured value.
 - Uncertified: aria-disabled controls (axe skips them), Arabic style (no reader yet), D3's mirrored chart axis (to confirm with a reader, SPEC:5758), real printers.

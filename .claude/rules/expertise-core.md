@@ -1,6 +1,6 @@
 # EXPERTISE - twes-in   (L4 core; loaded every session in this project)
 Review date: 2026-11-02 21:45   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci, domain-identifiers
-Scope: the DELTA over CLAUDE.md (Process, Licensing invariants, Git, Lessons: loaded every session, NOT repeated). This core keeps what prevents the worst mistakes; EXPERTISE-REFERENCE.md holds the rest: read only the section the pointer table (§6) names. Tags: [Ruled: user <date>] = AGREED in SPEC §7 (`<date>` finds the entry); [Source: ...]; [Observed: ...]; [Unverified].
+Scope: the DELTA over CLAUDE.md (Process, Licensing invariants, Git, its Lessons: loaded every session) and the area rules files beside this one (`api.md`, `web.md`, `infra.md`, `gate-scripts.md`: their layout, gates and Lessons, loaded with their folders); neither is repeated here. This core keeps what prevents the worst mistakes; EXPERTISE-REFERENCE.md holds the rest: read only the section the pointer table (§6) names. Tags: [Ruled: user <date>] = AGREED in SPEC §7 (`<date>` finds the entry); [Source: ...]; [Observed: ...]; [Unverified].
 
 ## Domains this project touches
 | Domain | Pack | REFERENCE |
@@ -71,14 +71,14 @@ UI and product:
 - A class the developer names is hunted whole and laid out before any fix starts.  [Ruled: user 2026-10-27 22:45]
 - Ideas mid-work are refined or rejected and re-asked; audit DDD/hexagonal layering every goal; judge by what people SEE and USE.  [Ruled: user 2026-09-16, 2026-09-22]
 - Sabotage the INVARIANT, not the diff. Reviewers write to disk and return ONE line; a lost lens is completed inline, disclosed.  [Ruled: user 2026-08-19; Observed: 2026-08-28]
-- Gates: `make gate` runs the halves in turn (CLAUDE.md lesson 2026-10-15); `make check` first; read each tool's own exit, never a pipe's.  [Observed: CLAUDE.md Lessons; contested, §5]
+- Gates: `make gate` runs the halves in turn (the Lessons (CLAUDE.md and `.claude/rules/`) 2026-10-15); `make check` first; read each tool's own exit, never a pipe's.  [Observed: the Lessons (CLAUDE.md and `.claude/rules/`); contested, §5]
 
 ## 4. Machine facts that mislead (REFERENCE §12, §19)
 - `make up` is LIVE (source mounted); `make up-images` serves static builds. A stack down at resume is expected: `make up`, then `make fixtures`.  [Observed: 2026-09-16/27]
 
 ## 5. Known stale or contested (full list REFERENCE §17, §19)
 - The LATER entry wins; never cite ASSUMED (review) / DECIDED (revisit) / PROVISIONAL / TAKEN OVERNIGHT as AGREED.  [Source: r2-decisions]
-- Gates: `make gate` runs its halves in turn (CLAUDE.md, which wins on process, after side by side starved the suites on 2026-10-15); the 2026-10-14 15:13 "side by side" (SPEC:5189) is superseded in practice.  [Source: CLAUDE.md Lessons 2026-10-15; SPEC:5189]
+- Gates: `make gate` runs its halves in turn (CLAUDE.md, which wins on process, after side by side starved the suites on 2026-10-15); the 2026-10-14 15:13 "side by side" (SPEC:5189) is superseded in practice.  [Source: the Lessons (CLAUDE.md and `.claude/rules/`) 2026-10-15; SPEC:5189]
 - Release signing: GPG this release ("no cosign this release", 2026-10-31 21:14, the later entry, over cosign 2026-10-13); the tree verifies `infra/onprem/release-key.asc`.  [Ruled: user 2026-10-31 21:14]
 - Memories' resume state is likely stale: verify with `git log`, the plan file, SPEC §8.  [Source: r2-memories §4]
 - Rulings here reflect SPEC §7 up to its 2026-11-02 00:39 entry (refreshed 2026-11-02 21:45); read §7 after that stamp.  [Observed: refresh-20261102]

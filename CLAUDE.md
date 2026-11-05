@@ -54,8 +54,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   appears, its context filled in and changeable; every outcome shown at once in every tab; guide but never choose a fiscal
   or legal answer; data over code; one canon; undo first; parameters over fixed values; a fix is a class); when none does,
   pick only if `advisor()` agrees, else park it and move on. Every pick is logged `ASSUMED (review)` naming its rule.
-- Craft lessons go under § "Lessons" below, five lines at most, only when they change what to
-  do next time.
+- Craft lessons go to the rules file of their area, `.claude/rules/{api,web,infra,gate-scripts}.md`, or under
+  § "Lessons" below when they apply before any file is read (running a command, the stack, the gates, git); five
+  lines at most, only when they change what to do next time. A rules file past about 300 lines, or these Lessons past
+  about 150, is split or pruned.
 - **Comments say why**, with no dates and no SPEC row numbers (developer ruling, 2026-09-27): the decision's record is
   § 7, found by the code's own words. Trim an old comment's dates and rows when its file is next edited, never in bulk.
 
@@ -116,7 +118,6 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `docker info` fails, follow `claude-code-setup/cloud/machine-notes.md` to restart the daemon; if it still fails, say
   which gate legs did not run and leave the verdict to CI.
 
-## Where things live
 
 - `docs/SPEC.md` — product, architecture, goals, Decisions Log, status block.
 - `docs/START.md` — bring-up, sign-in, creating users, the seed, `make reset`, the checks; `docs/UPDATE.md` — every
@@ -129,24 +130,17 @@ tables, essay gotchas) was retired with the reset. What applies here:
   its text under `scripts/notices/texts/` (LICENSING.md § 2).
 - `scripts/build-version.sh` — each part's build from git (`YYYY.MM.DD.N`, hash, « -dirty »), passed by the Makefile and CI
   to the images, shown in the footer (`docs/START.md` § 11); its test is `scripts/tests/build-version.test.sh`, run by `make gate-licences`.
-- `scripts/fiscal/fetch-xsd.sh` — the published schemas the fiscal XML tests read (TEJ, Factur-X EN 16931, the CEN's CII),
-  fetched anew into the toolchain's temporary directory and pinned (`xsd-sources.tsv`: a git folder's tree id, the TEJ zip's
-  SHA-256), never kept here; `make gate-api`, `gate-api-tests` and `test-api` run the suite through it (`WITH_FISCAL_XSD`).
-  A source that does not answer is « not run » (a warning on GitHub) and its tests skip; a changed schema stops the run.
-- `scripts/gates/` — `dependency-licences.php` (five lists, each a maximum, `--dump-rules`; it also checks each
-  `web/src/third-party/<name>/COMPONENTS.json`, what a shipped wasm compiles in, against the lock),
-  `spdx-headers.sh`, `executable-bits.sh`, `icon-buttons-named.sh` (every Material icon button named through `appLabel`), `password-eyes.sh` (every password field has its eye, `shared/form/PasswordToggle` as the field's `matSuffix`, at least nine found), `pastes-kept-whole.sh` (no `maxlength` on an input, which cuts a paste at its limit unsaid: the value is kept whole and `shared/form/length-said.ts` says the limit and the count under the field, the save waiting until it fits; a fixed format keeps it where its line, or a comment just before its element, says `paste-cut: <why>`), `numbers-as-typed.sh` (no `type="number"`, which hands the form nothing for a French « 1,5 »: a whole number is typed as text with the numeric keyboard through `appCount` or `typedCount`, `shared/form/count-input.ts`, which says one not whole, a decimal through `appDecimal`; or `number-input: <why>`), `dialog-content-layout.sh` (no `mat-dialog-content` or `mat-card-content` carries a `flex`, `grid` or `gap-*` class itself, which Material's styles override: the layout goes on a div inside it), `scrollers-contain.sh` (every scroller is positioned, a template's `overflow-*-auto` beside `relative` and a style rule's `overflow: auto` beside `position`, or the line says `scroller-positioned: <where>`: a hidden text inside an unpositioned scroller escapes it and stretches the panel beyond, which slid the Paramètres list off screen), `outcomes-as-toasts.sh` (what was just done is a toast through `Feedback`; a `role="status"` line only for a page state it names), `outcome-sentences.sh` (every text the code hands `Feedback` as an outcome, or a scan answers as done, is closed by its period in fr, en and ar, main file and page parts alike; a floor reds when the calls are no longer found), `compose-log-rotation.sh` (every compose service rotates its output, 10 MB × 5, through the `*logging` anchor), `compose-restart.sh` (every service of a server, a shop, development live and from the images, and the monitor says `restart: unless-stopped` if it runs or `"no"` if it does a job and exits: development's api once died of a PHP fault and stayed down while its workers came back), `planned-module-labels.sh` (every planned module in `PlannedModules` named, described and placed in the menu in fr and en, and every `{ module, label }` declaration of a planned action or settings card naming a planned module), `stored-items.sh` (every cookie the API sets and every `twes.*` storage key is declared in `web/src/app/shared/legal/stored-items.ts`, which the Cookies page renders, both ways; browser storage only inside a `*_STORAGE` token's factory; no script from another origin), `coming-gated.sh` (every template drawing the « Bientôt » chip sits beside a component that reads `showComing`, so « Montrer ce qui arrive » hides it), `coming-texts.sh` (every planned module and unbuilt settings page has its `coming.<key>` texts and every such text an entry, every menu place a planned module, and the roadmap row an entry names is open in docs/SPEC.md § 8), `presentation-settings-parity.sh` (every presentation preference the web writes is one the API declares, and the reverse: an undeclared key works until a reload, then is gone), `tour-anchors.sh` (every name in `web/src/app/shared/tour/tour-anchors.ts` sits on an element as `data-tour`, and no `data-tour` is undeclared), `route-permissions.sh` (every route a `*_NAV`, `*_COMMANDS` or `*_TABS` declaration needing a permission or a role names carries `permissionGuard(<that manifest>, '<route>')`, `shell/permission-guard.ts`, and every route below it a guard, or says `// route-open: <why>`: a page the menu hides from a role sends it to `/not-allowed`, which names the page and why; `RouteGates` reads the open page again when the session changes, since a company switch runs no guard), `effect-kinds.sh` (every effect kind the API says through `new Effect(self::X` is named by a sayer registered as `EFFECT_SAYERS` in `app.config.ts`, and every kind a sayer names is said: neither half of `X-Effects` is silent), `row-defaults.sh` (a raw read never falls back to a value of its own: in a file reading rows straight from the database, `is_numeric($x) ? (int) $x : 0`, `$row['q'] ?? 0` or `\is_array($found) ? $found : []` is refused; read through `Shared/Infrastructure/Doctrine/Rows`, which throws on what the query does not name, or say why with `// row-default: <why>`; a floor of 60 files reading rows), `database-clock.sh` (no query decides on PostgreSQL's `now()` or `CURRENT_DATE` where the application decides on its own `ClockInterface`: the moment goes in as a parameter, or the line says `// database-clock: <why>` (`--` inside SQL), as the health check's queue age does), `app-clock.sh` (its PHP half: no read of the system clock in `api/src`, a bare or relative `new \DateTimeImmutable()`, `time()`, `date()`, `strtotime()`: every moment comes from `ClockInterface`, a domain method taking it as a required parameter, but where the line or the one above says `// system-clock: <why>`, as the session handler and the rate limiter's wait do; a floor of 2,000 files read), `day-parsing.sh` (a day parsed with a format reads back as written: `createFromFormat('!Y-m-d', '2026-13-45')` rolls into the next year rather than failing, so a written day or moment is read through the one canon, `Shared/Domain/Service/WrittenDay::parsed($text, $format, $zone)`, null for one that does not read back; every other `createFromFormat` and `date_create[_immutable]_from_format` in `api/src` is refused unless its line or the one above says `// day-parse: <why>` (a moment the application wrote), and the helper must still compare; a `new \DateTimeImmutable($day)` is left to the `Assert\Date` on the property it reads; a floor of 15 read through it), `live-reload.sh` (every component reading records through a member, a stock read included, calls `reloadOn` or keeps a `LiveRecord`, or is listed with its reason; every list kept by `listRecord` also names its kind in a `reloadOn`; a list the API filters by the reader's role and modules (« À surveiller », the reports, the first steps, « Mon compte › Notifications ») hears the session too, through `withSessionKinds` or `SESSION_KINDS`), `flow-outcomes-forgotten.sh` (a root facade keeping a flow's outcome, « link sent », « signup finished », offers `forget()`, and every page injecting it calls it on entry, so a page opened again starts on its form), `session-forgotten.sh` (every value a root facade keeps is a `sessionSignal`, `shared/session/session-data.ts`, which `SessionData` puts back when the session ends, or leaves its company for the `company` reach, as `AuthFacade` tells it; a plain `signal(` there says `session-kept: <why>`), `signed-out-exits.sh` (every page drawing `<app-signed-out-layout` offers its way out under the card, `twesAuthAfter`, or names the one its card draws with `way-out: <where>`: outside the shell there is no menu to leave by), `signed-out-follows.sh` (every such page reading the session, `me()`, `company()`, `companyClosed()`, asks again on focus through `leaveOnceOpen`, or says why with `session-followed: <why>`: outside the shell no live change arrives), `refusals-said.sh` (a matInput carrying `required`, `min`, `max` or `pattern`, or a button disabled on a wrong value, says the refusal beside it: a `<mat-error>` in the field, shown once left or on a save that `shared/form/reveal-invalid.ts` turns into every error shown and the first wrong field focused, a line of its own just after it, or `refusal-said: <where>`; never a greyed-out button alone, never a value put back within its limit unsaid; a field the screen refuses without a form control is marked as a form's is, `[appRefused]` on its input and a `<mat-error>`, `shared/form/refused-field.ts`, never `aria-invalid` set by hand or a hint in red), `unsaved-guarded.sh` (every component that edits something counts what is unsaved through `unsavedChanges`, `listRecord` or `UnsavedChanges.declare`, so leaving asks and a reload is held, or is a dialog, or is listed with its reason; a floor at the number counting today), `list-stances.sh` (every `<app-data-list>` offers selection, bulk actions, row actions, import and export, and draws an `[empty]` state, `EmptyState` in `shared/list/list-types.ts`: an icon, a title and the list's own create action, or is listed with its reason for each it does not; red on a descriptor it cannot read, on the retired `emptyKey`, and below a floor of 31 lists drawing an empty state), `folder-cap.sh` (no folder of `web/src` holds more than 25 files, specs aside, as `SourceLayoutTest::CAP` holds the API's: a template or a style counts, a subfolder on its own, read from the index; a folder already past it is in `folder-cap.allowed` with its count and reason, may not grow, lowers its line when it shrinks and leaves the list under the cap; a floor of 800 files read), `version-pins.sh` (every copy of a version pin agrees, `docs/UPDATE.md`), `host-tools.sh` (CI names no `setup-php`, `setup-node` or bare host tool, and the Makefile runs one only inside an `in-*` target), `action-pins.sh` (every action a workflow uses is pinned by its release's full commit SHA, the tag as a comment, `docs/UPDATE.md`), `release-lane.sh` (every workflow a push to master runs also runs on a release's branch, `release/**`, where a patch for the shops is built), `build-extra-ca.sh` (every downloading RUN of a Dockerfile under `infra/` mounts the optional secret `extra_ca`, a proxy's
-  CA added for that step only and in no layer; `compose.extra-ca.yaml` hands it to every built service and the Makefile to
-  every `docker build`, only when `CCS_EXTRA_CA_FILE` names a file; nothing switches a TLS check off) and `e2e-environment.sh` (every variable a browser suite reads, `process.env['X']`, is passed into the `web-tools` service, which runs them; a floor of 20) and `design-tokens.sh` (no literal colour or static inline style in `web/src/app` outside `shared/theme`, and no class naming a colour, type step, weight, family, radius, shadow, line height, tracking or easing `web/src/tailwind.css` does not declare: its `@theme` clears each of those namespaces and declares the steps the screens use, so Tailwind emits nothing for any other and a new identity is a change of values there; no arbitrary `-[…]` value in those namespaces and no `[style.x]` of a font, radius, shadow or motion property; read in class contexts only, with a floor of 2,100 classes read), `unscoped-host-selectors.sh` (no `:host`, `:host-context` or `::ng-deep` in the styles of a component declared `ViewEncapsulation.None`, which Angular leaves as written there and no browser matches: an unscoped stylesheet reads `:root[…] &`; a floor of 1 such component), `icons-declared.sh` (every icon a template writes out is declared in `web/src/app/shared/icons/icons.ts`, which the icon font is cut to, and every declared one is still named), `float-casts.sh` (no `(float)` or `floatval` in `api/src`: money is a decimal string, and a cast that carries none says so on its line with `// float: <why>`), `sort-directions.sh` (every query order in `api/src` and `api/tests` says its direction with PHP's `\SortDirection`, as Doctrine's upgrade notes ask: no 'ASC', 'DESC' or null to `orderBy`, `addOrderBy`, `Expr\OrderBy` or an `#[ORM\OrderBy]` mapping, which Doctrine ORM 3 deprecates, but where the line says `// sort-direction: <why>` (DBAL's builder takes a string); `ListOrder::direction` turns a request's `asc` or `desc` into one; a floor of 101 uses, so losing the largest file of them reds), `list-limits.sh` (every list a request writes to an API resource is bounded: `#[ListLimit(…)]`, the operator's `app.list_limits` read through the `ListLimits` port (`document.lines`, 1,000, on every document's lines, and `ManageInvoices` holds a draft built from delivery notes to it), or `Assert\Count(max: …)`, or its block says `// count: <why>`; a floor of 35), `typed-trims.sh` (what a person typed keeps no invisible character at its ends: every one-argument `trim()` in `api/src` goes through `Shared/Domain/Service/TypedText::trimmed()`, which takes every space and format character (`\p{Z}`, `\p{Cf}`: no-break and zero-width spaces, byte-order and direction marks), or its line says `// trim: <why>`; a `trim()` given its own characters is another operation; a floor of 150), `typed-emails.sh` (its web half for addresses: outside `shared/form`, every `Validators.email` in `web/src/app`, kept only where an account signs in with the address it has, is wrapped in `onTypedText(…)`, `shared/form/typed-text.ts`, so a direction mark or zero-width space pasted at an end is not refused unseen, or its line or the one above says `typed-email: <why>`; the page sends `typedText(…)` of it; a new or changed address takes `emailRule`, `shared/form/email-rule.ts`, the API's one rule `ContactRules::email`, and `EmailRuleTest` holds the two to `email-vectors.json`, refuses any other e-mail check in `api/src` but the account's own `Email`, and every address a resource or a platform setting writes without the rule), `refusal-answers.sh` (every `new …Refused(` in `web/src/app` is handed to `refusedFor(answer, …)`, `shared/errors/said-already.ts`, so `saidAlready` reads under it a failure an interceptor has already said (the demo's refusal, a write still being made or whose answer was lost) and the screen says nothing more, or its line or the one above says `refusal-answer: none, <why>`; a floor of 90), `language-literals.sh` (no quoted language tag of the catalogue, `'fr'`, `"en-GB"` or intl's `'fr_FR'`, in the API's PHP and templates or the web's sources: a language is read from `Languages` or `shared/i18n/languages.ts`, and a line that must name one says why with `language-literal: <why>`), `logical-direction.sh` (the screens turn over in Arabic from one set of templates: no physical Tailwind class (`pl-4`, `left-0`, `text-right`, `border-l`) or physical CSS (`margin-left`, `right:`, `translateX`, a shorthand whose left and right differ) in `web/src`, and every pointing icon (back, forward, chevrons, send) carries `mat-icon-rtl-mirror`, but where the line says `physical-direction: <why>`; the document's `dir` follows the language, `shared/i18n/document-direction.ts` tells the CDK, and code measuring sides reads `shared/i18n/inline-direction.ts`), `value-direction.sh` (a typed value cut short keeps its start in either direction: it sits in a `twes-value` box with `dir="auto"`, never alone in a `truncate` box, which cuts at the end of the SCREEN's direction and showed « …791728493868 » for a Latin code in Arabic; every field reads its own way through `unicode-bidi: plaintext` in `styles.scss`; a value standing alone between two tags sits in a `<bdi>` (or a `dir="auto"` element), so its neutral signs stay at its own ends, but a text in the screen's language computed in code, which says `value-direction: <why>` on the line or the one above, since `dir="auto"` would turn an Arabic sentence opening on « IBAN » left to right; a printed document's typed text sits in a `<bdi>` or a `dir="auto"` block, `PdfTypedTextDirectionTest`, and a mail's in a `dir="auto"` element inside the block that says its direction again, `MailDirectionTest`; a signed change, « +6,2 % » or « −3,1 % », goes through the `signed` pipe (`shared/i18n/format-pipes.ts`, a true minus and an explicit plus) drawn in a `<bdi dir="ltr">`, and Angular's `percent` pipe, a `signDisplay` or a « + » built by hand around a value are refused; a `twes-value` box holding values joined by « · » is refused too, each part going in its own `<bdi>`; a floor of 2,900 interpolations read), `screen-texts-budget.sh` (every language the catalogue's interface speaks has its texts, and each language's screen texts within 61,440 B at gzip level 6, a new change within the reserve of 59,392 B below it, raised only with its reason in docs/SPEC.md § 7, warned of at 98 % of the reserve, and `infra/web/nginx.conf` serving at that level; the first page's reserve is `web/angular.json`'s 985 kB error (978 kB warning) under the 1 MB wall, the developer's answer of 2 November), `monitor-config.sh` (the monitor's compose: only its edge publishes, every value required, sign-up closed, every Gatus line hidden and alerting, no token written out, its heartbeats the backups' own), `deploy-overlay.sh` (only the deploy edge publishes a port, every address derived from `TWES_HOST`, every value required, HSTS for the host alone, Gotenberg shut in as `lib/pdf-renderer.sh` says: no JavaScript, no URL but its own files, on an internal network only the api and the workers join), `onprem-overlay.sh` (a shop's installation merged as `deploy.sh` merges it: only its edge publishes, on 80 and 443, passkeys bound to localhost and links to `LAN_HOST`, every secret a compose secret, Gotenberg shut in as on a server; its edge's certificates, and development's phone door's, last through a night asleep and are made again at every start; every value the files require and every secret they mount is one the newest release's installer wrote, or one `infra/onprem/values.defaults` fills, which `deploy.sh` adds to a shop's old values file on an update), `release-overlay.sh` (`compose.release.yaml` makes every service on a built image run the published one by the digest given, building nothing on the server, each digest required, and every third-party image a server or a shop starts is named by tag and index digest), `secrets-overlay.sh` (every installation's secrets reach their containers as compose secrets, files under `/run/secrets`, never an environment: no value of the installation written in its merged configuration, every one from a variable of the values file, each mounted where its tool reads it (the api image through `Shared/Infrastructure/Secrets/ContainerSecrets`, loaded with Composer's autoloader so an exec'd console reads them too; the others through `infra/postgres/twes-secrets`, which a `docker compose exec` into them must name, as `twes-backup` does itself), no api-image environment holding a variable its secrets set, not even empty, since FrankenPHP's workers read the environment over what was set at boot (the addresses are `DATABASE_URL_TEMPLATE` and its migration twin, the passwords as placeholders), the owner's password to postgres and migrate alone; every service mounting a secret labelled `twes.secrets-digest`, the digest of the values `deploy.sh` hands compose, since Compose keeps a running container whose secret's value alone changed; every service mounting a file from the checkout (a Caddyfile, the shim, a live entrypoint) labelled `twes.mounts-digest`, the digest `scripts/deploy/mounts-digest.sh` makes of those files, which `deploy.sh`, `make up` and the monitor's start hand compose, since a checkout writes the file anew and the mount keeps the old one, read from a server's, a shop's, development's and the monitor's files; `deploy.sh` refuses a secret left empty, which compose would start with nothing mounted, and `make deploy-check` and `make onprem-check` read every running container's environment for the values, `scripts/deploy/secrets-stay-files.sh`), `decision-stamps.sh` (no Decisions Log stamp later than the commit `git blame` names for it, or than now while uncommitted; a late one found afterwards gains « (stamp corrected: written at HH:MM, commit <sha>) »; CI's licence job checks out the whole history for it), `additive-migrations.sh` (after the newest release tag `vYYYY.MM.DD.N`, no migration's `up()` drops, renames or narrows what that release reads, unless its line says `// contract: <why>`: a shop's unhealthy update starts the release before it on the new schema; a statement is read whole over its lines, a released migration edited or deleted, a new CHECK, UNIQUE, EXCLUDE, trigger or foreign key on columns it does not add on a table the release holds, a rule whose table is not written out, and `CONCURRENTLY` are refused too; every method but `down()` is read as `up()`; judged against the newest release HEAD descends from; nothing is checked before the first tag), `signed-commits.sh` (every commit since the newest release tag carries a good signature by `infra/onprem/release-key.asc`, read into a keyring of its own, as CI holds no other; in the snapshot gate's worktree alone, `.claude/worktrees/gate`, its own unsigned snapshot commit is read as its parent; on a cloud branch or in a cloud session, never on master or `release/*`, the unsigned commits are listed as pending land.sh's re-signing, compose handing the tools container `GITHUB_REF_NAME` and `CLAUDE_CODE_REMOTE`), `xml-reads.sh` (XML from outside is parsed only where a declared document type is refused first: every XMLReader, SimpleXML, DOM load, `xml_parse` or openspout XLSX/ODS reader in `api/src` sits in a file the gate allows with its reason, today `OpenSpoutReader`, which refuses a workbook any part of which declares one, and `XlsxPercentCells`, which it alone calls; an allowed file that parses nothing any more reds too), `e2e-settled-reads.sh` (a browser test reads with `evaluateAll`, `textContent()`, `innerText()` or `all…Texts()` only a locator it asserted first in the same test with a waiting `expect(…).toHave…`, `.toContainText`, `.not.toBeEmpty` or an `expect.poll`, `toBeVisible` not counting, or the read says `settled-read: <why>`; a floor of 35), `test-issue-shortcut.sh` (a test builds an issued invoice, a sent quote, a validated note or a sent order through the use case: an SQL statement in `api/tests` setting one's status is refused unless its line or the one above says `// issue-shortcut: <why>`, as a data check proving it notices a state no use case makes does; a floor of 650 test files read), `test-clock.sh` (a day a PHP test sends or counts from goes through `ApiTestCase::dayOf`, `dayAsDate` or `apiNow`: no DateTime from a clock word or a day shift, no `date()` or `strtotime()` in `api/tests`, but a moment and a line saying `// test-clock: <why>`), `docs-run-lines.sh` (every `docker compose … run` in a code span or block of `docs/*.md` and `TODO.md` reads `< /dev/null` or a pipe, or says `<!-- run-input: <why> -->`; a floor of 6), and `production-image.php`, run inside the production api image by CI's `prod-image` job; `tests/` beside them is each gate's own test, run by CI
-  before the gate, each through `tests/no-leftovers.sh`, which reds a test leaving anything in its TMPDIR.
-- `api/src/Shared/Infrastructure/Scheduler/Schedule.php` — the worker's one Symfony Scheduler schedule (`default`,
-  consumed as `scheduler_default` beside `async`); a module adds a task with `#[AsPeriodicTask]` or `#[AsCronTask]` on its
-  own service (the reminder run: `Module/Invoices/Infrastructure/Scheduler/`). Every task is idempotent, as one worker is
-  assumed but not locked.
-- Logs (docs/SPEC.md § 7, 2026-09-17): one file per channel and day under `api/var/log` in development; in production
-  JSON through `fingers_crossed` into `Shared/Infrastructure/Logging/ChannelStreams`, on STDERR, or one file per
-  channel under `LOG_DIRECTORY` when self-hosted, rotated by `infra/self-hosted/logrotate.conf` (its test rotates for
-  real). A service picks its channel with `#[WithMonologChannel]`; list them with `bin/console debug:autowiring logger`.
+- **The API** (`api/src/<Context>/…` and its modules, the demo dataset, `api/translations/`, the logs, the scheduler,
+  the fiscal schemas fetch, and the API's gates) → `.claude/rules/api.md`, which loads when you read a file under `api/`.
+- `scripts/gates/` — one script per invariant, each with its test. What the web's, the API's and the infra's gates hold
+  is listed in `.claude/rules/web.md`, `api.md` and `infra.md`; those every change meets are here:
+  - `dependency-licences.php` (five lists, each a maximum, `--dump-rules`; it also checks each `web/src/third-party/<name>/COMPONENTS.json`, what a shipped wasm compiles in, against the lock)
+  - `spdx-headers.sh`
+  - `executable-bits.sh`
+  - `decision-stamps.sh` (no Decisions Log stamp later than the commit `git blame` names for it, or than now while uncommitted; a late one found afterwards gains « (stamp corrected: written at HH:MM, commit <sha>) »; CI's licence job checks out the whole history for it)
+  - `signed-commits.sh` (every commit since the newest release tag carries a good signature by `infra/onprem/release-key.asc`, read into a keyring of its own, as CI holds no other; in the snapshot gate's worktree alone, `.claude/worktrees/gate`, its own unsigned snapshot commit is read as its parent; on a cloud branch or in a cloud session, never on master or `release/*`, the unsigned commits are listed as pending land.sh's re-signing, compose handing the tools container `GITHUB_REF_NAME` and `CLAUDE_CODE_REMOTE`)
+  - `docs-run-lines.sh` (every `docker compose … run` in a code span or block of `docs/*.md` and `TODO.md` reads `< /dev/null` or a pipe, or says `<!-- run-input: <why> -->`; a floor of 6)
+  `tests/` beside them is each gate's own test, run by CI before the gate, each through `tests/no-leftovers.sh`, which reds a test leaving anything in its TMPDIR.
 - `docs/fiscal/<CC>.md` — sourced fiscal rules per country; `api/config/fiscal/<CC>.yaml` — the preset;
   `docs/fiscal/TN-accountant-packet.md` — every Tunisian rule the code applies, its source and place, for the accountant
   to confirm or correct (a dated snapshot: its line numbers are the tree's of that date).
@@ -160,200 +154,20 @@ tables, essay gotchas) was retired with the reset. What applies here:
   turns over through `text_direction(locale)` (`Shared/Infrastructure/Twig/LanguageExtension`), with logical CSS and every
   typed value in a `<bdi>`. Adding a language is an entry there and its texts, never code. Arabic's words follow
   `docs/i18n/ar-glossary.md`.
-- `api/src/Demo/Infrastructure/Dataset/` — the demo dataset, production code (the demo sandbox writes it too):
-  `DemoCatalogue` is the data, `DemoDataset` writes one company through the use cases only, under a moved clock
-  (`Timeline` runs dated steps in order), for whoever the caller makes its owner. A new workflow or state belongs in it;
-  `DemoFixturesTest` loads it. `api/src/DataFixtures/` is DoctrineFixturesBundle's own place, development only, outside
-  the contexts (`LayerDependenciesTest` reds on a context naming it): `DemoCompanies` gives the catalogue to the seeded
-  operator with one tester per role (`make fixtures`, `docs/START.md` § 4).
-  `DataFixtures/Scale/` is the large-data generator (`make scale-data`, docs/START.md § 4): it clones the demo company's
-  invoice graph in SQL, and `ScaleGenerator::unaccounted` fails when a new table reaching that graph is not classified.
-- `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity` (a change to how an account signs in, thirteen of them (a lock set by wrong guesses among them, and an operator's
-  deactivation, reactivation or ending of its sessions, which say what follows rather than ask whether it was you), is mailed to it through `Application/Security/SecurityNotices`, queued in the change's transaction, never switched off), `Tenancy`, `Audit` (the one trail: a class recording an action declares it and where it is recorded, a company's, an account's or either, with `DeclaresAuditActions`, collected into `AuditVocabulary`; the trail refuses an undeclared or misplaced action under kernel.debug, `UndeclaredAuditAction`, and warns in production; `AuditActionWordsTest` holds what a journal shows to the web's `ACTIVITY_ACTIONS` and its words in the `activity` part, both ways; `ListenedKindsStagedTest` holds every kind a screen listens to, through `reloadOn`, `liveRecord`, `listRecord` or `LiveChanges.on`, to one the API stages, a heard audit action's kind, a `LiveChange` named by a literal or a constant, or the erasure catalogue's, so no screen waits on a kind nothing says), `Inbox` (the notification
-  centre behind the `Notifications` port; a `NotificationKind` names its payload's amounts, quantities, days and moments,
-  which a mail writes through `Shared/Infrastructure/Mail/MailFigures` in its reader's formats, `Settings/Application/
-  ReaderFormats`, and the bell through its `notificationRecord`; `NotificationFieldsTest` reds on a word's field left unnamed), `Fiscal`, `Settings` (the settings engine: declarations collected from every
-  `DeclaresSettings` service, the three chains, `ReadSetting`), `ModuleRegistry` (the catalogue collected from every
-  `DeclaresModule` service and the planned ones in `PlannedModules`, `module_state`, `module_interest` (« Me prévenir », told at start by `app:modules:announce-arrivals`, which `infra/api/docker-entrypoint.sh` runs after the migrations), the 404 guard for a switched-off module's resources and plain controllers),
-  `CustomFields`, `Files` (the `file` table and the `FileStorage` port on Flysystem, on whichever filesystem
-  `FILES_STORAGE` names: `local`, a volume under `FILES_DIRECTORY`, which `api/.env` ships, or `s3`, any
-  S3-compatible bucket, which refuses to start without its own variables), `ImportExport` (a module declares an
-  import with `DeclaresImport`; `RunImport` reads the file, the guide at `GET .../imports/{subject}` describes its
-  columns, and every rejected row carries a `code` and `params` the screen translates, from a refusal's `reason`; a row
-  imported may carry notes, `RowNotes`, such as the reference its new product was given; a doubtful cell (an identifier's
-  shape or check, an e-mail, a phone, an IBAN, a BIC, a barcode) is set aside by `SetAside` rather than refusing its row: the
-  record is written without it and marked « À vérifier » by `Infrastructure/Import/SetAsideMarks` (the `imports` text
-  domain), and the report notes `set_aside` on that cell; a subject offers switches,
-  `ImportSwitch`, worded by the screen alone (`ImportColumnsTest` holds every label and note to each language; the
-  products file's: `default_taxes`, the line defaults for a new product naming no tax, and `unpriced_inactive`, a new
-  product with no price created switched off at 0; its `cost_price_gross` column is a cost with taxes, kept less the
-  VAT the company gets back), says what a row names for duplicates, `identityOf`, and what is said once per file, `finished`; a
-  committed file is kept as an `ImportRun` under its SHA-256, so the same file is flagged, and the stock it moved
-  carries its id: `Inventory/Application/ImportStock` is every file's quantities; a file in the shop's own headings
-  is read through `pairing`, a JSON object of heading to column (`''` sets a column aside), which the committed run
-  keeps and the guide offers again as `lastPairing`; « Annuler cet import », `Application/Undo/UndoImport` at `POST …/import-runs/{id}/undo`, takes back within
-  `app.records.undoable_for` and behind a step-up what the run created that nothing uses, as a `RecordRemoval` of kind
-  `import` the bin puts back through `RestoreUndoneImport`, the stock it moved through `ImportedStock` (reversals at their
-  own cost) and the rows a module wrote through `UndoesImportedRows`; « Imports récents » is `GET …/import-runs`),
-  `Watch` (« À surveiller »: a module declares its live conditions with `DeclaresWatch` in its own
-  `Infrastructure/Watch/`, one statement per kind, gated by its module and permission; a core context's subject has no module and is always on, as `Tenancy`'s unsent invitations, marked by `InvitationMailFailed` when the worker gives up),
-  `Texts` (« Textes »: any text the screens, the mails and the printed documents show, worded otherwise for the installation by
-  an operator, then for a company by its owner (`company.texts`), which wins there; `ShippedTexts` is the release's catalogue
-  the images carry, the `TextsInForce` port (`OverridingTranslator`, the translator itself) what a mail or a PDF writes, the fiscal texts locked; a changed original is flagged),
-  `Legal` (the legal pages' versions, read by anyone at `GET /api/legal/{page}/{language}`; the shipped drafts are
-  `api/resources/legal/<page>.<language>.md`, written at start where a page has none; the operator writes a new
-  version and validates the latest through `/api/platform/legal-texts`, from `/platform/legal`),
-  `Tenancy` also holds « Accès du support » (the owner's `SupportGrant`, with what is wrong if they say, which only the operator
-  reading it is given, on /platform and in the banner, which also says it when the owner closes it mid-visit; `Application/Support/SupportAccess`, which `CompanyGuard`
-  and `PermissionVoter` ask for an operator's read-only way in; `SupportReadOnlyListener`, which refuses anything but a GET
-  and every file a controller marked `BulkFile` answers under a grant (`BulkFilesTest`: every action recording
-  `export.downloaded` carries the mark), and records each page read),
-  `FirstSteps` (« Premiers pas »: a context declares its step with `DeclaresFirstStep` in its own
-  `Infrastructure/FirstSteps/`, done worked out from what is there, shown to whoever may do it),
-  `DataHealth` (the data checks: a context declares what no constraint states with `DeclaresDataChecks` in its own
-  `Infrastructure/DataHealth/`; `RunDataChecks` runs them all, nightly through the worker and as `app:data:check`,
-  and tells the operators each check, company and count, never a document's contents),
-  `Installation` (what a shop's installation script, `scripts/onprem/twes`, tells through `app:installation:tell`: a release
-  out to each company's owners, a failed or rolled-back update, a failing health check or backup to the operators; a line
-  it refuses exits 2, which the script drops),
-  `Records` (deleting what nothing names, and « Récemment supprimés »: a context declares what names its records with
-  `DeclaresRecordReferences` in its own `Infrastructure/Records/`, which `RecordReferenceCoverage` holds to every column
-  that names one; `RemoveRecords` refuses a record in use, takes the rows a reference says belong to it (`owned`: a
-  product's codes, photos, places, settings; a row owned through such a row, a line's tax, is declared `below` it and goes
-  before it), keeps them a day in `record_removal_row` for `RestoreRecords`, and the
-  worker makes them final every quarter hour, letting go the files nothing names any more through the Files context's
-  `UnnamedFiles`, which the erasure shares; `Merge/MergeRecords` merges records of a subject that says how, its
-  `MergedAway`: an alias stays switched off pointing at the record kept (`merged_into_id`, which `RecordReferenceCoverage`
-  requires of its table), a removed one goes as a delete does; a subject that says nothing is not merged; a subject may be only some of its table's rows (`whereColumn`: a document's drafts, an issued one answering
-  404) and named through another table (`labelTable`: a draft by its customer); `PreviewMerge`
-  says what moves and what stays, and the undo is the removal's restore; what no row carries a module does through
-  `MergeEffects`, asking `MergeActor` for a right the merge needs, such as the stock a product held, which
-  `Inventory/Application/Merge/CarryMergedStock` carries to the product kept as `merge` movements and back on an undo,
-  after which the stock store refuses any movement of the product merged away),
-  `Demo` (« Essayer la démo »: a visitor with no account claims a `demo_sandbox`, a whole company written by
-  `Dataset/DemoDataset` and owned by a throwaway account; the pool is topped up by `KeepSandboxPool`, its builds on the
-  `demo` transport, which the `demo-worker` container alone consumes, so no mail waits behind one; `DemoAccountGuard`
-  refuses what would make the account a real one (403 `demo_refused`); a mail to a sandbox's owner is kept by
-  `CaptureDemoMailListener` for « Courriers de la démo », never sent, and `DemoMailReachTest` names every mail writer;
-  every PDF carries the « DÉMO » band, and Factur-X, the TEJ withholding declaration and every export declared
-  `ExportForTheBooks` (the accountant's journals and tax summary) are refused; a sandbox goes at sign-out or after `app.demo.idle_ttl`
-  away, taken by `TendDemoSandboxesEveryFiveMinutes`; operators' lists and the data checks leave sandboxes out through
-  the `DemoCompanies` and `DemoAccounts` ports; `demo.enabled` and `demo.sandboxes_max` are the platform's « Démo » card, `demo.enabled` off by default where `APP_INSTALLATION=onprem` (`compose.onprem.yaml`), on otherwise, and refused at the first read if neither),
-  and the modules one level down in `api/src/Module/<Name>/`, the scanner among them (`Module/Scanning`: a phone lent
-  to a computer tab as a scanner, `scan_pairing`, the tab's endpoints under its company and the phone's four public ones
-  behind its key, named in `UnauthenticatedSweepTest`, which check the module themselves through `ScannerSwitch`), and the reports (`Module/Reports`: a module declares its reports with `DeclaresReport` in its own `Infrastructure/Reports/`, each read with its subject's permission; `RunReport` reads a period against another (`ReportComparison`), `ReportRequest` parses the question for the screen and for `ReportExportController` (`…/reports/{key}/export.{csv,xlsx}`, behind a step-up, audited as `report:<key>`); a column's `ReportColumnKind` says how it reads, `Days` a span of days; a row's `ReportDrill` names the list it opens and its filters, or none for its documents; activity leaves out `LoginAudit::PREFIX`'s events), and the orders to vendors (`Module/Purchases`: draft, sent, partly received, received, closed, cancelled, numbered when sent from the `purchase_order` series; a receipt, `GoodsReceipt`, moves the stock through the module's own `StockIntake` port inside the order's transaction, so a line the stock refuses refuses the whole receipt; `ReceivingPlaces` answers where the goods go, `GET …/purchase-orders/{id}/receiving`, with `purchase.receive` alone; a price or a cost is read and written only with `product.cost.read`; what an order comes to is `PurchaseOrderTotals`, which the screen and the printed order share; the printed « Bon de commande », `PrintPurchaseOrder` at `…/purchase-orders/{id}/pdf`, is rendered on request, never stored, and answered only with `product.cost.read` beside `purchase.read`; a line keeps the vendor's own code for its product, `OrderProducts::vendorCodes` (its supplier code entering one piece), read again on every draft save and when sent, never typed, and read only with `product.cost.read`) (a module reaches another only through a port it owns in its
-  `Application/`, answered in the other's `Infrastructure/<Caller>/`, such as `Inventory/Application/ReceiptCost/ReceiptCosts`;
-  `tests/Architecture/ModuleBoundariesTest` reds on another module's class that runs, `AllowedJoinsTest` on another module's
-  table its SQL names, but the reports' and watches' reads it lists until the release), `Shared` (docs/SPEC.md § 3
-  "Architecture style"; `Shared/Domain/Service/CompanyOwned` marks an entity the `Shared/Infrastructure/Doctrine/CompanyFilter`
-  scopes to the company a request acts for, and `tests/Architecture/CompanyColumnTest` requires it; a paged list's provider
-  uses `Shared/Infrastructure/ApiPlatform/Payload/Paging`, its repository `ListOrder` and the `SEARCH_TEXT` expression its trigram
-  index is built on, and `SearchIndexesTest` names the pair; an editable record's revision sends back its `version`, checked
-  through `Shared/Application/RecordVersions` and refused as `/problems/record-changed`, which the web's `isRecordChanged`
-  (`shared/errors/`) reads, docs/SPEC.md § 3 « Saving over someone else », `RecordVersionsTest`; a failure an interceptor has said in words is not said again: `RequestState` and the screens that catch for themselves ask `saidAlready` (`shared/errors/said-already.ts`), which reads the answer each feature refusal keeps through `refusedFor`; a write that adds is made once per `Idempotency-Key`, `Shared/Infrastructure/Submissions`, on the routes whose default `Submissions::ROUTE_DEFAULT` is set, which `SubmissionStancesTest` holds every POST to, docs/SPEC.md § 3 « One submission, one write »). Each class sits in the folder of its role (docs/SPEC.md § 3 « Folders by role »; `SourceLayoutTest`
-  reds on one out of place or a folder past 25 files; `scripts/refactor/move-classes.py` moves classes and
-  `scripts/refactor/layout-oracle.sh` proves the move). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
-  Application: use cases and ports (no framework import; `tests/Architecture/` enforces it). Infrastructure: Doctrine
-  repositories, Symfony security (`SecurityUser` snapshot, `UserProvider`, handlers, listeners, `CsrfRequestListener`),
-  API Platform resources (`Me`) and the OpenAPI decorator, the console command, the session handler. Every port has one
-  adapter and Symfony aliases them (`services.yaml` scans `src/`); policy values are parameters there.
-- `web/src/app/api/` — TypeScript types generated from the API's OpenAPI document (`make api-types`, gitignored;
-  CI passes the document from the api job to the web job as an artifact; the web IMAGE generates them itself from
-  the document the api image exports at build, through a compose `additional_contexts` service reference, so a
-  clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature — over twenty, so
-  check `ls web/src/app` rather than this sentence: `account` — « Mon compte », the person's own preferences, `auth`, `company`, `customers`, `delivery-notes`, `expenses`,
-  `fiscal`, `hello`, `inventory`, `invitation`, `invoices`, `legal` — the public `/legal/<slug>` pages, `texts` — « Textes », one page at `/company/texts` and `/platform/texts`, its words merged over the shipped files by `shared/i18n/texts-overlay.ts`, `platform`, `products`, `reports` — « Rapports », the catalogue and each report's page, `settings`, `signup`,
-  `vendors`, `purchases` — the orders to vendors, their lines editor, the receive dialog (a serial number a line of quantity 1) and « Ajouter à… »'s order target (found by vendor; only active goods are taken in), `pairing` — the phone's public `/pair` page, a scanner with no sign-in, `support-access` — « Accès du support », the owner's page and the banner, `watch` — « À surveiller » and its home count, `first-steps` — « Premiers pas » on the home, `notifications` — the bell, the centre and the Centrifugo connection behind
-  the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest (`planned-nav.ts` places the planned modules the signed-in state's `plannedModules` lists; `COMING_NAV` keeps only the settings pages not built yet), the home manifest (`home-manifest.ts`: a module declares its `*_HOME` panel, loaded lazily, beside its `*_NAV`), the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear, whose list stays put beside the page and folds to a rail with `]`; every
-  signed-in route is a child of it but `/customer-display`, a window facing the customer), `shared/` for what several features use and which imports no feature (ESLint enforces it; `session/`: the `Session`
-  port the auth facade answers; `theme/`: runtime accent colour tokens (`accentTokens`: the accent as picked and its readable roles), the lifecycle map every module's status tones derive from (`lifecycle-tones.ts`),
-  `ThemeFacade` (Automatique follows the device) and the scheme menu; `i18n/`: `LanguageFacade` and the language menu, and `PluralCompiler`, which says a count in its language's form (`{count, plural, one {…} other {…}}` in a screen text; never « (s) », the parity spec refuses it); `a11y/`: the
-  `appLabel` directive, one string for a control's accessible name and its tooltip; `testing/`: providers specs share (`provideQuietFeedback` records toasts, `effectToasts` reads the kinds said; `announceSaved` plays a live change); `feedback/`: the `Feedback` port (toasts; `effect(key, params, kind)` after a consequential action), `RequestActivity` and its interceptor, the activity bar; `actions/`: `ScreenAction`, whose confirmation must name its `ActionKind` (annulable, corrigeable, définitif, définitif à terme; the last two confirmed by a `twes-danger` button, `isDanger`) and may ask a word or name typed first (`typed`), and `kindAmong`, which the toast after an action reads, and `PlannedAction`, what a screen will offer once a planned module ships, listed « Bientôt » last in either bar's « ⋮ »; `records/`: `RecordDeletes`, a record's delete and its restore the same on every screen (no question, a toast offering « Annuler », a refusal naming what uses each record), over `RecordRemovalsApi`, which opens the `records` texts into the root itself before it acts, and `record-tables.ts`, the one wording of a table a refusal or a merge counts (one the texts do not word reads as other records; `RecordWordsTest` holds every table a declaration counts to this list and its words in each language, the parity spec this list to them); `legal/`: `LEGAL_PAGES`, `LegalFooter` (the centred copyright and legal-links line closing every page), `CookieNotice` (the last row of the page, sticky at its foot, standing on the phone bar through `--twes-bottom-bar-height`) and `STORED_ITEMS` (what is stored, which the Cookies page lists), `LegalLink` (a link that opens `LegalDialog` over the screen, a modified click left to the browser) and `LegalText` (a page's text, shared by the dialog and `/legal/<slug>`: the API's Markdown through `marked` and the sanitizing `[innerHTML]`, with its fr / en / ar switch), `LegalApi`; `tour/`: `TOUR_ANCHORS`, the `data-tour` places a guided tour may point at, `Tour` (a module declares its `*_TOURS` beside its `*_NAV`, collected in `shell/tours.ts` and offered in the palette as « Guide : … ») and `TourGuide`, which runs one on a CDK overlay beside the anchor on screen, never blocking the page (`web/e2e/tours.spec.ts` plays every guide the palette offers, so a tour that no longer runs is a red CI); `health/`: the API health client; `scan/`: `ScanWedge`, which tells a scanner's burst from typing (the shell opens `ProductScanCard` on one outside a field, only while the company has the `scanning` module on, `SCANNING_MODULE`), the `ScanBus` every scan goes through, `CameraView`, `PhonePairing` (the tab's side of a lent phone) and `ScanOffers` (what the card offers that phone); `icons/`: `ICONS`, every Material Symbol the app draws, which the icon font is cut to at build (`web/scripts/subset-icons.mjs`, the font gitignored under `src/generated/`), and `IconName`, the type an `icon` field takes; `qr/`: `QrCode`, a QR code drawn as SVG; `build/`: `BuildInfo` (the web build this page runs, read once, and the API's, read again and again), `BuildLine` (the footer's build line, the whole line copied on a click) and `NewVersionBanner` (« Recharger » once a newer bundle is served); `documents/`: `liveFigures`, what a document with lines comes to as it is typed, asked of the API's `…/preview` once typing rests, `LineFiguresView`, a line's figures folded to its net and total, and `stockOfLines`, what a document's lines leave of what is on hand; `ui/`: the bars, `WINDOW_CLASS`, `COARSE_POINTER` (a finger rather than a mouse, what a target is sized for), and a menu's foldable sections (`sectionFolds`, kept in `presentation.folded-sections`) and its edge fade and current entry in view (`NavScroller`); `customer-view/`: `CustomerView`, whether the API holds the sign-in on the customer screen (`Me.customerScreenCompanyId`), the `CustomerScreenHold` port the auth facade answers, and the interceptor that sends a tab the API refused as `customer_screen_locked` to the screen; `install/`: `AppInstall`, the offer to install the application (the browser's own dialog where Chrome or Edge hands it
-  over, Safari's two steps on an iPhone, nothing where it cannot or is installed), which the account menu, Ctrl K's
-  « Application » group and the phone's home card (`web/src/app/install/`, put aside in `twes.install.later`) read; the
-  manifest itself is the API's, `Settings/Infrastructure/Http/WebManifestController` at `/api/web-manifest`, from
-  `app.product_name` and the accent's default, `WebManifestTest` holding the web's copies to them; `customer-display/`: `CustomerDisplay`, what a sale's scans show the customer display window (`/customer-display`, the `customer-display` feature directory) over a BroadcastChannel; `realtime/`: the one Centrifugo connection's connector, the `X-Tab` interceptor naming this tab, the `X-Live-Changes` interceptor handing this tab what its own request changed, and `LiveChanges` (a page calls `reloadOn(kinds, reload, destroyRef)` to read its data again, quietly, when this tab, another tab or member changes those kinds); `submissions/`: the interceptor naming every POST to the API with its `Idempotency-Key`, the same key only for the same write sent again after no answer, a server error or one still running, and the toast for the two answers about a key; `settings/`: the `SettingsFacade` port, its API adapter
-  `ApiSettings` (the presentation chain), the browser-storage adapter it keeps for signed-out pages, and the registry
-  every presentation key must be declared in; `list/`: `ListExport` (the export menu behind a step-up, a page naming the saved file through `fileName`), `ListDescriptor`, the pure view
-  functions and `DataList` (given a `total`, it shows the page the API answered and emits `queryChange`; the rows-per-page chooser
-  shows on every list with rows, at the size a person chose for every list, `presentation.page-size`, unless the address names one; a column holding a typed name says `wraps`, and its long values take further lines in the room the card leaves rather than send a column away); `form/`: `FormDescriptor`, `buildFormGroup` and `DescriptorForm`, and `DecimalInput` (`kind: 'decimal'`, or `appDecimal` on a hand-written input: the screen's decimal separator shown, a comma or a point taken, the API's point kept in the control); `liveRecord`, which merges another person's save into an open editor field by field over `mergeSavedVersion` and `RecordSync`, with the `RecordChanged` banner and `PartConflict` for what merges as one field, such as a document's lines; the save canon: `unsavedChanges` counts a form's unsaved fields into `UnsavedChanges`, which holds a navigation away and a reload while any is there, `RecordBar` beside the title shows that count and the save, active only once something changed (`testId` prefixes its ids where a tab draws a second bar), `listRecord` counts the editor a list opens and `editorActions` gives its card the same bar, and a bar saves through `DescriptorForm.submit()`, so what is refused shows where it is), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
-  (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
-  `public/i18n/{fr,en,ar}.json` with a parity test; the texts only one page reads in `public/i18n/<page>/<lang>.json`,
-  fetched when it first opens (`textsPart('<page>')` on its route, `shared/i18n/texts-part.ts`; `ls web/public/i18n` lists
-  them: « Mon compte », the expense pages, the platform's, the stock plan's, the erasure page and more), added to the parity spec's `parts` and measured on their own by the budget gate; texts several screens
-  and dialogs read (the schedule's, `public/i18n/schedule/`) are opened into the root instead, by `textsOpened(name)` on
-  a route or `await TextsParts.open(name)` before a dialog, and a screen that says them without opening them shows keys.
-- `api/translations/*.{fr,en,ar}.yaml` — the only strings the API itself emits: the invitation mail (`emails`), fiscal
-  labels and mentions (`fiscal`), the « À vérifier » note an import leaves on a record (`imports`), and printed documents (`pdf`, laid out in `api/templates/pdf/`, whose `_document.css.twig` every document shares with the
-  built-in layouts and the accent, and rendered by
-  Gotenberg). `ApiTranslationParityTest` keeps each pair's keys identical. Everything a person reads in the SPA lives
-  in `web/public/i18n/` instead, with its own parity test.
+- **The web** (`web/src/app/…`, its `shared/` canon, the texts and their parts, and the web's gates, the five holding the
+  API and the web together among them) → `.claude/rules/web.md`, which loads when you read a file under `web/`.
 - `var/claude/**` — transient review output, gitignored.
 - `.claude/settings.json` — `defaultMode: auto`, allow-list, empty `deny`, no `ask`; one
   `PostToolUse` hook (`.claude/hooks/lint-on-write.sh`) running `php -l` / `bash -n` on writes.
-- `.claude/rules/expertise-core.md` (loads at session start), `.claude/EXPERTISE-REFERENCE.md` (read by section) and the four
+- `.claude/rules/expertise-core.md` (loads at session start; the area rules files beside it, `api.md`, `web.md`,
+  `infra.md` and `gate-scripts.md`, load with their folders), `.claude/EXPERTISE-REFERENCE.md` (read by section) and the four
   `domain-*` skills in `.claude/skills/` — what a generic engineer gets wrong here, the evidence surfaces and a trigger -> lesson
   table routing to the packs. Curated from the recorded decisions, memories and docs, dated (`Review date:`); do not hand-append:
-  put a lesson under § "Lessons" and flag it for the next refresh. `bash ~/.claude/bin/expertise-verify.sh --dir .` checks them
+  put a lesson under § "Lessons" or in its area's rules file and flag it for the next refresh. `bash ~/.claude/bin/expertise-verify.sh --dir .` checks them
   against the tree.
-- `infra/api/Dockerfile` — FrankenPHP in worker mode in every target; two targets over one `base`: `dev`
-  (`compose.yaml`, `make up`, CI's e2e) and `prod` (`compose.prod.yaml`, CI's `prod-image`: `php.ini-production`,
-  `infra/api/conf.d/20-app.prod.ini` with preload, no dev packages, the cache warmed at build; `docs/START.md` § 10).
-  PHP settings for every mode: `infra/api/conf.d/10-app.ini`.
-- Backups (`docs/START.md` § 13): `compose.backup.yaml`, an opt-in layer over the production compose, builds the database
-  from `infra/postgres/` (the same PostgreSQL plus pgBackRest, restic, supercronic; `pgbackrest.conf`, `backup/twes-backup`,
-  `backup/crontab`) and adds the `backup` service; `make backup-drill` (`scripts/backup/restore-drill.sh`, compose project
-  `twes-drill` only) restores from a stand-in bucket into empty volumes, as CI's `restore-drill` workflow does weekly.
-  `BackupOverlayTest` pins the loss window and the encryption.
-- Deploying (`docs/START.md` § 14): `compose.deploy.yaml` over compose.yaml + `compose.prod.yaml` + `compose.backup.yaml`
-  adds the Caddy edge (`infra/edge/Caddyfile`: automatic certificates, HSTS for the host alone; every Caddy of the tree, the api's
-  FrankenPHP included through `infra/api/log-filter.caddy`, writes a link's token [token] in its logs, `infra/edge/tests/token-free-logs.test.sh`), the only service that
-  publishes a port, and derives every address from `TWES_HOST`; every value is required and comes from one file outside
-  the checkout, written once by `scripts/deploy/new-instance.sh` (`--staging` for staging's) and handed to compose by
-  `scripts/deploy/deploy.sh`, which refuses anything but a clean checkout and takes a mode: `--release` (production: an
-  annotated `vYYYY.MM.DD.N` tag naming the three images by digest, written by `scripts/release/tag-release.sh`
-  (`make release-tag TAG=… COMMIT=…`, any commit master published; `make point-master COMMIT=…` moves staging's `:master`
-  by hand, `scripts/release/point-master.sh`), started
-  over `compose.release.yaml` with nothing built), `--staging <release file>` and `--build` (self-hosted, built from the
-  tag). CI's `publish` job (`scripts/release/publish.sh`, behind the repository variable `PUBLISH_IMAGES`) pushes the
-  images to GHCR by commit and moves `:master` forward only; staging pulls it with `scripts/deploy/staging-follow.sh`
-  (`infra/staging/`, a systemd timer). Each digest deployment is written down in `releases/` beside the values.
-  Procedures, each marked tried or untried: `docs/RUNBOOK.md`. `make staging-check` (`scripts/staging/`, compose project
-  `twes-staging-check`, a registry on 127.0.0.1:5099) proves the road and the secret rotations on this machine. The first operator: `app:seed --without-company
-  --operator-password-stdin`. `scripts/gates/deploy-overlay.sh` holds the overlay's shape in CI; `make deploy-check`
-  (`scripts/deploy/deploy-check.sh`, compose project `twes-deploy-check` only, CI's `deploy-check` workflow) boots it and
-  asks the edge for HSTS, the redirect, a sign-in, the socket and the client address.
-- A shop's own computer (`docs/START.md` § 16): `compose.onprem.yaml` (its edge, `infra/onprem/Caddyfile`: https://localhost
-  for passkeys and https://<its network address> through an authority of its own, whose `root.crt` plain HTTP serves),
-  `compose.backup-local.yaml` (backups in its own folder, run when due, `BACKUP_SCHEDULE=due`) and
-  `compose.backup-offsite.yaml`; values from `scripts/deploy/new-instance.sh --onprem`, `TWES_INSTALL=onprem`. Everything
-  runs through `scripts/onprem/twes` (install, start, update with its backup and rollback, policy, offsite, tick, status,
-  restore-commands, pin-key, schedule: Linux's systemd units; test `scripts/tests/twes.test.sh`), which reaches the stack
-  through `deploy.sh --compose`. A release is taken only from a tag `scripts/release/tag-release.sh` signed, verified
-  against the key pinned at install (`infra/onprem/release-key.asc`, the developer's public key, pinned once its
-  fingerprint is confirmed). Windows: `scripts/onprem/install.ps1` (WSL, then `-Engine Desktop`, Docker Desktop and the
-  `\twes-in\` start and tick tasks, or `-Engine Wsl`, Docker Engine inside Ubuntu through `scripts/onprem/wsl-engine.sh`,
-  systemd's units and the `keep` task; the checkout verified against the fingerprint the installer carries before
-  anything from it runs, its `$verify` line run by twes.test.sh, `twes install`, the authority trusted; ASCII only;
-  `make gate-powershell`, part of `make gate-licences`, parses it, runs PSScriptAnalyzer and its `.wslconfig` editing in
-  `infra/powershell/`'s image, the .NET SDK's, which is where Microsoft ships PowerShell now; built once per Dockerfile,
-  `make ps-tools-tag` its name, and kept in CI's cache, since PowerShell Gallery fails now and then). `make onprem-check`
-  (`scripts/onprem/onprem-check.sh`, compose project `twes-onprem-check`, ports 80 and 443, about ten minutes) installs,
-  rolls back, restores and refuses an unsigned tag for real; the restore steps are docs/RUNBOOK.md « Restore a shop »,
-  releasing to shops « Release to the shops ». `make update-rehearsal FILES=<a shop's five import files> [FROM=<tag>]
-  [TO=<commit>]` (`scripts/onprem/update-rehearsal.sh`, compose project `twes-update-rehearsal`, 80 and 443, about
-  twenty minutes, never beside `make onprem-check`) takes the update that shop will take on its own files before each
-  tag: the release out installed by `twes update`, the files imported, the commit taken by `twes update`, every table,
-  the products list and the migrations read back.
-- The monitor (`docs/START.md` § 15), on a machine of its own: `infra/monitor/compose.yaml` (Gatus reading `/api/health/deep`
-  with `MONITOR_TOKEN` and taking the backups' heartbeats, alerting by mail and Telegram on a public page whose lines hide
-  their details, `gatus.yaml`; GlitchTip all-in-one with no Valkey and its PostgreSQL; a Caddy edge), values from
-  `scripts/monitor/new-monitor.sh`, the instance's project and DSN from `infra/monitor/bootstrap.py`. The API reports
-  errors through `sentry/sentry-symfony` in prod only, through Monolog, scrubbed by `Shared/Infrastructure/ErrorReporting/
-  ScrubPersonalData`; the web posts its own to `POST /api/client-errors` (`shared/errors/`). A heartbeat name carries no
-  accent (Gatus takes none for one). `scripts/gates/monitor-config.sh` holds the monitor's shape; `make monitor-check`
-  (`scripts/monitor/monitor-check.sh`, compose projects `twes-monitor-check` and `twes-monitor-check-app`, CI's
-  `monitor-check` workflow) boots a deployment and a monitor side by side and reads Gatus and GlitchTip back.
+- **Images, deploying, a shop's computer, the monitor, backups** (`infra/api/Dockerfile`, the `compose.*.yaml` layers,
+  `scripts/{deploy,onprem,release,backup,monitor,staging}/`, and the compose, overlay, pin and release gates) →
+  `.claude/rules/infra.md`, which loads when you read a file there or `docs/{START,RUNBOOK,UPDATE}.md`, `TODO.md`, `.github/`.
 - `Makefile` — `make up` (live: compose.yaml + `compose.live.yaml`, the source mounted, API workers restarted by
   FrankenPHP's watcher, the web tier on `ng serve`; `make up-images` runs the built images as CI does; `make live-refresh`
   after a resource property change; docs/START.md § 2), web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, `lan` :8443 a phone's HTTPS door on this machine's network address, `infra/lan/Caddyfile`; the one-shot `migrate` service
@@ -400,17 +214,13 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 
 ## Lessons
 
+The lessons of one area are in its rules file, which loads when you read a file there: the API's in `.claude/rules/api.md`
+(`api/**`), the web's in `web.md` (`web/**`), the images', deploying's and a shop's in `infra.md`, writing a gate or its
+test in `gate-scripts.md` (`scripts/gates/**`, `scripts/tests/**`). Here: what applies before any file is read.
+
 - Read a build's or download's exit code on its own (`cmd >log 2>&1; echo exit=$?`), never through `| tail`: the pipe's
   status is tail's, and three failed `docker build`s read as passes (2026-10-03). Playwright's browser download passes
   on Docker's default network and times out on the host's (dead IPv6 route), so `make playwright-browser` runs it there.
-- The toolchain's `TMPDIR` is outside the working tree: `vendoredFonts` asks git which paths are ignored, and a fixture
-  built under `var/` (ignored) is invisible to it, which read as four gate-test failures that passed on the host.
-- A raw DBAL result is `mixed` under PHPStan max and a bare cast is refused: read it through a validating helper
-  (`DataFixtures/Scale/Rows`) that throws on the unexpected. A sort or uniqueness check over numbers must partition by
-  the series (company, establishment, document type), or another company's own numbers interleave (2026-09-29).
-- `doctrine:fixtures:load` (`make fixtures`; or `make tools CMD='cd api && bin/console doctrine:fixtures:load --append'`, on the
-  host's network) needs Mailpit (`docker compose up -d --wait mailpit`, SMTP on :8093), or it dies
-  mid-load with a connection refused; Centrifugo being down only warns (2026-09-29).
 - Stage first, then run the checks, then commit: the SPDX gate enumerates `git ls-files`, and this clone has
   `core.fileMode=false`, so a new script also needs `git update-index --chmod=+x` (the executable-bits gate catches it).
   Commit a new script from the index (`git commit` with no pathspec): `git commit -- <paths>` re-reads the files and
@@ -430,367 +240,63 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - Local Playwright and Vitest timing is not evidence while other projects load this machine (load average 20+ on 8
   cores fails a different 5-second wait each run): check `uptime`, measure the server with curl, let CI arbitrate.
   A pipe hides a failing `make gate-api`: read the tool's own exit or its `[OK]` line, never the pipeline's status.
-- `make api-openapi` exports from the dev cache, so a stale `api/var/cache/dev` exports an OLD schema and the web gate
-  fails locally while CI (fresh cache) passes, or the reverse. After an API resource change: `make tools CMD='cd api && bin/console cache:clear'`
-  before `make gate-web` (2026-09-13: `Me` exported without `mfa`, three days after `MeMfa` landed).
-- API Platform's metadata pools survive `cache:clear`: a property added to a resource is then silently dropped on write and
-  missing from the OpenAPI export. After a resource property change run `make tools CMD='cd api && bin/console cache:pool:clear --all && bin/console cache:pool:clear --all --env=test'` (dev and test) (2026-09-14: `customFields` arrived empty until the pools were cleared).
-- A `@var list<string>` on an API Platform property refuses nothing: a JSON object is denormalized with its keys and
-  stored as a JSON object. A writable list property carries `#[Assert\Type('list')]` (2026-09-14: `choices` and
-  `defaultTaxComponentIds` both accepted `{"first": …}` with 201).
-- A template binding `[value]="fn(line)"` that builds a new object hands the child a new input on EVERY check, and a
-  child effect over that input re-fires each time: `PickField` reset the text being typed on every keystroke. Compare
-  a structured input by its content (`computed` with `equal`) before acting on it (2026-09-23).
-- A `linkedSignal`'s `source` function is re-run, and its `computation` with it, whenever a signal it READS changes,
-  even when the value it returns is the same: `() => \`${tab}|${product() != null}\`` reset an opened tab on every save.
-  Give it a `computed` as its source, which only notifies when the value changes (2026-09-25, `ProductPage.tabKey`).
-- A field added to a shared type, or a column added to a list, reaches specs and e2e you did not open: an API spec's
-  `toEqual` on the whole mapped row, and an e2e reading a cell by position (`nth(3)`). Run the whole web unit suite
-  before committing such a change, and read list cells by `[data-column="<id>"]`, never by index (2026-09-23: two reds).
-- The API runs in FrankenPHP's worker mode: one kernel serves many requests. A service keeping anything a request set
-  after construction implements `ResetInterface`, or it reaches the next person's request; `WorkerModeTest` runs requests
-  on one kernel as the worker does (2026-09-27, row 167), and `StatefulServicesTest` reds on any service of the test, dev
-  or production container writing a property outside its constructor that neither resets nor is listed with its reason.
-- Never name a PHPUnit helper `run()`, `count()` or `name()`: all are final on `TestCase` and the whole file fails to load.
-- `\DomainException` extends `\LogicException`, so a test catching `\LogicException` also passes on every domain refusal
-  (`InvalidInvoice` and the like): assert the refusal is not the domain one, or the guard under test can vanish unseen
-  (2026-09-15: a credit note of another invoice looked refused while only its amount was). `NamedLogicRefusalsTest` now
-  refuses an expected or caught `\LogicException` that is not named by its message.
-- BrowserKit adds a same-origin `Referer` from its history to every request, and Symfony's CSRF manager accepts it
-  as origin proof: a functional test of a cross-site request must set `Sec-Fetch-Site: cross-site` and a foreign
-  Referer, and a "no origin at all" request needs `getHistory()->clear()` as well as empty server parameters.
-- An array under `api_platform.defaults` (`output_formats`, `normalization_context`…) is MERGED into an operation's own
-  value, never replaced by it: a default `output_formats: json` left a list declared JSON-LD answering plain JSON first.
-  Restrict per operation, or through a metadata factory decorator (`JsonLdOnlyWhereNamed`, 2026-09-17).
-- An entity's property default must be a literal, never another class's constant (`= Other::X`): the class then needs
-  its defaults resolved at runtime, Doctrine's lazy ghosts skip that, and the local debug PHP aborts the whole PHPUnit
-  run in `zend_lazy_object_init` (CI's release PHP does not assert, so only the local gate shows it). 2026-09-13.
-- A `FormGroup` built in a `computed` over facade signals is rebuilt by any reload that returns equal data as new
-  objects, discarding what was typed (2026-09-14: revising a product right after creating it saved the old price and
-  said "saved"). Key the form on the record's id and the descriptor's content, and read its inputs `untracked`. A list
-  read after the form opened does the same; a `linkedSignal` over what is edited rebuilds over the typed values.
-- A PUT body that echoes a read row with its `id` answers 400 ("Cannot find object to populate"). An e2e cleanup that
-  never checks its `fetch` status hides that, and leaks rows into the shared database: throw on `!response.ok`.
-- Playwright's `page.request` does not send the session cookie (`Secure`, `SameSite=Strict`) to the local http stack, so
-  it answers 401: fetch an API file from inside the page (`page.evaluate`) instead (2026-09-14, the delivery note PDF).
-- Judge a rendered PDF by looking at it: `magick -trim -format '%@'` answered `+0+0` on pages whose content was visibly
-  inset, which read as "Gotenberg ignores its margins". What was wrong was a template's `@page { margin: 0 }`, which
-  overrides the renderer's margin fields in Chromium: every delivery note and invoice printed flush to the paper's edge
-  (2026-09-14; `PdfTemplateMarginsTest` pins it).
 - Create source files with the Write tool, never `printf`/heredoc in Bash: the lint-on-write `php -l` hook sees only
   tool writes, and shell quote splicing turned two PHP string literals into bare words, so every functional test died at
   kernel boot (2026-09-15). Never run a sabotage batch in the same parallel block as a gate: it mutates what the gate reads.
-- Angular Material's `mat-card-content` overrides Tailwind layout utilities placed on it: put the flex or grid on a `div` inside
-  it (2026-09-15: the platform page's switches ran together and its buttons wrapped under the company name).
 - Know which stack is running before reading a measurement: `make up` is live (the dev server, the mounted source), while
   `make up-images` and CI serve a STATIC nginx build, where a `web/src/**` edit stays invisible until
   `docker compose up -d --build web`. Three rounds of measurement read as product defects before that was identified
   (2026-09-16). Under `make up`, a resource property change needs `make live-refresh`: API Platform's metadata pools
   outlive a worker restart.
-- A dead operator session makes `/api/auth/me` answer 401 with no `company` key AT ALL, so
-  `forgetPresentationChoices`'s `me.company === null` guard passes `undefined` straight into `me.company.id`:
-  a spec dying with `Cannot read properties of undefined (reading 'id')` on its first line needs the session
-  re-minted with `--project=setup`, not a teardown fix (2026-09-16).
-- A mutated migration mutates its `down()` too: migrate the test database down before applying the mutant, and down with the
-  mutant before restoring it, or what the mutant removed never leaves the schema (2026-09-15: a dropped CHECK stayed, and read green).
-- `KernelTestCase::ensureKernelShutdown()` BOOTS the kernel to read its container for the cache directories, so a kernel a
-  refusal left assigned but unbooted is booted again by the teardown — and refused there, turning a passing case into an
-  error in a method that never asked for a kernel. Drop it instead (`static::$kernel = null; static::$booted = false;`)
-  when testing anything that refuses to boot (2026-09-16, `DevelopmentKeysTest`).
-- Axe reads colours mid-transition: after a runtime scheme change every element with a colour transition still shows a
-  blend of the old scheme, and the contrast check fails on a moment, not a design. `ThemeFacade` holds transitions for
-  one frame (`.theme-changing`); a new transition on colour must stay under that class (2026-09-16, row 28).
-- Never animate `mat-sidenav`'s width inside an `autosize` container: autosize measures the drawer once per change,
-  reads it mid-transition and leaves the page on a margin between the two widths (2026-09-16: x=200 between 248 and 80).
-- A Doctrine inverse `OneToMany` is filled by a LOAD, so an in-memory repository never fills it and a unit test reads it
-  empty. A domain rule that reads an entity's siblings — what a credit note's withholding leaves for the next one —
-  needs the inverse side maintained in the entity beside the owning assignment, as the other collections here are
-  (2026-09-16, `Invoice::creditNoteFor`). Adding the inverse side alone is a mapping change, not a migration: the
-  owning column and its index already exist.
-- An editor that keeps its form after saving must show what the API kept, not what was typed: a later comparison with
-  the saved version otherwise reads `1300` against `1300.000` as a change and highlights a field nobody touched, or
-  toasts a save that changed nothing. `LiveRecord.savedHere` writes the answer into the controls (2026-09-17).
-- The shared Demo company outgrows a list page as e2e runs leave rows behind (52 customers on 2026-09-16, 25 a page): a
-  scenario asserting its new row in a list filters the list first, or the row sorts onto page 2 and reads as missing.
-- Every company screen failing in a local `make e2e` after `make fixtures` is the operator's several memberships, not a
-  regression: a sign-in opens the pinned, else the last used, else the first company by name (2026-09-25), which may
-  not be Demo. A scenario fixes it for itself by calling `inACompany(page, CSRF)` after `signIn` (it switches to
-  Demo; a no-op in CI, which seeds Demo alone). Switching moves the operator's "last used" company too. Add it to any
-  spec you need to run locally: "let CI arbitrate" hid a real failure for three commits (2026-09-20). And a test id
-  renamed in a shared component is a blast-radius sweep over `web/e2e` too, not only over `web/src`. The same holds for a
-  shown format (a day through the `day` pipe) and a suffix selector (`[data-testid$="-confirm"]`): `git grep` the old
-  literal over `web/e2e`; both reddened e2e on master the same day (2026-10-06).
-- Several unrelated e2e signing in and landing on `/two-factor` is Demo's `mfa_required` left `true` on this machine,
-  not a regression: the seed never sets it, so CI is green on the same commit. Read it with
-  `docker compose exec -T postgres psql -U twes -d twes -c "SELECT mfa_required FROM company WHERE name='Demo'"`.
-- Playwright's `error-context.md` snapshots the default `page` fixture, so a failure inside a second
-  `browser.newContext()` page shows another page entirely; read that page's last `screencast/page@<id>-*.jpeg` in the
-  trace zip instead. Its frame is what showed a form whose inputs had collapsed to nothing (2026-09-17).
-- A guard that slows an animation to make a moment reproducible must stay slow through the scan it guards: putting the
-  speed back first, or letting an earlier scan eat the window, lets the fade finish by itself and the mutant that
-  removes the fix passes. Twice green before the sabotage caught it (2026-09-17, `data-list.spec.ts` mid-fade).
 - `make gate`'s licence half is every script `make gate-licences` runs (17 on 2026-09-19, CI's `licences` job), not
   `dependency-licences.php` alone: running that one and calling the job green put a red on master (2026-09-17). A web change
   needs it too: a new icon in a template is checked there (`icons-declared.sh`), and skipping it put a red on master again (2026-10-06).
-- The images build from the WORKING TREE (`COPY api/ ./`), untracked files included: proving a bring-up from a dirty
-  tree tests the work in progress, not HEAD. Prove it from `git worktree add <tmp> HEAD` (2026-09-19, `ImportExport/` WIP).
-- php-cs-fixer rewrites a `/** @var */` above a `static $x = []` inside a method into `/* @var */`, and PHPStan then
-  ignores it and reports `return.type` on what the method returns. Cache in a typed `private static array` property
-  instead of a static variable (2026-09-20).
-- `web/public/i18n/{fr,en}.json` keys are NOT alphabetical — that order is deliberate. Append a new section and assert
-  the rest is unchanged by comparing the PARSED structures; sorting them produces a 2000-line diff of pure reordering
-  that hides the 80 lines actually added (2026-09-20, same class as /stack's `jq … | unique` lesson).
-- A gate that checks the leaves does not check the branch: `permission-labels.sh` passed green while the two biggest
-  group HEADINGS above those labels were raw dotted keys. Ask what sits one level up from whatever a new gate
-  enumerates (2026-09-20). Its floor is what then caught the follow-up — the gate read the `KnownPermissions` PORT,
-  whose file exists and holds no groups, so three headings vanished silently; a discovery input that names a file must
-  red when the file yields nothing, and the floor must sit ABOVE what the other half alone produces.
-- The other half of that: a key BUILT by interpolation is invisible to the gate that greps for it. `VenuePlanSettings`
-  first wrote `"settings.venue.shape.$shape.$side"` in a loop, so `setting-labels.sh` saw eleven keys where nineteen
-  were declared and passed — its floor was below what the other declarations alone make (2026-09-21). Write a key a
-  gate must find out in full, and set the floor so losing one file's worth reds.
-- `GROUPS` is a bash special variable (the current user's group ids): assigning to it is silently ignored and it
-  expands to a number. A test fixture whose JSON came out as `{1000,...}` was that, not a quoting bug (2026-09-20).
-- `audit_log.at` is a `timestamp(0)`, so several writes inside one second tie: assert the SET of audit actions, never
-  their order, or the case passes or fails by the second it happened to run in (2026-09-20).
-- An audit entry is also the realtime signal — `DoctrineAuditTrail` stages each one as a live change whose kind is the
-  entity type. A use case that records nothing leaves `reloadOn([...])` on its screen permanently dead, with no error
-  anywhere (2026-09-20, `ManageRoles`).
-- A mutant that does not TYPE-CHECK tests nothing, and reads exactly like a test that fails to notice: two sabotages
-  showed no failures because the build had died, not because the guarantee was uncovered. Print the tally, not just
-  the failures — an absent `Tests N passed` line is the tell (2026-09-20).
-- The connection never brings a live change back to the TAB that caused it (the `X-Tab` header); the API names it in
-  that request's answer instead (`X-Live-Changes`, `LiveChangesAnswer`), which `liveChangesInterceptor` hands to
-  `LiveChanges` as `own`, so every `reloadOn` of the acting tab hears it; `liveRecord` takes it without a notice. A
-  write the API stages no change for (no audit entry) is still heard by nobody. Use `refresh()`, never `load()`,
-  after a write — `load()` signs the person out when the API is briefly unreachable. What a request did BEYOND its
-  subject (a receipt that moved a price) is said the same way: a use case calls the `Effects` port, `StagedEffects`
-  keeps it until its unit commits (`StagedUntilCommit`, which `DoctrineTransactions` drives), `EffectsAnswer` writes
-  `X-Effects`, and `effectsInterceptor` (`shared/effects/`) hands each kind to the `EFFECT_SAYERS` that say it, once
-  `RequestActivity.settled()`: one toast shows at a time, and a sayer speaking at the answer was replaced by the page's
-  own outcome, said after its reload.
 - Pushing again CANCELS the previous commit's in-progress CI run, so a commit can read `e2e cancelled` and its new
   specs never ran anywhere but locally. Check the run of the commit that actually carries them (2026-09-20).
-- Assigning to a typed public array property (`$recorder->staged = []`) narrows PHPStan's view of it to `array{}`, and
-  the next method call widens it back to the NATIVE `array` — the `@var list<X>` is gone, so every read after that is
-  `mixed` and a `$x->id?->toRfc4122()` on it errors while the identical line in a test that never reset reads fine.
-  Assert over what is there rather than clearing first (2026-09-21, `KeepStockTest`).
-- A stock location that has seen a movement is KEPT (409), so an e2e that moves goods into a location it created
-  cannot delete it and leaks one per run into the shared company. Say the dimension is uncertified instead.
 - Running e2e locally is worth the ten minutes (`make e2e`; `make playwright-browser` fetches Chromium and WebKit into
   `var/cache/ms-playwright` over Docker's default network, because the host network's IPv6 route to Google's storage is dead).
   Under `make up-images` both containers build from the working tree, so
   `docker compose up -d --build web api` first, or the browser tests the last image; `make up` serves the tree as it is. This caught two defects in one run that CI would have taken 28 minutes
   to report, one of them in the test itself (2026-09-21).
-- A promoted `public readonly ?string $code` on an `\Exception` subclass is a FATAL redeclaration at class-load time
-  (`\Exception::$code` is not readonly), reported nowhere near where it is written — and rtk condensed that fatal to
-  `PHPUnit: ok`. Name it anything else, and read a suite's own tally through `rtk proxy` before believing a pass.
-- A nested API Platform resource serializes as an IRI, not as an object: a property holding other resources needs
-  `#[ApiProperty(readableLink: true)]` AND the nested resource's own read group in the operation's
-  `normalizationContext`. Without both, a POST that answers what it created answers `/api/.well-known/genid/…`.
-- Playwright's `evaluateAll` does NOT auto-wait: assert the count with `expect(locator).toHaveCount(n)` first, or a
-  read straight after a reload returns `[]` and reads as "nothing was created". `e2e-settled-reads.sh` holds every read to it.
-- `tests/Architecture/ComposePortsTest` reads `compose.yaml`: run it after any compose edit, not only before. And a plain
-  `docker compose up` rebuild drops what `make up` exports (`LAN_ORIGIN`): bring the stack back with `make up` (2026-09-23).
-  `docker compose up <service>` also recreates what it depends on from `compose.yaml` alone, out of live mode: the api then
-  served its image, and an e2e of an API change failed against the old code (2026-10-06).
-- Global CSS beats Tailwind: `styles.scss` rules are unlayered, Tailwind's utilities sit in a layer, so any global or
-  Material `display` wins over a template's `hidden`, `max-lg:hidden` or `flex`. `mat-sidenav-content` is `display:
-  block` whatever its `flex flex-col` says, and `.twes-rail`'s `display: flex` showed a list `max-lg:hidden` should
-  have hidden. Read the computed style before trusting a utility on a Material or `twes-` element (2026-09-26, row 151).
-  And Material's component CSS loads AFTER `styles.scss`: a `.twes-*` class on a Material host loses to it at equal
-  specificity. `.twes-activity-progress { position: fixed }` read `relative`, and the bar pushed the app 4 px down on
-  every request for weeks; qualify with Material's own class (`.mat-mdc-progress-bar.twes-…`).
-- An `aria-disabled="true"` control is disabled to Playwright AND to axe: `click()` waits forever for it to be enabled
-  (activate it with `focus()` then `keyboard.press('Enter')`, which also proves the keyboard reaches it), and axe's
-  `color-contrast` skips it and everything inside it, so no scan certifies its colours (2026-09-26, row 150).
-- PHPStan's result cache sat in the SHARED `/tmp/phpstan` of the host and went stale across projects (before the toolchain
-  moved to Docker: each `--rm` tools run now starts with its own empty `/tmp`, so this should not recur; re-check if a red
-  appears in a file you did not edit): a run reported nine errors in delivery-note test files the change never touched, on the exact commit CI had just passed
-  green. `vendor/bin/phpstan clear-result-cache` and the same file came back clean. Run PHPStan through `composer stan` (what `make gate-api` does), never bare — the script warms the test
-  container XML first, without which the Symfony extension resolves service types as `mixed` (2026-09-22).
-- `DateTimeImmutable::createFromFormat('!Y-m-d', '2026-13-45')` does not fail, it rolls into the next year: read a day a request sent through `WrittenDay::parsed`, which compares `format()` with the input. A functional test probing database constraints runs inside the suite's own transaction, where the first violation aborts the rest: open a nested `beginTransaction()` (a savepoint) per probe and `rollBack()` it (2026-10-02, price lists).
 - `make gate-web` regenerates the API types, and the live `ng serve` of `make up` sees them missing for a moment and stops
   rebuilding: `docker compose restart web` after it, and wait for « Application bundle generation complete ». A grid narrowed
   to one column still grows an implicit second one for a `col-span-2` child: reset the children's `grid-column` too (2026-10-06).
-- A template reference named like a component member (`#day` beside a `day` signal) shadows it inside the template and breaks the type check; a `matSuffix` inside an `@case`/`@switch` is not projected (NG8011), so give the field its own `@else if` branch. A swatch or icon-only button needs `appLabel` for the a11y e2e's tooltip rule AND text content for the template lint (2026-10-04).
-- A Material dialog with `autoFocus: 'first-tabbable'` moves focus only once its open animation ends: an e2e that fills the
-  first field straight away types into the page behind (the invoice payment flake). Wait for `toBeFocused()` on that field
-  first. A matSuffix inside an `@if` beside its input is not projected either (NG8011): one mat-form-field per kind (2026-10-06).
-- A `RequestEvent` listener that asks `Security::getUser()` on every API path makes the lazy firewall read a session for an
-  anonymous request too, and Symfony then answers it `max-age=0, must-revalidate, private`: return first unless
-  `$request->hasPreviousSession()`. Only the e2e of `/api/health`'s header saw it (2026-10-06, the customer-screen lock).
 - A file written after `make gate-web` ran is not gated: the plurals e2e went to CI unformatted and prettier stopped the web
   job before its lint and tests (2026-10-07). Write every file of a change, then stage, then run the gates.
-- When a search shape changes, sweep the API CALL as well as the type (`git grep '\.customers(\|\.products('`): `price-lists-facade` builds the search literal inline without naming its type, and twice only the build found it (2026-10-07).
-- `docker compose restart api` keeps the image's own `docker-entrypoint`: an edit to `infra/api/docker-entrypoint.sh` runs only after
-  `docker compose build api` and `make up` (2026-10-07: the new start step was missing from a September image).
 - Never wrap `make tools` or `make web-tools` in `timeout`: it kills the `docker compose run` client and leaves the
   container running its suite. Three such orphans held over two cores (one for 36 hours) and timed every test out (2026-10-08).
   Run long suites in the background without `timeout`; after a timeout, `docker ps | grep tools-run` and stop the orphan.
 - Restart `api` and `worker` one at a time under `make up`: both entrypoints run `cache:clear` on the shared `var/cache`, and
   together the api exited on the other's half-renamed `de_/` directory (2026-10-08). A gate's `composer install` clears that
   cache too, and the live web tier's start then fetched the OpenAPI document from a cold worker: 128M and 30 s ran out.
-- Over the first page's 1 MB budget, measure before trimming: build with the budget lifted and `--stats-json`, then walk
-  `main.ts`'s static imports in `dist/web/browser-stats.json` for the inputs. A shell-level service importing a feature's
-  whole API class puts it on the first page (`ProductScanDetails` carried all of `InventoryApi`, 13.5 kB): load it with
-  `await import()` where the shell needs one call of it (2026-10-08).
-- Never remove `.cdk-overlay-container` in the middle of a spec: the CDK keeps the detached element and opens every later
-  menu off the document, so a following `toBeNull()` passes on nothing (a mutant survived it, 2026-10-08). To open a second
-  page in one case, `fixture.destroy()` the first, which closes its menu; leave the removal to `afterEach`.
-- A test's `mktemp -d` with no `trap … EXIT` stays in the toolchain's TMPDIR, which lives on the host's tmpfs across runs: 35,098
-  per-case git fixtures (about 22 inodes each) used all of `/tmp`'s inodes and froze every session on the machine (2026-10-09).
-  Every gate test now runs through `scripts/gates/tests/no-leftovers.sh`; a new one starts with the `TMPDIR=$(mktemp -d)` line.
-  A PHP test's `tempnam` is the same leak: `ApiTestCase::uploadFile` left one file per upload, 142 a suite run, until it removed it.
-- A saved value whose field a form shows only sometimes (a preset's option) must be left out of the saved values when the
-  field is absent: `dirtyCount` reads it as one unsaved change, the page holds every navigation away, and thirteen e2e that
-  pass through Paramètres stayed on `/company/profile` (2026-10-09, `vatOnDebits`). The form's own spec builds the group
-  and asks for zero changes on open.
-- A Django service (GlitchTip) answers any host outside `ALLOWED_HOSTS` 400, `127.0.0.1` included: its healthcheck sends
-  its own name as `Host`, or the container never turns healthy and whatever waits on it never starts. And a Sentry event
-  carries the source lines around each frame: a leak search over events skips a frame's `context*` fields, or it finds
-  the test's own literals in our code (2026-10-12, `make monitor-check`).
 - `make test-api` from a worktree recreates the shared `twes-in-postgres-1` (`compose.yaml` names the project), cutting the live
   stack's database and leaving postgres bind-mounting the worktree's `init.sql`. In a worktree run `make tools CMD='cd api &&
   vendor/bin/phpunit …'` over a copy of `api/vendor`, and `docker compose up -d postgres` from the main tree before removing it (2026-10-13).
-- An e2e never proves who is at the screen in advance: the scenarios share the operator's session and the step-up limiter counts
-  every attempt, five in five minutes, so eleven advance proofs ended in 429. Send API writes through `sendProving` and follow an
-  on-screen write with `proveIfHeldBack` (`web/e2e/step-up.ts`); a fresh session's write may fill the dialog directly (2026-10-13).
-- The API suite runs on paratest (`api/tests/parallel.php`). The rate limiters' pool is `cache.app`, under `%kernel.share_dir%`
-  (`APP_SHARE_DIR=var/share`), not the cache dir: a per-worker cache dir alone left eight workers sharing it, and thirteen limiter
-  tests failed. A worker's container keeps the paths it was compiled with: after changing them, delete `api/var/cache/paratest-*` (2026-10-14).
-- An expected value written `.toBe(await x(page))` beside `expect.poll` is read ONCE, before the poll starts. After `emulateMedia`
-  the page takes the scheme up a moment later (`ThemeFacade` hears `matchMedia`), so the dark pass compared light with light and
-  went red only when the switch fell between the two reads. Read both sides inside the poll and require the state to have moved;
-  sabotage a style under `make up` only after `docker compose restart web` and a `curl` of the served CSS (2026-10-14).
 - `make gate-api` and `make gate-web` side by side (as ruled) can race on `api/var/cache`: the web gate exports the OpenAPI document
   through the api's console. « Cannot rename … de~ already exists », or `assets:install` KO in the web gate's
   export, is that race, not the change: rerun the red half alone (2026-10-14). Run `make gate`: it exports once and runs the halves
   in turn, which took as long as side by side here (about 15 min) and times nothing out; side by side, the suites starved (2026-10-15).
-- An effect keyed on `auth.me()?.company?.id ?? null` fires again when the person signs out, and its call answers 401:
-  « Se déconnecter » landed on « Votre session a pris fin ». Treat signed-out as its own state and ask nothing then
-  (`NotificationBell`); `RequestActivity` takes no 401 for an ended session once nobody is signed in (2026-10-14).
-- `app.routes.ts` is on the first page, so a constant it imports from a feature's module brings that whole module with it:
-  `SCHEDULE_TEXTS` from `schedule.ts` put the first page 2.77 kB over its 1 MB. Keep such a constant in a file of its own
-  (`shared/schedule/schedule-texts.ts`), and measure the first page before a web slice, not after (2026-10-15).
-- PHP's mbstring has no Windows-1256 (Excel's Arabic CSV): `mb_convert_encoding(…, 'Windows-1256')` throws; glibc's iconv
-  `CP1256` converts it. mbstring maps Windows-1252's five undefined bytes to C1 controls, where iconv fails on them, and keeps
-  a UTF-16 byte-order mark as EF BB BF; a lone UTF-16 high surrogate becomes « ? » (2026-10-16, `CsvTranscoder`).
-- Moving screen texts into a page's part (`textsPart`) moves them out of `web/public/i18n/<lang>.json`, which API tests
-  and gates read too: `git grep -l "public/i18n" api scripts` before the move. `ImportColumnsTest` went red only after the
-  push, and its gate never reached the web half (2026-10-16, 7159fcb1). The same holds for any web constant moved between
-  files: `git grep <NAME> -- api/tests scripts` first; `RecordWordsTest` read `NAMED_TABLES` by path (2026-10-20).
-- openspout hands over neither a cell's number format nor a column's style: a cell Excel shows as « 5 % » arrives as 0.05
-  (`XlsxPercentCells` reads `styles.xml` for it), and a template column formatted as Text is a `<col style>` the writer adds
-  once openspout has closed the file. A row whose cells are all empty is never written, so formatting empty rows in
-  advance is no way round it (2026-10-16).
-- Move classes with `scripts/refactor/move-classes.py` and prove the move with `scripts/refactor/layout-oracle.sh`. The mover
-  rewrites names and `src/<path>` strings only: a path relative to `src/Module` (`ModuleBoundariesTest`'s keys) and a gate
-  test's `mkdir` of a fixture folder are followed by hand. A class moved into a folder of its own changes API Platform's
-  discovery order, which the oracle reads as another order, not another content; two routes that can match one request
-  must not change places (2026-10-16; flagged for the next expertise refresh).
-- When a PUT starts requiring a version, `git grep` its address over `web/e2e` before the push: a scenario's cleanup
-  calls it straight from the page, without one, and turns red after passing (`numbering.spec.ts`, 2026-10-17). A
-  cleanup sends the version read just before, never the one read when the scenario began.
 - Under `make up`, `migrate-watch` applies a migration written while the stack runs (it once failed sign-in twice in a day,
   on `role.version` and `demo_sandbox`, until `make up` ran). A migration edited after it was applied stays as first
   applied: read `docker compose logs migrate-watch` and `doctrine_migration_versions` before blaming the code (2026-10-17).
-- Doctrine reads `Query::HINT_REFRESH` with `isset()`: `setHint(HINT_REFRESH, false)` still refreshes, so a mutant flipping it
-  to false is equivalent and survives. Sabotage a locked re-read by removing the hint line (2026-10-17).
-- A `docker compose run` without `< /dev/null` reads the input of whatever runs it: in a `while read` loop or a block of
-  commands pasted into a terminal, it swallows the lines after it, which then never run, and the block reads as done.
-  Every `run` line a person may paste ends `< /dev/null` (`docs-run-lines.sh` reads the docs for it); a check running such
-  lines counts that all of them ran (2026-10-17).
-- A test that makes commits or tags exports `GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1` (and `no-leftovers.sh`
-  does for every gate test): on the host, the developer's global `commit.gpgsign` signed every fixture with the real
-  release key, and a locked agent turned the same tests red. A repository's own `.git/config` still applies (2026-10-17).
 - `make up`'s api and worker run the `api-vendor` volume, which only the one-shot `migrate` service's `composer install`
   fills: after a Composer change the live api dies at boot until `make up` runs again (2026-10-16: « Rate limiter
   "mfa_verify" requires the Lock component », five hours unhealthy while CI, on fresh images, was green).
 - A file list with newlines in `make check FILES="…"` splits the recipe: make ran each later file as a shell command (the
   tree's files are 775 on disk), and a TypeScript file's `import {` started ImageMagick's screen grab, which hung the run.
   Join the list on one line (`… | tr '\n' ' '`) and check it holds no newline before calling make (2026-10-18).
-- A test placing a row on a clock the database reads with `now()` must use that clock: inside the test's transaction it
-  stands at the transaction's start, which DAMA opened at the previous test's teardown, before PHP's clock. A TIMESTAMP(0)
-  column rounds half a second up: cut with `date_trunc('second', now())`. DeepHealthTest failed 4 runs in 10 on both (2026-10-18). The reverse holds too: a row a test writes « after » an API request is stamped `self::apiNow()` (`ApiTestCase`), never
-  `now()`, which reads as before a request made in the next second (`ProductMergeTest` red one run in three, 2026-10-21).
-- A list gives a column way whole when the values do not fit, so an e2e reading a low-priority column must use values
-  whose width does not vary per run: `Date.now().toString(36)` letters moved « Vis LOT-<run> » by 20 px, and at 1600 px
-  the stock list has 8 px to spare. Use digits (`lots.spec.ts`); reproduce a width flake with the widest letters (2026-10-19).
-- Read a flake's cause from the trace's request bodies before writing a story for it: the wide-list scenario's 16 px was
-  explained as a re-measure and the test "fixed", while the saved widths read 305, 321, 321: a press lost because the
-  handler widened the `column` object the header last drew. A handler handed a template's object reads it as last
-  rendered; read the current state by its id (2026-10-19, `DataList.onResizeKey`).
-- A setting declared in a section of the settings page takes one cell of its two-column grid and moves every field after
-  it by one; only `web/e2e/settings.spec.ts`'s row test sees it, and it reddened master (2026-10-19). Run that spec after
-  declaring a setting, and say in its comment what it pairs with. A label that wraps where its neighbour does not lowers
-  its input: a sentence goes in `SETTING_HINTS`, under a short label.
-- Symfony's `Request::create`, under every BrowserKit test request, sends `Accept-Language: en-us,en;q=0.5`, and the API now
-  answers in the language a request names: `ApiTestCase` sends `fr` as the web does, and a test of another language sets it
-  per request. A screen word the API writes follows the request, never `User.locale`, which only mails read (2026-10-19).
-- axe decides whether a font draws icons from the first three it measures and keeps that answer for the whole scan: begun
-  before Material Symbols arrived, it failed label-content-name-mismatch on every icon button at once under load. Start
-  every scan through `axeAtRest(page)` (`web/e2e/axe.ts`), never `new AxeBuilder` in a spec (2026-10-19).
 - `make web-tools CMD='…'` already starts in `web/`: a `cd web &&` before the command fails with exit 2, which a sabotage
   harness reading only the exit takes for a red suite. Run the unmutated command first and read the tally (2026-10-20).
-- A default added to a shared declaration reaches every declaration written before it: `RecordSubject`'s merged-away
-  default of « alias » made every product delete ask for a column products lack, and only the product suite saw it.
-  Run the suites of the existing declarers, not only the new one's; prefer a default that does nothing (2026-10-20).
-- A service whose toast outlives its page opens its own texts (`TextsParts.open`) rather than trusting every route to: the
-  document pages' new delete said `records.deleted_one`, which their specs, doubling `RecordDeletes`, could not see; only
-  the e2e did (2026-10-20).
 - `make up` serves the tree live, so every saved edit rebuilds and reloads the page a person has open: while the developer
   shows the app, work in a worktree (`.claude/worktrees/<name>`), run only `make check`, unit suites and host gates there,
   and leave the stack alone. A count that reads a component's required inputs is read by the root `UnsavedChanges` before
   they are set (NG0950): gate it behind a signal set in `ngOnInit` (`PlaceMovement`, 2026-10-20).
-- A toast check after a second save that says the same words passes on the first save's toast, still on screen: the
-  read that follows sees the record before the second save (`fiscal.spec.ts`'s restore, red only beside other workers).
-  Wait for the write's own response (`waitForResponse`, then `ok()`), then the toast (2026-10-21).
-- A day a test sends or counts from is the company's, `ApiTestCase::dayOf($company, '-3 days')`, never PHP's `date()` or
-  `new \DateTimeImmutable('today')`: between 23:00 and 00:00 UTC Tunis is already on the next day, the API reads the
-  company's, and five suites went red on CI only in that hour. Run the whole API suite inside that window to find the
-  class's members (2026-10-21). A test's day helper reads the clock once per test (`$this->today ??= …`): read again
-  for the expectation, it crossed midnight in Tunis after the request and expected the next day (2026-10-26).
-  `test-clock.sh` refuses any other read of a day in `api/tests`.
-- A unit case that opens a page several times outruns Vitest's five seconds once a gate loads the machine (the delivery
-  note's « says nothing without stock » opened four): one page per case (`it.each`), never a longer timeout (2026-10-21).
-- Vitest's `toEqual` compares an `Error`'s `cause`: giving every feature refusal the HTTP answer as its cause reddened 69
-  specs comparing refusals, and the cause would travel into logs and the client error report. Keep a link only one reader
-  needs beside the object, in a module's `WeakMap` (`refusedFor`, `shared/errors/said-already.ts`) (2026-10-21).
-- Measure a request's memory with `memory_reset_peak_usage()` first and `memory_get_peak_usage()` (not `true`) after: a
-  FrankenPHP worker thread keeps the memory earlier requests took, so the real size read 123 MB for 39 rows. In development
-  the profiler's collectors (Doctrine's queries, Monolog's records) hold most of a long request; they are capped now, and
-  production keeps none, so a development peak is an upper bound, never production's figure (2026-10-21).
-- esbuild keeps one copy of a package, made of every export the whole app uses, in the chunk its first importer
-  needs: a root provider importing `MatPaginatorIntl` put Material's paginator, its select and all of `@angular/forms`
-  on the first page, so any lazy screen using one more forms export grew it. Provide such a class where it is drawn
-  (`DataList`'s `providers`), and diff the first page's inputs against master's stats before trimming (2026-10-23).
 - `make check` on a texts file (`web/public/i18n/**`) runs no spec that reads it: French punctuation (U+00A0 before « : »,
   U+202F before « ; ? ! ») and key parity live in `i18n-parity.spec.ts`, which only `make gate-web` runs. After any texts
   change, run the web gate before committing: r35's « depuis : » passed `make check` and reddened the gate (2026-10-22).
-- Render an SVG to a PNG with Chromium in `web-tools` (the SVG in an `<img>`, a screenshot with `omitBackground`), never
-  ImageMagick, which dropped the maskable icon's strokes and drew a bare tile. Chrome's `Page.getInstallabilityErrors`
-  answers `[]` in Playwright's Chromium even for a manifest with no icon, so it proves nothing: assert what
-  `Page.getAppManifest` parsed instead. `assertSame(1, preg_match(…))` does not narrow `$m[1]` for PHPStan (2026-10-22).
-- WebKit keeps an icon font a navigation cut short as failed for the next page: a reload landing while the home still
-  loaded Material Symbols made `document.fonts.load` reject at once, with no request sent, and every icon read as its
-  name (`install.spec`, 8 runs in 30, green or red by shard order). `signIn` returns once the home has its icon font
-  (`e2e/icon-font.ts`); a scenario that leaves a page it has just opened waits for it the same way (2026-10-23).
-- A row action is width on every row: a standing one takes a slot (two at most), the first that folds takes « ⋮ »'s. W6's
-  three folded movements gave `/stock` its first « ⋮ » and pushed its columns off a laptop; only `list-fit.spec.ts` saw
-  it. Run it after giving a list an action or a column (« Reçu par » on four lists reddened CI, 2026-10-27), and fold what is final or occasional (2026-10-25).
-- `git commit-tree` never reads `commit.gpgsign`: every `make commit-gated` from 21 to 23 Oct went to master unsigned
-  (67, and 9 more on 10 Oct that a recovery rebuilt and moved there by `update-ref`; all re-signed on 2026-10-24). A commit made through plumbing
-  passes `-S` itself; check `git log --format=%G?` after one. A gate test exporting `GIT_CONFIG_GLOBAL=/dev/null` cannot
-  see it: its fixture sets the repository's own `commit.gpgsign` and a stand-in `gpg.program`.
 - `make up` and `make up-images` run `make seed`, which puts Demo and `codes@` back: on a platform the developer keeps
   empty for testing, rebuild without them, `make up-images SEED=0` (2026-10-27; a recipe parsed out of `make -n up`
   broke once the line computed the mounts digest).
-- A rate limiter is spent by a person's whole path, not by one endpoint: putting the setup confirms on `mfa_verify` let a
-  step-up, an enrolment, a recovery-code sign-in, a step-up and one typo exhaust it, and the right code answered 429 (red
-  on CI only, 2ccf0bb7). Before giving an endpoint a limiter, list every endpoint already on it and run every e2e walking
-  more than one of them (`git grep` the limiter's name over `api/src`, the routes over `web/e2e`) (2026-10-25).
-  `LimiterPathsTest` declares every method spending each limiter with its family, and reds on one undeclared.
 - `make check` runs the specs of the files named, not the tests that read a whole directory or contract: a mail template
   is read by `MailDirectionTest`, a resource's shape by `OpenApiTest`, a French text by `i18n-parity.spec.ts`. Before
   gating, also run every test that `git grep -l`s the changed directory or resource name; drop 2 went red three times on
@@ -804,7 +310,3 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   `/tmp/twes-in-gate.main-first` exists builders start no locked run; they run `make check` and the tests importing
   their files (at most 3 workers), and the full gate runs once per integrated batch. Before handing a builder a row,
   read `git log master..<branch>` of every builder: rows 199, 200 and 213 were built twice the same day.
-- A numbering series' row lock already serializes two sales of one kind, so a race of two notes cannot tell whether the
-  stock's own lock is held: race a delivery note against an invoice (two series) to prove it (2026-11-01, S1.2).
-- A container compiled without debug is never checked against the source, and `bin/console` reads no test bootstrap:
-  the race harness clears its cache with `APP_CACHE_DIR` passed in, or racers boot the last run's container (2026-11-01).

@@ -43,7 +43,7 @@ mode here, not an unusual one.
    Grep the field/endpoint name across the whole repo and account for **every** hit. The worst blast
    radius here is a property added to an API Platform resource without clearing the metadata pools:
    it is silently dropped on write and missing from the export, and both tiers then look consistent
-   while carrying nothing (`CLAUDE.md` § Lessons, 2026-09-14).
+   while carrying nothing (the Lessons (CLAUDE.md and `.claude/rules/`), 2026-09-14).
 2. **Full-set coverage.** When the change modifies one member of a class of things, enumerate the
    class and verify every member. The classes in this repo (check `ls api/src/Module` rather than this
    list): the modules (Customers, DeliveryNotes, Expenses, Inventory, Invoices, PriceLists, Products,

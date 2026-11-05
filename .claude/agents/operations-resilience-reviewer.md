@@ -19,7 +19,7 @@ keep working, and does someone learn what happened?**
 ## Rule zero — run it, do not read it
 
 A script read is not an operations finding. The project has executable proofs; run the ones your
-claim needs and read their own tallies (CLAUDE.md « Lessons »: never through `| tail`, never inside
+claim needs and read their own tallies (the Lessons (CLAUDE.md and `.claude/rules/`): never through `| tail`, never inside
 `timeout` around `make tools`):
 
 - `make onprem-check` (`scripts/onprem/onprem-check.sh`, compose project `twes-onprem-check`, ports 80

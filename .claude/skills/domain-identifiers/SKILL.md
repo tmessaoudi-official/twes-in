@@ -27,9 +27,9 @@ Examples computed with python3 on 2026-10-21; « → » gives its output. -->
   `CustomerInput.php` `identifiersMayFollow`, `CustomerImport.php:324`]
 - Normalise before checking, store the normalised form, print the grouped form; never guess a letter or add a zero unsaid.
   What a person typed keeps no `\p{Z}`/`\p{Cf}` at its ends (`TypedText::trimmed()`, gate `typed-trims.sh`).  [Source:
-  CLAUDE.md § Where things live] A direction mark before a pasted IBAN in Arabic is not a refusal (`ContactRules::unspaced`
+  `.claude/rules/api.md` § Gates] A direction mark before a pasted IBAN in Arabic is not a refusal (`ContactRules::unspaced`
   strips `\s` only; the trim is `ContactRuleValidator.php:49`).  [Observed: `web/src/app/company/company-profile-form.spec.ts:88-89`]
-- An Arabic Excel CSV (Windows-1256) reaches identifier columns through glibc iconv `CP1256`, never mbstring.  [Source: CLAUDE.md lesson 2026-10-16]
+- An Arabic Excel CSV (Windows-1256) reaches identifier columns through glibc iconv `CP1256`, never mbstring.  [Source: the Lessons (CLAUDE.md and `.claude/rules/`) 2026-10-16]
 - A check digit proves a typo did not happen, never that the number exists (INSEE avis, VIES, TEJ); an outage is not a refusal.
 - An API pattern sent to a screen is read with any PHP delimiter and flags; a guard test runs each with one valid and one
   invalid example.  [Ruled: user 2026-10-29 16:53, docs/SPEC.md:5722]
@@ -120,7 +120,7 @@ Examples computed with python3 on 2026-10-21; « → » gives its output. -->
   worded with an example; a typo hint offered, never applied; no live domain check (a shop's computer may be offline);
   an account still signs in with the address it has.  [Ruled: user 2026-10-27 17:51, docs/SPEC.md:5693] The dot departs
   from WHATWG; SPEC names no such departure.  [Observed: `git grep WHATWG docs/SPEC.md` empty]
-- Web: `emailRule` (`shared/form/email-rule.ts`) and `EmailRuleTest` hold both sides to `email-vectors.json`.  [Source: CLAUDE.md § Where things live, `typed-emails.sh`]
+- Web: `emailRule` (`shared/form/email-rule.ts`) and `EmailRuleTest` hold both sides to `email-vectors.json`.  [Source: `.claude/rules/web.md` § Gates, `typed-emails.sh`]
 - Valid `compta@exemple.tn`. Invalid `jean dupont@exemple.tn`, `compta@exemple` (no dot: refused by the canon).
 
 ## 8. SIREN, SIRET, NIC (France)

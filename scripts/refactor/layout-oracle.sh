@@ -6,7 +6,7 @@
 # left after that is a resource, a route or an entity that fell out of discovery. Run in the PHP toolchain:
 #   make tools CMD='bash scripts/refactor/layout-oracle.sh snapshot var/claude/layout/before'
 #   make tools CMD='bash scripts/refactor/layout-oracle.sh compare var/claude/layout/before var/claude/layout/after'
-# The API Platform metadata pools outlive a cache clear, so snapshot clears them too (CLAUDE.md, Lessons).
+# The API Platform metadata pools outlive a cache clear, so snapshot clears them too (the Lessons (CLAUDE.md and `.claude/rules/`)).
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 

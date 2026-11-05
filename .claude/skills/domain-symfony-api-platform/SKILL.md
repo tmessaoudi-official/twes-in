@@ -57,7 +57,7 @@ Tags: T = r2-tech, D = SPEC §7 digest, A = docs/research/authorization.md, C = 
 - Entity change: test DB migrated both ways; stock changes keep running totals inside the same transaction.  [D 2026-09-14; D audit triage]
 - New parameter: its `*Bounds` pass and a test outside each bound.  [Source: OperatorParameterBoundsTest]
 
-## Classic failure modes (not in CLAUDE.md Lessons) and detection
+## Classic failure modes (not in the Lessons (CLAUDE.md and `.claude/rules/`)) and detection
 - Application/Domain importing EntityManager, `Psr\Log` or Symfony Clock - LayerDependenciesTest.  [T 8.1]
 - `#[ApiResource]` on an entity, or a resource on API Platform's Doctrine provider/processor - bypasses the tenant filter; ApiResourceStateTest.  [T 8.2; ApiResourceStateTest.php:14-37]
 - Provider missing the `CompanyGuard` line - other tenants' rows readable; detect with a wrong-company Functional test.  [T 8.3]
@@ -85,7 +85,7 @@ Tags: T = r2-tech, D = SPEC §7 digest, A = docs/research/authorization.md, C = 
 2. **Tenancy and authorization** - guard first line, raw SQL reach, 404-vs-403, operator/support access, subscription state.
 3. **Query, migration and runtime parity** - SQL and hydrated types, count walker, additive migrations, versions and locks, worker-mode state, dev vs fresh cache.
 
-## JSON-LD and paging traps (not in CLAUDE.md Lessons)
+## JSON-LD and paging traps (not in the Lessons (CLAUDE.md and `.claude/rules/`))
 - Never `#[ApiProperty(identifier: true)]` on a resource: 404 "Invalid uri variables".  [Observed: memory 2026-09]
 - The generated TS type is `<Name>Jsonld<Name>Read` when the resource has no other JSON operation.
 - A Doctrine `Paginator` is wrong with GROUP BY: read the SQL and the count walker.
@@ -106,4 +106,4 @@ Tags: T = r2-tech, D = SPEC §7 digest, A = docs/research/authorization.md, C = 
 
 ## Changes since v2
 - JSON-LD paging traps restored (absent from CLAUDE.md, measured 2026-10-02).
-- 2026-11-02 refresh: versions, idempotency, bounded parameters, module ports, raw SQL, layout, paratest added; the « field: msg » 422 rule replaced by `DomainRule::refused`; the "audit entry is not the realtime signal" note dropped (CLAUDE.md Lessons say it is).
+- 2026-11-02 refresh: versions, idempotency, bounded parameters, module ports, raw SQL, layout, paratest added; the « field: msg » 422 rule replaced by `DomainRule::refused`; the "audit entry is not the realtime signal" note dropped (the Lessons (CLAUDE.md and `.claude/rules/`) say it is).
