@@ -159,8 +159,11 @@ export class TextsPage implements OnInit {
       {
         id: 'changed',
         label: 'texts.filters.changed',
-        value: (view) =>
-          view.row.originalChanged ? 'changed' : view.row.formsMissing ? 'forms' : null,
+        // A text may hold both reasons, an old wording a release changed the original of.
+        value: (view) => [
+          ...(view.row.originalChanged ? ['changed'] : []),
+          ...(view.row.formsMissing ? ['forms'] : []),
+        ],
         options: [
           { value: 'changed', label: 'texts.filters.original_changed' },
           { value: 'forms', label: 'texts.filters.forms_missing' },

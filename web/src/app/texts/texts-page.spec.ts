@@ -15,6 +15,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { RowAction } from '../shared/list/list-types';
+import { filterHolds } from '../shared/list/list-view';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
@@ -227,6 +228,25 @@ describe('TextsPage', () => {
       ).toBeNull();
     },
   );
+
+  it('holds a text with both reasons under either of them', async () => {
+    await open();
+    const page = fixture.componentInstance;
+    const filter = page['list']().filters?.find((each) => each.id === 'changed');
+    if (filter === undefined) throw new Error('No « À revoir » filter');
+    const holds = (row: TextRow): boolean[] => {
+      rows.set([row]);
+      const shown = page['views']()[0];
+      if (shown === undefined) throw new Error('No row shown');
+      return ['changed', 'forms'].map((option) => filterHolds(filter, shown, option));
+    };
+
+    expect(holds({ ...TITLE, company: 'x', originalChanged: true, formsMissing: true })).toEqual([
+      true,
+      true,
+    ]);
+    expect(holds(TITLE)).toEqual([false, false]);
+  });
 
   // A few thousand texts a language: the list is found by what is typed into its own search, at both levels.
   it.each(['company', 'installation'] as const)(
