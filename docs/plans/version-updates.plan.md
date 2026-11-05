@@ -66,6 +66,12 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
     were missing), every action of every workflow with its tag (only `ci.yml`'s were read), no empty `PHP (CI)` row;
     docs/UPDATE.md's Actions row says SHA, and the three unpinned items are written as deliberate.
 14. Research: which of the 18 `echo > "$state/…"` writes of `scripts/onprem/twes` another process reads while written.
+    Read 2026-11-05: no fix. Every state file read for its content is read under the lock its writer holds
+    (`update-in-progress` at 735-738 and `last-update` under `update.lock`), by `status`, which only shows it, or by
+    `onprem-check.sh` and `update-rehearsal.sh` after the run; a tick never overlaps itself (systemd, and Windows'
+    `-MultipleInstances IgnoreNew`). The worst torn read skips an interrupted update's resume for one tick (line 733's
+    `-s`), which the next tick takes. Search: `grep -noE '> *"\$state/[a-z.-]+"' scripts/onprem/twes`; 26 files, the
+    content readers traced, the rest not (Inferred).
 
 ## Completion note
 - Certified by CI only, never run locally: the full e2e (`stock-map.spec.ts:429` included), the production images, the
@@ -86,14 +92,14 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
 | 4 | Docker images | M | done | 9f62df7c9 | compose*.yaml infra/** |
 | 6 | axe 4.14's Label in Name on master | S | done | efe7c9783 | web/src/** web/e2e/** web/public/i18n/** |
 | 5 | GitHub Actions | S | done | - | .github/workflows/** |
-| 7 | Outcome files written whole (CI red) | S | doing | - | infra/postgres/backup/twes-backup scripts/tests/backup-heartbeat.test.sh |
-| 8 | PHP packages, round 2 | M | todo | - | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
+| 7 | Outcome files written whole (CI red) | S | done | 9cbac74fc | infra/postgres/backup/twes-backup scripts/tests/backup-heartbeat.test.sh |
+| 8 | PHP packages, round 2 | M | doing | - | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
 | 9 | npm packages, round 2 | M | todo | - | web/package.json web/package-lock.json THIRD-PARTY-NOTICES.md |
 | 10 | Trivy 0.76.1 | S | todo | - | scripts/security/image-scan.sh |
 | 11 | Image patches | M | todo | - | compose*.yaml infra/** |
 | 12 | Image minors | M | todo | - | compose.yaml infra/** scripts/backup/** |
 | 13 | make versions complete | S | todo | - | scripts/versions.sh docs/UPDATE.md |
-| 14 | twes state writes: torn reads | S | todo | - | scripts/onprem/twes |
+| 14 | twes state writes: torn reads | S | done | - | scripts/onprem/twes |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input
