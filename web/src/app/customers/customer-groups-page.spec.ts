@@ -55,12 +55,14 @@ const wholesalers: CustomerGroupRow = {
 
 describe('CustomerGroupsPage', () => {
   const error = signal<CustomersError | null>(null);
+  const readFailed = signal(false);
   const groups = signal<readonly CustomerGroupRow[]>([wholesalers]);
   const refusals = signal<readonly FieldRefusal[]>([]);
   const facade = {
     groups: groups.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     refusals: refusals.asReadonly(),
     loadGroups: vi.fn(),
     createGroup: vi.fn(),
@@ -76,6 +78,7 @@ describe('CustomerGroupsPage', () => {
     rows: signal<readonly SettingRow[]>([]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    readFailed: signal(false).asReadonly(),
     refusals: signal([]).asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -108,6 +111,7 @@ describe('CustomerGroupsPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    readFailed.set(false);
     refusals.set([]);
     groups.set([wholesalers]);
     error.set(null);
@@ -300,6 +304,28 @@ describe('CustomerGroupsPage', () => {
     await settle();
 
     expect(q('customer-groups-error')?.textContent).toContain('encore dans ce groupe');
+  });
+
+  it('says a refused save on an empty list as a refusal, never as a list it could not read', async () => {
+    groups.set([]);
+    error.set('in_use');
+    await settle();
+
+    expect(q('customer-groups-error')?.textContent).toContain('encore dans ce groupe');
+    expect(q('list-failed')).toBeNull();
+    expect(q('list-retry')).toBeNull();
+  });
+
+  it('offers to read the groups again when they could not be read', async () => {
+    groups.set([]);
+    error.set('network');
+    readFailed.set(true);
+    await settle();
+
+    expect(q('list-failed')).not.toBeNull();
+    q('list-retry')!.click();
+    await settle();
+    expect(facade.loadGroups).toHaveBeenCalledTimes(2);
   });
 
   it('offers a writer who may not remove customers the edit of a group but not its delete', async () => {

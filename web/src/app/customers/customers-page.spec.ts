@@ -82,6 +82,7 @@ describe('CustomersPage', () => {
     groups: signal<readonly CustomerGroupRow[]>([wholesalers]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    readFailed: signal(false).asReadonly(),
     customFields: signal([]).asReadonly(),
     options: signal(null).asReadonly(),
     total: signal(2).asReadonly(),

@@ -18,7 +18,7 @@
     [descriptor]="list()"
     [rows]="rows()"
     [loading]="members.busy()"
-    [failed]="members.error() !== null"
+    [failed]="members.readFailed()"
     (retry)="readAgain()"
     testId="members-table"
     [rowTestId]="rowTestId"

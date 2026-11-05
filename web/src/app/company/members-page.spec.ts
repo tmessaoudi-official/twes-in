@@ -2,7 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import {
@@ -108,6 +108,7 @@ describe('MembersPage', () => {
     members: rows.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: computed(() => error() !== null),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     add: vi.fn(),
@@ -139,6 +140,7 @@ describe('MembersPage', () => {
     groups: signal([]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    readFailed: signal(false).asReadonly(),
     detail: signal('').asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),

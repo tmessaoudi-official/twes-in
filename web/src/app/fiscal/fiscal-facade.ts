@@ -27,6 +27,8 @@ export class FiscalFacade {
   readonly regimes = this.regimesSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
 
   async loadTaxes(companyId: string): Promise<void> {
     await this.read(async () => {

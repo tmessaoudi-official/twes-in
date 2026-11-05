@@ -20,7 +20,7 @@
       [descriptor]="list()"
       [rows]="rows()"
       [loading]="loading()"
-      [failed]="error() !== null"
+      [failed]="readFailed()"
       (retry)="readListAgain()"
       testId="recurring-expenses-table"
       [rowTestId]="rowTestId"

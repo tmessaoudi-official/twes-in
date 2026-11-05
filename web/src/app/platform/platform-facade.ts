@@ -114,6 +114,8 @@ export class PlatformFacade {
   readonly openedSubscription = this.openedSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
 
   /**
    * What the overview shows: the switches, the companies waiting, the counts, the demand for planned modules and the

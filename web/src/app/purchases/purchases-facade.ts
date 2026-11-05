@@ -42,6 +42,8 @@ export class PurchasesFacade {
   readonly statusCounts = this.statusCountsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
   /** The field the last step was refused on, when the API named it: `lines[1].quantity`, `vendorId`… */
   readonly refused = this.refusedSignal.asReadonly();
   /** Each field the last step was refused on, with why; empty after a step the API took. */

@@ -77,6 +77,7 @@ describe('PurchasesPage', () => {
     statusCounts: signal<PurchaseOrderStatusCounts | null>(counts).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    readFailed: signal(false).asReadonly(),
     loadPage: vi.fn(),
     loadStatusCounts: vi.fn(),
     pickVendors: vi.fn(),

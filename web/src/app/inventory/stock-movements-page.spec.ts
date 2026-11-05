@@ -154,6 +154,7 @@ describe('StockMovementsPage', () => {
     movementsTotal: signal(1).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal<InventoryError | null>(null).asReadonly(),
+    readFailed: signal(false).asReadonly(),
     loadMovements: vi.fn(),
     pickProducts: vi.fn(),
     exportMovementsUrl: vi.fn(

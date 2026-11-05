@@ -77,7 +77,7 @@
       [descriptor]="list()"
       [rows]="rows()"
       [loading]="facade.busy()"
-      [failed]="facade.error() !== null"
+      [failed]="facade.readFailed()"
       (retry)="readAgain()"
       testId="stock-locations-table"
       [rowTestId]="rowTestId"

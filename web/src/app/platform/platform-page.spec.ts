@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import {
@@ -413,6 +413,7 @@ describe('PlatformPage', () => {
     showComing: showComing.asReadonly(),
     busy,
     error,
+    readFailed: computed(() => error() !== null),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     approve: vi.fn(),

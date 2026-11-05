@@ -62,6 +62,8 @@ export class ProductsFacade {
   readonly defaultTracking = this.defaultTrackingSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
   /** The fields the last save was refused on, for the form to say under each. */
   readonly refusals = this.refusalsSignal.asReadonly();
 

@@ -47,6 +47,8 @@ export class CustomersFacade {
   readonly contacts = this.contactsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
   /** The fields the last save was refused on, each with the reason the screens translate. */
   readonly refusals = this.refusalsSignal.asReadonly();
 

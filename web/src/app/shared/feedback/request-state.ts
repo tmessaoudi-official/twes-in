@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, type Signal, signal } from '@angular/core';
+import { computed, inject, type Signal, signal, untracked } from '@angular/core';
 import { saidAlready } from '../errors/said-already';
 import type { FieldRefusal } from '../form/field-refusals';
 import { QuietReads } from './quiet-reads';
@@ -42,11 +42,19 @@ export class RequestState<E> {
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<E | null>(null);
   /** Whether the error shown was a write's refusal, which only the person's own next request takes away. */
-  private writeRefused = false;
+  private readonly writeRefusedSignal = signal(false);
   private running = 0;
 
   readonly busy: Signal<boolean> = this.busySignal.asReadonly();
   readonly error: Signal<E | null> = this.errorSignal.asReadonly();
+  /**
+   * Whether the error shown is a read's failure: what a list says in place of its rows, with « Réessayer ». A refused
+   * save sets the same `error`, and reading again would not undo it, so a list bound to `error` alone would call a
+   * refused save on an empty list a list it could not read.
+   */
+  readonly readFailed: Signal<boolean> = computed(
+    () => this.errorSignal() !== null && !this.writeRefusedSignal(),
+  );
 
   constructor(
     private readonly quietReads: QuietReads,
@@ -57,7 +65,8 @@ export class RequestState<E> {
   async read(load: () => Promise<void>, options: ReadOptions = {}): Promise<boolean> {
     const quiet = this.quietReads.quiet();
     const end = quiet ? () => undefined : this.begin();
-    const keepsRefusal = quiet && this.writeRefused;
+    // Untracked: a read started from an effect must not make that effect hang on this flag.
+    const keepsRefusal = quiet && untracked(this.writeRefusedSignal);
     if (!keepsRefusal) this.say(null, false);
     try {
       await load();
@@ -148,7 +157,7 @@ export class RequestState<E> {
 
   private say(error: E | null, fromWrite: boolean): void {
     this.errorSignal.set(error);
-    this.writeRefused = fromWrite && error !== null;
+    this.writeRefusedSignal.set(fromWrite && error !== null);
   }
 
   /** What the screen says of a failure: nothing when an interceptor already said it. */

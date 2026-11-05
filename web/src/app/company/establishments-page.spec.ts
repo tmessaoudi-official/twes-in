@@ -2,7 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
@@ -76,6 +76,7 @@ describe('EstablishmentsPage', () => {
     establishments: establishments.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: computed(() => error() !== null),
     refusals: refusals.asReadonly(),
     loadEstablishments: vi.fn(),
     createEstablishment: vi.fn(),
@@ -86,6 +87,7 @@ describe('EstablishmentsPage', () => {
     rows: signal([]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    readFailed: signal(false).asReadonly(),
     refusals: signal([]).asReadonly(),
     load: vi.fn(async () => undefined),
     save: vi.fn(async () => true),

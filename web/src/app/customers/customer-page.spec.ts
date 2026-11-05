@@ -3,7 +3,7 @@ import type { CustomFieldDefinition } from '../shared/custom-fields/custom-field
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import type { FieldRefusal } from '../shared/form/field-refusals';
@@ -139,6 +139,7 @@ describe('CustomerPage', () => {
     loadContacts: vi.fn(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: computed(() => error() !== null),
     refusals: refusals.asReadonly(),
     loadCustomer: vi.fn(),
     createCustomer: vi.fn(),
@@ -167,6 +168,7 @@ describe('CustomerPage', () => {
     rows: signal<readonly SettingRow[]>([]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    readFailed: signal(false).asReadonly(),
     refusals: signal([]).asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -238,6 +240,7 @@ describe('CustomerPage', () => {
   const statementFacade = {
     statement: signal(null),
     error: signal(null),
+    readFailed: signal(false).asReadonly(),
     busy: signal(false),
     load: vi.fn().mockResolvedValue(undefined),
     pdfUrl: vi.fn().mockReturnValue('/pdf'),
@@ -245,6 +248,7 @@ describe('CustomerPage', () => {
   const accountFacade = {
     account: signal(null),
     error: signal(null),
+    readFailed: signal(false).asReadonly(),
     load: vi.fn().mockResolvedValue(undefined),
   };
 

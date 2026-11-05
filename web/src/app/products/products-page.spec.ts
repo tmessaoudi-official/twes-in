@@ -2,7 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { DOCUMENT, signal } from '@angular/core';
+import { computed, DOCUMENT, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
@@ -100,6 +100,7 @@ describe('ProductsPage', () => {
     customFields: signal<readonly CustomFieldDefinition[]>([]).asReadonly(),
     total: signal(1).asReadonly(),
     error: error.asReadonly(),
+    readFailed: computed(() => error() !== null),
     loadListContext: vi.fn(),
     loadPage: vi.fn(),
     exportUrl: vi.fn(

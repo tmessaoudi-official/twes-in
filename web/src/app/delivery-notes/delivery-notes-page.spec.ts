@@ -2,7 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
@@ -91,6 +91,7 @@ describe('DeliveryNotesPage', () => {
       taxes: [],
     }).asReadonly(),
     error: error.asReadonly(),
+    readFailed: computed(() => error() !== null),
     total: signal(2).asReadonly(),
     statusCounts: statusCounts.asReadonly(),
     loadListContext: vi.fn(),

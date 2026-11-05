@@ -30,7 +30,7 @@
       [descriptor]="list()"
       [rows]="rows()"
       [loading]="facade.busy()"
-      [failed]="facade.error() !== null"
+      [failed]="facade.readFailed()"
       [total]="total()"
       (queryChange)="onQuery($event)"
       testId="customers-table"

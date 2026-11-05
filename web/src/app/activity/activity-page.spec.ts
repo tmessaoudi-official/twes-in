@@ -83,6 +83,7 @@ describe('ActivityPage', () => {
     rows: signal<readonly ActivityRow[]>([issued, unknown, byDeleted]).asReadonly(),
     total: signal(2).asReadonly(),
     error: signal(null).asReadonly(),
+    readFailed: signal(false).asReadonly(),
     loadPage: vi.fn(),
     exportUrl: vi.fn(
       (companyId: string, _search: unknown, format: string) =>

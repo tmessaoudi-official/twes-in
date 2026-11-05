@@ -2,7 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
@@ -67,6 +67,7 @@ describe('CustomFieldsPage', () => {
     fields: fields.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: computed(() => error() !== null),
     refusals: refusals.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),

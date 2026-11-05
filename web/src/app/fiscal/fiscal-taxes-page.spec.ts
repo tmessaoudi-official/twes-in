@@ -2,7 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
@@ -102,6 +102,7 @@ describe('FiscalTaxesPage', () => {
     regimes: signal<readonly CustomerTaxRegimeRow[]>([exportRegime]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: computed(() => error() !== null),
     loadTaxes: vi.fn(),
     createTax: vi.fn(),
     reviseTax: vi.fn(),

@@ -150,6 +150,36 @@ describe('requestState', () => {
     expect(state.error()).toBeNull();
   });
 
+  it('says whether the error shown came from a read, so a list never calls a refused save a list it could not read', async () => {
+    expect(state.readFailed()).toBe(false);
+    await state.read(() => Promise.reject(new Refused('not_found')));
+    expect(state.readFailed()).toBe(true);
+
+    await state.write(() => Promise.reject(new Refused('not_found')));
+    expect(state.error()).toBe('not_found');
+    expect(state.readFailed()).toBe(false);
+    // A reload nobody asked for keeps the refusal, and with it what kind of error it is.
+    await quiet.quietly(() => state.read(() => Promise.reject(new Error('unreachable'))));
+    expect(state.readFailed()).toBe(false);
+
+    state.refuse(new Refused('not_found'));
+    expect(state.readFailed()).toBe(false);
+    await state.writeOrRefuse(
+      () => Promise.reject(new Refused('not_found')),
+      () => [],
+    );
+    expect(state.readFailed()).toBe(false);
+
+    await state.read(() => Promise.reject(new Refused('not_found')));
+    expect(state.readFailed()).toBe(true);
+    await state.read(async () => undefined);
+    expect(state.readFailed()).toBe(false);
+    state.fail(new Refused('not_found'));
+    expect(state.readFailed()).toBe(true);
+    state.clearError();
+    expect(state.readFailed()).toBe(false);
+  });
+
   it('keeps a refusal a screen caught itself as a write’s, and says none an interceptor said', async () => {
     state.refuse(new Refused('not_found'));
     await quiet.quietly(() => state.read(async () => undefined));

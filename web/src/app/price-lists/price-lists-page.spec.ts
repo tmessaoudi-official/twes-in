@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { announceSaved } from '../shared/testing/live';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
@@ -101,6 +101,7 @@ describe('PriceListsPage', () => {
     ]).asReadonly(),
     busy: busy.asReadonly(),
     error: error.asReadonly(),
+    readFailed: computed(() => error() !== null),
     refusals: refusals.asReadonly(),
     figures: figures.asReadonly(),
     loadFigures: vi.fn(),

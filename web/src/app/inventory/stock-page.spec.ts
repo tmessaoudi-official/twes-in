@@ -4,7 +4,7 @@ import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { provideHttpClient } from '@angular/common/http';
 import type { FormGroup } from '@angular/forms';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter, Router } from '@angular/router';
@@ -166,6 +166,7 @@ describe('StockPage', () => {
     locations: locationsSignal.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: computed(() => error() !== null),
     refusals: refusals.asReadonly(),
     total: signal(1).asReadonly(),
     loadStockContext: vi.fn(),

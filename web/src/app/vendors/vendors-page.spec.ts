@@ -72,6 +72,7 @@ describe('VendorsPage', () => {
     total: signal(2).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    readFailed: signal(false).asReadonly(),
     loadPage: vi.fn(),
     exportUrl: vi.fn(
       (companyId: string, _search: unknown, format: string) =>

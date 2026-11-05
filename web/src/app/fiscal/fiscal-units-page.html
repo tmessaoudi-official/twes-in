@@ -63,7 +63,7 @@
     [descriptor]="list()"
     [rows]="units()"
     [loading]="fiscal.busy()"
-    [failed]="fiscal.error() !== null"
+    [failed]="fiscal.readFailed()"
     (retry)="readAgain()"
     testId="units-table"
     [rowTestId]="rowTestId"

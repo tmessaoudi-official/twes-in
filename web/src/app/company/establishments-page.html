@@ -93,7 +93,7 @@
     [descriptor]="list()"
     [rows]="establishments()"
     [loading]="facade.busy()"
-    [failed]="facade.error() !== null"
+    [failed]="facade.readFailed()"
     (retry)="readAgain()"
     testId="establishments-table"
     [rowTestId]="rowTestId"

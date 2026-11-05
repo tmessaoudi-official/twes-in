@@ -86,6 +86,7 @@ export class RecurringExpensesPage implements OnInit {
     error instanceof RecurringExpenseRefused ? error.code : 'network',
   );
   protected readonly error = this.requests.error;
+  protected readonly readFailed = this.requests.readFailed;
   protected readonly busy = signal(false);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
 

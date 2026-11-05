@@ -23,6 +23,8 @@ export class ActivityFacade {
   readonly busy = this.state.busy;
   readonly total = this.totalSignal.asReadonly();
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
 
   exportUrl(companyId: string, search: ActivitySearch, format: ExportFormat): string {
     return this.api.exportUrl(companyId, search, format);

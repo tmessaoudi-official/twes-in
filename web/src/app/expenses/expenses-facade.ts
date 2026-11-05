@@ -54,6 +54,8 @@ export class ExpensesFacade {
   readonly categories = this.categoriesSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
   /** The fields the last save or recording was refused on, for the form and the bill to say under each. */
   readonly refusals = this.refusalsSignal.asReadonly();
 

@@ -183,7 +183,7 @@
                 [descriptor]="contactList()"
                 [rows]="contacts()"
                 [loading]="facade.busy()"
-                [failed]="facade.error() !== null"
+                [failed]="facade.readFailed()"
                 (retry)="readContactsAgain()"
                 testId="contacts-table"
                 [rowTestId]="contactTestId"
