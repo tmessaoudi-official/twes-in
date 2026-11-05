@@ -311,6 +311,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/deploy/tests/staging-follow-interval.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-heartbeat.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/backup-steps.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/image-scan.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/twes-secrets.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/secrets-stay-files.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh

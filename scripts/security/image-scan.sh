@@ -8,13 +8,14 @@
 #                names them
 #   third-party  every image the compose files of a shop or a server name by digest (scripts/gates/release-overlay.sh
 #                requires one for each it starts), read from the files, so a bump moves one place
-# Trivy itself is pinned by its index digest, on 0.67.2, built before the March 2026 compromise of Trivy's releases and
-# of its GitHub action (GHSA-69fq-xp46-6x23), and run as an image: never through aquasecurity/trivy-action. It reads the
-# registries itself (--image-src remote), so it is handed no Docker socket. Its vulnerability database is fetched at each
-# run and is not pinned: a poisoned one could only lie, since the job holds no secret.
+# Trivy itself is pinned by its index digest and run as an image, never through aquasecurity/trivy-action: the March
+# 2026 compromise (GHSA-69fq-xp46-6x23) reached the binary 0.69.4, the images 0.69.5 and 0.69.6, and the action's tags.
+# 0.76.1 is past it and past what a crafted database could do to the scanner itself (GHSA-mcj4-mphf-j9ff, a path
+# traversal, fixed in 0.71.1). It reads the registries itself (--image-src remote), so it is handed no Docker socket. Its
+# vulnerability database is fetched at each run and is not pinned: the job holds no secret.
 # Usage: image-scan.sh <registry prefix, such as ghcr.io/owner>      (TRIVY_CACHE=<dir> keeps the database between runs)
 set -uo pipefail
-TRIVY_IMAGE=aquasec/trivy:0.67.2@sha256:e2b22eac59c02003d8749f5b8d9bd073b62e30fefaef5b7c8371204e0a4b0c08
+TRIVY_IMAGE=aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
 [[ $# -eq 1 && -n "$1" ]] || { echo "Usage: image-scan.sh <registry prefix>" >&2; exit 2; }
 prefix=${1%/}
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -29,10 +30,12 @@ images=("$prefix/twes-in-api:master" "$prefix/twes-in-web:master" "$prefix/twes-
 cache=${TRIVY_CACHE:-}
 own_cache=no
 if [[ -z "$cache" ]]; then cache=$(mktemp -d); own_cache=yes; fi
+# docker reads a relative path as a volume's name and refuses it: the folder is named from where the scan runs.
+[[ "$cache" == /* ]] || cache="$PWD/$cache"
 cleanup() { [[ "$own_cache" == yes ]] && rm -rf "$cache"; }
 trap cleanup EXIT
 
-failed=()
+failed=() found=no
 for image in "${images[@]}"; do
   echo "::group::$image"
   # Exit 3 says what was found, so a scan that could not run (exit 1: a registry or the database unreachable) is told apart.
@@ -43,7 +46,7 @@ for image in "${images[@]}"; do
   echo "::endgroup::"
   case $status in
     0) echo "image-scan: $image — nothing fixable at HIGH or CRITICAL outside .trivyignore" ;;
-    3) failed+=("$image: a fixable CRITICAL or HIGH (the table above)") ;;
+    3) failed+=("$image: a fixable CRITICAL or HIGH (the table above)"); found=yes ;;
     *) failed+=("$image: Trivy could not scan it (exit $status)") ;;
   esac
 done
@@ -51,7 +54,9 @@ done
 if ((${#failed[@]})); then
   printf 'image-scan: FAIL — %d of %d image(s):\n' "${#failed[@]}" "${#images[@]}"
   printf '  %s\n' "${failed[@]}"
-  echo "Move the image to a fixed release (docs/UPDATE.md), or triage the finding into .trivyignore with its verdict and exp:."
+  [[ "$found" == no ]] || echo "Move the image to a fixed release (docs/UPDATE.md), or triage the finding into .trivyignore with its verdict and exp:."
+  ! printf '%s\n' "${failed[@]}" | grep -q 'could not scan' \
+    || echo "A scan that could not run says nothing of its image: settle its error above, then run it again."
   exit 1
 fi
 printf 'image-scan: OK — %d images, nothing fixable at HIGH or CRITICAL outside .trivyignore\n' "${#images[@]}"
