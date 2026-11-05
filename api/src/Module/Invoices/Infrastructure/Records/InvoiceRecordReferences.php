@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Infrastructure\Records;
 
 use App\Module\Invoices\Domain\ValueObject\InstrumentStatus;
 use App\Module\Invoices\Domain\ValueObject\InvoiceStatus;
+use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Records\Application\DeclaresRecordReferences;
@@ -64,8 +65,10 @@ final readonly class InvoiceRecordReferences implements DeclaresRecordReferences
                 ->movingOnlyWhere('status', [InvoiceStatus::Draft->value])
                 ->transactingAt('issued_at'),
             // Any invoice of the customer kept written since but a draft, issued, paid or cancelled, means it traded.
-            RecordReference::uses('invoice', 'customer_id', 'customer', RecordMerge::Moves, 'An invoice bills its customer; merged, a draft bills the customer kept, an issued invoice whom it printed.')
+            RecordReference::uses('invoice', 'customer_id', 'customer', RecordMerge::Moves, 'An invoice bills its customer; merged, a draft bills the customer kept, an issued invoice whom it printed, and a credit note, draft or issued, its invoice\'s.')
                 ->movingOnlyWhere('status', [InvoiceStatus::Draft->value])
+                // A credit note names its invoice's customer, and an issued invoice stays: its draft stays with it.
+                ->andOnlyWhere('document_type', [InvoiceType::Invoice->value])
                 ->transactingAt('updated_at'),
             RecordReference::uses('customer_credit_entry', 'customer_id', 'customer', RecordMerge::Stays, 'A credit entry is what the customer was owed or spent, as recorded; merged, the customer kept stands for it.')
                 ->transactingAt('created_at'),

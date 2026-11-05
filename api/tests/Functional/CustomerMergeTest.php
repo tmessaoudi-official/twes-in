@@ -637,6 +637,30 @@ final class CustomerMergeTest extends ApiTestCase
         return $this->jsonList();
     }
 
+    /**
+     * A credit note names its invoice's customer, and an issued invoice stays with the customer merged away: a credit
+     * note still a draft at the merge stays there with it, so that issued it corrects its invoice for the customer that
+     * invoice printed, as one drafted after the merge does.
+     */
+    public function testACreditNoteDraftStaysWithTheCustomerOfTheInvoiceItCorrects(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->customerId('C-001'), $this->customerId('C-002')];
+        $draftInvoice = $this->anInvoice($merged);
+        $issued = $this->anInvoice($merged, issued: true);
+        $this->postJson($this->path("invoices/$issued/credit-notes"), ['creditNoteReason' => 'Retour']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $creditNote = $this->stringAt($this->json(), 'id');
+
+        $preview = $this->getJsonList($this->path('record-merges/preview?subject=customer&ids[]='.$merged));
+        self::assertSame([['table' => 'invoice', 'count' => 1]], $preview[0]['moves'] ?? null, 'the draft invoice alone moves');
+        self::assertSame([['table' => 'invoice', 'count' => 2]], $preview[0]['stays'] ?? null, 'the issued invoice and its credit note stay');
+
+        $this->merged($kept, [$merged]);
+
+        self::assertSame([$kept, $merged, $merged], [$this->customerOf('invoice', $draftInvoice), $this->customerOf('invoice', $issued), $this->customerOf('invoice', $creditNote)]);
+    }
+
     /** Before anything runs, the screen says what each customer would hand over and what would stay with it. */
     public function testThePreviewSaysWhatMovesAndWhatStays(): void
     {
@@ -828,7 +852,7 @@ final class CustomerMergeTest extends ApiTestCase
 
     private function signedIn(bool $prove = true): void
     {
-        $permissions = ['company.read', 'customer.read', 'customer.write', 'customer.remove', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'product.read', 'product.write'];
+        $permissions = ['company.read', 'customer.read', 'customer.write', 'customer.remove', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write', 'quote.read', 'quote.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'product.read', 'product.write'];
         $this->createUser('shop@twes.local', self::PASSWORD, $this->company, $permissions, 'member');
         $this->login('shop@twes.local', self::PASSWORD);
         self::assertResponseIsSuccessful();

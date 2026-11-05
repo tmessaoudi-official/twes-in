@@ -202,7 +202,8 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
                 $type = $this->columnType($reference->table, $reference->column);
                 [$naming, $parameters] = $this->naming($reference, $companyId, [$mergedId]);
                 if (null !== $reference->movesWhereColumn) {
-                    [$moving, $parameters['moving']] = $this->moving($reference);
+                    [$moving, $more] = $this->moving($reference);
+                    $parameters = [...$parameters, ...$more];
                     $naming .= ' AND '.$moving;
                 }
                 $kept = $this->value($reference, $companyId, $keptId);
@@ -287,7 +288,8 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
             }
             [$naming, $parameters] = $this->naming($reference, $companyId, [$keptId]);
             if (null !== $reference->movesWhereColumn) {
-                [$moving, $parameters['moving']] = $this->moving($reference);
+                [$moving, $more] = $this->moving($reference);
+                $parameters = [...$parameters, ...$more];
                 $naming .= ' AND NOT ('.$moving.')';
             }
             $dated = \sprintf("%s >= date_trunc('second', CAST(:since AS timestamp))", $this->name($reference->transactingAt));
@@ -328,7 +330,8 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
                 default => 'false',
             };
             if ('true' === $moves && null !== $reference->movesWhereColumn) {
-                [$moves, $parameters['moving']] = $this->moving($reference);
+                [$moves, $more] = $this->moving($reference);
+                $parameters = [...$parameters, ...$more];
             }
             $rows = $this->connection->fetchAllAssociative(
                 \sprintf('SELECT %1$s AS id, (%2$s) AS moves, count(*)::int AS rows FROM %3$s WHERE %4$s GROUP BY 1, 2', $named, $moves, $this->name($reference->table), $condition),
@@ -504,7 +507,7 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
     /**
      * The condition a row a merge moves meets, when its reference moves only some, and the values it is matched on.
      *
-     * @return array{string, string}
+     * @return array{string, array<string, string>}
      */
     private function moving(RecordReference $reference): array
     {
@@ -512,16 +515,20 @@ final readonly class DbalRecordStore implements RecordStore, MergeChanges
             throw new \LogicException(\sprintf('%s.%s moves every row naming the record.', $reference->table, $reference->column));
         }
 
-        $condition = \sprintf('%s::text = ANY(CAST(:moving AS text[]))', $this->name($reference->movesWhereColumn));
-        if (null !== $reference->parentTable && null !== $reference->parentKey) {
-            // The column is the document's: the row moves when the document it belongs to meets it.
-            $condition = \sprintf('%s IN (SELECT p.id FROM %s p WHERE p.company_id = :company AND p.%s)', $this->name($reference->parentKey), $this->name($reference->parentTable), $condition);
+        // The columns are the document's when the row belongs to one: the row moves when the document meets them.
+        $through = null !== $reference->parentTable && null !== $reference->parentKey;
+        $prefix = $through ? 'p.' : '';
+        $condition = \sprintf('%s%s::text = ANY(CAST(:moving AS text[]))', $prefix, $this->name($reference->movesWhereColumn));
+        $parameters = ['moving' => self::texts($reference->movesWhereValues)];
+        if (null !== $reference->movesAlsoWhereColumn) {
+            $condition .= \sprintf(' AND %s%s::text = ANY(CAST(:moving_also AS text[]))', $prefix, $this->name($reference->movesAlsoWhereColumn));
+            $parameters['moving_also'] = self::texts($reference->movesAlsoWhereValues);
+        }
+        if ($through) {
+            $condition = \sprintf('%s IN (SELECT p.id FROM %s p WHERE p.company_id = :company AND %s)', $this->name((string) $reference->parentKey), $this->name((string) $reference->parentTable), $condition);
         }
 
-        return [
-            $condition,
-            self::texts($reference->movesWhereValues),
-        ];
+        return [$condition, $parameters];
     }
 
     /**
