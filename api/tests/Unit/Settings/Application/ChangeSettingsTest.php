@@ -81,10 +81,29 @@ final class ChangeSettingsTest extends TestCase
 
         self::assertEquals(
             [ChangeSettings::platformSettingMoved(), ChangeSettings::platformSettingMoved()],
-            $this->liveChanges->staged,
+            array_values(array_filter($this->liveChanges->staged, static fn (LiveChange $change): bool => $change->toEveryone)),
             'the same value again moves nothing',
         );
         self::assertEquals(LiveChange::everyone('platform_setting', 'platform_setting.changed'), ChangeSettings::platformSettingMoved());
+    }
+
+    /**
+     * A person's own choice is not audited, but told to that person's other tabs and devices, set or reset, so they
+     * read the person's settings again: their scheme, language or formats follow them without a reload.
+     */
+    public function testAPersonsOwnChoiceIsToldToTheirOtherScreensWithoutAnAuditEntry(): void
+    {
+        $this->change->change($this->context, 'presentation.density', SettingLevel::User, 'compact', $this->userId);
+        $this->change->change($this->context, 'presentation.density', SettingLevel::User, 'compact', $this->userId);
+        $this->change->changeAll($this->context, SettingLevel::User, [new SettingChange('presentation.language', 'en', 0)], $this->userId);
+        $this->change->reset($this->context, 'presentation.density', SettingLevel::User, $this->userId);
+
+        self::assertEquals([
+            new LiveChange('setting', null, 'setting.changed', $this->userId, null, forUserId: $this->userId),
+            new LiveChange('setting', null, 'setting.changed', $this->userId, null, forUserId: $this->userId),
+            new LiveChange('setting', null, 'setting.reset', $this->userId, null, forUserId: $this->userId),
+        ], $this->liveChanges->staged, 'the same value again moves nothing');
+        self::assertSame([], $this->audit->entries);
     }
 
     public function testAPersonsOwnChoiceIsToldOnceCommittedAndASharedOneIsNot(): void

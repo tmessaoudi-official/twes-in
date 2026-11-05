@@ -223,11 +223,14 @@ final readonly class ChangeSettings implements DeclaresAuditActions
     /**
      * A person's own preferences are theirs alone and change too often to be worth a trail; every shared default is
      * audited, by its name and level and never its value, which may be a bank account in a document's printed notes or
-     * a person's phone in the publisher's details.
+     * a person's phone in the publisher's details. A person's own choice is still told to that person's other tabs and
+     * devices, which read their settings again, by kind and action alone.
      */
     private function record(string $action, Setting $setting, SettingAddress $address, ?Uuid $actorUserId): void
     {
         if (SettingLevel::User === $address->level) {
+            $this->liveChanges->stage(new LiveChange(self::ENTITY_TYPE, null, $action, $actorUserId, null, forUserId: Uuid::fromString($address->levelId)));
+
             return;
         }
         $changes = ['key' => $setting->getKey(), 'level' => $address->level->value];
