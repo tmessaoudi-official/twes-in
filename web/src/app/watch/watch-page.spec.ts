@@ -161,4 +161,16 @@ describe('WatchPage', () => {
 
     expect(q('watch-error')?.textContent).toContain('Indisponible.');
   });
+
+  it('offers to read the summary again when it could not be read', async () => {
+    failed.set('unavailable');
+    await open();
+    expect(facade.load).toHaveBeenCalledTimes(1);
+
+    q('watch-retry')?.click();
+    await fixture.whenStable();
+
+    expect(facade.load).toHaveBeenCalledTimes(2);
+    expect(facade.load).toHaveBeenLastCalledWith('k1');
+  });
 });

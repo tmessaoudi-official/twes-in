@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { TestBed } from '@angular/core/testing';
+import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import {
@@ -42,6 +42,8 @@ describe('ReportDocumentsDialog', () => {
   const documents = vi.fn<() => Promise<ReportDocuments>>();
   const close = vi.fn();
 
+  let fixture: ComponentFixture<ReportDocumentsDialog>;
+
   async function open(): Promise<HTMLElement> {
     TestBed.configureTestingModule({
       imports: [ReportDocumentsDialog],
@@ -61,7 +63,7 @@ describe('ReportDocumentsDialog', () => {
         },
       ],
     });
-    const fixture = TestBed.createComponent(ReportDocumentsDialog);
+    fixture = TestBed.createComponent(ReportDocumentsDialog);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -128,5 +130,20 @@ describe('ReportDocumentsDialog', () => {
     expect(el.querySelector('[data-testid="report-documents-failed"]')?.textContent).toContain(
       'Illisibles.',
     );
+  });
+
+  it('offers to read the documents again when they could not be read', async () => {
+    documents.mockRejectedValueOnce(new Error('offline'));
+    documents.mockResolvedValueOnce({ documents: [], more: false });
+    const el = await open();
+    const asked = documents.mock.calls.length;
+
+    el.querySelector<HTMLElement>('[data-testid="report-documents-retry"]')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(documents.mock.calls.length).toBe(asked + 1);
+    expect(el.querySelector('[data-testid="report-documents-failed"]')).toBeNull();
+    expect(el.querySelector('[data-testid="report-documents-none"]')).not.toBeNull();
   });
 });

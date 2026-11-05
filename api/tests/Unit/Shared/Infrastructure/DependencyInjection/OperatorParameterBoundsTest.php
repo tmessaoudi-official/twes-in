@@ -25,6 +25,7 @@ use App\Shared\Infrastructure\ErrorReporting\ClientErrorBounds;
 use App\Shared\Infrastructure\ErrorReporting\ErrorReportingMasksBounds;
 use App\Shared\Infrastructure\Health\HealthBounds;
 use App\Shared\Infrastructure\Http\LongRequestBounds;
+use App\Shared\Infrastructure\Http\RateLimitBounds;
 use App\Shared\Infrastructure\Realtime\RealtimeTokenBounds;
 use App\Shared\Infrastructure\Submissions\SubmissionRetryBounds;
 use App\Tenancy\Infrastructure\Console\EarlierNumberingDaysBounds;
@@ -94,6 +95,14 @@ final class OperatorParameterBoundsTest extends TestCase
         self::assertSame(30, $parameters['app.company.removal_notice_days']);
         self::assertSame(7, $parameters['app.subscription.lapse_notice_days']);
         self::assertSame(72, $parameters['app.numbering.earlier_days_hours_max']);
+        // The lockout's five failures and every limiter's budget as they were before their bounds.
+        self::assertSame(5, $parameters['app.auth.lock_after_failures']);
+        self::assertSame(10, $parameters['app.rate_limit.login.limit']);
+        self::assertSame('15 minutes', $parameters['app.rate_limit.login.interval']);
+        self::assertSame(1, $parameters['app.rate_limit.signup_address.limit']);
+        self::assertSame(240, $parameters['app.rate_limit.scan_pairing_phone.limit']);
+        self::assertSame('1 minute', $parameters['app.rate_limit.scan_pairing_phone.interval']);
+        self::assertCount(17 * 2, array_filter(array_keys($parameters), static fn (string $name): bool => str_starts_with($name, 'app.rate_limit.')));
 
         $container = new ContainerBuilder();
         foreach ($parameters as $name => $value) {
@@ -182,6 +191,13 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'a lapse told thirty days before' => ['app.subscription.lapse_notice_days', 30];
         yield 'earlier days for an hour' => ['app.numbering.earlier_days_hours_max', 1];
         yield 'earlier days for three days' => ['app.numbering.earlier_days_hours_max', 72];
+        yield 'an account locked after three failures' => ['app.auth.lock_after_failures', 3];
+        yield 'an account locked after twenty failures' => ['app.auth.lock_after_failures', 20];
+        yield 'one sign-in a quarter hour' => ['app.rate_limit.login.limit', 1];
+        yield 'a thousand sign-ins a quarter hour' => ['app.rate_limit.login.limit', 1_000];
+        yield 'sign-ins counted over a minute' => ['app.rate_limit.login.interval', '1 minute'];
+        yield 'sign-ins counted over a day' => ['app.rate_limit.login.interval', '1 day'];
+        yield 'mail stops counted over 24 hours' => ['app.rate_limit.notification_mail_stop.interval', '24 hours'];
         yield 'a mask of the operator' => ['app.error_reporting.extra_masks', [['pattern' => '/\bTN\d{2}\b/', 'replacement' => '[branch]']]];
     }
 
@@ -218,6 +234,19 @@ final class OperatorParameterBoundsTest extends TestCase
         yield 'a mask with no replacement' => ['app.error_reporting.extra_masks', [['pattern' => '/x/']]];
         yield 'a mask with a key of its own' => ['app.error_reporting.extra_masks', [['pattern' => '/x/', 'replacement' => 'y', 'flags' => 'i']]];
         yield 'masks as a map' => ['app.error_reporting.extra_masks', ['/x/' => 'y']];
+        yield 'an account locked after two failures' => ['app.auth.lock_after_failures', 2];
+        yield 'an account locked after 21 failures' => ['app.auth.lock_after_failures', 21];
+        yield 'an account locked after no failure' => ['app.auth.lock_after_failures', 0];
+        yield 'failures counted as text' => ['app.auth.lock_after_failures', '5'];
+        yield 'no sign-in at all' => ['app.rate_limit.login.limit', 0];
+        yield 'sign-ins without end' => ['app.rate_limit.login.limit', 100_000];
+        yield 'a budget as text' => ['app.rate_limit.mfa_verify.limit', '5'];
+        yield 'a budget counted over 59 seconds' => ['app.rate_limit.mfa_verify.interval', '59 seconds'];
+        yield 'a budget counted over 25 hours' => ['app.rate_limit.signup_client.interval', '25 hours'];
+        yield 'a budget counted over a year' => ['app.rate_limit.client_errors.interval', '1 year'];
+        yield 'a budget counted over no time' => ['app.rate_limit.invitation_link.interval', '0 minutes'];
+        yield 'a budget counted over words' => ['app.rate_limit.invitation_link.interval', 'a while'];
+        yield 'a budget counted as a number' => ['app.rate_limit.scan_pairing_photo.interval', 300];
         yield 'masks as text' => ['app.error_reporting.extra_masks', '/x/'];
         // YAML reads « yes », « no », « on » and « off » as text, which a bool argument would take as true.
         yield 'a restore proof as « no »' => ['app.step_up.on_restore', 'no'];
@@ -317,6 +346,28 @@ final class OperatorParameterBoundsTest extends TestCase
         }
     }
 
+    /** Every limiter services.yaml declares is held, not only those named above: one added later is held the day it comes. */
+    public function testEveryLimitersBudgetIsHeld(): void
+    {
+        $held = 0;
+        foreach (array_keys($this->shipped()) as $name) {
+            if (!str_starts_with($name, 'app.rate_limit.')) {
+                continue;
+            }
+            $container = $this->withShipped($name, str_ends_with($name, '.limit') ? 0 : '0 minutes');
+            try {
+                foreach (self::passes() as $pass) {
+                    $pass->process($container);
+                }
+                self::fail($name.' is not held');
+            } catch (InvalidArgumentException $refused) {
+                self::assertStringContainsString($name, $refused->getMessage());
+            }
+            ++$held;
+        }
+        self::assertSame(17 * 2, $held);
+    }
+
     /** @return iterable<string, array{string, int, array<string, int>, string}> */
     public static function boundByAnother(): iterable
     {
@@ -346,7 +397,7 @@ final class OperatorParameterBoundsTest extends TestCase
     /** @return list<CompilerPassInterface> */
     private static function passes(): array
     {
-        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds(), new SignupBounds(), new RecordUndoBounds(), new ErasureUndoBounds(), new LockoutBounds(), new PendingSecondFactorBounds(), new CompanyProofBounds(), new RealtimeTokenBounds(), new DemoBounds(), new LongRequestBounds(), new HealthBounds(), new DraftWatchBounds(), new RemovalNoticeBounds(), new LapseNoticeBounds(), new EarlierNumberingDaysBounds()];
+        return [new SessionBounds(), new SupportVisitBounds(), new RecoveryCodeBounds(), new PasswordResetBounds(), new InvitationBounds(), new ErrorReportingMasksBounds(), new RestoreStepUpBounds(), new ClientErrorBounds(), new SubmissionRetryBounds(), new SignupBounds(), new RecordUndoBounds(), new ErasureUndoBounds(), new LockoutBounds(), new PendingSecondFactorBounds(), new CompanyProofBounds(), new RealtimeTokenBounds(), new DemoBounds(), new LongRequestBounds(), new HealthBounds(), new DraftWatchBounds(), new RemovalNoticeBounds(), new LapseNoticeBounds(), new EarlierNumberingDaysBounds(), new RateLimitBounds()];
     }
 
     /**
@@ -373,7 +424,8 @@ final class OperatorParameterBoundsTest extends TestCase
         $file = Yaml::parseFile(__DIR__.'/../../../../../config/services.yaml', Yaml::PARSE_CONSTANT | Yaml::PARSE_CUSTOM_TAGS);
         self::assertIsArray($file);
         self::assertIsArray($file['parameters'] ?? null);
-        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours', 'app.signup.valid_for', 'app.records.undoable_for', 'app.erasure.undoable_for', 'app.session.idle_ttl', 'app.session.absolute_ttl', 'app.auth.lock_duration', 'app.mfa.pending_ttl', 'app.company_proof.idle', 'app.company_proof.lifetime', 'app.realtime.token_lifetime', 'app.invitation.expired_shown_for', 'app.demo.idle_ttl', 'app.demo.build_gives_up_after', 'app.long_request.max_seconds', 'app.health.oldest_waiting_seconds', 'app.watch.drafts_to_validate_after_hours', 'app.company.removal_notice_days', 'app.subscription.lapse_notice_days', 'app.numbering.earlier_days_hours_max'];
+        $names = ['app.session.touch_every', 'app.support.read_recorded_every', 'app.recovery_codes.per_set', 'app.password_reset.valid_for', 'app.invitation.valid_for', 'app.error_reporting.extra_masks', 'app.step_up.on_restore', 'app.client_errors.max_body', 'app.client_errors.max_message', 'app.client_errors.max_stack', 'app.client_errors.per_page', 'app.submissions.retry_minutes', 'app.submissions.kept_hours', 'app.signup.valid_for', 'app.records.undoable_for', 'app.erasure.undoable_for', 'app.session.idle_ttl', 'app.session.absolute_ttl', 'app.auth.lock_duration', 'app.mfa.pending_ttl', 'app.company_proof.idle', 'app.company_proof.lifetime', 'app.realtime.token_lifetime', 'app.invitation.expired_shown_for', 'app.demo.idle_ttl', 'app.demo.build_gives_up_after', 'app.long_request.max_seconds', 'app.health.oldest_waiting_seconds', 'app.watch.drafts_to_validate_after_hours', 'app.company.removal_notice_days', 'app.subscription.lapse_notice_days', 'app.numbering.earlier_days_hours_max', 'app.auth.lock_after_failures'];
+        $names = [...$names, ...array_values(array_filter(array_map('strval', array_keys($file['parameters'])), static fn (string $name): bool => str_starts_with($name, 'app.rate_limit.')))];
         $shipped = [];
         foreach ($names as $name) {
             self::assertArrayHasKey($name, $file['parameters']);

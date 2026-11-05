@@ -595,6 +595,17 @@ describe('DataList', () => {
     expect(q('customers-empty')?.textContent?.trim()).toBe('No customers.');
   });
 
+  it('says a list holds nothing yet in the status region it had while it held rows', async () => {
+    const status = q('list-status');
+    expect(status?.textContent?.trim()).toBe('');
+
+    fixture.componentInstance.rows.set([]);
+    await settle();
+
+    expect(q('list-status')).toBe(status);
+    expect(status?.textContent?.trim()).toBe(q('customers-empty')?.textContent?.trim());
+  });
+
   it('says the list could not be loaded, never that it is empty, when the read failed', async () => {
     fixture.componentInstance.rows.set([]);
     fixture.componentInstance.failed.set(true);
@@ -1257,6 +1268,21 @@ describe('DataList', () => {
       await chooseFacet('archived', settleServer);
       expect(q('customers-empty')).toBeNull();
       expect(q('list-no-match')).not.toBeNull();
+    });
+
+    // A screen reader hears a live region only when it was there before its words changed: rows giving way to « no
+    // match » were drawn new and said nothing (WCAG 2.2 SC 4.1.3, RGAA 7.5, review conf-25).
+    it('says that nothing matches in a status region that was there while the rows were', async () => {
+      const status = q('list-status');
+      expect(status?.getAttribute('role')).toBe('status');
+      expect(status?.textContent?.trim()).toBe('');
+
+      server.componentInstance.rows.set([]);
+      server.componentInstance.total.set(0);
+      await chooseFacet('archived', settleServer);
+
+      expect(q('list-status')).toBe(status);
+      expect(status?.textContent?.trim()).toBe(q('list-no-match')?.textContent?.trim());
     });
   });
 

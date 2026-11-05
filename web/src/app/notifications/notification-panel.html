@@ -53,6 +53,9 @@
     <p class="px-6 pt-3 text-sm text-error" role="status" data-testid="notifications-failed">
       {{ 'notifications.failed' | translate }}
     </p>
+    <button mat-button type="button" data-testid="notifications-retry" (click)="readAgain()">
+      {{ 'feedback.retry' | translate }}
+    </button>
   }
   @for (group of groups(); track group.key) {
     <section [attr.aria-labelledby]="'notifications-day-' + group.key">

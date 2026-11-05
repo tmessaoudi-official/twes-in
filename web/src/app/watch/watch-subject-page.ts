@@ -9,6 +9,7 @@ import {
   inject,
   type OnInit,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -31,7 +32,7 @@ import { watchRowView } from './watch-view';
  */
 @Component({
   selector: 'app-watch-subject-page',
-  imports: [DataList, MatIconModule, RouterLink, RouterLinkActive, TranslatePipe],
+  imports: [DataList, MatButtonModule, MatIconModule, RouterLink, RouterLinkActive, TranslatePipe],
   templateUrl: './watch-subject-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -107,6 +108,12 @@ export class WatchSubjectPage implements OnInit {
     if (!companyId) return;
     this.last = query;
     void this.facade.loadRows(companyId, this.kind(), query.pageIndex, query.pageSize);
+  }
+
+  /** « Réessayer »: the subject and the page of rows last asked, read as on opening. */
+  protected readAgain(): void {
+    const companyId = this.auth.me()?.company?.id;
+    if (companyId) void this.reload(companyId);
   }
 
   private async reload(companyId: string): Promise<void> {

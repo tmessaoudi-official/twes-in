@@ -623,6 +623,18 @@ describe('NotificationBell', () => {
     expect(document.querySelector('[data-testid="notifications-failed"]')).not.toBeNull();
   });
 
+  it('offers to read the notifications again when they could not be read', async () => {
+    failed.set(true);
+    const fixture = render();
+    await open(fixture);
+    const asked = facade.refresh.mock.calls.length;
+
+    document.querySelector<HTMLElement>('[data-testid="notifications-retry"]')?.click();
+    await settle(fixture);
+
+    expect(facade.refresh).toHaveBeenCalledTimes(asked + 1);
+  });
+
   it('offers to mark everything read only when something is unread', async () => {
     unread.set(1);
     items.set([unreadEntry]);

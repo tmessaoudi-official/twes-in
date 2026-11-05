@@ -27,7 +27,11 @@ class StaticLoader implements TranslateLoader {
           customers: { first: 'Un premier client' },
         },
       },
-      feedback: { retry: 'Réessayer', panel_failed: 'Ce panneau n’a pas pu être lu.' },
+      feedback: {
+        retry: 'Réessayer',
+        panel_failed: 'Le panneau {{panel}} n’a pas pu être lu.',
+        retry_panel: 'Réessayer : {{panel}}',
+      },
     });
   }
 }
@@ -122,7 +126,12 @@ describe('FirstStepsHome', () => {
     fixture.detectChanges();
 
     expect(q('home-first-steps-error')?.getAttribute('role')).toBe('alert');
-    expect(q('home-first-steps-error')?.textContent).toContain('Ce panneau n’a pas pu être lu.');
+    expect(q('home-first-steps-error')?.textContent).toContain(
+      'Le panneau Premiers pas n’a pas pu être lu.',
+    );
+    expect(q('home-first-steps-retry')?.getAttribute('aria-label')).toBe(
+      'Réessayer : Premiers pas',
+    );
 
     api.read
       .mockReset()

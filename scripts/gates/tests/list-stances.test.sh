@@ -91,11 +91,15 @@ out=$(run "$d" "$(stances "${NONE[@]}")"); check "a list drawn outside a page is
 d=$(repo); page "$d" '<app-data-list [descriptor]="list" />' 'export class APage { protected readonly list = { id: "a", actions: [OPEN] }; }'
 out=$(EMPTY_STANCE='' run "$d" "$(EMPTY_STANCE='' stances "${ALL_BUT_ROWS[@]}")"); check "a list with no empty state and no reason for it is named" $? 1 "$out" "x/a-page#list|empty is neither offered"
 
-d=$(repo); page "$d" '<app-data-list [descriptor]="list" [empty]="emptyState()" />' 'export class APage { protected readonly list = { id: "a", actions: [OPEN] }; }'
+d=$(repo); page "$d" '<app-data-list [descriptor]="list" [empty]="emptyState()" />' 'export class APage { protected readonly list = { id: "a", actions: [OPEN] }; protected readonly emptyState = computed(() => ({ icon: "add", title: "a.none", action: { id: "create", label: "a.add" } })); }'
 out=$(FLOOR=1 run "$d" "$(EMPTY_STANCE='' stances "${ALL_BUT_ROWS[@]}")"); check "a list given an empty state passes, at the floor" $? 0 "$out" "1 with an empty state"
 out=$(run "$d" "$(stances "${ALL_BUT_ROWS[@]}")"); check "a reason left for an empty state the list draws is named" $? 1 "$out" "x/a-page#list|empty is listed with a reason but offered"
 out=$(FLOOR=2 run "$d" "$(EMPTY_STANCE='' stances "${ALL_BUT_ROWS[@]}")"); check "fewer empty states than the floor red, so losing one is seen" $? 1 "$out" "below the floor of 2"
 
+# An empty state offers the list's first action too, or says why it has none: a new company sees only empty lists.
+d=$(repo); page "$d" '<app-data-list [descriptor]="list" [empty]="emptyState" />' 'export class APage { protected readonly list = { id: "a", actions: [OPEN] }; protected readonly emptyState: EmptyState = { icon: "add", title: "a.none" }; }'
+out=$(FLOOR=1 run "$d" "$(EMPTY_STANCE='' stances "${ALL_BUT_ROWS[@]}")"); check "an empty state offering no action and giving no reason is named" $? 1 "$out" "x/a-page#list|empty-action is neither offered"
+out=$(FLOOR=1 run "$d" "$(EMPTY_STANCE='' stances "${ALL_BUT_ROWS[@]}" 'x/a-page#list|empty-action=a journal: nothing is made here')"); check "an empty state with its reason for no action passes" $? 0 "$out" "1 with an empty state"
 d=$(repo); page "$d" '<app-data-list [descriptor]="list" emptyKey="a.none" />' 'export class APage { protected readonly list = { id: "a", actions: [OPEN] }; }'
 out=$(run "$d" "$(stances "${ALL_BUT_ROWS[@]}")"); check "the retired emptyKey reds wherever it is written" $? 1 "$out" "emptyKey"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

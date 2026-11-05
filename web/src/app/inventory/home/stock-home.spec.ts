@@ -28,10 +28,14 @@ const TEXTS = {
       negative: '{{count}} sous zéro',
       expired: '{{count}} périmés',
       clear: 'Ni stock sous zéro ni lot périmé.',
-      error: 'Le stock n’a pas pu être lu.',
     },
   },
-  feedback: { retry: 'Réessayer', panel_failed: 'Ce panneau n’a pas pu être lu.' },
+  feedback: {
+    retry: 'Réessayer',
+    panel_failed: 'Le panneau {{panel}} n’a pas pu être lu.',
+    retry_panel: 'Réessayer : {{panel}}',
+  },
+  nav: { stock: 'Stock' },
 };
 
 describe('StockHome', () => {
@@ -168,6 +172,8 @@ describe('StockHome', () => {
     const { find } = await render();
 
     expect(find('home-stock-error')?.getAttribute('role')).toBe('alert');
+    expect(find('home-stock-error')?.textContent).toContain('Le panneau Stock n’a pas pu être lu.');
+    expect(find('home-stock-retry')?.getAttribute('aria-label')).toBe('Réessayer : Stock');
     expect(find('home-stock')).toBeNull();
   });
 
@@ -192,7 +198,7 @@ describe('StockHome', () => {
     const { fixture, el, find } = await render();
 
     expect(find('home-stock-error')?.getAttribute('role')).toBe('alert');
-    expect(el.textContent).toContain('Ce panneau n’a pas pu être lu.');
+    expect(el.textContent).toContain('Le panneau Stock n’a pas pu être lu.');
     expect(el.textContent).not.toContain('home.stock.');
 
     open.mockReset().mockResolvedValue(undefined);

@@ -228,9 +228,15 @@ describe('PlaceContents', () => {
       words === '' ? holding(locationId, 9) : { ...holding(locationId, 0), q: words },
     );
     await open();
+    // A live region heard only once it was there before its words changed (WCAG 2.2 SC 4.1.3, review conf-25).
+    const status = q('stock-contents-status');
+    expect(status?.getAttribute('role')).toBe('status');
+    expect(status?.textContent?.trim()).toBe('');
 
     await type('  chevilles ');
 
+    expect(q('stock-contents-status')).toBe(status);
+    expect(status?.textContent).toContain('« chevilles »');
     expect(facade.loadContents).toHaveBeenLastCalledWith('c1', 'l1', 'chevilles');
     expect(q('stock-contents-no-match')?.textContent).toContain('« chevilles »');
     expect(q('stock-contents-nothing')).toBeNull();

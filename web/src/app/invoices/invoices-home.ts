@@ -24,6 +24,7 @@ import { versus } from '../shared/ui/versus';
 import { agingBars, chaseDue, collectedBars, initials } from './invoice-summary-view';
 import { InvoicesFacade } from './invoices-facade';
 import type { AgingBucket } from './invoices-types';
+import { Label } from '../shared/a11y/label';
 
 /** Each aging bucket's colour, from the theme's status tokens: the later, the warmer. */
 const AGING_COLOURS: Readonly<Record<AgingBucket, string>> = {
@@ -42,7 +43,7 @@ const AGING_COLOURS: Readonly<Record<AgingBucket, string>> = {
  */
 @Component({
   selector: 'app-invoices-home',
-  imports: [MatButtonModule, MatCardModule, RouterLink, TranslatePipe, AmountPipe, KpiTile],
+  imports: [Label, MatButtonModule, MatCardModule, RouterLink, TranslatePipe, AmountPipe, KpiTile],
   templateUrl: './invoices-home.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

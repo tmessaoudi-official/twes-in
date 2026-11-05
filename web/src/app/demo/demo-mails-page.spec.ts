@@ -122,4 +122,18 @@ describe('DemoMailsPage', () => {
 
     expect(q('demo-mails-error')?.getAttribute('role')).toBe('alert');
   });
+
+  it('offers to read the mails again when they could not be read', async () => {
+    api.list.mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([]);
+    await open();
+    expect(api.list).toHaveBeenCalledTimes(1);
+
+    q('demo-mails-retry')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(api.list).toHaveBeenCalledTimes(2);
+    expect(q('demo-mails-error')).toBeNull();
+    expect(q('demo-mails-none')).not.toBeNull();
+  });
 });

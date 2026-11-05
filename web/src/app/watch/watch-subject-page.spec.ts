@@ -63,11 +63,18 @@ describe('WatchSubjectPage', () => {
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
+  let facade: { load: ReturnType<typeof vi.fn>; loadRows: ReturnType<typeof vi.fn> };
+
   async function open(
     kind: string,
     rows: readonly WatchRow[] = [],
     may: (permission: string) => boolean = () => true,
+    unavailable = false,
   ): Promise<void> {
+    facade = {
+      load: vi.fn().mockResolvedValue(undefined),
+      loadRows: vi.fn().mockResolvedValue(undefined),
+    };
     TestBed.configureTestingModule({
       imports: [WatchSubjectPage],
       providers: [
@@ -95,12 +102,12 @@ describe('WatchSubjectPage', () => {
           provide: WatchFacade,
           useValue: {
             summary: signal(summary).asReadonly(),
-            rows: signal({
-              status: 'ready',
-              page: { rows, total: rows.length },
-            }).asReadonly(),
-            load: vi.fn().mockResolvedValue(undefined),
-            loadRows: vi.fn().mockResolvedValue(undefined),
+            rows: signal(
+              unavailable
+                ? { status: 'unavailable' }
+                : { status: 'ready', page: { rows, total: rows.length } },
+            ).asReadonly(),
+            ...facade,
           },
         },
         {
@@ -121,6 +128,18 @@ describe('WatchSubjectPage', () => {
     await fixture.whenStable();
     fixture.detectChanges();
   }
+
+  it('offers to read the subject again when it could not be read', async () => {
+    await open('invoices.instruments_due', [], () => true, true);
+    expect(q('watch-error')).not.toBeNull();
+    const asked = facade.load.mock.calls.length;
+
+    q('watch-retry')?.click();
+    await fixture.whenStable();
+
+    expect(facade.load).toHaveBeenCalledTimes(asked + 1);
+    expect(facade.load).toHaveBeenLastCalledWith('c1');
+  });
 
   it('leads from the cheques fallen due to the whole portfolio', async () => {
     await open('invoices.instruments_due');

@@ -101,9 +101,10 @@ describe('ReportPage', () => {
   const catalogue = signal<readonly ReportEntry[] | null>(null);
   const report = signal<ReportState>({ status: 'loading' });
   const establishments = signal<readonly EstablishmentRow[]>([]);
+  const catalogueFailed = signal(false);
   const facade = {
     catalogue: catalogue.asReadonly(),
-    catalogueFailed: signal(false).asReadonly(),
+    catalogueFailed: catalogueFailed.asReadonly(),
     report: report.asReadonly(),
     loadCatalogue: vi.fn(),
     loadReport: vi.fn(),
@@ -172,6 +173,7 @@ describe('ReportPage', () => {
     // Half past midnight on 1 October in Tunis, still September in UTC: the company's month is October.
     vi.setSystemTime(new Date('2026-09-30T23:30:00Z'));
     catalogue.set([BY_CATEGORY, DEAD_STOCK]);
+    catalogueFailed.set(false);
     report.set({ status: 'ready', result: SEPTEMBER });
     establishments.set([]);
     for (const mock of [
@@ -193,6 +195,32 @@ describe('ReportPage', () => {
   afterEach(() => {
     vi.useRealTimers();
     document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
+  it('offers to read the report again when it could not be read', async () => {
+    report.set({ status: 'unavailable' });
+    const { el, harness } = await open('/reports/expenses-by-category');
+    expect(el.querySelector('[data-testid="report-unavailable"]')).not.toBeNull();
+    const asked = facade.loadReport.mock.calls.length;
+
+    el.querySelector<HTMLElement>('[data-testid="report-retry"]')?.click();
+    await harness.fixture.whenStable();
+
+    expect(facade.loadReport).toHaveBeenCalledTimes(asked + 1);
+    expect(lastAsked().from).toBe('2026-10-01');
+  });
+
+  it('offers to read the catalogue again when it could not be read', async () => {
+    catalogue.set(null);
+    catalogueFailed.set(true);
+    const { el, harness } = await open('/reports/expenses-by-category');
+    expect(el.querySelector('[data-testid="report-catalogue-failed"]')).not.toBeNull();
+    const asked = facade.loadCatalogue.mock.calls.length;
+
+    el.querySelector<HTMLElement>('[data-testid="report-catalogue-retry"]')?.click();
+    await harness.fixture.whenStable();
+
+    expect(facade.loadCatalogue).toHaveBeenCalledTimes(asked + 1);
   });
 
   it('opens on the company’s month against the month before, and writes that in the address', async () => {

@@ -18,12 +18,13 @@ parameters:
     # read and a write only now and then. « Où vous êtes connecté » and the demo's sweep read the use this closely.
     # Checked when the container is built (SessionBounds): PT1M to PT15M.
     app.session.touch_every: 'PT5M'
-    # Account lockout: after this many consecutive failures the account is locked for this long. The duration is checked
-    # when the container is built (LockoutBounds): PT5M to PT24H.
+    # Account lockout: after this many consecutive failures the account is locked for this long. Both are checked when the
+    # container is built (LockoutBounds): 3 to 20 failures, PT5M to PT24H.
     app.auth.lock_after_failures: 5
     app.auth.lock_duration: 'PT15M'
     # The rate limiters' budgets, how many over how long (config/packages/rate_limiter.yaml says what each guards), and
     # the sign-in throttling's: Symfony's default login limiter, per account and address, five times that per address.
+    # Each is checked when the container is built (RateLimitBounds): 1 to 1,000 tries over one minute to a day, in words.
     app.rate_limit.login.limit: 10
     app.rate_limit.login.interval: '15 minutes'
     app.rate_limit.mfa_verify.limit: 5

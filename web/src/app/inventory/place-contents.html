@@ -1,5 +1,17 @@
 <div class="flex flex-col gap-2" data-testid="stock-contents">
   <ng-content />
+  <!-- What a screen reader is told when no line stands: there before the answer, so the change is heard. -->
+  <div role="status" class="sr-only" data-testid="stock-contents-status">
+    @if (here(); as now) {
+      @if (now.lines.length === 0) {
+        {{
+          now.q === ''
+            ? ('inventory.plan.here.nothing' | translate)
+            : ('inventory.plan.here.no_match' | translate: { words: now.q })
+        }}
+      }
+    }
+  </div>
   @if (searchable()) {
     <mat-form-field subscriptSizing="dynamic">
       <mat-label>{{ 'inventory.plan.here.search' | translate }}</mat-label>

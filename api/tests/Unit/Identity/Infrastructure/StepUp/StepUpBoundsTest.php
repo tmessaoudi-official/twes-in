@@ -45,7 +45,7 @@ final class StepUpBoundsTest extends TestCase
         (new StepUpBounds())->process($this->container($validFor, $attempts));
     }
 
-    /** @return iterable<string, array{string, int, string}> */
+    /** @return iterable<string, array{string, int|string, string}> */
     public static function outOfBounds(): iterable
     {
         yield 'a window under a minute' => ['PT59S', 5, 'app.step_up.valid_for'];
@@ -54,10 +54,12 @@ final class StepUpBoundsTest extends TestCase
         yield 'a window that is no duration' => ['five minutes', 5, 'app.step_up.valid_for'];
         yield 'two attempts' => ['PT5M', 2, 'app.step_up.attempts'];
         yield 'eleven attempts' => ['PT5M', 11, 'app.step_up.attempts'];
+        // YAML reads a quoted 5 as text, which compared as a number and passed.
+        yield 'attempts as text' => ['PT5M', '5', 'app.step_up.attempts'];
     }
 
     #[DataProvider('outOfBounds')]
-    public function testAValueOutOfItsBoundsStopsTheContainer(string $validFor, int $attempts, string $named): void
+    public function testAValueOutOfItsBoundsStopsTheContainer(string $validFor, int|string $attempts, string $named): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessageMatches('/'.preg_quote($named, '/').'/');
@@ -65,7 +67,7 @@ final class StepUpBoundsTest extends TestCase
         (new StepUpBounds())->process($this->container($validFor, $attempts));
     }
 
-    private function container(string $validFor, int $attempts): ContainerBuilder
+    private function container(string $validFor, int|string $attempts): ContainerBuilder
     {
         $container = new ContainerBuilder();
         $container->setParameter('app.step_up.valid_for', $validFor);

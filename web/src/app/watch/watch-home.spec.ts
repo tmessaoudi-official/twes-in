@@ -24,7 +24,12 @@ class StaticLoader implements TranslateLoader {
         count: 'À surveiller : {{count}}',
         none: 'Rien à surveiller.',
       },
-      feedback: { retry: 'Réessayer', panel_failed: 'Ce panneau n’a pas pu être lu.' },
+      feedback: {
+        retry: 'Réessayer',
+        panel_failed: 'Le panneau {{panel}} n’a pas pu être lu.',
+        retry_panel: 'Réessayer : {{panel}}',
+      },
+      nav: { watch: 'À surveiller' },
     });
   }
 }
@@ -91,7 +96,10 @@ describe('WatchHome', () => {
     await open();
 
     expect(q('home-watch-error')?.getAttribute('role')).toBe('alert');
-    expect(q('home-watch-error')?.textContent).toContain('Ce panneau n’a pas pu être lu.');
+    expect(q('home-watch-error')?.textContent).toContain(
+      'Le panneau À surveiller n’a pas pu être lu.',
+    );
+    expect(q('home-watch-retry')?.getAttribute('aria-label')).toBe('Réessayer : À surveiller');
 
     facade.load.mockImplementation(() => {
       failure.set(null);

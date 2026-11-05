@@ -28,6 +28,12 @@ import { provideQuietFeedback } from '../shared/testing/feedback';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      feedback: {
+        retry: 'Réessayer',
+        panel_failed: 'Le panneau {{panel}} n’a pas pu être lu.',
+        retry_panel: 'Réessayer : {{panel}}',
+      },
+      nav: { invoices: 'Factures' },
       invoices: {
         errors: { network: 'Le serveur est injoignable.' },
         home: {
@@ -69,7 +75,6 @@ class StaticLoader implements TranslateLoader {
           },
         },
       },
-      feedback: { retry: 'Réessayer' },
     });
   }
 }
@@ -318,7 +323,9 @@ describe('InvoicesHome', () => {
     current.set(null);
     error.set('network');
     await settle();
-    expect(text('home-invoices-error')).toContain('Le serveur est injoignable.');
+    // Said as every home panel says it, naming which (S5.18); the activity bar says the server is unreachable.
+    expect(text('home-invoices-error')).toContain('Le panneau Factures n’a pas pu être lu.');
+    expect(q('home-invoices-retry')?.getAttribute('aria-label')).toBe('Réessayer : Factures');
     expect(q('home-outstanding')).toBeNull();
   });
 

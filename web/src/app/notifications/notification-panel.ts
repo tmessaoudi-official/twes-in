@@ -139,6 +139,11 @@ export class NotificationPanel {
     return params;
   }
 
+  /** « Réessayer »: the list read again, as the bell does on a live change. */
+  protected readAgain(): void {
+    void this.facade.refresh();
+  }
+
   protected read(entry: InboxEntry): void {
     if (entry.readAt === null) {
       void this.facade.markRead(entry.id);

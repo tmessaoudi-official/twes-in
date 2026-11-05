@@ -32,6 +32,7 @@ final class Version20261102070000 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        $this->addSql("DELETE FROM setting WHERE level = 'user' AND key = 'presentation.theme-preset'");
+        // Nothing is removed: the rows are every person's colour style, chosen after the update too, and the release
+        // before reads only the settings it declares, so they do it no harm; a rollback runs that release on this schema.
     }
 }

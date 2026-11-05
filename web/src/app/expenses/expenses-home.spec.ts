@@ -37,7 +37,12 @@ class StaticLoader implements TranslateLoader {
           },
         },
       },
-      feedback: { retry: 'Réessayer', panel_failed: 'Ce panneau n’a pas pu être lu.' },
+      feedback: {
+        retry: 'Réessayer',
+        panel_failed: 'Le panneau {{panel}} n’a pas pu être lu.',
+        retry_panel: 'Réessayer : {{panel}}',
+      },
+      nav: { expenses: 'Dépenses' },
     });
   }
 }
@@ -129,7 +134,11 @@ describe('ExpensesHome', () => {
     const find = (id: string): HTMLElement | null =>
       (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${id}"]`);
     expect(find('home-expenses-error')?.getAttribute('role')).toBe('alert');
-    expect(text()).toContain('Ce panneau n’a pas pu être lu.');
+    // Which panel, in its words and in its button's name: four panels can fail on one home (S5.18).
+    expect(find('home-expenses-error')?.textContent).toContain(
+      'Le panneau Dépenses n’a pas pu être lu.',
+    );
+    expect(find('home-expenses-retry')?.getAttribute('aria-label')).toBe('Réessayer : Dépenses');
 
     facade.loadSummary.mockImplementation(() => {
       current.set(summary);
@@ -149,6 +158,6 @@ describe('ExpensesHome', () => {
     await open();
 
     expect(text()).toContain('1 234,500');
-    expect(text()).not.toContain('Ce panneau n’a pas pu être lu.');
+    expect(text()).not.toContain('n’a pas pu être lu.');
   });
 });

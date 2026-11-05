@@ -1083,6 +1083,18 @@ describe('PlatformPage', () => {
     expect(document.activeElement).toBe(query('field-phone'));
   });
 
+  // A new platform sees only an empty list: it offers the first company where it says there is none (S5.17).
+  it('offers to create the first company from the empty list of companies', async () => {
+    companies.set([]);
+    const { fixture, query } = await render('/?tab=companies');
+
+    query<HTMLButtonElement>('list-empty-action')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(query('platform-company-name')).not.toBeNull();
+  });
+
   it("says a refused company's name on the name it was opened with, not on a sheet's owner", async () => {
     const { fixture, query } = await render('/?tab=companies');
     query<HTMLButtonElement>('platform-company-new')!.click();

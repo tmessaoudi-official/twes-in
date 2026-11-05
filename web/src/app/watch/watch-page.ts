@@ -8,6 +8,7 @@ import {
   inject,
   type OnInit,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -26,7 +27,7 @@ import { WATCHED_KINDS } from './watch-types';
  */
 @Component({
   selector: 'app-watch-page',
-  imports: [MatCardModule, MatIconModule, RouterLink, TranslatePipe],
+  imports: [MatButtonModule, MatCardModule, MatIconModule, RouterLink, TranslatePipe],
   templateUrl: './watch-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -54,6 +55,12 @@ export class WatchPage implements OnInit {
           ];
     }),
   );
+
+  /** « Réessayer »: what is watched, read as on opening. */
+  protected readAgain(): void {
+    const companyId = this.auth.me()?.company?.id;
+    if (companyId) void this.facade.load(companyId);
+  }
 
   async ngOnInit(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;

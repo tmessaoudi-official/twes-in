@@ -963,6 +963,8 @@
                 {{ 'inventory.plan.volume.loading' | translate }}
               </p>
             } @error {
+              <!-- read-retry: the volume's code did not arrive, and a deferred block is never fetched again but by a reload;
+                   the plan beside it shows the same floor. -->
               <p
                 role="status"
                 class="rounded-card border border-outline-variant p-4 text-on-surface-variant"

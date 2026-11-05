@@ -74,6 +74,9 @@
         <p role="alert" class="text-error" data-testid="watch-error">
           {{ 'watch.errors.unavailable' | translate }}
         </p>
+        <button mat-button type="button" data-testid="watch-retry" (click)="readAgain()">
+          {{ 'feedback.retry' | translate }}
+        </button>
       }
     }
 

@@ -18,11 +18,12 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
 import { withSessionKinds } from '../shared/session/session-kinds';
 import { WATCHED_KINDS } from './watch-types';
+import { Label } from '../shared/a11y/label';
 
 /** The home's count of « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10), linked to the list itself. */
 @Component({
   selector: 'app-watch-home',
-  imports: [MatButtonModule, MatCardModule, MatIconModule, RouterLink, TranslatePipe],
+  imports: [Label, MatButtonModule, MatCardModule, MatIconModule, RouterLink, TranslatePipe],
   templateUrl: './watch-home.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

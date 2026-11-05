@@ -210,11 +210,18 @@ export class PlatformPage implements OnInit {
     icon: 'manage_accounts',
     title: 'platform.accounts.none',
   };
-  /** What the list says before it holds anything. */
-  protected readonly companiesEmpty: EmptyState = {
+  /** What the list says before it holds anything, offering the first company where the form is not open yet. */
+  protected readonly companiesEmpty = computed<EmptyState>(() => ({
     icon: 'business',
     title: 'platform.companies.none',
-  };
+    action: {
+      id: 'create',
+      label: 'platform.companies.new',
+      icon: 'add',
+      run: () => this.creating.set(true),
+      shown: !this.creating(),
+    },
+  }));
   private readonly platform = inject(PlatformFacade);
   private readonly payments = inject(SubscriptionFacade);
   private readonly dialog = inject(MatDialog);

@@ -12,7 +12,6 @@ namespace App\Identity\Infrastructure\StepUp;
 use App\Shared\Infrastructure\DependencyInjection\ParameterBounds;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 
 /**
  * The step-up's two numbers are a deployment's to set (docs/SPEC.md § 7), within bounds checked when the container is
@@ -31,15 +30,8 @@ final class StepUpBounds implements CompilerPassInterface
 
     public function process(ContainerBuilder $container): void
     {
-        $validFor = $container->getParameter(self::VALID_FOR);
-        $seconds = ParameterBounds::seconds($validFor);
-        if (null === $seconds || $seconds < self::SHORTEST_SECONDS || $seconds > self::LONGEST_SECONDS) {
-            throw new InvalidArgumentException(\sprintf('%s is an ISO 8601 duration from one minute to a quarter hour (PT1M to PT15M); %s is not.', self::VALID_FOR, json_encode($validFor)));
-        }
-
-        $attempts = $container->getParameter(self::ATTEMPTS);
-        if ($attempts < self::FEWEST_ATTEMPTS || $attempts > self::MOST_ATTEMPTS) {
-            throw new InvalidArgumentException(\sprintf('%s is a whole number from %d to %d; %s is not.', self::ATTEMPTS, self::FEWEST_ATTEMPTS, self::MOST_ATTEMPTS, json_encode($attempts)));
-        }
+        ParameterBounds::duration($container, self::VALID_FOR, self::SHORTEST_SECONDS, self::LONGEST_SECONDS, 'one minute to a quarter hour (PT1M to PT15M)');
+        // A whole number itself: YAML reads a quoted 5 as text, which compared as a number and passed.
+        ParameterBounds::whole($container, self::ATTEMPTS, self::FEWEST_ATTEMPTS, self::MOST_ATTEMPTS);
     }
 }

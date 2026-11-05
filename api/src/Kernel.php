@@ -26,6 +26,7 @@ use App\Shared\Infrastructure\ErrorReporting\ClientErrorBounds;
 use App\Shared\Infrastructure\ErrorReporting\ErrorReportingMasksBounds;
 use App\Shared\Infrastructure\Health\HealthBounds;
 use App\Shared\Infrastructure\Http\LongRequestBounds;
+use App\Shared\Infrastructure\Http\RateLimitBounds;
 use App\Shared\Infrastructure\Realtime\RealtimeTokenBounds;
 use App\Shared\Infrastructure\Submissions\SubmissionRetryBounds;
 use App\Tenancy\Infrastructure\Console\EarlierNumberingDaysBounds;
@@ -81,6 +82,7 @@ class Kernel extends BaseKernel
         $container->addCompilerPass(new RemovalNoticeBounds());
         $container->addCompilerPass(new LapseNoticeBounds());
         $container->addCompilerPass(new EarlierNumberingDaysBounds());
+        $container->addCompilerPass(new RateLimitBounds());
     }
 
     /**

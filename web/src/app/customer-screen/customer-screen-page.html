@@ -71,6 +71,7 @@
 
     <section class="flex flex-col gap-4" aria-live="polite">
       @if (failed()) {
+        <!-- read-retry: the look-up form just above sends the words again; a second button would say the same. -->
         <p class="m-0 text-xl text-error" data-testid="customer-screen-failed">
           {{ 'customer_screen.failed' | translate }}
         </p>

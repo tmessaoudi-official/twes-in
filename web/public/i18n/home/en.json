@@ -8,8 +8,7 @@
       "value_estimated": "part of it estimated at the products’ current cost",
       "negative": "{{count}} {count, plural, one {line} other {lines}} below zero",
       "expired": "{{count}} expired {count, plural, one {lot} other {lots}}",
-      "clear": "No stock below zero and no expired lot.",
-      "error": "The stock could not be read. Try again in a moment."
+      "clear": "No stock below zero and no expired lot."
     }
   }
 }

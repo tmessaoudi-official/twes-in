@@ -30,6 +30,9 @@
     <p role="alert" class="text-error" data-testid="report-catalogue-failed">
       {{ 'reports.errors.catalogue' | translate }}
     </p>
+    <button mat-button type="button" data-testid="report-catalogue-retry" (click)="readAgain()">
+      {{ 'feedback.retry' | translate }}
+    </button>
   }
 
   @if (entry(); as report) {
@@ -135,6 +138,9 @@
         <p role="alert" class="text-error" data-testid="report-unavailable">
           {{ 'reports.errors.unavailable' | translate }}
         </p>
+        <button mat-button type="button" data-testid="report-retry" (click)="readAgain()">
+          {{ 'feedback.retry' | translate }}
+        </button>
       }
     }
 

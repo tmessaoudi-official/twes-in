@@ -909,6 +909,20 @@
   }
 </ng-template>
 
+<!-- What a screen reader is told when no row stands: a status region there before any answer, rows or none, so the
+     change is heard (WCAG 2.2 SC 4.1.3); the words in place of the rows stay for the eye. -->
+<div role="status" class="sr-only" data-testid="list-status">
+  @if (page().rows.length === 0 && blank() === 'empty') {
+    {{ empty()?.title ?? 'list.nothing_yet' | translate }}
+  } @else if (page().rows.length === 0 && blank() === 'no-match') {
+    {{
+      query()
+        ? ('list.no_match' | translate: { query: query() })
+        : ('list.no_match_filters' | translate)
+    }}
+  }
+</div>
+
 <!-- What stands in place of rows: loading, failed, nothing at all yet, or nothing matching what was asked. -->
 <ng-template #blankState>
   @if (blank() === 'loading') {

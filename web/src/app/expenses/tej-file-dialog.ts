@@ -88,6 +88,7 @@ export interface TejFileDialogData {
           </div>
         }
         @if (failed()) {
+          <!-- read-retry: « Télécharger » below makes the file again; it is the way to try again. -->
           <p role="alert" class="text-error" data-testid="tej-failed">
             {{ 'expenses.tej_file.failed' | translate }}
           </p>

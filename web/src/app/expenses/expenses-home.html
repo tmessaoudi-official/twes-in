@@ -1,7 +1,15 @@
 @if (failed()) {
   <div role="alert" class="flex flex-wrap items-center gap-2" data-testid="home-expenses-error">
-    <span class="text-error">{{ 'feedback.panel_failed' | translate }}</span>
-    <button mat-button type="button" (click)="retry()" data-testid="home-expenses-retry">
+    <span class="text-error">{{
+      'feedback.panel_failed' | translate: { panel: ('nav.expenses' | translate) }
+    }}</span>
+    <button
+      mat-button
+      type="button"
+      (click)="retry()"
+      [appLabel]="'feedback.retry_panel' | translate: { panel: ('nav.expenses' | translate) }"
+      data-testid="home-expenses-retry"
+    >
       {{ 'feedback.retry' | translate }}
     </button>
   </div>

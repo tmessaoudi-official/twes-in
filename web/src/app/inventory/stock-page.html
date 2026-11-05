@@ -176,7 +176,7 @@
       (queryChange)="onQuery($event)"
       testId="stock-table"
       [rowTestId]="rowTestId"
-      [empty]="emptyState"
+      [empty]="emptyState()"
       emptyTestId="stock-empty"
     >
       <ng-template appDataListCell="useBy" let-row>

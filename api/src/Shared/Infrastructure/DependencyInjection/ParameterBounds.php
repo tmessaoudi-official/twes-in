@@ -63,6 +63,35 @@ final class ParameterBounds
         }
     }
 
+    /**
+     * A length of time as Symfony's rate limiter reads it, words and not ISO 8601 (« 15 minutes », « 1 day »).
+     *
+     * @param string $said the bounds as a person reads them, « one minute to a day »
+     *
+     * @throws InvalidArgumentException when the parameter is no such length within the bounds
+     */
+    public static function spoken(ContainerBuilder $container, string $parameter, int $shortestSeconds, int $longestSeconds, string $said): void
+    {
+        $value = $container->getParameter($parameter);
+        $seconds = \is_string($value) ? self::spokenSeconds($value) : null;
+        if (null === $seconds || $seconds < $shortestSeconds || $seconds > $longestSeconds) {
+            throw new InvalidArgumentException(\sprintf('%s is a length of time in words from %s (« 15 minutes »); %s is not.', $parameter, $said, json_encode($value)));
+        }
+    }
+
+    /** A length in words in seconds, counted from a fixed day as `seconds()` counts; null when the words say none. */
+    public static function spokenSeconds(string $words): ?int
+    {
+        try {
+            $interval = \DateInterval::createFromDateString($words);
+        } catch (\Exception) {
+            return null;
+        }
+        $from = new \DateTimeImmutable('2000-01-01T00:00:00Z');
+
+        return $from->add($interval)->getTimestamp() - $from->getTimestamp();
+    }
+
     /** The duration in seconds, counted from a fixed day so a month or a year has one length; null when it is none. */
     public static function seconds(string $duration): ?int
     {

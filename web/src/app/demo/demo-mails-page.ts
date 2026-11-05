@@ -9,6 +9,7 @@ import {
   type OnInit,
   signal,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
@@ -23,7 +24,7 @@ import { DEMO_MAIL_KIND, DemoMailsApi, type DemoMail } from './demo-mails-api';
  */
 @Component({
   selector: 'app-demo-mails-page',
-  imports: [MatIconModule, MomentPipe, TranslatePipe],
+  imports: [MatButtonModule, MatIconModule, MomentPipe, TranslatePipe],
   templateUrl: './demo-mails-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -48,6 +49,12 @@ export class DemoMailsPage implements OnInit {
     if (!companyId) return;
     this.live.reloadOn([DEMO_MAIL_KIND], () => this.load(companyId), this.destroyRef);
     await this.load(companyId);
+  }
+
+  /** « Réessayer »: the mails read as on opening. */
+  protected readAgain(): void {
+    const companyId = this.auth.me()?.company?.id;
+    if (companyId) void this.load(companyId);
   }
 
   protected open(mail: DemoMail): void {

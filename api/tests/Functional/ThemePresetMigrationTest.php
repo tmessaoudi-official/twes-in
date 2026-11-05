@@ -53,6 +53,20 @@ final class ThemePresetMigrationTest extends ApiTestCase
         self::fail('presentation.theme-preset is declared');
     }
 
+    /**
+     * Going back leaves every person's colour style as it is, the ones chosen after the update included: the release
+     * before reads only the settings it declares, so the rows do no harm under it, while deleting them took choices the
+     * migration never wrote. A rollback runs the previous release on this schema and never runs down() (docs/SPEC.md
+     * § 7, the update rollback).
+     */
+    public function testGoingBackKeepsEveryPersonsChoice(): void
+    {
+        $migration = $this->migration();
+        $migration->down(new Schema());
+
+        self::assertSame([], $migration->getSql());
+    }
+
     /** @return list<mixed> */
     private function presetsOf(string $userId): array
     {
@@ -64,14 +78,20 @@ final class ThemePresetMigrationTest extends ApiTestCase
 
     private function migrate(): void
     {
-        // Doctrine loads migrations from their directory, not the autoloader.
-        require_once \dirname(__DIR__, 2).'/migrations/Version20261102070000.php';
         $connection = $this->em()->getConnection();
-        $migration = new Version20261102070000($connection, new NullLogger());
+        $migration = $this->migration();
         $migration->up(new Schema());
         foreach ($migration->getSql() as $query) {
             self::assertSame([], $query->getParameters());
             $connection->executeStatement($query->getStatement());
         }
+    }
+
+    private function migration(): Version20261102070000
+    {
+        // Doctrine loads migrations from their directory, not the autoloader.
+        require_once \dirname(__DIR__, 2).'/migrations/Version20261102070000.php';
+
+        return new Version20261102070000($this->em()->getConnection(), new NullLogger());
     }
 }

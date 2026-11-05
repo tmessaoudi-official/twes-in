@@ -15,7 +15,7 @@
 # naming no list.
 #
 # Each list also says what it holds before it holds anything: an `[empty]` state (`EmptyState`: an icon, a title, the
-# list's own create action), or a reason below. A new company sees only empty lists, and a bare « Aucun … » left it
+# list's own create action), or a reason below; a state drawn with no action of its own (`empty-action`) says why too. A new company sees only empty lists, and a bare « Aucun … » left it
 # with no way to the first record. The retired `emptyKey` reds wherever it is written, and fewer lists drawing an empty
 # state than the floor red too, so a list losing its own is seen. Usage: list-stances.sh [--root DIR] [--stances FILE]
 # [--empty-floor N]
@@ -40,6 +40,7 @@ activity/activity-page|import=not-ruled
 activity/activity-page#list|bulk=not-ruled
 activity/activity-page#list|row-actions=not-ruled
 activity/activity-page#list|selection=not-ruled
+activity/activity-page#list|empty-action=a journal of what was done: nothing is created here
 company/custom-fields-page|export=not-ruled
 company/custom-fields-page|import=not-ruled
 company/custom-fields-page#list|bulk=not-ruled
@@ -52,10 +53,12 @@ company/members-page|export=not-ruled
 company/members-page|import=not-ruled
 company/members-page#list|bulk=not-ruled
 company/members-page#list|selection=not-ruled
+company/members-page#list|empty-action=never empty, whoever reads it is a member; inviting is the form beside the list
 company/numbering-page|export=not-ruled
 company/numbering-page|import=not-ruled
 company/numbering-page#list|bulk=not-ruled
 company/numbering-page#list|selection=not-ruled
+company/numbering-page#list|empty-action=a series is opened by the first document of its kind in an establishment, never by hand
 customers/customer-groups-page|export=not-ruled
 customers/customer-groups-page|import=not-ruled
 customers/customer-groups-page#list|bulk=not-ruled
@@ -82,6 +85,7 @@ fiscal/fiscal-taxes-page#list|selection=not-ruled
 fiscal/fiscal-taxes-page#regimeList|bulk=not-ruled
 fiscal/fiscal-taxes-page#regimeList|row-actions=not-ruled
 fiscal/fiscal-taxes-page#regimeList|selection=not-ruled
+fiscal/fiscal-taxes-page#regimeList|empty-action=the regimes are the country preset's, never created by a company
 fiscal/fiscal-units-page|export=not-ruled
 fiscal/fiscal-units-page|import=not-ruled
 fiscal/fiscal-units-page#list|bulk=not-ruled
@@ -93,6 +97,7 @@ inventory/stock-locations-page#list|selection=not-ruled
 inventory/stock-movements-page|import=not-ruled
 inventory/stock-movements-page#list|bulk=not-ruled
 inventory/stock-movements-page#list|selection=not-ruled
+inventory/stock-movements-page#list|empty-action=a movement is made by receiving, selling or moving stock, on the stock page and the documents
 inventory/stock-page#list|bulk=not-ruled
 inventory/stock-page#list|selection=not-ruled
 invoices/invoices-page|import=not-ruled
@@ -102,10 +107,12 @@ invoices/portfolio-page|import=not-ruled
 invoices/portfolio-page#list|bulk=not-ruled
 invoices/portfolio-page#list|row-actions=not-ruled
 invoices/portfolio-page#list|selection=not-ruled
+invoices/portfolio-page#list|empty-action=a cheque or a bill is recorded with the payment it settles, on the invoice
 platform/platform-page|export=not-ruled
 platform/platform-page|import=not-ruled
 platform/platform-page#accountsList|bulk=not-ruled
 platform/platform-page#accountsList|selection=not-ruled
+platform/platform-page#accountsList|empty-action=an account is made by its own sign-up or an accepted invitation, never by the operator
 platform/platform-page#companiesList|bulk=not-ruled
 platform/platform-page#companiesList|selection=not-ruled
 price-lists/price-lists-page|export=not-ruled
@@ -128,19 +135,23 @@ recurring-expenses/recurring-expenses-page|export=not-ruled
 recurring-expenses/recurring-expenses-page|import=not-ruled
 recurring-expenses/recurring-expenses-page#list|bulk=not-ruled
 recurring-expenses/recurring-expenses-page#list|selection=not-ruled
+recurring-expenses/recurring-expenses-page#list|empty-action=made from an expense's « Rendre récurrente », which the empty title names
 recurring/recurring-page|export=not-ruled
 recurring/recurring-page|import=not-ruled
 recurring/recurring-page#list|bulk=not-ruled
 recurring/recurring-page#list|selection=not-ruled
+recurring/recurring-page#list|empty-action=made from an invoice's « Rendre récurrente » in « ⋮ », which the empty title names
 texts/texts-page|export=a text is worded one at a time, beside its original, in the dialog its row opens
 texts/texts-page|import=a text is worded one at a time, beside its original, in the dialog its row opens
 texts/texts-page#list|bulk=a text is worded one at a time, beside its original, in the dialog its row opens
 texts/texts-page#list|selection=a text is worded one at a time, beside its original, in the dialog its row opens
+texts/texts-page#list|empty-action=the texts are the release's, worded otherwise here, never created
 vendors/vendors-page#list|row-actions=row-260
 watch/watch-subject-page|export=not-ruled
 watch/watch-subject-page|import=not-ruled
 watch/watch-subject-page#list|bulk=not-ruled
 watch/watch-subject-page#list|selection=not-ruled
+watch/watch-subject-page#list|empty-action=what is watched is computed from the records, nothing is created here
 EOF
 [[ -n "$stances_file" ]] && STANCES=$(cat "$stances_file")
 export STANCES
@@ -249,6 +260,13 @@ for template in templates:
         # Row actions are what the descriptor declares; a control drawn in a cell is none of them, and reds below.
         offered[f'{key}|row-actions'] = bool(re.search(r'\bactions\s*:\s*(\[(?!\s*\])|onRows\()', body))
         offered[f'{key}|empty'] = bool(re.search(r'\[empty\]\s*=\s*"[^"]+"', tag.group(1)))
+        bound_empty = re.search(r'\[empty\]\s*=\s*"([^"]+)"', tag.group(1))
+        if bound_empty:
+            # The state's own create action: read from the binding as written and from what it names beside the template.
+            empty_head = re.match(r'\s*([A-Za-z_]\w*)', bound_empty.group(1))
+            empty_name = aliases.get(empty_head.group(1), empty_head.group(1)) if empty_head else ''
+            empty_body = bound_empty.group(1) + '\n' + (descriptor(component, empty_name) if empty_name and os.path.isfile(component) else '')
+            offered[f'{key}|empty-action'] = bool(re.search(r'\baction\s*:', empty_body))
         if re.search(r'<button\b|<a\s[^>]*\bmat-[\w-]*button\b|\(click\)', cells):
             drawn.append(key)
     offered[f'{page}|import'] = 'routerLink="/imports/' in text

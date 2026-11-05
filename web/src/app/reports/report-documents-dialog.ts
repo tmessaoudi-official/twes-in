@@ -38,6 +38,14 @@ export interface ReportDocumentsData {
           <p role="alert" class="text-error" data-testid="report-documents-failed">
             {{ 'reports.documents.failed' | translate }}
           </p>
+          <button
+            mat-button
+            type="button"
+            data-testid="report-documents-retry"
+            (click)="readDocuments()"
+          >
+            {{ 'feedback.retry' | translate }}
+          </button>
         }
         @if (read(); as answer) {
           @if (answer.documents.length === 0) {
@@ -119,6 +127,12 @@ export class ReportDocumentsDialog implements OnInit {
   protected readonly failed = signal(false);
 
   async ngOnInit(): Promise<void> {
+    await this.readDocuments();
+  }
+
+  /** On opening, and again on « Réessayer ». */
+  protected async readDocuments(): Promise<void> {
+    this.failed.set(false);
     try {
       this.read.set(
         await this.facade.documents(

@@ -19,6 +19,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { FirstStepsApi } from './first-steps-api';
 import { withSessionKinds } from '../shared/session/session-kinds';
 import { FIRST_STEP_LINKS, FIRST_STEPS_KINDS, type FirstSteps } from './first-steps-types';
+import { Label } from '../shared/a11y/label';
 
 /**
  * « Premiers pas » on the home (docs/SPEC.md § 7, 2026-09-25 22:17, row 139; design direction § 4.2): the steps the
@@ -27,7 +28,7 @@ import { FIRST_STEP_LINKS, FIRST_STEPS_KINDS, type FirstSteps } from './first-st
  */
 @Component({
   selector: 'app-first-steps-home',
-  imports: [MatButtonModule, MatCardModule, MatIconModule, RouterLink, TranslatePipe],
+  imports: [Label, MatButtonModule, MatCardModule, MatIconModule, RouterLink, TranslatePipe],
   templateUrl: './first-steps-home.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

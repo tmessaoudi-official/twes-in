@@ -3,6 +3,7 @@
 import { ChangeDetectionStrategy, Component, inject, input, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Select } from '../form/select';
 import { formatDay } from '../i18n/format';
@@ -20,7 +21,7 @@ import { STORED_ITEMS } from './stored-items';
  */
 @Component({
   selector: 'app-legal-text',
-  imports: [FormsModule, LegalMarkdown, Select, TranslatePipe],
+  imports: [FormsModule, LegalMarkdown, MatButtonModule, Select, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-4">
@@ -36,6 +37,9 @@ import { STORED_ITEMS } from './stored-items';
       />
       @if (text.error()) {
         <p role="alert" data-testid="legal-unavailable">{{ 'legal.unavailable' | translate }}</p>
+        <button mat-button type="button" data-testid="legal-text-retry" (click)="text.reload()">
+          {{ 'feedback.retry' | translate }}
+        </button>
       } @else if (text.hasValue()) {
         @let shown = text.value();
         @if (shown === null) {

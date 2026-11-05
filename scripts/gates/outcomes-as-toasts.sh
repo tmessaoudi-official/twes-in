@@ -9,7 +9,8 @@ set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 # The page states: the session that ended, the sign-up or password-link request sent, and a password chosen, in place of its form, the slow request, an empty
-# palette search, a record another person saved while it was being edited here, and a declared payment waiting for the
+# palette search, a list or a place's contents holding nothing or matching nothing (`list-status`, `stock-contents-status`,
+# said in a region there before the answer, so it is heard), a record another person saved while it was being edited here, and a declared payment waiting for the
 # operator's decision — that one is what the subscription IS until it is answered, days after the toast that said the
 # declaration was recorded — and how much of the open record is unsaved, which is what the form IS until
 # it is saved or discarded and the only thing on the page saying it was left half-filled.
@@ -55,7 +56,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # notification », which reads as nothing having happened; it is never the outcome of something the person did there.
 # `*-changes` is the record bar's count of what is typed and not saved, its test id bound from the page's own prefix
 # (`testId() + '-changes'`): a bound id is read by its fixed end.
-page_states=' document-taxes-stamp-status list-loading phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed *-changes stock-plan-unsaved stock-plan-kept stock-repeat-summary subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner support-banner demo-banner erasure-waiting list-selection-count product-price-review notifications-failed '
+page_states=' document-taxes-stamp-status list-loading list-status stock-contents-status phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed *-changes stock-plan-unsaved stock-plan-kept stock-repeat-summary subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner support-banner demo-banner erasure-waiting list-selection-count product-price-review notifications-failed '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {

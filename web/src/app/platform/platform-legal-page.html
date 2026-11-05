@@ -13,6 +13,9 @@
   <p>{{ 'platform.legal.intro' | translate }}</p>
   @if (facade.failed()) {
     <p role="alert" data-testid="legal-failed">{{ 'platform.legal.failed' | translate }}</p>
+    <button mat-button type="button" data-testid="legal-retry" (click)="facade.load()">
+      {{ 'feedback.retry' | translate }}
+    </button>
   }
 
   <section class="flex flex-col gap-3" aria-labelledby="legal-identity-title">

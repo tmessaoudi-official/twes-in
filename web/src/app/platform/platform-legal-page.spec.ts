@@ -271,6 +271,17 @@ describe('PlatformLegalPage', () => {
     expect((q('legal-identity-publisher.name') as HTMLInputElement).value).toBe('twes SARL');
   });
 
+  it('offers to read the pages again when they could not be read', async () => {
+    facade.failed.set(true);
+    await render();
+    expect(q('legal-failed')).not.toBeNull();
+    const asked = facade.load.mock.calls.length;
+
+    q('legal-retry')?.click();
+    await fixture.whenStable();
+
+    expect(facade.load).toHaveBeenCalledTimes(asked + 1);
+  });
   it('reads the legal texts again when another operator writes or validates one', async () => {
     await render();
 

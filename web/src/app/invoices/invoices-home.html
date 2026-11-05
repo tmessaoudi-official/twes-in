@@ -1,7 +1,15 @@
-@if (error(); as code) {
+@if (error() !== null) {
   <div role="alert" data-testid="home-invoices-error" class="flex flex-wrap items-center gap-2">
-    <span class="text-error">{{ 'invoices.errors.' + code | translate }}</span>
-    <button mat-button type="button" (click)="retry()" data-testid="home-invoices-retry">
+    <span class="text-error">{{
+      'feedback.panel_failed' | translate: { panel: ('nav.invoices' | translate) }
+    }}</span>
+    <button
+      mat-button
+      type="button"
+      (click)="retry()"
+      [appLabel]="'feedback.retry_panel' | translate: { panel: ('nav.invoices' | translate) }"
+      data-testid="home-invoices-retry"
+    >
       {{ 'feedback.retry' | translate }}
     </button>
   </div>

@@ -174,6 +174,21 @@ describe('LegalText', () => {
     expect(q('legal-unavailable')).not.toBeNull();
   });
 
+  it('offers to read the text again when the API did not answer', async () => {
+    let answers = 0;
+    await show('mentions', () =>
+      answers++ === 0 ? throwError(() => new Error('down')) : of(null),
+    );
+    expect(read).toHaveBeenCalledTimes(1);
+
+    q('legal-text-retry')?.click();
+    await settle();
+
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(q('legal-unavailable')).toBeNull();
+    expect(q('legal-drafting')).not.toBeNull();
+  });
+
   it('keeps the list of what is stored under the Cookies text', async () => {
     await show('cookies', () => of(doc()));
     expect(q('legal-body')).not.toBeNull();

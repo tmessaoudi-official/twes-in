@@ -20,6 +20,7 @@ import { withSessionKinds } from '../../shared/session/session-kinds';
 import { KpiTile } from '../../shared/ui/kpi-tile';
 import { InventoryApi } from '../inventory-api';
 import type { StockSearch } from '../inventory-types';
+import { Label } from '../../shared/a11y/label';
 
 /** What the panel read: the stock's worth for whoever may read costs, and what is wrong in it for every reader. */
 interface StockFigures {
@@ -50,20 +51,36 @@ const COUNT_ONLY: StockSearch = {
  */
 @Component({
   selector: 'app-stock-home',
-  imports: [KpiTile, MatButtonModule, RouterLink, TranslatePipe],
+  imports: [Label, KpiTile, MatButtonModule, RouterLink, TranslatePipe],
   template: `
     @if (wordless()) {
       <div role="alert" class="flex flex-wrap items-center gap-2" data-testid="home-stock-error">
-        <span class="text-error">{{ 'feedback.panel_failed' | translate }}</span>
-        <button mat-button type="button" (click)="retry()" data-testid="home-stock-retry">
+        <span class="text-error">{{
+          'feedback.panel_failed' | translate: { panel: ('nav.stock' | translate) }
+        }}</span>
+        <button
+          mat-button
+          type="button"
+          (click)="retry()"
+          [appLabel]="'feedback.retry_panel' | translate: { panel: ('nav.stock' | translate) }"
+          data-testid="home-stock-retry"
+        >
           {{ 'feedback.retry' | translate }}
         </button>
       </div>
     } @else if (ready()) {
       @if (failed()) {
         <div role="alert" class="flex flex-wrap items-center gap-2" data-testid="home-stock-error">
-          <span class="text-error">{{ 'home.stock.error' | translate }}</span>
-          <button mat-button type="button" (click)="retry()" data-testid="home-stock-retry">
+          <span class="text-error">{{
+            'feedback.panel_failed' | translate: { panel: ('nav.stock' | translate) }
+          }}</span>
+          <button
+            mat-button
+            type="button"
+            (click)="retry()"
+            [appLabel]="'feedback.retry_panel' | translate: { panel: ('nav.stock' | translate) }"
+            data-testid="home-stock-retry"
+          >
             {{ 'feedback.retry' | translate }}
           </button>
         </div>

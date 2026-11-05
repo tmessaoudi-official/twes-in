@@ -19,6 +19,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { KpiTile } from '../shared/ui/kpi-tile';
 import { versus } from '../shared/ui/versus';
 import { ExpensesFacade } from './expenses-facade';
+import { Label } from '../shared/a11y/label';
 
 /**
  * The expenses module's panel on the home page (docs/SPEC.md § 7, 2026-10-04, row 113): what was recorded in expenses
@@ -27,7 +28,7 @@ import { ExpensesFacade } from './expenses-facade';
  */
 @Component({
   selector: 'app-expenses-home',
-  imports: [KpiTile, MatButtonModule, TranslatePipe, AmountPipe],
+  imports: [Label, KpiTile, MatButtonModule, TranslatePipe, AmountPipe],
   templateUrl: './expenses-home.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

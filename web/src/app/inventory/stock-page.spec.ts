@@ -434,6 +434,19 @@ describe('StockPage', () => {
   });
 
   /** ART-1 lives at the rack, so that is what the receipt offers (docs/SPEC.md row 101). */
+  // A new company's stock is empty: it offers the first receipt where it says there is nothing (S5.17).
+  it('offers to receive the first goods from a stock that holds nothing yet', async () => {
+    levelsSignal.set([]);
+    try {
+      await settle();
+      q('list-empty-action')!.click();
+      await settle();
+      expect(q('stock-movement-save')).not.toBeNull();
+    } finally {
+      levelsSignal.set([shortage]);
+    }
+  });
+
   it('records goods received where the product picked normally lives', async () => {
     const unsaved = TestBed.inject(UnsavedChanges);
     q('stock-receive')!.click();

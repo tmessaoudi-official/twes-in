@@ -193,10 +193,18 @@ export class StockPage implements OnInit {
   private readonly editor = viewChild(DescriptorForm);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   /** What the list says before it holds anything. */
-  protected readonly emptyState: EmptyState = {
+  /** What the list says before it holds anything, offering the first receipt to who may record one. */
+  protected readonly emptyState = computed<EmptyState>(() => ({
     icon: 'inventory_2',
     title: 'inventory.stock.none',
-  };
+    action: {
+      id: 'receive',
+      label: 'inventory.stock.receive',
+      icon: 'move_to_inbox',
+      run: () => this.open('receive'),
+      shown: this.mayWrite() && this.company() !== null && this.operation() === null,
+    },
+  }));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
   protected readonly rowTestId = (row: StockListRow): string =>
     `stock-${row.productReference}-${row.locationCode}`;

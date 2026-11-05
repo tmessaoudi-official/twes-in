@@ -289,6 +289,12 @@ export class ReportPage implements OnInit {
     return value === null || value === undefined ? null : String(value);
   }
 
+  /** « Réessayer »: the catalogue and the report asked, read as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.reload(companyId);
+  }
+
   private async reload(companyId: string): Promise<void> {
     const query = this.query();
     await Promise.all([
