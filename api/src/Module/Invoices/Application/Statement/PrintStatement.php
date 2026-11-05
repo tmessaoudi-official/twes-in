@@ -49,7 +49,7 @@ final readonly class PrintStatement
         $statement = $this->statement->handle($company, $customerId, $from, $to);
         // A customer merged into another prints the statement of the customer kept.
         $customer = ($this->customers->ofIdInCompany($customerId, $company->getId()) ?? throw new CustomerNotFound())->standingFor();
-        $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
+        $context = new SettingContext($company, customerGroupId: $customer->standingFor()->getGroup()?->getId(), customerId: $customer->standingFor()->getId());
         $print = DocumentFormats::print($this->settings, $context, $company);
         $language = $this->settings->text($context, 'document.language');
         $establishment = $this->establishments->ofCompany($company->getId())[0] ?? throw new \LogicException('A company always has an establishment.');

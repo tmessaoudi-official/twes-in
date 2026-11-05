@@ -80,7 +80,7 @@ final readonly class InvoiceMentions
 
     private function printed(Company $company, Customer $customer, InvoiceType $type, string $language, bool $issuing, ?OperationCategory $operations): PrintedMentions
     {
-        $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
+        $context = new SettingContext($company, customerGroupId: $customer->standingFor()->getGroup()?->getId(), customerId: $customer->standingFor()->getId());
         $keys = [];
         $parameters = [];
         foreach ($this->keys($company, $customer, $operations) as $key) {

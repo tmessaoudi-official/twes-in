@@ -49,7 +49,7 @@ final readonly class QuoteSettings implements DeclaresSettings
     /** Whether an answer from this customer names who gave it, as the customer, its group and its company say. */
     public static function receiverRule(ReadSetting $settings, Customer $customer): ReceiverRule
     {
-        $context = new SettingContext($customer->getCompany(), customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
+        $context = new SettingContext($customer->getCompany(), customerGroupId: $customer->standingFor()->getGroup()?->getId(), customerId: $customer->standingFor()->getId());
 
         return ReceiverRule::from($settings->text($context, self::RECEIVER));
     }

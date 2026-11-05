@@ -54,7 +54,7 @@ final readonly class RunningAccount
     {
         // A customer merged into another answers with the account of the customer kept, its limit included.
         $customer = $customer->standingFor();
-        $limit = $this->settings->value(new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId()), 'credit.limit');
+        $limit = $this->settings->value(new SettingContext($company, customerGroupId: $customer->standingFor()->getGroup()?->getId(), customerId: $customer->standingFor()->getId()), 'credit.limit');
 
         return Decimal::of(\is_string($limit) ? $limit : '0');
     }

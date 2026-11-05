@@ -170,7 +170,7 @@ final readonly class PrintInvoice
     {
         $company = $invoice->getCompany();
         $customer = $invoice->getCustomer();
-        $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
+        $context = new SettingContext($company, customerGroupId: $customer->standingFor()->getGroup()?->getId(), customerId: $customer->standingFor()->getId());
         $print = $invoice->getPrintSettings() ?? DocumentFormats::print($this->settings, $context, $company);
         $issuedLanguage = $invoice->getLanguage();
         $operations = $invoice->getOperationCategory();

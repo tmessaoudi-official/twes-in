@@ -24,7 +24,7 @@ final readonly class DeliveryNotePrinting
     public static function today(ReadSetting $settings, DeliveryNote $note): DeliveryNotePrint
     {
         $customer = $note->getCustomer();
-        $context = new SettingContext($note->getCompany(), customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
+        $context = new SettingContext($note->getCompany(), customerGroupId: $customer->standingFor()->getGroup()?->getId(), customerId: $customer->standingFor()->getId());
 
         return new DeliveryNotePrint(
             $settings->text($context, 'document.language'),

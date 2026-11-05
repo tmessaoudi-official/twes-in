@@ -133,8 +133,9 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             }
             $customer = $invoice->getCustomer();
             // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile: it would print
-            // the duplicate the merge retired.
-            if ($customer->isMergedAway()) {
+            // the duplicate the merge retired. A credit note names the customer of the invoice it corrects, which a merge
+            // leaves on the customer it printed, so it is issued there; its settings are read for the customer kept.
+            if ($customer->isMergedAway() && InvoiceType::CreditNote !== $type) {
                 throw new InvalidInvoice('customerId', $customer->whySwitchedOff(), ...$customer->switchedOffReason());
             }
             // Before the series, as a mention is: an invoice that cannot name its parties takes no number.
@@ -143,7 +144,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             // rule may have changed since the draft was saved.
             $invoice->assertReceiverRule(InvoiceReceiverSettings::ruleFor($this->settings, $customer));
             $this->chargedByItsRegimes($company, $invoice);
-            $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
+            $context = new SettingContext($company, customerGroupId: $customer->standingFor()->getGroup()?->getId(), customerId: $customer->standingFor()->getId());
             $language = $this->settings->text($context, 'document.language');
             // Before the series and the mentions, which depend on it: a document that cannot say what its operations are takes no number.
             $fields = $this->presets->get($company->getFiscalPreset())->invoiceFields;

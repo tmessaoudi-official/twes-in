@@ -157,7 +157,7 @@ final readonly class RemindLateInvoices
             return false;
         }
 
-        return true === $this->settings->value(new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customerId), ReminderSettings::ENABLED);
+        return true === $this->settings->value(new SettingContext($company, customerGroupId: $customer->standingFor()->getGroup()?->getId(), customerId: $customer->standingFor()->getId()), ReminderSettings::ENABLED);
     }
 
     /** @param array<string, string|int> $payload */

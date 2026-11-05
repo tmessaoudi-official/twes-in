@@ -874,6 +874,38 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /**
+     * A merge leaves an issued invoice on the customer it printed, and its credit note goes to that same customer: it is
+     * issued, as the only correction an issued invoice has, in the language the customer's settings, handed to the
+     * customer kept, still say.
+     */
+    public function testAnIssuedInvoiceOfACustomerMergedAwayIsStillCredited(): void
+    {
+        $kept = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
+        $merged = $this->customerId;
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($company, customerId: Uuid::fromString($merged)), 'document.language', SettingLevel::Customer, 'en', null);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'customer.read', 'customer.write', 'customer.remove']);
+        $this->stepUp('password-1234');
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseIsSuccessful();
+        self::assertSame('en', $this->json()['language']);
+        $this->postJson($this->companyPath().'/record-merges', ['subject' => 'customer', 'keptId' => $kept, 'ids' => [$merged]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $creditId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($creditId).'/issue', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK, (string) $this->client->getResponse()->getContent());
+        self::assertSame(['issued', $merged, 'en'], [$this->json()['status'], $this->json()['customerId'], $this->json()['language']]);
+        $this->getJson($this->path($id));
+        self::assertSame('0.000', $this->json()['amountDue'], 'the whole invoice credited');
+    }
+
     public function testTheCreditNotesOfEveryLineOfAWithheldInvoiceCloseIt(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);

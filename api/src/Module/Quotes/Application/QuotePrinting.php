@@ -44,6 +44,6 @@ final readonly class QuotePrinting
     {
         $customer = $quote->getCustomer();
 
-        return new SettingContext($quote->getCompany(), customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
+        return new SettingContext($quote->getCompany(), customerGroupId: $customer->standingFor()->getGroup()?->getId(), customerId: $customer->standingFor()->getId());
     }
 }
