@@ -114,6 +114,7 @@ final class ClientErrorsTest extends ApiTestCase
         $this->postJson(self::PATH, self::REPORT);
 
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(900);
         self::assertCount(20, self::logged());
     }
 

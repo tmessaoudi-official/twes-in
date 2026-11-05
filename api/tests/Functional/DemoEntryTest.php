@@ -136,6 +136,7 @@ final class DemoEntryTest extends ApiTestCase
         $this->postJson('/api/auth/demo', ['country' => 'DE']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(3600);
     }
 
     /**

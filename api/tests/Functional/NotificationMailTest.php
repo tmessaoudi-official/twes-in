@@ -368,6 +368,21 @@ final class NotificationMailTest extends ApiTestCase
         self::assertSame([$owner->getId()->toRfc4122()], $mailed);
     }
 
+    /** Links tried one after another from one place meet a budget, which says when to come back. */
+    public function testLinksTriedPastTheBudgetSayWhenToComeBack(): void
+    {
+        for ($i = 0; $i < 30; ++$i) {
+            $this->postJson(self::STOP, ['token' => 'forged.'.$i]);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        }
+
+        $this->postJson(self::STOP, ['token' => 'forged.last']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertSame(['error' => 'too_many_attempts'], $this->json());
+        $this->assertTheWaitIsSaid(900);
+    }
+
     public function testALinkNotSignedHereStopsNothingAndAGetChangesNothing(): void
     {
         $this->tellStockLow();

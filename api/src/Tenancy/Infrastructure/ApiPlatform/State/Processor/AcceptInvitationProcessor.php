@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
+use App\Shared\Infrastructure\Http\SpentBudget;
 use App\Tenancy\Application\Invitation\AcceptInvitation;
 use App\Tenancy\Application\Invitation\AcceptRequest;
 use App\Tenancy\Application\Invitation\AccountDetailsRequired;
@@ -39,8 +40,9 @@ final readonly class AcceptInvitationProcessor implements ProcessorInterface
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): InvitationResource
     {
         // The same budget as reading the link, spent before it is looked up.
-        if (!$this->limiter->create($this->requests->getMainRequest()?->getClientIp() ?? '')->consume()->isAccepted()) {
-            throw new TooManyRequestsHttpException(null, 'Too many attempts.');
+        $limit = $this->limiter->create($this->requests->getMainRequest()?->getClientIp() ?? '')->consume();
+        if (!$limit->isAccepted()) {
+            throw new TooManyRequestsHttpException(SpentBudget::secondsUntil($limit), 'Too many attempts.');
         }
         $token = $uriVariables['token'] ?? null;
         if (!\is_string($token)) {

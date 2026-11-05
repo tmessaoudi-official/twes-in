@@ -27,7 +27,7 @@ use App\Identity\Application\StepUp\StepUpRequired;
 use App\Identity\Infrastructure\Security\PendingSecondFactor;
 use App\Identity\Infrastructure\Security\SecondFactorLogin;
 use App\Identity\Infrastructure\Security\SecurityUser;
-use App\Identity\Infrastructure\Security\SpentBudget;
+use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;

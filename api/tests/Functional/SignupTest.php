@@ -270,6 +270,7 @@ final class SignupTest extends ApiTestCase
         $this->postJson('/api/signup/'.$token.'/complete', $this->finish());
 
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(900);
         self::assertSame([], $this->em()->getConnection()->fetchFirstColumn("SELECT id FROM \"user\" WHERE email = 'new@twes.local'"));
     }
 
@@ -335,6 +336,7 @@ final class SignupTest extends ApiTestCase
         $this->postJson('/api/signup', ['email' => 'person6@twes.local']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(3600);
         self::assertEmailCount(0);
     }
 

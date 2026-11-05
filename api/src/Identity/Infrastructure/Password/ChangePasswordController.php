@@ -12,7 +12,7 @@ namespace App\Identity\Infrastructure\Password;
 use App\Identity\Application\Password\ChangePassword;
 use App\Identity\Application\Password\NewPasswordRefused;
 use App\Identity\Infrastructure\Security\SecurityUser;
-use App\Identity\Infrastructure\Security\SpentBudget;
+use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;

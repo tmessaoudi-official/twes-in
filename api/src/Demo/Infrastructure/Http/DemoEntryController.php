@@ -14,6 +14,7 @@ use App\Demo\Application\DemoSwitchedOff;
 use App\Identity\Domain\Repository\UserRepository;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Identity\Infrastructure\Session\PostgresSessionHandler;
+use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -50,8 +51,9 @@ final readonly class DemoEntryController
     #[Route('/api/auth/demo', name: 'api_auth_demo', methods: ['POST'])]
     public function enter(Request $request): Response
     {
-        if (!$this->limiter->create($request->getClientIp() ?? '')->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $this->limiter->create($request->getClientIp() ?? '')->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
         $body = json_decode($request->getContent(), true);
         $country = \is_array($body) && \is_string($body['country'] ?? null) ? $body['country'] : '';

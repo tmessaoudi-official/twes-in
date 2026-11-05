@@ -235,6 +235,7 @@ final class ScanPairingTest extends ApiTestCase
         $this->postJson('/api/scan-pairings/claim', ['link' => str_repeat('b', 64)]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(900);
     }
 
     /** The scanner is a module a company switches off (docs/SPEC.md § 7, 2026-10-06 21:02): then no tab and no phone is answered. */
@@ -347,6 +348,7 @@ final class ScanPairingTest extends ApiTestCase
             $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => str_repeat('0', 64)]);
         }
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS, 'the wrong key has met a budget');
+        $this->assertTheWaitIsSaid(300);
 
         $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
 

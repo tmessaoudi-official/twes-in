@@ -160,6 +160,7 @@ final class InvitationTest extends ApiTestCase
         $this->getJson('/api/invitations/'.str_repeat('b', 64));
 
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(900);
     }
 
     /**
@@ -209,6 +210,7 @@ final class InvitationTest extends ApiTestCase
         $this->postJson('/api/invitations/'.$token.'/accept', ['displayName' => 'New Person', 'password' => self::PASSWORD]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        $this->assertTheWaitIsSaid(900);
         self::assertNull($this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('stranger@twes.local')]), 'nothing was accepted');
     }
 

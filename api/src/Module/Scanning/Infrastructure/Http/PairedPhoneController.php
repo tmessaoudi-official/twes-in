@@ -12,6 +12,7 @@ namespace App\Module\Scanning\Infrastructure\Http;
 use App\Module\Scanning\Application\PhonePairings;
 use App\Module\Scanning\Application\PhonePhotos;
 use App\Module\Scanning\Domain\Exception\ScanPairingRefused;
+use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -50,8 +51,9 @@ final readonly class PairedPhoneController
     #[Route('/api/scan-pairings/claim', name: 'api_scan_pairing_claim', methods: ['POST'])]
     public function claim(Request $request): Response
     {
-        if (!$this->claimLimiter->create($request->getClientIp() ?? '')->consume()->isAccepted()) {
-            throw new TooManyRequestsHttpException(null, 'Too many pairing links tried from here; try again later.');
+        $limit = $this->claimLimiter->create($request->getClientIp() ?? '')->consume();
+        if (!$limit->isAccepted()) {
+            throw new TooManyRequestsHttpException(SpentBudget::secondsUntil($limit), 'Too many pairing links tried from here; try again later.');
         }
         $link = PairingErrors::body($request)['link'] ?? null;
         if (!\is_string($link) || 1 !== preg_match('/^[0-9a-f]{64}$/', $link)) {
@@ -99,8 +101,9 @@ final readonly class PairedPhoneController
     #[Route('/api/scan-pairings/{id}/photos', name: 'api_scan_pairing_photo', requirements: ['id' => Requirement::UUID], methods: ['POST'])]
     public function photo(string $id, Request $request): Response
     {
-        if (!$this->photoLimiter->create(self::budgetOf($id, $request))->consume()->isAccepted()) {
-            throw new TooManyRequestsHttpException(null, 'Too many photos at once; slow down.');
+        $limit = $this->photoLimiter->create(self::budgetOf($id, $request))->consume();
+        if (!$limit->isAccepted()) {
+            throw new TooManyRequestsHttpException(SpentBudget::secondsUntil($limit), 'Too many photos at once; slow down.');
         }
 
         return $this->asThePhone($id, $request, function (Uuid $pairing, string $key) use ($request): Response {
@@ -134,8 +137,9 @@ final readonly class PairedPhoneController
     /** @param \Closure(Uuid, string): Response $act */
     private function asThePhone(string $id, Request $request, \Closure $act): Response
     {
-        if (!$this->phoneLimiter->create(self::budgetOf($id, $request))->consume()->isAccepted()) {
-            throw new TooManyRequestsHttpException(null, 'Too many scans at once; slow down.');
+        $limit = $this->phoneLimiter->create(self::budgetOf($id, $request))->consume();
+        if (!$limit->isAccepted()) {
+            throw new TooManyRequestsHttpException(SpentBudget::secondsUntil($limit), 'Too many scans at once; slow down.');
         }
         try {
             return $act(Uuid::fromString($id), (string) $request->headers->get(self::KEY_HEADER, ''));

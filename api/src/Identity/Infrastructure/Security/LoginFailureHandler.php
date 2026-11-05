@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;

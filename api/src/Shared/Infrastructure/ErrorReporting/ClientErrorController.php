@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\ErrorReporting;
 
 use App\Shared\Domain\Service\TypedText;
+use App\Shared\Infrastructure\Http\SpentBudget;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Target;
@@ -51,8 +52,9 @@ final readonly class ClientErrorController
         if (0 === $this->perPage) {
             return new Response(null, Response::HTTP_NO_CONTENT);
         }
-        if (!$this->limiter->create($request->getClientIp() ?? '')->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $this->limiter->create($request->getClientIp() ?? '')->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
         if (\strlen($request->getContent()) > $this->maxBody) {
             return new JsonResponse(['error' => 'report_too_large'], Response::HTTP_REQUEST_ENTITY_TOO_LARGE);

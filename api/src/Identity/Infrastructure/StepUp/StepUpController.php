@@ -16,7 +16,7 @@ use App\Identity\Application\StepUp\StepUpExhausted;
 use App\Identity\Application\StepUp\StepUpRefused;
 use App\Identity\Infrastructure\Passkey\PasskeyChallenges;
 use App\Identity\Infrastructure\Security\SecurityUser;
-use App\Identity\Infrastructure\Security\SpentBudget;
+use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;

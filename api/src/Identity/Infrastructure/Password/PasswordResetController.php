@@ -13,7 +13,7 @@ use App\Identity\Application\Password\NewPasswordRefused;
 use App\Identity\Application\Password\ResetLinkNotUsable;
 use App\Identity\Application\Password\ResetPassword;
 use App\Identity\Domain\ValueObject\Email;
-use App\Identity\Infrastructure\Security\SpentBudget;
+use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;

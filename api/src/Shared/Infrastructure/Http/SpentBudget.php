@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Identity\Infrastructure\Security;
+namespace App\Shared\Infrastructure\Http;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,12 +24,21 @@ final class SpentBudget
 
     public static function answer(RateLimit $limit): JsonResponse
     {
+        return self::answerIn(self::secondsUntil($limit));
+    }
+
+    /**
+     * The wait a spent budget says, for an answer that keeps its own shape: a problem's `TooManyRequestsHttpException`
+     * takes it as its `Retry-After`.
+     */
+    public static function secondsUntil(RateLimit $limit): int
+    {
         $at = $limit->getRetryAfter();
         // Rounded up to the second, so a client coming back on the dot never finds the window still spent.
         // system-clock: the rate limiter dates its retry on the system's own time, so the wait is measured against it
         $seconds = (int) $at->format('U') - time() + ('000000' === $at->format('u') ? 0 : 1);
 
-        return self::answerIn($seconds);
+        return max(1, $seconds);
     }
 
     /** For a budget that says its wait some other way, such as the login's in minutes; null when it says none. */

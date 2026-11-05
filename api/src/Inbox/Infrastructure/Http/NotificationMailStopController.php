@@ -11,6 +11,7 @@ namespace App\Inbox\Infrastructure\Http;
 
 use App\Inbox\Application\NotificationKindNotOffered;
 use App\Inbox\Application\StopNotificationMail;
+use App\Shared\Infrastructure\Http\SpentBudget;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -35,8 +36,9 @@ final readonly class NotificationMailStopController
     #[Route('/api/notification-preferences/stop', name: 'api_notification_mail_stop', methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
-        if (!$this->limiter->create($request->getClientIp() ?? '')->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        $limit = $this->limiter->create($request->getClientIp() ?? '')->consume();
+        if (!$limit->isAccepted()) {
+            return SpentBudget::answer($limit);
         }
 
         $body = json_decode($request->getContent(), true);
