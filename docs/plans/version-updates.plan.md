@@ -12,8 +12,8 @@ Procedure: docs/UPDATE.md, "After every bump" for each commit.
 - [2026-11-05 11:38] AGREED: round 2 (2026-11-05): steps 7-14 as planned: the torn-read fix first, then PHP, npm, Trivy, image patches, image minors one commit each, make versions made complete; TypeScript 7 still held
 - [2026-11-05 11:38] AGREED: pushes: the CI fix alone now, then each ecosystem committed after its own local gate and the bumps pushed once as one batch
 - [2026-11-05 11:38] AGREED: runs-on ubuntu-latest, docker-ce in a shop's WSL and Docker Desktop through winget stay unpinned on purpose, written in docs/UPDATE.md « Not pinned here on purpose »: a shop gets Docker's security fixes without a release from us
-- [2026-11-05 14:29] ASSUMED (review): pgBackRest 2.60.0 keeps its new default, a restore that stops on an invalid page checksum and an expire that refuses (rule: never silent; data checksums are on, show data_checksums = on); docs/RUNBOOK.md's two restores say to try an older --set, then --checksum-page-error=n with app:data:check and verify-chain. Alternatives: set checksum-page-error=n in pgbackrest.conf (warns only), or hold 2.59.3.
-- [2026-11-05 15:14] ASSUMED (review): Mailpit 1.33.0, Gatus 5.38.0 and SeaweedFS 4.52 go in one commit rather than one each: none runs where a shop or a server serves (development, the monitor, the drill's stand-in bucket), each is proven by its own check (an e2e reading mail, make monitor-check, make backup-drill), and one gate instead of three saves about 30 minutes. Alternative: one commit and gate each, as step 12 first said.
+- [2026-11-05 14:29] AGREED (ratified ASSUMED, developer 2026-11-05): pgBackRest 2.60.0 keeps its new default, a restore that stops on an invalid page checksum and an expire that refuses (rule: never silent; data checksums are on, show data_checksums = on); docs/RUNBOOK.md's two restores say to try an older --set, then --checksum-page-error=n with app:data:check and verify-chain. Alternatives: set checksum-page-error=n in pgbackrest.conf (warns only), or hold 2.59.3.
+- [2026-11-05 15:14] AGREED (ratified ASSUMED, developer 2026-11-05): Mailpit 1.33.0, Gatus 5.38.0 and SeaweedFS 4.52 go in one commit rather than one each: none runs where a shop or a server serves (development, the monitor, the drill's stand-in bucket), each is proven by its own check (an e2e reading mail, make monitor-check, make backup-drill), and one gate instead of three saves about 30 minutes. Alternative: one commit and gate each, as step 12 first said.
 
 ## Formal Plan
 Inventory on 2026-10-16 (`composer outdated --direct`, `npm outdated`, Packagist): Symfony 8.1.9 is the newest
@@ -83,6 +83,13 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
 - Step 5 confirmed currency only: `actions/checkout@v7` and `actions/upload-artifact@v7` are the majors of the latest
   releases (v7.0.1, v7.0.2, `gh release list` 2026-10-16); no commit was needed. Pinning by tag rather than by commit is
   the tool audit's finding D-2.
+- Round 2 (steps 7-14), pushed 9cbac74fc..9921cb725: CI green on 9921cb725, five workflows of five, twelve jobs (api,
+  web, licences, prod-image, the three e2e shards, publish, the deploy, staging, restore-drill and monitor checks).
+  Certified locally besides: each step's `make gate-snapshot`, `make backup-drill` on pgBackRest 2.60.0 and SeaweedFS
+  4.52, `make monitor-check` on Gatus 5.38.0, the stock-map e2e on the patched images, a credit note's PDF looked at on
+  Gotenberg 8.39.0. Not certified by execution: the go-jose verdict in `.trivyignore` (Inferred from where Caddy uses it),
+  pgBackRest's damaged-page and refused-expire paths (its release notes only), the local api image scanned being the
+  development target rather than the release's.
 
 ## Status
 <!-- progress-block v1 -->
@@ -100,7 +107,7 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
 | 10 | Trivy 0.76.1 | S | done | 9c64cd80d | scripts/security/image-scan.sh scripts/tests/image-scan.test.sh |
 | 11 | Image patches | M | done | 46ace95a0 | compose*.yaml infra/** |
 | 12 | Image minors | M | done | 177e5d6a2 | compose.yaml infra/** scripts/backup/** |
-| 13 | make versions complete | S | doing | - | scripts/versions.sh docs/UPDATE.md |
+| 13 | make versions complete | S | done | 9921cb725 | scripts/versions.sh docs/UPDATE.md |
 | 14 | twes state writes: torn reads | S | done | - | scripts/onprem/twes |
 <!-- /progress-block -->
 ### Blocked
