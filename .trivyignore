@@ -418,3 +418,6 @@ CVE-2026-56862 exp:2026-11-25
 CVE-2026-92392 exp:2026-11-25
 #   HIGH caddy: curl, libcurl — NOT REACHABLE: the caddy binary is static and calls no curl, and nothing runs curl in a caddy container but the edge's own log test (infra/edge/tests/token-free-logs.test.sh) on a local stack; fixed in Alpine 8.23.0-r0, arrives with the tag's rebuild
 #   HIGH web: curl — only in the full-nginx image :master was left on by the re-signing (19f0ee08); every commit's slim image since carries no curl (sha-70270c6c read 2026-10-26): goes with make point-master
+
+CVE-2026-116587 exp:2026-11-25
+#   HIGH caddy: go-jose v4.1.5 — NOT REACHABLE: a denial of service through a crafted JWK; no Caddyfile loads a JWT or JWK module, and ACME, on a server only, signs with Caddy's own account key and reads no JWK from outside; FrankenPHP 1.13.5's Caddy 2.11.9 carries 4.1.6 (the api is clean), no caddy image of 2.11.9 is published yet: take it when it is

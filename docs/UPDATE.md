@@ -71,7 +71,7 @@ and carry its diff over.
 #### A third-party image's digest
 
 Every third-party image a shop or a server starts (Caddy, Gotenberg, Centrifugo) is named by its tag **and** its index
-digest, `caddy:2.11.7-alpine@sha256:…`. A tag is resolved on each machine when it pulls, and its publisher may rebuild it
+digest, `caddy:2.11.8-alpine@sha256:…`. A tag is resolved on each machine when it pulls, and its publisher may rebuild it
 in place (Docker's official tags are), so two shops on one signed release could run different edges, neither the bytes
 staging ran. The digest fixes them, and the signed release tag fixes the commit that names them.
 `scripts/gates/release-overlay.sh` refuses a started service on a third-party image without both.

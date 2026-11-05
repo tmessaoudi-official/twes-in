@@ -58,7 +58,7 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
    classes and OrbitControls, none removed in r187).
 10. Trivy 0.67.2 → 0.76.1 by index digest: 0.67.2 is inside GHSA-mcj4-mphf-j9ff (HIGH, < 0.71.1), GHSA-8rc5-4fr6-64pw
     and GHSA-q3fv-x8vg-qqm4; the March compromise touched 0.69.4-0.69.6 only.
-11. Image patches: frankenphp 1.13.4, docker-cli 29.9.3 (the host daemon's), node 26.13.0, nginx 1.31.8, caddy 2.11.8,
+11. Image patches: frankenphp 1.13.5 (published 2026-11-05, past the 1.13.4 first read), docker-cli 29.9.3 (the host daemon's), node 26.13.0, nginx 1.31.8, caddy 2.11.8,
     centrifugo 6.10.2, the .NET SDK 10.0-noble digest, supercronic 0.2.51.
 12. Image minors, one commit each: gotenberg 8.39.0, pgBackRest 2.60.0, composer 2.11.1 (its one BC break,
     `source-fallback`, unused here), mailpit 1.33.0, gatus 5.38.0, seaweedfs 4.52.
@@ -94,9 +94,9 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
 | 5 | GitHub Actions | S | done | - | .github/workflows/** |
 | 7 | Outcome files written whole (CI red) | S | done | 9cbac74fc | infra/postgres/backup/twes-backup scripts/tests/backup-heartbeat.test.sh |
 | 8 | PHP packages, round 2 | M | done | 388c23770 | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
-| 9 | npm packages, round 2 | M | doing | - | web/package.json web/package-lock.json THIRD-PARTY-NOTICES.md |
-| 10 | Trivy 0.76.1 | S | todo | - | scripts/security/image-scan.sh |
-| 11 | Image patches | M | todo | - | compose*.yaml infra/** |
+| 9 | npm packages, round 2 | M | done | 14231bb16 | web/package.json web/package-lock.json THIRD-PARTY-NOTICES.md |
+| 10 | Trivy 0.76.1 | S | done | 9c64cd80d | scripts/security/image-scan.sh scripts/tests/image-scan.test.sh |
+| 11 | Image patches | M | doing | - | compose*.yaml infra/** |
 | 12 | Image minors | M | todo | - | compose.yaml infra/** scripts/backup/** |
 | 13 | make versions complete | S | todo | - | scripts/versions.sh docs/UPDATE.md |
 | 14 | twes state writes: torn reads | S | done | - | scripts/onprem/twes |

@@ -45,6 +45,7 @@ unauthenticated network actor can exploit with a fix to take today.
 | GHSA-cxf3-9h37-7rr8 labstack/echo | gotenberg | not reachable | the vulnerable proxy middleware is not compiled in; no Gotenberg release carries the fix yet |
 | CVE-2025-68121 Go stdlib in gosu | database, postgres | not reachable | gosu runs once at start and opens no connection; arrives with the next postgres rebuild |
 | CVE-2026-78669, CVE-2026-78667 Go stdlib | caddy (the edge) | reachable, DoS, low | HTTP/2 and range-request CPU floods on the only published port; no Caddy release carries Go 1.26.9 yet |
+| CVE-2026-116587 go-jose | caddy (the edge, the phone door, the monitor) | not reachable | a crafted JWK; no Caddyfile loads a JWT or JWK module and ACME reads none from outside; fixed in Caddy 2.11.9, whose image is not published yet |
 | brotli, expat, libx11 | web | not reachable | nginx loads none of them; `nginx:1.31.8-alpine-slim` ships none |
 
 ## Findings, worst first

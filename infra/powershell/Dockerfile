@@ -3,7 +3,7 @@
 # and PSScriptAnalyzer. Microsoft ships PowerShell in a container only inside the .NET SDK image now
 # (https://learn.microsoft.com/powershell/scripting/install/powershell-in-docker); the PowerShell images still on MCR
 # stopped at 7.5.0. Pinned by digest, the .NET 10 LTS image, PowerShell 7.6 (docs/UPDATE.md).
-FROM mcr.microsoft.com/dotnet/sdk:10.0-noble@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble@sha256:de4fe90a98845d75910b9769662465c84de1a934665c431279d1382b2bddc02b
 
 ARG PSSCRIPTANALYZER_VERSION=1.25.0
 

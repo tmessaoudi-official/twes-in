@@ -45,7 +45,7 @@ services:
     # The digest of the Caddyfile it mounts, which deploy.sh hands compose: an update changing it recreates the edge.
     labels:
       twes.mounts-digest: "${TWES_MOUNTS_DIGEST:-}"
-    image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
+    image: caddy:2.11.8-alpine@sha256:f6228111e5fafa1a5238258d0858e103f10599b8d1659a146e7726681a002bb9
     environment:
       TWES_HOST: "${TWES_HOST:?set TWES_HOST, the name this instance answers on}"
       EDGE_TLS: "${EDGE_TLS:?set EDGE_TLS, the e-mail address the certificate authority writes to}"

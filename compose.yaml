@@ -144,7 +144,7 @@ services:
   centrifugo:
     logging: *logging
     restart: unless-stopped
-    image: centrifugo/centrifugo:v6.10.1@sha256:dc233a5bc45392c3717d9c5254b5c89c67e1871335c3ce55538429b9bf25b88b
+    image: centrifugo/centrifugo:v6.10.2@sha256:34b84f823515927266ce3abfb840fd9e0acabb58805e7e896f5de731217a627d
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
       CENTRIFUGO_HTTP_API_KEY: "${REALTIME_API_KEY:-twes-in-development-realtime-api-key}"
@@ -183,7 +183,7 @@ services:
   # `docker compose up` leaves it off. Development only.
   lan:
     logging: *logging
-    image: caddy:2.11.7-alpine@sha256:eb4d35b7452d1ab6171fbdbe8d9275b2301dad6dad92115d91e19fb9b24d510f
+    image: caddy:2.11.8-alpine@sha256:f6228111e5fafa1a5238258d0858e103f10599b8d1659a146e7726681a002bb9
     profiles: [lan]
     restart: unless-stopped
     # The digest of the files it mounts, which `make up` hands compose: a changed Caddyfile recreates it.

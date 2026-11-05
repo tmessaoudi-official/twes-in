@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # twes-in web: the Angular bundle built once, then served by nginx, which also proxies /api to the API container.
 # Node is named once here (scripts/gates/version-pins.sh reads this line); both stages that run it start from it.
-FROM node:26.12.1-alpine AS node-base
+FROM node:26.13.0-alpine AS node-base
 
 FROM node-base AS build
 WORKDIR /app
@@ -42,7 +42,7 @@ HEALTHCHECK --interval=5s --timeout=3s --start-period=600s --retries=5 \
 # The slim variant: the same nginx binary, built with the same modules (sub_filter for the CSP nonce, gzip, realip), less
 # the dynamic modules this configuration never loads (image_filter, xslt, geoip, njs, acme) and the libraries only they
 # pull in (freetype, fontconfig, libxpm, expat, brotli, curl), which carried every finding the full image had.
-FROM nginx:1.31.7-alpine-slim
+FROM nginx:1.31.8-alpine-slim
 COPY infra/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist/web/browser /usr/share/nginx/html
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=5 \
