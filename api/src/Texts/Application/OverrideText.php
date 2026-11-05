@@ -15,6 +15,8 @@ use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
 use App\Shared\Application\Languages;
+use App\Shared\Application\LiveChange;
+use App\Shared\Application\LiveChanges;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
@@ -38,6 +40,7 @@ final readonly class OverrideText implements DeclaresAuditActions
     public const string ENTITY_TYPE = 'text';
     public const string OVERRIDDEN = 'text.overridden';
     public const string RESET = 'text.reset';
+    public const string CHANGED = 'text.changed';
 
     public function __construct(
         private ShippedTexts $shipped,
@@ -49,6 +52,7 @@ final readonly class OverrideText implements DeclaresAuditActions
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private LiveChanges $liveChanges,
     ) {
     }
 
@@ -129,6 +133,18 @@ final readonly class OverrideText implements DeclaresAuditActions
             'key' => $address->key,
         ];
         $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $override->getId(), $action, $actorUserId, $changes, $override->getCompany()?->getId()));
+        if (null === $override->getCompany()) {
+            $this->liveChanges->stage(self::installationTextMoved());
+        }
+    }
+
+    /**
+     * The installation's texts are every screen's, so a change to one is said to everyone signed in, by kind alone,
+     * never its key or its words: a company's change reaches its members through the audit entry's own change.
+     */
+    public static function installationTextMoved(): LiveChange
+    {
+        return LiveChange::everyone(self::ENTITY_TYPE, self::CHANGED);
     }
 
     public function auditActions(): array

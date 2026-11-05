@@ -9,8 +9,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Texts;
 
+use App\Shared\Application\RealtimePublisher;
+use App\Shared\Application\RealtimeTokens;
 use App\Tenancy\Domain\Model\Role;
 use App\Tests\Functional\ApiTestCase;
+use App\Tests\Support\RecordingRealtimePublisher;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -59,6 +62,38 @@ final class TextOverridesTest extends ApiTestCase
 
         $this->getJson('/api/texts/de');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * The installation's texts are every screen's: worded or put back, the change is said to everyone signed in, by
+     * kind alone, so each screen reads its texts again, and never to the operator who wrote it alone.
+     */
+    public function testAnInstallationsTextWordedOrPutBackIsSaidToEveryScreen(): void
+    {
+        $this->client->disableReboot();
+        $publisher = new RecordingRealtimePublisher();
+        static::getContainer()->set(RealtimePublisher::class, $publisher);
+        $this->createUser('operator@twes.local', self::PASSWORD, operator: true);
+        $this->login('operator@twes.local', self::PASSWORD);
+        $this->stepUp(self::PASSWORD);
+        $everyone = static fn (): array => array_values(array_map(
+            static fn (array $push): array => [$push['data']['kind'] ?? null, $push['data']['action'] ?? null, $push['data']['id'] ?? null],
+            array_filter($publisher->pushed, static fn (array $push): bool => RealtimeTokens::INSTALLATION === $push['channel']),
+        ));
+
+        $this->sendJson('PUT', '/api/platform/texts'.self::PART, ['value' => 'Double vérification', 'version' => 0]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([['text', 'text.changed', null]], $everyone());
+        $this->sendJson('DELETE', '/api/platform/texts'.self::PART);
+        self::assertResponseIsSuccessful();
+        self::assertSame([['text', 'text.changed', null], ['text', 'text.changed', null]], $everyone());
+
+        $shop = $this->createCompany('Quincaillerie');
+        $this->createUser('owner@shop.tn', self::PASSWORD, $shop);
+        $this->login('owner@shop.tn', self::PASSWORD);
+        $this->sendJson('PUT', "/api/companies/{$shop->getId()}/texts".self::PART, ['value' => 'Code de la boutique', 'version' => 0]);
+        self::assertResponseIsSuccessful();
+        self::assertCount(2, $everyone(), 'a company\'s own words are its members\', said on its channel alone');
     }
 
     public function testACompanysOwnerWordsTheCompanysOwnWhichWinsThereAloneAndAMemberReadsThem(): void

@@ -16,14 +16,15 @@ use PHPUnit\Framework\TestCase;
  * a worker writes it. A write told to nobody leaves every screen showing it stale with no error anywhere: the worker's
  * account deletions and company removals, an operator's account actions (workflow hunt, freshness E3, E4). Each kind
  * written with no company says here who it is for. What this reads is the call: a company handed as a variable that is
- * null at run time (a platform setting, an installation text) escapes it.
+ * null at run time escapes it, so such a writer also says itself to everyone signed in, by kind alone: a platform
+ * setting (`ChangeSettings::platformSettingMoved`) and an installation text (`OverrideText::installationTextMoved`).
  */
 final class AudienceTest extends TestCase
 {
     /** Each kind written with no company, and who hears it. */
     private const array AUDIENCE = [
         'user' => 'a person\'s own account (factors, password, sessions, proofs, their deletion asked or cancelled), said to their own tabs; a sign-in that failed names nobody; its lock, the lift and the operator\'s deactivation are said again by AccountChanges to its companies\' members lists and to the platform; the worker\'s deletion and the operator\'s ending of sessions reach no other screen, the accounts list read again when opened',
-        'legal_text' => 'written by the operators, whose platform channel says only `app.realtime.platform_kinds`: the legal pages read it when opened',
+        'legal_text' => 'written by the operators, and said besides to every signed-in screen by kind and action alone (`ManageLegalTexts::moved`), the public pages reading their versions again',
         'company' => 'a company removed by the worker, its sandbox or its retention over: no member is left, the operators\' list read again when opened',
     ];
 
