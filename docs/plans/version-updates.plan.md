@@ -98,7 +98,7 @@ Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
 | 9 | npm packages, round 2 | M | done | 14231bb16 | web/package.json web/package-lock.json THIRD-PARTY-NOTICES.md |
 | 10 | Trivy 0.76.1 | S | done | 9c64cd80d | scripts/security/image-scan.sh scripts/tests/image-scan.test.sh |
 | 11 | Image patches | M | done | 46ace95a0 | compose*.yaml infra/** |
-| 12 | Image minors | M | doing | - | compose.yaml infra/** scripts/backup/** |
+| 12 | Image minors | M | doing | 2dca59d04 7ebdb5dc5 | compose.yaml infra/** scripts/backup/** |
 | 13 | make versions complete | S | todo | - | scripts/versions.sh docs/UPDATE.md |
 | 14 | twes state writes: torn reads | S | done | - | scripts/onprem/twes |
 <!-- /progress-block -->
