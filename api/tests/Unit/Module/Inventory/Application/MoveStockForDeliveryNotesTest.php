@@ -34,6 +34,7 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Application\LiveChange;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tests\Support\FakeTransactions;
@@ -64,6 +65,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
     private MoveStockForDeliveryNotes $move;
     private KeepStock $keep;
     private ManageStockLocations $manage;
+    private RecordingLiveChanges $live;
     private Company $company;
     private Establishment $depot;
     private Unit $piece;
@@ -106,7 +108,34 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $keep = $this->keep = new KeepStock($this->movements, new InMemoryStockLots(), $this->locations, $products, $read, $this->transactions, $this->clock, new RecordingLiveChanges());
         $this->manage = $manage;
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), $this->states);
-        $this->move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $this->transactions, $this->clock, $this->homes, new InMemoryStockLots());
+        $this->live = new RecordingLiveChanges($this->transactions);
+        $this->move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $this->transactions, $this->clock, $this->homes, new InMemoryStockLots(), $this->live);
+    }
+
+    /**
+     * The document's own signal goes out when it commits, before its goods move in a unit of their own: every stock
+     * screen hears the move itself, once per product, when that unit commits, and never when it moves nothing.
+     */
+    public function testEveryMoveTellsTheStockScreensOfEachProductItMovedWhenItCommits(): void
+    {
+        $note = Uuid::v7();
+        $invoice = Uuid::v7();
+        $told = fn (): array => array_map(fn (LiveChange $change): array => [$change->kind, $change->action, $change->id?->toRfc4122(), $change->companyId?->equals($this->company->getId())], $this->live->staged);
+        [$laptop, $flour] = [$this->laptop->getId()->toRfc4122(), $this->flour->getId()->toRfc4122()];
+
+        $this->move->validated($note, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '2.000', $this->piece), $this->line($this->flour, '1.500', $this->kilogram), $this->line($this->laptop, '1.000', $this->piece), $this->line($this->support, '1.000', $this->piece)]);
+        self::assertEqualsCanonicalizing([['stock', 'stock.sold', $laptop, true], ['stock', 'stock.sold', $flour, true]], $told());
+        $this->move->validated($note, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '2.000', $this->piece)]);
+        self::assertCount(2, $told(), 'a move run again moves nothing and says nothing');
+
+        $this->live->staged = [];
+        $this->move->cancelled($note, $this->company->getId());
+        self::assertEqualsCanonicalizing([['stock', 'stock.cancelled', $laptop, true], ['stock', 'stock.cancelled', $flour, true]], $told());
+
+        $this->live->staged = [];
+        $this->move->invoiced($invoice, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '4.000', $this->piece)]);
+        $this->move->returned(Uuid::v7(), $invoice, $this->company->getId(), [$this->line($this->laptop, '3.000', $this->piece)]);
+        self::assertSame([['stock', 'stock.sold', $laptop, true], ['stock', 'stock.returned', $laptop, true]], $told());
     }
 
     public function testAValidatedNoteTakesEachTrackedProductOutOfItsEstablishmentsDefaultLocationOnce(): void

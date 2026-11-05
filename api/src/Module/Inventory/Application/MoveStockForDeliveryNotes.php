@@ -27,6 +27,8 @@ use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Shared\Application\LiveChange;
+use App\Shared\Application\LiveChanges;
 use App\Shared\Application\ShortSales\ShortLine;
 use App\Shared\Application\ShortSales\SoldLine;
 use App\Shared\Application\Transactions;
@@ -63,6 +65,7 @@ final readonly class MoveStockForDeliveryNotes
         private ClockInterface $clock,
         private ProductHomeLocationRepository $homes,
         private StockLotRepository $lots,
+        private LiveChanges $liveChanges,
         private ?RaiseStockAlerts $alerts = null,
     ) {
     }
@@ -208,6 +211,7 @@ final readonly class MoveStockForDeliveryNotes
             }
             if ([] !== $written) {
                 $this->movements->save(...$written);
+                $this->told('stock.sold', $companyId, ...$written);
                 $this->alerts?->raise($written);
             }
 
@@ -502,10 +506,12 @@ final readonly class MoveStockForDeliveryNotes
             }
 
             if ([] !== $give) {
-                $this->movements->save(...array_map(
+                $returns = array_map(
                     fn (string $key): StockMovement => StockMovement::returnOfSales($soldAt[$key], new Number('0.000')->add($give[$key])->value, $creditNoteId, $invoiceId, $now, $this->lotKept($soldAt[$key][0])),
                     array_keys($give),
-                ));
+                );
+                $this->movements->save(...$returns);
+                $this->told('stock.returned', $companyId, ...$returns);
             }
 
             return $skipped;
@@ -549,8 +555,26 @@ final readonly class MoveStockForDeliveryNotes
         }
 
         $now = $this->clock->now();
-        $this->transactions->run(function () use ($taken, $now): void {
-            $this->movements->save(...array_map(fn (StockMovement $delivery): StockMovement => StockMovement::returnOf($delivery, $now, $this->lotKept($delivery)), $taken));
+        $this->transactions->run(function () use ($taken, $now, $companyId): void {
+            $returns = array_map(fn (StockMovement $delivery): StockMovement => StockMovement::returnOf($delivery, $now, $this->lotKept($delivery)), $taken);
+            $this->movements->save(...$returns);
+            $this->told('stock.cancelled', $companyId, ...$returns);
         });
+    }
+
+    /**
+     * The document's own change is said when its transaction commits, before its goods move in a unit of their own: a
+     * stock screen reading on that signal may read before the move, so the move says itself, once per product, when it
+     * commits. Staged inside the move's unit, it goes out with it, or with the sale's when the move runs under it.
+     */
+    private function told(string $action, Uuid $companyId, StockMovement ...$written): void
+    {
+        $products = [];
+        foreach ($written as $movement) {
+            $products[$movement->getProduct()->getId()->toRfc4122()] = $movement->getProduct()->getId();
+        }
+        foreach ($products as $productId) {
+            $this->liveChanges->stage(new LiveChange('stock', $productId, $action, null, $companyId));
+        }
     }
 }
