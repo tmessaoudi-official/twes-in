@@ -263,6 +263,9 @@ checkout:
 3. `… deploy.sh --compose <values> stop`: every container stopped, no volume removed.
 4. `… run --rm --no-deps restore gosu postgres pgbackrest … --set=<label> --type=immediate --target-action=promote --delta
    restore < /dev/null`: the database's volume written back to the end of that backup; `--delta` rewrites only what differs.
+   If it stops on an invalid page checksum, that backup holds a damaged page and the database is left unable to start:
+   run the line again on an older `--set` first; only when every set holds one, add `--checksum-page-error=n`, which
+   restores the page as stored and lists it, and read `app:data:check` and `app:invoices:verify-chain` before the shop works.
 5. `… run --rm --no-deps restore restic restore latest --tag before-update --host twes --include /files --target / < /dev/null`: the
    stored files as they were then.
 6. `rm -f <the values' folder>/state/hold`: the hold ended by its file's name, since the release gone back to may predate
@@ -292,6 +295,9 @@ It needs the off-site copy (`twes offsite on`, docs/START.md § 16): without it,
    BACKUP_S3_URI_STYLE> -r "$OFFSITE_REPOSITORY" restore latest --host twes --include /backup --target /' < /dev/null`.
 6. The database to the latest the folder holds: `… run --rm --no-deps restore gosu postgres pgbackrest --stanza=twes
    --spool-path=/tmp --type=default --delta restore < /dev/null`.
+   If it stops on an invalid page checksum, that backup holds a damaged page and the database is left unable to start:
+   run the line again on an older `--set` first; only when every set holds one, add `--checksum-page-error=n`, which
+   restores the page as stored and lists it, and read `app:data:check` and `app:invoices:verify-chain` before the shop works.
 7. The files: `… run --rm --no-deps restore restic restore latest --host twes --include /files --target / < /dev/null`.
 8. `bash scripts/onprem/twes hold off`, then `bash scripts/onprem/twes start`: the folder is named again from its own
    `twes-in-backups.id`, the release started.

@@ -12,6 +12,7 @@ Procedure: docs/UPDATE.md, "After every bump" for each commit.
 - [2026-11-05 11:38] AGREED: round 2 (2026-11-05): steps 7-14 as planned: the torn-read fix first, then PHP, npm, Trivy, image patches, image minors one commit each, make versions made complete; TypeScript 7 still held
 - [2026-11-05 11:38] AGREED: pushes: the CI fix alone now, then each ecosystem committed after its own local gate and the bumps pushed once as one batch
 - [2026-11-05 11:38] AGREED: runs-on ubuntu-latest, docker-ce in a shop's WSL and Docker Desktop through winget stay unpinned on purpose, written in docs/UPDATE.md « Not pinned here on purpose »: a shop gets Docker's security fixes without a release from us
+- [2026-11-05 14:29] ASSUMED (review): pgBackRest 2.60.0 keeps its new default, a restore that stops on an invalid page checksum and an expire that refuses (rule: never silent; data checksums are on, show data_checksums = on); docs/RUNBOOK.md's two restores say to try an older --set, then --checksum-page-error=n with app:data:check and verify-chain. Alternatives: set checksum-page-error=n in pgbackrest.conf (warns only), or hold 2.59.3.
 
 ## Formal Plan
 Inventory on 2026-10-16 (`composer outdated --direct`, `npm outdated`, Packagist): Symfony 8.1.9 is the newest
