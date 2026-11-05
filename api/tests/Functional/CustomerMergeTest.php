@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\DataHealth\Application\DataFinding;
+use App\DataHealth\Application\RunDataChecks;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
@@ -18,6 +20,7 @@ use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\ContactDetails;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Module\Invoices\Infrastructure\DataHealth\InvoiceDataChecks;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
@@ -212,6 +215,34 @@ final class CustomerMergeTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
         self::assertSame(['error' => 'merge_transacted', 'uses' => [['table' => 'customer_credit_entry', 'count' => 1]]], $this->json());
+    }
+
+    /**
+     * The credit a customer merged away holds stays its entries and is the customer kept's to spend, one balance over
+     * both: the nightly check reads that balance, so credit moved between the two is no balance below zero, while what
+     * both together do not hold still is, named by the customer kept.
+     */
+    public function testTheCreditCheckReadsOneBalanceOverTheCustomerKeptAndTheCustomersMergedIntoIt(): void
+    {
+        $this->signedIn();
+        [$kept, $merged] = [$this->customerId('C-001'), $this->customerId('C-002')];
+        $this->aCreditEntry($merged);
+        $this->merged($kept, [$merged]);
+        $refunded = function (string $customer, string $amount): void {
+            $this->em()->getConnection()->executeStatement(
+                "INSERT INTO customer_credit_entry (id, company_id, customer_id, entry_date, kind, amount, created_at) VALUES (?, ?, ?, CURRENT_DATE, 'refunded', ?, now())",
+                [Uuid::v7()->toRfc4122(), $this->companyId(), $customer, $amount],
+            );
+        };
+
+        $refunded($kept, '-25.000');
+        self::assertSame([], $this->creditFindings(), 'the merged-away credit spent by the customer kept');
+        $this->aCreditEntry($kept);
+        $refunded($merged, '-25.000');
+        self::assertSame([], $this->creditFindings(), 'the customer kept\'s credit spent on the customer merged away');
+
+        $refunded($merged, '-1.000');
+        self::assertSame(["customer $kept: its balance is below zero"], $this->creditFindings());
     }
 
     /**
@@ -761,6 +792,17 @@ final class CustomerMergeTest extends ApiTestCase
         );
 
         return $id;
+    }
+
+    /** @return list<string> what the nightly credit check says of this company */
+    private function creditFindings(): array
+    {
+        $found = static::getContainer()->get(RunDataChecks::class)->findings();
+
+        return array_values(array_map(
+            static fn (DataFinding $finding): string => $finding->detail,
+            array_filter($found, fn (DataFinding $finding): bool => InvoiceDataChecks::CREDIT_BALANCE === $finding->check && $finding->companyId?->toRfc4122() === $this->companyId()),
+        ));
     }
 
     private function aSetting(string $customer, string $key, mixed $value): void

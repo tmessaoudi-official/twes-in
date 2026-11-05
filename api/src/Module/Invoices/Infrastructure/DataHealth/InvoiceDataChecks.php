@@ -16,7 +16,9 @@ use App\DataHealth\Infrastructure\UnrecordedDocuments;
 use App\Module\Invoices\Application\Chain\VerifyInvoiceChains;
 use App\Module\Invoices\Application\InvoiceWorkflow;
 use App\Module\Invoices\Application\ManageInvoices;
+use App\Module\Invoices\Application\Statement\MergedCustomers;
 use App\Shared\Infrastructure\Doctrine\Rows;
+use BcMath\Number;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Uid\Uuid;
 
@@ -41,6 +43,7 @@ final readonly class InvoiceDataChecks implements DeclaresDataChecks
         private Connection $connection,
         private SeriesGaps $series,
         private UnrecordedDocuments $unrecorded,
+        private MergedCustomers $mergedCustomers,
     ) {
     }
 
@@ -217,23 +220,42 @@ final readonly class InvoiceDataChecks implements DeclaresDataChecks
      */
     private function creditBalance(): iterable
     {
-        $rows = $this->connection->iterateAssociative(<<<'SQL'
-            SELECT company_id, customer_id::text AS customer, 'its balance is below zero' AS wrong
+        // The balance is the customer kept's, over its own entries and those of every customer merged into it, which
+        // stay where they were written: read per customer here, then folded as the credit repository reads it.
+        $kept = $this->mergedCustomers->keptOf();
+        $balances = [];
+        foreach ($this->connection->iterateAssociative(<<<'SQL'
+            SELECT company_id::text AS company, customer_id::text AS customer, SUM(amount)::text AS balance
             FROM customer_credit_entry
             GROUP BY company_id, customer_id
-            HAVING SUM(amount) < 0
-            UNION ALL
-            SELECT e.company_id, e.customer_id::text, COUNT(*) || ' ' || e.kind || ' entries of the wrong sign or apart from their payment'
+            SQL) as $row) {
+            $customer = Rows::text($row['customer']);
+            $account = Rows::text($row['company']).' '.($kept[$customer] ?? $customer);
+            $balances[$account] = ($balances[$account] ?? new Number('0'))->add(Rows::sum($row['balance']));
+        }
+        $found = [];
+        foreach ($balances as $account => $balance) {
+            if ($balance < new Number('0')) {
+                [$company, $customer] = explode(' ', $account);
+                $found[] = [$company, $customer, 'its balance is below zero'];
+            }
+        }
+
+        $rows = $this->connection->iterateAssociative(<<<'SQL'
+            SELECT e.company_id::text AS company, e.customer_id::text AS customer, COUNT(*) || ' ' || e.kind || ' entries of the wrong sign or apart from their payment' AS wrong
             FROM customer_credit_entry e
             LEFT JOIN payment p ON p.id = e.payment_id
             WHERE (e.kind IN ('overpayment', 'credited') AND e.amount <= 0)
                OR (e.kind IN ('applied', 'refunded') AND e.amount >= 0)
                OR (e.kind = 'applied' AND (p.id IS NULL OR p.amount <> -e.amount OR p.invoice_id IS DISTINCT FROM e.invoice_id))
             GROUP BY e.company_id, e.customer_id, e.kind
-            ORDER BY 1, 2, 3
             SQL);
         foreach ($rows as $row) {
-            yield new DataFinding(self::CREDIT_BALANCE, self::uuid($row['company_id']), \sprintf('customer %s: %s', self::text($row['customer']), self::text($row['wrong'])));
+            $found[] = [Rows::text($row['company']), Rows::text($row['customer']), Rows::text($row['wrong'])];
+        }
+        sort($found);
+        foreach ($found as [$company, $customer, $wrong]) {
+            yield new DataFinding(self::CREDIT_BALANCE, Uuid::fromString($company), \sprintf('customer %s: %s', $customer, $wrong));
         }
     }
 

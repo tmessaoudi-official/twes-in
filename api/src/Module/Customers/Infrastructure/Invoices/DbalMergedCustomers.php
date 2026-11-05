@@ -30,4 +30,16 @@ final readonly class DbalMergedCustomers implements MergedCustomers
             ['company' => $companyId->toRfc4122(), 'customer' => $customerId->toRfc4122()],
         ));
     }
+
+    public function keptOf(): array
+    {
+        $kept = [];
+        foreach ($this->connection->iterateAssociative(
+            'SELECT c.id::text AS merged, '.KeptRecords::id('c').'::text AS kept FROM customer c WHERE '.KeptRecords::mergedAway('c'),
+        ) as $row) {
+            $kept[Rows::text($row['merged'])] = Rows::text($row['kept']);
+        }
+
+        return $kept;
+    }
 }

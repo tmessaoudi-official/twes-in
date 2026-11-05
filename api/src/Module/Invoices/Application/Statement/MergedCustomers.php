@@ -19,4 +19,12 @@ interface MergedCustomers
 {
     /** @return list<string> as RFC 4122, the customer first; empty when the company has no customer by this id */
     public function accountOf(Uuid $companyId, Uuid $customerId): array;
+
+    /**
+     * Every customer merged away, of every company, and the customer kept that now holds its account: what a check run
+     * over all companies folds each one's figures into.
+     *
+     * @return array<string, string> as RFC 4122, the customer merged away to the one kept
+     */
+    public function keptOf(): array;
 }
