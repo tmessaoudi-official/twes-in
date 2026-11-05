@@ -16,8 +16,9 @@ echo "Images (docker)"
 while read -r file line; do row "${line##* }" "$file" ""; done < <(
   grep -HoE '^[[:space:]]*image: [^[:space:]]+:[^[:space:]]+' compose*.yaml infra/monitor/compose.yaml .github/workflows/*.yml scripts/backup/drill.compose.yaml \
     | grep -v '[$]' | sed 's/:[[:space:]]*image:/ image:/' | sort -u
-  grep -HoE '^FROM [^[:space:]]+:[^[:space:]]+|COPY --from=[^[:space:]]+:[^[:space:]]+' infra/api/Dockerfile infra/web/Dockerfile infra/web/tools.Dockerfile \
-    infra/postgres/Dockerfile infra/powershell/Dockerfile | sed -E 's/:(FROM |COPY --from=)/ /'
+  # Every Dockerfile git holds, so one added later is read too.
+  git ls-files -z -- '*Dockerfile' '*.Dockerfile' | xargs -0 grep -HoE '^FROM [^[:space:]]+:[^[:space:]]+|COPY --from=[^[:space:]]+:[^[:space:]]+' \
+    | sed -E 's/:(FROM |COPY --from=)/ /'
   grep -HoE '^(REGISTRY|TRIVY)_IMAGE=[^[:space:]]+' scripts/onprem/onprem-check.sh scripts/staging/staging-check.sh \
     scripts/security/image-scan.sh | sed -E 's/:(REGISTRY|TRIVY)_IMAGE=/ /')
 
@@ -25,11 +26,13 @@ echo
 echo "Runtimes"
 row "PHP (api image)" "infra/api/Dockerfile" "$(grep -oE 'php[0-9]+\.[0-9]+' infra/api/Dockerfile | head -1)"
 row "PHP extensions" "infra/api/Dockerfile" "$(grep -oE 'install-php-extensions .*' infra/api/Dockerfile | cut -d' ' -f2-)"
-row "PHP (CI)" ".github/workflows/ci.yml" "$(grep -oE "php-version: '[^']+'" .github/workflows/ci.yml | sort -u | cut -d"'" -f2 | paste -sd' ')"
-row "Node (host, CI)" "web/.nvmrc" "$(cat web/.nvmrc)"
+row "Node major" "web/.nvmrc" "$(cat web/.nvmrc)"
 row "Node engines" "web/package.json" "$(jq -r '.engines.node' web/package.json)"
 row "PostgreSQL serverVersion" "compose.yaml, api/.env, ci.yml" "$(git grep -ohE 'serverVersion=[0-9.]+' -- compose.yaml api/.env .github/workflows/ci.yml | sed 's/^serverVersion=//' | sort -u | paste -sd' ')"
-row "pgBackRest, restic (backup image)" "infra/postgres/Dockerfile" "$(grep -oE '^ARG (PGBACKREST|RESTIC)_VERSION=[^[:space:]]+' infra/postgres/Dockerfile | cut -d' ' -f2 | paste -sd' ')"
+# Every version a Dockerfile takes as a build argument (pgBackRest, restic, curl, PSScriptAnalyzer, Playwright, and any
+# added later); an empty default, such as the build's own number, is filled at build and is no pin.
+while IFS=: read -r file _ arg; do row "${arg%%=*}" "$file" "${arg#*=}"; done < <(
+  git ls-files -z -- '*Dockerfile' '*.Dockerfile' | xargs -0 grep -HnoE '^ARG [A-Z_]+_VERSION=[^"[:space:]]+' | sed 's/:ARG /:/')
 row "supercronic (backup image)" "infra/postgres/Dockerfile" "$(grep -oE 'supercronic/releases/download/v[0-9.]+' infra/postgres/Dockerfile | sort -u | sed 's|.*/||')"
 
 echo
@@ -47,8 +50,9 @@ for p in @angular/core @angular/material @angular/cli typescript rxjs @playwrigh
 done
 
 echo
-echo "CI actions (.github/workflows/ci.yml)"
-grep -oE 'uses: [^[:space:]]+' .github/workflows/ci.yml | sort -u | while read -r _ action; do row "${action%@*}" "" "${action##*@}"; done
+echo "CI actions (every workflow, pinned by commit; the release tag beside it)"
+grep -hoE 'uses: [^[:space:]]+([[:space:]]+#[[:space:]]*[^[:space:]]+)?' .github/workflows/*.yml | sort -u \
+  | while read -r _ action _ tag; do row "${action%@*}" "${tag:--}" "${action##*@}"; done
 
 echo
 echo "What is newer: docs/UPDATE.md § \"Find what is out of date\"."

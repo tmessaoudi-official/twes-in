@@ -101,7 +101,7 @@ the finding into `.trivyignore` with its verdict and an `exp:` date.
 | **material-symbols** (the icon font) | `web/package.json` | `web/src/app/shared/icons/icons.ts`, the icons the font is cut to (**gate**: `scripts/gates/icons-declared.sh`, and the `IconName` type) | `make web-tools CMD='npm install material-symbols@<v>'` | The next build cuts the new font by itself (`web/scripts/subset-icons.mjs`). An icon renamed or dropped upstream fails the build, naming it: pick its new name in `icons.ts` and where it is used |
 | **PowerShell and PSScriptAnalyzer** | `infra/powershell/Dockerfile`: `FROM mcr.microsoft.com/dotnet/sdk:<X.Y>-noble@sha256:…` (PowerShell comes with the .NET SDK) and `ARG PSSCRIPTANALYZER_VERSION` | none | Read the new digest with `docker buildx imagetools inspect mcr.microsoft.com/dotnet/sdk:<X.Y>-noble`, set both, then `make gate-powershell`, which builds the image anew because its name carries the Dockerfile's hash (CI's cache key is the same file) | A new analyzer rule may find something in `install.ps1`: fix it there, the gate takes no exception |
 | **Playwright** | `web/package.json`: `@playwright/test` | `ARG PLAYWRIGHT_VERSION` in `infra/web/tools.Dockerfile`, which installs the system libraries for that browser build (**gate**: it must equal `web/package-lock.json`) | `make web-tools CMD='npm install -D @playwright/test@<v>'`, set the ARG, then `make web-tools-image` | `make e2e` downloads the new Chromium and WebKit into `var/cache/ms-playwright` on its next run |
-| **GitHub Actions** | `.github/workflows/*.yml` (`ci.yml`, `decision-stamps.yml`, `deploy-check.yml`, `image-scan.yml`, `monitor-check.yml`, `restore-drill.yml`, `staging-check.yml`): every `uses: <action>@<major>` | the same action at the same major in each workflow (by hand) | Change the major | Read the action's release notes: a major can drop or change inputs |
+| **GitHub Actions** | `.github/workflows/*.yml`: every `uses: <action>@<the release's full commit SHA> # <tag>` | the same action at the same commit in each workflow (**gate**: `scripts/gates/action-pins.sh` refuses a tag or a short SHA) | Read the release's commit (see "Find what is out of date"), then change the SHA and the tag comment in every workflow | Read the action's release notes: a major can drop or change inputs |
 
 ### Not pinned here on purpose
 
@@ -109,6 +109,12 @@ the finding into `.trivyignore` with its verdict and an `exp:` date.
   a newer Debian, is a tag change like any other.
 - **`install-php-extensions` itself** ships inside the FrankenPHP image, so it moves when that tag moves.
 - **The host has no PHP or Node to pin**: the toolchain runs in the images above (`docs/START.md` § 1).
+- **CI's runner** (`runs-on: ubuntu-latest` in every workflow): every job runs its tools in the images above, so the
+  runner brings only Docker and git, and GitHub moves it forward.
+- **Docker on a shop's computer**: `scripts/onprem/wsl-engine.sh` installs Docker Engine from Docker's signed apt
+  repository, and `scripts/onprem/install.ps1` Docker Desktop through winget, each its newest release. A shop then takes
+  Docker's security fixes without waiting for a release from us; the price is that a new Docker reaches a shop untested
+  by us. `make onprem-check` runs on this machine's Docker before each tag (developer ruling, 2026-11-05).
 
 ## After every bump
 
