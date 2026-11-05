@@ -65,6 +65,19 @@ rm -rf "$TMPDIR/outcome"; started=$SECONDS
 out=$(STEP=due run DUE_BEAT=300); status=$?
 ((status == 0 && SECONDS - started < 20)); check "the schedule's run hands its output back once done, its keeper gone with it" $? 0 "exit $status in $((SECONDS - started)) s" ""
 
+# An outcome is written whole: twes tick reads the schedule's line and each step's while they are written again, and a
+# `>` that empties the file before writing it let a read find nothing (CI, 2026-11-05: a stopped schedule's check
+# skipped, a step's `.ok` read as never, so the step ran again).
+rm -rf "$TMPDIR/outcome"
+(STEP=due run BACKUP_STEP_LIMIT=1 DUE_BEAT=0.001 STEP_SLEEP=30 > /dev/null) &
+for _ in {1..300}; do [[ -s "$TMPDIR/outcome/due" ]] && break; sleep 0.01; done
+reads=0 torn=0; end=$((SECONDS + 2))
+while ((SECONDS < end)); do c=$(< "$TMPDIR/outcome/due"); reads=$((reads + 1)); [[ -n "$c" ]] || torn=$((torn + 1)); done
+wait
+((reads > 100 && torn == 0)); check "the schedule's line is never read empty while it is written again" $? 0 "$reads reads, $torn empty" ""
+writes=$(grep -nE '>>? *"?\$OUTCOME_DIRECTORY' "$SCRIPT")
+[[ -z "$writes" ]]; check "  and no outcome is written but through the one that writes it whole" $? 0 "$writes" ""
+
 # The service's start-up prepares both repositories while a step may already be running (a drill's, an update's): it
 # takes the steps' lock, so restic never finds its repository locked by the other, and lets it go before the schedule.
 printf '#!/usr/bin/env bash\nflock -n "$BACKUP_LOCK" true && echo restic-unlocked >> "%s/lock.seen" || echo restic-locked >> "%s/lock.seen"\n' "$TMPDIR" "$TMPDIR" > "$TMPDIR/bin/restic"

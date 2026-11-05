@@ -28,7 +28,14 @@ echo "restic $*" >> "$TMPDIR/calls"
 [[ " $* " == *" cat config "* ]] && exit "${RESTIC_MISSING:-0}"
 exit "${RESTIC_STATUS:-0}"
 EOF
-for tool in pg_isready pg_dump mv curl supercronic; do printf '#!/usr/bin/env bash\necho "%s $*" >> "$TMPDIR/calls"\n' "$tool" > "$TMPDIR/bin/$tool"; done
+for tool in pg_isready pg_dump curl supercronic; do printf '#!/usr/bin/env bash\necho "%s $*" >> "$TMPDIR/calls"\n' "$tool" > "$TMPDIR/bin/$tool"; done
+# mv stands in for the dump's move, whose file the stand-in pg_dump never wrote; an outcome, written beside its file and
+# renamed over it, is moved for real.
+cat > "$TMPDIR/bin/mv" <<'EOF'
+#!/usr/bin/env bash
+[[ -e "${@: -2:1}" ]] && { command -p mv "$@"; exit; }
+echo "mv $*" >> "$TMPDIR/calls"
+EOF
 cat > "$TMPDIR/bin/install" <<'EOF'
 #!/usr/bin/env bash
 echo "install $*" >> "$TMPDIR/calls"

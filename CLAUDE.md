@@ -306,6 +306,9 @@ test in `gate-scripts.md` (`scripts/gates/**`, `scripts/tests/**`). Here: what a
   interceptors), every text a key and every e2e red. `app-config.spec.ts` now builds the real `appConfig` and asks that the
   texts request leaves; an interceptor reads what needs the texts lazily, through `Injector`. Before landing work built
   elsewhere, run one e2e on an image of the result (2026-11-01).
+- A gate run in the main tree reads what git ignores: hunters' `web/e2e/*.local.spec.ts` reddened `e2e-settled-reads.sh`
+  there while CI, on a clean clone, never sees them (2026-11-05). Gate through `make gate-snapshot`, whose worktree holds
+  only the index; a red found only in the main tree is read against `git status --ignored` first.
 - `flock` serves its waiters in no order: the main session's gate waited 76 minutes behind builder runs. While
   `/tmp/twes-in-gate.main-first` exists builders start no locked run; they run `make check` and the tests importing
   their files (at most 3 workers), and the full gate runs once per integrated batch. Before handing a builder a row,

@@ -32,6 +32,14 @@ OUTCOME_DIRECTORY=${OUTCOME_DIRECTORY:-/var/lib/twes-backup/outcome}
 BACKUP_LOCK=${BACKUP_LOCK:-/tmp/twes-backup.lock}
 
 say() { printf '%s twes-backup %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+# An outcome written whole: twes tick, the schedule's `since` and the keeper read these files while a step writes them
+# again, and a `>` empties a file before it writes it, so a read in between found nothing. Written beside it under a
+# name no reader asks for, then renamed over it, which a reader sees all at once.
+put() {
+  local file="$OUTCOME_DIRECTORY/$1" part="$OUTCOME_DIRECTORY/.$1.$BASHPID"
+  shift
+  mkdir -p "$OUTCOME_DIRECTORY" && printf '%s\n' "$*" > "$part" && mv -f "$part" "$file" || { rm -f "$part"; return 1; }
+}
 pgbr() { gosu postgres pgbackrest --stanza="$STANZA" "$@"; }
 # restic reaches the same bucket as pgBackRest under its own prefix; a bucket addressed by path (most S3-compatible
 # services) or by host (AWS itself) is said once, in BACKUP_S3_URI_STYLE, for both.
@@ -108,7 +116,7 @@ offsite() {
   # Copied every hour, pruned once a day: a prune reads and rewrites the bucket's packs, too much to do hourly.
   if (($(since offsite-prune) >= 20 * 3600)); then
     rst -r "$OFFSITE_REPOSITORY" forget --host twes --keep-within "$KEEP" --prune
-    mkdir -p "$OUTCOME_DIRECTORY" && date +%s > "$OUTCOME_DIRECTORY/offsite-prune.ok"
+    put offsite-prune.ok "$(date +%s)"
   fi
   say "local folder copied off site, kept $KEEP"
 }
@@ -137,10 +145,10 @@ heartbeat() {
   local status=$? endpoint=$1 success=true reason=''
   ((status == 0)) || { success=false; reason="$2 exited $status"; }
   # The step's own status is what it exits with: an outcome that cannot be written is said, and due runs the step again.
-  if mkdir -p "$OUTCOME_DIRECTORY" && if ((status == 0)); then
-    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) ok" > "$OUTCOME_DIRECTORY/$2" && date +%s > "$OUTCOME_DIRECTORY/$2.ok"
+  if if ((status == 0)); then
+    put "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ) ok" && put "$2.ok" "$(date +%s)"
   else
-    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) failed $reason" > "$OUTCOME_DIRECTORY/$2"
+    put "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ) failed $reason"
   fi; then :; else say "the outcome of $2 could not be written under $OUTCOME_DIRECTORY"; fi
   if [[ -n "${MONITOR_URL:-}" ]]; then
     curl -fsS --max-time 15 -o /dev/null -X POST -H "Authorization: Bearer ${MONITOR_HEARTBEAT_TOKEN:?set MONITOR_HEARTBEAT_TOKEN with MONITOR_URL}" \
@@ -172,8 +180,8 @@ due() {
   # That the schedule is alive, whatever ran: a shop's twes tick alerts when this goes quiet while the application runs.
   # While a step runs (the first off-site copy may take hours) it says so every five minutes, naming the step; each step
   # ends within its time, so a step that hangs is a failed step, never a schedule gone quiet.
-  mkdir -p "$OUTCOME_DIRECTORY" && echo "$(date +%s) ran" > "$OUTCOME_DIRECTORY/due"
-  : > "$OUTCOME_DIRECTORY/due.step"
+  put due "$(date +%s) ran"
+  put due.step ''
   # The keeper's sleep goes with it: a sleep left behind would hold the schedule's output open, and supercronic would
   # wait on it.
   (
@@ -183,7 +191,7 @@ due() {
       sleep "${DUE_BEAT:-300}" &
       nap=$!
       wait "$nap"
-      echo "$(date +%s) running $(cat "$OUTCOME_DIRECTORY/due.step")" > "$OUTCOME_DIRECTORY/due"
+      put due "$(date +%s) running $(cat "$OUTCOME_DIRECTORY/due.step")"
     done
   ) &
   keeper=$!
@@ -197,13 +205,13 @@ due() {
   (($(since verify) < week)) || due_step verify || failed=1
   kill "$keeper"
   wait "$keeper" || true # the keeper ends on the signal just sent; its status says only that
-  echo "$(date +%s) ran" > "$OUTCOME_DIRECTORY/due"
+  put due "$(date +%s) ran"
   ((failed == 0)) || { say "due: a step failed, written down under $OUTCOME_DIRECTORY"; return 1; }
 }
 
 # One step of the schedule in its own process, named for the keeper.
 due_step() {
-  echo "$1" > "$OUTCOME_DIRECTORY/due.step"
+  put due.step "$1"
   bash "${BASH_SOURCE[0]}" "$1"
 }
 
@@ -227,7 +235,7 @@ bounded() {
   TWES_BACKUP_BOUNDED=1 timeout --kill-after=60 "$limit" bash "${BASH_SOURCE[0]}" "$1" || status=$?
   if ((status == 124 || status == 137)); then
     say "$1 stopped after its time limit of $limit s ($name)"
-    mkdir -p "$OUTCOME_DIRECTORY" && echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) failed $1 stopped after its time limit of $limit s" > "$OUTCOME_DIRECTORY/$1"
+    put "$1" "$(date -u +%Y-%m-%dT%H:%M:%SZ) failed $1 stopped after its time limit of $limit s"
     status=124
   fi
   exit "$status"

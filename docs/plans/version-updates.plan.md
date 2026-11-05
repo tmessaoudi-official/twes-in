@@ -9,6 +9,9 @@ Procedure: docs/UPDATE.md, "After every bump" for each commit.
 - [2026-10-16 19:01] ASSUMED (review): the framework-bundle recipe's AGENTS.md and CLAUDE.md stay out of api/, as G1a removed them (459a705c): the project's own CLAUDE.md and SPEC carry the process, and the recipe's generic conventions (AbstractController, ask before generating) contradict the code's. Upstream's only change since install drops the CLAUDE.md shim, so recipes:update brings neither back. Alternatives: a two-line AGENTS.md pointing at CLAUDE.md (advisor's suggestion), or the recipe's file verbatim.
 - [2026-10-16 19:56] AGREED: the MCP packages' MIT → Apache-2.0 transition, dev-only under @angular/cli 22.2.3, is accepted (SPEC § 7, asked under the 17:24 ruling)
 - [2026-10-16 21:15] ASSUMED (review): axe 4.14 turns on label-content-name-mismatch (WCAG 2.5.3, RGAA 6.1.5): the flagged controls are fixed, not the rule silenced. Key hints, avatar initials and capped counts (« 9+ ») are drawn by the stylesheet (data-glyph) as non-text content, the exact figure staying in the name per the count-badge ruling; the folded bell's Material small badge becomes a text-free dot; controls that show words and had a sentence as aria-label (floor, read-only and coming stock views, company rail, line figures) are named by their words with the sentence as tooltip/description or a leading sr-only phrase; the layer show/lock toggles become switches; the member row is named with its role, the language button with its code. Basis: ACT 2ee8b8 (symbolic text is non-text, aria-hidden text still counts) and the advisor's read. Alternatives: the shortcut and initials written into each name; disabling the rule (refused: RGAA).
+- [2026-11-05 11:38] AGREED: round 2 (2026-11-05): steps 7-14 as planned: the torn-read fix first, then PHP, npm, Trivy, image patches, image minors one commit each, make versions made complete; TypeScript 7 still held
+- [2026-11-05 11:38] AGREED: pushes: the CI fix alone now, then each ecosystem committed after its own local gate and the bumps pushed once as one batch
+- [2026-11-05 11:38] AGREED: runs-on ubuntu-latest, docker-ce in a shop's WSL and Docker Desktop through winget stay unpinned on purpose, written in docs/UPDATE.md « Not pinned here on purpose »: a shop gets Docker's security fixes without a release from us
 
 ## Formal Plan
 Inventory on 2026-10-16 (`composer outdated --direct`, `npm outdated`, Packagist): Symfony 8.1.9 is the newest
@@ -35,6 +38,35 @@ is out and held.
    Read 2026-10-16 20:31: `actions/checkout@v7` (latest v7.0.1) and `actions/upload-artifact@v7` (latest v7.0.2), the
    only two, are on their latest major, which their tags follow: nothing moves. Pinning by commit is the tool audit's to weigh.
 
+### Round 2 (2026-11-05)
+
+Inventory read 2026-11-05 11:00-11:35 (`composer outdated`, `npm outdated`, Docker Hub tags, `gh api` releases,
+`apt-cache policy` in `postgres:18.6-trixie`, symfony.com/releases.json, nodejs.org/dist/index.json). Already newest:
+Symfony 8.1.11 (8.2 maintained, not stable), postgres 18.6, registry 3.1.2, glitchtip 6.2.6, PSScriptAnalyzer 1.25.0,
+restic 0.18.0-1+b4 and curl 8.14.1-2+deb13u7 (the Debian candidates), zxing-wasm, the three actions (SHA pins stand).
+Held: TypeScript 7.0.2 (ruled), Node 27 (alpha; 26 is the LTS « Lithium »).
+
+7. CI red on 98fc86b46 (`backup heartbeat: 28 passed, 1 failed`, « the schedule says it is alive while a step runs »,
+   its marker read empty): a torn read. `echo … > due` truncates before it writes; a tight-loop reader saw 75 empty reads
+   of 80,945 with the keeper writing every millisecond. The class: the ten writes of `twes-backup` into
+   `$OUTCOME_DIRECTORY` (lines 111, 141 ×2, 143, 175, 176, 186, 200, 206, 230), read by `twes tick` (`due`, each step's
+   line), `since` (`<step>.ok`) and the keeper (`due.step`). One helper writes a temporary file beside each and renames
+   it. Search: `grep -nE '>>? *"?\$OUTCOME_DIRECTORY' infra/postgres/backup/twes-backup`.
+8. PHP: the 13 direct packages composer outdated lists (api-platform 5.0.5 → `cache:pool:clear --all`).
+9. npm: Angular 22.2.4/22.2.6 through `ng update`, ngx-translate and tailwind in pairs, eslint, typescript-eslint,
+   vitest, tslib, marked, harfbuzzjs, postcss, material-symbols 0.48.3, three and @types/three 0.187 (imports only core
+   classes and OrbitControls, none removed in r187).
+10. Trivy 0.67.2 → 0.76.1 by index digest: 0.67.2 is inside GHSA-mcj4-mphf-j9ff (HIGH, < 0.71.1), GHSA-8rc5-4fr6-64pw
+    and GHSA-q3fv-x8vg-qqm4; the March compromise touched 0.69.4-0.69.6 only.
+11. Image patches: frankenphp 1.13.4, docker-cli 29.9.3 (the host daemon's), node 26.13.0, nginx 1.31.8, caddy 2.11.8,
+    centrifugo 6.10.2, the .NET SDK 10.0-noble digest, supercronic 0.2.51.
+12. Image minors, one commit each: gotenberg 8.39.0, pgBackRest 2.60.0, composer 2.11.1 (its one BC break,
+    `source-fallback`, unused here), mailpit 1.33.0, gatus 5.38.0, seaweedfs 4.52.
+13. `make versions` prints every pin: every `ARG *_VERSION` of every Dockerfile (curl, PSScriptAnalyzer and Playwright
+    were missing), every action of every workflow with its tag (only `ci.yml`'s were read), no empty `PHP (CI)` row;
+    docs/UPDATE.md's Actions row says SHA, and the three unpinned items are written as deliberate.
+14. Research: which of the 18 `echo > "$state/…"` writes of `scripts/onprem/twes` another process reads while written.
+
 ## Completion note
 - Certified by CI only, never run locally: the full e2e (`stock-map.spec.ts:429` included), the production images, the
   deploy check and the staging check, all green on 3d0767f9 (six workflows of six).
@@ -54,6 +86,14 @@ is out and held.
 | 4 | Docker images | M | done | 9f62df7c9 | compose*.yaml infra/** |
 | 6 | axe 4.14's Label in Name on master | S | done | efe7c9783 | web/src/** web/e2e/** web/public/i18n/** |
 | 5 | GitHub Actions | S | done | - | .github/workflows/** |
+| 7 | Outcome files written whole (CI red) | S | doing | - | infra/postgres/backup/twes-backup scripts/tests/backup-heartbeat.test.sh |
+| 8 | PHP packages, round 2 | M | todo | - | api/composer.json api/composer.lock THIRD-PARTY-NOTICES.md |
+| 9 | npm packages, round 2 | M | todo | - | web/package.json web/package-lock.json THIRD-PARTY-NOTICES.md |
+| 10 | Trivy 0.76.1 | S | todo | - | scripts/security/image-scan.sh |
+| 11 | Image patches | M | todo | - | compose*.yaml infra/** |
+| 12 | Image minors | M | todo | - | compose.yaml infra/** scripts/backup/** |
+| 13 | make versions complete | S | todo | - | scripts/versions.sh docs/UPDATE.md |
+| 14 | twes state writes: torn reads | S | todo | - | scripts/onprem/twes |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input

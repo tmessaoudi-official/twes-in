@@ -115,3 +115,6 @@ the end of § Lessons here.
   commands pasted into a terminal, it swallows the lines after it, which then never run, and the block reads as done.
   Every `run` line a person may paste ends `< /dev/null` (`docs-run-lines.sh` reads the docs for it); a check running such
   lines counts that all of them ran (2026-10-17).
+- A file another process reads is written whole: `>` empties it before it writes, and a reader in between finds nothing
+  (CI red 2026-11-05: the schedule's `due` read empty; a tight loop saw 145 empty reads of 145,076). In `twes-backup` every
+  outcome goes through `put` (a file beside it, then `mv`); `backup-heartbeat.test.sh` reds on a direct redirect there.

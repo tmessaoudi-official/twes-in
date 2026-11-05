@@ -60,7 +60,9 @@ gone=$(docker logs "$id-web" 2>&1)
 check "with the api gone, no token in any line of either stream" "$(grep -ciE "$first|$second" <<<"$gone")" 0
 check "the failed request is logged, masked, with its upstream's status" \
     "$(grep -cE '"GET /api/invitations/\[token\]/accept\?next=\[token\] HTTP/1.1" 502 .* upstream="[0-9.]+:80" 502 -$' <<<"$gone")" 1
-check "no error line about a request is written" "$(grep -c '\[error\]' <<<"$gone")" 0
+# A request's error line carries `request: "…"`; the resolver's own (« api could not be resolved », written every five
+# seconds once the api is gone, through the image's main error log) names no request and no token.
+check "no error line about a request is written" "$(grep '\[error\]' <<<"$gone" | grep -c 'request: ')" 0
 # Red once under a gate's load and never alone: the lines it counted are printed, so the next red names them.
 grep '\[error\]' <<<"$gone" | sed 's/^/       error line: /'
 
