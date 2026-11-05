@@ -31,6 +31,11 @@
         <span class="opacity-70" data-testid="member-expired">{{
           'members.expired_on' | translate: { day: (row.expiresAt | day) }
         }}</span>
+      } @else if (row.mailFailed) {
+        <!-- The worker gave up mailing it: nobody was told, so it is said in red, its resend in « ⋮ ». -->
+        <span class="text-error" data-testid="member-unsent">{{
+          'members.unsent' | translate
+        }}</span>
       } @else if (row.status === 'invited') {
         <span class="opacity-70">{{
           row.expiresAt

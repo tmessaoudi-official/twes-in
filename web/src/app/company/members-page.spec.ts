@@ -47,6 +47,7 @@ class StaticLoader implements TranslateLoader {
         invited_row: 'Invitation en attente',
         invited_until: 'Invitation en attente jusqu’au {{day}}',
         expired_on: 'Invitation expirée le {{day}} sans avoir servi : renvoyez-la',
+        unsent: 'Invitation non envoyée : le courrier n’a pas pu partir, renvoyez-la',
         replaces: 'Une invitation attend déjà {{email}}.',
         resend: 'Renvoyer l’invitation',
         password_locked_until: 'Mot de passe verrouillé jusqu’au {{moment}}',
@@ -77,6 +78,7 @@ const owner: MemberRow = {
   invitationId: null,
   expiresAt: null,
   passwordLockedUntil: null,
+  mailFailed: false,
 };
 
 const invited: MemberRow = {
@@ -89,6 +91,7 @@ const invited: MemberRow = {
   invitationId: 'i1',
   expiresAt: '2026-11-02T10:00:00+00:00',
   passwordLockedUntil: null,
+  mailFailed: false,
 };
 
 describe('MembersPage', () => {
@@ -382,6 +385,18 @@ describe('MembersPage', () => {
       await fixture.whenStable();
     }
     expect(await menuEntry('invited:invited@example.test', 'remove')).toBeNull();
+  });
+
+  it('says an invitation the worker could not mail as not sent, in red, offering to send it again', async () => {
+    // It read « en attente jusqu’au … » while nobody had been told: only « À surveiller » counted it.
+    rows.set([owner, { ...invited, mailFailed: true }]);
+    fixture.detectChanges();
+
+    const said = document.querySelector('[data-testid="member-unsent"]');
+    expect(said?.textContent).toContain('Invitation non envoyée');
+    expect(said?.classList.contains('text-error')).toBe(true);
+    expect(text('member-invited@example.test')).not.toContain('en attente');
+    expect(await menuEntry('invited:invited@example.test', 'resend')).not.toBeNull();
   });
 
   it('withdraws an invitation without a question, and its toast sends it again', async () => {

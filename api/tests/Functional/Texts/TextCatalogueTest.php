@@ -39,6 +39,7 @@ final class TextCatalogueTest extends ApiTestCase
             'version' => 1,
             'originalChanged' => false,
             'counted' => false,
+            'formsMissing' => false,
         ]], $this->json()['items'] ?? null);
 
         $this->getJson($catalogue.'?q=VERIFICATION%20en%20deux');
@@ -95,7 +96,7 @@ final class TextCatalogueTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame([], $this->found(), 'the installation\'s own was written over today\'s original');
         $this->getJson('/api/platform/texts/fr/catalogue?domain=pdf&q=invoice.title');
-        self::assertSame(['domain' => 'pdf', 'key' => 'invoice.title', 'original' => 'Facture', 'installation' => 'Facture de vente', 'company' => null, 'version' => 1, 'originalChanged' => false, 'counted' => false], $this->firstItem());
+        self::assertSame(['domain' => 'pdf', 'key' => 'invoice.title', 'original' => 'Facture', 'installation' => 'Facture de vente', 'company' => null, 'version' => 1, 'originalChanged' => false, 'counted' => false, 'formsMissing' => false], $this->firstItem());
 
         // « Garder le mien »: the same words written again over today's original.
         $this->login('owner@shop.tn', self::PASSWORD);
@@ -103,6 +104,35 @@ final class TextCatalogueTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame(['value' => 'Facture client', 'original' => 'Facture', 'version' => 2], $this->json());
         $this->getJson("/api/companies/{$shop->getId()}/texts/fr/catalogue?changed=1");
+        self::assertSame([], $this->found());
+    }
+
+    public function testAWordingSomeCountChoosesNoFormOfIsFlaggedForTheLevelThatWroteIt(): void
+    {
+        $shop = $this->worded();
+        $this->sendJson('PUT', "/api/companies/{$shop->getId()}/texts/fr/pdf/invoice.payment_terms", ['value' => 'À %days% jour|À %days% jours', 'version' => 0]);
+        self::assertResponseIsSuccessful();
+        // Saved before « Textes » checked, or written by hand: from 2 days on the invoice fails to print.
+        $this->em()->getConnection()->executeStatement("UPDATE text_override SET value = '[0,1] À %days% jour' WHERE company_id = ? AND text_key = 'invoice.payment_terms'", [$shop->getId()->toRfc4122()]);
+
+        $this->getJson("/api/companies/{$shop->getId()}/texts/fr/catalogue?forms=1");
+        self::assertResponseIsSuccessful();
+        self::assertSame(['pdf invoice.payment_terms'], $this->found());
+        self::assertTrue($this->boolAt($this->firstItem(), 'formsMissing'));
+        $this->getJson("/api/companies/{$shop->getId()}/texts/fr/catalogue?domain=pdf&q=invoice.title");
+        self::assertFalse($this->boolAt($this->firstItem(), 'formsMissing'));
+        $this->getJson("/api/companies/{$shop->getId()}/texts/fr/catalogue?forms=maybe");
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->login('operator@twes.local', self::PASSWORD);
+        $this->getJson('/api/platform/texts/fr/catalogue?forms=1');
+        self::assertSame([], $this->found(), 'the installation\'s own wording gives every count a form');
+
+        // Worded again with a form for every count, the flag goes.
+        $this->login('owner@shop.tn', self::PASSWORD);
+        $this->sendJson('PUT', "/api/companies/{$shop->getId()}/texts/fr/pdf/invoice.payment_terms", ['value' => 'Sous %days% jour|Sous %days% jours', 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        $this->getJson("/api/companies/{$shop->getId()}/texts/fr/catalogue?forms=1");
         self::assertSame([], $this->found());
     }
 

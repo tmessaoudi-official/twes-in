@@ -9,13 +9,17 @@ declare(strict_types=1);
 
 namespace App\Texts\Application\Catalogue;
 
-/** What a writer looks for: words a text says or a key, one file, only the texts whose original changed; one page of it. */
+/**
+ * What a writer looks for: words a text says or a key, one file, only the texts whose original changed, only those whose
+ * own wording gives some count no form; one page of it.
+ */
 final readonly class TextCatalogueQuery
 {
     public function __construct(
         public ?string $search,
         public ?string $domain,
         public bool $originalChanged,
+        public bool $formsMissing,
         public int $page,
         public int $perPage,
     ) {

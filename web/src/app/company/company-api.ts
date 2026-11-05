@@ -502,6 +502,7 @@ function toRow(row: MemberMemberRead): MemberRow {
     invitationId: row.invitationId ?? null,
     expiresAt: row.expiresAt ?? null,
     passwordLockedUntil: row.passwordLockedUntil ?? null,
+    mailFailed: row.mailFailed ?? false,
   };
 }
 

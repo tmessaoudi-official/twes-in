@@ -44,6 +44,8 @@ export interface MemberRow {
   readonly expiresAt: string | null;
   /** Until when wrong guesses keep the member's password locked, which the company's owner may lift; null otherwise. */
   readonly passwordLockedUntil: string | null;
+  /** Whether the worker gave up mailing the invitation, so the person was never told; false on a member's row. */
+  readonly mailFailed: boolean;
 }
 
 /**

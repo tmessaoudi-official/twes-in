@@ -151,6 +151,11 @@ final class MemberResource
     #[Groups([self::READ])]
     public ?string $passwordLockedUntil = null;
 
+    /** Whether the worker gave up mailing the invitation, so the person was never told; false on a member's row. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $mailFailed = false;
+
     public static function of(MemberView $view): self
     {
         $resource = new self();
@@ -163,6 +168,7 @@ final class MemberResource
         $resource->invitationId = $view->invitationId;
         $resource->expiresAt = $view->expiresAt;
         $resource->passwordLockedUntil = $view->passwordLockedUntil;
+        $resource->mailFailed = $view->mailFailed;
 
         return $resource;
     }

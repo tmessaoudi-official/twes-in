@@ -30,12 +30,13 @@ describe('TextCatalogueApi', () => {
       words: '  facture ',
       place: 'screen',
       changed: true,
+      forms: true,
       page: 2,
       itemsPerPage: 50,
     });
     const request = http.expectOne((each) => each.url === '/api/companies/c1/texts/fr/catalogue');
     expect(request.request.params.toString()).toBe(
-      'page=2&itemsPerPage=50&q=facture&domain=screen&changed=1',
+      'page=2&itemsPerPage=50&q=facture&domain=screen&changed=1&forms=1',
     );
     const row = {
       domain: 'pdf',
@@ -46,6 +47,7 @@ describe('TextCatalogueApi', () => {
       version: 3,
       originalChanged: false,
       counted: true,
+      formsMissing: true,
     };
     request.flush({ items: [row], total: 1, page: 2, itemsPerPage: 50 });
 
@@ -57,6 +59,7 @@ describe('TextCatalogueApi', () => {
       words: ' ',
       place: null,
       changed: false,
+      forms: false,
       page: 1,
       itemsPerPage: 25,
     });

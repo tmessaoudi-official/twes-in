@@ -23,9 +23,11 @@
     },
     "filters": {
       "place": "Où",
-      "changed": "Original",
-      "original_changed": "L’original a changé"
+      "changed": "À revoir",
+      "original_changed": "L’original a changé",
+      "forms_missing": "Une forme manque pour certains nombres"
     },
+    "forms_missing": "Une forme manque pour certains nombres : le document échoue à ces nombres, modifiez le texte.",
     "actions": {
       "edit": "Modifier le texte",
       "keep_mine": "Garder le mien",

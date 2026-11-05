@@ -30,6 +30,8 @@ final readonly class MemberView
         public ?string $expiresAt = null,
         /** Until when wrong guesses keep the member's password locked; null when they do not now, and on an invited row. */
         public ?string $passwordLockedUntil = null,
+        /** Whether the worker gave up mailing the invitation, so the person was never told; false on a member's row. */
+        public bool $mailFailed = false,
     ) {
     }
 }

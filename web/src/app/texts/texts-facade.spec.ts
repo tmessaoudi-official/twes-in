@@ -16,7 +16,7 @@ describe('TextsFacade', () => {
   const company = { kind: 'company', companyId: 'c1' } as const;
   const installation = { kind: 'installation' } as const;
   const title = { domain: 'pdf', key: 'invoice.title' };
-  const query = { words: '', place: null, changed: false, page: 1, itemsPerPage: 25 };
+  const query = { words: '', place: null, changed: false, forms: false, page: 1, itemsPerPage: 25 };
   const stepUpAnswer = new HttpErrorResponse({
     status: 403,
     error: { error: 'step_up_required' },

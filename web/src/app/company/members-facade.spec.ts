@@ -19,6 +19,7 @@ const owner: MemberRow = {
   invitationId: null,
   expiresAt: null,
   passwordLockedUntil: null,
+  mailFailed: false,
 };
 
 // The proof dialog is answered by the test; `retrying` itself is StepUp's own.

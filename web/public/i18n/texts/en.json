@@ -23,9 +23,11 @@
     },
     "filters": {
       "place": "Where",
-      "changed": "Original",
-      "original_changed": "The original changed"
+      "changed": "To review",
+      "original_changed": "The original changed",
+      "forms_missing": "A form is missing for some counts"
     },
+    "forms_missing": "A form is missing for some counts: the document fails at those counts, edit the text.",
     "actions": {
       "edit": "Change the text",
       "keep_mine": "Keep mine",

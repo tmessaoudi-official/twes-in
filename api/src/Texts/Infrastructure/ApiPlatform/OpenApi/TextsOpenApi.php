@@ -68,7 +68,7 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
 
         $schemas['TextCatalogueEntry'] = new \ArrayObject([
             'type' => 'object',
-            'required' => ['domain', 'key', 'original', 'installation', 'company', 'version', 'originalChanged', 'counted'],
+            'required' => ['domain', 'key', 'original', 'installation', 'company', 'version', 'originalChanged', 'counted', 'formsMissing'],
             'properties' => [
                 'domain' => ['type' => 'string'],
                 'key' => ['type' => 'string'],
@@ -78,6 +78,7 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
                 'version' => ['type' => 'integer', 'description' => 'The version of the reader\'s own level, 0 where it words nothing.'],
                 'originalChanged' => ['type' => 'boolean', 'description' => 'The reader\'s own wording was written over another original than this release ships.'],
                 'counted' => ['type' => 'boolean', 'description' => 'Its code hands it a count, in every language: a « | » or a leading interval separates forms the count chooses from, and a wording leaving some count none is refused (`forms`).'],
+                'formsMissing' => ['type' => 'boolean', 'description' => 'The reader\'s own wording, saved before it was checked or written by hand, gives some count no form: what it is printed or mailed in fails at that count.'],
             ],
         ]);
         $schemas['TextCataloguePage'] = new \ArrayObject([
@@ -112,6 +113,7 @@ final readonly class TextsOpenApi implements OpenApiFactoryInterface
             new Parameter('q', 'query', 'Words the text says in any wording, or its key; case and accents aside', false, schema: ['type' => 'string']),
             new Parameter('domain', 'query', 'One file and its pages: `screen` is the language\'s file and every `screen:<part>`', false, schema: ['type' => 'string']),
             new Parameter('changed', 'query', 'Only the texts whose original changed since the reader\'s own was written', false, schema: ['type' => 'boolean']),
+            new Parameter('forms', 'query', 'Only the texts whose own wording gives some count no form', false, schema: ['type' => 'boolean']),
             new Parameter('page', 'query', 'From 1', false, schema: ['type' => 'integer', 'minimum' => 1]),
             new Parameter('itemsPerPage', 'query', 'Up to app.texts.catalogue_page_max', false, schema: ['type' => 'integer', 'minimum' => 1]),
         ];

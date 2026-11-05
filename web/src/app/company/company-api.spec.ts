@@ -166,6 +166,22 @@ describe('CompanyApi, the members', () => {
 
   afterEach(() => http.verify());
 
+  it('reads whether an invitation’s mail went out, a member’s row never failed', async () => {
+    const reading = api.members('c1');
+    http.expectOne({ method: 'GET', url: '/api/companies/c1/members' }).flush([
+      { userId: 'u2', email: 'a@example.test', role: 'admin', status: 'joined' },
+      {
+        email: 'b@example.test',
+        role: 'member',
+        status: 'invited',
+        invitationId: 'i1',
+        mailFailed: true,
+      },
+    ]);
+
+    expect((await reading).map((row) => row.mailFailed)).toEqual([false, true]);
+  });
+
   it('changes a member’s role by its own address, answering their row', async () => {
     const changing = api.changeMemberRole('c1', 'u2', 'admin');
     const request = http.expectOne({ method: 'PUT', url: '/api/companies/c1/members/u2/role' });

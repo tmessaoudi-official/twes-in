@@ -11,6 +11,7 @@ namespace App\Texts\Application\Catalogue;
 
 use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
+use App\Texts\Application\CountedForms;
 use App\Texts\Application\ShippedTexts;
 use App\Texts\Domain\Model\TextOverride;
 use App\Texts\Domain\Repository\TextOverrideRepository;
@@ -25,7 +26,7 @@ use App\Texts\Domain\ValueObject\TextAddress;
  */
 final readonly class TextCatalogue
 {
-    public function __construct(private ShippedTexts $shipped, private TextLocks $locks, private TextOverrideRepository $overrides)
+    public function __construct(private ShippedTexts $shipped, private TextLocks $locks, private TextOverrideRepository $overrides, private CountedForms $forms)
     {
     }
 
@@ -48,6 +49,7 @@ final readonly class TextCatalogue
                 }
                 $address = $domain.'|'.$key;
                 $mine = $own[$address] ?? null;
+                $counted = CountedTexts::counted($at);
                 $entry = new TextCatalogueEntry(
                     $domain,
                     $key,
@@ -56,9 +58,10 @@ final readonly class TextCatalogue
                     null === $company ? null : $mine?->getValue(),
                     $mine?->getVersion() ?? 0,
                     null !== $mine && $mine->getOriginal() !== $original,
-                    CountedTexts::counted($at),
+                    $counted,
+                    $counted && null !== $mine && !$this->forms->everyCountChooses($mine->getValue(), $language),
                 );
-                if (($query->originalChanged && !$entry->originalChanged) || !self::says($entry, $wanted)) {
+                if (($query->originalChanged && !$entry->originalChanged) || ($query->formsMissing && !$entry->formsMissing) || !self::says($entry, $wanted)) {
                     continue;
                 }
                 $found[] = $entry;

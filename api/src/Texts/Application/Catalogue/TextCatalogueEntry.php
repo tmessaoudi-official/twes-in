@@ -12,7 +12,8 @@ namespace App\Texts\Application\Catalogue;
 /**
  * One text a writer may word otherwise: the original shipped, the installation's wording and the company's (null where
  * none), the version of the writer's own level (0 for none), and whether the original changed since the writer's own
- * was written, and whether its code hands it a count that chooses among its forms (`CountedTexts`).
+ * was written, whether its code hands it a count that chooses among its forms (`CountedTexts`), and whether the writer's own
+ * wording gives some count none, which « Textes » refuses on save but a wording saved before it checked, or by hand, may.
  */
 final readonly class TextCatalogueEntry
 {
@@ -25,6 +26,7 @@ final readonly class TextCatalogueEntry
         public int $version,
         public bool $originalChanged,
         public bool $counted,
+        public bool $formsMissing,
     ) {
     }
 }

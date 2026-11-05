@@ -50,6 +50,7 @@ const TITLE: TextRow = {
   version: 0,
   originalChanged: false,
   counted: false,
+  formsMissing: false,
 };
 
 /**
@@ -160,6 +161,7 @@ describe('TextsPage', () => {
       words: 'facture',
       place: 'pdf',
       changed: true,
+      forms: false,
       page: 2,
       itemsPerPage: 50,
     });
@@ -180,6 +182,51 @@ describe('TextsPage', () => {
       expect.objectContaining({ words: 'facture', page: 2 }),
     );
   });
+
+  // Saved before « Textes » checked its forms, or by hand: the document fails at some count, and the writer is told here.
+  it.each(['company', 'installation'] as const)(
+    'marks and filters a wording of its own %s level that some count chooses no form of',
+    async (level) => {
+      await open(level);
+      fixture.componentInstance['onQuery']({
+        query: '',
+        filters: { changed: 'forms' },
+        sort: null,
+        pageIndex: 0,
+        pageSize: 25,
+      });
+      expect(facade.load).toHaveBeenLastCalledWith(
+        expect.anything(),
+        'fr',
+        expect.objectContaining({ changed: false, forms: true }),
+      );
+
+      const own =
+        level === 'company'
+          ? { company: 'Sous %days% jour' }
+          : { installation: 'Sous %days% jour' };
+      rows.set([
+        { ...TITLE, key: 'invoice.payment_terms', counted: true, formsMissing: true, ...own },
+      ]);
+      fixture.detectChanges();
+      const mark = fixture.nativeElement.querySelector(
+        '[data-testid="text-forms-missing-invoice.payment_terms"]',
+      ) as HTMLElement | null;
+      expect(mark?.classList.contains('text-error')).toBe(true);
+      // Only the writer's own wording: on a company's page the installation's beside it is not marked.
+      expect(
+        fixture.nativeElement.querySelectorAll('[data-testid^="text-forms-missing-"]').length,
+      ).toBe(1);
+
+      rows.set([{ ...TITLE, key: 'invoice.payment_terms', counted: true, ...own }]);
+      fixture.detectChanges();
+      expect(
+        fixture.nativeElement.querySelector(
+          '[data-testid="text-forms-missing-invoice.payment_terms"]',
+        ),
+      ).toBeNull();
+    },
+  );
 
   // A few thousand texts a language: the list is found by what is typed into its own search, at both levels.
   it.each(['company', 'installation'] as const)(

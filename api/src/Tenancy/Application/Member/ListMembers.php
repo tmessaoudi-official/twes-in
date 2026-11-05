@@ -70,6 +70,7 @@ final readonly class ListMembers
                 $i->isUsableAt($now) ? MemberView::INVITED : MemberView::EXPIRED,
                 $i->getId()->toRfc4122(),
                 $i->getExpiresAt()->format(\DATE_ATOM),
+                mailFailed: null !== $i->getMailFailedAt(),
             ),
             $this->invitations->unusedOfCompany($companyId, $now->sub(new \DateInterval($this->expiredShownFor))),
         );

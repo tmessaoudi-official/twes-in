@@ -135,7 +135,7 @@ final readonly class TextsController
         return $response;
     }
 
-    /** `q`, `domain`, `changed`, `page` from 1 and `itemsPerPage` up to app.texts.catalogue_page_max; anything else is refused. */
+    /** `q`, `domain`, `changed`, `forms`, `page` from 1 and `itemsPerPage` up to app.texts.catalogue_page_max; anything else is refused. */
     private function catalogue(Request $request, ?Company $company, string $language): Response
     {
         if (!$this->read->speaks($language)) {
@@ -147,11 +147,12 @@ final readonly class TextsController
         $search = $asked->has('q') ? $asked->getString('q') : null;
         $domain = $asked->has('domain') ? $asked->getString('domain') : null;
         $changed = $asked->getString('changed', '0');
+        $forms = $asked->getString('forms', '0');
         if (1 !== preg_match('/^[1-9][0-9]{0,5}$/', $page) || 1 !== preg_match('/^[1-9][0-9]{0,5}$/', $perPage) || (int) $perPage > $this->pageMax
-            || !\in_array($changed, ['0', '1', 'true', 'false'], true)) {
-            return new JsonResponse(['error' => 'invalid_query', 'detail' => \sprintf('page from 1, itemsPerPage from 1 to %d, q and domain a text, changed 1 or 0.', $this->pageMax)], Response::HTTP_UNPROCESSABLE_ENTITY);
+            || !\in_array($changed, ['0', '1', 'true', 'false'], true) || !\in_array($forms, ['0', '1', 'true', 'false'], true)) {
+            return new JsonResponse(['error' => 'invalid_query', 'detail' => \sprintf('page from 1, itemsPerPage from 1 to %d, q and domain a text, changed and forms 1 or 0.', $this->pageMax)], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
-        $query = new TextCatalogueQuery(TypedText::trimmedOrNull($search), TypedText::trimmedOrNull($domain), \in_array($changed, ['1', 'true'], true), (int) $page, (int) $perPage);
+        $query = new TextCatalogueQuery(TypedText::trimmedOrNull($search), TypedText::trimmedOrNull($domain), \in_array($changed, ['1', 'true'], true), \in_array($forms, ['1', 'true'], true), (int) $page, (int) $perPage);
         $found = $this->catalogue->page($company, $language, $query);
 
         return new JsonResponse([
@@ -164,6 +165,7 @@ final readonly class TextsController
                 'version' => $entry->version,
                 'originalChanged' => $entry->originalChanged,
                 'counted' => $entry->counted,
+                'formsMissing' => $entry->formsMissing,
             ], $found['items']),
             'total' => $found['total'],
             'page' => $query->page,

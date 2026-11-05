@@ -39,5 +39,27 @@
     testId="texts-list"
     [empty]="emptyState"
     emptyTestId="texts-empty"
-  />
+  >
+    <!-- The writer's own wording, marked where some count finds no form in it: what prints it fails at that count. -->
+    <ng-template appDataListCell="installation" let-view>
+      {{ view.installation }}
+      @if (installation() && view.row.formsMissing) {
+        <span
+          class="block text-sm text-error"
+          [attr.data-testid]="'text-forms-missing-' + view.key"
+          >{{ 'texts.forms_missing' | translate }}</span
+        >
+      }
+    </ng-template>
+    <ng-template appDataListCell="company" let-view>
+      {{ view.company }}
+      @if (view.row.formsMissing) {
+        <span
+          class="block text-sm text-error"
+          [attr.data-testid]="'text-forms-missing-' + view.key"
+          >{{ 'texts.forms_missing' | translate }}</span
+        >
+      }
+    </ng-template>
+  </app-data-list>
 </section>

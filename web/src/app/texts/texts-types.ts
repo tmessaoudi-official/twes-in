@@ -19,13 +19,20 @@ export interface TextRow {
   readonly originalChanged: boolean;
   /** Its code hands it a count, in every language, which chooses among the forms a « | » separates. */
   readonly counted: boolean;
+  /** The writer's own wording gives some count no form, so what it is printed in fails at that count. */
+  readonly formsMissing: boolean;
 }
 
-/** What the catalogue is asked for: the words looked for, one place, only the texts whose original changed, a page. */
+/**
+ * What the catalogue is asked for: the words looked for, one place, only the texts whose original changed or whose
+ * own wording gives some count no form, a page.
+ */
 export interface TextQuery {
   readonly words: string;
   readonly place: TextPlace | null;
   readonly changed: boolean;
+  /** Only the texts whose own wording gives some count no form. */
+  readonly forms: boolean;
   /** From 1. */
   readonly page: number;
   readonly itemsPerPage: number;

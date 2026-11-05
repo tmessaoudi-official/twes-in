@@ -22,7 +22,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { Select } from '../shared/form/select';
 import { languageChoices } from '../shared/i18n/language-options';
 import { DEFAULT_LANGUAGE, INTERFACE_LANGUAGES } from '../shared/i18n/languages';
-import { DataList } from '../shared/list/data-list';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import type { EmptyState, ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { TextDialog, type TextDialogData } from './text-dialog';
@@ -58,7 +58,7 @@ const TEXT_CHANGES = ['text'];
  */
 @Component({
   selector: 'app-texts-page',
-  imports: [DataList, FormsModule, MatIconModule, RouterLink, Select, TranslatePipe],
+  imports: [DataList, DataListCell, FormsModule, MatIconModule, RouterLink, Select, TranslatePipe],
   templateUrl: './texts-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -159,8 +159,12 @@ export class TextsPage implements OnInit {
       {
         id: 'changed',
         label: 'texts.filters.changed',
-        value: (view) => (view.row.originalChanged ? 'changed' : null),
-        options: [{ value: 'changed', label: 'texts.filters.original_changed' }],
+        value: (view) =>
+          view.row.originalChanged ? 'changed' : view.row.formsMissing ? 'forms' : null,
+        options: [
+          { value: 'changed', label: 'texts.filters.original_changed' },
+          { value: 'forms', label: 'texts.filters.forms_missing' },
+        ],
       },
     ],
     actions: [
@@ -222,6 +226,7 @@ export class TextsPage implements OnInit {
       words: last.query,
       place: TEXT_PLACES.find((place) => place === last.filters['place']) ?? null,
       changed: last.filters['changed'] === 'changed',
+      forms: last.filters['changed'] === 'forms',
       page: last.pageIndex + 1,
       itemsPerPage: last.pageSize,
     });

@@ -16,6 +16,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Invitation;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
+use App\Tenancy\Infrastructure\ApiPlatform\Resource\MemberResource;
 use App\Tenancy\Infrastructure\Invitation\InvitationToMail;
 use App\Tests\Support\RecordingRealtimePublisher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -480,6 +481,42 @@ final class InvitationTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->getJson($unsent);
         self::assertSame([], $this->jsonList());
+    }
+
+    public function testAnInvitationWhoseMailFailedForGoodIsSaidAsNotSentInTheMembersList(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
+        $this->login('owner@twes.local', 'password-1234');
+        $this->stepUp('password-1234');
+        $company = '/api/companies/'.$this->company->getId()->toRfc4122();
+        $this->postJson($company.'/members', ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        [$message] = $this->queued();
+        self::assertInstanceOf(InvitationToMail::class, $message);
+        // Read anew each time: the list changes between the reads.
+        $invited = /** @phpstan-impure */ function () use ($company): array {
+            $this->getJson($company.'/members');
+            self::assertResponseIsSuccessful();
+            $rows = array_values(array_filter($this->jsonList(), static fn (array $row): bool => 'stranger@twes.local' === ($row['email'] ?? null)));
+            self::assertCount(1, $rows);
+
+            return $rows[0];
+        };
+        self::assertFalse($invited()['mailFailed'] ?? null, 'an invitation on its way reads as sent');
+
+        static::getContainer()->get(EventDispatcherInterface::class)->dispatch(new WorkerMessageFailedEvent(
+            new Envelope($message, [new ReceivedStamp('async'), new RedeliveryStamp(3)]),
+            'async',
+            new \RuntimeException('The mail server is unreachable.'),
+        ));
+        $row = $invited();
+        self::assertSame([MemberResource::INVITED, true], [$row['status'] ?? null, $row['mailFailed'] ?? null]);
+
+        // Sent again from the list, the open invitation is replaced by one on its way.
+        $this->postJson($company.'/members', ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $replaced = $invited();
+        self::assertFalse($replaced['mailFailed'] ?? null);
     }
 
     public function testAnInvitationReplacedBeforeTheWorkerRanIsNotMailed(): void

@@ -32,6 +32,7 @@ export class TextCatalogueApi {
     if (typedText(query.words) !== '') params = params.set('q', typedText(query.words));
     if (query.place !== null) params = params.set('domain', query.place);
     if (query.changed) params = params.set('changed', '1');
+    if (query.forms) params = params.set('forms', '1');
     const found = await firstValueFrom(
       this.http.get<TextCataloguePage>(`${base(level, language)}/catalogue`, { params }),
     );
