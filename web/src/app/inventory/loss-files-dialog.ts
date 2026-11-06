@@ -10,6 +10,7 @@ import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 import { MomentPipe } from '../shared/i18n/format-pipes';
 import { InventoryFacade } from './inventory-facade';
 import type { StockLossFile } from './inventory-types';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 export interface LossFilesDialogData {
   companyId: string;
@@ -27,7 +28,7 @@ export interface LossFilesDialogData {
  */
 @Component({
   selector: 'app-loss-files-dialog',
-  imports: [MatButtonModule, MatDialogModule, TranslatePipe, FileDrop, MomentPipe],
+  imports: [ReadFailed, MatButtonModule, MatDialogModule, TranslatePipe, FileDrop, MomentPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="loss-files-title">
@@ -41,9 +42,14 @@ export interface LossFilesDialogData {
         </p>
         <p class="text-sm text-on-surface-variant">{{ 'inventory.loss.files.hint' | translate }}</p>
         @if (error(); as code) {
-          <p role="alert" class="text-error" data-testid="loss-files-error">
+          <app-read-failed
+            testId="loss-files-error"
+            retryTestId="loss-files-retry"
+            [retryable]="readFailed()"
+            (retry)="readAgain()"
+          >
             {{ 'inventory.errors.' + code | translate }}
-          </p>
+          </app-read-failed>
         }
         @if (files(); as list) {
           @if (list.length === 0) {
@@ -113,6 +119,7 @@ export class LossFilesDialog {
   protected readonly files = signal<readonly StockLossFile[] | null>(null);
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
 
   constructor() {
     void this.read();
@@ -170,5 +177,10 @@ export class LossFilesDialog {
 
   private async read(): Promise<void> {
     this.files.set(await this.facade.lossFiles(this.data.companyId, this.data.movementId));
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    void this.read();
   }
 }

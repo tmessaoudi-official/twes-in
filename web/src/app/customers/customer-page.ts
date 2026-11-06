@@ -52,11 +52,13 @@ import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** One customer: a new one to fill in, or an existing one with the people to write to there. */
 @Component({
   selector: 'app-customer-page',
   imports: [
+    ReadFailed,
     StickyHeaderSize,
     MatButtonModule,
     MatCardModule,
@@ -91,6 +93,7 @@ export class CustomerPage {
   protected readonly id = computed(() => this.customerId() ?? null);
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly contacts = this.facade.contacts;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
 
@@ -503,5 +506,11 @@ export class CustomerPage {
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
     await this.facade.removeContact(companyId, id, row.id);
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.facade.loadCustomer(companyId, this.id());
   }
 }

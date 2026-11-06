@@ -224,6 +224,20 @@ describe('RecentlyDeletedPage', () => {
     expect(q('removals-empty')).toBeNull();
   });
 
+  it('reads the list again on « Réessayer »', async () => {
+    api.pending.mockRejectedValueOnce(new Error('down')).mockResolvedValue([]);
+    await open();
+    expect(q('removals-error')).not.toBeNull();
+
+    q('removals-retry')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(api.pending).toHaveBeenCalledTimes(2);
+    expect(q('removals-error')).toBeNull();
+  });
+
   it('shows a merge with the record kept, and undoes it from its own button', async () => {
     api.pending.mockResolvedValue([merge, one]);
     await open();

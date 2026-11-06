@@ -162,6 +162,22 @@ describe('ClosingPage', () => {
     await closeThrough('2026-09-15');
 
     expect(q('closing-error')?.textContent).toContain('company.closing.errors.invalid');
+    // A refused day is not undone by reading again.
+    expect(q('closing-retry')).toBeNull();
+  });
+
+  it('says the closing could not be read, and reads it again on « Réessayer »', async () => {
+    api.read.mockRejectedValueOnce(new ClosingRefused('network'));
+    fixture = TestBed.createComponent(ClosingPage);
+    await settle();
+    expect(q('closing-error')).not.toBeNull();
+    api.read.mockResolvedValue({ closedThrough: '2026-09-30', writable: true });
+
+    q('closing-retry')!.click();
+    await settle();
+
+    expect(api.read).toHaveBeenCalledTimes(2);
+    expect(q('closing-error')).toBeNull();
   });
 
   it("adds nothing of its own to the demo's refusal, which the toast has said", async () => {

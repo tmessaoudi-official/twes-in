@@ -44,10 +44,11 @@ const row = (reference: string, onHand: string | null): ProductSubstituteRow => 
 // docs/SPEC.md § 7: the other products of a substitution group, each with its stock when it may be read.
 describe('ProductSubstitutesSection', () => {
   const rows = signal<readonly ProductSubstituteRow[]>([]);
+  const error = signal<string | null>(null);
   const facade = {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal(null).asReadonly(),
+    error: error.asReadonly(),
     load: vi.fn(),
   };
   const auth = { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }) };
@@ -66,6 +67,7 @@ describe('ProductSubstitutesSection', () => {
   }
 
   beforeEach(() => {
+    error.set(null);
     rows.set([row('ART-002', '7.000'), row('ART-003', null)]);
     facade.load.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
@@ -80,6 +82,16 @@ describe('ProductSubstitutesSection', () => {
         { provide: AuthFacade, useValue: auth },
       ],
     });
+  });
+
+  it('says the substitutes could not be read, and reads them again on « Réessayer »', async () => {
+    error.set('network');
+    await open('G1');
+    expect(q('product-substitutes-error')).not.toBeNull();
+
+    q('product-substitutes-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(2);
   });
 
   it('lists each substitute with its stock, and no quantity where stock cannot be read', async () => {

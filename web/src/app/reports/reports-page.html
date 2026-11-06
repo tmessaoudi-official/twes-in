@@ -3,9 +3,9 @@
   <p class="text-sm text-on-surface-variant">{{ 'reports.intro' | translate }}</p>
 
   @if (failed()) {
-    <p role="alert" class="text-error" data-testid="reports-failed">
+    <app-read-failed testId="reports-failed" retryTestId="reports-retry" (retry)="readAgain()">
       {{ 'reports.errors.catalogue' | translate }}
-    </p>
+    </app-read-failed>
   }
 
   @if (empty()) {

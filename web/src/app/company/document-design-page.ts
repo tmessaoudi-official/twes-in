@@ -52,6 +52,7 @@ import {
   type WatermarkSpread,
 } from './document-design-types';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** How long the choice rests before its preview is asked for: a picture per keystroke would be wasted. */
 export const PREVIEW_DELAY_MS = 300;
@@ -64,6 +65,7 @@ export const PREVIEW_DELAY_MS = 300;
 @Component({
   selector: 'app-document-design-page',
   imports: [
+    ReadFailed,
     StickyHeaderSize,
     ReactiveFormsModule,
     CountInput,
@@ -98,6 +100,7 @@ export class DocumentDesignPage implements OnInit {
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
+  protected readonly readFailed = this.settings.readFailed;
   protected readonly rows = this.settings.rows;
   protected readonly refusals = this.settings.refusals;
   protected readonly picture = this.design.picture;
@@ -214,6 +217,12 @@ export class DocumentDesignPage implements OnInit {
       });
     }
     logoKeepsProportions.setValue(keeps);
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId && this.mayManage()) void this.load(companyId);
   }
 
   async ngOnInit(): Promise<void> {

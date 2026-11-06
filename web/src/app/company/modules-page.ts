@@ -19,6 +19,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { ModulesFacade } from './modules-facade';
 import type { ModuleRow } from './modules-types';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * The modules the company has on, one switch each. A module switched off leaves the navigation and its pages, and
@@ -26,7 +27,7 @@ import type { ModuleRow } from './modules-types';
  */
 @Component({
   selector: 'app-modules-page',
-  imports: [MatButtonModule, MatSlideToggleModule, TranslatePipe],
+  imports: [ReadFailed, MatButtonModule, MatSlideToggleModule, TranslatePipe],
   templateUrl: './modules-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -56,6 +57,7 @@ export class ModulesPage implements OnInit {
   protected readonly showComing = inject(ThemeFacade).showComing;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
 
@@ -77,6 +79,12 @@ export class ModulesPage implements OnInit {
         return [];
     }
   });
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.facade.load(companyId);
+  }
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;

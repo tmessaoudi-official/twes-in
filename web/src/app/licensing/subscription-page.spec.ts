@@ -99,11 +99,13 @@ describe('SubscriptionPage', () => {
   const subscription = signal<SubscriptionView | null>(unpaid);
   const managed = signal(true);
   const error = signal<SubscriptionError | null>(null);
+  const readFailed = signal(false);
   const facade = {
     subscription: subscription.asReadonly(),
     managed: managed.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     declare: vi.fn(),
@@ -135,6 +137,7 @@ describe('SubscriptionPage', () => {
   }
 
   beforeEach(async () => {
+    readFailed.set(false);
     subscription.set(unpaid);
     managed.set(true);
     error.set(null);
@@ -240,5 +243,24 @@ describe('SubscriptionPage', () => {
     await open();
 
     expect(q('subscription-error')?.textContent).toContain('déjà en attente');
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    error.set('network');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(q('subscription-error')).not.toBeNull();
+    expect(q('subscription-retry')).toBeNull();
+
+    readFailed.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const before = facade.load.mock.calls.length;
+    q('subscription-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(before + 1);
   });
 });

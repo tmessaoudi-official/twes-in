@@ -151,12 +151,14 @@ describe('ExpensePage', () => {
   const expense = signal<ExpenseRow | null>(null);
   const attachments = signal<readonly ExpenseAttachment[]>([]);
   const optionsState = signal<ExpenseOptions | null>(options);
+  const readFailed = signal(false);
   const facade = {
     options: optionsState.asReadonly(),
     expense: expense.asReadonly(),
     attachments: attachments.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     refusals: refusals.asReadonly(),
     pickVendors: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? vendors.filter((each) => asked.ids.includes(each.id)) : vendors,
@@ -258,6 +260,7 @@ describe('ExpensePage', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     error.set(null);
     refusals.set([]);
     expense.set(null);
@@ -1234,5 +1237,20 @@ describe('ExpensePage', () => {
     fixture.destroy();
     await open('e1');
     expect(q('record-make-recurring')).toBeNull();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open('e1');
+    error.set('network');
+    await settle();
+    expect(q('expense-error')).not.toBeNull();
+    expect(q('expense-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.loadExpense.mock.calls.length;
+    q('expense-retry')!.click();
+
+    expect(facade.loadExpense).toHaveBeenCalledTimes(before + 1);
   });
 });

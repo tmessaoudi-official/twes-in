@@ -17,6 +17,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { DayPipe } from '../shared/i18n/format-pipes';
 import type { InvoiceReminderRow } from './invoices-types';
 import { RemindersApi } from './reminders-api';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * The stages of the company's reminder calendar a late invoice reached, each with the late fee it drafted when the
@@ -25,12 +26,16 @@ import { RemindersApi } from './reminders-api';
  */
 @Component({
   selector: 'app-invoice-reminders',
-  imports: [MatCardModule, RouterLink, TranslatePipe, DayPipe],
+  imports: [ReadFailed, MatCardModule, RouterLink, TranslatePipe, DayPipe],
   template: `
     @if (error()) {
-      <p role="alert" class="text-error" data-testid="invoice-reminders-error">
+      <app-read-failed
+        testId="invoice-reminders-error"
+        retryTestId="invoice-reminders-retry"
+        (retry)="readAgain()"
+      >
         {{ 'invoices.reminders.error' | translate }}
-      </p>
+      </app-read-failed>
     } @else if (rows().length > 0) {
       <mat-card data-testid="invoice-reminders">
         <mat-card-content>
@@ -91,6 +96,11 @@ export class InvoiceReminders {
       () => this.load(this.companyId(), this.invoiceId(), true),
       inject(DestroyRef),
     );
+  }
+
+  /** « Réessayer »: the reminders read as on opening. */
+  protected readAgain(): void {
+    void this.load(this.companyId(), this.invoiceId());
   }
 
   private async load(companyId: string, invoiceId: string, quiet = false): Promise<void> {

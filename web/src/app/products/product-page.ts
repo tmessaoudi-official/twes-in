@@ -61,11 +61,13 @@ import { RecordBar } from '../shared/form/record-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 import { typedText } from '../shared/form/typed-text';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** One product: a new one to fill in, or an existing one to revise. */
 @Component({
   selector: 'app-product-page',
   imports: [
+    ReadFailed,
     StickyHeaderSize,
     MatButtonModule,
     MatCardModule,
@@ -123,6 +125,7 @@ export class ProductPage {
   protected readonly id = computed(() => this.productId() ?? null);
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));
   /** What the form offers as a field is typed: the substitution groups the company's products already carry. */
@@ -656,6 +659,12 @@ export class ProductPage {
   private showRefused(): void {
     const refused = this.facade.refusals();
     if (refused.length > 0) this.mainForm()?.showRefused(refused);
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.facade.loadProduct(companyId, this.id());
   }
 }
 

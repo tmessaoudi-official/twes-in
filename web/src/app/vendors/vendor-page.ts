@@ -34,12 +34,14 @@ import { RecordDeletes } from '../shared/records/record-deletes';
 import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 import { VendorPurchasesSection } from './vendor-purchases';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
 
 @Component({
   selector: 'app-vendor-page',
   imports: [
+    ReadFailed,
     StickyHeaderSize,
     MatButtonModule,
     MatCardModule,
@@ -69,6 +71,7 @@ export class VendorPage {
   protected readonly id = computed(() => this.vendorId() ?? null);
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('vendor.write'));
   /** « Achats » shows what each line cost: it takes the right to read costs, as the API does. */
@@ -292,5 +295,11 @@ export class VendorPage {
   private showRefused(): void {
     const refused = this.facade.refusals();
     if (refused.length > 0) this.mainForm()?.showRefused(refused);
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.facade.loadVendor(companyId, this.id());
   }
 }

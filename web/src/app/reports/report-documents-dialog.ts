@@ -9,6 +9,7 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { documentLink } from './report-view';
 import { ReportsFacade } from './reports-facade';
 import type { ReportDocument, ReportDocuments, ReportQuery } from './reports-types';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 export interface ReportDocumentsData {
   readonly companyId: string;
@@ -25,7 +26,15 @@ export interface ReportDocumentsData {
  */
 @Component({
   selector: 'app-report-documents-dialog',
-  imports: [AmountPipe, DayPipe, MatButtonModule, MatDialogModule, RouterLink, TranslatePipe],
+  imports: [
+    ReadFailed,
+    AmountPipe,
+    DayPipe,
+    MatButtonModule,
+    MatDialogModule,
+    RouterLink,
+    TranslatePipe,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="report-documents-title">
@@ -35,17 +44,13 @@ export interface ReportDocumentsData {
       <!-- Material's own display beats a layout class on mat-dialog-content: the layout goes on a div inside it. -->
       <div class="flex flex-col gap-3">
         @if (failed()) {
-          <p role="alert" class="text-error" data-testid="report-documents-failed">
-            {{ 'reports.documents.failed' | translate }}
-          </p>
-          <button
-            mat-button
-            type="button"
-            data-testid="report-documents-retry"
-            (click)="readDocuments()"
+          <app-read-failed
+            testId="report-documents-failed"
+            retryTestId="report-documents-retry"
+            (retry)="readDocuments()"
           >
-            {{ 'feedback.retry' | translate }}
-          </button>
+            {{ 'reports.documents.failed' | translate }}
+          </app-read-failed>
         }
         @if (read(); as answer) {
           @if (answer.documents.length === 0) {

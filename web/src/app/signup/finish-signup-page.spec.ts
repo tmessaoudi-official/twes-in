@@ -182,6 +182,21 @@ describe('FinishSignupPage', () => {
     expect(query('signup-password-error')?.textContent).toContain('Trop court : 12 au moins');
   });
 
+  it('reads the link again when the server could not be reached, and offers no « Réessayer » for a link past use', async () => {
+    linkEmail.set(null);
+    error.set('network');
+    const { fixture, query } = await render();
+    const before = facade.loadLink.mock.calls.length;
+
+    query('signup-link-retry')!.click();
+    expect(facade.loadLink).toHaveBeenCalledTimes(before + 1);
+    expect(facade.loadLink).toHaveBeenLastCalledWith('a-token');
+
+    error.set('not_usable');
+    await fixture.whenStable();
+    expect(query('signup-link-retry')).toBeNull();
+  });
+
   it('says a link that cannot be used cannot, and offers nothing to fill in', async () => {
     linkEmail.set(null);
     error.set('not_usable');

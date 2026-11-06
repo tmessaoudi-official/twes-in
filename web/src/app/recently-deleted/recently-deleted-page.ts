@@ -18,6 +18,7 @@ import { MomentPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { DELETABLE_SUBJECTS, RecordDeletes } from '../shared/records/record-deletes';
 import { RecordRemovalsApi, type RecordRemoval } from '../shared/records/record-removals-api';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** The record removal's own kind: a delete that became final leaves the list. */
 const REMOVAL_KIND = 'record_removal';
@@ -29,7 +30,7 @@ const REMOVAL_KIND = 'record_removal';
  */
 @Component({
   selector: 'app-recently-deleted-page',
-  imports: [MatButtonModule, MatIconModule, MomentPipe, TranslatePipe, DurationPipe],
+  imports: [ReadFailed, MatButtonModule, MatIconModule, MomentPipe, TranslatePipe, DurationPipe],
   templateUrl: './recently-deleted-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -70,6 +71,12 @@ export class RecentlyDeletedPage implements OnInit {
     } finally {
       this.restoring.set(null);
     }
+  }
+
+  /** « Réessayer »: the list read as on opening. */
+  protected readAgain(): void {
+    const companyId = this.auth.me()?.company?.id;
+    if (companyId) void this.load(companyId);
   }
 
   private async load(companyId: string): Promise<void> {

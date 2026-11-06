@@ -210,12 +210,14 @@ describe('ImportPage', () => {
   const error = signal<string | null>(null);
   const recent = signal<readonly ImportRunSummary[]>([]);
   const undone = signal<ImportUndone | null>(null);
+  const readFailed = signal(false);
   const facade = {
     guide: guide.asReadonly(),
     report: report.asReadonly(),
     refusal: refusal.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     recent: recent.asReadonly(),
     undone: undone.asReadonly(),
     loadRecent: vi.fn(async () => undefined),
@@ -265,6 +267,7 @@ describe('ImportPage', () => {
   }
 
   beforeEach(async () => {
+    readFailed.set(false);
     guide.set(GUIDE);
     report.set(null);
     refusal.set(null);
@@ -1348,5 +1351,19 @@ describe('ImportPage', () => {
       ].map((item: Element) => item.textContent!.trim());
       expect(stock).toEqual(['VIS-6X40 à A1 : 2,5 repris.', 'P-OLD à A1 : sorti depuis.']);
     });
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    error.set('network');
+    await settle();
+    expect(q('import-error')).not.toBeNull();
+    expect(q('import-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.load.mock.calls.length;
+    q('import-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(before + 1);
   });
 });

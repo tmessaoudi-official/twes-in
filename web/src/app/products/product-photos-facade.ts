@@ -23,6 +23,8 @@ export class ProductPhotos {
   readonly busy = this.state.busy;
   /** Why the last change was refused; null once another succeeds. */
   readonly refusal = this.state.error;
+  /** Whether `refusal` is a read's failure, which « Réessayer » answers; a refused upload is not. */
+  readonly readFailed = this.state.readFailed;
   readonly main = computed(() => this.photosSignal().find((photo) => photo.main) ?? null);
   /** The product whose gallery is held: what is held answers for that product only. */
   readonly loadedFor = this.loadedForSignal.asReadonly();

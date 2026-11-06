@@ -59,9 +59,14 @@
     </p>
   }
   @if (error(); as code) {
-    <p role="alert" data-testid="expense-error" class="text-error">
+    <app-read-failed
+      testId="expense-error"
+      retryTestId="expense-retry"
+      [retryable]="readFailed()"
+      (retry)="readAgain()"
+    >
       {{ 'expenses.errors.' + code | translate }}
-    </p>
+    </app-read-failed>
   }
 
   @if (current(); as expense) {

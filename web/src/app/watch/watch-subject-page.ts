@@ -9,7 +9,6 @@ import {
   inject,
   type OnInit,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -24,6 +23,7 @@ import { hintKey, permittedList, subjectView } from './watch-subjects';
 import { withSessionKinds } from '../shared/session/session-kinds';
 import { WATCHED_KINDS } from './watch-types';
 import { watchRowView } from './watch-view';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * One subject of « À surveiller » (docs/SPEC.md § 7, the subject pages): what to act on in it, a page at a time, each
@@ -32,7 +32,7 @@ import { watchRowView } from './watch-view';
  */
 @Component({
   selector: 'app-watch-subject-page',
-  imports: [DataList, MatButtonModule, MatIconModule, RouterLink, RouterLinkActive, TranslatePipe],
+  imports: [ReadFailed, DataList, MatIconModule, RouterLink, RouterLinkActive, TranslatePipe],
   templateUrl: './watch-subject-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

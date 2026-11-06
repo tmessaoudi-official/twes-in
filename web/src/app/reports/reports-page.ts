@@ -16,6 +16,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { withSessionKinds } from '../shared/session/session-kinds';
 import { ReportsFacade } from './reports-facade';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * « Rapports »: the reports this member may read, in the order the API offers them,
@@ -23,7 +24,7 @@ import { ReportsFacade } from './reports-facade';
  */
 @Component({
   selector: 'app-reports-page',
-  imports: [MatCardModule, MatIconModule, RouterLink, TranslatePipe],
+  imports: [ReadFailed, MatCardModule, MatIconModule, RouterLink, TranslatePipe],
   templateUrl: './reports-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -46,5 +47,11 @@ export class ReportsPage implements OnInit {
       this.destroyRef,
     );
     await this.facade.loadCatalogue(companyId);
+  }
+
+  /** « Réessayer »: the catalogue read as on opening. */
+  protected readAgain(): void {
+    const companyId = this.auth.me()?.company?.id;
+    if (companyId) void this.facade.loadCatalogue(companyId);
   }
 }

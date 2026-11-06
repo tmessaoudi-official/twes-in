@@ -194,6 +194,22 @@ describe('AcceptInvitationPage', () => {
     expect(byTestId('invitation-back')?.getAttribute('href')).toBe('/login');
   });
 
+  it('reads the link again when the server could not be reached, and offers no « Réessayer » for a link past use', async () => {
+    invitation.load.mockResolvedValue(null);
+    failed.set('network');
+    await render(null);
+    const before = invitation.load.mock.calls.length;
+
+    byTestId('invitation-retry')!.click();
+    expect(invitation.load).toHaveBeenCalledTimes(before + 1);
+    expect(invitation.load).toHaveBeenLastCalledWith('a-token');
+
+    failed.set('not_usable');
+    fixture.detectChanges();
+    expect(byTestId('invitation-error')).not.toBeNull();
+    expect(byTestId('invitation-retry')).toBeNull();
+  });
+
   it('says the role it was sent for has gone and to ask for a new invitation', async () => {
     invitation.load.mockResolvedValue(null);
     failed.set('role_gone');

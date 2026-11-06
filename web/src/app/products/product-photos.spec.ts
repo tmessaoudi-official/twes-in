@@ -46,11 +46,13 @@ const photo = (id: string, main = false): ProductPhotoRow => ({
 describe('ProductPhotosSection', () => {
   const photos = signal<readonly ProductPhotoRow[]>([]);
   const refusal = signal<ProductPhotoRefusal | null>(null);
+  const readFailed = signal(false);
   const facade = {
     photos: photos.asReadonly(),
     main: computed(() => photos().find((each) => each.main) ?? null),
     busy: signal(false).asReadonly(),
     refusal: refusal.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     load: vi.fn(),
     add: vi.fn(),
     markMain: vi.fn(),
@@ -83,6 +85,7 @@ describe('ProductPhotosSection', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     photos.set([]);
     refusal.set(null);
     for (const call of [facade.load, facade.add, facade.markMain, facade.move, facade.order]) {
@@ -266,5 +269,24 @@ describe('ProductPhotosSection', () => {
     ]) {
       expect(q(testId)).toBeNull();
     }
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    refusal.set({ code: 'network', params: {} });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(q('product-photos-error')).not.toBeNull();
+    expect(q('product-photos-retry')).toBeNull();
+
+    readFailed.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const before = facade.load.mock.calls.length;
+    q('product-photos-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(before + 1);
   });
 });

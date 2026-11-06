@@ -27,6 +27,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { ProductReorderPoints, type ReorderPointWrite } from './product-reorder-points-facade';
 import type { ProductReorderPointRow } from './products-types';
 import { typedText } from '../shared/form/typed-text';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** A quantity from 0 with at most three decimals, as the API takes it; whether the unit counts that finely is its rule. */
 const QUANTITY = /^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/;
@@ -46,6 +47,7 @@ function plain(quantity: string | null): string {
 @Component({
   selector: 'app-product-reorder-points',
   imports: [
+    ReadFailed,
     FormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -77,6 +79,7 @@ export class ProductReorderPointsSection implements OnInit {
   protected readonly rows = this.points.rows;
   protected readonly busy = this.points.busy;
   protected readonly error = this.points.error;
+  protected readonly readFailed = this.points.readFailed;
   /** What is typed per establishment, until it is saved. */
   private readonly typed = signal<Record<string, string>>({});
   /** The point each typed value was typed over: one saved since by someone else is a conflict to resolve. */
@@ -96,6 +99,11 @@ export class ProductReorderPointsSection implements OnInit {
   constructor() {
     inject(UnsavedChanges).declare(this.unsaved);
     inject(LiveChanges).reloadOn(['product_reorder_point'], () => this.load(), inject(DestroyRef));
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    void this.load();
   }
 
   async ngOnInit(): Promise<void> {

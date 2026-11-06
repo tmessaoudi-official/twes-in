@@ -28,6 +28,7 @@ import { StatusBadge } from '../shared/ui/status-badge';
 import { ProductPhotos } from './product-photos-facade';
 import { PHOTO_TYPES, type ProductPhotoRow } from './product-photos-types';
 import { PhonePairing, type PhotoOutcome } from '../shared/scan/phone-pairing';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * A product's photos: the gallery in its order, the main one marked, each sent from this device or taken with the
@@ -37,6 +38,7 @@ import { PhonePairing, type PhotoOutcome } from '../shared/scan/phone-pairing';
 @Component({
   selector: 'app-product-photos',
   imports: [
+    ReadFailed,
     CdkDrag,
     CdkDragHandle,
     CdkDropList,
@@ -67,6 +69,7 @@ export class ProductPhotosSection implements OnInit {
   protected readonly photos = this.gallery.photos;
   protected readonly busy = this.gallery.busy;
   protected readonly refusal = this.gallery.refusal;
+  protected readonly readFailed = this.gallery.readFailed;
   protected readonly full = computed(() => this.photos().length >= this.maxPhotos());
   /** What a refusal says in numbers, from the limits this screen was given where the API's answer named none. */
   protected readonly refusalParams = computed(() => {
@@ -85,6 +88,11 @@ export class ProductPhotosSection implements OnInit {
   /** Whether a phone is lent to this tab, which can take the photo too. */
   protected readonly phoneLent = computed(() => this.phone.state()?.phone === 'connected');
   private readonly destroyRef = inject(DestroyRef);
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    void this.reload();
+  }
 
   async ngOnInit(): Promise<void> {
     // Another member's change to the product, its photos included, shows here too.

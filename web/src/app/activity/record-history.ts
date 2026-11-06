@@ -23,6 +23,7 @@ import { ActivityFieldsPipe } from './activity-fields-pipe';
 import { actionKey } from './activity-list';
 import { ACTIVITY_TEXTS } from './activity-texts';
 import { unnamedActorKey, type ActivityRow, type ActivitySearch } from './activity-types';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** How many of a record's latest entries its « Historique » shows; the journal holds the rest. */
 export const HISTORY_SIZE = 20;
@@ -33,12 +34,16 @@ export const HISTORY_SIZE = 20;
  */
 @Component({
   selector: 'app-record-history',
-  imports: [ActivityFieldsPipe, RouterLink, TranslatePipe, MomentPipe],
+  imports: [ReadFailed, ActivityFieldsPipe, RouterLink, TranslatePipe, MomentPipe],
   template: `
     @if (error()) {
-      <p role="alert" class="text-error" data-testid="record-history-error">
+      <app-read-failed
+        testId="record-history-error"
+        retryTestId="record-history-retry"
+        (retry)="readAgain()"
+      >
         {{ 'activity.errors.network' | translate }}
-      </p>
+      </app-read-failed>
     } @else if (rows().length === 0) {
       <p class="text-on-surface-variant" data-testid="record-history-empty">
         {{ 'activity.history.none' | translate }}
@@ -114,6 +119,11 @@ export class RecordHistory implements OnInit {
       () => this.load(this.companyId(), this.kind(), this.recordId()),
       this.destroyRef,
     );
+  }
+
+  /** « Réessayer »: the history read as on opening. */
+  protected readAgain(): void {
+    void this.load(this.companyId(), this.kind(), this.recordId());
   }
 
   private async load(companyId: string | null, kind: string, recordId: string): Promise<void> {

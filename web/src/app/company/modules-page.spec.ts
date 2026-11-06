@@ -88,10 +88,12 @@ const invoices: ModuleRow = {
 describe('ModulesPage', () => {
   const modules = signal<readonly ModuleRow[]>([customers, invoices]);
   const error = signal<ModulesError | null>(null);
+  const readFailed = signal(false);
   const facade = {
     modules: modules.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     switch: vi.fn(),
@@ -124,6 +126,7 @@ describe('ModulesPage', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     modules.set([customers, invoices]);
     showComing.set(true);
     error.set(null);
@@ -329,5 +332,20 @@ describe('ModulesPage', () => {
     auth.hasPermission.mockReturnValue(false);
     await open();
     expect(q('module-notify-quotes')).toBeNull();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    error.set('network');
+    await settle();
+    expect(q('modules-error')).not.toBeNull();
+    expect(q('modules-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.load.mock.calls.length;
+    q('modules-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(before + 1);
   });
 });

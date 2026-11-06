@@ -40,6 +40,7 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingRefusalLines } from '../shared/settings/setting-refusal-lines';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** A planned module's settings, said in words: what a company will be able to set once it ships. */
 export interface PlannedSetting {
@@ -69,6 +70,7 @@ export const PLANNED_SETTINGS: readonly PlannedSetting[] = [
 @Component({
   selector: 'app-settings-page',
   imports: [
+    ReadFailed,
     StickyHeaderSize,
     MatButtonModule,
     MatCardModule,
@@ -94,6 +96,7 @@ export class SettingsPage implements OnInit {
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
+  protected readonly readFailed = this.settings.readFailed;
   protected readonly rows = this.settings.rows;
   /** The settings the last save refused that no field of the form carries, named in the page's line. */
   protected readonly unplaced = signal<readonly FieldRefusal[]>([]);
@@ -170,6 +173,16 @@ export class SettingsPage implements OnInit {
 
   constructor() {
     inject(ScreenActions).declare(this.recordActions);
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (!companyId || !this.mayManage()) return;
+    const units = this.auth.hasPermission('fiscal.read')
+      ? this.fiscal.loadUnits(companyId)
+      : Promise.resolve();
+    void Promise.all([this.settings.load(companyId), units]);
   }
 
   async ngOnInit(): Promise<void> {

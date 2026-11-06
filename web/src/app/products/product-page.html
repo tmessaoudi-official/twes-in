@@ -58,9 +58,14 @@
     </div>
   }
   @if (error(); as code) {
-    <p role="alert" data-testid="product-error" class="text-error">
+    <app-read-failed
+      testId="product-error"
+      retryTestId="product-retry"
+      [retryable]="readFailed()"
+      (retry)="readAgain()"
+    >
       {{ 'products.errors.' + code | translate }}
-    </p>
+    </app-read-failed>
   }
 
   <!-- A long record splits into tabs, each saving its own (design review finding 4). -->

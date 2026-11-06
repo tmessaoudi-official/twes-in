@@ -31,6 +31,7 @@ import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import type { ActionConfirm } from '../shared/actions/screen-action';
 import { ClosingApi, type ClosingError, ClosingRefused, type CompanyClosing } from './closing-api';
 import { requestState } from '../shared/feedback/request-state';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * « Clôture des comptes »: the last day of the closed period, and closing through a later one. Once closed, no
@@ -40,6 +41,7 @@ import { requestState } from '../shared/feedback/request-state';
 @Component({
   selector: 'app-closing-page',
   imports: [
+    ReadFailed,
     DayCalendarButton,
     DayInput,
     ReactiveFormsModule,
@@ -69,6 +71,7 @@ export class ClosingPage implements OnInit {
     error instanceof ClosingRefused ? error.code : 'network',
   );
   protected readonly error = this.requests.error;
+  protected readonly readFailed = this.requests.readFailed;
   protected readonly busy = signal(false);
   /** The last day that may be closed: yesterday, on the company's own calendar. */
   protected readonly latest = computed(() => dayBefore(todayIn(this.company()?.timezone)));
@@ -77,6 +80,12 @@ export class ClosingPage implements OnInit {
   });
   /** A day typed and not closed through: leaving or reloading would lose it, so the page is held while it is there. */
   protected readonly changes = unsavedChanges(signal(this.form), signal(null));
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.load(companyId);
+  }
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;

@@ -23,6 +23,7 @@ import { labelCode, ProductLabel } from './product-label';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { LabelCode, LabelledProduct, ProductsError } from './products-types';
 import { typedText } from '../shared/form/typed-text';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** A product selected that gets no label, and why: no longer found, or holding no code of its own to print. */
 export interface LeftOutProduct {
@@ -40,7 +41,15 @@ export interface LeftOutProduct {
  */
 @Component({
   selector: 'app-product-labels-sheet-page',
-  imports: [MatButtonModule, MatIconModule, LabelCopies, ProductLabel, RouterLink, TranslatePipe],
+  imports: [
+    ReadFailed,
+    MatButtonModule,
+    MatIconModule,
+    LabelCopies,
+    ProductLabel,
+    RouterLink,
+    TranslatePipe,
+  ],
   templateUrl: './product-labels-sheet-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -106,6 +115,11 @@ export class ProductLabelsSheetPage {
   protected print(): void {
     if (this.copiesField()?.reveal()) return;
     this.document.defaultView?.print();
+  }
+
+  /** « Réessayer »: the labels asked for read again. */
+  protected readAgain(): void {
+    void this.load(this.asked());
   }
 
   private async load(asked: readonly string[]): Promise<void> {

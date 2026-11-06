@@ -27,12 +27,13 @@
       {{ 'reports.errors.gone' | translate }}
     </p>
   } @else if (catalogueFailed() && entry() === null) {
-    <p role="alert" class="text-error" data-testid="report-catalogue-failed">
+    <app-read-failed
+      testId="report-catalogue-failed"
+      retryTestId="report-catalogue-retry"
+      (retry)="readAgain()"
+    >
       {{ 'reports.errors.catalogue' | translate }}
-    </p>
-    <button mat-button type="button" data-testid="report-catalogue-retry" (click)="readAgain()">
-      {{ 'feedback.retry' | translate }}
-    </button>
+    </app-read-failed>
   }
 
   @if (entry(); as report) {
@@ -135,12 +136,13 @@
         </p>
       }
       @case ('unavailable') {
-        <p role="alert" class="text-error" data-testid="report-unavailable">
+        <app-read-failed
+          testId="report-unavailable"
+          retryTestId="report-retry"
+          (retry)="readAgain()"
+        >
           {{ 'reports.errors.unavailable' | translate }}
-        </p>
-        <button mat-button type="button" data-testid="report-retry" (click)="readAgain()">
-          {{ 'feedback.retry' | translate }}
-        </button>
+        </app-read-failed>
       }
     }
 

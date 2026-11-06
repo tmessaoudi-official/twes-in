@@ -23,6 +23,7 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { declaredPayment, paymentForm, paymentFormValues } from './subscription-forms';
 import { SubscriptionFacade } from './subscription-facade';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * The company's own subscription page: where it stands, what it costs, and the payments it declared. It is reachable
@@ -31,7 +32,15 @@ import { SubscriptionFacade } from './subscription-facade';
  */
 @Component({
   selector: 'app-subscription-page',
-  imports: [AmountPipe, DayPipe, MatButtonModule, MatCardModule, TranslatePipe, DescriptorForm],
+  imports: [
+    ReadFailed,
+    AmountPipe,
+    DayPipe,
+    MatButtonModule,
+    MatCardModule,
+    TranslatePipe,
+    DescriptorForm,
+  ],
   templateUrl: './subscription-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -46,6 +55,7 @@ export class SubscriptionPage implements OnInit {
   protected readonly managed = this.facade.managed;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly declaring = signal(false);
   protected readonly descriptor = paymentForm();
@@ -67,6 +77,12 @@ export class SubscriptionPage implements OnInit {
   protected coveredDay(moment: string): string {
     const company = this.company();
     return company === null ? '' : dayKey(moment, company.timezone);
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.facade.load(companyId);
   }
 
   async ngOnInit(): Promise<void> {

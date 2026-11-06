@@ -109,6 +109,19 @@ describe('RecordHistory', () => {
     await settle();
   });
 
+  it('says the history could not be read, and reads it again on « Réessayer »', async () => {
+    api.entries.mockRejectedValueOnce(new Error('offline'));
+    fixture = TestBed.createComponent(Host);
+    await settle();
+    expect(q('record-history-error')).not.toBeNull();
+
+    q('record-history-retry')!.click();
+    await settle();
+
+    expect(q('record-history-error')).toBeNull();
+    expect(api.entries).toHaveBeenCalledTimes(3);
+  });
+
   it("asks the journal for the record's latest entries, newest first", () => {
     expect(api.entries).toHaveBeenCalledWith('k1', {
       page: 1,

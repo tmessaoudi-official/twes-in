@@ -3,7 +3,7 @@ import type { CustomFieldDefinition } from '../shared/custom-fields/custom-field
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { computed, signal } from '@angular/core';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import type { FieldRefusal } from '../shared/form/field-refusals';
@@ -131,6 +131,7 @@ describe('CustomerPage', () => {
   const customer = signal<CustomerRow | null>(null);
   const customFields = signal<readonly CustomFieldDefinition[]>([]);
   const optionsSignal = signal<CustomerOptions | null>(options);
+  const readFailed = signal(false);
   const facade = {
     options: optionsSignal.asReadonly(),
     groups: signal<readonly CustomerGroupRow[]>([]).asReadonly(),
@@ -139,7 +140,7 @@ describe('CustomerPage', () => {
     loadContacts: vi.fn(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
-    readFailed: computed(() => error() !== null),
+    readFailed: readFailed.asReadonly(),
     refusals: refusals.asReadonly(),
     loadCustomer: vi.fn(),
     createCustomer: vi.fn(),
@@ -261,6 +262,7 @@ describe('CustomerPage', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     heard = [];
     error.set(null);
     refusals.set([]);
@@ -1060,5 +1062,20 @@ describe('CustomerPage', () => {
     expect(q('customer-read-only')).toBeNull();
     // Its defaults, contacts and account went to the customer kept, which its own address now answers with.
     expect(tabLabels()).toEqual(['Fiche', 'activity.history.title']);
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open('k1');
+    error.set('network');
+    await settle();
+    expect(q('customer-error')).not.toBeNull();
+    expect(q('customer-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.loadCustomer.mock.calls.length;
+    q('customer-retry')!.click();
+
+    expect(facade.loadCustomer).toHaveBeenCalledTimes(before + 1);
   });
 });

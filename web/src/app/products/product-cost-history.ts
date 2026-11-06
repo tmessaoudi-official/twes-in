@@ -16,6 +16,7 @@ import { TextsParts } from '../shared/i18n/texts-part';
 import { PURCHASE_HISTORY_TEXTS } from '../shared/i18n/purchase-history-texts';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { ProductCostHistory } from './product-cost-history-facade';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * Every change of what the product costs the company, the latest first: the cost before and after, what moved it, and
@@ -24,7 +25,7 @@ import { ProductCostHistory } from './product-cost-history-facade';
  */
 @Component({
   selector: 'app-product-cost-history',
-  imports: [TranslatePipe, RouterLink, AmountPipe, DayPipe, MeasurePipe, MomentPipe],
+  imports: [ReadFailed, TranslatePipe, RouterLink, AmountPipe, DayPipe, MeasurePipe, MomentPipe],
   templateUrl: './product-cost-history.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -52,5 +53,11 @@ export class ProductCostHistorySection implements OnInit {
       this.destroyRef,
     );
     await this.history.load(companyId, this.productId());
+  }
+
+  /** « Réessayer »: the history read as on opening. */
+  protected readAgain(): void {
+    const companyId = this.auth.me()?.company?.id ?? null;
+    if (companyId !== null) void this.history.load(companyId, this.productId());
   }
 }

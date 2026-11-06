@@ -97,9 +97,14 @@
       }
 
       @if (error(); as code) {
-        <p role="alert" data-testid="instrument-error" class="text-error">
+        <app-read-failed
+          testId="instrument-error"
+          retryTestId="instrument-retry"
+          [retryable]="readFailed()"
+          (retry)="readAgain()"
+        >
           {{ 'invoices.errors.' + code | translate }}
-        </p>
+        </app-read-failed>
       }
 
       @if (group(); as form) {

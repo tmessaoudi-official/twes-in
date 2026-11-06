@@ -127,4 +127,21 @@ describe('InvoiceReminders', () => {
     expect(q('invoice-reminder-1')).toBeNull();
     expect(q('invoice-reminders-error')).not.toBeNull();
   });
+
+  it('reads the reminders again on « Réessayer »', async () => {
+    api.list.mockRejectedValueOnce(new InvoicesRefused('network'));
+    await show('f1');
+    expect(q('invoice-reminders-error')).not.toBeNull();
+    api.list.mockResolvedValue([first]);
+
+    q('invoice-reminders-retry')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+
+    expect(api.list).toHaveBeenLastCalledWith('c1', 'f1');
+    expect(q('invoice-reminders-error')).toBeNull();
+    expect(q('invoice-reminder-1')).not.toBeNull();
+  });
 });

@@ -5,9 +5,13 @@
     </p>
   }
   @if (error(); as code) {
-    <p role="alert" data-testid="vendor-purchases-error" class="text-error">
+    <app-read-failed
+      testId="vendor-purchases-error"
+      retryTestId="vendor-purchases-retry"
+      (retry)="readAgain()"
+    >
       {{ 'vendors.errors.' + code | translate }}
-    </p>
+    </app-read-failed>
   }
 
   <ul class="flex flex-col gap-2" data-testid="vendor-purchases-list">

@@ -117,11 +117,13 @@ describe('RolesPage', () => {
   const roles = signal<readonly RoleRow[]>([owner, member, barista]);
   const error = signal<RolesError | null>(null);
   const held = signal<RoleHolders | null>(null);
+  const readFailed = signal(false);
   const facade = {
     roles: roles.asReadonly(),
     groups: signal(groups).asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     held: held.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -156,6 +158,7 @@ describe('RolesPage', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     roles.set([owner, member, barista]);
     error.set(null);
     held.set(null);
@@ -544,5 +547,20 @@ describe('RolesPage', () => {
     expect(q('role-new')).toBeNull();
     expect(q('role-delete-barista')).toBeNull();
     expect(q('role-open-barista')?.textContent).toContain('Consulter');
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    error.set('network');
+    await settle();
+    expect(q('roles-error')).not.toBeNull();
+    expect(q('roles-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.load.mock.calls.length;
+    q('roles-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(before + 1);
   });
 });

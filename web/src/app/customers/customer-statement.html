@@ -52,9 +52,9 @@
   </div>
 
   @if (error(); as code) {
-    <p role="alert" class="text-error" data-testid="statement-error">
+    <app-read-failed testId="statement-error" retryTestId="statement-retry" (retry)="readAgain()">
       {{ 'customers.statement.errors.' + code | translate }}
-    </p>
+    </app-read-failed>
   }
 
   @if (statement(); as s) {

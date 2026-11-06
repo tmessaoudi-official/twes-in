@@ -135,6 +135,8 @@ const photo = {
 
 describe('StockMovementsPage', () => {
   const shown = signal<readonly StockMovementRow[]>([delivered]);
+  const shownError = signal<InventoryError | null>(null);
+  const readFailed = signal(false);
   const facade = {
     options: signal<StockOptions | null>(options).asReadonly(),
     levels: signal<readonly StockLevelRow[]>([]).asReadonly(),
@@ -153,8 +155,8 @@ describe('StockMovementsPage', () => {
     movements: shown.asReadonly(),
     movementsTotal: signal(1).asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal<InventoryError | null>(null).asReadonly(),
-    readFailed: signal(false).asReadonly(),
+    error: shownError.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     loadMovements: vi.fn(),
     pickProducts: vi.fn(),
     exportMovementsUrl: vi.fn(
@@ -199,6 +201,8 @@ describe('StockMovementsPage', () => {
   }
 
   beforeEach(() => {
+    shownError.set(null);
+    readFailed.set(false);
     for (const call of [facade.loadMovements, facade.reloadMovements, facade.loadLocations]) {
       call.mockReset().mockResolvedValue(undefined);
     }
@@ -509,6 +513,30 @@ describe('StockMovementsPage', () => {
     expect(
       document.body.querySelector('[data-testid="loss-files-product"]')?.textContent,
     ).toContain('ART-1 — Portable');
+  });
+
+  it('says the files of a loss could not be read, and reads them again only after a read failed', async () => {
+    shown.set([lost]);
+    await settle();
+    q('row-action-loss-files-m3')!.click();
+    await settle();
+    const inDialog = (testId: string): HTMLElement | null =>
+      document.body.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+
+    shownError.set('network');
+    await settle();
+    expect(inDialog('loss-files-error')).not.toBeNull();
+    expect(inDialog('loss-files-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.lossFiles.mock.calls.length;
+    inDialog('loss-files-retry')!.click();
+    await settle();
+
+    expect(facade.lossFiles).toHaveBeenCalledTimes(before + 1);
+    inDialog('loss-files-close')!.click();
+    await settle();
   });
 
   it('lets a stock writer add a file to a loss and take one off, and a reader only open them', async () => {

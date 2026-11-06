@@ -27,6 +27,7 @@ import type { ProductScan, ProductsError } from './products-types';
 import { ProductThumbnail } from './product-thumbnail';
 import type { ProductOnViewRef } from './product-on-view';
 import type { IconName } from '../shared/icons/icons';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 export interface ProductScanCardData {
   /** What the scanner read, as it came. */
@@ -62,7 +63,7 @@ interface ScanAction {
  */
 @Component({
   selector: 'app-product-scan-card',
-  imports: [MatButtonModule, MatIconModule, TranslatePipe, PickField, ProductThumbnail],
+  imports: [ReadFailed, MatButtonModule, MatIconModule, TranslatePipe, PickField, ProductThumbnail],
   templateUrl: './product-scan-card.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(keydown)': 'onKeydown($event)' },
@@ -158,6 +159,17 @@ export class ProductScanCard implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    await this.read();
+  }
+
+  /** « Réessayer »: the code looked up again, as on opening. */
+  protected readAgain(): void {
+    this.failed.set(null);
+    this.scan.set(undefined);
+    void this.read();
+  }
+
+  private async read(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
     if (companyId === undefined) return;
     try {

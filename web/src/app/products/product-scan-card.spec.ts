@@ -174,6 +174,20 @@ describe('ProductScanCard', () => {
     expect(q('product-scan-none')).toBeNull();
   });
 
+  it('looks the code up again on « Réessayer »', async () => {
+    scan.mockRejectedValueOnce(new ProductsRefused('network'));
+    await open();
+    expect(q('product-scan-failed')).not.toBeNull();
+
+    q('product-scan-retry')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(scan).toHaveBeenCalledTimes(2);
+    expect(q('product-scan-failed')).toBeNull();
+  });
+
   it('starts an invoice or a delivery note with the product scanned, for somebody who may write them', async () => {
     ['invoices', 'delivery_notes'].forEach((module) => modules.add(module));
     ['invoice.write', 'delivery_note.write'].forEach((permission) => permissions.add(permission));

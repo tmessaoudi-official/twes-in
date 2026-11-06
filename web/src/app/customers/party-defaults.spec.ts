@@ -55,10 +55,12 @@ const terms: SettingRow = {
 describe('PartyDefaults', () => {
   const rows = signal<readonly SettingRow[]>([terms]);
   const error = signal<SettingsError | null>(null);
+  const readFailed = signal(false);
   const facade = {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     refusals: signal([]).asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -81,6 +83,7 @@ describe('PartyDefaults', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     rows.set([terms]);
     error.set(null);
     facade.load.mockReset().mockResolvedValue(undefined);
@@ -248,5 +251,24 @@ describe('PartyDefaults', () => {
     expect((q('field-document__payment_terms_days') as HTMLInputElement).disabled).toBe(true);
     expect(q('party-defaults-bar')).toBeNull();
     expect(q('party-defaults-reset-document.payment_terms_days')).toBeNull();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    error.set('network');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(q('party-defaults-error')).not.toBeNull();
+    expect(q('party-defaults-retry')).toBeNull();
+
+    readFailed.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const before = facade.load.mock.calls.length;
+    q('party-defaults-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(before + 1);
   });
 });

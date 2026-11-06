@@ -102,10 +102,12 @@ const LOOK_ROWS = [
 describe('DocumentDesignPage', () => {
   const rows = signal<readonly SettingRow[]>([]);
   const error = signal<SettingsError | null>(null);
+  const readFailed = signal(false);
   const settings = {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     refusals: signal([]).asReadonly(),
     load: vi.fn(),
     save: vi.fn(),
@@ -147,6 +149,7 @@ describe('DocumentDesignPage', () => {
   }
 
   beforeEach(async () => {
+    readFailed.set(false);
     permissions.clear();
     permissions.add('company.settings');
     rows.set([]);
@@ -483,5 +486,20 @@ describe('DocumentDesignPage', () => {
     expect(q('documents-forbidden')?.textContent).toContain('Réservé');
     expect(settings.load).not.toHaveBeenCalled();
     expect(design.preview).not.toHaveBeenCalled();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    error.set('network');
+    await settle();
+    expect(q('documents-error')).not.toBeNull();
+    expect(q('documents-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = settings.load.mock.calls.length;
+    q('documents-retry')!.click();
+
+    expect(settings.load).toHaveBeenCalledTimes(before + 1);
   });
 });

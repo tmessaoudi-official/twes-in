@@ -23,6 +23,7 @@ import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { CustomerStatementFacade } from './customer-statement-facade';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -38,6 +39,7 @@ const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
 @Component({
   selector: 'app-customer-statement',
   imports: [
+    ReadFailed,
     FormsModule,
     DayInput,
     DayCalendarButton,
@@ -98,6 +100,14 @@ export class CustomerStatementView {
         this.facade.load(this.companyId(), this.customerId(), { from: this.from(), to: this.to() }),
       inject(DestroyRef),
     );
+  }
+
+  /** « Réessayer »: the period on screen read again. */
+  protected readAgain(): void {
+    void this.facade.load(this.companyId(), this.customerId(), {
+      from: this.from(),
+      to: this.to(),
+    });
   }
 
   /** A day once it is one (or nothing, to clear the limit); what is still being typed waits. */

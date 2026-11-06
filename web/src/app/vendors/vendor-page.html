@@ -46,9 +46,14 @@
     </div>
   }
   @if (error(); as code) {
-    <p role="alert" data-testid="vendor-error" class="text-error">
+    <app-read-failed
+      testId="vendor-error"
+      retryTestId="vendor-retry"
+      [retryable]="readFailed()"
+      (retry)="readAgain()"
+    >
       {{ 'vendors.errors.' + code | translate }}
-    </p>
+    </app-read-failed>
   }
 
   <!-- What was bought from a vendor sits beside its record, as a customer's statement does. -->

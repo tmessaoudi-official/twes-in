@@ -46,6 +46,8 @@ export class ImportFacade {
   readonly refusal = this.refusalSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, which « Réessayer » answers; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
   /** « Imports récents »: empty until read, and when the person may write none of the subjects imported. */
   readonly recent = this.recentSignal.asReadonly();
   /** What the last « Annuler cet import » did, until another file is chosen. */

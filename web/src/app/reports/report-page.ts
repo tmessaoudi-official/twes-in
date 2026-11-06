@@ -54,6 +54,7 @@ import {
   type ReportQuery,
   type ReportRow,
 } from './reports-types';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** What a change may move in a report: the documents, the stock, the expenses and who may read what. */
 export const REPORT_KINDS = [
@@ -78,6 +79,7 @@ export const REPORT_KINDS = [
 @Component({
   selector: 'app-report-page',
   imports: [
+    ReadFailed,
     AmountPipe,
     DayCalendarButton,
     DayInput,

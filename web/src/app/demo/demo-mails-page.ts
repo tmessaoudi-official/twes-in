@@ -9,13 +9,13 @@ import {
   type OnInit,
   signal,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { MomentPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { DEMO_MAIL_KIND, DemoMailsApi, type DemoMail } from './demo-mails-api';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * « Courriers de la démo »: what the application would have mailed the visitor, kept instead, so a demo shows its
@@ -24,7 +24,7 @@ import { DEMO_MAIL_KIND, DemoMailsApi, type DemoMail } from './demo-mails-api';
  */
 @Component({
   selector: 'app-demo-mails-page',
-  imports: [MatButtonModule, MatIconModule, MomentPipe, TranslatePipe],
+  imports: [ReadFailed, MatIconModule, MomentPipe, TranslatePipe],
   templateUrl: './demo-mails-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

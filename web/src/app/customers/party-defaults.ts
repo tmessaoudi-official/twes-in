@@ -36,6 +36,7 @@ import { levelOf, PartySettings } from './party-settings-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingRefusalLines } from '../shared/settings/setting-refusal-lines';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 const PARTY_CHAINS: readonly SettingChain[] = ['parties'];
 
@@ -46,6 +47,7 @@ const PARTY_CHAINS: readonly SettingChain[] = ['parties'];
 @Component({
   selector: 'app-party-defaults',
   imports: [
+    ReadFailed,
     MatButtonModule,
     TranslatePipe,
     DescriptorForm,
@@ -66,6 +68,7 @@ export class PartyDefaults {
 
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
+  protected readonly readFailed = this.settings.readFailed;
   protected readonly rows = this.settings.rows;
   /** The settings the last save refused that no field of the form carries, named in the card's line. */
   protected readonly unplaced = signal<readonly FieldRefusal[]>([]);
@@ -208,5 +211,15 @@ export class PartyDefaults {
       save: (changes) => this.settings.save(companyId, subject, changes),
       written: () => this.revision.update((revision) => revision + 1),
     });
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.companyId();
+    if (companyId) {
+      void this.settings
+        .load(companyId, this.subject())
+        .then(() => this.revision.update((revision) => revision + 1));
+    }
   }
 }

@@ -9,7 +9,13 @@
   }
 
   @if (error(); as code) {
-    <div role="alert" data-testid="roles-error" class="text-error flex flex-col gap-1">
+    <app-read-failed
+      testId="roles-error"
+      retryTestId="roles-retry"
+      alertClass="flex flex-col gap-1"
+      [retryable]="readFailed()"
+      (retry)="readAgain()"
+    >
       <p>{{ 'company.roles.errors.' + code | translate }}</p>
       @if (code === 'in_use' && held(); as holders) {
         <!-- value-direction: a text in the screen's language, which reads in the screen's direction -->
@@ -22,7 +28,7 @@
           }}
         </p>
       }
-    </div>
+    </app-read-failed>
   }
 
   <ul class="flex flex-col" data-testid="roles-list">

@@ -34,11 +34,13 @@ import { FileDrop } from '../shared/form/file-drop';
 import { LOGO_MAX_BYTES } from '../shared/form/file-limits';
 import { CheckPanel, type CheckItem } from '../shared/check/check-panel';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** What the company's documents say about it, revised by whoever holds the settings permission. */
 @Component({
   selector: 'app-company-profile-page',
   imports: [
+    ReadFailed,
     StickyHeaderSize,
     CheckPanel,
     FileDrop,
@@ -76,6 +78,7 @@ export class CompanyProfilePage implements OnInit {
     return companyId && version ? companyLogoUrl(companyId, version) : null;
   });
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly descriptor = computed(() => {
     const profile = this.facade.profile();
     return profile ? profileForm(profile) : null;
@@ -134,6 +137,12 @@ export class CompanyProfilePage implements OnInit {
       },
       inject(DestroyRef),
     );
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId && this.mayManage()) void this.facade.load(companyId);
   }
 
   async ngOnInit(): Promise<void> {

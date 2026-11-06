@@ -16,6 +16,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { InventoryFacade } from './inventory-facade';
 import { INVENTORY_TABS } from './inventory-nav';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * What the stock is worth: each product at the weighted average of what came in, and the total. Stock whose cost is not
@@ -24,7 +25,7 @@ import { INVENTORY_TABS } from './inventory-nav';
  */
 @Component({
   selector: 'app-stock-valuation-page',
-  imports: [PageTabs, TranslatePipe, AmountPipe],
+  imports: [ReadFailed, PageTabs, TranslatePipe, AmountPipe],
   templateUrl: './stock-valuation-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -37,6 +38,7 @@ export class StockValuationPage {
 
   protected readonly valuation = this.facade.valuation;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayRead = computed(() => this.auth.hasPermission('product.cost.read'));
   /** Whether some stock has no known cost, which the total leaves out. */
@@ -58,5 +60,11 @@ export class StockValuationPage {
       },
       this.destroyRef,
     );
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId && this.mayRead()) void this.facade.loadValuation(companyId);
   }
 }

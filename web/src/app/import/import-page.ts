@@ -53,6 +53,7 @@ import { firstValueFrom } from 'rxjs';
 import { tableCounts } from '../shared/records/record-tables';
 import { refusalParams } from '../shared/form/refusal-words';
 import { typedText } from '../shared/form/typed-text';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** How many of a preview's changes the table lists; the count by column says them all. */
 export const CHANGES_SHOWN = 200;
@@ -95,6 +96,7 @@ interface PairingRow {
 @Component({
   selector: 'app-import-page',
   imports: [
+    ReadFailed,
     FileDrop,
     FormsModule,
     Label,
@@ -137,6 +139,7 @@ export class ImportPage {
   protected readonly guide = this.facade.guide;
   protected readonly report = this.facade.report;
   protected readonly refusal = this.facade.refusal;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   /** Moves on as each run's window to be taken back closes, which nothing announces. */
@@ -586,5 +589,13 @@ export class ImportPage {
       this.chosen(),
     );
     this.askAbout(this.refusal());
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId === undefined) return;
+    void this.facade.load(companyId, this.subject());
+    void this.facade.loadRecent(companyId);
   }
 }

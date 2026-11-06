@@ -286,6 +286,21 @@ describe('InvoiceInstruments', () => {
 
     expect(q('instrument-save')).not.toBeNull();
     expect(q('instrument-error')).not.toBeNull();
+    // A refused save is not undone by reading again.
+    expect(q('instrument-retry')).toBeNull();
+  });
+
+  it('says the instruments could not be read, and reads them again on « Réessayer »', async () => {
+    api.list.mockRejectedValueOnce(new InvoicesRefused('network'));
+    await show([]);
+    expect(q('instrument-error')).not.toBeNull();
+    const before = api.list.mock.calls.length;
+
+    q('instrument-retry')!.click();
+    await settle();
+
+    expect(api.list).toHaveBeenCalledTimes(before + 1);
+    expect(q('instrument-error')).toBeNull();
   });
 
   it('says a refusal naming its fields under them, what none takes on the form’s own line, and nothing else', async () => {

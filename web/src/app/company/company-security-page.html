@@ -7,9 +7,14 @@
     <p data-testid="security-no-company">{{ 'company.security.no_company' | translate }}</p>
   } @else {
     @if (error(); as code) {
-      <p role="alert" data-testid="security-error" class="text-error">
+      <app-read-failed
+        testId="security-error"
+        retryTestId="security-retry"
+        [retryable]="readFailed()"
+        (retry)="readAgain()"
+      >
         {{ 'company.security.errors.' + code | translate }}
-      </p>
+      </app-read-failed>
     }
 
     @if (security(); as current) {

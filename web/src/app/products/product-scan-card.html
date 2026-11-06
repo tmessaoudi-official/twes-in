@@ -8,9 +8,13 @@
   </header>
 
   @if (failed(); as error) {
-    <p role="alert" class="text-error" data-testid="product-scan-failed">
+    <app-read-failed
+      testId="product-scan-failed"
+      retryTestId="product-scan-retry"
+      (retry)="readAgain()"
+    >
       {{ 'products.errors.' + error | translate }}
-    </p>
+    </app-read-failed>
   } @else if (scan() === undefined) {
     <p role="status" data-testid="product-scan-loading">
       {{ 'products.scan.loading' | translate }}

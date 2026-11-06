@@ -65,12 +65,15 @@ const second: ProductHomeRow = {
 describe('ProductHomesSection', () => {
   const homes = signal<readonly ProductHomeRow[]>([]);
   const locations = signal<readonly StockLocationRow[]>([location('l1', 'A-12')]);
+  const readFailed = signal(false);
+  const shownError = signal<string | null>(null);
   const facade = {
     homes: homes.asReadonly(),
     groups: computed(() => groupByEstablishment(homes())),
     locations: locations.asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal(null).asReadonly(),
+    error: shownError.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     load: vi.fn(),
     add: vi.fn(),
     move: vi.fn(),
@@ -98,6 +101,8 @@ describe('ProductHomesSection', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
+    shownError.set(null);
     homes.set([]);
     locations.set([location('l1', 'A-12')]);
     facade.load.mockReset().mockResolvedValue(undefined);
@@ -266,5 +271,24 @@ describe('ProductHomesSection', () => {
     expect(q('product-home-add')).toBeNull();
     expect(q('product-home-remove-l1')).toBeNull();
     expect(q('product-home-up-l2')).toBeNull();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    shownError.set('network');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(q('product-homes-error')).not.toBeNull();
+    expect(q('product-homes-retry')).toBeNull();
+
+    readFailed.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const before = facade.load.mock.calls.length;
+    q('product-homes-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(before + 1);
   });
 });

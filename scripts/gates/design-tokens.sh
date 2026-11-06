@@ -46,7 +46,7 @@ fi
 # a [class.x] or [ngClass] binding, a TypeScript string with its comments taken out), so a word in prose is no class.
 # An arbitrary value in those namespaces is refused, as is a style binding of a font, radius, shadow or motion property;
 # geometry (widths, grids, z) keeps its arbitrary values. DESIGN_TOKENS_FLOOR: the fewest such classes a tree reads.
-floor=${DESIGN_TOKENS_FLOOR:-1950}
+floor=${DESIGN_TOKENS_FLOOR:-1910}
 steps=$(perl -ne '
   next unless /^\s*--(color|text|font-weight|font|radius|shadow|leading|tracking|ease)-([a-z0-9-]+)\s*:/;
   my ($space, $name) = ($1, $2); next if $name =~ /--/;

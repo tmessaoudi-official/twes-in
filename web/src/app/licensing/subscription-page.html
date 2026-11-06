@@ -4,9 +4,14 @@
   </h1>
 
   @if (error(); as code) {
-    <p role="alert" data-testid="subscription-error" class="text-error">
+    <app-read-failed
+      testId="subscription-error"
+      retryTestId="subscription-retry"
+      [retryable]="readFailed()"
+      (retry)="readAgain()"
+    >
       {{ 'licensing.errors.' + code | translate }}
-    </p>
+    </app-read-failed>
   }
 
   @if (!managed()) {

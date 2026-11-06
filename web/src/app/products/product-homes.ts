@@ -25,6 +25,7 @@ import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { type HomesWrite, ProductHomes } from './product-homes-facade';
 import type { ProductHomeRow } from './products-types';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * Where a product normally lives: several places per establishment, in an order, the first the main one a receipt
@@ -36,7 +37,16 @@ import type { ProductHomeRow } from './products-types';
  */
 @Component({
   selector: 'app-product-homes',
-  imports: [FormsModule, MatButtonModule, MatIconModule, Select, StatusBadge, TranslatePipe, Label],
+  imports: [
+    ReadFailed,
+    FormsModule,
+    MatButtonModule,
+    MatIconModule,
+    Select,
+    StatusBadge,
+    TranslatePipe,
+    Label,
+  ],
   templateUrl: './product-homes.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -58,6 +68,7 @@ export class ProductHomesSection implements OnInit {
   protected readonly groups = this.homes.groups;
   protected readonly busy = this.homes.busy;
   protected readonly error = this.homes.error;
+  protected readonly readFailed = this.homes.readFailed;
   protected readonly chosen = signal('');
   /** A place chosen and not added yet. */
   private readonly unsaved = computed(() => (this.chosen() === '' ? 0 : 1));
@@ -80,6 +91,12 @@ export class ProductHomesSection implements OnInit {
       },
       inject(DestroyRef),
     );
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.companyId();
+    if (companyId !== null) void this.homes.load(companyId, this.productId());
   }
 
   async ngOnInit(): Promise<void> {

@@ -8,9 +8,9 @@
   </h2>
 
   @if (error(); as code) {
-    <p role="alert" class="text-error" data-testid="account-error">
+    <app-read-failed testId="account-error" retryTestId="account-retry" (retry)="readAgain()">
       {{ 'customers.account.errors.' + code | translate }}
-    </p>
+    </app-read-failed>
   }
 
   @if (account(); as a) {

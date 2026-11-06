@@ -25,6 +25,8 @@ export class ProductReorderPoints {
   readonly rows = this.rowsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, which « Réessayer » answers; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
 
   async load(companyId: string, productId: string): Promise<void> {
     await this.run(

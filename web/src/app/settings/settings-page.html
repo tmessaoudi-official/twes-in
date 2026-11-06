@@ -22,14 +22,19 @@
     <p>{{ 'settings.intro' | translate }}</p>
 
     @if (error(); as code) {
-      <div role="alert" data-testid="settings-error" class="text-error">
+      <app-read-failed
+        testId="settings-error"
+        retryTestId="settings-retry"
+        [retryable]="readFailed()"
+        (retry)="readAgain()"
+      >
         <p>{{ 'settings.errors.' + code | translate }}</p>
         <app-setting-refusal-lines
           [rows]="rows()"
           [refusals]="unplaced()"
           testId="settings-refused"
         />
-      </div>
+      </app-read-failed>
     }
 
     @if (descriptor().sections.length > 0) {

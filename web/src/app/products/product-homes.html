@@ -2,9 +2,14 @@
   <p class="text-sm opacity-80">{{ 'products.homes.intro' | translate }}</p>
 
   @if (error(); as code) {
-    <p role="alert" data-testid="product-homes-error" class="text-error">
+    <app-read-failed
+      testId="product-homes-error"
+      retryTestId="product-homes-retry"
+      [retryable]="readFailed()"
+      (retry)="readAgain()"
+    >
       {{ 'products.errors.' + code | translate }}
-    </p>
+    </app-read-failed>
   }
 
   @if (groups().length === 0) {

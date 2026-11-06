@@ -14,6 +14,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { CustomerAccountFacade } from './customer-account-facade';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** A decimal string with nothing in it: "0", "0.000", "-0.00". */
 const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
@@ -25,7 +26,7 @@ const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
  */
 @Component({
   selector: 'app-customer-account',
-  imports: [TranslatePipe, AmountPipe],
+  imports: [ReadFailed, TranslatePipe, AmountPipe],
   templateUrl: './customer-account.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -54,5 +55,10 @@ export class CustomerAccountView {
       () => this.facade.load(this.companyId(), this.customerId()),
       inject(DestroyRef),
     );
+  }
+
+  /** « Réessayer »: the account read as on opening. */
+  protected readAgain(): void {
+    void this.facade.load(this.companyId(), this.customerId());
   }
 }

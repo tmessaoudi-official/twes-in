@@ -37,10 +37,12 @@ describe('CompanySecurityPage', () => {
   const error = signal<CompanySecurityError | null>(null);
   const passkeyEntry = signal<PasskeyEntry | null>(null);
   const passkeysAllowed = signal(true);
+  const readFailed = signal(false);
   const facade = {
     security: security.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     requireSecondFactor: vi.fn(),
@@ -78,6 +80,7 @@ describe('CompanySecurityPage', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     security.set({ mfaRequired: false, writable: true });
     passkeyEntry.set({ on: true, version: 2, writable: true });
     passkeysAllowed.set(true);
@@ -207,5 +210,20 @@ describe('CompanySecurityPage', () => {
 
     expect(q('security-error')?.textContent).toContain('Entreprise introuvable');
     expect(theSwitch().getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    error.set('network');
+    await settle();
+    expect(q('security-error')).not.toBeNull();
+    expect(q('security-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.load.mock.calls.length;
+    q('security-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(before + 1);
   });
 });

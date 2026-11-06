@@ -173,6 +173,7 @@ import {
 import { COARSE_POINTER } from '../shared/ui/pointer';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 import { typedText } from '../shared/form/typed-text';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** Above this many metres a floor's grid is drawn every five metres rather than every one. */
 const GRID_FINE_LIMIT = 60;
@@ -308,6 +309,7 @@ interface PlanLayer {
 @Component({
   selector: 'app-stock-map-page',
   imports: [
+    ReadFailed,
     PageTabs,
     MatButtonModule,
     MatCardModule,
@@ -383,6 +385,7 @@ export class StockMapPage implements OnInit {
 
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
 
@@ -1063,6 +1066,15 @@ export class StockMapPage implements OnInit {
     this.repeating.set(false);
     this.tracing.set(false);
     this.drag = null;
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    void this.facade
+      .loadPlanContext(companyId)
+      .then(() => this.showFloor(this.floor()?.id ?? null));
   }
 
   async ngOnInit(): Promise<void> {

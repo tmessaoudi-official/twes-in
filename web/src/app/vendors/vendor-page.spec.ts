@@ -85,11 +85,13 @@ describe('VendorPage', () => {
   const refusals = signal<readonly FieldRefusal[]>([]);
   const vendor = signal<VendorRow | null>(null);
   const optionsShown = signal<VendorOptions | null>(options);
+  const readFailed = signal(false);
   const facade = {
     options: optionsShown.asReadonly(),
     vendor: vendor.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     refusals: refusals.asReadonly(),
     loadVendor: vi.fn(),
     createVendor: vi.fn(),
@@ -136,6 +138,7 @@ describe('VendorPage', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     error.set(null);
     refusals.set([]);
     vendor.set(null);
@@ -626,5 +629,20 @@ describe('VendorPage', () => {
 
     expect(q('vendor-read-only')).not.toBeNull();
     expect(q('record-save')).toBeNull();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open('v1');
+    error.set('network');
+    await settle();
+    expect(q('vendor-error')).not.toBeNull();
+    expect(q('vendor-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.loadVendor.mock.calls.length;
+    q('vendor-retry')!.click();
+
+    expect(facade.loadVendor).toHaveBeenCalledTimes(before + 1);
   });
 });

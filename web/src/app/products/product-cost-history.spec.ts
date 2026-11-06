@@ -77,10 +77,11 @@ const bought = (
 // docs/SPEC.md § 7: every change of a product's cost is kept, and read newest first by whoever may read costs.
 describe('ProductCostHistorySection', () => {
   const rows = signal<readonly ProductCostChangeRow[]>([]);
+  const error = signal<string | null>(null);
   const facade = {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal(null).asReadonly(),
+    error: error.asReadonly(),
     load: vi.fn(),
   };
   const auth = { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }) };
@@ -103,6 +104,7 @@ describe('ProductCostHistorySection', () => {
       change('h2', '1000.0000', '1300.0000', 'receipt'),
       change('h1', null, '1000.0000', 'created'),
     ]);
+    error.set(null);
     facade.load.mockReset().mockResolvedValue(undefined);
     texts.open.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
@@ -118,6 +120,17 @@ describe('ProductCostHistorySection', () => {
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
+  });
+
+  it('says the history could not be read, and reads it again on « Réessayer »', async () => {
+    error.set('network');
+    await open();
+    expect(q('product-cost-history-error')).not.toBeNull();
+
+    q('product-cost-history-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(2);
+    expect(facade.load).toHaveBeenLastCalledWith('c1', 'p1');
   });
 
   it('lists each change from the cost before to the cost after, with what moved it', async () => {

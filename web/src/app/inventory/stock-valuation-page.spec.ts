@@ -70,9 +70,12 @@ const worth: StockValuation = {
 // docs/SPEC.md § 7: what the stock is worth, each product at the weighted average of what came in.
 describe('StockValuationPage', () => {
   const valuation = signal<StockValuation | null>(worth);
+  const readFailed = signal(false);
+  const shownError = signal<InventoryError | null>(null);
   const facade = {
     valuation: valuation.asReadonly(),
-    error: signal<InventoryError | null>(null).asReadonly(),
+    error: shownError.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     busy: signal(false).asReadonly(),
     loadValuation: vi.fn(),
   };
@@ -93,6 +96,8 @@ describe('StockValuationPage', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
+    shownError.set(null);
     mayRead = true;
     facade.loadValuation.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
@@ -169,5 +174,24 @@ describe('StockValuationPage', () => {
 
     expect(facade.loadValuation).not.toHaveBeenCalled();
     expect(q('stock-valuation-forbidden')).not.toBeNull();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    shownError.set('network');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(q('stock-valuation-error')).not.toBeNull();
+    expect(q('stock-valuation-retry')).toBeNull();
+
+    readFailed.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const before = facade.loadValuation.mock.calls.length;
+    q('stock-valuation-retry')!.click();
+
+    expect(facade.loadValuation).toHaveBeenCalledTimes(before + 1);
   });
 });

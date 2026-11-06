@@ -114,4 +114,14 @@ describe('ReportsPage', () => {
     expect(q('reports-list')).toBeNull();
     expect(q('reports-failed')?.textContent).toContain('Illisible.');
   });
+
+  it('reads the catalogue again on « Réessayer »', async () => {
+    failed.set(true);
+    await open();
+    const before = facade.loadCatalogue.mock.calls.length;
+
+    q('reports-retry')!.click();
+
+    expect(facade.loadCatalogue).toHaveBeenCalledTimes(before + 1);
+  });
 });

@@ -8,7 +8,6 @@ import {
   inject,
   type OnInit,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -19,6 +18,7 @@ import { WatchFacade } from './watch-facade';
 import { hintKey, subjectView } from './watch-subjects';
 import { withSessionKinds } from '../shared/session/session-kinds';
 import { WATCHED_KINDS } from './watch-types';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10, the subject pages): one card per subject with its count, each
@@ -27,7 +27,7 @@ import { WATCHED_KINDS } from './watch-types';
  */
 @Component({
   selector: 'app-watch-page',
-  imports: [MatButtonModule, MatCardModule, MatIconModule, RouterLink, TranslatePipe],
+  imports: [ReadFailed, MatCardModule, MatIconModule, RouterLink, TranslatePipe],
   templateUrl: './watch-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

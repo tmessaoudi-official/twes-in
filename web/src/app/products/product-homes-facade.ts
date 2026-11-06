@@ -37,6 +37,8 @@ export class ProductHomes {
   readonly locations = this.locationsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, which « Réessayer » answers; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
 
   /** The establishments this product is already at home in, so a second home there is offered as a move, not a duplicate. */
   readonly establishmentsAtHome = computed(

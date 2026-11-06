@@ -162,4 +162,18 @@ describe('VendorPurchasesSection', () => {
     expect(q('vendor-purchases-none')).not.toBeNull();
     expect(q('vendor-purchases-count')).toBeNull();
   });
+
+  it('says the purchases could not be read, and reads them again on « Réessayer »', async () => {
+    api.purchases
+      .mockRejectedValueOnce(new Error('down'))
+      .mockResolvedValue({ rows: [], total: 0 });
+    await open();
+    expect(q('vendor-purchases-error')).not.toBeNull();
+
+    q('vendor-purchases-retry')!.click();
+    await settle();
+
+    expect(api.purchases).toHaveBeenCalledTimes(2);
+    expect(q('vendor-purchases-error')).toBeNull();
+  });
 });

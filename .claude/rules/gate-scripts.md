@@ -38,3 +38,7 @@ the end of § Lessons here.
   (67, and 9 more on 10 Oct that a recovery rebuilt and moved there by `update-ref`; all re-signed on 2026-10-24). A commit made through plumbing
   passes `-S` itself; check `git log --format=%G?` after one. A gate test exporting `GIT_CONFIG_GLOBAL=/dev/null` cannot
   see it: its fixture sets the repository's own `commit.gpgsign` and a stand-in `gpg.program`.
+- An exclude pathspec lies under the toolchain's git: `git ls-files -- 'web/src/app/*.ts' ':!*.spec.ts'` listed the files
+  on the host's git 2.56 and NOTHING in the tools image's 2.47 once a spec was staged, so `read-retry.sh`'s test passed
+  on the host and reddened the snapshot gate. Filter with `| grep -v '\.spec\.ts$'`, as the sibling gates do, and run a
+  new gate's test once through `make tools CMD=…` before gating (2026-11-06).

@@ -28,6 +28,8 @@ export class PartySettings {
   readonly rows = this.rowsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, which « Réessayer » answers; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
   /** What the last write refused, each on its setting's field, until the next write. */
   readonly refusals = this.refusalsSignal.asReadonly();
 

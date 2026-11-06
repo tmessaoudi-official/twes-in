@@ -9,7 +9,12 @@
   }
 
   @if (error(); as code) {
-    <div role="alert" data-testid="modules-error" class="text-error">
+    <app-read-failed
+      testId="modules-error"
+      retryTestId="modules-retry"
+      [retryable]="readFailed()"
+      (retry)="readAgain()"
+    >
       <p>{{ 'company.modules.errors.' + code | translate }}</p>
       @if (blockers().length > 0) {
         <ul class="list-disc ps-6">
@@ -18,7 +23,7 @@
           }
         </ul>
       }
-    </div>
+    </app-read-failed>
   }
 
   <ul class="flex flex-col gap-2" data-testid="modules-list">

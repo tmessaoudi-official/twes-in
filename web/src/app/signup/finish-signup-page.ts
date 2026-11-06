@@ -16,6 +16,7 @@ import { PasswordToggle } from '../shared/form/password-toggle';
 import { heldToPasswordRule } from '../shared/password/password-rule';
 import { typedText } from '../shared/form/typed-text';
 import { SpentBudget } from '../shared/errors/spent-budget';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * The page a signup link opens, logged out: the account, and the company it will own. Finishing starts no session,
@@ -24,6 +25,7 @@ import { SpentBudget } from '../shared/errors/spent-budget';
 @Component({
   selector: 'app-finish-signup-page',
   imports: [
+    ReadFailed,
     PasswordToggle,
     SignedOutLayout,
     ReactiveFormsModule,
@@ -85,6 +87,10 @@ export class FinishSignupPage implements OnInit {
   async ngOnInit(): Promise<void> {
     this.signup.forget();
     await Promise.all([this.signup.loadAvailability(), this.signup.loadLink(this.token())]);
+  }
+  /** « Réessayer », offered only when the server could not be reached: the link read again. */
+  protected readAgain(): void {
+    void this.signup.loadLink(this.token());
   }
 
   protected async submit(): Promise<void> {

@@ -75,6 +75,7 @@ import { RecordBar } from '../shared/form/record-bar';
 import { FileDrop } from '../shared/form/file-drop';
 import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * One expense: a draft to fill in, revise, attach receipts to and record; a recorded one to pay. A new expense takes
@@ -83,6 +84,7 @@ import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 @Component({
   selector: 'app-expense-page',
   imports: [
+    ReadFailed,
     StickyHeaderSize,
     ExpenseBill,
     PartConflict,
@@ -123,6 +125,7 @@ export class ExpensePage {
   protected readonly id = computed(() => this.expenseId() ?? null);
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly attachments = this.facade.attachments;
   protected readonly options = this.facade.options;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
@@ -665,5 +668,11 @@ export class ExpensePage {
     } else {
       this.feedback.failure(`expenses.errors.${refused}`);
     }
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.facade.loadExpense(companyId, this.id());
   }
 }

@@ -102,6 +102,7 @@ describe('ProductPage', () => {
   const product = signal<ProductRow | null>(null);
   const optionsSignal = signal<ProductOptions | null>(options);
   const categories = signal<readonly ProductCategoryRow[]>([]);
+  const readFailed = signal(false);
   const facade = {
     options: optionsSignal.asReadonly(),
     categories: categories.asReadonly(),
@@ -109,6 +110,7 @@ describe('ProductPage', () => {
     product: product.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     refusals: refusals.asReadonly(),
     defaultUnitCode: signal<string | null>('C62').asReadonly(),
     defaultTracking: signal<'none' | 'lot' | 'serial'>('none').asReadonly(),
@@ -133,6 +135,7 @@ describe('ProductPage', () => {
     rows: signal<readonly SettingRow[]>([]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    readFailed: signal(false).asReadonly(),
     refusals: signal([]).asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -175,6 +178,7 @@ describe('ProductPage', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     error.set(null);
     refusals.set([]);
     product.set(null);
@@ -1228,5 +1232,20 @@ describe('ProductPage', () => {
 
     expect(q('product-read-only')).not.toBeNull();
     expect(q('record-save')).toBeNull();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open('p1');
+    error.set('network');
+    await settle();
+    expect(q('product-error')).not.toBeNull();
+    expect(q('product-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.loadProduct.mock.calls.length;
+    q('product-retry')!.click();
+
+    expect(facade.loadProduct).toHaveBeenCalledTimes(before + 1);
   });
 });

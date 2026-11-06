@@ -13,9 +13,14 @@
       </p>
     }
     @if (error(); as code) {
-      <p role="alert" data-testid="stock-valuation-error" class="text-error">
+      <app-read-failed
+        testId="stock-valuation-error"
+        retryTestId="stock-valuation-retry"
+        [retryable]="readFailed()"
+        (retry)="readAgain()"
+      >
         {{ 'inventory.errors.' + code | translate }}
-      </p>
+      </app-read-failed>
     }
 
     @if (valuation(); as v) {

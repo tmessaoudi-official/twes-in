@@ -37,6 +37,7 @@ import {
   type InstrumentRow,
   type InstrumentStep,
 } from './instruments-types';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * The cheques and traites received against one issued invoice (docs/SPEC.md § 7, 2026-09-21 18:40). An instrument is
@@ -46,6 +47,7 @@ import {
 @Component({
   selector: 'app-invoice-instruments',
   imports: [
+    ReadFailed,
     MatButtonModule,
     MatCardModule,
     TranslatePipe,
@@ -82,6 +84,7 @@ export class InvoiceInstruments {
   protected readonly items = this.facade.items;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly tones = INSTRUMENT_STATUS_TONES;
   protected readonly group = signal<DescriptorFormGroup | null>(null);
   protected readonly descriptor = instrumentForm();
@@ -201,6 +204,11 @@ export class InvoiceInstruments {
       { id: row.id, label: label === '' ? row.amount : label },
     ]);
     if (gone) await this.facade.load(this.companyId(), this.invoiceId());
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    void this.facade.load(this.companyId(), this.invoiceId());
   }
 }
 

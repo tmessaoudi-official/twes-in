@@ -18,6 +18,8 @@ export class ModulesFacade {
   readonly modules = this.modulesSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, which « Réessayer » answers; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
 
   async load(companyId: string): Promise<void> {
     await this.state.read(async () => this.modulesSignal.set(await this.api.list(companyId)));

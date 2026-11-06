@@ -14,6 +14,7 @@ import { SignedOutLayout } from '../auth/signed-out-layout';
 import { PasswordToggle } from '../shared/form/password-toggle';
 import { heldToPasswordRule } from '../shared/password/password-rule';
 import { SpentBudget } from '../shared/errors/spent-budget';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * The page an invitation link opens. It is reached logged out: the link comes from a mail client and, under
@@ -22,6 +23,7 @@ import { SpentBudget } from '../shared/errors/spent-budget';
 @Component({
   selector: 'app-accept-invitation-page',
   imports: [
+    ReadFailed,
     PasswordToggle,
     SignedOutLayout,
     ReactiveFormsModule,
@@ -65,6 +67,11 @@ export class AcceptInvitationPage implements OnInit {
   async ngOnInit(): Promise<void> {
     this.invitation.forget();
     await this.invitation.load(this.token());
+  }
+
+  /** « Réessayer », offered only when the server could not be reached: the link read again. */
+  protected readAgain(): void {
+    void this.invitation.load(this.token());
   }
 
   protected async submit(): Promise<void> {

@@ -188,6 +188,20 @@ describe('ProductLabelsSheetPage', () => {
     expect(q('product-labels-left-out')).toBeNull();
   });
 
+  it('reads the labels again on « Réessayer »', async () => {
+    api.labels.mockRejectedValueOnce(new ProductsRefused('network'));
+    await open(['p1']);
+    expect(q('product-labels-error')).not.toBeNull();
+
+    q('product-labels-retry')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(api.labels).toHaveBeenCalledTimes(2);
+    expect(q('product-labels-error')).toBeNull();
+  });
+
   it('asks nothing when no product is named, and leads back to the list', async () => {
     await open(undefined);
 

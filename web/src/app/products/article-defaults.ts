@@ -38,6 +38,7 @@ import type { FieldRefusal } from '../shared/form/field-refusals';
 import { SettingRefusalLines } from '../shared/settings/setting-refusal-lines';
 import { FiscalFacade } from '../fiscal/fiscal-facade';
 import { withUnitChoice } from '../settings/settings-forms';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 const ARTICLE_CHAINS: readonly SettingChain[] = ['articles'];
 
@@ -48,6 +49,7 @@ const ARTICLE_CHAINS: readonly SettingChain[] = ['articles'];
 @Component({
   selector: 'app-article-defaults',
   imports: [
+    ReadFailed,
     MatButtonModule,
     TranslatePipe,
     DescriptorForm,
@@ -69,6 +71,7 @@ export class ArticleDefaults {
 
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
+  protected readonly readFailed = this.settings.readFailed;
   protected readonly rows = this.settings.rows;
   /** The settings the last save refused that no field of the form carries, named in the card's line. */
   protected readonly unplaced = signal<readonly FieldRefusal[]>([]);
@@ -228,6 +231,19 @@ export class ArticleDefaults {
       reset: () => this.settings.reset(companyId, subject, key),
       save: (changes) => this.settings.save(companyId, subject, changes),
       written: () => this.revision.update((revision) => revision + 1),
+    });
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.companyId();
+    if (!companyId) return;
+    const units = this.auth.hasPermission('fiscal.read')
+      ? this.fiscal.loadUnits(companyId)
+      : Promise.resolve();
+    void Promise.all([this.settings.load(companyId, this.subject()), units]).then(() => {
+      this.ready.set(true);
+      this.revision.update((revision) => revision + 1);
     });
   }
 }

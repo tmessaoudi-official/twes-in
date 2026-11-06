@@ -33,6 +33,8 @@ export class SubscriptionFacade {
   readonly waiting = this.waitingSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, which « Réessayer » answers; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
   readonly managed = this.managedSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {

@@ -16,6 +16,7 @@ import { AmountPipe, DayPipe, MeasurePipe } from '../shared/i18n/format-pipes';
 import { PURCHASE_HISTORY_TEXTS } from '../shared/i18n/purchase-history-texts';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { VendorPurchases } from './vendor-purchases-facade';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /**
  * A vendor's « Achats »: every line the company bought from it, as its past purchases were imported, the newest day
@@ -24,7 +25,15 @@ import { VendorPurchases } from './vendor-purchases-facade';
  */
 @Component({
   selector: 'app-vendor-purchases',
-  imports: [TranslatePipe, RouterLink, MatButtonModule, AmountPipe, DayPipe, MeasurePipe],
+  imports: [
+    ReadFailed,
+    TranslatePipe,
+    RouterLink,
+    MatButtonModule,
+    AmountPipe,
+    DayPipe,
+    MeasurePipe,
+  ],
   providers: [VendorPurchases],
   templateUrl: './vendor-purchases.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,6 +63,11 @@ export class VendorPurchasesSection implements OnInit {
   async ngOnInit(): Promise<void> {
     void this.texts.open(PURCHASE_HISTORY_TEXTS);
     await this.purchases.load(this.companyId(), this.vendorId());
+  }
+
+  /** « Réessayer »: the purchases read as on opening. */
+  protected readAgain(): void {
+    void this.purchases.load(this.companyId(), this.vendorId());
   }
 
   protected async showMore(): Promise<void> {

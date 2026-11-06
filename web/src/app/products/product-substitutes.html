@@ -2,9 +2,13 @@
   <h3 class="text-base font-medium">{{ 'products.substitutes.title' | translate }}</h3>
 
   @if (error(); as code) {
-    <p role="alert" data-testid="product-substitutes-error" class="text-error">
+    <app-read-failed
+      testId="product-substitutes-error"
+      retryTestId="product-substitutes-retry"
+      (retry)="readAgain()"
+    >
       {{ 'products.errors.' + code | translate }}
-    </p>
+    </app-read-failed>
   }
 
   @if (!grouped()) {

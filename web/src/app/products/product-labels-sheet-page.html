@@ -27,9 +27,14 @@
   </header>
 
   @if (error(); as code) {
-    <p role="alert" class="text-error print:hidden" data-testid="product-labels-error">
+    <app-read-failed
+      class="print:hidden"
+      testId="product-labels-error"
+      retryTestId="product-labels-retry"
+      (retry)="readAgain()"
+    >
       {{ 'products.errors.' + code | translate }}
-    </p>
+    </app-read-failed>
   }
 
   @if (leftOut().length > 0) {

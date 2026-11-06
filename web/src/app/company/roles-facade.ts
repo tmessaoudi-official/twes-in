@@ -24,6 +24,8 @@ export class RolesFacade {
   readonly groups = this.groupsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
+  /** Whether `error` is a read's failure, which « Réessayer » answers; a refused save is not. */
+  readonly readFailed = this.state.readFailed;
 
   /** Who holds a role a delete was refused for, which the screen names in its own sentence; null otherwise. */
   readonly held = this.heldSignal.asReadonly();

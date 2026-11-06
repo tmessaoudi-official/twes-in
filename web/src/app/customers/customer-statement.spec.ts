@@ -233,6 +233,17 @@ describe('CustomerStatementView', () => {
     expect(el.querySelector('[data-testid="statement-table"]')).toBeNull();
   });
 
+  it('reads the period on screen again on « Réessayer »', async () => {
+    statement.set(null);
+    error.set('network');
+    const { el } = await render();
+    const before = load.mock.calls.length;
+
+    (el.querySelector('[data-testid="statement-retry"]') as HTMLElement).click();
+
+    expect(load).toHaveBeenCalledTimes(before + 1);
+  });
+
   it('says what the customer has to their credit only when there is some', async () => {
     const { fixture, el } = await render();
     expect(el.querySelector('[data-testid="statement-credit"]')).toBeNull();

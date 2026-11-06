@@ -8,9 +8,9 @@
   </p>
 
   @if (failed()) {
-    <p role="alert" class="text-error" data-testid="removals-error">
+    <app-read-failed testId="removals-error" retryTestId="removals-retry" (retry)="readAgain()">
       {{ 'records.errors.network' | translate }}
-    </p>
+    </app-read-failed>
   } @else if (removals(); as list) {
     @if (list.length === 0) {
       <p class="flex items-center gap-2" data-testid="removals-empty">

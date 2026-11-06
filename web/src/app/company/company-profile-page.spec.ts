@@ -79,10 +79,12 @@ describe('CompanyProfilePage', () => {
   const profileSignal = signal<CompanyProfile | null>(profile);
   const error = signal<CompanyError | null>(null);
   const refusals = signal<readonly FieldRefusal[]>([]);
+  const readFailed = signal(false);
   const facade = {
     profile: profileSignal.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     refusals: refusals.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -132,6 +134,7 @@ describe('CompanyProfilePage', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     profileSignal.set(profile);
     error.set(null);
     refusals.set([]);
@@ -433,5 +436,20 @@ describe('CompanyProfilePage', () => {
     expect(facade.load).not.toHaveBeenCalled();
     expect(q('profile-forbidden')).not.toBeNull();
     expect(q('profile-form')).toBeNull();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    error.set('network');
+    await settle();
+    expect(q('profile-error')).not.toBeNull();
+    expect(q('profile-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.load.mock.calls.length;
+    q('profile-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(before + 1);
   });
 });

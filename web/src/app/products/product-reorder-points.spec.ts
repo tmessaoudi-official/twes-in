@@ -37,10 +37,13 @@ const row = (code: string, quantity: string | null): ProductReorderPointRow => (
 // docs/SPEC.md § 7, 2026-09-24 11:40: a reorder point per product per establishment, empty meaning no alert.
 describe('ProductReorderPointsSection', () => {
   const rows = signal<readonly ProductReorderPointRow[]>([]);
+  const readFailed = signal(false);
+  const shownError = signal<string | null>(null);
   const facade = {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
-    error: signal(null).asReadonly(),
+    error: shownError.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     load: vi.fn(),
     set: vi.fn(),
   };
@@ -73,6 +76,8 @@ describe('ProductReorderPointsSection', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
+    shownError.set(null);
     rows.set([row('SIEGE', '12.000'), row('SFAX', null)]);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.set.mockReset().mockResolvedValue('saved');
@@ -250,5 +255,24 @@ describe('ProductReorderPointsSection', () => {
     expect(q('product-reorder-value-SFAX')?.textContent?.trim()).toBe('Aucun seuil');
     expect(q('product-reorder-quantity-SIEGE')).toBeNull();
     expect(q('product-reorder-clear-SIEGE')).toBeNull();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    shownError.set('network');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(q('product-reorder-error')).not.toBeNull();
+    expect(q('product-reorder-retry')).toBeNull();
+
+    readFailed.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const before = facade.load.mock.calls.length;
+    q('product-reorder-retry')!.click();
+
+    expect(facade.load).toHaveBeenCalledTimes(before + 1);
   });
 });

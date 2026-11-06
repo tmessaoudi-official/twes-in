@@ -93,10 +93,12 @@ describe('SettingsPage', () => {
   const rows = signal<readonly SettingRow[]>([terms, rackWidth]);
   const error = signal<SettingsError | null>(null);
   const refusals = signal<readonly FieldRefusal[]>([]);
+  const readFailed = signal(false);
   const settings = {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     refusals: refusals.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -159,6 +161,7 @@ describe('SettingsPage', () => {
   }
 
   beforeEach(() => {
+    readFailed.set(false);
     rows.set([terms]);
     error.set(null);
     refusals.set([]);
@@ -458,5 +461,20 @@ describe('SettingsPage', () => {
     TestBed.inject(ThemeFacade).setShowComing(false);
     await settle();
     expect(q('settings-coming')).toBeNull();
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    await open();
+    error.set('network');
+    await settle();
+    expect(q('settings-error')).not.toBeNull();
+    expect(q('settings-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = settings.load.mock.calls.length;
+    q('settings-retry')!.click();
+
+    expect(settings.load).toHaveBeenCalledTimes(before + 1);
   });
 });

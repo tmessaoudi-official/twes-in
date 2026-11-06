@@ -153,4 +153,16 @@ describe('CustomerAccountView', () => {
     const root = await render();
     expect(text(root, 'account-error')).toBe('Introuvable.');
   });
+
+  it('reads the account again on « Réessayer »', async () => {
+    account.set(null);
+    error.set('network');
+    const root = await render();
+    const before = load.mock.calls.length;
+
+    (root.querySelector('[data-testid="account-retry"]') as HTMLElement).click();
+
+    expect(load).toHaveBeenCalledTimes(before + 1);
+    expect(load).toHaveBeenLastCalledWith('c1', 'k1');
+  });
 });

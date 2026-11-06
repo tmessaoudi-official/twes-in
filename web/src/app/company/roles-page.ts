@@ -43,6 +43,7 @@ import { ArticleDefaults } from '../products/article-defaults';
 import type { ArticleSubject } from '../shared/settings/settings-types';
 import { StickyHeaderSize } from '../shared/ui/sticky-header-size';
 import { typedText } from '../shared/form/typed-text';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** What a role's name keeps, as the API holds it. */
 const ROLE_NAME_MAX = 64;
@@ -58,6 +59,7 @@ const ROLE_NAME_MAX = 64;
 @Component({
   selector: 'app-roles-page',
   imports: [
+    ReadFailed,
     StickyHeaderSize,
     ArticleDefaults,
     Label,
@@ -91,6 +93,7 @@ export class RolesPage implements OnInit {
   protected readonly groups = this.facade.groups;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
+  protected readonly readFailed = this.facade.readFailed;
   protected readonly held = this.facade.held;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
@@ -224,6 +227,12 @@ export class RolesPage implements OnInit {
 
   constructor() {
     inject(UnsavedChanges).declare(this.changes);
+  }
+
+  /** « Réessayer », offered only after a read failed: read again as on opening. */
+  protected readAgain(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.facade.load(companyId);
   }
 
   async ngOnInit(): Promise<void> {

@@ -3,7 +3,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Select } from '../form/select';
 import { formatDay } from '../i18n/format';
@@ -12,6 +11,7 @@ import { languageChoices } from '../i18n/language-options';
 import { LEGAL_LANGUAGE_NAMES, LEGAL_LANGUAGES, LegalApi, type LegalLanguage } from './legal-api';
 import { LegalMarkdown } from './legal-markdown';
 import { STORED_ITEMS } from './stored-items';
+import { ReadFailed } from '../feedback/read-failed';
 
 /**
  * The text of one legal page, under the title its container gives it: the full page and the panel opened over a
@@ -21,7 +21,7 @@ import { STORED_ITEMS } from './stored-items';
  */
 @Component({
   selector: 'app-legal-text',
-  imports: [FormsModule, LegalMarkdown, MatButtonModule, Select, TranslatePipe],
+  imports: [ReadFailed, FormsModule, LegalMarkdown, Select, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-4">
@@ -36,10 +36,13 @@ import { STORED_ITEMS } from './stored-items';
         testId="legal-language"
       />
       @if (text.error()) {
-        <p role="alert" data-testid="legal-unavailable">{{ 'legal.unavailable' | translate }}</p>
-        <button mat-button type="button" data-testid="legal-text-retry" (click)="text.reload()">
-          {{ 'feedback.retry' | translate }}
-        </button>
+        <app-read-failed
+          testId="legal-unavailable"
+          retryTestId="legal-text-retry"
+          (retry)="text.reload()"
+        >
+          {{ 'legal.unavailable' | translate }}
+        </app-read-failed>
       } @else if (text.hasValue()) {
         @let shown = text.value();
         @if (shown === null) {

@@ -15,6 +15,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { ProductSubstitutes } from './product-substitutes-facade';
 import type { ProductSubstituteRow } from './products-types';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 /** "12.000" as a person writes it: "12". */
 function plain(quantity: string): string {
@@ -27,7 +28,7 @@ function plain(quantity: string): string {
  */
 @Component({
   selector: 'app-product-substitutes',
-  imports: [RouterLink, TranslatePipe],
+  imports: [ReadFailed, RouterLink, TranslatePipe],
   templateUrl: './product-substitutes.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -56,6 +57,11 @@ export class ProductSubstitutesSection implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.load();
+  }
+
+  /** « Réessayer »: the substitutes read as on opening. */
+  protected readAgain(): void {
+    void this.load();
   }
 
   private async load(): Promise<void> {

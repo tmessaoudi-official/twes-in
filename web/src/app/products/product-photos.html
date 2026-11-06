@@ -4,9 +4,14 @@
   </p>
 
   @if (refusal(); as refused) {
-    <p role="alert" data-testid="product-photos-error" class="text-error">
+    <app-read-failed
+      testId="product-photos-error"
+      retryTestId="product-photos-retry"
+      [retryable]="readFailed()"
+      (retry)="readAgain()"
+    >
       {{ 'products.photos.errors.' + refused.code | translate: refusalParams() }}
-    </p>
+    </app-read-failed>
   }
 
   @if (photos().length === 0) {

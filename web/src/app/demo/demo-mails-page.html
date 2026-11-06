@@ -3,12 +3,9 @@
   <p class="text-sm text-on-surface-variant">{{ 'demo_mails.intro' | translate }}</p>
 
   @if (failed()) {
-    <p role="alert" class="text-error" data-testid="demo-mails-error">
+    <app-read-failed testId="demo-mails-error" retryTestId="demo-mails-retry" (retry)="readAgain()">
       {{ 'demo_mails.unavailable' | translate }}
-    </p>
-    <button mat-button type="button" data-testid="demo-mails-retry" (click)="readAgain()">
-      {{ 'feedback.retry' | translate }}
-    </button>
+    </app-read-failed>
   }
 
   @if (mails(); as list) {

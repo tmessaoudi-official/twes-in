@@ -191,6 +191,7 @@ describe('StockMapPage', () => {
   const whereabouts = signal<MapSearch | null>(null);
   const holdings = signal<ReadonlyMap<string, number>>(new Map());
   const refusedEntry = signal<string | null>(null);
+  const readFailed = signal(false);
   const facade = {
     countContexts: vi.fn(async () => []),
     contents: contents.asReadonly(),
@@ -209,6 +210,7 @@ describe('StockMapPage', () => {
     structures: structures.asReadonly(),
     busy: busy.asReadonly(),
     error: error.asReadonly(),
+    readFailed: readFailed.asReadonly(),
     refusedEntry: refusedEntry.asReadonly(),
     loadPlanContext: vi.fn(),
     loadDrawings: vi.fn(),
@@ -257,6 +259,7 @@ describe('StockMapPage', () => {
     ).drawingFormGroup();
 
   beforeEach(async () => {
+    readFailed.set(false);
     planStorage = new PageMemoryStorage();
     error.set(null);
     refusedEntry.set(null);
@@ -3849,5 +3852,19 @@ describe('StockMapPage', () => {
       expect(exitFullscreen).toHaveBeenCalledTimes(1);
       expect(TestBed.inject(Immersive).on()).toBe(false);
     });
+  });
+
+  it('offers « Réessayer » only after a read failed, never under a refused save, and reads again as on opening', async () => {
+    error.set('network');
+    await settle();
+    expect(q('stock-map-error')).not.toBeNull();
+    expect(q('stock-map-retry')).toBeNull();
+
+    readFailed.set(true);
+    await settle();
+    const before = facade.loadPlanContext.mock.calls.length;
+    q('stock-map-retry')!.click();
+
+    expect(facade.loadPlanContext).toHaveBeenCalledTimes(before + 1);
   });
 });

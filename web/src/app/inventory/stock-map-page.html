@@ -453,9 +453,14 @@
       <p data-testid="stock-map-no-company">{{ 'inventory.no_company' | translate }}</p>
     }
     @if (error(); as code) {
-      <p role="alert" data-testid="stock-map-error" class="text-error">
+      <app-read-failed
+        testId="stock-map-error"
+        retryTestId="stock-map-retry"
+        [retryable]="readFailed()"
+        (retry)="readAgain()"
+      >
         {{ 'inventory.errors.' + code | translate }}
-      </p>
+      </app-read-failed>
     }
 
     <!-- The floor's own form, in the panel beside the board, or on its own while there is no floor to draw yet. -->

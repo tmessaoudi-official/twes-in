@@ -71,12 +71,9 @@
         </p>
       }
       @case ('unavailable') {
-        <p role="alert" class="text-error" data-testid="watch-error">
+        <app-read-failed testId="watch-error" retryTestId="watch-retry" (retry)="readAgain()">
           {{ 'watch.errors.unavailable' | translate }}
-        </p>
-        <button mat-button type="button" data-testid="watch-retry" (click)="readAgain()">
-          {{ 'feedback.retry' | translate }}
-        </button>
+        </app-read-failed>
       }
     }
 
