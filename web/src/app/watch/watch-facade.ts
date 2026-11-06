@@ -35,10 +35,19 @@ export class WatchFacade {
   private readonly document = inject(DOCUMENT);
   private timer: ReturnType<typeof setTimeout> | null = null;
   private due: { readonly companyId: string; readonly at: number } | null = null;
+  /** Moved on each time the session leaves its company: an answer asked before then is another company's. */
+  private session = 0;
 
   constructor() {
     const destroyRef = inject(DestroyRef);
-    inject(SessionData).keep(() => this.disarm(), 'company', destroyRef);
+    inject(SessionData).keep(
+      () => {
+        this.session += 1;
+        this.disarm();
+      },
+      'company',
+      destroyRef,
+    );
     // A hidden tab's timers are slowed or held by the browser: shown again past the moment, it reads at once.
     const shown = () => {
       const due = this.due;
@@ -57,13 +66,16 @@ export class WatchFacade {
    * answer sets the one timer for when it says to read again, whoever asked.
    */
   async load(companyId: string): Promise<void> {
+    const session = this.session;
     try {
       const summary = await this.api.summary(companyId);
+      // Neither shown nor read again once the session has left that company: it would renew itself on a quiet screen.
+      if (session !== this.session) return;
       this.summarySignal.set(summary);
       this.errorSignal.set(null);
       this.arm(companyId, summary.readAgainIn * 1000);
     } catch {
-      this.errorSignal.set('unavailable');
+      if (session === this.session) this.errorSignal.set('unavailable');
     }
   }
 

@@ -63,7 +63,7 @@ final class WatchResource
      * for it. Said from now rather than as a moment, as a browser's clock running ahead would read a moment as already
      * past and read again without end. At least one second, every moment counted being after now.
      */
-    #[ApiProperty(schema: ['type' => 'integer', 'minimum' => 1])]
+    #[ApiProperty(required: true, schema: ['type' => 'integer', 'minimum' => 1])]
     #[Groups([self::READ])]
     public int $readAgainIn = 0;
 

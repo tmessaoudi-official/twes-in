@@ -90,6 +90,22 @@ describe('WatchFacade', () => {
       expect(api.summary).toHaveBeenCalledTimes(2);
     });
 
+    it('drops an answer for a company the session left while it was asked, and reads it no more', async () => {
+      const session = TestBed.inject(SessionData);
+      session.heard({ user: { id: 'u1' }, company: { id: 'k1' } });
+      let answer: (summary: unknown) => void = () => undefined;
+      api.summary.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+      const asked = facade.load('k1');
+
+      session.heard({ user: { id: 'u1' }, company: { id: 'k2' } });
+      answer({ count: 7, subjects: [], readAgainIn: 60 });
+      await asked;
+      await vi.advanceTimersByTimeAsync(61_000);
+
+      expect(api.summary).toHaveBeenCalledTimes(1);
+      expect(facade.summary()).toBeNull();
+    });
+
     it('stops reading a company the session has left', async () => {
       const session = TestBed.inject(SessionData);
       session.heard({ user: { id: 'u1' }, company: { id: 'k1' } });
