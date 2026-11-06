@@ -635,6 +635,7 @@
     "mark_all": "Tout marquer comme lu",
     "empty_unread": "Aucune notification non lue.",
     "failed": "Les notifications n’ont pas pu être lues à l’instant ; réessayez dans un moment.",
+    "mark_failed": "Le marquage comme lu n’a pas abouti : ce qui était non lu le reste.",
     "close": "Fermer les notifications",
     "filter": "Afficher",
     "filter_all": "Toutes",

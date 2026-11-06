@@ -12,10 +12,14 @@
   <h1 class="text-title">{{ 'platform.legal.title' | translate }}</h1>
   <p>{{ 'platform.legal.intro' | translate }}</p>
   @if (facade.failed()) {
-    <p role="alert" data-testid="legal-failed">{{ 'platform.legal.failed' | translate }}</p>
-    <button mat-button type="button" data-testid="legal-retry" (click)="facade.load()">
-      {{ 'feedback.retry' | translate }}
-    </button>
+    <app-read-failed testId="legal-failed" retryTestId="legal-retry" (retry)="readAgain()">
+      {{ 'platform.legal.failed' | translate }}
+    </app-read-failed>
+  } @else if (facade.saveFailed()) {
+    <p role="alert" class="text-error" data-testid="legal-save-failed">
+      {{ 'platform.legal.save_failed' | translate }}
+    </p>
+    <!-- read-retry: a save not confirmed is sent again by its own button, once the page is read over -->
   }
 
   <section class="flex flex-col gap-3" aria-labelledby="legal-identity-title">

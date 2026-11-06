@@ -34,14 +34,17 @@ export class NotificationsFacade {
     'person',
   );
   private readonly errorSignal = sessionSignal(false);
+  private readonly markFailedSignal = sessionSignal(false);
   private connection: RealtimeConnection | null = null;
 
   readonly items = this.itemsSignal.asReadonly();
   readonly unread = this.unreadSignal.asReadonly();
   /** What waits in each of the person's companies, which the company switcher shows beside each name. */
   readonly unreadByCompany = this.unreadByCompanySignal.asReadonly();
-  /** The last request failed; what is shown is the last list that loaded. */
+  /** The last read of the list failed; what is shown is the last list that loaded. */
   readonly error = this.errorSignal.asReadonly();
+  /** The last mark as read failed, which reading the list again would not undo; a mark or a read that goes through ends it. */
+  readonly markFailed = this.markFailedSignal.asReadonly();
 
   async refresh(): Promise<void> {
     try {
@@ -49,6 +52,7 @@ export class NotificationsFacade {
       this.itemsSignal.set(page.items);
       this.unreadSignal.set(page.unread);
       this.errorSignal.set(false);
+      this.markFailedSignal.set(false);
     } catch {
       this.errorSignal.set(true);
     }
@@ -102,9 +106,10 @@ export class NotificationsFacade {
     try {
       await call();
     } catch {
-      this.errorSignal.set(true);
+      this.markFailedSignal.set(true);
       return;
     }
+    this.markFailedSignal.set(false);
     await this.refresh();
   }
 }

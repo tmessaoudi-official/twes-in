@@ -40,6 +40,7 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { PlatformLegalFacade } from './platform-legal-facade';
 import type { LegalStatusRow, LegalVersionRow } from './platform-legal-types';
 import { typedText } from '../shared/form/typed-text';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 interface Opened {
   readonly page: LegalPage;
@@ -62,6 +63,7 @@ type ListPart =
 @Component({
   selector: 'app-platform-legal-page',
   imports: [
+    ReadFailed,
     DayPipe,
     FormsModule,
     LegalMarkdown,
@@ -253,6 +255,12 @@ export class PlatformLegalPage implements OnInit {
 
   ngOnInit(): void {
     void this.facade.load();
+  }
+
+  /** « Réessayer », offered only after a read failed: the pages read as on opening, and the open page's versions. */
+  protected readAgain(): void {
+    void this.facade.load();
+    if (this.opened() !== null) void this.facade.rereadTexts();
   }
 
   protected statusOf(page: LegalPage, language: LegalLanguage): LegalStatusRow | undefined {

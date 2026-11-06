@@ -94,6 +94,25 @@ describe('PlatformLegalFacade', () => {
 
     expect(api.saveIdentity).toHaveBeenCalledTimes(1);
     expect(api.identity).not.toHaveBeenCalled();
+    // The operator's own choice, which no line calls a failure.
+    expect(facade.saveFailed()).toBe(false);
+    expect(facade.failed()).toBe(false);
+  });
+
+  it('says a save that did not reach the API apart from pages that could not be read', async () => {
+    await facade.open('mentions', 'fr');
+    api.write.mockRejectedValueOnce(new Error('offline'));
+
+    expect(await facade.write('## Éditeur')).toBe(false);
+
+    expect(facade.saveFailed()).toBe(true);
+    expect(facade.failed()).toBe(false);
+
+    api.overview.mockRejectedValueOnce(new Error('offline'));
+    await facade.load();
+
+    expect(facade.failed()).toBe(true);
+    expect(facade.saveFailed()).toBe(false);
   });
 
   it('saves the facts changed with the versions read, and after one saved since shows what is saved', async () => {

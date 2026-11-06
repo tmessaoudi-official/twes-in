@@ -635,6 +635,7 @@
     "mark_all": "Mark all as read",
     "empty_unread": "No unread notifications.",
     "failed": "The notifications could not be read just now; try again in a moment.",
+    "mark_failed": "Marking as read did not go through: what was unread still is.",
     "close": "Close notifications",
     "filter": "Show",
     "filter_all": "All",

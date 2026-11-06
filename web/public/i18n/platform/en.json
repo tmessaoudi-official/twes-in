@@ -224,6 +224,7 @@
       "validated_by": "validated by {{who}}",
       "reuse": "Start from this text",
       "failed": "The legal pages cannot be read right now.",
+      "save_failed": "The save could not be confirmed: check the connection, then read the page over before saving again.",
       "identity": {
         "title": "Publisher and host",
         "intro": "What the legal pages name, where a text writes its mark in double braces. What is not filled in shows « [to be completed] ».",

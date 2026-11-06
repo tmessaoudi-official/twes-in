@@ -26,6 +26,7 @@ import {
 } from './notifications-types';
 import { Label } from '../shared/a11y/label';
 import { typedText } from '../shared/form/typed-text';
+import { ReadFailed } from '../shared/feedback/read-failed';
 
 type Filter = 'all' | 'unread';
 
@@ -36,6 +37,7 @@ type Filter = 'all' | 'unread';
 @Component({
   selector: 'app-notification-panel',
   imports: [
+    ReadFailed,
     Label,
     MatButtonModule,
     MatDialogModule,
@@ -56,8 +58,10 @@ export class NotificationPanel {
   private readonly panel = inject<MatDialogRef<NotificationPanel>>(MatDialogRef);
 
   protected readonly unread = this.facade.unread;
-  /** The last read or mark failed: what shows is the list read before, or nothing. */
+  /** The last read failed: what shows is the list read before, or nothing. */
   protected readonly failed = this.facade.error;
+  /** The last mark as read failed: said apart, since reading again would not undo it. */
+  protected readonly markFailed = this.facade.markFailed;
   protected readonly filters: readonly Filter[] = ['all', 'unread'];
   protected readonly filter = signal<Filter>('all');
   /** Moves once a minute, so "il y a 5 minutes" keeps up while the panel stays open. */

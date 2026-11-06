@@ -29,6 +29,7 @@ class StaticLoader implements TranslateLoader {
         empty: 'Aucune notification',
         empty_unread: 'Rien de non lu',
         failed: 'Les notifications ne répondent pas',
+        mark_failed: 'Le marquage n’a pas abouti',
         mark_all: 'Tout marquer comme lu',
         close: 'Fermer',
         filter: 'Afficher',
@@ -113,10 +114,12 @@ describe('NotificationBell', () => {
   const unread = signal(0);
   const permitted = signal(true);
   const failed = signal(false);
+  const markFailed = signal(false);
   const facade = {
     items: items.asReadonly(),
     unread: unread.asReadonly(),
     error: failed.asReadonly(),
+    markFailed: markFailed.asReadonly(),
     connect: vi.fn(),
     disconnect: vi.fn(),
     refresh: vi.fn(async () => undefined),
@@ -132,6 +135,7 @@ describe('NotificationBell', () => {
     unread.set(0);
     permitted.set(true);
     failed.set(false);
+    markFailed.set(false);
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [NotificationBell],
@@ -633,6 +637,20 @@ describe('NotificationBell', () => {
     await settle(fixture);
 
     expect(facade.refresh).toHaveBeenCalledTimes(asked + 1);
+  });
+
+  it('says a mark that failed in its own words, with no « Réessayer », which reading again would not undo', async () => {
+    markFailed.set(true);
+    items.set([unreadEntry]);
+    const fixture = render();
+    await open(fixture);
+
+    expect(text(document.querySelector('[data-testid="notifications-mark-failed"]'))).toBe(
+      'Le marquage n’a pas abouti',
+    );
+    expect(document.querySelector('[data-testid="notifications-failed"]')).toBeNull();
+    expect(document.querySelector('[data-testid="notifications-retry"]')).toBeNull();
+    expect(all('notification-item')).toHaveLength(1);
   });
 
   it('offers to mark everything read only when something is unread', async () => {

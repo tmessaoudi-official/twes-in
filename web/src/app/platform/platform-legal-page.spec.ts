@@ -43,6 +43,7 @@ class StaticLoader implements TranslateLoader {
       legal: { pages: { mentions: 'Mentions légales', cookies: 'Cookies', security: 'Sécurité' } },
       platform: {
         legal: {
+          save_failed: 'L’enregistrement n’a pas pu être confirmé',
           title: 'Pages légales',
           texts: 'Textes',
           language: 'Langue',
@@ -121,6 +122,7 @@ describe('PlatformLegalPage', () => {
     versions: ReturnType<typeof signal<readonly LegalVersionRow[]>>;
     busy: ReturnType<typeof signal<boolean>>;
     failed: ReturnType<typeof signal<boolean>>;
+    saveFailed: ReturnType<typeof signal<boolean>>;
     identity: ReturnType<typeof signal<Readonly<Record<string, string>>>>;
     identityRefusals: ReturnType<typeof signal<readonly FieldRefusal[]>>;
     country: ReturnType<typeof signal<string | null>>;
@@ -187,6 +189,7 @@ describe('PlatformLegalPage', () => {
       versions: signal<readonly LegalVersionRow[]>([]),
       busy: signal(false),
       failed: signal(false),
+      saveFailed: signal(false),
       // Every legal.* setting, in the API's order, the empty ones included: the form's fields.
       identity: signal<Readonly<Record<string, string>>>({
         'publisher.name': 'twes SAS',
@@ -282,6 +285,17 @@ describe('PlatformLegalPage', () => {
 
     expect(facade.load).toHaveBeenCalledTimes(asked + 1);
   });
+  it('says a save that could not be confirmed in its own words, with no « Réessayer », which reading again would not undo', async () => {
+    facade.saveFailed.set(true);
+    await render();
+
+    expect(q('legal-save-failed')?.textContent?.trim()).toBe(
+      'L’enregistrement n’a pas pu être confirmé',
+    );
+    expect(q('legal-failed')).toBeNull();
+    expect(q('legal-retry')).toBeNull();
+  });
+
   it('reads the legal texts again when another operator writes or validates one', async () => {
     await render();
 

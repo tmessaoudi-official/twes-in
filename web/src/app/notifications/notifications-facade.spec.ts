@@ -95,6 +95,30 @@ describe('NotificationsFacade', () => {
     expect(facade.error()).toBe(true);
   });
 
+  it('says a mark that failed apart from a list that could not be read, until a mark or a read goes through', async () => {
+    api.list.mockResolvedValue(page([added], 1));
+    await facade.refresh();
+    api.markRead.mockRejectedValueOnce(new Error('offline'));
+
+    await facade.markRead('n1');
+
+    expect(facade.markFailed()).toBe(true);
+    expect(facade.error()).toBe(false);
+    expect(facade.items()).toEqual([added]);
+
+    api.markRead.mockResolvedValueOnce(undefined);
+    await facade.markRead('n1');
+
+    expect(facade.markFailed()).toBe(false);
+
+    api.markAllRead.mockRejectedValueOnce(new Error('offline'));
+    await facade.markAllRead();
+    expect(facade.markFailed()).toBe(true);
+
+    await facade.refresh();
+    expect(facade.markFailed()).toBe(false);
+  });
+
   it('connects to the websocket on this origin and takes its token from the API', async () => {
     api.realtimeToken.mockResolvedValue('a-token');
     const location = TestBed.inject(DOCUMENT).location;

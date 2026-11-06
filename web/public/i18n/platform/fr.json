@@ -224,6 +224,7 @@
       "validated_by": "validée par {{who}}",
       "reuse": "Reprendre ce texte",
       "failed": "Les pages légales ne peuvent pas être lues pour le moment.",
+      "save_failed": "L’enregistrement n’a pas pu être confirmé : vérifiez la connexion, puis relisez la page avant d’enregistrer à nouveau.",
       "identity": {
         "title": "Éditeur et hébergeur",
         "intro": "Ce que les pages légales nomment, là où un texte écrit sa marque entre doubles accolades. Ce qui n’est pas rempli s’affiche « [à compléter] ».",

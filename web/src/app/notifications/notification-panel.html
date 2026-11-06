@@ -48,14 +48,22 @@
 </div>
 
 <div id="notification-list" role="tabpanel" class="relative min-h-0 flex-1 overflow-y-auto pb-4">
-  <!-- The list read last, or nothing, is not « Aucune notification. » when the read or a mark failed: said as such. -->
+  <!-- The list read last, or nothing, is not « Aucune notification. » when the read failed: said as such. -->
   @if (failed()) {
-    <p class="px-6 pt-3 text-sm text-error" role="status" data-testid="notifications-failed">
+    <app-read-failed
+      class="px-6 pt-3"
+      alertClass="text-sm"
+      testId="notifications-failed"
+      retryTestId="notifications-retry"
+      (retry)="readAgain()"
+    >
       {{ 'notifications.failed' | translate }}
+    </app-read-failed>
+  } @else if (markFailed()) {
+    <p class="px-6 pt-3 text-sm text-error" role="alert" data-testid="notifications-mark-failed">
+      {{ 'notifications.mark_failed' | translate }}
     </p>
-    <button mat-button type="button" data-testid="notifications-retry" (click)="readAgain()">
-      {{ 'feedback.retry' | translate }}
-    </button>
+    <!-- read-retry: a mark that failed is made again by reading the entry, which reading the list would not do -->
   }
   @for (group of groups(); track group.key) {
     <section [attr.aria-labelledby]="'notifications-day-' + group.key">

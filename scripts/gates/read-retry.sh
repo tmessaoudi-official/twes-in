@@ -11,7 +11,7 @@
 set -uo pipefail
 export LC_ALL=C
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-floor=42
+floor=44
 while (($#)); do
   case $1 in
     --root) root=$2; shift 2 ;;
@@ -24,11 +24,6 @@ canon=(
   web/src/app/shared/feedback/read-failed.ts
   web/src/app/shared/list/data-list.html
   web/src/app/shared/feedback/activity-bar.ts
-)
-# Plan row S5.22c: each says a failed save in the same words as a failed read, so its retry waits for words of its own.
-pending=(
-  web/src/app/platform/platform-legal-page.html
-  web/src/app/notifications/notification-panel.html
 )
 # An exclude pathspec (':!*.spec.ts') lists nothing under the toolchain's git once a spec is staged: filtered instead.
 mapfile -t files < <(cd "$root" && git ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
@@ -51,7 +46,7 @@ for file in "${files[@]}"; do
         status=1 ;;
       own)
         skip=0
-        for allowed in "${canon[@]}" "${pending[@]}"; do [[ "$file" == "$allowed" ]] && skip=1; done
+        for allowed in "${canon[@]}"; do [[ "$file" == "$allowed" ]] && skip=1; done
         if ((skip == 0)); then
           printf "read-retry: FAIL — %s:%s draws its own « Réessayer »: say the failure through <app-read-failed>\n" "$file" "$line"
           status=1

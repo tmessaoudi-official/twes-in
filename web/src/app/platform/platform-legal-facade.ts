@@ -40,8 +40,13 @@ export class PlatformLegalFacade {
   readonly identityRefusals = this.identityRefusalsSignal.asReadonly();
   /** The platform's own country, which the identity's phones start on; null until read. */
   readonly country = this.countrySignal.asReadonly();
-  /** Whether the last read or write did not reach the API. */
-  readonly failed = computed(() => this.state.error() !== null);
+  /** Whether the last read did not reach the API: the pages say so, with « Réessayer ». */
+  readonly failed = this.state.readFailed;
+  /**
+   * Whether the last save or publication was not confirmed, which reading again would not undo: said in its own
+   * words. A proof the operator declined is their own choice and sets neither.
+   */
+  readonly saveFailed = computed(() => this.state.error() !== null && !this.state.readFailed());
 
   async load(): Promise<void> {
     await this.run(async () => {
@@ -153,6 +158,8 @@ export class PlatformLegalFacade {
 
   /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
   private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
-    return reading ? this.state.read(work) : this.state.write(work);
+    return reading
+      ? this.state.read(work)
+      : this.state.write(work, { code: (error) => (stepUpAsked(error) ? null : true) });
   }
 }
