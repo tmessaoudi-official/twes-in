@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { refusalsIn } from './field-refusals';
+import { refusalsIn, WHOLE_REQUEST } from './field-refusals';
 
 describe('refusalsIn', () => {
   it('reads each violation as its field, its reason and that text’s parameters', () => {
@@ -52,6 +52,15 @@ describe('refusalsIn', () => {
     expect(refusalsIn({ violations: [{ propertyPath: 'kind', code: 'abc' }] })).toEqual([
       { field: 'kind', reason: null, params: {} },
     ]);
+  });
+
+  it('keeps a refusal of the request as a whole at the empty field, for the page to say above its form', () => {
+    expect(
+      refusalsIn({
+        violations: [{ propertyPath: '', payload: { reason: 'payment_already_decided' } }],
+      }),
+    ).toEqual([{ field: WHOLE_REQUEST, reason: 'payment_already_decided', params: {} }]);
+    expect(WHOLE_REQUEST).toBe('');
   });
 
   it('finds none in a body that names no field', () => {

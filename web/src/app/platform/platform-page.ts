@@ -26,7 +26,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom, map } from 'rxjs';
-import { refusalParams } from '../shared/form/refusal-words';
+import { refusalParams, refusedError } from '../shared/form/refusal-words';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SETTING_REFUSAL_TEXTS } from '../shared/settings/setting-refusals';
 import { DescriptorForm, type FieldAction } from '../shared/form/descriptor-form';
@@ -750,6 +750,8 @@ export class PlatformPage implements OnInit {
     if (await this.payments.confirm(declarationId, periods, null)) {
       this.feedback.effect('platform.payments.confirmed', {}, 'corrigeable');
       await this.platform.load();
+    } else {
+      await this.decisionFailed();
     }
   }
 
@@ -757,7 +759,28 @@ export class PlatformPage implements OnInit {
     if (await this.payments.reject(declarationId, null)) {
       this.feedback.effect('platform.payments.rejected', {}, 'corrigeable');
       await this.platform.load();
+    } else {
+      await this.decisionFailed();
     }
+  }
+
+  /**
+   * A decision that did not land is said, and the queue read again: the row the operator acted on may have been
+   * decided meanwhile by another operator, whose decision the queue then shows. A proof the operator gave up was said
+   * by its own dialog, and a failure an interceptor said leaves no error.
+   */
+  private async decisionFailed(): Promise<void> {
+    const code = this.payments.error();
+    if (code !== null && code !== 'step_up_required') {
+      const refusal = this.payments.refusals().find((one) => one.reason !== null);
+      if (refusal === undefined) {
+        this.feedback.failure(`licensing.errors.${code}`);
+      } else {
+        const said = refusedError(this.translate, refusal);
+        this.feedback.failure(said.key, said.params);
+      }
+    }
+    await this.payments.loadWaiting();
   }
 
   /** The shared confirmation, the one every declared action asks through. */

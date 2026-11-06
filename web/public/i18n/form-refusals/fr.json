@@ -115,7 +115,8 @@
       "stock_short_to_confirm": "{{name}} : il en faut {{wanted}} {{unit}}, le stock enregistré en compte {{on_hand}} {{unit}}. Confirmez la vente pour continuer.",
       "after_now": "Ce moment est déjà passé : choisissez une fin encore à venir.",
       "before_last_day": "Le dernier numéro a été donné le {{last}}, et l’horloge de l’ordinateur où l’application est installée indique le {{today}} : le document serait daté avant le précédent. Corrigez sa date et son heure, ou prévenez la personne qui s’occupe de cet ordinateur, puis recommencez.",
-      "before_last_period": "Le dernier numéro a été donné le {{last}}, et l’horloge de l’ordinateur où l’application est installée indique le {{today}} : rien n’est numéroté avant le dernier mois numéroté. Corrigez sa date et son heure, ou prévenez la personne qui s’occupe de cet ordinateur, puis recommencez."
+      "before_last_period": "Le dernier numéro a été donné le {{last}}, et l’horloge de l’ordinateur où l’application est installée indique le {{today}} : rien n’est numéroté avant le dernier mois numéroté. Corrigez sa date et son heure, ou prévenez la personne qui s’occupe de cet ordinateur, puis recommencez.",
+      "payment_already_decided": "Ce règlement a déjà été confirmé ou refusé, peut-être par un autre opérateur : la liste est relue."
     }
   }
 }

@@ -16,7 +16,13 @@ export interface FieldRefusal {
 /** Where a form keeps a registration number: one field per identifier of the preset, as the API keys them. */
 export const IDENTIFIER_FIELD_PREFIX = 'identifier__';
 
-/** The refusals a 422's body names; none when it names no field. A feature's API adapter hands it the body. */
+/**
+ * The field a refusal of the request as a whole lands on: no field of the form, so the page says it above its form
+ * (`DescriptorForm.showRefused` answers it as unplaced). It is the root path Symfony's validator writes for one.
+ */
+export const WHOLE_REQUEST = '';
+
+/** The refusals a 422's body names; none when it names none. A feature's API adapter hands it the body. */
 export function refusalsIn(body: unknown): readonly FieldRefusal[] {
   const violations: unknown = (body as { violations?: unknown } | null)?.violations;
   if (!Array.isArray(violations)) return [];
@@ -25,7 +31,7 @@ export function refusalsIn(body: unknown): readonly FieldRefusal[] {
       propertyPath?: unknown;
       payload?: unknown;
     };
-    if (typeof propertyPath !== 'string' || propertyPath === '') return [];
+    if (typeof propertyPath !== 'string') return [];
     const { reason, params } = (payload ?? {}) as { reason?: unknown; params?: unknown };
     return [
       {

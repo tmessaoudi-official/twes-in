@@ -175,10 +175,10 @@ final class PaymentDeclarationResource
     /** @throws InvalidPayment for a method or a day the domain does not know; the amount is the domain's own guard */
     public function payment(): DeclaredPayment
     {
-        $method = PaymentMethod::tryFrom($this->method) ?? throw new InvalidPayment('method: cash, transfer, cheque or other.');
+        $method = PaymentMethod::tryFrom($this->method) ?? throw new InvalidPayment('method', 'Cash, transfer, cheque or other.', 'invalid_value');
         $paidOn = 1 === preg_match(self::DAY, $this->paidOn) ? WrittenDay::parsed($this->paidOn) : null;
         if (null === $paidOn) {
-            throw new InvalidPayment('paidOn: a day written YYYY-MM-DD.');
+            throw new InvalidPayment('paidOn', 'A day written YYYY-MM-DD.', 'not_a_date');
         }
 
         return new DeclaredPayment($this->amount, $this->currency, $method, $paidOn, $this->reference, $this->note);
@@ -188,7 +188,7 @@ final class PaymentDeclarationResource
     public function periodsCovered(): int
     {
         if ($this->periods < 1 || $this->periods > self::MAX_PERIODS) {
-            throw new InvalidPayment(\sprintf('periods: 1 to %d.', self::MAX_PERIODS));
+            throw new InvalidPayment('periods', \sprintf('1 to %d.', self::MAX_PERIODS), 'whole_number_between', ['min' => 1, 'max' => self::MAX_PERIODS]);
         }
 
         return $this->periods;

@@ -8,6 +8,7 @@ import {
   inject,
   OnInit,
   signal,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -59,6 +60,7 @@ export class SubscriptionPage implements OnInit {
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly declaring = signal(false);
   protected readonly descriptor = paymentForm();
+  private readonly paymentForm = viewChild(DescriptorForm);
   /** Keyed on nothing the API answers, so what is typed survives a reload that changes the standing. */
   protected readonly form = computed(() => (this.declaring() ? this.group : null));
 
@@ -113,6 +115,9 @@ export class SubscriptionPage implements OnInit {
       this.blank.set(paymentFormValues());
       this.group.reset(this.blank());
       this.feedback.success('licensing.payment.declared');
+    } else {
+      // Each field the API refused says why under it; what no field carries is the error said above the form.
+      this.paymentForm()?.showRefused(this.facade.refusals());
     }
   }
 }

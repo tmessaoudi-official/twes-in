@@ -56,7 +56,12 @@ test('an order is started from its vendor, sent, received in two parts, and its 
 
     await page.getByTestId('document-action-send').click();
     await page.getByTestId('confirm-run').click();
-    await expect(toast(page)).toContainText(/La commande .+ est marquée envoyée\./);
+    // It names the order, whom it went to and what it comes to, which the operator, who may see costs, is told.
+    await expect(toast(page)).toContainText(
+      new RegExp(
+        `La commande .+ est marquée envoyée à Quincaillerie ${vendorNumber}\\s:\\s2,500 TND HT\\.`,
+      ),
+    );
     await expect(page.getByTestId('purchase-order-status')).toContainText('Envoyée');
     await expect(page.getByTestId('purchase-order-lines-read')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);

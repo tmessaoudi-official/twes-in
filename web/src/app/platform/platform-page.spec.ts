@@ -10,7 +10,8 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { SubscriptionFacade } from '../licensing/subscription-facade';
-import type { WaitingPayment } from '../licensing/subscription-types';
+import type { SubscriptionError, WaitingPayment } from '../licensing/subscription-types';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
   PageMemoryStorage,
@@ -66,6 +67,8 @@ class StaticLoader implements TranslateLoader {
       import: {
         rejections: {
           whole_number_between: 'Attendu : un nombre entier de {{min}} à {{max}}.',
+          payment_already_decided:
+            'Ce règlement a déjà été confirmé ou refusé, peut-être par un autre opérateur : la liste est relue.',
           not_a_whole_number: 'Attendu : un nombre entier.',
           at_least: 'Attendu : {{min}} ou plus.',
           invalid_whatsapp:
@@ -436,8 +439,12 @@ describe('PlatformPage', () => {
     load: vi.fn(async () => offered()),
     switchTo: vi.fn(async () => true),
   };
+  const paymentsError = signal<SubscriptionError | null>(null);
+  const paymentRefusals = signal<readonly FieldRefusal[]>([]);
   const payments = {
     waiting: waitingPayments.asReadonly(),
+    error: paymentsError.asReadonly(),
+    refusals: paymentRefusals.asReadonly(),
     loadWaiting: vi.fn(async () => undefined),
     confirm: vi.fn(async () => true),
     reject: vi.fn(async () => true),
@@ -460,6 +467,10 @@ describe('PlatformPage', () => {
     facade.actOnAccount.mockClear();
     companies.set([row]);
     waitingPayments.set([declared]);
+    paymentsError.set(null);
+    paymentRefusals.set([]);
+    payments.reject.mockImplementation(async () => true);
+    payments.loadWaiting.mockClear();
     demand.set([]);
     failed.set({ total: 0, kinds: [] });
     waitingTotal.set(1);
@@ -1985,6 +1996,60 @@ describe('PlatformPage', () => {
         expect.objectContaining({ key: 'platform.payments.rejected', effect: 'corrigeable' }),
       ]),
     );
+  });
+
+  // A decision the API refused, or that never reached it, was dropped unsaid: the operator saw the row stay, nothing more.
+  it.each([
+    {
+      why: 'decided meanwhile, by another operator',
+      code: 'invalid' as const,
+      refusals: [{ field: '', reason: 'payment_already_decided', params: {} }],
+      said: 'import.rejections.payment_already_decided',
+    },
+    {
+      why: 'the server unreachable',
+      code: 'network' as const,
+      refusals: [],
+      said: 'licensing.errors.network',
+    },
+  ])(
+    'says a decision it could not make, $why, and reads the queue again',
+    async ({ code, refusals, said }) => {
+      payments.reject.mockImplementation(async () => {
+        paymentsError.set(code);
+        paymentRefusals.set(refusals);
+        return false;
+      });
+      const { fixture, query } = await render('/?tab=payments');
+      payments.loadWaiting.mockClear();
+
+      query<HTMLButtonElement>('payment-reject-p1')!.click();
+      await fixture.whenStable();
+      await answer(fixture, 'run');
+
+      await vi.waitFor(() =>
+        expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+          expect.objectContaining({ kind: 'failure', key: said }),
+        ]),
+      );
+      expect(payments.loadWaiting).toHaveBeenCalled();
+    },
+  );
+
+  it('says nothing more of a decision whose proof the operator gave up, which its own dialog said', async () => {
+    payments.reject.mockImplementation(async () => {
+      paymentsError.set('step_up_required');
+      return false;
+    });
+    const { fixture, query } = await render('/?tab=payments');
+
+    query<HTMLButtonElement>('payment-reject-p1')!.click();
+    await fixture.whenStable();
+    await answer(fixture, 'run');
+
+    await vi.waitFor(() => expect(payments.reject).toHaveBeenCalled());
+    await fixture.whenStable();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
   });
 
   it('asks before it stops managing a company, naming it and saying its terms are erased for good', async () => {

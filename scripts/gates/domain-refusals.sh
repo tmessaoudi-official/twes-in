@@ -10,6 +10,10 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 # The answers built today: losing them (the helper renamed, the tree moved) would leave nothing to check.
 FLOOR=90
+# A 422 forwarding a domain refusal's English message ($refused->getMessage()) carries no reason and, mostly, no field
+# a page can place: stable-release S5.3 moves each onto DomainRule::refused. Until the last one, their count is held
+# exactly here, so one coming back reds and each one moved lowers it (the number this gate asks for).
+FORWARDED=${DOMAIN_REFUSALS_FORWARDED:-24}
 problems=()
 
 if [[ ! -d "$root/api/src" ]]; then problems+=("found no api/src")
@@ -20,6 +24,20 @@ else
     [[ "$code" =~ //[[:space:]]*plain-refusal:[[:space:]]*[^[:space:]] ]] && continue
     problems+=("${file#"$root/"}:$n: ${code:0:110}")
   done < <(grep -rnE --include='*.php' "UnprocessableEntityHttpException\(\\\\sprintf\('%s(\.%s)?: %s'" "$root/api/src")
+  forwarded=()
+  while IFS=: read -r file n line; do
+    code=${line#"${line%%[![:space:]]*}"}
+    [[ "$code" == '*'* || "$code" == '/*'* || "$code" == '//'* || "$code" == '#'* ]] && continue
+    [[ "$code" =~ //[[:space:]]*plain-refusal:[[:space:]]*[^[:space:]] ]] && continue
+    [[ "$code" =~ \\sprintf\(\'%s(\.%s)?:\ %s\' ]] && continue  # refused above, as a « field: message » answer
+    forwarded+=("${file#"$root/"}:$n: ${code:0:110}")
+  done < <(grep -rnE --include='*.php' 'UnprocessableEntityHttpException\(.*->getMessage\(\)' "$root/api/src")
+  if ((${#forwarded[@]} > FORWARDED)); then
+    problems+=("${#forwarded[@]} 422s forward a domain message, more than the $FORWARDED left: answer through DomainRule::refused with the refusal's field and reason")
+    problems+=("${forwarded[@]}")
+  elif ((${#forwarded[@]} < FORWARDED)); then
+    problems+=("${#forwarded[@]} 422s forward a domain message, fewer than the $FORWARDED this gate holds: lower FORWARDED to ${#forwarded[@]}")
+  fi
   found=$(grep -rhoE --include='*.php' 'DomainRule::refused\(' "$root/api/src" | wc -l)
   ((found < FLOOR)) && problems+=("found $found DomainRule::refused answers, fewer than the $FLOOR there are: the helper moved, or this gate reads the wrong tree")
 fi
@@ -29,4 +47,4 @@ if ((${#problems[@]})); then
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi
-printf 'domain-refusals: OK — every domain refusal answers as a violation, %d through DomainRule::refused\n' "$found"
+printf 'domain-refusals: OK — every domain refusal answers as a violation, %d through DomainRule::refused; %d still forward a domain message (S5.3)\n' "$found" "${#forwarded[@]}"

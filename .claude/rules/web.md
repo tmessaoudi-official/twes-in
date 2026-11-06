@@ -124,7 +124,8 @@ the end of § Lessons here.
   spec you need to run locally: "let CI arbitrate" hid a real failure for three commits (2026-09-20). And a test id
   renamed in a shared component is a blast-radius sweep over `web/e2e` too, not only over `web/src`. The same holds for a
   shown format (a day through the `day` pipe) and a suffix selector (`[data-testid$="-confirm"]`): `git grep` the old
-  literal over `web/e2e`; both reddened e2e on master the same day (2026-10-06).
+  literal over `web/e2e`; both reddened e2e on master the same day (2026-10-06). A toast's sentence reworded is the same
+  sweep: the order's « envoyée » gained its vendor and total and `purchases.spec.ts` went red on CI only (2026-11-06).
 - Several unrelated e2e signing in and landing on `/two-factor` is Demo's `mfa_required` left `true` on this machine,
   not a regression: the seed never sets it, so CI is green on the same commit. Read it with
   `docker compose exec -T postgres psql -U twes -d twes -c "SELECT mfa_required FROM company WHERE name='Demo'"`.

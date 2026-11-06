@@ -13,7 +13,9 @@ use App\Licensing\Application\ManagePayments;
 use App\Licensing\Domain\Exception\InvalidPayment;
 use App\Licensing\Domain\Model\PaymentDeclaration;
 use App\Licensing\Domain\Model\Subscription;
+use App\Licensing\Domain\ValueObject\DeclaredPayment;
 use App\Licensing\Domain\ValueObject\PaymentMethod;
+use App\Licensing\Infrastructure\ApiPlatform\Resource\PaymentDeclarationResource;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
@@ -263,6 +265,24 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/reject', []);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['payment_already_decided', []], $this->refusalOf(''), 'a second decision is refused as a whole, with why');
+    }
+
+    /** The operator's number of periods is said under its field, as the queue's form shows it. */
+    public function testADecisionOutsideThePeriodsTheApiDecidesOnSaysSoUnderItsField(): void
+    {
+        $company = $this->createCompany('Acme');
+        $this->createUser('owner@twes.local', 'password-1234', $company);
+        $this->subscribe($company, ['paidThrough' => $this->day(-30)]);
+        $this->login('owner@twes.local', 'password-1234');
+        $this->postJson($this->paymentsOf($company), $this->payment());
+        $declarationId = $this->stringAt($this->json(), 'id');
+        $this->signInOperator();
+
+        $this->postJson('/api/platform/payment-declarations/'.$declarationId.'/confirm', ['periods' => PaymentDeclarationResource::MAX_PERIODS + 1]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['whole_number_between', ['min' => 1, 'max' => PaymentDeclarationResource::MAX_PERIODS]], $this->refusalOf('periods'));
     }
 
     /** A payment's notices carry its currency's decimals, so the bell writes its amount as the screen writes amounts. */
@@ -400,12 +420,18 @@ final class SubscriptionPaymentsTest extends ApiTestCase
         $this->subscribe($company, ['paidThrough' => $this->day(-30)]);
         $this->login('owner@twes.local', 'password-1234');
 
-        $this->postJson($this->paymentsOf($company), $this->payment(['amount' => '0']));
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        $this->postJson($this->paymentsOf($company), $this->payment(['method' => 'barter']));
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
-        $this->postJson($this->paymentsOf($company), $this->payment(['paidOn' => '16/09/2026']));
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        foreach ([
+            'amount' => [['amount' => '0'], ['invalid_amount', ['decimals' => 3]]],
+            'currency' => [['currency' => 'dinar'], ['invalid_value', []]],
+            'method' => [['method' => 'barter'], ['invalid_value', []]],
+            'paidOn' => [['paidOn' => '16/09/2026'], ['not_a_date', []]],
+            'reference' => [['reference' => str_repeat('R', DeclaredPayment::REFERENCE_MAX + 1)], ['invalid_text', ['max' => DeclaredPayment::REFERENCE_MAX]]],
+            'note' => [['note' => str_repeat('n', DeclaredPayment::NOTE_MAX + 1)], ['invalid_text', ['max' => DeclaredPayment::NOTE_MAX]]],
+        ] as $field => [$overrides, $refusal]) {
+            $this->postJson($this->paymentsOf($company), $this->payment($overrides));
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertSame($refusal, $this->refusalOf($field), $field.': said under its field, with why');
+        }
     }
 
     /** @return list<array<string, mixed>> the declarations the company-side answer carries, newest first */

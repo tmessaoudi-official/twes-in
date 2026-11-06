@@ -12,6 +12,7 @@ import type {
   WaitingPayment,
 } from './subscription-types';
 import { sessionSignal } from '../shared/session/session-data';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 /**
  * The working company's subscription, and the payments it declares. A declaration changes what the company may do —
@@ -28,6 +29,8 @@ export class SubscriptionFacade {
   private readonly state = requestState(codeOf);
   /** Told apart from "not loaded yet": a company licensing does not manage has no subscription at all. */
   private readonly managedSignal = sessionSignal(true);
+  /** What the last refused declaration or decision named: each field with why, the request as a whole at ''. */
+  private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
 
   readonly subscription = this.subscriptionSignal.asReadonly();
   readonly waiting = this.waitingSignal.asReadonly();
@@ -36,6 +39,7 @@ export class SubscriptionFacade {
   /** Whether `error` is a read's failure, which « Réessayer » answers; a refused save is not. */
   readonly readFailed = this.state.readFailed;
   readonly managed = this.managedSignal.asReadonly();
+  readonly refusals = this.refusalsSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
     await this.state.read(async () => {
@@ -47,10 +51,14 @@ export class SubscriptionFacade {
 
   /** True when the API kept the declaration; the page then shows what it kept. */
   async declare(companyId: string, payment: DeclaredPayment): Promise<boolean> {
-    return this.state.write(async () => {
-      await this.api.declare(companyId, payment);
-      await this.reread(companyId);
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await this.api.declare(companyId, payment);
+        await this.reread(companyId);
+      },
+      { failed: (error) => this.refusalsSignal.set(refusalsOf(error)) },
+    );
   }
 
   /** An operator's queue: every payment waiting for a decision, across all companies. */
@@ -67,18 +75,22 @@ export class SubscriptionFacade {
   }
 
   private async decide(call: () => Promise<unknown>): Promise<boolean> {
-    return this.state.write(async () => {
-      // A decision is a platform write: it waits for the operator to prove who is at the screen (docs/SPEC.md § 7).
-      await this.stepUp.retrying(
-        call,
-        (error) => error instanceof SubscriptionRefused && error.code === 'step_up_required',
-        'step_up.intro_change',
-      );
-      this.waitingSignal.set(await this.api.waiting());
-      // An operator can decide about the company they are themselves working in, and its status, access and
-      // subscription are all things the shell reads from the session (developer sweep, 2026-09-20).
-      await this.auth.refresh();
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        // A decision is a platform write: it waits for the operator to prove who is at the screen (docs/SPEC.md § 7).
+        await this.stepUp.retrying(
+          call,
+          (error) => error instanceof SubscriptionRefused && error.code === 'step_up_required',
+          'step_up.intro_change',
+        );
+        this.waitingSignal.set(await this.api.waiting());
+        // An operator can decide about the company they are themselves working in, and its status, access and
+        // subscription are all things the shell reads from the session (developer sweep, 2026-09-20).
+        await this.auth.refresh();
+      },
+      { failed: (error) => this.refusalsSignal.set(refusalsOf(error)) },
+    );
   }
 
   /** What the company may do has just changed, so the session is read again with the subscription. */
@@ -88,6 +100,10 @@ export class SubscriptionFacade {
     // the person out of a session that is still perfectly valid (developer sweep, 2026-09-20).
     await this.auth.refresh();
   }
+}
+
+function refusalsOf(error: unknown): readonly FieldRefusal[] {
+  return error instanceof SubscriptionRefused ? error.refusals : [];
 }
 
 function codeOf(error: unknown): SubscriptionError {

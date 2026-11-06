@@ -16,9 +16,9 @@ use App\Licensing\Application\ManagePayments;
 use App\Licensing\Domain\Exception\InvalidPayment;
 use App\Licensing\Domain\Exception\PaymentNotFound;
 use App\Licensing\Infrastructure\ApiPlatform\Resource\PaymentDeclarationResource;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Uid\Uuid;
 
@@ -51,7 +51,7 @@ final readonly class DecidePaymentProcessor implements ProcessorInterface
         } catch (PaymentNotFound $notFound) {
             throw new NotFoundHttpException($notFound->getMessage(), $notFound);
         } catch (InvalidPayment $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return PaymentDeclarationResource::of($declaration);

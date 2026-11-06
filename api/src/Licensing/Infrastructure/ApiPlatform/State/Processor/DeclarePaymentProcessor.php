@@ -17,11 +17,11 @@ use App\Licensing\Domain\Exception\PaymentAlreadyDeclared;
 use App\Licensing\Domain\Exception\SubscriptionNotManaged;
 use App\Licensing\Infrastructure\ApiPlatform\Resource\CompanySubscriptionResource;
 use App\Licensing\Infrastructure\ApiPlatform\Resource\PaymentDeclarationResource;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
  * The company says it paid. Whoever may pay the company's bills may declare a payment, whatever the subscription lets
@@ -46,7 +46,7 @@ final readonly class DeclarePaymentProcessor implements ProcessorInterface
         } catch (PaymentAlreadyDeclared $waiting) {
             throw new ConflictHttpException($waiting->getMessage(), $waiting);
         } catch (InvalidPayment $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return PaymentDeclarationResource::of($declaration);

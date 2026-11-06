@@ -24,6 +24,7 @@ import {
 import { SubscriptionFacade } from './subscription-facade';
 import { SubscriptionPage } from './subscription-page';
 import type { PaymentRow, SubscriptionError, SubscriptionView } from './subscription-types';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -59,6 +60,9 @@ class StaticLoader implements TranslateLoader {
         },
       },
       form: { optional: 'facultatif' },
+      import: {
+        rejections: { invalid_amount: 'Attendu : un montant d’au plus {{decimals}} décimales.' },
+      },
     });
   }
 }
@@ -100,12 +104,14 @@ describe('SubscriptionPage', () => {
   const managed = signal(true);
   const error = signal<SubscriptionError | null>(null);
   const readFailed = signal(false);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const facade = {
     subscription: subscription.asReadonly(),
     managed: managed.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     readFailed: readFailed.asReadonly(),
+    refusals: refusals.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     declare: vi.fn(),
@@ -141,6 +147,7 @@ describe('SubscriptionPage', () => {
     subscription.set(unpaid);
     managed.set(true);
     error.set(null);
+    refusals.set([]);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.declare.mockReset().mockResolvedValue(true);
     live.reloadOn.mockReset();
@@ -210,6 +217,27 @@ describe('SubscriptionPage', () => {
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
       { kind: 'success', key: 'licensing.payment.declared', params: undefined },
     ]);
+  });
+
+  // A declaration the API refused on a field said only « ne peut pas être enregistré tel quel » above the form.
+  it('says a refused field under it and keeps the form open with what was typed', async () => {
+    facade.declare.mockImplementation(async () => {
+      error.set('invalid');
+      refusals.set([{ field: 'amount', reason: 'invalid_amount', params: { decimals: 3 } }]);
+      return false;
+    });
+    await open();
+
+    q('subscription-declare')!.click();
+    fixture.detectChanges();
+    fill('amount', '600.000');
+    q('payment-submit')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(q('field-error-amount')?.textContent).toContain('au plus 3 décimales');
+    expect((q('field-amount') as HTMLInputElement).value).toBe('600.000');
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
   });
 
   it('offers no form while a payment waits, and says one does', async () => {

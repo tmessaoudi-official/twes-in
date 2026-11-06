@@ -121,6 +121,23 @@ describe('SubscriptionFacade', () => {
     expect(auth.refresh).not.toHaveBeenCalled();
   });
 
+  it('keeps what a refused declaration or decision named, until the next one is sent', async () => {
+    const amount = { field: 'amount', reason: 'invalid_amount', params: { decimals: 3 } };
+    api.declare.mockRejectedValue(new SubscriptionRefused('invalid', [amount]));
+    expect(await facade.declare('c1', { ...declared, currency: 'TND' })).toBe(false);
+    expect(facade.refusals()).toEqual([amount]);
+
+    const decided = { field: '', reason: 'payment_already_decided', params: {} };
+    api.reject.mockRejectedValue(new SubscriptionRefused('invalid', [decided]));
+    expect(await facade.reject('p1', null)).toBe(false);
+    expect(facade.refusals()).toEqual([decided]);
+
+    api.reject.mockResolvedValue(declared);
+    api.waiting.mockResolvedValue([]);
+    expect(await facade.reject('p1', null)).toBe(true);
+    expect(facade.refusals()).toEqual([]);
+  });
+
   it("adds nothing of its own to the demo's refusal of a declaration, which the toast has said", async () => {
     api.declare.mockRejectedValue(refusedByTheDemo(new SubscriptionRefused('refused')));
 

@@ -185,7 +185,7 @@ class PaymentDeclaration implements CompanyOwned
     private function decide(DeclarationStatus $status, Uuid $operatorId, \DateTimeImmutable $now, ?string $note): void
     {
         if (!$this->isOpen()) {
-            throw new InvalidPayment('This payment was already decided.');
+            throw new InvalidPayment('', 'This payment was already decided.', InvalidPayment::ALREADY_DECIDED);
         }
         $this->status = $status->value;
         $this->decidedBy = $operatorId;

@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { SubscriptionApi, SubscriptionRefused } from './subscription-api';
 import { saidAlready } from '../shared/errors/said-already';
+import { TextsParts } from '../shared/i18n/texts-part';
 
 const payment = {
   id: 'p1',
@@ -24,9 +25,16 @@ describe('SubscriptionApi', () => {
   let api: SubscriptionApi;
   let http: HttpTestingController;
 
+  const opened = vi.fn(async () => undefined);
+
   beforeEach(() => {
+    opened.mockClear();
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TextsParts, useValue: { open: opened } },
+      ],
     });
     api = TestBed.inject(SubscriptionApi);
     http = TestBed.inject(HttpTestingController);
@@ -180,6 +188,50 @@ describe('SubscriptionApi', () => {
     await expect(demo).rejects.toSatisfy(
       (error) => error instanceof SubscriptionRefused && saidAlready(error),
     );
+
+    // What the API names, each field with why and the request as a whole at the empty field, travels with the code.
+    const amount = api.declare('c1', {
+      amount: '0',
+      currency: 'TND',
+      method: 'cash',
+      paidOn: '2026-09-16',
+      reference: null,
+      note: null,
+    });
+    http.expectOne('/api/companies/c1/subscription/payments').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'amount',
+            payload: { reason: 'invalid_amount', params: { decimals: 3 } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await expect(amount).rejects.toEqual(
+      new SubscriptionRefused('invalid', [
+        { field: 'amount', reason: 'invalid_amount', params: { decimals: 3 } },
+      ]),
+    );
+    await expect(amount).rejects.toSatisfy(
+      (error) =>
+        error instanceof SubscriptionRefused && error.refusals[0]?.reason === 'invalid_amount',
+    );
+    const decided = api.confirm('p1', 1, null);
+    http
+      .expectOne('/api/platform/payment-declarations/p1/confirm')
+      .flush(
+        { violations: [{ propertyPath: '', payload: { reason: 'payment_already_decided' } }] },
+        { status: 422, statusText: 'Unprocessable Entity' },
+      );
+    await expect(decided).rejects.toSatisfy(
+      (error) =>
+        error instanceof SubscriptionRefused &&
+        error.refusals[0]?.field === '' &&
+        error.refusals[0]?.reason === 'payment_already_decided',
+    );
+    expect(opened).toHaveBeenCalled();
 
     const unreachable = api.waiting();
     http.expectOne('/api/platform/payment-declarations').error(new ProgressEvent('error'));

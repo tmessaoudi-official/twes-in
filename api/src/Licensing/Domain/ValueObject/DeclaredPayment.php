@@ -32,16 +32,16 @@ final readonly class DeclaredPayment
         public ?string $note = null,
     ) {
         if (1 !== preg_match(self::AMOUNT, $amount) || !is_numeric($amount) || 0 === new Number($amount)->compare(0)) {
-            throw new InvalidPayment('amount: a decimal amount above zero, with at most three decimals.');
+            throw new InvalidPayment('amount', 'A decimal amount above zero, with at most three decimals.', 'invalid_amount', ['decimals' => 3]);
         }
         if (1 !== preg_match(self::CURRENCY, $currency)) {
-            throw new InvalidPayment('currency: an ISO 4217 code.');
+            throw new InvalidPayment('currency', 'An ISO 4217 code.', 'invalid_value');
         }
         if (null !== $reference && mb_strlen($reference) > self::REFERENCE_MAX) {
-            throw new InvalidPayment(\sprintf('reference: at most %d characters.', self::REFERENCE_MAX));
+            throw new InvalidPayment('reference', \sprintf('At most %d characters.', self::REFERENCE_MAX), 'invalid_text', ['max' => self::REFERENCE_MAX]);
         }
         if (null !== $note && mb_strlen($note) > self::NOTE_MAX) {
-            throw new InvalidPayment(\sprintf('note: at most %d characters.', self::NOTE_MAX));
+            throw new InvalidPayment('note', \sprintf('At most %d characters.', self::NOTE_MAX), 'invalid_text', ['max' => self::NOTE_MAX]);
         }
     }
 }

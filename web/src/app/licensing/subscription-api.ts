@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   CompanySubscriptionCompanySubscriptionRead,
@@ -18,9 +18,15 @@ import type {
 } from './subscription-types';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
 import { refusedFor } from '../shared/errors/said-already';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 
+/** A refusal, with what the API named: each field with why, and the request as a whole at `WHOLE_REQUEST`. */
 export class SubscriptionRefused extends Error {
-  constructor(readonly code: SubscriptionError) {
+  constructor(
+    readonly code: SubscriptionError,
+    readonly refusals: readonly FieldRefusal[] = [],
+  ) {
     super(code);
   }
 }
@@ -29,6 +35,7 @@ export class SubscriptionRefused extends Error {
 @Injectable({ providedIn: 'root' })
 export class SubscriptionApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   /** The working company's subscription, or null where licensing does not manage it: the API answers that with a 404. */
   async ofCompany(companyId: string): Promise<SubscriptionView | null> {
@@ -107,7 +114,10 @@ export class SubscriptionApi {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(error, new SubscriptionRefused(codeOf(error)));
+      throw refusedFor(
+        error,
+        new SubscriptionRefused(codeOf(error), await formRefusalsIn(this.injector, error)),
+      );
     }
   }
 }

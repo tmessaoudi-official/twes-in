@@ -13,7 +13,8 @@ tree() {
   done
   echo "$d"
 }
-run() { bash "$GATE" --root "$1" 2>&1; }
+# A fixture forwards no domain message unless its case says how many it holds.
+run() { DOMAIN_REFUSALS_FORWARDED=${DOMAIN_REFUSALS_FORWARDED:-0} bash "$GATE" --root "$1" 2>&1; }
 echo "domain-refusals gate"
 
 d=$(tree); out=$(run "$d"); check "a tree answering every refusal as a violation passes" $? 0 "$out" "OK"
@@ -32,6 +33,22 @@ out=$(run "$d"); check "a reason left empty is no reason" $? 1 "$out" "Token.php
 
 d=$(tree); printf '<?php\n/** Never UnprocessableEntityHttpException(\\sprintf(%s, …) here. */\n' "'%s: %s'" > "$d/api/src/Shop/Doc.php"
 out=$(run "$d"); check "an answer named in a comment is not one" $? 0 "$out" "OK"
+
+forward() { printf '<?php\nthrow new UnprocessableEntityHttpException(%s, $refused);\n' "$2" > "$1"; }
+d=$(tree); forward "$d/api/src/Shop/F1.php" '$refused->getMessage()'; forward "$d/api/src/Shop/F2.php" "'file: '.\$refused->getMessage()"
+out=$(DOMAIN_REFUSALS_FORWARDED=2 run "$d"); check "as many 422s forwarding a domain message as the ceiling pass, and are counted" $? 0 "$out" "2 still forward"
+
+d=$(tree); forward "$d/api/src/Shop/F1.php" '$refused->getMessage()'; forward "$d/api/src/Shop/F2.php" "\\sprintf('to: %s', \$refused->getMessage())"; forward "$d/api/src/Shop/F3.php" '$failure->getPrevious()->getMessage()'
+out=$(DOMAIN_REFUSALS_FORWARDED=2 run "$d"); check "one more forwarding 422 than the ceiling is refused, each named" $? 1 "$out" "F3.php:2"
+
+d=$(tree); forward "$d/api/src/Shop/F1.php" '$refused->getMessage()'
+out=$(DOMAIN_REFUSALS_FORWARDED=2 run "$d"); check "one fewer asks the ceiling lowered, so it never grows back unseen" $? 1 "$out" "lower FORWARDED to 1"
+
+d=$(tree); printf '<?php\nthrow new UnprocessableEntityHttpException($refused->getMessage(), $refused); // plain-refusal: a token the page reads\n' > "$d/api/src/Shop/F1.php"
+out=$(DOMAIN_REFUSALS_FORWARDED=0 run "$d"); check "a forwarding 422 whose line says why is not counted" $? 0 "$out" "0 still forward"
+
+d=$(tree); printf '<?php\n// UnprocessableEntityHttpException($refused->getMessage()) was the old answer.\n' > "$d/api/src/Shop/F1.php"
+out=$(DOMAIN_REFUSALS_FORWARDED=0 run "$d"); check "a forwarding 422 named in a comment is not one" $? 0 "$out" "0 still forward"
 
 d=$(tree); rm "$d/api/src/Shop/P1.php"
 out=$(run "$d"); check "fewer DomainRule answers than the floor is refused" $? 1 "$out" "fewer than the 90"
