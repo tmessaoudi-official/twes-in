@@ -11,6 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Licensing\Application\ManageSubscriptions;
 use App\Licensing\Application\TellLapsingSubscriptions;
+use App\Licensing\Domain\Exception\InvalidSubscription;
 use App\Licensing\Domain\Model\Subscription;
 use App\Licensing\Domain\ValueObject\BillingPeriod;
 use App\Licensing\Domain\ValueObject\PeriodUnit;
@@ -221,21 +222,35 @@ final class SubscriptionsTest extends ApiTestCase
         self::assertSame([6, 3], [$this->em()->getConnection()->fetchOne('SELECT grace_days FROM subscription WHERE company_id = ?', [$id]), $this->seen($company)]);
     }
 
-    public function testTermsTheDomainRefusesAreUnprocessable(): void
+    /** Each refused term is said under its own field, in the words the screen has for it. */
+    public function testTermsTheDomainRefusesAreUnprocessableUnderTheirField(): void
     {
         $company = $this->createCompany('Acme');
         $this->signInOperator();
+        $paid = ['paidThrough' => $this->daysFromToday(10)];
 
         $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms());
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([InvalidSubscription::TRIAL_OR_PAID, []], $this->refusalOf('paidThrough'));
 
-        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms(['paidThrough' => $this->daysFromToday(10), 'unpaidMode' => 'free']));
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$paid, 'unpaidMode' => 'free']));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['unknown_choice', []], $this->refusalOf('unpaidMode'));
+
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$paid, 'periodUnit' => 'week']));
+        self::assertSame(['unknown_choice', []], $this->refusalOf('periodUnit'));
 
         $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms(['paidThrough' => '17/09/2026']));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['not_a_date', []], $this->refusalOf('paidThrough'));
 
-        $this->sendJson('PUT', '/api/platform/companies/0192f7c0-0000-7000-8000-000000000000/subscription', $this->terms(['paidThrough' => $this->daysFromToday(10)]));
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$paid, 'price' => '12.500']));
+        self::assertSame(['value_required', []], $this->refusalOf('currency'));
+
+        $this->sendJson('PUT', $this->subscriptionOf($company), $this->terms([...$paid, 'periodCount' => 0]));
+        self::assertSame(['whole_number_between', ['min' => 1, 'max' => BillingPeriod::MAX_COUNT]], $this->refusalOf('periodCount'));
+
+        $this->sendJson('PUT', '/api/platform/companies/0192f7c0-0000-7000-8000-000000000000/subscription', $this->terms($paid));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 

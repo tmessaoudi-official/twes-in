@@ -140,7 +140,7 @@ class Subscription implements CompanyOwned
     public function coverPeriods(int $periods, \DateTimeImmutable $now): void
     {
         if ($periods < 1) {
-            throw new InvalidSubscription('A payment covers at least one period.');
+            throw new InvalidSubscription('periods', 'A payment covers at least one period.', 'invalid_value');
         }
         $terms = $this->getTerms();
         $from = max($terms->coveredUntil(), $now);

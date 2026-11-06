@@ -21,7 +21,7 @@ final readonly class BillingPeriod
         public PeriodUnit $unit,
     ) {
         if ($count < 1 || $count > self::MAX_COUNT) {
-            throw new InvalidSubscription(\sprintf('A billing period counts 1 to %d %ss.', self::MAX_COUNT, $unit->value));
+            throw new InvalidSubscription('periodCount', \sprintf('A billing period counts 1 to %d %ss.', self::MAX_COUNT, $unit->value), 'whole_number_between', ['min' => 1, 'max' => self::MAX_COUNT]);
         }
     }
 

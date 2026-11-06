@@ -16,12 +16,12 @@ use App\Licensing\Application\CompanyStandings;
 use App\Licensing\Application\ManageSubscriptions;
 use App\Licensing\Domain\Exception\InvalidSubscription;
 use App\Licensing\Infrastructure\ApiPlatform\Resource\PlatformSubscriptionResource;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Domain\Repository\CompanyRepository;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
@@ -53,7 +53,7 @@ final readonly class SetSubscriptionProcessor implements ProcessorInterface
         } catch (CompanyNotFound $notFound) {
             throw new NotFoundHttpException('No such company.', $notFound);
         } catch (InvalidSubscription $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return PlatformSubscriptionResource::of($subscription, $this->standings->standingOf($subscription));

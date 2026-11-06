@@ -33,22 +33,23 @@ final readonly class SubscriptionTerms
         public ?int $holdDays = null,
     ) {
         if (null === $trialEndsAt && null === $paidUntil) {
-            throw new InvalidSubscription('A subscription covers a trial, a paid period, or both.');
+            throw new InvalidSubscription('paidThrough', 'A subscription covers a trial, a paid period, or both.', InvalidSubscription::TRIAL_OR_PAID);
         }
         if (null !== $graceDays && ($graceDays < 0 || $graceDays > self::MAX_GRACE_DAYS)) {
-            throw new InvalidSubscription(\sprintf('A grace period lasts 0 to %d days.', self::MAX_GRACE_DAYS));
+            throw new InvalidSubscription('graceDays', \sprintf('A grace period lasts 0 to %d days.', self::MAX_GRACE_DAYS), 'whole_number_between', ['min' => 0, 'max' => self::MAX_GRACE_DAYS]);
         }
         if (null !== $holdDays && ($holdDays < 0 || $holdDays > self::MAX_GRACE_DAYS)) {
-            throw new InvalidSubscription(\sprintf('A declared payment is held 0 to %d days.', self::MAX_GRACE_DAYS));
+            throw new InvalidSubscription('holdDays', \sprintf('A declared payment is held 0 to %d days.', self::MAX_GRACE_DAYS), 'whole_number_between', ['min' => 0, 'max' => self::MAX_GRACE_DAYS]);
         }
         if (null !== $price && 1 !== preg_match(self::PRICE, $price)) {
-            throw new InvalidSubscription('A price is a decimal amount with at most three decimals.');
+            throw new InvalidSubscription('price', 'A price is a decimal amount with at most three decimals.', 'invalid_amount', ['decimals' => 3]);
         }
         if (null !== $currency && 1 !== preg_match(self::CURRENCY, $currency)) {
-            throw new InvalidSubscription('A currency is an ISO 4217 code.');
+            throw new InvalidSubscription('currency', 'A currency is an ISO 4217 code.', 'invalid_value');
         }
         if ((null === $price) !== (null === $currency)) {
-            throw new InvalidSubscription('A price names its currency, and a currency its price.');
+            // Said under the one left empty, which is the one to fill in.
+            throw new InvalidSubscription(null === $price ? 'price' : 'currency', 'A price names its currency, and a currency its price.', 'value_required');
         }
     }
 
@@ -57,7 +58,7 @@ final readonly class SubscriptionTerms
     {
         if (null === $this->trialEndsAt) {
             // The constructor refuses terms where both are null.
-            return $this->paidUntil ?? throw new InvalidSubscription('A subscription covers a trial, a paid period, or both.');
+            return $this->paidUntil ?? throw new InvalidSubscription('paidThrough', 'A subscription covers a trial, a paid period, or both.', InvalidSubscription::TRIAL_OR_PAID);
         }
 
         return null === $this->paidUntil ? $this->trialEndsAt : max($this->trialEndsAt, $this->paidUntil);

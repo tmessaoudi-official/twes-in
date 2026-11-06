@@ -43,7 +43,8 @@ import type {
 } from './platform-types';
 import { PLATFORM_COUNTRY, PLATFORM_PHONES, type PlatformPhones } from './platform-types';
 import { refusedFor } from '../shared/errors/said-already';
-import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { typedText } from '../shared/form/typed-text';
 
@@ -358,8 +359,8 @@ export class PlatformApi {
     try {
       return await call();
     } catch (error) {
-      const refusals =
-        error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
+      // Its words opened before the form says them: a reason only one form meets is in the refusals' own part.
+      const refusals = await formRefusalsIn(this.injector, error);
       // A refusal that names its fields is said on them; the page line then only asks to correct what is marked.
       const code = refusals.length > 0 ? 'invalid' : codeOf(error, conflict);
       throw refusedFor(error, new PlatformRefused(code, refusals));

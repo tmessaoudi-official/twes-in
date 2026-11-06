@@ -201,15 +201,19 @@ export class PlatformFacade {
     terms: SubscriptionTerms,
     version: number,
   ): Promise<boolean> {
-    const saved = await this.state.write(async () => {
-      this.subscriptionSignal.set(
-        await this.proven(() => this.api.setSubscription(companyId, terms, version)),
-      );
-      await this.refreshCompanies();
-      await this.auth.refresh();
+    this.refusedSignal.set({ at: 'subscription', refusals: [] });
+    const saved = await this.state.write(
+      async () => {
+        this.subscriptionSignal.set(
+          await this.proven(() => this.api.setSubscription(companyId, terms, version)),
+        );
+        await this.refreshCompanies();
+        await this.auth.refresh();
 
-      return true;
-    });
+        return true;
+      },
+      { failed: this.refusedAt('subscription') },
+    );
     if (saved === false && this.state.error() === 'record_changed') {
       try {
         this.subscriptionSignal.set(await this.api.subscription(companyId));

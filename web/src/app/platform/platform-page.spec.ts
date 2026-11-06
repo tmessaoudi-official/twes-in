@@ -69,6 +69,7 @@ class StaticLoader implements TranslateLoader {
           whole_number_between: 'Attendu : un nombre entier de {{min}} à {{max}}.',
           payment_already_decided:
             'Ce règlement a déjà été confirmé ou refusé, peut-être par un autre opérateur : la liste est relue.',
+          trial_or_paid_required: 'Remplissez « Fin de l’essai », « Payé jusqu’au » ou les deux.',
           not_a_whole_number: 'Attendu : un nombre entier.',
           at_least: 'Attendu : {{min}} ou plus.',
           invalid_whatsapp:
@@ -573,6 +574,28 @@ describe('PlatformPage', () => {
     query('subscription-Nouvelle Société')!.click();
     await fixture.whenStable();
     expect(facade.closeSubscription).toHaveBeenCalled();
+  });
+
+  // Terms the API refused said « corrigez les champs marqués » above a form where nothing was marked.
+  it('says each term the API refused under its own field', async () => {
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+    openedSubscription.set('c1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    facade.saveSubscription.mockImplementationOnce(async () => {
+      error.set('invalid');
+      refused.set({
+        at: 'subscription',
+        refusals: [{ field: 'paidThrough', reason: 'trial_or_paid_required', params: {} }],
+      });
+      return false;
+    });
+
+    query('subscription-save')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(query('field-error-paidThrough')?.textContent).toContain('Payé jusqu’au » ou les deux');
   });
 
   it('takes the terms another operator set since where none was typed, and offers both ways one both changed', async () => {

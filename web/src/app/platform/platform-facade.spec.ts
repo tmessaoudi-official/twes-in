@@ -407,6 +407,23 @@ describe('PlatformFacade', () => {
     api.createCompany.mockRejectedValue(new PlatformRefused('invalid', [name]));
     expect(await facade.openCompany('', 'TN', 'nadia@example.test')).toBe(false);
     expect(facade.refused()).toEqual({ at: 'new-company', refusals: [name] });
+
+    // Terms refused are kept for the subscription panel, under each field the API named.
+    const paid = { field: 'paidThrough', reason: 'trial_or_paid_required', params: {} };
+    api.setSubscription.mockRejectedValue(new PlatformRefused('invalid', [paid]));
+    const nothing = {
+      periodCount: 1,
+      periodUnit: 'month' as const,
+      trialEndsOn: null,
+      paidThrough: null,
+      price: null,
+      currency: null,
+      graceDays: null,
+      unpaidMode: null,
+      holdDays: null,
+    };
+    expect(await facade.saveSubscription('c1', nothing, 0)).toBe(false);
+    expect(facade.refused()).toEqual({ at: 'subscription', refusals: [paid] });
   });
 
   it('saves the delays changed, and shows what the platform then holds', async () => {

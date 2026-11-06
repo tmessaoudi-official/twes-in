@@ -183,8 +183,8 @@ final class PlatformSubscriptionResource
     public function terms(string $timezone): SubscriptionTerms
     {
         $zone = new \DateTimeZone($timezone);
-        $unit = PeriodUnit::tryFrom($this->periodUnit) ?? throw new InvalidSubscription('periodUnit: day, month or year.');
-        $mode = null === $this->unpaidMode ? null : (UnpaidMode::tryFrom($this->unpaidMode) ?? throw new InvalidSubscription('unpaidMode: read_only or locked.'));
+        $unit = PeriodUnit::tryFrom($this->periodUnit) ?? throw new InvalidSubscription('periodUnit', 'A period is counted in days, months or years.', 'unknown_choice');
+        $mode = null === $this->unpaidMode ? null : (UnpaidMode::tryFrom($this->unpaidMode) ?? throw new InvalidSubscription('unpaidMode', 'An unpaid company is read only or locked.', 'unknown_choice'));
 
         return new SubscriptionTerms(
             new BillingPeriod($this->periodCount, $unit),
@@ -206,7 +206,7 @@ final class PlatformSubscriptionResource
         }
         $start = 1 === preg_match(self::DAY, $day) ? WrittenDay::parsed($day, zone: $zone) : null;
         if (null === $start) {
-            throw new InvalidSubscription(\sprintf('%s: a day written YYYY-MM-DD.', $field));
+            throw new InvalidSubscription($field, 'A day is written YYYY-MM-DD.', 'not_a_date');
         }
 
         return $start->modify('+1 day')->modify('-1 second');

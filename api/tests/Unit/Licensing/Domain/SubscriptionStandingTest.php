@@ -107,25 +107,46 @@ final class SubscriptionStandingTest extends TestCase
         self::assertSame(Stage::Paid, $subscription->standingAt($later, $this->defaults())->stage);
     }
 
-    /** @return iterable<string, array{\Closure(): mixed}> */
+    /** @return iterable<string, array{\Closure(): mixed, string, string, array<string, int>}> */
     public static function invalidTerms(): iterable
     {
-        yield 'nothing covered' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Month), null, null)];
-        yield 'a period of zero' => [static fn () => new BillingPeriod(0, PeriodUnit::Month)];
-        yield 'an absurd period' => [static fn () => new BillingPeriod(1201, PeriodUnit::Day)];
-        yield 'a negative grace' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), graceDays: -1)];
-        yield 'a grace over a year' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), graceDays: 366)];
-        yield 'a price that is no amount' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), '12,5', 'TND')];
-        yield 'a price without its currency' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), '12.500')];
-        yield 'a currency that is no code' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), '12.500', 'dinar')];
+        yield 'nothing covered' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Month), null, null), 'paidThrough', InvalidSubscription::TRIAL_OR_PAID, []];
+        yield 'a period of zero' => [static fn () => new BillingPeriod(0, PeriodUnit::Month), 'periodCount', 'whole_number_between', ['min' => 1, 'max' => BillingPeriod::MAX_COUNT]];
+        yield 'an absurd period' => [static fn () => new BillingPeriod(1201, PeriodUnit::Day), 'periodCount', 'whole_number_between', ['min' => 1, 'max' => BillingPeriod::MAX_COUNT]];
+        yield 'a negative grace' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), graceDays: -1), 'graceDays', 'whole_number_between', ['min' => 0, 'max' => SubscriptionTerms::MAX_GRACE_DAYS]];
+        yield 'a grace over a year' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), graceDays: 366), 'graceDays', 'whole_number_between', ['min' => 0, 'max' => SubscriptionTerms::MAX_GRACE_DAYS]];
+        yield 'a hold over a year' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), holdDays: 366), 'holdDays', 'whole_number_between', ['min' => 0, 'max' => SubscriptionTerms::MAX_GRACE_DAYS]];
+        yield 'a price that is no amount' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), '12,5', 'TND'), 'price', 'invalid_amount', ['decimals' => 3]];
+        yield 'a price without its currency' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), '12.500'), 'currency', 'value_required', []];
+        yield 'a currency without its price' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), null, 'TND'), 'price', 'value_required', []];
+        yield 'a currency that is no code' => [static fn () => new SubscriptionTerms(new BillingPeriod(1, PeriodUnit::Year), null, new \DateTimeImmutable(), '12.500', 'dinar'), 'currency', 'invalid_value', []];
     }
 
-    /** @param \Closure(): mixed $build */
+    /**
+     * Each refusal names the field the screen shows it under, the reason it translates and what that text names.
+     *
+     * @param \Closure(): mixed  $build
+     * @param array<string, int> $params
+     */
     #[DataProvider('invalidTerms')]
-    public function testTermsThatCannotBeHeldAreRefused(\Closure $build): void
+    public function testTermsThatCannotBeHeldAreRefusedUnderTheirField(\Closure $build, string $field, string $reason, array $params): void
     {
-        $this->expectException(InvalidSubscription::class);
-        $build();
+        try {
+            $build();
+            self::fail('The terms were held.');
+        } catch (InvalidSubscription $refused) {
+            self::assertSame([$field, $reason, $params], [$refused->field, $refused->reason, $refused->params]);
+        }
+    }
+
+    public function testCoveringNoPeriodIsRefusedUnderThePeriods(): void
+    {
+        try {
+            $this->subscription(paidUntil: '2026-09-01T00:00:00+00:00')->coverPeriods(0, $this->now());
+            self::fail('No period was covered.');
+        } catch (InvalidSubscription $refused) {
+            self::assertSame(['periods', 'invalid_value'], [$refused->field, $refused->reason]);
+        }
     }
 
     public function testAPeriodMovesADateByItsLengthInItsUnit(): void

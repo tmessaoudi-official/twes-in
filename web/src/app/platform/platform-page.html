@@ -723,6 +723,7 @@
                     [attr.data-testid]="'subscription-panel-' + company.name"
                   >
                     <app-descriptor-form
+                      #subscriptionForm
                       [descriptor]="subscriptionDescriptor"
                       [form]="subscriptionGroup()"
                       [conflicts]="subscriptionConflicts()"

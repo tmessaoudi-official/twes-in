@@ -428,6 +428,7 @@ export class PlatformPage implements OnInit {
     return saved === null ? null : untracked(() => buildFormGroup(descriptor, saved));
   });
   private readonly supportForm = viewChild<DescriptorForm>('supportForm');
+  private readonly subscriptionForm = viewChild<DescriptorForm>('subscriptionForm');
   /**
    * The platform's country: the support's numbers are read by it whatever company the operator has open, and a new
    * company starts on it.
@@ -1051,6 +1052,10 @@ export class PlatformPage implements OnInit {
       this.feedback.success('platform.subscription.saved');
     } else if (this.platform.error() === 'record_changed') {
       this.takeTheirTerms();
+    } else {
+      // Each term the API refused is marked under it, which the page line « corrigez les champs marqués » points at.
+      const held = this.platform.refused();
+      if (held.at === 'subscription') this.subscriptionForm()?.showRefused(held.refusals);
     }
   }
 
