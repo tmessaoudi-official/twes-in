@@ -22,6 +22,7 @@ use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
 use App\Module\DeliveryNotes\Domain\Model\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteHeader;
+use App\Module\DeliveryNotes\Infrastructure\Scheduler\StoreMissingDeliveryNotePdfsEveryQuarterHour;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
@@ -263,6 +264,36 @@ final class DeliveryNotesTest extends ApiTestCase
 
         self::assertNotNull($this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM delivery_note WHERE id = ?', [$id]));
         self::assertSame($version + 2, $this->storedVersion('delivery_note', $id));
+    }
+
+    /**
+     * A note whose PDF could not be stored at validation has it stored by the worker's next pass, not only at its first
+     * download, which may never come: the pass is idempotent, leaves drafts alone and survives a renderer still down.
+     */
+    public function testANotesPdfNotStoredAtValidationIsStoredByTheWorkersNextPass(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $id = $this->draftWithALine();
+        $draft = $this->draftWithALine();
+        $this->client->disableReboot();
+        $renderer = static::getContainer()->get(FakePdfRenderer::class);
+        $renderer->failing = true;
+        $this->postJson($this->path($id).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $stored = fn (string $note): mixed => $this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM delivery_note WHERE id = ?', [$note]);
+        self::assertNull($stored($id));
+        $pass = static::getContainer()->get(StoreMissingDeliveryNotePdfsEveryQuarterHour::class);
+
+        $pass();
+        self::assertNull($stored($id), 'a renderer still down leaves it for the next pass');
+        $renderer->failing = false;
+        $pass();
+
+        $file = $stored($id);
+        self::assertNotNull($file);
+        self::assertNull($stored($draft), 'a draft has no issued PDF');
+        $pass();
+        self::assertSame($file, $stored($id), 'a second pass stores nothing again');
     }
 
     public function testAValidatorNumbersANoteWithoutGapsAndItThenOnlyMovesForward(): void

@@ -192,6 +192,48 @@ describe('watchRowView', () => {
     expect(own.cells['role']).toBe('Comptable');
   });
 
+  it('writes a contact to check with the record holding it and each field as its page names it', () => {
+    const say = (key: string): string =>
+      ({
+        'nav.company_profile': 'Profil de la société',
+        'check.reasons.kept_email': 'Adresse refusée',
+        'check.reasons.kept_phone_outside_ranges': 'Téléphone hors plan',
+      })[key] ?? key;
+    const profile = watchRowView(
+      {
+        kind: 'company.contacts_to_check',
+        subjectId: 'c1',
+        params: { record: 'profile', name: 'Acme', contacts: 'email,phone_outside_ranges' },
+      },
+      0,
+      figures,
+      say,
+    );
+    expect([profile.cells['record'], profile.cells['reasons']]).toEqual([
+      'Profil de la société',
+      'Adresse refusée, Téléphone hors plan',
+    ]);
+    const establishment = watchRowView(
+      {
+        kind: 'company.contacts_to_check',
+        subjectId: 'e1',
+        params: {
+          record: 'establishment',
+          name: 'Agence de Sfax',
+          code: '001',
+          contacts: 'phone_outside_ranges',
+        },
+      },
+      1,
+      figures,
+      say,
+    );
+    expect([establishment.cells['record'], establishment.cells['reasons']]).toEqual([
+      'Agence de Sfax',
+      'Téléphone hors plan',
+    ]);
+  });
+
   it('writes a document whose stock move failed with its number, the move named and the day it failed', () => {
     const say = (key: string): string =>
       key === 'watch.moves.delivery_note_cancelled' ? 'Annulation du bon de livraison' : key;

@@ -832,7 +832,8 @@
     "email_typo": "Vouliez-vous dire :",
     "phone": {
       "country": "Indicatif du pays",
-      "hint": "Le numéro sans l’indicatif, que donne le pays choisi à côté (exemple : {{example}})."
+      "hint": "Le numéro sans l’indicatif, que donne le pays choisi à côté (exemple : {{example}}).",
+      "kept_outside_ranges": "Hors des numéros attribués dans son pays : il sera gardé tel quel. Vérifiez-le."
     },
     "leave": {
       "title": "Quitter sans enregistrer ?",

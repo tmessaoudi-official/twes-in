@@ -47,6 +47,7 @@ use App\Module\Customers\Infrastructure\Module\CustomersModule;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\CheckMark;
+use App\Shared\Domain\ValueObject\PhoneKept;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -195,7 +196,8 @@ final readonly class CustomerImport implements DeclaresImport
         try {
             $input = $this->input($company, $record, $existing, $faults, $aside);
             $faults->stopIfAny();
-            // Rendered before the write, which changes the customer in place.
+            // Judged and rendered before the write, which changes the customer in place.
+            $phone = $this->manage->phoneKept($company, $input, $existing);
             $codes = null === $existing ? [] : $this->taxCodes($company);
             $before = null === $existing ? [] : $this->inFile($company, $existing, $context, $codes);
             $written = null === $existing
@@ -203,6 +205,7 @@ final readonly class CustomerImport implements DeclaresImport
                 : $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
             $this->settingCells->write($company, $written->getId(), $settings, $actorUserId);
             $aside->noteOn($notes);
+            self::noteKeptPhone($phone, $record, $notes);
             $this->noteMissingIdentifiers($company, $written, $notes);
             if (null === $existing) {
                 $context->created('customer', $written->getId());
@@ -315,6 +318,17 @@ final readonly class CustomerImport implements DeclaresImport
         }
 
         return $labels;
+    }
+
+    /**
+     * A number outside the ones its country hands out, kept under the platform's « Garder et marquer », is said on its
+     * cell as well as on the customer's mark: the person reading the report learns which rows to look at.
+     */
+    private static function noteKeptPhone(PhoneKept $phone, ImportRecord $record, RowNotes $notes): void
+    {
+        if (null !== $phone->doubt) {
+            $notes->note('phone', 'phone_kept_to_check', ['value' => $record->value('phone') ?? '']);
+        }
     }
 
     /** A business customer stored without the number the preset requires of one: it cannot be invoiced until it has it. */

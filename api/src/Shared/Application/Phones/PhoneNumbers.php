@@ -32,4 +32,7 @@ interface PhoneNumbers
      * out, in the reader's language.
      */
     public function doubt(string $stored): string;
+
+    /** The same line for a contact's number, naming the contact, carried by the record the contact belongs to. */
+    public function contactDoubt(string $stored, string $contact): string;
 }

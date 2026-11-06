@@ -832,7 +832,8 @@
     "email_typo": "Did you mean:",
     "phone": {
       "country": "Country code",
-      "hint": "The number without the country code, which the country chosen beside it gives (for example {{example}})."
+      "hint": "The number without the country code, which the country chosen beside it gives (for example {{example}}).",
+      "kept_outside_ranges": "Not among the numbers handed out in its country: it will be kept as it is. Check it."
     },
     "leave": {
       "title": "Leave without saving?",

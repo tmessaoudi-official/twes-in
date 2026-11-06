@@ -34,9 +34,9 @@ use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A delivery note's PDF. A validated or delivered note is served as it
- * was stored when it was issued, rendered and stored on its first download when that failed. A draft, and a cancelled
- * note, are rendered on request across a watermark and never stored. The customer's settings choose the language,
+ * A delivery note's PDF. A validated or delivered note is served as it was stored when it was issued, rendered and
+ * stored by the worker's next pass or its first download when that failed. A draft, and a cancelled note, are rendered
+ * on request across a watermark and never stored. The customer's settings choose the language,
  * whether prices show and the printed notes.
  */
 final readonly class PrintDeliveryNote
@@ -102,6 +102,27 @@ final readonly class PrintDeliveryNote
         if (null !== $note->getNumber() && null === $note->getPdfFile()) {
             $this->issued($note);
         }
+    }
+
+    /**
+     * Stores the PDF of each numbered note of the company that keeps none, at most `$limit` of them, the oldest first:
+     * one whose PDF could not be stored when it was issued, which its first download would otherwise be the only one to
+     * store. Stops at the first that fails, as the renderer is then down for the others too.
+     *
+     * @return int how many were stored
+     *
+     * @throws DeliveryNoteNotFound
+     * @throws PdfRenderingFailed
+     */
+    public function storeMissing(Uuid $companyId, int $limit): int
+    {
+        $stored = 0;
+        foreach ($this->notes->numberedWithoutPdf($companyId, $limit) as $id) {
+            $this->storeIssued($companyId, $id);
+            ++$stored;
+        }
+
+        return $stored;
     }
 
     private function issued(DeliveryNote $note): string

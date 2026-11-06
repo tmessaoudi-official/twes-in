@@ -58,6 +58,14 @@ interface DeliveryNoteRepository
     public function lockedOfIdsInCompany(array $ids, Uuid $companyId): array;
 
     /**
+     * The numbered notes of the company that keep no PDF yet, the oldest numbered first: what failed to be stored when
+     * it was issued, for the worker to store.
+     *
+     * @return list<Uuid>
+     */
+    public function numberedWithoutPdf(Uuid $companyId, int $limit): array;
+
+    /**
      * The same, for the company's delivery notes carrying any of these lines.
      *
      * @param list<Uuid> $lineIds

@@ -38,6 +38,7 @@ use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
+use App\Shared\Domain\ValueObject\PhoneKept;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -196,6 +197,15 @@ final readonly class ManageCustomers implements DeclaresAuditActions
     }
 
     /**
+     * How the input's phone is kept, refused or doubted, judged as a save judges it: an import reads it before writing,
+     * to say on its cell what the save does with it.
+     */
+    public function phoneKept(Company $company, CustomerInput $input, ?Customer $current): PhoneKept
+    {
+        return $this->phones->kept($input->profile->phone, $current?->getProfile()->phone, $input->profile->billingAddress->countryCode ?? $company->getCountryCode());
+    }
+
+    /**
      * The input with its phone as kept (`TypedPhones`), read by the billing address's country, else the company's. A
      * number of the right length outside the ones handed out marks the customer « À vérifier », its line after the note
      * the mark already carries, so the person who looks reads what to check.
@@ -205,7 +215,7 @@ final readonly class ManageCustomers implements DeclaresAuditActions
     private function withPhoneAsKept(Company $company, CustomerInput $input, ?Customer $current): CustomerInput
     {
         $profile = $input->profile;
-        $kept = $this->phones->kept($profile->phone, $current?->getProfile()->phone, $profile->billingAddress->countryCode ?? $company->getCountryCode());
+        $kept = $this->phoneKept($company, $input, $current);
         if (null !== $kept->refusal) {
             throw new InvalidCustomer('phone', $kept->refusal->message, $kept->refusal->reason, $kept->refusal->params);
         }

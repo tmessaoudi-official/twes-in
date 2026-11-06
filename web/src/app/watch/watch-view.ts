@@ -72,6 +72,19 @@ export function watchRowView(
         .map((reason) => say(`check.reasons.${reason}`)),
     ].join(', ');
   }
+  // A contact today's rules refuse, kept from before them, or a phone kept outside its country's ranges, as the
+  // profile's and the establishments' pages name it; and the record holding it, by the name its page goes by.
+  if ('contacts' in params) {
+    cells['reasons'] = text(params, 'contacts')
+      .split(',')
+      .filter((field) => field !== '')
+      .map((field) => say(`check.reasons.kept_${field}`))
+      .join(', ');
+  }
+  if ('record' in params) {
+    cells['record'] =
+      text(params, 'record') === 'profile' ? say('nav.company_profile') : text(params, 'name');
+  }
   if ('kind' in params) cells['kind'] = say(`invoices.instruments.kinds.${text(params, 'kind')}`);
   // Which of a document's stock moves failed, by code: its validation, its cancellation, its issue, its return.
   if ('move' in params) cells['move'] = say(`watch.moves.${text(params, 'move')}`);

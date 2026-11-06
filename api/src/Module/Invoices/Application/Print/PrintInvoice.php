@@ -43,9 +43,9 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * An invoice's or a credit note's PDF. An issued
- * document is served as it was stored when it was issued, rendered and stored on its first download when that failed,
- * and prints the language, mentions and texts issuing kept. A draft, and a cancelled draft, are rendered on request
+ * An invoice's or a credit note's PDF. An issued document is served as it was stored when it was issued, rendered and
+ * stored by the worker's next pass or its first download when that failed, and prints the language, mentions and texts
+ * issuing kept. A draft, and a cancelled draft, are rendered on request
  * across a watermark with what they would be issued with today, and never stored.
  */
 final readonly class PrintInvoice
@@ -130,6 +130,27 @@ final readonly class PrintInvoice
         if (null !== $invoice->getNumber() && null === $invoice->getPdfFile()) {
             $this->issued($invoice);
         }
+    }
+
+    /**
+     * Stores the PDF of each numbered document of the company that keeps none, at most `$limit` of them, the oldest first:
+     * one whose PDF could not be stored when it was issued, which its first download would otherwise be the only one to
+     * store. Stops at the first that fails, as the renderer is then down for the others too.
+     *
+     * @return int how many were stored
+     *
+     * @throws InvoiceNotFound
+     * @throws PdfRenderingFailed
+     */
+    public function storeMissing(Uuid $companyId, int $limit): int
+    {
+        $stored = 0;
+        foreach ($this->invoices->numberedWithoutPdf($companyId, $limit) as $id) {
+            $this->storeIssued($companyId, $id);
+            ++$stored;
+        }
+
+        return $stored;
     }
 
     private function issued(Invoice $invoice): string

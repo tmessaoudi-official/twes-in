@@ -126,4 +126,12 @@ interface InvoiceRepository
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool;
 
     public function save(Invoice $invoice): void;
+
+    /**
+     * The numbered documents of the company that keep no PDF yet, the oldest numbered first: what failed to be stored when
+     * it was issued, for the worker to store.
+     *
+     * @return list<Uuid>
+     */
+    public function numberedWithoutPdf(Uuid $companyId, int $limit): array;
 }

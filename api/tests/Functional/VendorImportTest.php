@@ -13,6 +13,9 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Module\Expenses\Domain\Model\ExpenseCategory;
 use App\Module\Vendors\Domain\Model\Vendor;
+use App\Settings\Application\PhoneSettings;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
 use App\Shared\Domain\ValueObject\CheckMark;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
@@ -378,6 +381,23 @@ FRN-0020,Quincaillerie Ben Salah,TN59 1000 6035 1835 9847 8832,Rappeler le compt
         $this->em()->clear();
         $vendor = $this->vendor('FRN-0009');
         self::assertEquals([new CheckMark(true, 'RIB à demander'), false], [$vendor->getCheckMark(), $vendor->isNameDoubtful()], 'a no takes the doubt away and leaves the mark');
+    }
+
+    /** Under « Garder et marquer À vérifier », a number outside the ones handed out is kept, and the report says so. */
+    public function testAPhoneOutsideTheNumbersHandedOutIsKeptAndSaid(): void
+    {
+        $this->signedIn(['vendor.read', 'vendor.write']);
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->em()->flush();
+
+        $this->import("number,name,phone\nFRN-0030,Aciers du Sud,11 111 112\nFRN-0031,Aciers du Nord,71 900 868\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            ['line' => 2, 'column' => 'phone', 'code' => 'phone_kept_to_check', 'params' => ['value' => '11 111 112']],
+        ], $this->json()['notes']);
+        self::assertSame('+21611111112', $this->vendor('FRN-0030')->getProfile()->phone);
+        self::assertTrue($this->vendor('FRN-0030')->getCheckMark()->marked);
     }
 
     private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'vendors.csv'): void

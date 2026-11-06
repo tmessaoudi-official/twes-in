@@ -162,6 +162,25 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
         return $this->locked('n.id IN (:ids)', $ids, $companyId);
     }
 
+    public function numberedWithoutPdf(Uuid $companyId, int $limit): array
+    {
+        /** @var list<array{id: Uuid}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('n.id')
+            ->from(DeliveryNote::class, 'n')
+            ->where('n.company = :company')
+            ->andWhere('n.number IS NOT NULL')
+            ->andWhere('n.pdfFile IS NULL')
+            ->setParameter('company', $companyId, 'uuid')
+            ->orderBy('n.issueDate', \SortDirection::Ascending)
+            ->addOrderBy('n.id', \SortDirection::Ascending)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        return array_column($rows, 'id');
+    }
+
     public function lockedOfLineIdsInCompany(array $lineIds, Uuid $companyId): array
     {
         return $this->locked('n.id IN (SELECT IDENTITY(l.deliveryNote) FROM '.DeliveryNoteLine::class.' l WHERE l.id IN (:ids))', $lineIds, $companyId);

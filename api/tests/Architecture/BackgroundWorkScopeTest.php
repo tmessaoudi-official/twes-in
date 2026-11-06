@@ -20,7 +20,9 @@ use App\Identity\Infrastructure\Scheduler\FinalizeAccountDeletionsEveryNight;
 use App\Inbox\Infrastructure\Mail\NotificationToMailHandler;
 use App\Licensing\Infrastructure\Scheduler\TellLapsingSubscriptionsEveryHour;
 use App\Module\Customers\Infrastructure\Scheduler\MarkKeptCustomerContactsEveryNight;
+use App\Module\DeliveryNotes\Infrastructure\Scheduler\StoreMissingDeliveryNotePdfsEveryQuarterHour;
 use App\Module\Invoices\Infrastructure\Scheduler\RemindLateInvoicesEveryHour;
+use App\Module\Invoices\Infrastructure\Scheduler\StoreMissingInvoicePdfsEveryQuarterHour;
 use App\Module\Recurring\Infrastructure\Scheduler\RunRecurringInvoicesEveryHour;
 use App\Module\RecurringExpenses\Infrastructure\Scheduler\RunRecurringExpensesEveryHour;
 use App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos;
@@ -66,6 +68,8 @@ final class BackgroundWorkScopeTest extends TestCase
         TellLapsingSubscriptionsEveryHour::class => 'every company at once, on purpose: a subscription ends by its date alone, and each one told names its own company, to that company\'s owners only',
         TellClosedCompaniesNearRemovalEveryNight::class => 'each closed company whose removal draws near, by its own id, told to that company\'s owners only',
         RemindLateInvoicesEveryHour::class => 'each active company with the invoices module on, handed to the use case one at a time',
+        StoreMissingInvoicePdfsEveryQuarterHour::class => 'each active company with the invoices module on, handed to the use case one at a time, which reads that company\'s documents only',
+        StoreMissingDeliveryNotePdfsEveryQuarterHour::class => 'each active company with the delivery notes module on, handed to the use case one at a time, which reads that company\'s notes only',
         RunRecurringExpensesEveryHour::class => 'each active company with the recurring expenses module on, handed to the use case one at a time',
         RunRecurringInvoicesEveryHour::class => 'each active company with the recurring module on, handed to the use case one at a time',
         SignupAskedHandler::class => 'an address, no company: the company is made only when the link is used',

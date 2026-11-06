@@ -205,6 +205,9 @@ parameters:
     # How long « Récemment supprimés » keeps a deleted record, for its restore; then the copy goes and the delete is final.
     # Checked when the container is built (RecordUndoBounds): PT1H to P30D.
     app.records.undoable_for: 'PT24H'
+    # How many issued documents of one company, at most, each quarter-hourly pass stores the PDF of when it could not be
+    # stored at issue: enough to catch up after a renderer outage, few enough that a pass ends well inside its quarter.
+    app.documents.pdf_catch_up_batch: 50
     # How many hours at most an operator lets a company's series take a day before their last number's, after its
     # computer's clock ran ahead (app:numbering:allow-earlier-days): long enough to issue the day's documents again.
     # Checked when the container is built (EarlierNumberingDaysBounds): 1 to 72, which an operator may only shorten.

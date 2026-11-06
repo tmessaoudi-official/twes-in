@@ -31,8 +31,10 @@ final readonly class TypedPhones
      * @param string|null $typed   as the person or the file wrote it; null or blank is no phone
      * @param string|null $held    what the record holds now, null for a record being created
      * @param string|null $country the record's country (ISO 3166-1 alpha-2)
+     * @param string|null $contact the contact the number is of, named in the doubt its record carries; null for the
+     *                             record's own number
      */
-    public function kept(?string $typed, ?string $held, ?string $country): PhoneKept
+    public function kept(?string $typed, ?string $held, ?string $country, ?string $contact = null): PhoneKept
     {
         $typed = null === $typed ? null : TypedText::trimmed($typed);
         if (null === $typed || '' === $typed || $typed === $held) {
@@ -48,7 +50,7 @@ final readonly class TypedPhones
             PhoneVerdict::TO_CHECK => $verdict->e164 === $held
                 ? new PhoneKept($verdict->e164)
                 : ($this->policy->keepsOutsideRanges()
-                    ? new PhoneKept($verdict->e164, doubt: null === $verdict->e164 ? null : $this->phones->doubt($verdict->e164))
+                    ? new PhoneKept($verdict->e164, doubt: null === $verdict->e164 ? null : (null === $contact ? $this->phones->doubt($verdict->e164) : $this->phones->contactDoubt($verdict->e164, $contact)))
                     : PhoneKept::refused(new Refusal(
                         'phone_outside_ranges',
                         null === $verdict->example

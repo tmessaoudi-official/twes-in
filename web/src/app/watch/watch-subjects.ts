@@ -385,6 +385,21 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       ],
     },
   },
+  // The company's own contact or an establishment's, which hold no mark to take off: corrected on its page, where the
+  // same line shows, and gone from here once it is.
+  'company.contacts_to_check': {
+    icon: 'contacts',
+    list: {
+      id: 'watch-contacts-to-check',
+      rowId: (view) => view.id,
+      pageSizes: PAGE_SIZES,
+      link: (view) => [
+        view.row.params['record'] === 'profile' ? '/company/profile' : '/company/establishments',
+      ],
+      linkColumn: 'record',
+      columns: [cell('record', { hideable: false }), cell('reasons', { priority: 'high' })],
+    },
+  },
   // A document whose stock did not move when it was kept: moved again on its page.
   'stock.move_failed': {
     icon: 'sync_problem',

@@ -16,7 +16,8 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * Stores a note's PDF as soon as it is validated. The validation is already committed: a renderer or a storage that
- * cannot answer is logged, and the note's first download renders and stores the PDF instead.
+ * cannot answer is logged, and the worker's next pass (`StoreMissingDeliveryNotePdfsEveryQuarterHour`), or the note's
+ * first download if it comes sooner, renders and stores the PDF instead.
  */
 #[AsEventListener(event: DeliveryNoteValidated::class)]
 final readonly class StoreIssuedDeliveryNotePdf
@@ -30,7 +31,7 @@ final readonly class StoreIssuedDeliveryNotePdf
         try {
             $this->print->storeIssued($event->companyId, $event->deliveryNoteId);
         } catch (\Throwable $failure) {
-            $this->logger->warning('The PDF of delivery note {number} was not stored at validation; its first download stores it: {reason}', [
+            $this->logger->warning('The PDF of delivery note {number} was not stored at validation; the next pass of the worker stores it: {reason}', [
                 'number' => $event->number,
                 'reason' => $failure->getMessage(),
             ]);

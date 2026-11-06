@@ -90,6 +90,16 @@ final class InMemoryDeliveryNotes implements DeliveryNoteRepository
         return array_values(array_filter($this->ofCompany($companyId), static fn (DeliveryNote $note): bool => \in_array($note->getId()->toRfc4122(), $wanted, true)));
     }
 
+    public function numberedWithoutPdf(Uuid $companyId, int $limit): array
+    {
+        $found = array_filter(
+            $this->notes,
+            static fn (DeliveryNote $note): bool => $note->getCompany()->getId()->equals($companyId) && null !== $note->getNumber() && null === $note->getPdfFile(),
+        );
+
+        return \array_slice(array_values(array_map(static fn (DeliveryNote $note): Uuid => $note->getId(), $found)), 0, $limit);
+    }
+
     public function lockedOfIdsInCompany(array $ids, Uuid $companyId): array
     {
         $this->assertLockable();

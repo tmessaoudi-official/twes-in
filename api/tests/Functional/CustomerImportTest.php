@@ -337,9 +337,14 @@ final class CustomerImportTest extends ApiTestCase
         $this->em()->flush();
         $this->import("number,name,phone\nCLI-0044,Atelier Gardé,11 111 112\n");
         self::assertResponseIsSuccessful();
-        self::assertSame([], $this->json()['notes']);
+        self::assertSame([
+            ['line' => 2, 'column' => 'phone', 'code' => 'phone_kept_to_check', 'params' => ['value' => '11 111 112']],
+        ], $this->json()['notes'], 'the report says the number was kept to be checked, on its cell');
         self::assertSame('+21611111112', $this->customer('CLI-0044')->getProfile()->phone);
         self::assertTrue($this->customer('CLI-0044')->getCheckMark()->marked, 'a number outside the plan is « À vérifier »');
+        $this->import("number,name,phone\nCLI-0044,Atelier Gardé,+216 11 111 112\n", mode: 'upsert');
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['notes'], 'the number the customer already holds is not said again');
     }
 
     /**

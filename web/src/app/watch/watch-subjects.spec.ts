@@ -4,6 +4,7 @@ import ar from '../../../public/i18n/watch/ar.json';
 import en from '../../../public/i18n/watch/en.json';
 import fr from '../../../public/i18n/watch/fr.json';
 import { hintKey, WATCH_SUBJECTS } from './watch-subjects';
+import type { WatchRowView } from './watch-view';
 
 /** The text at a dotted key of a texts file, or undefined. */
 function at(texts: unknown, key: string): unknown {
@@ -47,5 +48,21 @@ describe('hintKey', () => {
     expect(hintKey('stock.reorder_point', () => false)).toBe(
       'watch.subjects.stock.reorder_point.hint',
     );
+  });
+});
+
+describe('the contacts to check', () => {
+  const row = (record: string, subjectId: string): WatchRowView => ({
+    id: '0',
+    row: { kind: 'company.contacts_to_check', subjectId, params: { record } },
+    cells: {},
+  });
+
+  it('opens the page where each record is corrected', () => {
+    const link = WATCH_SUBJECTS['company.contacts_to_check']?.list.link;
+    expect([link?.(row('profile', 'c1')), link?.(row('establishment', 'e1'))]).toEqual([
+      ['/company/profile'],
+      ['/company/establishments'],
+    ]);
   });
 });

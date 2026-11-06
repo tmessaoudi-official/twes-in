@@ -17,7 +17,7 @@ the end of § Lessons here.
 - `api/src/Shared/Infrastructure/Scheduler/Schedule.php` — the worker's one Symfony Scheduler schedule (`default`,
   consumed as `scheduler_default` beside `async`); a module adds a task with `#[AsPeriodicTask]` or `#[AsCronTask]` on its
   own service (the reminder run: `Module/Invoices/Infrastructure/Scheduler/`). Every task is idempotent, as one worker is
-  assumed but not locked.
+  assumed but not locked. An issued document's PDF that could not be stored at issue is stored by `StoreMissingInvoicePdfsEveryQuarterHour` and `StoreMissingDeliveryNotePdfsEveryQuarterHour`, at most `app.documents.pdf_catch_up_batch` a company per pass.
 - Logs (docs/SPEC.md § 7, 2026-09-17): one file per channel and day under `api/var/log` in development; in production
   JSON through `fingers_crossed` into `Shared/Infrastructure/Logging/ChannelStreams`, on STDERR, or one file per
   channel under `LOG_DIRECTORY` when self-hosted, rotated by `infra/self-hosted/logrotate.conf` (its test rotates for
@@ -45,7 +45,7 @@ the end of § Lessons here.
   imported may carry notes, `RowNotes`, such as the reference its new product was given; a doubtful cell (an identifier's
   shape or check, an e-mail, a phone, an IBAN, a BIC, a barcode) is set aside by `SetAside` rather than refusing its row: the
   record is written without it and marked « À vérifier » by `Infrastructure/Import/SetAsideMarks` (the `imports` text
-  domain), and the report notes `set_aside` on that cell; a subject offers switches,
+  domain), and the report notes `set_aside` on that cell (a phone kept outside its country's ranges under « Garder et marquer » is noted `phone_kept_to_check`, judged by the use case's own `phoneKept` before the write); a subject offers switches,
   `ImportSwitch`, worded by the screen alone (`ImportColumnsTest` holds every label and note to each language; the
   products file's: `default_taxes`, the line defaults for a new product naming no tax, and `unpriced_inactive`, a new
   product with no price created switched off at 0; its `cost_price_gross` column is a cost with taxes, kept less the
@@ -58,7 +58,7 @@ the end of § Lessons here.
   `import` the bin puts back through `RestoreUndoneImport`, the stock it moved through `ImportedStock` (reversals at their
   own cost) and the rows a module wrote through `UndoesImportedRows`; « Imports récents » is `GET …/import-runs`),
   `Watch` (« À surveiller »: a module declares its live conditions with `DeclaresWatch` in its own
-  `Infrastructure/Watch/`, one statement per kind, gated by its module and permission; a core context's subject has no module and is always on, as `Tenancy`'s unsent invitations, marked by `InvitationMailFailed` when the worker gives up; a part counting from the clock rather than the company's day also says when it next changes with nothing written, `ComesDueWithTime`, and the summary's `readAgainIn`, seconds from now, carries the earliest, or the next day, which the web's `WatchFacade` reads again at; `WatchKindsTest` holds every part whose constructor takes the clock to it),
+  `Infrastructure/Watch/`, one statement per kind, gated by its module and permission; a core context's subject has no module and is always on, as `Tenancy`'s unsent invitations, marked by `InvitationMailFailed` when the worker gives up, and its contacts to check, `ContactsToCheckWatch` (the profile's and each establishment's, as `StoredContacts::toCheck` judges them, records with no mark of their own); a part counting from the clock rather than the company's day also says when it next changes with nothing written, `ComesDueWithTime`, and the summary's `readAgainIn`, seconds from now, carries the earliest, or the next day, which the web's `WatchFacade` reads again at; `WatchKindsTest` holds every part whose constructor takes the clock to it),
   `Texts` (« Textes »: any text the screens, the mails and the printed documents show, worded otherwise for the installation by
   an operator, then for a company by its owner (`company.texts`), which wins there; `ShippedTexts` is the release's catalogue
   the images carry, the `TextsInForce` port (`OverridingTranslator`, the translator itself) what a mail or a PDF writes, the fiscal texts locked; a changed original is flagged; a wording is stored under the file that shipped its text, and

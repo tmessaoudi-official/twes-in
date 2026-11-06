@@ -42,6 +42,7 @@ use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\Shared\Domain\Model\PostalAddress;
 use App\Shared\Domain\Service\TypedText;
 use App\Shared\Domain\ValueObject\CheckMark;
+use App\Shared\Domain\ValueObject\PhoneKept;
 use App\Tenancy\Domain\Model\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -177,11 +178,14 @@ final readonly class VendorImport implements DeclaresImport
         try {
             $input = $this->input($company, $record, $existing, $faults, $aside);
             $faults->stopIfAny();
+            // Judged before the write, which changes the vendor in place.
+            $phone = $this->manage->phoneKept($company, $input, $existing);
             if (!$context->dryRun && $input->profile->changesBankDetailsOf($existing?->getProfile()) && (null === $actorUserId || !$this->stepUp->isRecent($actorUserId))) {
                 throw new StepUpRequired();
             }
             if (null === $existing) {
                 $written = $this->manage->create($company, $input, $actorUserId);
+                self::noteKeptPhone($phone, $record, $notes);
                 $context->created('vendor', $written->getId());
 
                 return RowImported::Created;
@@ -190,6 +194,7 @@ final readonly class VendorImport implements DeclaresImport
             $categories = $this->categoryNames($company);
             $before = $this->inFile($existing, $context, $categories);
             $written = $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
+            self::noteKeptPhone($phone, $record, $notes);
 
             return $notes->changedBetween($before, $this->inFile($written, $context, $categories)) ? RowImported::Updated : RowImported::Unchanged;
         } catch (InvalidVendor $refused) {
@@ -204,6 +209,17 @@ final readonly class VendorImport implements DeclaresImport
                     $this->entityManager->detach($vendor);
                 }
             }
+        }
+    }
+
+    /**
+     * A number outside the ones its country hands out, kept under the platform's « Garder et marquer », is said on its
+     * cell as well as on the vendor's mark: the person reading the report learns which rows to look at.
+     */
+    private static function noteKeptPhone(PhoneKept $phone, ImportRecord $record, RowNotes $notes): void
+    {
+        if (null !== $phone->doubt) {
+            $notes->note('phone', 'phone_kept_to_check', ['value' => $record->value('phone') ?? '']);
         }
     }
 

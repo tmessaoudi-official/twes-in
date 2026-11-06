@@ -14,6 +14,11 @@ use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Settings\Application\PhoneSettings;
+use App\Settings\Domain\Model\Setting;
+use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Domain\ValueObject\CheckMark;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -117,6 +122,54 @@ final class ContactsTest extends ApiTestCase
         $this->sendJson('PUT', $this->path($id), ['firstName' => 'Leila', 'lastName' => 'Trabelsi', 'phone' => '71 900', 'isPrimary' => true, 'version' => 1]);
         self::assertResponseIsSuccessful();
         self::assertSame(['Trabelsi', '71 900'], [$this->json()['lastName'], $this->json()['phone']]);
+    }
+
+    /**
+     * A contact has no « À vérifier » of its own: a phone of the right length outside the numbers its country hands out,
+     * kept under the platform's « Garder et marquer », marks its customer, the line naming the contact and the number
+     * after the note the mark already carried, as the customer's own phone does. The same number sent back marks nothing
+     * again, so a person who took the mark off is not handed it back by the next save.
+     */
+    public function testAContactsPhoneOutsideTheRangesMarksItsCustomerNamingTheContact(): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::platform(), PhoneSettings::OUTSIDE_RANGES, PhoneSettings::KEEP, new \DateTimeImmutable()));
+        $this->customer->reviseCheck(new CheckMark(true, 'Relancer la comptabilité.'), new \DateTimeImmutable());
+        $this->em()->flush();
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->postJson($this->path(), ['firstName' => 'Leila', 'lastName' => 'Trabelsi', 'phone' => '+216 11 111 111', 'isPrimary' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame('+216 11111111', $this->json()['phone']);
+
+        [$marked, $note] = $this->markOfCustomer();
+        self::assertTrue($marked);
+        $lines = explode("\n", $note);
+        self::assertCount(2, $lines, $note);
+        self::assertSame('Relancer la comptabilité.', $lines[0], 'the note the mark carried comes first');
+        self::assertStringContainsString('Leila Trabelsi', $lines[1], 'the line names the contact');
+        self::assertStringContainsString('+216 11111111', $lines[1], 'and the number to check');
+        self::assertSame(1, $this->customerRevisions(), 'the customer\'s mark is recorded in its journal');
+
+        // The person who looked takes the mark off; the contact saved again with the same number leaves it off.
+        $this->em()->getConnection()->executeStatement('UPDATE customer SET to_check = false, check_note = null WHERE id = ?', [$this->customer->getId()->toRfc4122()]);
+        $this->sendJson('PUT', $this->path($id), ['firstName' => 'Leila', 'lastName' => 'Trabelsi', 'phone' => '+216 11 111 111', 'isPrimary' => true, 'version' => 1]);
+        self::assertResponseIsSuccessful();
+        self::assertFalse($this->markOfCustomer()[0]);
+    }
+
+    /** @return array{bool, string} */
+    private function markOfCustomer(): array
+    {
+        $row = $this->em()->getConnection()->fetchAssociative('SELECT to_check, check_note FROM customer WHERE id = ?', [$this->customer->getId()->toRfc4122()]);
+        self::assertIsArray($row);
+
+        return [true === $row['to_check'], Rows::text($row['check_note'] ?? '')];
+    }
+
+    private function customerRevisions(): int
+    {
+        return Rows::int($this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE entity_type = 'customer' AND action = 'customer.revised' AND entity_id = ?", [$this->customer->getId()->toRfc4122()]));
     }
 
     public function testAContactWithoutANameIsRefused(): void

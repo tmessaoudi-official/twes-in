@@ -244,6 +244,7 @@
       "unit_to_confirm": "Sans unité : créé en {{code}}, l’unité par défaut. Confirmez-la dans sa fiche.",
       "gross_reached": "Prix TTC {{gross}} impossible à atteindre : {{reached}} retenu.",
       "set_aside": "« {{value}} » mis de côté : {{why}} La fiche est marquée « À vérifier » avec ce que le fichier tenait.",
+      "phone_kept_to_check": "« {{value}} » gardé tel quel : ce numéro n’est pas parmi ceux que son pays attribue. La fiche est marquée « À vérifier » : vérifiez-le.",
       "date_kept_unknown": "Date « {{date}} » impossible : la ligne est gardée en « date inconnue ».",
       "zero_line_skipped": "Quantité 0 : ligne ignorée, comme demandé."
     },

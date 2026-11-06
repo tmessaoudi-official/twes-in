@@ -25,6 +25,7 @@ use App\Shared\Application\RecordChanged;
 use App\Shared\Application\RecordVersions;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Service\ContactRules;
+use App\Shared\Domain\Service\TypedText;
 use App\Tenancy\Domain\Model\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -69,7 +70,7 @@ final readonly class ManageContacts implements DeclaresAuditActions
     {
         return $this->transactions->run(function () use ($company, $customerId, $details, $isPrimary, $actorUserId): Contact {
             $customer = $this->customer($company, $customerId);
-            $details = $this->withPhoneAsKept($company, $customer, $details, null);
+            $details = $this->withPhoneAsKept($company, $customer, $details, null, $actorUserId);
             $others = $this->contacts->ofCustomer($customer->getId());
             $isPrimary = $isPrimary || [] === $others;
             if ($isPrimary) {
@@ -96,7 +97,7 @@ final readonly class ManageContacts implements DeclaresAuditActions
             if (null !== $version) {
                 $this->versions->expect($contact, $version);
             }
-            $details = $this->withPhoneAsKept($company, $contact->getCustomer(), $details, $contact->getDetails());
+            $details = $this->withPhoneAsKept($company, $contact->getCustomer(), $details, $contact->getDetails(), $actorUserId);
             $now = $this->clock->now();
             $changed = $contact->revise($details, $now);
             if ($isPrimary && !$contact->isPrimary()) {
@@ -146,20 +147,29 @@ final readonly class ManageContacts implements DeclaresAuditActions
 
     /**
      * The details with their phone as kept (`TypedPhones`), read by the customer's billing country, else the company's.
-     * A contact has no « À vérifier » of its own yet: a number outside the ones handed out is kept, unmarked. The e-mail
-     * address is held to its rule here too, once it changes (row 208): the form leaves a revision's address to this.
+     * A contact has no « À vérifier » of its own: a number outside the ones handed out marks its customer, the line
+     * naming the contact after the note the mark already carries, as the customer's own phone does, and recorded in the
+     * customer's journal. The e-mail address is held to its rule here too, once it changes: the form leaves a
+     * revision's address to this.
      *
      * @throws InvalidContact
      */
-    private function withPhoneAsKept(Company $company, Customer $customer, ContactDetails $details, ?ContactDetails $held): ContactDetails
+    private function withPhoneAsKept(Company $company, Customer $customer, ContactDetails $details, ?ContactDetails $held, ?Uuid $actorUserId): ContactDetails
     {
         $email = null === $details->email || $details->email === $held?->email ? null : ContactRules::email($details->email);
         if (null !== $email) {
             throw new InvalidContact('email', $email->message, $email->reason, $email->params);
         }
-        $kept = $this->phones->kept($details->phone, $held?->phone, $customer->getProfile()->billingAddress->countryCode ?? $company->getCountryCode());
+        $name = TypedText::trimmed(($details->firstName ?? '').' '.($details->lastName ?? ''));
+        $kept = $this->phones->kept($details->phone, $held?->phone, $customer->getProfile()->billingAddress->countryCode ?? $company->getCountryCode(), $name);
         if (null !== $kept->refusal) {
             throw new InvalidContact('phone', $kept->refusal->message, $kept->refusal->reason, $kept->refusal->params);
+        }
+        $mark = $kept->markOn($customer->getCheckMark());
+        if (null !== $mark) {
+            $changed = $customer->reviseCheck($mark, $this->clock->now());
+            $this->customers->save($customer);
+            $this->audit->record(new AuditEntry(ManageCustomers::ENTITY_TYPE, $customer->getId(), ManageCustomers::REVISED, $actorUserId, ['fields' => $changed], $company->getId()));
         }
 
         return $details->withPhone($kept->phone);

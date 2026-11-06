@@ -22,6 +22,8 @@ class StaticLoader implements TranslateLoader {
         phone: {
           country: 'Indicatif du pays',
           hint: 'Le numéro sans l’indicatif, que donne le pays choisi à côté (exemple\u00a0: {{example}}).',
+          kept_outside_ranges:
+            'Hors des numéros attribués dans son pays\u00a0: il sera gardé tel quel. Vérifiez-le.',
         },
       },
       import: {
@@ -298,6 +300,21 @@ describe('DescriptorForm with a phone field', () => {
 
       expect(host.form.controls['phone'].valid).toBe(true);
       expect(host.form.controls['phone'].value).toBe('+33 7 00 00 00 00');
+      // Taken, but never in silence: the field says it is kept as it is, to check.
+      expect(byTestId('field-phone-hint')?.textContent).toContain(
+        'Hors des numéros attribués dans son pays',
+      );
+
+      // A number its country hands out says only what the box asks for.
+      await typeIn('06 12 34 56 78');
+      expect(byTestId('field-phone-hint')?.textContent).not.toContain('Hors des numéros');
+    });
+
+    it('says nothing of a number kept from before while it is sent back unchanged', async () => {
+      configure([{ provide: Session, useClass: KeepingPlatform }]);
+      await open('+33 7 00 00 00 00');
+
+      expect(byTestId('field-phone-hint')?.textContent ?? '').not.toContain('Hors des numéros');
     });
 
     // The operator may switch the policy while a form is open: the tab reads the session again and the field judges again.

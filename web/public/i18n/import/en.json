@@ -244,6 +244,7 @@
       "unit_to_confirm": "No unit: created in {{code}}, the default unit. Confirm it on its page.",
       "gross_reached": "Price including taxes {{gross}} cannot be reached: {{reached}} kept.",
       "set_aside": "“{{value}}” set aside: {{why}} The record is marked “To check” with what the file held.",
+      "phone_kept_to_check": "“{{value}}” kept as it is: this number is not among those its country hands out. The record is marked “To check”: check it.",
       "date_kept_unknown": "Date “{{date}}” cannot be: the line is kept as “date unknown”.",
       "zero_line_skipped": "Quantity 0: line skipped, as asked."
     },

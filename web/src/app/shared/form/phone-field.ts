@@ -35,6 +35,7 @@ import {
   phoneExample,
   phoneRefusal,
   phoneValue,
+  phoneVerdict,
   readPhone,
   samePhone,
 } from './phone-numbers';
@@ -134,13 +135,28 @@ export class PhoneField implements ControlValueAccessor, Validator {
   private readonly language = toSignal(this.translate.onLangChange, { initialValue: null });
 
   /**
+   * A number of the right length outside the ones its country hands out, which the platform keeps rather than refuses:
+   * taken, so said, never in silence. A number the form opened on is judged only once it changes, as the API judges it.
+   */
+  private readonly keptOutsideRanges = computed(() => {
+    if ((this.session?.me()?.phonesOutsideRanges ?? 'refuse') !== 'keep' || this.local() === '')
+      return false;
+    const value = phoneValue(this.picked(), this.local());
+    if (this.opened !== '' && samePhone(value, this.opened)) return false;
+    return phoneVerdict(value, null).verdict === 'to_check';
+  });
+
+  /**
    * What is said under the number while nothing is refused: the form's own hint, else what the box asks for, the
    * number without its code, with an example of the country picked, isolated left to right so its groups keep their
    * order on an Arabic screen.
    */
   protected readonly shownHint = computed(() => {
-    if (this.hint() !== '') return this.hint();
     this.language();
+    if (this.keptOutsideRanges()) {
+      return this.translate.instant('form.phone.kept_outside_ranges') as string;
+    }
+    if (this.hint() !== '') return this.hint();
     const example = phoneExample(this.picked());
     return example === ''
       ? ''

@@ -17,6 +17,7 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Module\Invoices\Infrastructure\Scheduler\StoreMissingInvoicePdfsEveryQuarterHour;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\ValueObject\SettingLevel;
@@ -160,6 +161,25 @@ final class FacturXTest extends ApiTestCase
         $this->client->request('GET', $this->path($id).'/factur-x.pdf');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame([], static::getContainer()->get(FakeFacturXPdf::class)->embedded, 'nothing refused reaches the PDF engine');
+    }
+
+    /** An invoice whose PDF could not be stored at issue has it stored by the worker's next pass, as a delivery note's is. */
+    public function testAnInvoicesPdfNotStoredAtIssueIsStoredByTheWorkersNextPass(): void
+    {
+        $this->signedIn();
+        $this->client->disableReboot();
+        static::getContainer()->get(FakePdfRenderer::class)->failing = true;
+        $id = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
+        static::getContainer()->get(FakePdfRenderer::class)->failing = false;
+        $stored = fn (): mixed => $this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM invoice WHERE id = ?', [$id]);
+        self::assertNull($stored());
+
+        static::getContainer()->get(StoreMissingInvoicePdfsEveryQuarterHour::class)();
+
+        $file = $stored();
+        self::assertNotNull($file);
+        static::getContainer()->get(StoreMissingInvoicePdfsEveryQuarterHour::class)();
+        self::assertSame($file, $stored(), 'a second pass stores nothing again');
     }
 
     public function testAnInvoiceIssuedBeforeTheCompanyMovedAnswersTheSellerItWasIssuedBy(): void

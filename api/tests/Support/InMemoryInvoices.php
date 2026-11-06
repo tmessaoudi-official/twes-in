@@ -144,6 +144,16 @@ final class InMemoryInvoices implements InvoiceRepository
         return null;
     }
 
+    public function numberedWithoutPdf(Uuid $companyId, int $limit): array
+    {
+        $found = array_filter(
+            $this->invoices,
+            static fn (Invoice $invoice): bool => $invoice->getCompany()->getId()->equals($companyId) && null !== $invoice->getNumber() && null === $invoice->getPdfFile(),
+        );
+
+        return \array_slice(array_values(array_map(static fn (Invoice $invoice): Uuid => $invoice->getId(), $found)), 0, $limit);
+    }
+
     public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Invoice
     {
         if (null !== $this->transactions && !$this->transactions->active()) {

@@ -91,6 +91,12 @@
           "title": "Commandes à réceptionner",
           "hint": "Des commandes envoyées aux fournisseurs dont la marchandise était attendue aujourd’hui ou avant, et qui ne sont pas encore toutes reçues. Réceptionnez ce qui est arrivé."
         }
+      },
+      "company": {
+        "contacts_to_check": {
+          "title": "Coordonnées à vérifier",
+          "hint": "Le profil de la société ou des établissements gardent une adresse ou un téléphone que les règles d’aujourd’hui refusent, ou un téléphone que son pays n’attribue pas. Corrigez-les sur leur page."
+        }
       }
     },
     "columns": {
@@ -133,7 +139,8 @@
       "move": "Mouvement",
       "lines": "Lignes",
       "hours": "En attente depuis (heures)",
-      "expectedOn": "Attendue le"
+      "expectedOn": "Attendue le",
+      "record": "Fiche"
     },
     "actions": {
       "see_invoices": "Voir les factures en retard de {{name}}",

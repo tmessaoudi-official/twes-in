@@ -75,6 +75,11 @@ final readonly class LibPhoneNumbers implements PhoneNumbers
         return $this->translator->trans('doubt.phone', ['%value%' => $this->grouped($stored)], self::DOMAIN);
     }
 
+    public function contactDoubt(string $stored, string $contact): string
+    {
+        return $this->translator->trans('doubt.contact_phone', ['%value%' => $this->grouped($stored), '%name%' => $contact], self::DOMAIN);
+    }
+
     private function example(string $region): ?string
     {
         $util = PhoneNumberUtil::getInstance();

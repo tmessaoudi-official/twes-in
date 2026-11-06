@@ -91,6 +91,12 @@
           "title": "Orders to receive",
           "hint": "Orders sent to vendors whose goods were expected today or earlier and have not all arrived. Receive what has come."
         }
+      },
+      "company": {
+        "contacts_to_check": {
+          "title": "Contact details to check",
+          "hint": "The company profile or establishments keep an address or a phone today’s rules refuse, or a phone its country does not hand out. Correct them on their page."
+        }
       }
     },
     "columns": {
@@ -133,7 +139,8 @@
       "move": "Move",
       "lines": "Lines",
       "hours": "Waiting for (hours)",
-      "expectedOn": "Expected on"
+      "expectedOn": "Expected on",
+      "record": "Record"
     },
     "actions": {
       "see_invoices": "See {{name}}'s overdue invoices",

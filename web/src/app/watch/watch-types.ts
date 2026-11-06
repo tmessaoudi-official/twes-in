@@ -63,4 +63,6 @@ export const WATCHED_KINDS = [
   'expense',
   'vendor',
   'invitation',
+  'company',
+  'establishment',
 ] as const;
