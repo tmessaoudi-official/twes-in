@@ -18,8 +18,8 @@ use App\Legal\Application\LegalTextTooLong;
 use App\Legal\Application\ManageLegalTexts;
 use App\Legal\Infrastructure\ApiPlatform\Payload\LegalTextPath;
 use App\Legal\Infrastructure\ApiPlatform\Resource\PlatformLegalTextResource;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use Symfony\Bundle\SecurityBundle\Security;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /** @implements ProcessorInterface<PlatformLegalTextResource, PlatformLegalTextResource> */
@@ -40,8 +40,10 @@ final readonly class WriteLegalTextProcessor implements ProcessorInterface
 
         try {
             $text = $this->manage->write($path->page, $path->language, $data->body, $account->getId(), $account->getUserIdentifier());
-        } catch (EmptyLegalText|LegalTextTooLong $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+        } catch (EmptyLegalText $empty) {
+            throw DomainRule::refused('body', $empty->getMessage(), 'value_required', [], $empty);
+        } catch (LegalTextTooLong $long) {
+            throw DomainRule::refused('body', $long->getMessage(), 'invalid_text', ['max' => $long->maxLength], $long);
         }
 
         return PlatformLegalTextResource::of($text);

@@ -6,7 +6,7 @@ import type { LegalLanguage } from '../shared/legal/legal-api';
 import type { LegalPage } from '../shared/legal/legal-pages';
 import { StepUp } from '../shared/step-up/step-up';
 import { stepUpAsked } from '../shared/step-up/step-up-api';
-import { LegalIdentityRefused, PlatformLegalApi } from './platform-legal-api';
+import { LegalIdentityRefused, LegalTextRefused, PlatformLegalApi } from './platform-legal-api';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-legal-types';
 import { sessionSignal } from '../shared/session/session-data';
@@ -25,6 +25,7 @@ export class PlatformLegalFacade {
   private readonly state = requestState<true>(() => true);
   private readonly identitySignal = sessionSignal<Readonly<Record<string, string>>>({});
   private readonly identityRefusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
+  private readonly bodyRefusalSignal = sessionSignal<FieldRefusal | null>(null);
   private readonly countrySignal = sessionSignal<string | null>(null);
   private opened: { page: LegalPage; language: LegalLanguage } | null = null;
   /** The version of each placeholder's row when read, which a save sends back. */
@@ -46,7 +47,11 @@ export class PlatformLegalFacade {
    * Whether the last save or publication was not confirmed, which reading again would not undo: said in its own
    * words. A proof the operator declined is their own choice and sets neither.
    */
-  readonly saveFailed = computed(() => this.state.error() !== null && !this.state.readFailed());
+  readonly saveFailed = computed(
+    () => this.state.error() !== null && !this.state.readFailed() && this.bodyRefusal() === null,
+  );
+  /** Why the API refused the last version written, said under the text; null once it is typed again. */
+  readonly bodyRefusal = this.bodyRefusalSignal.asReadonly();
 
   async load(): Promise<void> {
     await this.run(async () => {
@@ -120,10 +125,23 @@ export class PlatformLegalFacade {
   async write(body: string): Promise<boolean> {
     const opened = this.opened;
     if (opened === null) return false;
-    return this.run(async () => {
-      await this.proven(() => this.api.write(opened.page, opened.language, body));
-      await this.refresh(opened.page, opened.language);
-    });
+    this.bodyRefusalSignal.set(null);
+    return this.run(
+      async () => {
+        await this.proven(() => this.api.write(opened.page, opened.language, body));
+        await this.refresh(opened.page, opened.language);
+      },
+      false,
+      (error) =>
+        this.bodyRefusalSignal.set(
+          error instanceof LegalTextRefused ? (error.refusals[0] ?? null) : null,
+        ),
+    );
+  }
+
+  /** The text was typed again: what the API said of the last one no longer says what it holds. */
+  forgetBodyRefusal(): void {
+    this.bodyRefusalSignal.set(null);
   }
 
   /** @returns whether the latest version is now validated */
@@ -157,9 +175,13 @@ export class PlatformLegalFacade {
   }
 
   /** `reading` marks a read: one nobody asked for leaves busy as it is (QuietReads); a write is always marked. */
-  private async run(work: () => Promise<void>, reading = false): Promise<boolean> {
+  private async run(
+    work: () => Promise<void>,
+    reading = false,
+    failed?: (error: unknown) => void,
+  ): Promise<boolean> {
     return reading
       ? this.state.read(work)
-      : this.state.write(work, { code: (error) => (stepUpAsked(error) ? null : true) });
+      : this.state.write(work, { code: (error) => (stepUpAsked(error) ? null : true), failed });
   }
 }

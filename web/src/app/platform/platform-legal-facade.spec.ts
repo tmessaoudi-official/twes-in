@@ -3,7 +3,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { StepUp } from '../shared/step-up/step-up';
-import { LegalIdentityRefused, PlatformLegalApi } from './platform-legal-api';
+import { LegalIdentityRefused, LegalTextRefused, PlatformLegalApi } from './platform-legal-api';
 import { PlatformLegalFacade } from './platform-legal-facade';
 
 // The proof dialog is answered by the test; `retrying` itself is StepUp's own.
@@ -113,6 +113,19 @@ describe('PlatformLegalFacade', () => {
 
     expect(facade.failed()).toBe(true);
     expect(facade.saveFailed()).toBe(false);
+  });
+
+  it('keeps why a version was refused in place of « not confirmed », until the text is typed again', async () => {
+    await facade.open('mentions', 'fr');
+    const empty = { field: 'body', reason: 'value_required', params: {} };
+    api.write.mockRejectedValueOnce(new LegalTextRefused([empty]));
+
+    expect(await facade.write('  ')).toBe(false);
+
+    expect(facade.bodyRefusal()).toEqual(empty);
+    expect(facade.saveFailed()).toBe(false);
+    facade.forgetBodyRefusal();
+    expect(facade.bodyRefusal()).toBeNull();
   });
 
   it('saves the facts changed with the versions read, and after one saved since shows what is saved', async () => {

@@ -4,7 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
-import { LegalIdentityRefused, PlatformLegalApi } from './platform-legal-api';
+import { LegalIdentityRefused, LegalTextRefused, PlatformLegalApi } from './platform-legal-api';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { RECORD_CHANGED } from '../shared/errors/record-changed';
 
@@ -85,6 +85,29 @@ describe('PlatformLegalApi', () => {
     expect(open).toHaveBeenCalledWith('settings-refusals');
     // A phone's refusals are said in the form refusals' words, where every phone field reads them.
     expect(open).toHaveBeenCalledWith('form-refusals');
+  });
+
+  // A text refused for its length or for being empty was said as a connection that did not answer.
+  it('names why a version was refused, apart from one that never reached the API', async () => {
+    vi.spyOn(TestBed.inject(TextsParts), 'open').mockResolvedValue(undefined);
+    const refused = api.write('mentions', 'fr', '');
+    http
+      .expectOne('/api/platform/legal-texts/mentions/fr/versions')
+      .flush(
+        { violations: [{ propertyPath: 'body', payload: { reason: 'value_required' } }] },
+        { status: 422, statusText: 'Unprocessable Content' },
+      );
+    const error = await refused.catch((failure: unknown) => failure);
+    expect(error).toBeInstanceOf(LegalTextRefused);
+    expect((error as LegalTextRefused).refusals).toEqual([
+      { field: 'body', reason: 'value_required', params: {} },
+    ]);
+
+    const lost = api.write('mentions', 'fr', 'x');
+    http
+      .expectOne('/api/platform/legal-texts/mentions/fr/versions')
+      .error(new ProgressEvent('error'));
+    expect(await lost.catch((failure: unknown) => failure)).not.toBeInstanceOf(LegalTextRefused);
   });
 
   it('writes a new version and validates the latest at the page and language path', async () => {

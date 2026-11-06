@@ -123,6 +123,8 @@ describe('PlatformLegalPage', () => {
     busy: ReturnType<typeof signal<boolean>>;
     failed: ReturnType<typeof signal<boolean>>;
     saveFailed: ReturnType<typeof signal<boolean>>;
+    bodyRefusal: ReturnType<typeof signal<FieldRefusal | null>>;
+    forgetBodyRefusal: ReturnType<typeof vi.fn>;
     identity: ReturnType<typeof signal<Readonly<Record<string, string>>>>;
     identityRefusals: ReturnType<typeof signal<readonly FieldRefusal[]>>;
     country: ReturnType<typeof signal<string | null>>;
@@ -190,6 +192,8 @@ describe('PlatformLegalPage', () => {
       busy: signal(false),
       failed: signal(false),
       saveFailed: signal(false),
+      bodyRefusal: signal<FieldRefusal | null>(null),
+      forgetBodyRefusal: vi.fn(() => facade.bodyRefusal.set(null)),
       // Every legal.* setting, in the API's order, the empty ones included: the form's fields.
       identity: signal<Readonly<Record<string, string>>>({
         'publisher.name': 'twes SAS',
@@ -294,6 +298,21 @@ describe('PlatformLegalPage', () => {
     );
     expect(q('legal-failed')).toBeNull();
     expect(q('legal-retry')).toBeNull();
+  });
+
+  it('says under the text why the API refused it, and forgets it once the text is typed again', async () => {
+    await render();
+    q('legal-cell-mentions-fr')!.click();
+    await settle();
+    facade.bodyRefusal.set({ field: 'body', reason: 'invalid_text', params: { max: 200000 } });
+    await settle();
+
+    expect(q('legal-body-error')?.textContent).toContain('Au plus 200');
+    expect(body().getAttribute('aria-describedby')).toBe('legal-body-error');
+    expect(q('legal-save-failed')).toBeNull();
+
+    await type('Un texte plus court.');
+    expect(q('legal-body-error')).toBeNull();
   });
 
   it('reads the legal texts again when another operator writes or validates one', async () => {

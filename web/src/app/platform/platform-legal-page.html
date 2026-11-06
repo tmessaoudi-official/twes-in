@@ -203,9 +203,20 @@
             (input)="typed($event)"
             [attr.lang]="current.language"
             [attr.dir]="directionOf(current.language)"
+            [attr.aria-describedby]="bodyError() === null ? null : 'legal-body-error'"
             data-testid="legal-editor-body"
           ></textarea>
         </label>
+        @if (bodyError(); as error) {
+          <p
+            id="legal-body-error"
+            role="alert"
+            class="text-sm text-error"
+            data-testid="legal-body-error"
+          >
+            {{ error.key | translate: error.params }}
+          </p>
+        }
       }
       <div class="flex flex-wrap gap-2">
         <button

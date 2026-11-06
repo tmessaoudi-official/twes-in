@@ -358,7 +358,14 @@ export class PlatformLegalPage implements OnInit {
 
   protected typed(event: Event): void {
     this.text.set((event.target as HTMLTextAreaElement).value);
+    this.facade.forgetBodyRefusal();
   }
+
+  /** Why the API refused the text last written, in the words every form says it with. */
+  protected readonly bodyError = computed(() => {
+    const refusal = this.facade.bodyRefusal();
+    return refusal === null ? null : refusedError(this.translate, refusal);
+  });
 
   protected reuse(version: LegalVersionRow): void {
     this.text.set(version.body);

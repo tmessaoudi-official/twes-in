@@ -14,6 +14,7 @@ import type { LegalLanguage } from '../shared/legal/legal-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import { refusedFor } from '../shared/errors/said-already';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { TextsParts } from '../shared/i18n/texts-part';
 import type { LegalPage } from '../shared/legal/legal-pages';
 import type { LegalIdentity, LegalStatusRow, LegalVersionRow } from './platform-legal-types';
@@ -21,6 +22,13 @@ import { PLATFORM_COUNTRY } from './platform-types';
 
 /** The identity's fields the API refused, each named by its placeholder, with the reason the screens translate. */
 export class LegalIdentityRefused extends Error {
+  constructor(readonly refusals: readonly FieldRefusal[]) {
+    super('refused');
+  }
+}
+
+/** A version the API refused, for what it holds: empty, or longer than a legal text may be. */
+export class LegalTextRefused extends Error {
   constructor(readonly refusals: readonly FieldRefusal[]) {
     super('refused');
   }
@@ -56,14 +64,20 @@ export class PlatformLegalApi {
 
   async write(page: LegalPage, language: LegalLanguage, body: string): Promise<LegalVersionRow> {
     const input: PlatformLegalTextPlatformLegalTextWrite = { body };
-    return toRow(
-      await firstValueFrom(
-        this.http.post<PlatformLegalTextPlatformLegalTextRead>(
-          this.path(page, language, 'versions'),
-          input,
+    try {
+      return toRow(
+        await firstValueFrom(
+          this.http.post<PlatformLegalTextPlatformLegalTextRead>(
+            this.path(page, language, 'versions'),
+            input,
+          ),
         ),
-      ),
-    );
+      );
+    } catch (error) {
+      const refusals = await formRefusalsIn(this.injector, error);
+      if (refusals.length === 0) throw error;
+      throw refusedFor(error, new LegalTextRefused(refusals));
+    }
   }
 
   async validate(page: LegalPage, language: LegalLanguage): Promise<LegalVersionRow> {

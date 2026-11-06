@@ -11,6 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
 use App\Identity\Domain\ValueObject\Email;
+use App\Legal\Application\ManageLegalTexts;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -84,6 +85,11 @@ final class PlatformLegalTextsTest extends ApiTestCase
 
         $this->postJson(self::VERSIONS, ['body' => "  \n"]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        // Said under the text itself, in the words the screen has for an empty field.
+        self::assertSame(['value_required', []], $this->refusalOf('body'));
+        $this->postJson(self::VERSIONS, ['body' => str_repeat('a', ManageLegalTexts::MAX_LENGTH + 1)]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['invalid_text', ['max' => ManageLegalTexts::MAX_LENGTH]], $this->refusalOf('body'));
         $this->postJson('/api/platform/legal-texts/nothing/fr/versions', ['body' => 'x']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson('/api/platform/legal-texts/security/ar/validate', []);
