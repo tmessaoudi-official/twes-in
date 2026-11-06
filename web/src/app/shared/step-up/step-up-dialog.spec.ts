@@ -97,11 +97,17 @@ describe('StepUpDialog', () => {
   it('says a wrong password, stays open, and sends nothing for an empty one', async () => {
     proof.withPassword.mockResolvedValueOnce('refused');
     type('mauvais');
+    // Pressed with the mouse: the cursor is on the button.
+    q('step-up-confirm')!.focus();
     q('step-up-confirm')!.click();
     await settle();
 
     expect(q('step-up-error')?.textContent).toContain('Mauvais mot de passe.');
     expect(close).not.toHaveBeenCalled();
+    // The password is typed again at once, over the one refused.
+    const field = q('step-up-password') as HTMLInputElement;
+    expect(document.activeElement).toBe(field);
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 'mauvais'.length]);
 
     type('');
     q('step-up-confirm')!.click();

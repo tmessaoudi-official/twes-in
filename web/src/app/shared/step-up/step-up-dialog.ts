@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  type ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -13,6 +20,7 @@ import { type StepUpOutcome, StepUpProof } from './step-up-proof';
 import { PasswordToggle } from '../form/password-toggle';
 import { signInAddress } from '../session/return-to';
 import { SpentBudget } from '../errors/spent-budget';
+import { typeAgain } from './type-again';
 
 /** What the dialog is opened with: the translation key of the sentence saying why it asks. */
 export interface StepUpReason {
@@ -97,6 +105,7 @@ export class StepUpDialog {
   protected readonly intro =
     inject<StepUpReason | undefined>(MAT_DIALOG_DATA, { optional: true })?.intro ?? 'step_up.intro';
   protected readonly password = new FormControl('', { nonNullable: true });
+  private readonly passwordInput = viewChild<ElementRef<HTMLInputElement>>('stepUpPassword');
   protected readonly busy = signal(false);
   protected readonly problem = signal<Exclude<StepUpOutcome, 'confirmed' | 'signed_out'> | null>(
     null,
@@ -105,9 +114,11 @@ export class StepUpDialog {
   protected async confirmPassword(): Promise<void> {
     if (this.password.value === '') {
       this.problem.set('refused');
+      typeAgain(this.passwordInput());
       return;
     }
     await this.settle(() => this.proof.withPassword(this.password.value));
+    if (this.problem() === 'refused') typeAgain(this.passwordInput());
   }
 
   protected async confirmPasskey(): Promise<void> {

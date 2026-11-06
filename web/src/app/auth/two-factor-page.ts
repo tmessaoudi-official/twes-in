@@ -152,6 +152,8 @@ export class TwoFactorPage {
       this.recoveryCodes.set(outcome.recoveryCodes);
     } else {
       this.error.set(outcome.error);
+      // The code was emptied: it is typed again there, without a click first.
+      this.focus('two-factor-code-input');
     }
   }
 
@@ -171,6 +173,7 @@ export class TwoFactorPage {
       this.recoveryCodes.set(outcome.recoveryCodes);
     } else {
       this.error.set(outcome.error);
+      this.focus('two-factor-regenerate-code-input');
     }
   }
 
@@ -307,6 +310,7 @@ export class TwoFactorPage {
       this.recoveryCodes.set(outcome.recoveryCodes);
     } else {
       this.replaceError.set(outcome.error);
+      this.focus('two-factor-replace-code-input');
     }
   }
 

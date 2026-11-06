@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  type ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -14,6 +21,7 @@ import { PasswordToggle } from '../form/password-toggle';
 import { signInAddress } from '../session/return-to';
 import { typedCode } from '../form/typed-code';
 import { SpentBudget } from '../errors/spent-budget';
+import { typeAgain } from '../step-up/type-again';
 
 /**
  * The step-up's question for entering a company: the password, the authenticator code beside it where the company
@@ -74,6 +82,7 @@ import { SpentBudget } from '../errors/spent-budget';
                 type="text"
                 inputmode="numeric"
                 autocomplete="one-time-code"
+                #entryCode
                 [formControl]="code"
                 data-testid="company-proof-code"
               />
@@ -134,6 +143,8 @@ export class CompanyProofDialog {
   protected readonly asked = inject<EntryAsked>(MAT_DIALOG_DATA);
   protected readonly password = new FormControl('', { nonNullable: true });
   protected readonly code = new FormControl('', { nonNullable: true });
+  private readonly passwordInput = viewChild<ElementRef<HTMLInputElement>>('entryPassword');
+  private readonly codeInput = viewChild<ElementRef<HTMLInputElement>>('entryCode');
   protected readonly busy = signal(false);
   protected readonly problem = signal<Exclude<EntryOutcome, 'confirmed' | 'signed_out'> | null>(
     null,
@@ -142,11 +153,13 @@ export class CompanyProofDialog {
   protected async confirmPassword(): Promise<void> {
     if (this.password.value === '') {
       this.problem.set('refused');
+      typeAgain(this.passwordInput());
       return;
     }
     const code = typedCode(this.code.value);
     if (this.asked.code && code === '') {
       this.problem.set('code_refused');
+      typeAgain(this.codeInput());
       return;
     }
     await this.settle(() =>
@@ -156,6 +169,8 @@ export class CompanyProofDialog {
         this.asked.code ? code : null,
       ),
     );
+    if (this.problem() === 'refused') typeAgain(this.passwordInput());
+    if (this.problem() === 'code_refused') typeAgain(this.codeInput());
   }
 
   protected async confirmPasskey(): Promise<void> {

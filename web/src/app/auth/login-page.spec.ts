@@ -423,6 +423,8 @@ describe('LoginPage', () => {
     type(query<HTMLInputElement>('email')!, 'owner@example.test');
     await next(fixture, query);
     type(query<HTMLInputElement>('password')!, 'wrong');
+    // Pressed with the mouse: the cursor leaves the field for the button, which waits disabled for the answer.
+    query<HTMLButtonElement>('submit')!.focus();
     query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
 
@@ -433,6 +435,8 @@ describe('LoginPage', () => {
 
     expect(query('login-error')?.textContent).toContain('Compte désactivé');
     expect(query<HTMLInputElement>('password')?.value).toBe('');
+    // The password is typed again where it was emptied, without a click first.
+    expect(document.activeElement).toBe(query('password'));
     expect(query('login-address')?.textContent).toContain('owner@example.test');
   });
 
@@ -462,6 +466,8 @@ describe('LoginPage', () => {
     expect(rendered.query('login-form')).toBeNull();
     expect(rendered.query('mfa-form')).not.toBeNull();
     expect(navigate).not.toHaveBeenCalled();
+    // The code is typed at once: the button pressed has gone with the password, and nothing else holds the cursor.
+    expect(document.activeElement).toBe(rendered.query('mfa-code'));
 
     await submitCode(rendered, '123456');
     const request = rendered.http.expectOne({ method: 'POST', url: '/api/auth/mfa/verify' });
@@ -503,6 +509,8 @@ describe('LoginPage', () => {
   it('shows a refused code, clears it and keeps asking', async () => {
     const rendered = await render();
     await passThePassword(rendered);
+    // Pressed with the mouse: the cursor leaves the field for the button, before the wait disables it.
+    rendered.query<HTMLButtonElement>('mfa-submit')!.focus();
     await submitCode(rendered, '000000');
     rendered.http
       .expectOne('/api/auth/mfa/verify')
@@ -512,6 +520,7 @@ describe('LoginPage', () => {
     expect(rendered.query('login-error')?.textContent).toContain('Code incorrect');
     expect(rendered.query<HTMLInputElement>('mfa-code')?.value).toBe('');
     expect(rendered.query('mfa-form')).not.toBeNull();
+    expect(document.activeElement).toBe(rendered.query('mfa-code'));
   });
 
   it('says when the code may be tried again once its budget is spent', async () => {
@@ -544,6 +553,7 @@ describe('LoginPage', () => {
     expect(rendered.query('mfa-form')).toBeNull();
     expect(rendered.query('login-form')).not.toBeNull();
     expect(rendered.query('login-error')?.textContent).toContain('Reconnectez-vous');
+    expect(document.activeElement).toBe(rendered.query('password'));
   });
 
   it('lets the person go back to the password step', async () => {
@@ -555,6 +565,7 @@ describe('LoginPage', () => {
 
     expect(rendered.query('login-form')).not.toBeNull();
     expect(rendered.query<HTMLInputElement>('password')?.value).toBe('');
+    expect(document.activeElement).toBe(rendered.query('password'));
   });
 
   async function usePasskey(rendered: Awaited<ReturnType<typeof render>>) {
@@ -580,6 +591,22 @@ describe('LoginPage', () => {
     await settle(rendered.fixture);
 
     expect(navigate).toHaveBeenCalledWith('/');
+  });
+
+  it('goes back to the password, the cursor in it, when the half-finished login expired under the passkey', async () => {
+    const rendered = await render();
+    await passThePassword(rendered);
+    rendered.query<HTMLButtonElement>('mfa-passkey')!.focus();
+
+    (await usePasskey(rendered)).flush(
+      { error: 'mfa_not_pending' },
+      { status: 401, statusText: 'Unauthorized' },
+    );
+    await settle(rendered.fixture);
+
+    expect(rendered.query('login-form')).not.toBeNull();
+    expect(rendered.query('login-error')?.textContent).toContain('Reconnectez-vous');
+    expect(document.activeElement).toBe(rendered.query('password'));
   });
 
   it('offers no passkey at an address that cannot use one, and says where it works', async () => {

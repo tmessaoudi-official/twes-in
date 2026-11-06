@@ -244,3 +244,7 @@ the end of § Lessons here.
   its own moment from the answer (`WatchFacade.arm`). Two members left: `company-facade.ts` `readAgainWhenAGrantEnds`,
   `shared/time/deadline-clock.ts`. A facade's late answer for a company the session left is dropped by a count its
   forget moves on (`WatchFacade.load`); the other `sessionSignal` facades are not yet (2026-11-06).
+- A step that swaps one form for another, or a refusal that empties a field, leaves the cursor on the button pressed,
+  which the wait disables, so what is typed next is lost (the sign-in's code step, 2026-11-06). Focus the field typed
+  next after the render (`afterNextRender`), and a refused answer kept in a dialog selected (`typeAgain`). A spec focuses
+  the button BEFORE the submit: focusing it after, once disabled, leaves the cursor where it was and the case passes on nothing.

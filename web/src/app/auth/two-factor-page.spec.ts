@@ -212,11 +212,15 @@ describe('TwoFactorPage', () => {
       passkeySignInAllowed: false,
     });
     facade.confirmTotpEnrolment.mockResolvedValue({ ok: false, error: 'invalid_code' });
+    // Pressed with the mouse: the cursor is on the button, which the wait disables.
+    rendered.query<HTMLButtonElement>('two-factor-submit')!.focus();
 
     await submitCode(rendered, '000000');
 
     expect(rendered.query('two-factor-error')?.textContent).toContain('Code incorrect');
     expect(rendered.query<HTMLInputElement>('two-factor-code')?.value).toBe('');
+    // The code is typed again where it was emptied, without a click first.
+    expect(document.activeElement).toBe(rendered.query('two-factor-code'));
     expect(rendered.query('two-factor-secret')?.textContent?.replace(/\s/g, '')).toBe(SECRET);
     expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);
   });
@@ -337,11 +341,13 @@ describe('TwoFactorPage', () => {
       passkeySignInAllowed: false,
     });
     facade.regenerateRecoveryCodes.mockResolvedValue({ ok: false, error: 'invalid_code' });
+    rendered.query<HTMLButtonElement>('two-factor-regenerate-submit')!.focus();
 
     await regenerate(rendered, '000000');
 
     expect(rendered.query('two-factor-error')?.textContent).toContain('Code incorrect');
     expect(rendered.query<HTMLInputElement>('two-factor-regenerate-code')?.value).toBe('');
+    expect(document.activeElement).toBe(rendered.query('two-factor-regenerate-code'));
     expect(rendered.query('two-factor-recovery-codes')).toBeNull();
   });
 
@@ -642,10 +648,12 @@ describe('TwoFactorPage', () => {
       facade.confirmTotpReplacement.mockResolvedValue({ ok: false, error: 'invalid_code' });
       rendered.query<HTMLButtonElement>('two-factor-app-replace')?.click();
       await settle(rendered.fixture);
+      rendered.query<HTMLButtonElement>('two-factor-replace-submit')!.focus();
 
       await replaceWith(rendered, '000000');
 
       expect(rendered.query('two-factor-replace-error')?.textContent).toContain('Code incorrect');
+      expect(document.activeElement).toBe(rendered.query('two-factor-replace-code'));
       expect(rendered.query('two-factor-replace-qr')).not.toBeNull();
       expect(rendered.query<HTMLInputElement>('two-factor-replace-code')?.value).toBe('');
       expect(rendered.query('two-factor-recovery-codes')).toBeNull();

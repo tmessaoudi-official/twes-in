@@ -106,6 +106,7 @@ export class LoginPage {
   private readonly injector = inject(Injector);
   private readonly emailInput = viewChild<ElementRef<HTMLInputElement>>('loginEmail');
   private readonly passwordInput = viewChild<ElementRef<HTMLInputElement>>('loginPassword');
+  private readonly codeInput = viewChild<ElementRef<HTMLInputElement>>('mfaCode');
 
   constructor() {
     void this.signup.loadAvailability();
@@ -244,9 +245,12 @@ export class LoginPage {
     if (outcome.status === 'second_factor') {
       this.codeForm.reset();
       this.step.set('code');
+      // The button pressed goes with the password step, so the cursor would land nowhere and the first digits be lost.
+      this.focus(this.codeInput);
       return;
     }
     this.error.set(outcome.error);
+    this.focus(this.passwordInput);
   }
 
   protected async submitCode(): Promise<void> {
@@ -270,8 +274,11 @@ export class LoginPage {
       // An expired or missing half-login cannot be finished with any code: the password is needed again.
       if (outcome.error === 'mfa_not_pending') {
         this.step.set('password');
+        this.focus(this.passwordInput);
+        return;
       }
     }
+    this.focus(this.codeInput);
   }
 
   /** The same second step, answered with a passkey instead of a code. */
@@ -291,6 +298,7 @@ export class LoginPage {
       this.error.set(outcome.error);
       if (outcome.error === 'mfa_not_pending') {
         this.step.set('password');
+        this.focus(this.passwordInput);
       }
     }
   }
@@ -299,5 +307,6 @@ export class LoginPage {
     this.codeForm.reset();
     this.error.set(null);
     this.step.set('password');
+    this.focus(this.passwordInput);
   }
 }

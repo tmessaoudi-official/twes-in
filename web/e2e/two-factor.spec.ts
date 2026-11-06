@@ -138,13 +138,16 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   await signOut(page);
   await signIn(page, invited, NEW_PASSWORD);
   await expect(page.getByTestId('mfa-form')).toBeVisible();
+  // The code is typed at once: the cursor waits in its field, not on the button pressed for the password.
+  await expect(page.getByTestId('mfa-code')).toBeFocused();
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByTestId('mfa-passkey')).toHaveCount(0);
   await expect(page.getByTestId('mfa-passkey-elsewhere')).toContainText('localhost');
   await expectAccessible(page, 'login, code step');
   await page.screenshot({ path: test.info().outputPath('login-code-step.png'), fullPage: true });
   await nextStep(page);
-  await page.getByTestId('mfa-code').fill(totp(secret));
+  await expect(page.getByTestId('mfa-code')).toBeFocused();
+  await page.keyboard.type(totp(secret));
   await page.getByTestId('mfa-submit').click();
   await expect(page.getByTestId('greeting')).toContainText('Second Factor');
 
@@ -162,8 +165,10 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   await expect(page.getByTestId('login-error')).toBeVisible();
   await expect(page.getByTestId('mfa-form')).toBeVisible();
 
-  // A code from the replaced set is refused too: the fifth and last attempt this window allows.
-  await page.getByTestId('mfa-code').fill(firstCodes[1]!);
+  // A code from the replaced set is refused too: the fifth and last attempt this window allows. The refused code's field
+  // takes the cursor back, so the next one is typed without a click.
+  await expect(page.getByTestId('mfa-code')).toBeFocused();
+  await page.keyboard.type(firstCodes[1]!);
   await page.getByTestId('mfa-submit').click();
   await expect(page.getByTestId('login-error')).toBeVisible();
   await expect(page.getByTestId('mfa-form')).toBeVisible();

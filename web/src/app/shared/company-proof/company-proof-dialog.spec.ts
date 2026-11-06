@@ -54,6 +54,8 @@ describe('CompanyProofDialog', () => {
   }
 
   async function submit(): Promise<void> {
+    // Pressed with the mouse: the cursor is on the button.
+    q('company-proof-confirm')?.focus();
     q('company-proof-confirm')?.click();
     await settle();
   }
@@ -114,6 +116,7 @@ describe('CompanyProofDialog', () => {
 
     expect(q('company-proof-error')?.textContent).toContain('Mauvais code.');
     expect(proof.enterWithPassword).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(q('company-proof-code'));
 
     type('company-proof-code', '123 456');
     await submit();
@@ -138,10 +141,17 @@ describe('CompanyProofDialog', () => {
 
     expect(q('company-proof-error')?.textContent).toContain('Mauvais code.');
     expect(close).not.toHaveBeenCalled();
+    // The answer refused is typed again at once, over itself.
+    const code = q('company-proof-code') as HTMLInputElement;
+    expect(document.activeElement).toBe(code);
+    expect([code.selectionStart, code.selectionEnd]).toEqual([0, 6]);
 
     proof.enterWithPassword.mockResolvedValue('refused');
     await submit();
     expect(q('company-proof-error')?.textContent).toContain('Mauvais mot de passe.');
+    const typed = q('company-proof-password') as HTMLInputElement;
+    expect(document.activeElement).toBe(typed);
+    expect([typed.selectionStart, typed.selectionEnd]).toEqual([0, 'secret'.length]);
   });
 
   it('offers a passkey only where the company takes one and the browser can answer', async () => {
