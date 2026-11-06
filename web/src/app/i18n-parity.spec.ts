@@ -98,6 +98,9 @@ import frSettings from '../../public/i18n/settings/fr.json';
 import arSettingsRefusals from '../../public/i18n/settings-refusals/ar.json';
 import enSettingsRefusals from '../../public/i18n/settings-refusals/en.json';
 import frSettingsRefusals from '../../public/i18n/settings-refusals/fr.json';
+import arLabels from '../../public/i18n/labels/ar.json';
+import enLabels from '../../public/i18n/labels/en.json';
+import frLabels from '../../public/i18n/labels/fr.json';
 import arStockPlan from '../../public/i18n/stock-plan/ar.json';
 import enStockPlan from '../../public/i18n/stock-plan/en.json';
 import frStockPlan from '../../public/i18n/stock-plan/fr.json';
@@ -159,6 +162,7 @@ const parts: Record<string, Record<string, unknown>> = {
   settings: { fr: frSettings, en: enSettings, ar: arSettings },
   // Declared before their first texts, so the screens that write them next find their part ready.
   home: { fr: frHome, en: enHome, ar: arHome },
+  labels: { fr: frLabels, en: enLabels, ar: arLabels },
   list: { fr: frList, en: enList, ar: arList },
   refusals: { fr: frRefusals, en: enRefusals, ar: arRefusals },
   'settings-refusals': { fr: frSettingsRefusals, en: enSettingsRefusals, ar: arSettingsRefusals },

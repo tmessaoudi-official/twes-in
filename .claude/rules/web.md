@@ -238,3 +238,8 @@ the end of § Lessons here.
 - A row action is width on every row: a standing one takes a slot (two at most), the first that folds takes « ⋮ »'s. W6's
   three folded movements gave `/stock` its first « ⋮ » and pushed its columns off a laptop; only `list-fit.spec.ts` saw
   it. Run it after giving a list an action or a column (« Reçu par » on four lists reddened CI, 2026-10-27), and fold what is final or occasional (2026-10-25).
+- A timer armed from a moment the server sent, read against `Date.now()`, fires early or late by the browser's clock
+  skew, and loops when the moment reads as past: the API says seconds from itself (`readAgainIn`) and the browser counts
+  its own moment from the answer (`WatchFacade.arm`). Two members left: `company-facade.ts` `readAgainWhenAGrantEnds`,
+  `shared/time/deadline-clock.ts`. A facade's late answer for a company the session left is dropped by a count its
+  forget moves on (`WatchFacade.load`); the other `sessionSignal` facades are not yet (2026-11-06).

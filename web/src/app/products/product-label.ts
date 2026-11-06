@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { BarcodeSvg } from '../shared/barcode/barcode-svg';
+import { notDrawn } from '../shared/barcode/linear-barcode';
 import type { BarcodeRole } from './products-types';
 
 /** Which of a product's codes a label carries unless one is asked for: never a supplier's, which is theirs to print. */
@@ -50,7 +51,13 @@ export function labelCode<Code extends { role: BarcodeRole }>(codes: readonly Co
         'products.labels.pack_of' | translate: { quantity: quantity() }
       }}</span>
     }
-    <app-barcode-svg class="block h-16" [value]="code()" />
+    <app-barcode-svg class="block h-16" [value]="code()">
+      @if (notDrawn(); as character) {
+        <span data-testid="label-no-bars" class="text-sm">{{
+          'products.labels.no_bars' | translate: { character }
+        }}</span>
+      }
+    </app-barcode-svg>
     <span class="text-center font-mono text-sm tracking-widest"
       ><bdi>{{ code() }}</bdi></span
     >
@@ -64,4 +71,6 @@ export class ProductLabel {
   readonly quantity = input(1);
   /** What a customer pays for that, written with its currency; none when the shelf has no price for it. */
   readonly price = input<string | null>(null);
+  /** The character that keeps the code from being drawn, said in place of the bars; null when it is drawn. */
+  protected readonly notDrawn = computed(() => notDrawn(this.code()));
 }

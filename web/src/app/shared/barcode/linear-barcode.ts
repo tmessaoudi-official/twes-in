@@ -73,6 +73,15 @@ export function linearBarcode(value: string): LinearBarcode | null {
   return modules === null ? null : { symbology: 'code-128', modules };
 }
 
+/**
+ * The first character no symbology here carries (Code 128 takes printable ASCII), null when the value can be drawn: what
+ * a label says in place of its bars, as a code is free text and is never refused for it.
+ */
+export function notDrawn(value: string): string | null {
+  if (value === '' || linearBarcode(value) !== null) return null;
+  return [...value].find((character) => !/^[\x20-\x7e]$/.test(character)) ?? null;
+}
+
 function gtinValid(digits: string): boolean {
   const body = digits.slice(0, -1);
   let sum = 0;

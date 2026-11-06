@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { BarcodeSvg } from './barcode-svg';
@@ -29,7 +30,25 @@ describe('BarcodeSvg', () => {
     expect(svg.getAttribute('aria-label')).toBe('4006381333931');
   });
 
-  it('draws nothing for a value no symbology here can carry', () => {
-    expect(render('Café').querySelector('svg')).toBeNull();
+  it('draws no bars for a value no symbology here can carry, and shows what its caller says instead', () => {
+    @Component({
+      imports: [BarcodeSvg],
+      template: `<app-barcode-svg [value]="value()"
+        ><span data-testid="why">no bars</span></app-barcode-svg
+      >`,
+    })
+    class Host {
+      readonly value = signal('Café');
+    }
+    const fixture = TestBed.createComponent(Host);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('svg')).toBeNull();
+    expect(host.querySelector('[data-testid="why"]')?.textContent).toBe('no bars');
+
+    fixture.componentInstance.value.set('4006381333931');
+    fixture.detectChanges();
+    expect(host.querySelector('svg')).not.toBeNull();
+    expect(host.querySelector('[data-testid="why"]')).toBeNull();
   });
 });

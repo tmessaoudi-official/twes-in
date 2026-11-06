@@ -111,7 +111,11 @@ export const routes: Routes = [
       {
         path: 'product-labels',
         title: 'titles.product_labels',
-        canActivate: [moduleGuard(PRODUCTS_MODULE), permissionGuard(PRODUCTS_NAV, '/products')],
+        ...textsPart(
+          'labels',
+          moduleGuard(PRODUCTS_MODULE),
+          permissionGuard(PRODUCTS_NAV, '/products'),
+        ),
         loadChildren: () =>
           import('./products/product-labels.routes').then((m) => m.PRODUCT_LABELS_ROUTES),
       },

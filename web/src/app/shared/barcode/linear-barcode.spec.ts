@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { describe, expect, it } from 'vitest';
-import { CODE128_WIDTHS, linearBarcode } from './linear-barcode';
+import { CODE128_WIDTHS, linearBarcode, notDrawn } from './linear-barcode';
 
 /** The widths of each run of equal modules, bar first: what a scanner actually measures. */
 function runs(modules: string): number[] {
@@ -75,5 +75,13 @@ describe('linearBarcode', () => {
   it('draws nothing it cannot encode: an empty value, or a character outside printable ASCII', () => {
     expect(linearBarcode('')).toBeNull();
     expect(linearBarcode('Café')).toBeNull();
+  });
+
+  it('names the first character a code cannot be drawn for, so a label can say why it has no bars', () => {
+    expect(notDrawn('Café')).toBe('é');
+    expect(notDrawn('VIS\u00a06')).toBe('\u00a0');
+    expect(notDrawn('بلاط-12')).toBe('ب');
+    expect(notDrawn('VIS-6')).toBeNull();
+    expect(notDrawn('4006381333931')).toBeNull();
   });
 });

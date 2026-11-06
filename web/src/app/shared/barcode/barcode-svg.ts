@@ -10,8 +10,9 @@ const HEIGHT = 60;
 
 /**
  * A one-dimensional barcode drawn as SVG (docs/SPEC.md § 7, 2026-09-23 slice 8): one rect per bar, dark on white
- * whatever the colour scheme, because a scanner reads contrast. Nothing is drawn for a value no symbology here
- * carries. Presentation attributes only: the Content Security Policy refuses style attributes.
+ * whatever the colour scheme, because a scanner reads contrast. For a value no symbology here carries, it shows what
+ * its caller puts inside it in place of the bars, so no label is left blank without a word. Presentation attributes
+ * only: the Content Security Policy refuses style attributes.
  */
 @Component({
   selector: 'app-barcode-svg',
@@ -39,6 +40,8 @@ const HEIGHT = 60;
           />
         }
       </svg>
+    } @else {
+      <ng-content />
     }
   `,
 })

@@ -2024,23 +2024,7 @@
       "total": "TTC ({{currency}})"
     },
     "labels": {
-      "title": "Étiquettes produit",
-      "intro": "Le nom, la référence, le prix TTC de ce que le code fait entrer, et le code en code-barres (EAN pour un GTIN, Code 128 sinon).",
-      "copies": "Exemplaires",
-      "codes": "Codes à imprimer",
-      "pack_of": "Colis de {{quantity}}",
-      "print": "Imprimer",
-      "none_ticked": "Cochez au moins un code pour imprimer ses étiquettes.",
-      "open": "Imprimer des étiquettes",
-      "back": "Retour au produit",
-      "sheet_intro": "Une étiquette par produit sélectionné, avec le code de sa propre feuille : l’unitaire, sinon un code interne, sinon celui d’un colis.",
-      "back_to_list": "Retour aux produits",
-      "left_out": "{count, plural, one {Un produit sélectionné n’a pas d’étiquette} other {{{count}} produits sélectionnés n’ont pas d’étiquette}}",
-      "unknown": "Produit inconnu",
-      "reasons": {
-        "not_found": "Introuvable : supprimé entre-temps, ou plus accessible",
-        "no_code": "Aucun code qui soit le sien : ajoutez-lui un code unitaire ou interne"
-      }
+      "open": "Imprimer des étiquettes"
     },
     "substitutes": {
       "title": "Substituts",
