@@ -44,9 +44,12 @@ final readonly class StoreMissingInvoicePdfsEveryQuarterHour
                 continue;
             }
             try {
-                $stored = $this->print->storeMissing($company->getId(), $this->batch);
-                if ($stored > 0) {
-                    $this->logger->info('{count} invoice PDFs stored after their issue at {company}', ['count' => $stored, 'company' => $company->getId()->toRfc4122()]);
+                $pass = $this->print->storeMissing($company->getId(), $this->batch);
+                foreach ($pass->failed as $number => $reason) {
+                    $this->logger->warning('The PDF of invoice {number} at {company} was not stored; the next pass tries again: {reason}', ['number' => $number, 'company' => $company->getId()->toRfc4122(), 'reason' => $reason]);
+                }
+                if ($pass->stored > 0) {
+                    $this->logger->info('{count} invoice PDFs stored after their issue at {company}', ['count' => $pass->stored, 'company' => $company->getId()->toRfc4122()]);
                 }
             } catch (\Throwable $failure) {
                 $this->logger->warning('The invoice PDFs of {company} still to store were not stored; the next pass tries again: {reason}', ['company' => $company->getId()->toRfc4122(), 'reason' => $failure->getMessage()]);

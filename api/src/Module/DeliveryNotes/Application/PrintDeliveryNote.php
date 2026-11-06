@@ -26,6 +26,7 @@ use App\Module\DeliveryNotes\Domain\Model\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\Repository\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\ValueObject\DeliveryNoteStatus;
 use App\Settings\Application\ReadSetting;
+use App\Shared\Application\MissingPdfsStored;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Shared\Application\Transactions;
@@ -107,22 +108,23 @@ final readonly class PrintDeliveryNote
     /**
      * Stores the PDF of each numbered note of the company that keeps none, at most `$limit` of them, the oldest first:
      * one whose PDF could not be stored when it was issued, which its first download would otherwise be the only one to
-     * store. Stops at the first that fails, as the renderer is then down for the others too.
-     *
-     * @return int how many were stored
-     *
-     * @throws DeliveryNoteNotFound
-     * @throws PdfRenderingFailed
+     * store. A note that cannot be stored (the renderer or the storage refusing it) is named by its number and passed
+     * over, so it never holds back the ones after it; the next pass tries it again.
      */
-    public function storeMissing(Uuid $companyId, int $limit): int
+    public function storeMissing(Uuid $companyId, int $limit): MissingPdfsStored
     {
         $stored = 0;
+        $failed = [];
         foreach ($this->notes->numberedWithoutPdf($companyId, $limit) as $id) {
-            $this->storeIssued($companyId, $id);
-            ++$stored;
+            try {
+                $this->storeIssued($companyId, $id);
+                ++$stored;
+            } catch (\Exception $failure) {
+                $failed[$this->notes->ofIdInCompany($id, $companyId)?->getNumber() ?? $id->toRfc4122()] = $failure->getMessage();
+            }
         }
 
-        return $stored;
+        return new MissingPdfsStored($stored, $failed);
     }
 
     private function issued(DeliveryNote $note): string

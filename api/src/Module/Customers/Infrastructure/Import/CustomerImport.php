@@ -204,8 +204,8 @@ final readonly class CustomerImport implements DeclaresImport
                 ? $this->manage->create($company, $input, $actorUserId)
                 : $this->manage->revise($company, $existing->getId(), $input, $actorUserId);
             $this->settingCells->write($company, $written->getId(), $settings, $actorUserId);
-            $aside->noteOn($notes);
             self::noteKeptPhone($phone, $record, $notes);
+            $aside->noteOn($notes);
             $this->noteMissingIdentifiers($company, $written, $notes);
             if (null === $existing) {
                 $context->created('customer', $written->getId());

@@ -17,6 +17,7 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
+use App\Module\Invoices\Application\Print\PrintInvoice;
 use App\Module\Invoices\Infrastructure\Scheduler\StoreMissingInvoicePdfsEveryQuarterHour;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
@@ -180,6 +181,24 @@ final class FacturXTest extends ApiTestCase
         self::assertNotNull($file);
         static::getContainer()->get(StoreMissingInvoicePdfsEveryQuarterHour::class)();
         self::assertSame($file, $stored(), 'a second pass stores nothing again');
+    }
+
+    /** A pass's batch is spent on documents still missing their PDF only, as a delivery note's is. */
+    public function testTheWorkersPassSpendsItsBatchOnInvoicesMissingTheirPdf(): void
+    {
+        $this->signedIn();
+        $this->client->disableReboot();
+        $older = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
+        static::getContainer()->get(FakePdfRenderer::class)->failing = true;
+        $missing = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
+        static::getContainer()->get(FakePdfRenderer::class)->failing = false;
+        // The invoice that kept its PDF made the oldest, so the batch reaches it first.
+        $this->em()->getConnection()->executeStatement("UPDATE invoice SET issue_date = issue_date - INTERVAL '1 day' WHERE id = ?", [$older]);
+
+        $done = static::getContainer()->get(PrintInvoice::class)->storeMissing($this->company->getId(), 1);
+
+        self::assertSame([1, []], [$done->stored, $done->failed]);
+        self::assertNotNull($this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM invoice WHERE id = ?', [$missing]));
     }
 
     public function testAnInvoiceIssuedBeforeTheCompanyMovedAnswersTheSellerItWasIssuedBy(): void

@@ -32,6 +32,7 @@ use App\Module\Invoices\Domain\ValueObject\InvoiceType;
 use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Application\MissingPdfsStored;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Shared\Application\Transactions;
@@ -135,22 +136,23 @@ final readonly class PrintInvoice
     /**
      * Stores the PDF of each numbered document of the company that keeps none, at most `$limit` of them, the oldest first:
      * one whose PDF could not be stored when it was issued, which its first download would otherwise be the only one to
-     * store. Stops at the first that fails, as the renderer is then down for the others too.
-     *
-     * @return int how many were stored
-     *
-     * @throws InvoiceNotFound
-     * @throws PdfRenderingFailed
+     * store. A document that cannot be stored (the renderer or the storage refusing it) is named by its number and passed
+     * over, so it never holds back the ones after it; the next pass tries it again.
      */
-    public function storeMissing(Uuid $companyId, int $limit): int
+    public function storeMissing(Uuid $companyId, int $limit): MissingPdfsStored
     {
         $stored = 0;
+        $failed = [];
         foreach ($this->invoices->numberedWithoutPdf($companyId, $limit) as $id) {
-            $this->storeIssued($companyId, $id);
-            ++$stored;
+            try {
+                $this->storeIssued($companyId, $id);
+                ++$stored;
+            } catch (\Exception $failure) {
+                $failed[$this->invoices->ofIdInCompany($id, $companyId)?->getNumber() ?? $id->toRfc4122()] = $failure->getMessage();
+            }
         }
 
-        return $stored;
+        return new MissingPdfsStored($stored, $failed);
     }
 
     private function issued(Invoice $invoice): string

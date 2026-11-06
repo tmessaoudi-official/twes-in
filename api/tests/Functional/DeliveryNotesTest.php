@@ -296,6 +296,41 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertSame($file, $stored($id), 'a second pass stores nothing again');
     }
 
+    /**
+     * A pass's batch is spent on notes still missing their PDF only: an older note keeping one is not counted against it.
+     * One that cannot be stored is said by its number and does not hold back the notes after it.
+     */
+    public function testTheWorkersPassSpendsItsBatchOnNotesMissingTheirPdfAndGoesPastOneThatFails(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $older = $this->draftWithALine();
+        $first = $this->draftWithALine();
+        $second = $this->draftWithALine();
+        $this->client->disableReboot();
+        $this->postJson($this->path($older).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $renderer = static::getContainer()->get(FakePdfRenderer::class);
+        $renderer->failing = true;
+        foreach ([$first, $second] as $id) {
+            $this->postJson($this->path($id).'/validate', null);
+            self::assertResponseIsSuccessful();
+        }
+        // The note that kept its PDF made the oldest, so the batch reaches it first.
+        $this->em()->getConnection()->executeStatement("UPDATE delivery_note SET issue_date = issue_date - INTERVAL '1 day' WHERE id = ?", [$older]);
+        $stored = fn (string $note): mixed => $this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM delivery_note WHERE id = ?', [$note]);
+        $print = static::getContainer()->get(PrintDeliveryNote::class);
+
+        $failed = $print->storeMissing($this->company->getId(), 2);
+        self::assertSame(0, $failed->stored);
+        self::assertCount(2, $failed->failed, 'each note is tried, and each one failing is named');
+
+        $renderer->failing = false;
+        $done = $print->storeMissing($this->company->getId(), 1);
+
+        self::assertSame(1, $done->stored);
+        self::assertNotNull($stored($first), 'the note keeping its PDF does not spend the batch');
+    }
+
     public function testAValidatorNumbersANoteWithoutGapsAndItThenOnlyMovesForward(): void
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
