@@ -21,7 +21,7 @@ final class WatchResourceTest extends TestCase
         $resource = WatchResource::of([
             ['kind' => 'invoices.late_customer', 'count' => 44139],
             ['kind' => 'stock.lot_expired', 'count' => 2],
-        ]);
+        ], 3600);
 
         self::assertSame(44141, $resource->count, 'the count is every row of every subject');
         self::assertSame(['invoices.late_customer', 'stock.lot_expired'], array_column($resource->subjects, 'kind'), 'in the order given');
@@ -29,10 +29,11 @@ final class WatchResourceTest extends TestCase
 
     public function testAQuietCompanyHasNothingToWatch(): void
     {
-        $resource = WatchResource::of([]);
+        $resource = WatchResource::of([], 86400);
 
         self::assertSame(0, $resource->count);
         self::assertSame([], $resource->subjects);
+        self::assertSame(86400, $resource->readAgainIn, 'in how many seconds to read it again');
     }
 
     public function testARowKeepsWhatIsToBeActedOn(): void

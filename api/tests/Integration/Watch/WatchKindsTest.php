@@ -10,7 +10,10 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Watch;
 
 use App\Records\Application\RecordCatalogue;
+use App\Watch\Application\ComesDueWithTime;
+use App\Watch\Application\DeclaresWatch;
 use App\Watch\Application\WatchCatalogue;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -68,5 +71,32 @@ final class WatchKindsTest extends KernelTestCase
         foreach ($read as $kind) {
             self::assertContains($kind, $said, "nothing says the kind $kind");
         }
+    }
+
+    /**
+     * A part counting from the clock rather than from the company's day (a draft waiting past its hours, an invitation
+     * lapsing) changes with nothing written, between the day's turns: it says when (`ComesDueWithTime`), or a screen left
+     * open keeps the count it read. A part counting from the day alone is read again as the day turns.
+     */
+    public function testEveryPartReadingTheClockSaysWhenItChangesWithTimeAlone(): void
+    {
+        $declarations = new \ReflectionProperty(WatchCatalogue::class, 'declarations')->getValue(static::getContainer()->get(WatchCatalogue::class));
+        self::assertIsArray($declarations);
+        $timed = [];
+        foreach ($declarations as $declaration) {
+            self::assertInstanceOf(DeclaresWatch::class, $declaration);
+            $constructor = new \ReflectionClass($declaration)->getConstructor();
+            $readsClock = null !== $constructor && [] !== array_filter(
+                $constructor->getParameters(),
+                static fn (\ReflectionParameter $parameter): bool => ClockInterface::class === (string) $parameter->getType(),
+            );
+            if ($readsClock) {
+                self::assertInstanceOf(ComesDueWithTime::class, $declaration, $declaration::class.' reads the clock and says nothing of when it changes');
+                $timed[] = $declaration->key();
+            }
+        }
+        sort($timed);
+
+        self::assertSame(['delivery_note', 'members'], $timed, 'the parts reading the clock today');
     }
 }

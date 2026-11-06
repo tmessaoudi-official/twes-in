@@ -30,8 +30,15 @@ final readonly class WatchProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): WatchResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), self::PERMISSION);
-        $today = new \DateTimeImmutable($this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'));
+        $now = $this->clock->now();
+        $zone = new \DateTimeZone($company->getTimezone());
+        $day = $now->setTimezone($zone)->format('Y-m-d');
+        $today = new \DateTimeImmutable($day);
+        $nextDay = new \DateTimeImmutable($day.' 00:00:00', $zone)->modify('+1 day');
+        $may = fn (string $permission): bool => $this->guard->may($company, $permission);
 
-        return WatchResource::of($this->catalogue->counts($company, $today, fn (string $permission): bool => $this->guard->may($company, $permission)));
+        $readAgainAt = $this->catalogue->readAgainAt($company, $now, $nextDay, $may);
+
+        return WatchResource::of($this->catalogue->counts($company, $today, $may), $readAgainAt->getTimestamp() - $now->getTimestamp());
     }
 }

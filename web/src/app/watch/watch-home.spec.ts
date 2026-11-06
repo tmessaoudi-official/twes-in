@@ -74,7 +74,11 @@ describe('WatchHome', () => {
   });
 
   it('shows how many things to watch, linked to the list, and keeps the count live', async () => {
-    current.set({ count: 3, subjects: [{ kind: 'a', count: 3 }] });
+    current.set({
+      count: 3,
+      subjects: [{ kind: 'a', count: 3 }],
+      readAgainIn: 86400,
+    });
     await open();
 
     expect(facade.load).toHaveBeenCalledWith('k1');
@@ -85,7 +89,7 @@ describe('WatchHome', () => {
   });
 
   it('says there is nothing to watch when nothing is', async () => {
-    current.set({ count: 0, subjects: [] });
+    current.set({ count: 0, subjects: [], readAgainIn: 86400 });
     await open();
 
     expect(q('home-watch')?.textContent).toContain('Rien à surveiller.');
@@ -103,7 +107,7 @@ describe('WatchHome', () => {
 
     facade.load.mockImplementation(() => {
       failure.set(null);
-      current.set({ count: 0, subjects: [] });
+      current.set({ count: 0, subjects: [], readAgainIn: 86400 });
       return Promise.resolve();
     });
     q('home-watch-retry')?.click();
@@ -116,7 +120,11 @@ describe('WatchHome', () => {
   });
 
   it('keeps the count it read when a later read fails', async () => {
-    current.set({ count: 3, subjects: [{ kind: 'a', count: 3 }] });
+    current.set({
+      count: 3,
+      subjects: [{ kind: 'a', count: 3 }],
+      readAgainIn: 86400,
+    });
     failure.set('unavailable');
     await open();
 

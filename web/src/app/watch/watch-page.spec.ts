@@ -45,6 +45,7 @@ const summary: WatchSummary = {
     { kind: 'stock.below_zero', count: 0 },
     { kind: 'future.kind', count: 4216 },
   ],
+  readAgainIn: 86400,
 };
 
 // docs/SPEC.md § 7, the subject pages: « À surveiller » is one card per subject with its count; the rows are a page away.
@@ -148,7 +149,7 @@ describe('WatchPage', () => {
   });
 
   it('says there is nothing to watch when nothing is', async () => {
-    current.set({ count: 0, subjects: [] });
+    current.set({ count: 0, subjects: [], readAgainIn: 86400 });
     await open();
 
     expect(q('watch-none')?.textContent).toContain('Rien à surveiller.');

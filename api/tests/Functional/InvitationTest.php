@@ -19,6 +19,9 @@ use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\MemberResource;
 use App\Tenancy\Infrastructure\Invitation\InvitationToMail;
 use App\Tests\Support\RecordingRealtimePublisher;
+use Symfony\Component\Clock\Clock;
+use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Envelope;
@@ -39,6 +42,12 @@ final class InvitationTest extends ApiTestCase
     private const string PASSWORD = 'a-long-enough-password';
 
     private Company $company;
+
+    protected function tearDown(): void
+    {
+        Clock::set(new NativeClock());
+        parent::tearDown();
+    }
 
     protected function setUp(): void
     {
@@ -459,6 +468,21 @@ final class InvitationTest extends ApiTestCase
         self::assertCount(1, $rows);
         self::assertSame($message->invitationId, $rows[0]['subjectId'] ?? null);
         self::assertSame('stranger@twes.local', $this->arrayAt($rows[0], 'params')['email'] ?? null);
+
+        // Lapsing within the day, it leaves the subject with nothing written: the summary says to read it again just after,
+        // in seconds from the API's clock, held still here.
+        $now = new \DateTimeImmutable(self::apiNow(), new \DateTimeZone('UTC'));
+        Clock::set(new MockClock($now));
+        $lapses = $now->modify('+10 minutes');
+        $this->em()->getConnection()->executeStatement('UPDATE invitation SET expires_at = ? WHERE id = ?', [$lapses->format('Y-m-d H:i:s'), $message->invitationId]);
+        $nextDay = new \DateTimeImmutable(self::dayOf($this->company, '+1 day').' 00:00:00', new \DateTimeZone($this->company->getTimezone()));
+        $this->getJson($company.'/watch');
+        self::assertResponseIsSuccessful();
+        self::assertSame(
+            min($lapses->modify('+1 second'), $nextDay)->getTimestamp() - $now->getTimestamp(),
+            $this->json()['readAgainIn'] ?? null,
+            'a second after it lapses, unless the day turns first',
+        );
 
         $this->login('reader@twes.local', 'password-1234');
         $this->getJson($unsent);

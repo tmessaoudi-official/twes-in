@@ -13,6 +13,7 @@ use App\Shared\Domain\ValueObject\Page;
 use App\Shared\Domain\ValueObject\PageRequest;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\MemberPermission;
+use App\Watch\Application\ComesDueWithTime;
 use App\Watch\Application\DeclaresWatch;
 use App\Watch\Application\WatchItem;
 use Doctrine\DBAL\Connection;
@@ -24,7 +25,7 @@ use Psr\Clock\ClockInterface;
  * (docs/SPEC.md § 7, Messenger transport, row 56). A subject of the core, shown whatever is switched on. Still usable
  * is a moment, as `Invitation::isUsableAt` reads it, not the company's day: an invitation lapses at its own instant.
  */
-final readonly class InvitationWatch implements DeclaresWatch
+final readonly class InvitationWatch implements DeclaresWatch, ComesDueWithTime
 {
     public const string UNSENT = 'members.invitation_unsent';
 
@@ -88,6 +89,21 @@ final readonly class InvitationWatch implements DeclaresWatch
             'invitedOn' => self::text($row['invited_on']),
             'expiresOn' => self::text($row['expires_on']),
         ]), $rows), $total, $request);
+    }
+
+    /** The first unsent invitation to lapse leaves the count a second after its instant, with nothing written then. */
+    public function nextChangeAt(Company $company, \DateTimeImmutable $now): ?\DateTimeImmutable
+    {
+        $lapses = $this->connection->fetchOne(
+            'SELECT MIN(i.expires_at) FROM invitation i
+              WHERE i.company_id = :company AND i.mail_failed_at IS NOT NULL AND i.accepted_at IS NULL AND i.expires_at >= :now',
+            ['company' => $company->getId()->toRfc4122(), 'now' => $now->format('Y-m-d H:i:s')],
+        );
+        if (null === $lapses) {
+            return null;
+        }
+
+        return new \DateTimeImmutable(self::text($lapses), $now->getTimezone())->modify('+1 second');
     }
 
     /** @return array{company: string, now: string} */

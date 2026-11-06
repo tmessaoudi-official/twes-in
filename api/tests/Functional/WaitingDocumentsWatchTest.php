@@ -22,7 +22,11 @@ use App\Module\Vendors\Domain\ValueObject\VendorProfile;
 use App\ModuleRegistry\Domain\Model\ModuleState;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
+use Symfony\Component\Clock\Clock;
+use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -173,6 +177,65 @@ final class WaitingDocumentsWatchTest extends ApiTestCase
 
         $this->getJson($this->watch());
         self::assertSame([], $this->kinds());
+    }
+
+    /**
+     * A draft comes due with time alone, no write announcing it: the summary says when to read it again, the moment the
+     * next one comes due, and otherwise the company's next day, when every condition counted by the day may move.
+     */
+    public function testTheSummarySaysWhenToReadItAgainAsTheNextDraftComesDueOrTheDayTurns(): void
+    {
+        $hours = $this->threshold();
+        $this->signedIn('manager@twes.local', self::VALIDATOR);
+        // The API's clock held still, so the seconds it says are the seconds from this moment.
+        $now = new \DateTimeImmutable(self::apiNow(), new \DateTimeZone('UTC'));
+        Clock::set(new MockClock($now));
+        $this->getJson($this->watch());
+        self::assertSame($this->secondsFrom($now, $this->nextDay()), $this->readAgainIn(), 'nothing coming due today: the next day');
+
+        // One already waiting, whose moment has passed: never a moment to read again, or a screen would read without end.
+        $waiting = $this->draftNote([['productId' => $this->productId, 'quantity' => '1']]);
+        $this->savedHoursAgo($waiting, $hours + 1);
+        $fresh = $this->draftNote([['productId' => $this->productId, 'quantity' => '1']]);
+        $this->savedHoursAgo($fresh, $hours - 1);
+        $saved = Rows::text($this->em()->getConnection()->fetchOne('SELECT updated_at FROM delivery_note WHERE id = ?', [$fresh]));
+        $due = new \DateTimeImmutable($saved, new \DateTimeZone('UTC'))->modify(\sprintf('+%d hours +1 second', $hours));
+
+        $this->getJson($this->watch());
+        self::assertSame([['delivery_note.to_validate', 1]], $this->subjects(), 'the fresh one is not due yet');
+        self::assertSame(
+            $this->secondsFrom($now, min($due, $this->nextDay())),
+            $this->readAgainIn(),
+            'read again the second it comes due, under an hour from now, unless the day turns first',
+        );
+
+        $this->signedIn('clerk@twes.local', self::CLERK);
+        $this->getJson($this->watch());
+        self::assertSame($this->secondsFrom($now, $this->nextDay()), $this->readAgainIn(), 'a draft that will never be shown to the clerk asks nothing of their screen');
+    }
+
+    protected function tearDown(): void
+    {
+        Clock::set(new NativeClock());
+        parent::tearDown();
+    }
+
+    private function readAgainIn(): mixed
+    {
+        self::assertResponseIsSuccessful();
+
+        return $this->json()['readAgainIn'] ?? null;
+    }
+
+    private function secondsFrom(\DateTimeImmutable $now, \DateTimeImmutable $at): int
+    {
+        return $at->getTimestamp() - $now->getTimestamp();
+    }
+
+    /** The company's next midnight. */
+    private function nextDay(): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable(self::dayOf($this->company, '+1 day').' 00:00:00', new \DateTimeZone($this->company->getTimezone()));
     }
 
     private function threshold(): int

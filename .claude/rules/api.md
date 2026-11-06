@@ -58,7 +58,7 @@ the end of § Lessons here.
   `import` the bin puts back through `RestoreUndoneImport`, the stock it moved through `ImportedStock` (reversals at their
   own cost) and the rows a module wrote through `UndoesImportedRows`; « Imports récents » is `GET …/import-runs`),
   `Watch` (« À surveiller »: a module declares its live conditions with `DeclaresWatch` in its own
-  `Infrastructure/Watch/`, one statement per kind, gated by its module and permission; a core context's subject has no module and is always on, as `Tenancy`'s unsent invitations, marked by `InvitationMailFailed` when the worker gives up),
+  `Infrastructure/Watch/`, one statement per kind, gated by its module and permission; a core context's subject has no module and is always on, as `Tenancy`'s unsent invitations, marked by `InvitationMailFailed` when the worker gives up; a part counting from the clock rather than the company's day also says when it next changes with nothing written, `ComesDueWithTime`, and the summary's `readAgainIn`, seconds from now, carries the earliest, or the next day, which the web's `WatchFacade` reads again at; `WatchKindsTest` holds every part whose constructor takes the clock to it),
   `Texts` (« Textes »: any text the screens, the mails and the printed documents show, worded otherwise for the installation by
   an operator, then for a company by its owner (`company.texts`), which wins there; `ShippedTexts` is the release's catalogue
   the images carry, the `TextsInForce` port (`OverridingTranslator`, the translator itself) what a mail or a PDF writes, the fiscal texts locked; a changed original is flagged),

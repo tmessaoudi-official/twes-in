@@ -453,7 +453,7 @@ describe('AppShell', () => {
   // docs/SPEC.md § 8 row 157: « À surveiller » says how many things it holds on its menu entry, as Notifications does.
   it('says how many things « À surveiller » holds beside its entry, and reads the count for the company', async () => {
     permissions.set(['customer.read', 'company.read']);
-    watchSummary.set({ count: 4, subjects: [] });
+    watchSummary.set({ count: 4, subjects: [], readAgainIn: 86400 });
     const { byTestId } = await render();
     expect(watch.load).toHaveBeenCalledWith('c1');
     const pill = byTestId('nav-count-watch');
@@ -463,13 +463,13 @@ describe('AppShell', () => {
 
   it('writes 9+ past nine, as the bell does, and nothing at zero or before the count is read', async () => {
     permissions.set(['customer.read', 'company.read']);
-    watchSummary.set({ count: 12, subjects: [] });
+    watchSummary.set({ count: 12, subjects: [], readAgainIn: 86400 });
     const { byTestId } = await render();
     expect(byTestId('nav-count-watch')?.querySelector('[data-count]')?.textContent?.trim()).toBe(
       '9+',
     );
 
-    watchSummary.set({ count: 0, subjects: [] });
+    watchSummary.set({ count: 0, subjects: [], readAgainIn: 86400 });
     TestBed.tick();
     expect(byTestId('nav-count-watch')).toBeNull();
     watchSummary.set(null);
@@ -479,7 +479,7 @@ describe('AppShell', () => {
 
   it('puts the count on the icon once the rail is folded, where no pill fits', async () => {
     permissions.set(['customer.read', 'company.read']);
-    watchSummary.set({ count: 4, subjects: [] });
+    watchSummary.set({ count: 4, subjects: [], readAgainIn: 86400 });
     theme.sidebar.set('rail');
     const { byTestId } = await render();
     expect(byTestId('nav-count-watch')).toBeNull();
@@ -492,7 +492,7 @@ describe('AppShell', () => {
     // Audit 2026-10-06 V-24: thirty warnings a page buried the real ones. The count is in the entry's name already.
     const warn = vi.spyOn(console, 'warn');
     permissions.set(['customer.read', 'company.read']);
-    watchSummary.set({ count: 4, subjects: [] });
+    watchSummary.set({ count: 4, subjects: [], readAgainIn: 86400 });
     theme.sidebar.set('rail');
     const { byTestId } = await render();
 

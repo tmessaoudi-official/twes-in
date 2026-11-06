@@ -19,12 +19,17 @@ export class WatchApi {
     const raw = await firstValueFrom(
       this.http.get<WatchWatchRead>(`/api/companies/${encodeURIComponent(companyId)}/watch`),
     );
+    // Under a second would arm a timer firing at once, again and again.
+    const readAgainIn = raw.readAgainIn;
+    if (readAgainIn === undefined || !Number.isInteger(readAgainIn) || readAgainIn < 1)
+      throw new Error('The watch summary came without when to read it again.');
     return {
       count: raw.count ?? 0,
       subjects: (raw.subjects ?? []).map((subject) => ({
         kind: subject.kind,
         count: subject.count,
       })),
+      readAgainIn,
     };
   }
 

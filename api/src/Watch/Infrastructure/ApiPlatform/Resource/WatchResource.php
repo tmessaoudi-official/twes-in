@@ -57,11 +57,22 @@ final class WatchResource
     #[Groups([self::READ])]
     public array $subjects = [];
 
+    /**
+     * In how many seconds to read the summary again though nothing was written: the next draft coming due, the next
+     * invitation lapsing, else the start of the company's next day. No write announces those, so a screen left open waits
+     * for it. Said from now rather than as a moment, as a browser's clock running ahead would read a moment as already
+     * past and read again without end. At least one second, every moment counted being after now.
+     */
+    #[ApiProperty(schema: ['type' => 'integer', 'minimum' => 1])]
+    #[Groups([self::READ])]
+    public int $readAgainIn = 0;
+
     /** @param list<array{kind: string, count: int}> $subjects */
-    public static function of(array $subjects): self
+    public static function of(array $subjects, int $readAgainIn): self
     {
         $resource = new self();
         $resource->subjects = $subjects;
+        $resource->readAgainIn = $readAgainIn;
         $resource->count = array_sum(array_column($subjects, 'count'));
 
         return $resource;

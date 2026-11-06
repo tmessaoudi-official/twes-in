@@ -17,6 +17,7 @@ use App\Shared\Domain\ValueObject\PageRequest;
 use App\Shared\Infrastructure\Doctrine\KeptRecords;
 use App\Shared\Infrastructure\Doctrine\Rows;
 use App\Tenancy\Domain\Model\Company;
+use App\Watch\Application\ComesDueWithTime;
 use App\Watch\Application\DeclaresWatch;
 use App\Watch\Application\WatchItem;
 use Doctrine\DBAL\Connection;
@@ -30,7 +31,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * nobody has saved it for the parameter's hours: one still being written is not waiting yet. Oldest first; validating,
  * cancelling, deleting or emptying it takes it off by itself.
  */
-final readonly class DeliveryNoteWatch implements DeclaresWatch
+final readonly class DeliveryNoteWatch implements DeclaresWatch, ComesDueWithTime
 {
     public const string TO_VALIDATE = 'delivery_note.to_validate';
 
@@ -103,6 +104,27 @@ final readonly class DeliveryNoteWatch implements DeclaresWatch
             'lines' => Rows::int($row['line_count']),
             'hours' => $this->hoursSince(Rows::text($row['updated_at']), $now),
         ]), $rows), $total, $request);
+    }
+
+    /**
+     * The oldest draft not waiting yet comes due a second past its hours: nothing is written then, so the summary says
+     * when, and a screen left open reads it again on time.
+     */
+    public function nextChangeAt(Company $company, \DateTimeImmutable $now): ?\DateTimeImmutable
+    {
+        $before = $now->modify(\sprintf('-%d hours', $this->afterHours));
+        $oldest = Rows::textOrNull($this->connection->fetchOne(
+            'SELECT MIN(dn.updated_at) FROM delivery_note dn
+              WHERE dn.company_id = :company AND dn.status = :draft AND dn.updated_at >= :before
+                AND EXISTS (SELECT 1 FROM delivery_note_line l WHERE l.delivery_note_id = dn.id)',
+            ['company' => $company->getId()->toRfc4122(), 'draft' => DeliveryNoteStatus::Draft->value, 'before' => $before],
+            ['before' => Types::DATETIME_IMMUTABLE],
+        ));
+        if (null === $oldest) {
+            return null;
+        }
+
+        return new \DateTimeImmutable($oldest, $now->getTimezone())->modify(\sprintf('+%d hours +1 second', $this->afterHours));
     }
 
     /** Whole hours since the last save, the stored moment read on the application's clock, which wrote it. */

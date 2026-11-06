@@ -74,6 +74,28 @@ final readonly class WatchCatalogue
     }
 
     /**
+     * When this member's summary should be read again although nothing was written: the earliest moment a part they are
+     * shown changes with time alone, else `$nextDay`, when every count of the day turns.
+     *
+     * @param \Closure(string): bool $may
+     */
+    public function readAgainAt(Company $company, \DateTimeImmutable $now, \DateTimeImmutable $nextDay, \Closure $may): \DateTimeImmutable
+    {
+        $at = $nextDay;
+        foreach ($this->declarations as $declaration) {
+            if (!$declaration instanceof ComesDueWithTime || !$this->shown($declaration, $company, $may)) {
+                continue;
+            }
+            $next = $declaration->nextChangeAt($company, $now);
+            if (null !== $next && $next > $now && $next < $at) {
+                $at = $next;
+            }
+        }
+
+        return $at;
+    }
+
+    /**
      * The module that answers a kind, or null when there is none this member may see: a kind nobody declared, one of a
      * module switched off and one the role may not read are all the same absence, so asking by name learns nothing.
      *

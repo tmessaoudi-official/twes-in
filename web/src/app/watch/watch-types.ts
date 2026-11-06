@@ -13,6 +13,12 @@ export interface WatchSubject {
 export interface WatchSummary {
   readonly count: number;
   readonly subjects: readonly WatchSubject[];
+  /**
+   * In how many seconds to read it again though nothing was written (a draft coming due, an invitation lapsing, the
+   * day turning): no change is announced for those, so a screen left open would keep the count it read. Seconds from
+   * the answer, never a moment, which this browser's clock would read against its own.
+   */
+  readonly readAgainIn: number;
 }
 
 /** One thing to act on, as the API worked it out: its kind, what it is about and its figures. */

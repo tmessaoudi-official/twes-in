@@ -25,12 +25,28 @@ describe('WatchApi', () => {
 
   it('reads the whole count and one count per subject, and no row', async () => {
     const result = api.summary('k1');
-    http
-      .expectOne('/api/companies/k1/watch')
-      .flush({ count: 5, subjects: [{ kind: KIND, count: 5 }] });
+    http.expectOne('/api/companies/k1/watch').flush({
+      count: 5,
+      subjects: [{ kind: KIND, count: 5 }],
+      readAgainIn: 3600,
+    });
 
-    expect(await result).toEqual({ count: 5, subjects: [{ kind: KIND, count: 5 }] });
+    expect(await result).toEqual({
+      count: 5,
+      subjects: [{ kind: KIND, count: 5 }],
+      readAgainIn: 3600,
+    });
   });
+
+  it.each([undefined, 0, 0.5, -60])(
+    'refuses a summary read again in %s seconds, which would read it without end',
+    async (readAgainIn) => {
+      const result = api.summary('k1');
+      http.expectOne('/api/companies/k1/watch').flush({ count: 0, subjects: [], readAgainIn });
+
+      await expect(result).rejects.toThrow();
+    },
+  );
 
   it('asks a subject for its page, numbered from 1 on the wire and from 0 for the caller', async () => {
     const result = api.rows('k1', KIND, 2, 50);

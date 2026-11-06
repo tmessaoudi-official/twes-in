@@ -55,6 +55,7 @@ const summary: WatchSummary = {
     { kind: 'invoices.instruments_due', count: 2 },
     { kind: 'invoices.late_customer', count: 1 },
   ],
+  readAgainIn: 86400,
 };
 
 // docs/SPEC.md § 7, audit B-2: the cheques fallen due lead to the whole portfolio, which no other screen linked to.
