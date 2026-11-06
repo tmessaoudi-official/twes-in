@@ -1277,6 +1277,27 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-copy-customer-address')).toBeNull();
   });
 
+  it('reads the note again when a setting moves, so « Reçu par » follows the rule now in force', async () => {
+    note.set({
+      ...validated,
+      status: 'delivered',
+      deliveryDate: '2026-09-20',
+      receiverRule: 'off',
+    });
+    await open('n1');
+    expect(await inMenu('document-menu-')).toEqual([]);
+    facade.loadNote.mockImplementation(async () => {
+      note.set({ ...validated, status: 'delivered', deliveryDate: '2026-09-20' });
+    });
+
+    const reads = facade.loadNote.mock.calls.length;
+    await announceSaved('setting', 's1', { id: 'u2', name: 'Nadia' }, 'setting.changed');
+    await settle();
+
+    expect(facade.loadNote.mock.calls.slice(reads)).toEqual([['c1', 'n1']]);
+    expect(await inMenu('document-menu-')).toEqual(['document-menu-correct-receiver']);
+  });
+
   it('takes the header and lines another person saved into a quiet draft', async () => {
     note.set(draft);
     await open('n1');

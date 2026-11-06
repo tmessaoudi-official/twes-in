@@ -334,6 +334,8 @@ export class InvoicePage {
   /** The saved version the document stands on, and what another person's save changed in it. */
   protected readonly sync = liveRecord({
     kind: 'invoice',
+    // Whether « Reçu par » is asked is a setting the answer carries: a change of it reads the record again.
+    readsAgainOn: ['setting'],
     id: this.id,
     form: this.form,
     reload: async () => {

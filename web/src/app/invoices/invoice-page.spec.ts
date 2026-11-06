@@ -2293,6 +2293,20 @@ describe('InvoicePage', () => {
       );
     });
 
+    it('reads the draft again when a setting moves, and asks « Reçu par » once the rule asks it', async () => {
+      invoice.set({ ...draft, receiverRule: 'off' });
+      await open('i1');
+      expect(q('invoice-receiver-name')).toBeNull();
+      facade.loadInvoice.mockImplementation(async () => invoice.set(draft));
+
+      const reads = facade.loadInvoice.mock.calls.length;
+      await announceSaved('setting', 's1', { id: 'u2', name: 'Nadia' }, 'setting.changed');
+      await settle();
+
+      expect(facade.loadInvoice.mock.calls.slice(reads)).toEqual([['c1', 'i1']]);
+      expect(q('invoice-receiver-name')).not.toBeNull();
+    });
+
     it('keeps a receiver already named in view, so the API’s refusal of it is said under it', async () => {
       invoice.set({
         ...draft,

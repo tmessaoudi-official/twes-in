@@ -41,6 +41,11 @@ export interface LiveRecordOptions<V = number | null> {
    * made since would be merged over it.
    */
   readonly keepsBaseOnRebuild?: boolean;
+  /**
+   * Kinds saved apart from the record that its answer is worked out from, such as a `setting` deciding whether a
+   * document asks « Reçu par »: on their change the record is read again quietly, nothing typed lost and nobody told.
+   */
+  readonly readsAgainOn?: readonly string[];
 }
 
 /**
@@ -248,7 +253,12 @@ export function liveRecord<V = number | null>(options: LiveRecordOptions<V>): Li
     }
   };
   const kinds = typeof options.kind === 'string' ? [options.kind] : options.kind;
-  inject(LiveChanges).on(kinds, (changes) => void receive(changes), inject(DestroyRef));
+  const live = inject(LiveChanges);
+  const destroyRef = inject(DestroyRef);
+  live.on(kinds, (changes) => void receive(changes), destroyRef);
+  if (options.readsAgainOn !== undefined) {
+    live.reloadOn(options.readsAgainOn, () => sync.savedBeside(), destroyRef);
+  }
 
   return sync;
 }

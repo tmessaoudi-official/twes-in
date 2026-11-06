@@ -32,6 +32,7 @@ import {
   failureToasts,
   offeredNext,
 } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import { PurchaseOrderPage } from './purchase-order-page';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { PurchasesFacade } from './purchases-facade';
@@ -620,6 +621,28 @@ describe('PurchaseOrderPage', () => {
       await settle();
       expect(q('purchase-order-receipt-r1-received-by')).toBeNull();
       expect(q('purchase-order-receipt-r1-correct-receiver')).toBeNull();
+    });
+
+    it('reads the order again when a setting moves, so « Reçu par » follows the rule now in force', async () => {
+      const partly = orderIn('partly_received');
+      const unnamed = {
+        ...partly,
+        receiverRule: 'off' as const,
+        receipts: partly.receipts.map((receipt) => ({ ...receipt, receivedBy: null })),
+      };
+      order.set(unnamed);
+      await open('o1');
+      expect(q('purchase-order-receipt-r1-correct-receiver')).toBeNull();
+      facade.loadOrder.mockImplementation(async () =>
+        order.set({ ...unnamed, receiverRule: 'optional' }),
+      );
+
+      const reads = facade.loadOrder.mock.calls.length;
+      await announceSaved('setting', 's1', { id: 'u2', name: 'Nadia' }, 'setting.changed');
+      await settle();
+
+      expect(facade.loadOrder.mock.calls.slice(reads)).toEqual([['c1', 'o1']]);
+      expect(q('purchase-order-receipt-r1-correct-receiver')).not.toBeNull();
     });
 
     it('puts it right in the dialog every document shares, then says so', async () => {

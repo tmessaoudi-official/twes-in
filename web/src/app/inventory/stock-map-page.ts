@@ -1102,6 +1102,8 @@ export class StockMapPage implements OnInit {
       },
       this.destroyRef,
     );
+    // The palette's walls, doors, posts and docks are drawn at the sizes the company's settings say.
+    this.live.reloadOn(['setting'], () => this.facade.loadPlanContext(companyId), this.destroyRef);
     await this.facade.loadPlanContext(companyId);
     await this.showFloor(this.floor()?.id ?? null);
   }

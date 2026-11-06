@@ -251,6 +251,8 @@ export class QuotePage {
   /** The saved version the quote stands on, and what another person's save changed in it. */
   protected readonly sync = liveRecord({
     kind: 'quote',
+    // Whether « Reçu par » is asked is a setting the answer carries: a change of it reads the record again.
+    readsAgainOn: ['setting'],
     id: this.id,
     form: this.form,
     reload: async () => {

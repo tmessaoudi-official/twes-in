@@ -774,6 +774,22 @@ describe('QuotePage', () => {
       expect(q('quote-received-by')).toBeNull();
     });
 
+    it('reads an answered quote again when a setting moves, so « Reçu par » follows the rule now in force', async () => {
+      quote.set({ ...accepted, receiverRule: 'off' });
+      await open('q1');
+      // Its one item is « Reçu par », so no « ⋮ » is drawn while the rule says nobody.
+      expect(q('document-more')).toBeNull();
+      facade.loadQuote.mockImplementation(async () => quote.set(accepted));
+
+      const reads = facade.loadQuote.mock.calls.length;
+      await announceSaved('setting', 's1', { id: 'u2', name: 'Nadia' }, 'setting.changed');
+      await settle();
+
+      expect(facade.loadQuote.mock.calls.slice(reads)).toEqual([['c1', 'q1']]);
+      await openMenu();
+      expect(over('document-menu-correct-receiver')).not.toBeNull();
+    });
+
     it('puts who answered right on an answered quote, and says it is done', async () => {
       quote.set({ ...accepted, receivedBy: { name: 'Sami', contactId: null } });
       await open('q1');

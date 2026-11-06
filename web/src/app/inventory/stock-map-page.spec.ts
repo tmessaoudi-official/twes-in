@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { provideHttpClient } from '@angular/common/http';
+import { announceSaved } from '../shared/testing/live';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import type { FormGroup } from '@angular/forms';
 import { signal } from '@angular/core';
@@ -3866,5 +3867,14 @@ describe('StockMapPage', () => {
     q('stock-map-retry')!.click();
 
     expect(facade.loadPlanContext).toHaveBeenCalledTimes(before + 1);
+  });
+
+  it('reads the palette again when a setting moves, so a wall or a door is drawn at the sizes now set', async () => {
+    const before = facade.loadPlanContext.mock.calls.length;
+
+    await announceSaved('setting', 's1', { id: 'u2', name: 'Nadia' }, 'setting.changed');
+    await settle();
+
+    expect(facade.loadPlanContext.mock.calls.slice(before)).toEqual([['c1']]);
   });
 });
