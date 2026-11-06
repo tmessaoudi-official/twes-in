@@ -17,6 +17,7 @@ import { heldToPasswordRule } from '../shared/password/password-rule';
 import { typedText } from '../shared/form/typed-text';
 import { SpentBudget } from '../shared/errors/spent-budget';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { TypedFirst } from '../shared/a11y/typed-first';
 
 /**
  * The page a signup link opens, logged out: the account, and the company it will own. Finishing starts no session,
@@ -25,6 +26,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
 @Component({
   selector: 'app-finish-signup-page',
   imports: [
+    TypedFirst,
     ReadFailed,
     PasswordToggle,
     SignedOutLayout,

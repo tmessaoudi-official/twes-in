@@ -171,6 +171,8 @@ describe('TwoFactorPage', () => {
     expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);
     expect(query('two-factor-qr')?.querySelector('svg rect[data-module]')).not.toBeNull();
     expect(query('two-factor-secret')?.textContent?.replace(/\s/g, '')).toBe(SECRET);
+    // Once scanned, the code is typed at once: the cursor waits in its field.
+    expect(document.activeElement).toBe(query('two-factor-code'));
   });
 
   it('confirms with a code, shows the recovery codes once, then continues home', async () => {
@@ -626,10 +628,13 @@ describe('TwoFactorPage', () => {
         recoveryCodes: ['iiiii-jjjjj', 'kkkkk-lllll'],
       });
 
+      // Pressed with the mouse: the button goes with the step, and the new app's code takes the cursor.
+      rendered.query<HTMLButtonElement>('two-factor-app-replace')!.focus();
       rendered.query<HTMLButtonElement>('two-factor-app-replace')?.click();
       await settle(rendered.fixture);
       expect(facade.beginTotpReplacement).toHaveBeenCalledTimes(1);
       expect(rendered.query('two-factor-replace-qr')).not.toBeNull();
+      expect(document.activeElement).toBe(rendered.query('two-factor-replace-code'));
       expect(rendered.query('two-factor-replace-secret')?.textContent?.trim()).toBe(
         'KRSX G5CT MVRX EZLU',
       );

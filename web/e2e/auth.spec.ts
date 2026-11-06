@@ -23,12 +23,16 @@ test('login, hello page, logout', async ({ page }) => {
   await page.goto('/customers');
   await expect(page).toHaveURL(/\/login\?returnTo=%2Fcustomers$/);
   // The second operator: its code leaves the shared one's five in five minutes to the proofs (session.ts).
-  await page.getByTestId('email').fill(CODES_OPERATOR_EMAIL);
+  // Each step's field holds the cursor as it appears, so the person types without a click first.
+  await expect(page.getByTestId('email')).toBeFocused();
+  await page.keyboard.type(CODES_OPERATOR_EMAIL);
   await page.getByTestId('login-continue').click();
-  await page.getByTestId('password').fill(PASSWORD);
+  await expect(page.getByTestId('password')).toBeFocused();
+  await page.keyboard.type(PASSWORD);
   await page.getByTestId('submit').click();
   // An operator must carry a second factor, so the password alone leads to the code step.
   await expect(page).toHaveURL(/\/login\?returnTo=%2Fcustomers$/);
+  await expect(page.getByTestId('mfa-code')).toBeFocused();
   await enterOperatorCode(page);
 
   await expect(page).toHaveURL(/\/customers$/);

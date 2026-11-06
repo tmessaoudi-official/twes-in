@@ -204,6 +204,8 @@ describe('LoginPage', () => {
     expect(query('email')).not.toBeNull();
     // « webauthn »: the browser offers its passkeys for this site under the field.
     expect(query('email')?.getAttribute('autocomplete')).toBe('username webauthn');
+    // The address is typed at once: the cursor waits in its field as the page opens.
+    expect(document.activeElement).toBe(query('email'));
     expect(query('login-continue')).not.toBeNull();
     // The password comes once the address is given, for every address, so the page never says which are known.
     expect(query('password')).toBeNull();

@@ -76,6 +76,12 @@ describe('ForgotPasswordPage', () => {
     input.dispatchEvent(new Event('input'));
   }
 
+  it('opens with the cursor in the address, typed at once', async () => {
+    const { query } = await render();
+
+    expect(document.activeElement).toBe(query('forgot-email'));
+  });
+
   it('asks for the link in the language the page is read in, then says the neutral sentence', async () => {
     const { fixture, query } = await render();
 

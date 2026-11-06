@@ -33,6 +33,7 @@ import { returnAddress } from '../shared/session/return-to';
 import { onTypedText, typedText } from '../shared/form/typed-text';
 import { typedCode } from '../shared/form/typed-code';
 import { SpentBudget } from '../shared/errors/spent-budget';
+import { TypedFirst } from '../shared/a11y/typed-first';
 
 /** What the browser answers on its own, before the API hears anything. */
 const BROWSER_REFUSALS: readonly LoginError[] = [
@@ -44,6 +45,7 @@ const BROWSER_REFUSALS: readonly LoginError[] = [
 @Component({
   selector: 'app-login-page',
   imports: [
+    TypedFirst,
     PasswordToggle,
     ReactiveFormsModule,
     MatFormFieldModule,

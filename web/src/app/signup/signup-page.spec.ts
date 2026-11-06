@@ -105,6 +105,8 @@ describe('SignupPage', () => {
     expect(facade.loadAvailability).toHaveBeenCalled();
     expect(query('signup-email')).not.toBeNull();
     expect(query('signup-closed')).toBeNull();
+    // Drawn once the availability is read, the address still takes the cursor as it appears.
+    expect(document.activeElement).toBe(query('signup-email'));
   });
 
   it('says signup is closed, with the way back to sign in', async () => {

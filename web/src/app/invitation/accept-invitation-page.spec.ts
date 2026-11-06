@@ -114,6 +114,8 @@ describe('AcceptInvitationPage', () => {
     expect(byTestId('invitation-name')).not.toBeNull();
     expect(byTestId('invitation-password')).not.toBeNull();
     expect(byTestId('invitation-join')).toBeNull();
+    // The name is typed at once: the cursor waits in it as the offer is drawn.
+    expect(document.activeElement).toBe(byTestId('invitation-name'));
     // The length is the one the API answers, said before anything is sent.
     expect(byTestId('invitation-password')?.closest('mat-form-field')?.textContent).toContain(
       '12 caractères',

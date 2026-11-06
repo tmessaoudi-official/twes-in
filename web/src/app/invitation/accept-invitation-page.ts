@@ -15,6 +15,7 @@ import { PasswordToggle } from '../shared/form/password-toggle';
 import { heldToPasswordRule } from '../shared/password/password-rule';
 import { SpentBudget } from '../shared/errors/spent-budget';
 import { ReadFailed } from '../shared/feedback/read-failed';
+import { TypedFirst } from '../shared/a11y/typed-first';
 
 /**
  * The page an invitation link opens. It is reached logged out: the link comes from a mail client and, under
@@ -23,6 +24,7 @@ import { ReadFailed } from '../shared/feedback/read-failed';
 @Component({
   selector: 'app-accept-invitation-page',
   imports: [
+    TypedFirst,
     ReadFailed,
     PasswordToggle,
     SignedOutLayout,

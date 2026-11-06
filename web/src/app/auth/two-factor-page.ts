@@ -31,6 +31,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { typedCode } from '../shared/form/typed-code';
 import { SpentBudget } from '../shared/errors/spent-budget';
 import { typedText } from '../shared/form/typed-text';
+import { TypedFirst } from '../shared/a11y/typed-first';
 
 /**
  * Two-step verification for the signed-in account: an authenticator app, passkeys, and the recovery codes behind both.
@@ -42,6 +43,7 @@ import { typedText } from '../shared/form/typed-text';
 @Component({
   selector: 'app-two-factor-page',
   imports: [
+    TypedFirst,
     SignedOutLayout,
     ReactiveFormsModule,
     MatFormFieldModule,

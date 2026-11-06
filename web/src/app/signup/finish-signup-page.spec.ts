@@ -119,6 +119,8 @@ describe('FinishSignupPage', () => {
     expect(facade.loadLink).toHaveBeenCalledWith('a-token');
     expect(facade.loadAvailability).toHaveBeenCalled();
     expect(query('signup-finish-email')?.textContent).toContain('new@example.test');
+    // The first thing asked, the name, takes the cursor as the form appears.
+    expect(document.activeElement).toBe(query('signup-name'));
   });
 
   // A country named one way everywhere (ruled 2026-10-29): its flag and the browser's name for it.

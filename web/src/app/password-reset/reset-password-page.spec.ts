@@ -86,6 +86,12 @@ describe('ResetPasswordPage', () => {
     await fixture.whenStable();
   }
 
+  it('opens with the cursor in the new password, typed at once', async () => {
+    const { query } = await render();
+
+    expect(document.activeElement).toBe(query('reset-password'));
+  });
+
   it('sends the link token with the new password and then offers sign-in', async () => {
     const { fixture, query } = await render();
 

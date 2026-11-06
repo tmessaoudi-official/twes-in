@@ -16,6 +16,7 @@ import { emailRule, emailTypo } from '../shared/form/email-rule';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { onTypedText, typedText } from '../shared/form/typed-text';
 import { SpentBudget } from '../shared/errors/spent-budget';
+import { TypedFirst } from '../shared/a11y/typed-first';
 
 /**
  * The first step of signup: an address, and a mailed link. What the page says afterwards is the same whether or not the
@@ -25,6 +26,7 @@ import { SpentBudget } from '../shared/errors/spent-budget';
 @Component({
   selector: 'app-signup-page',
   imports: [
+    TypedFirst,
     SignedOutLayout,
     ReactiveFormsModule,
     RouterLink,

@@ -26,12 +26,14 @@ test('a forgotten password comes back through the mailed link, made by the worke
   const invitation = await invitationTokenFor(request, address);
   await page.context().clearCookies();
   await page.goto(`/invitations/${invitation}`);
+  await expect(page.getByTestId('invitation-name')).toBeFocused();
   await page.getByTestId('invitation-name').fill('Forgetful Person');
   await page.getByTestId('invitation-password').fill(FIRST);
   await page.getByTestId('invitation-submit').click();
   await expect(page).toHaveURL(/\/login$/);
 
   await page.goto('/forgot-password');
+  await expect(page.getByTestId('forgot-email')).toBeFocused();
   await page.getByTestId('forgot-email').fill(address);
   await page.getByTestId('forgot-submit').click();
   await expect(page.getByTestId('forgot-sent')).toBeVisible();
