@@ -10,15 +10,14 @@ declare(strict_types=1);
 namespace App\Module\Purchases\Application;
 
 use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Application\DocumentNames;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
 use App\Fiscal\Domain\Model\Unit;
-use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Domain\Model\PurchaseOrderLine;
 use App\Module\Purchases\Domain\Repository\PurchaseOrderRepository;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderStatus;
 use App\Module\Purchases\Domain\ValueObject\VendorSnapshot;
-use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
@@ -28,9 +27,11 @@ use App\Tenancy\Domain\ValueObject\SellerSnapshot;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * An order to a vendor as a PDF, rendered on every request and never stored: it is no fiscal document, and once sent it
- * prints from the vendor and buyer it kept that day. A draft prints who they are today across a watermark, as does a
- * cancelled order. It speaks the company's document language, a vendor having none of its own, in the company's formats.
+ * An order to a vendor as a PDF, rendered on every request and never stored. Once sent it prints as a sent quote does,
+ * from what sending kept: the vendor and buyer of that day, its language, formats and design, and its units' names
+ * unless the company keeps them live (`document.names_as_issued`), so the vendor's copy reads the same whatever changes
+ * after. A draft prints as the settings say today across a watermark, as does a cancelled order, and so does an order
+ * sent before orders kept how they print. Its language is the company's, a vendor having none of its own.
  */
 final readonly class PrintPurchaseOrder
 {
@@ -41,6 +42,7 @@ final readonly class PrintPurchaseOrder
         private PdfRenderer $renderer,
         private ReadSetting $settings,
         private CurrencyScales $scales,
+        private DocumentNames $names,
     ) {
     }
 
@@ -52,9 +54,15 @@ final readonly class PrintPurchaseOrder
     {
         $order = $this->orders->ofIdInCompany($id, $company->getId()) ?? throw new PurchaseOrderNotFound();
         $buyer = $order->getBuyerSnapshot() ?? SellerSnapshot::of($order->getCompany(), $order->getEstablishment());
-        $formats = DocumentFormats::of($this->settings, $company);
-
-        $language = $this->settings->text(new SettingContext($company), 'document.language');
+        $printing = $order->getPrintSettings() ?? PurchaseOrderPrinting::today($this->settings, $order);
+        $language = $printing->language;
+        $units = array_map(static fn (PurchaseOrderLine $line): Unit => $line->getUnit(), $order->getLines());
+        // No print of a sent order is kept, so each is a reprint: it names things as it was sent unless the company keeps
+        // the names live.
+        $kept = $order->getPrintedNames();
+        $names = null !== $kept && true === $this->settings->value(new SettingContext($company), 'document.names_as_issued')
+            ? $kept
+            : $this->names->now($company, $language, $units);
 
         return new PrintedPurchaseOrder(self::fileName($order), $this->renderer->render($this->template->html(new PurchaseOrderPage(
             $order,
@@ -67,11 +75,11 @@ final readonly class PrintPurchaseOrder
                 PurchaseOrderStatus::Sent, PurchaseOrderStatus::PartlyReceived, PurchaseOrderStatus::Received, PurchaseOrderStatus::Closed => null,
             },
             $language,
-            $formats['dateFormat'],
-            $formats['numberFormat'],
-            DocumentFormats::design($this->settings, $company),
-            // An order keeps no names of its own: it names its units as they are now, as it speaks today's language.
-            QuantityTotals::ofUnits(array_map(static fn (PurchaseOrderLine $line): array => [$line->getUnit(), $line->getQuantity()], $order->getLines()), PrintedNames::in($language, array_map(static fn (PurchaseOrderLine $line): Unit => $line->getUnit(), $order->getLines()), [])),
+            $printing->print->dateFormat,
+            $printing->print->numberFormat,
+            $printing->print->design,
+            QuantityTotals::ofUnits(array_map(static fn (PurchaseOrderLine $line): array => [$line->getUnit(), $line->getQuantity()], $order->getLines()), $names),
+            $names,
         ))));
     }
 

@@ -14,6 +14,8 @@ use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
 use App\Audit\Domain\ValueObject\AuditScope;
 use App\Audit\Domain\ValueObject\Recorded;
+use App\Fiscal\Application\DocumentNames;
+use App\Fiscal\Domain\Model\Unit;
 use App\Module\Purchases\Application\Receivers\ChooseReceiptReceiver;
 use App\Module\Purchases\Application\Receivers\GoodsReceiptNotFound;
 use App\Module\Purchases\Application\Receivers\PurchaseReceiptSettings;
@@ -37,7 +39,8 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * An order past its draft: sent (numbered, in the transaction that stores it, keeping who the vendor was that day),
+ * An order past its draft: sent (numbered, in the transaction that stores it, keeping who the vendor was that day and
+ * how the order prints),
  * received in parts, each receipt putting its goods on the shelves in the same transaction, then closed short or
  * cancelled when nothing came. The order is held for every move, so two receipts typed at once cannot both bring the
  * last of a line. Every move is audited.
@@ -62,6 +65,7 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
         private ClockInterface $clock,
         private ChooseReceiptReceiver $receivers,
         private ReadSetting $settings,
+        private DocumentNames $names,
     ) {
     }
 
@@ -95,7 +99,9 @@ final readonly class PurchaseOrderWorkflow implements DeclaresAuditActions
             }
             // The vendor's codes as the order goes out, whatever was last read when the draft was saved.
             $order->keepVendorCodes($this->products->vendorCodes($company, $order->getVendorId(), array_map(static fn (PurchaseOrderLine $line): Uuid => $line->getProductId(), $order->getLines())));
-            $order->send($allocated->number, $allocated->issueDate, VendorCard::of($vendor), $this->clock->now());
+            $printing = PurchaseOrderPrinting::today($this->settings, $order);
+            $units = array_map(static fn (PurchaseOrderLine $line): Unit => $line->getUnit(), $order->getLines());
+            $order->send($allocated->number, $allocated->issueDate, VendorCard::of($vendor), $printing, $this->names->now($company, $printing->language, $units), $this->clock->now());
             $this->orders->save($order);
             $this->record($company, $order, self::SENT, ['number' => $allocated->number], $actorUserId);
 

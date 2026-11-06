@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Purchases\Application;
 
 use App\Fiscal\Domain\Calculation\QuantityTotal;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Domain\ValueObject\VendorSnapshot;
 use App\Shared\Domain\ValueObject\DocumentDesign;
@@ -30,6 +31,7 @@ final readonly class PurchaseOrderPage
      * @param self::DRAFT|self::CANCELLED|null $watermark
      * @param string                           $language   a language the catalogue prints documents in
      * @param list<QuantityTotal>              $quantities what the lines come to in each unit, empty for a single line
+     * @param PrintedNames                     $names      what it calls its units
      */
     public function __construct(
         public PurchaseOrder $order,
@@ -43,6 +45,7 @@ final readonly class PurchaseOrderPage
         public string $numberFormat = 'auto',
         public DocumentDesign $design = new DocumentDesign(),
         public array $quantities = [],
+        public PrintedNames $names = new PrintedNames([], []),
     ) {
     }
 }

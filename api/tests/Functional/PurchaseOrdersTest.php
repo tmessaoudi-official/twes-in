@@ -21,8 +21,11 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Module\Vendors\Domain\Model\Vendor;
 use App\Module\Vendors\Domain\ValueObject\VendorProfile;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
+use App\Settings\Domain\ValueObject\SettingLevel;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
@@ -436,6 +439,67 @@ final class PurchaseOrdersTest extends ApiTestCase
         $this->sendJson('POST', '/api/auth/logout');
         $this->client->request('GET', $this->path($id).'/pdf');
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+    }
+
+    /**
+     * A sent order prints as it was sent, as a quote does: its design, its language and the names of its units stay
+     * whatever the company's settings become, unless the company keeps the names live. A draft, and an order sent before
+     * orders kept how they print, read today's settings.
+     */
+    public function testASentOrderPrintsAsItWasSent(): void
+    {
+        $this->signedIn('buyer', self::BUYER);
+        $id = $this->sent([['productId' => $this->screws, 'quantity' => '10']]);
+        $unit = fn (): string => $this->textOf('SELECT COALESCE(names->>\'fr\', name) FROM unit WHERE company_id = ? AND code = \'C62\'');
+        $sentAs = $unit();
+
+        $this->give('document.layout', 'modern');
+        $this->give('document.language', 'en');
+        $this->em()->getConnection()->executeStatement("UPDATE unit SET name = 'Pièce renommée', names = CAST(? AS jsonb) WHERE company_id = ? AND code = 'C62'", ['{"fr": "Pièce renommée", "en": "Renamed piece"}', $this->company->getId()]);
+
+        $sent = $this->printed($id);
+        self::assertStringContainsString('class="layout-classic"', $sent, 'the design it was sent with');
+        self::assertStringContainsString('lang="fr"', $sent, 'the language it was sent in');
+        self::assertStringContainsString('<td>'.$sentAs.'</td>', $sent, 'the unit named as it was sent');
+        self::assertStringNotContainsString('Pièce renommée', $sent);
+        self::assertStringNotContainsString('Renamed piece', $sent);
+
+        $this->give('document.names_as_issued', false);
+        self::assertStringContainsString('<td>Pièce renommée</td>', $this->printed($id), 'a company keeping names live prints today\'s, in the language the order was sent in');
+
+        $draft = $this->printed($this->draft());
+        self::assertStringContainsString('class="layout-modern"', $draft, 'a draft prints as the settings say today');
+        self::assertStringContainsString('lang="en"', $draft);
+
+        $before = $this->sent([['productId' => $this->screws, 'quantity' => '2']]);
+        $this->em()->getConnection()->executeStatement('UPDATE purchase_order SET print_settings = NULL, printed_names = NULL WHERE id = ?', [$before]);
+        $old = $this->printed($before);
+        self::assertStringContainsString('class="layout-modern"', $old, 'an order sent before orders kept how they print reads today\'s settings');
+        self::assertStringContainsString('lang="en"', $old);
+    }
+
+    private function printed(string $id): string
+    {
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseIsSuccessful();
+
+        return (string) $this->client->getResponse()->getContent();
+    }
+
+    private function give(string $key, int|bool|string $value): void
+    {
+        // The test client's requests reboot the kernel: the company is the one its entity manager holds now.
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($company), $key, SettingLevel::Company, $value, null);
+    }
+
+    private function textOf(string $sql): string
+    {
+        $value = $this->em()->getConnection()->fetchOne($sql, [$this->company->getId()]);
+        self::assertIsString($value);
+
+        return $value;
     }
 
     public function testASwitchedOffModuleAnswersNotFound(): void

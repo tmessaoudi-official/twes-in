@@ -11,14 +11,17 @@ namespace App\Tests\Unit\Module\Purchases\Domain;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
 use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderHeader;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderLineDetails;
+use App\Module\Purchases\Domain\ValueObject\PurchaseOrderPrint;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderStatus;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Module\Purchases\Domain\ValueObject\VendorSnapshot;
+use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Shared\Domain\ValueObject\Receiver;
 use App\Shared\Domain\ValueObject\ReceiverRule;
 use App\Tenancy\Domain\Model\Company;
@@ -132,7 +135,7 @@ final class PurchaseOrderTest extends TestCase
         $order = PurchaseOrder::create($this->company, $this->establishment(), $this->vendor, 'Nord', new PurchaseOrderHeader(), [], $this->now);
 
         $this->expectExceptionObject(new InvalidPurchaseOrder('lines', 'An order is sent with at least one line.'));
-        $order->send('BCF-2026-0001', $this->now, $this->vendorSnapshot(), $this->now);
+        $order->send('BCF-2026-0001', $this->now, $this->vendorSnapshot(), new PurchaseOrderPrint('fr', new PrintSettings('', 'auto', 'auto')), new PrintedNames([], []), $this->now);
     }
 
     public function testGoodsArriveInPartsUntilNothingIsOutstanding(): void
@@ -319,7 +322,7 @@ final class PurchaseOrderTest extends TestCase
     private function sent(): PurchaseOrder
     {
         $order = $this->draft();
-        $order->send('BCF-2026-0001', $this->now, $this->vendorSnapshot(), $this->now);
+        $order->send('BCF-2026-0001', $this->now, $this->vendorSnapshot(), new PurchaseOrderPrint('fr', new PrintSettings('', 'auto', 'auto')), new PrintedNames([], []), $this->now);
 
         return $order;
     }

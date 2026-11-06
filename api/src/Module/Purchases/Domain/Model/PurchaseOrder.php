@@ -10,10 +10,12 @@ declare(strict_types=1);
 namespace App\Module\Purchases\Domain\Model;
 
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Purchases\Domain\Exception\InvalidPurchaseOrder;
 use App\Module\Purchases\Domain\Exception\PurchaseOrderTransitionRefused;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderHeader;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderLineDetails;
+use App\Module\Purchases\Domain\ValueObject\PurchaseOrderPrint;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderStatus;
 use App\Module\Purchases\Domain\ValueObject\ReceivedGoods;
 use App\Module\Purchases\Domain\ValueObject\VendorSnapshot;
@@ -90,6 +92,14 @@ class PurchaseOrder implements CompanyOwned
     /** @var array<string, mixed>|null SellerSnapshot::toArray(), written when the order is sent */
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $buyerSnapshot = null;
+
+    /** @var array<string, mixed>|null PurchaseOrderPrint::toArray(), written when the order is sent; null on one sent before orders kept it */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $printSettings = null;
+
+    /** @var array<array-key, mixed>|null PrintedNames::toArray(), written when the order is sent; null on one sent before orders kept them */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $printedNames = null;
 
     /** @var Collection<int, PurchaseOrderLine> */
     #[ORM\OneToMany(targetEntity: PurchaseOrderLine::class, mappedBy: 'order', cascade: ['persist'], orphanRemoval: true)]
@@ -190,13 +200,13 @@ class PurchaseOrder implements CompanyOwned
     }
 
     /**
-     * Gives a draft with lines its number and issue day, and keeps who the vendor and the buyer were that day, which the
-     * order prints from then on.
+     * Gives a draft with lines its number and issue day, and keeps who the vendor and the buyer were that day, how it
+     * prints and what it calls its units, which the order prints from then on.
      *
      * @throws PurchaseOrderTransitionRefused
      * @throws InvalidPurchaseOrder
      */
-    public function send(string $number, \DateTimeImmutable $issueDate, VendorSnapshot $vendor, \DateTimeImmutable $now): void
+    public function send(string $number, \DateTimeImmutable $issueDate, VendorSnapshot $vendor, PurchaseOrderPrint $print, PrintedNames $names, \DateTimeImmutable $now): void
     {
         $this->assertDraft('is sent');
         if ($this->lines->isEmpty()) {
@@ -205,6 +215,8 @@ class PurchaseOrder implements CompanyOwned
         $this->vendorSnapshot = $vendor->toArray();
         $this->vendorName = $vendor->name;
         $this->buyerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
+        $this->printSettings = $print->toArray();
+        $this->printedNames = $names->toArray();
         $this->status = PurchaseOrderStatus::Sent;
         $this->number = $number;
         $this->issueDate = self::day($issueDate);
@@ -443,6 +455,18 @@ class PurchaseOrder implements CompanyOwned
     public function getBuyerSnapshot(): ?SellerSnapshot
     {
         return null === $this->buyerSnapshot ? null : SellerSnapshot::fromArray($this->buyerSnapshot);
+    }
+
+    /** How the order prints as it was sent; null for a draft and for an order sent before orders kept it. */
+    public function getPrintSettings(): ?PurchaseOrderPrint
+    {
+        return null === $this->printSettings ? null : PurchaseOrderPrint::fromArray($this->printSettings);
+    }
+
+    /** What the order called its units when it was sent; null for a draft and for an order sent before orders kept them. */
+    public function getPrintedNames(): ?PrintedNames
+    {
+        return null === $this->printedNames ? null : PrintedNames::fromArray($this->printedNames);
     }
 
     /** @return list<PurchaseOrderLine> */

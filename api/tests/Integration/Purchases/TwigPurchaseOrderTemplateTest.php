@@ -12,14 +12,18 @@ namespace App\Tests\Integration\Purchases;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Model\Unit;
+use App\Fiscal\Domain\ValueObject\PrintedNames;
 use App\Module\Purchases\Application\PurchaseOrderPage;
 use App\Module\Purchases\Application\PurchaseOrderTemplate;
 use App\Module\Purchases\Application\PurchaseOrderTotals;
 use App\Module\Purchases\Domain\Model\PurchaseOrder;
+use App\Module\Purchases\Domain\Model\PurchaseOrderLine;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderHeader;
 use App\Module\Purchases\Domain\ValueObject\PurchaseOrderLineDetails;
+use App\Module\Purchases\Domain\ValueObject\PurchaseOrderPrint;
 use App\Module\Purchases\Domain\ValueObject\VendorSnapshot;
 use App\Shared\Domain\ValueObject\DocumentWatermark;
+use App\Shared\Domain\ValueObject\PrintSettings;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\ValueObject\SellerSnapshot;
@@ -59,7 +63,7 @@ final class TwigPurchaseOrderTemplateTest extends KernelTestCase
             new PurchaseOrderLineDetails(Uuid::v7(), 'FIL-2', 'Fil de fer', '3', $kilogram, '0.3333'),
         ], $now);
         $this->order->keepVendorCodes([$screws->toRfc4122() => 'QDS/61-A']);
-        $this->order->send('BCF-2026-10-00001', new \DateTimeImmutable('2026-10-18'), new VendorSnapshot('FRN-0001', 'Quincaillerie du Sud', 'Quincaillerie du Sud SARL', ['matricule_fiscal' => '7654321BAM000'], 'Route de Gabès', null, '3000', 'Sfax', 'TN', 'ventes@qds.tn', '+216 74 000 000'), $now);
+        $this->order->send('BCF-2026-10-00001', new \DateTimeImmutable('2026-10-18'), new VendorSnapshot('FRN-0001', 'Quincaillerie du Sud', 'Quincaillerie du Sud SARL', ['matricule_fiscal' => '7654321BAM000'], 'Route de Gabès', null, '3000', 'Sfax', 'TN', 'ventes@qds.tn', '+216 74 000 000'), self::printing(), $this->kept(), $now);
     }
 
     public function testASentOrderNamesItsVendorItsBuyerItsLinesAndWhatItComesToInFrench(): void
@@ -112,7 +116,7 @@ final class TwigPurchaseOrderTemplateTest extends KernelTestCase
         $this->order = PurchaseOrder::create($this->company, $this->establishment, Uuid::v7(), 'Quincaillerie du Sud', new PurchaseOrderHeader(null, null, null), [
             new PurchaseOrderLineDetails(Uuid::v7(), 'VIS-6', 'Vis 6 mm', '5', $this->piece, null),
         ], new \DateTimeImmutable('2026-10-18'));
-        $this->order->send('BCF-2026-10-00002', new \DateTimeImmutable('2026-10-18'), new VendorSnapshot('FRN-0001', 'Quincaillerie du Sud', null, [], null, null, null, null, null, null, null), new \DateTimeImmutable('2026-10-18'));
+        $this->order->send('BCF-2026-10-00002', new \DateTimeImmutable('2026-10-18'), new VendorSnapshot('FRN-0001', 'Quincaillerie du Sud', null, [], null, null, null, null, null, null, null), self::printing(), $this->kept(), new \DateTimeImmutable('2026-10-18'));
 
         $html = $this->html(null, 'en');
 
@@ -144,6 +148,22 @@ final class TwigPurchaseOrderTemplateTest extends KernelTestCase
         self::assertInstanceOf(VendorSnapshot::class, $vendor);
         self::assertInstanceOf(SellerSnapshot::class, $buyer);
 
-        return $template->html(new PurchaseOrderPage($this->order, PurchaseOrderTotals::of($this->order, 3), $vendor, $buyer, $watermark, $language, $dateFormat, $numberFormat, quantities: $quantities));
+        return $template->html(new PurchaseOrderPage($this->order, PurchaseOrderTotals::of($this->order, 3), $vendor, $buyer, $watermark, $language, $dateFormat, $numberFormat, quantities: $quantities, names: PrintedNames::in($language, $this->units(), [])));
+    }
+
+    private static function printing(): PurchaseOrderPrint
+    {
+        return new PurchaseOrderPrint('fr', new PrintSettings('', 'auto', 'auto'));
+    }
+
+    private function kept(): PrintedNames
+    {
+        return PrintedNames::in('fr', $this->units(), []);
+    }
+
+    /** @return list<Unit> */
+    private function units(): array
+    {
+        return array_map(static fn (PurchaseOrderLine $line): Unit => $line->getUnit(), $this->order->getLines());
     }
 }
