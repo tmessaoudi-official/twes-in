@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { TranslateService } from '@ngx-translate/core';
+import type { Feedback } from '../feedback/feedback';
 import type { FieldRefusal } from './field-refusals';
 import type { FieldError } from './form-builder';
 import type { RefusalFigures } from './refusal-figures';
@@ -55,4 +56,17 @@ export function refusedError(
       : 'import.rejections.invalid_value',
     params: refusalParams(translate, figures === null ? params : figures.written(params)),
   };
+}
+
+/**
+ * A refusal no field of the screen shows (an action on a selection, a file asked for), said as the toast that stays
+ * until closed, in its reason's words, which tell what to change: a « try again » would meet the same refusal.
+ */
+export function sayRefusal(
+  feedback: Feedback,
+  translate: TranslateService,
+  refusal: FieldRefusal,
+): void {
+  const said = refusedError(translate, refusal);
+  feedback.failure(said.key, said.params);
 }

@@ -13,7 +13,7 @@ FLOOR=90
 # A 422 forwarding a domain refusal's English message ($refused->getMessage()) carries no reason and, mostly, no field
 # a page can place: stable-release S5.3 moves each onto DomainRule::refused. Until the last one, their count is held
 # exactly here, so one coming back reds and each one moved lowers it (the number this gate asks for).
-FORWARDED=${DOMAIN_REFUSALS_FORWARDED:-21}
+FORWARDED=${DOMAIN_REFUSALS_FORWARDED:-18}
 problems=()
 
 if [[ ! -d "$root/api/src" ]]; then problems+=("found no api/src")

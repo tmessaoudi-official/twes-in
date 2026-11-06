@@ -117,7 +117,9 @@
       "before_last_day": "The last number was given on {{last}}, and the clock of the computer the application is installed on reads {{today}}: the document would be dated before the previous one. Correct its date and time, or tell the person who looks after that computer, then try again.",
       "before_last_period": "The last number was given on {{last}}, and the clock of the computer the application is installed on reads {{today}}: nothing is numbered before the last numbered month. Correct its date and time, or tell the person who looks after that computer, then try again.",
       "payment_already_decided": "This payment was already confirmed or rejected, perhaps by another operator: the list is read again.",
-      "trial_or_paid_required": "Fill in “Trial ends on”, “Paid through” or both: a subscription covers at least one of them."
+      "trial_or_paid_required": "Fill in “Trial ends on”, “Paid through” or both: a subscription covers at least one of them.",
+      "filter_refused": "The file cannot be made with a filter in this address, from an old link or one changed by hand: choose the list’s filters again, then export.",
+      "selection_count": "An action on a selection takes 1 to {{max}} items: select fewer, then try again."
     }
   }
 }

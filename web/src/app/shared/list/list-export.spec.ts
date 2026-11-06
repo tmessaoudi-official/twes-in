@@ -3,10 +3,12 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { demoRefusedInterceptor } from '../demo/demo-refused-interceptor';
 import { Feedback } from '../feedback/feedback';
 import { FileSaver } from '../files/save-file';
+import { FORM_REFUSAL_TEXTS } from '../form/form-refusal-texts';
+import { TextsParts } from '../i18n/texts-part';
 import { StepUp } from '../step-up/step-up';
 import { provideQuietFeedback, type RecordedFeedback } from '../testing/feedback';
 import { ListExport } from './list-export';
@@ -33,6 +35,8 @@ describe('ListExport', () => {
         provideQuietFeedback(),
         { provide: StepUp, useValue: { request } },
         { provide: FileSaver, useValue: { save: (_file: Blob, name: string) => saved.push(name) } },
+        // The refusals' words are opened on demand; the stand-in opens nothing, the case sets the words it reads.
+        { provide: TextsParts, useValue: { open: vi.fn(() => Promise.resolve()) } },
       ],
     });
     const fixture = TestBed.createComponent(ListExport);
@@ -177,6 +181,39 @@ describe('ListExport', () => {
     expect((TestBed.inject(Feedback) as RecordedFeedback).said.map((toast) => toast.key)).toEqual([
       'export.failed',
     ]);
+  });
+
+  it('says a filter the API refuses as the refusal it is, never as a failure to try again', async () => {
+    const fixture = create((format) => `/exports/things.${format}?from=2026-09-30&to=2026-09-01`);
+    TestBed.inject(TranslateService).setTranslation(
+      'fr',
+      { import: { rejections: { filter_refused: 'Un filtre est refusé.' } } },
+      true,
+    );
+
+    button(fixture, 'csv').click();
+    TestBed.inject(HttpTestingController)
+      .expectOne('/exports/things.csv?from=2026-09-30&to=2026-09-01')
+      .flush(
+        new Blob([
+          JSON.stringify({
+            violations: [
+              { propertyPath: 'from', message: 'x', payload: { reason: 'filter_refused' } },
+            ],
+          }),
+        ]),
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await vi.waitFor(() =>
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).not.toEqual([]),
+    );
+
+    expect(request).not.toHaveBeenCalled();
+    expect(saved).toEqual([]);
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said.map((toast) => toast.key)).toEqual([
+      'import.rejections.filter_refused',
+    ]);
+    expect(TestBed.inject(TextsParts).open).toHaveBeenCalledWith(FORM_REFUSAL_TEXTS);
   });
 
   it("leaves the demo's refusal of an accountant's file to the one toast that says it", async () => {

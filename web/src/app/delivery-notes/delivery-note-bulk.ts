@@ -5,10 +5,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { saidAlready } from '../shared/errors/said-already';
 import { Feedback } from '../shared/feedback/feedback';
+import { sayRefusal } from '../shared/form/refusal-words';
 import { BulkSkippedDialog, type BulkSkippedDialogData } from '../shared/list/bulk-skipped-dialog';
 import { DeliveryNotesRefused } from './delivery-notes-api';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
@@ -54,6 +55,7 @@ export class DeliveryNoteBulk {
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
   protected readonly working = signal(false);
 
   protected async invoice(): Promise<void> {
@@ -67,9 +69,11 @@ export class DeliveryNoteBulk {
   }
 
   private async run(companyId: string): Promise<void> {
-    const check = await this.facade.invoicingCheck(companyId, this.ids()).catch(() => null);
-    if (check === null) {
-      this.feedback.failure('delivery_notes.bulk.check_failed');
+    let check: InvoicingCheck;
+    try {
+      check = await this.facade.invoicingCheck(companyId, this.ids());
+    } catch (error) {
+      this.failed(error, 'delivery_notes.bulk.check_failed');
       return;
     }
     if (check.skipped > 0 && !(await this.goOn(check))) return;
@@ -85,10 +89,23 @@ export class DeliveryNoteBulk {
       );
       await this.router.navigate(['/invoices', invoiceId]);
     } catch (error) {
-      if (saidAlready(error)) return;
       const code = error instanceof DeliveryNotesRefused ? error.code : 'network';
-      this.feedback.failure(`delivery_notes.errors.${code}`);
+      this.failed(error, `delivery_notes.errors.${code}`);
     }
+  }
+
+  /**
+   * A refusal the API words (a selection past its size, a target that is no invoice) is said in its words, which tell
+   * what to change; any other failure by `fallback`; one an interceptor already said, not again.
+   */
+  private failed(error: unknown, fallback: string): void {
+    if (saidAlready(error)) return;
+    const refusal =
+      error instanceof DeliveryNotesRefused
+        ? error.refusals.find((one) => one.reason !== null)
+        : undefined;
+    if (refusal === undefined) this.feedback.failure(fallback);
+    else sayRefusal(this.feedback, this.translate, refusal);
   }
 
   private async goOn(check: InvoicingCheck): Promise<boolean> {

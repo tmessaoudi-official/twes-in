@@ -142,9 +142,10 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
      *
      * @return list<InvoicingCheckRow>
      *
-     * @throws \InvalidArgumentException on no id, more than a list page of them, or a credit note or deposit invoice named
-     * @throws InvoiceNotFound           when the invoice named is not the company's
-     * @throws InvoiceNotDraft           when it is not a draft any more
+     * @throws InvalidDeliveryNote on `deliveryNoteIds` for no id or more than a list page of them, and on `invoiceId` for a
+     *                             credit note or deposit invoice named
+     * @throws InvoiceNotFound     when the invoice named is not the company's
+     * @throws InvoiceNotDraft     when it is not a draft any more
      */
     public function check(Company $company, array $noteIds, ?Uuid $invoiceId = null): array
     {
@@ -153,7 +154,7 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
             $unique[$id->toRfc4122()] ??= $id;
         }
         if ([] === $unique || \count($unique) > self::MOST) {
-            throw new \InvalidArgumentException(\sprintf('Invoicing in bulk takes 1 to %d delivery notes.', self::MOST));
+            throw new InvalidDeliveryNote('deliveryNoteIds', \sprintf('Invoicing in bulk takes 1 to %d delivery notes.', self::MOST), 'selection_count', ['max' => self::MOST]);
         }
         $target = null;
         if (null !== $invoiceId) {
@@ -162,7 +163,7 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
                 throw new InvoiceNotDraft();
             }
             if (!$target->takesLines) {
-                throw new \InvalidArgumentException('invoiceId: '.self::NOT_AN_INVOICE);
+                throw new InvalidDeliveryNote('invoiceId', self::NOT_AN_INVOICE, 'not_an_invoice');
             }
         }
         $found = [];

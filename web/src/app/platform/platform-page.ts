@@ -26,7 +26,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom, map } from 'rxjs';
-import { refusalParams, refusedError } from '../shared/form/refusal-words';
+import { refusalParams, sayRefusal } from '../shared/form/refusal-words';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { SETTING_REFUSAL_TEXTS } from '../shared/settings/setting-refusals';
 import { DescriptorForm, type FieldAction } from '../shared/form/descriptor-form';
@@ -777,8 +777,7 @@ export class PlatformPage implements OnInit {
       if (refusal === undefined) {
         this.feedback.failure(`licensing.errors.${code}`);
       } else {
-        const said = refusedError(this.translate, refusal);
-        this.feedback.failure(said.key, said.params);
+        sayRefusal(this.feedback, this.translate, refusal);
       }
     }
     await this.payments.loadWaiting();

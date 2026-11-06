@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Infrastructure\Http;
 
+use ApiPlatform\Validator\Exception\ValidationException;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Audit\Application\DeclaresAuditActions;
@@ -23,6 +24,7 @@ use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
 use App\Shared\Domain\Exception\InvalidFilter;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\BulkFile;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
@@ -35,7 +37,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -60,7 +61,8 @@ final readonly class ExportController implements BulkFile, DeclaresAuditActions
     ) {
     }
 
-    #[Route('/api/companies/{companyId}/exports/{subject}.{format}', name: 'api_export', requirements: ['subject' => '[a-z-]+', 'format' => 'csv|xlsx'], methods: ['GET'])]
+    // API Platform answers this route's errors as it answers a resource's, so a refused filter is a violation a page reads.
+    #[Route('/api/companies/{companyId}/exports/{subject}.{format}', name: 'api_export', requirements: ['subject' => '[a-z-]+', 'format' => 'csv|xlsx'], defaults: ['_api_respond' => true], methods: ['GET'])]
     public function __invoke(Request $request, string $companyId, string $subject, string $format): Response
     {
         try {
@@ -99,12 +101,12 @@ final readonly class ExportController implements BulkFile, DeclaresAuditActions
             @unlink($path);
             // The writer reads the rows lazily and wraps whatever stops it: a filter the list does not have is the caller's.
             if ($failure->getPrevious() instanceof InvalidFilter) {
-                throw new UnprocessableEntityHttpException($failure->getPrevious()->getMessage(), $failure->getPrevious());
+                throw self::refused($failure->getPrevious());
             }
             throw new ServiceUnavailableHttpException(30, 'The file could not be prepared; try again shortly.', $failure);
         } catch (InvalidFilter $refused) {
             @unlink($path);
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+            throw self::refused($refused);
         } catch (\Throwable $failure) {
             @unlink($path);
             throw $failure;
@@ -120,6 +122,15 @@ final readonly class ExportController implements BulkFile, DeclaresAuditActions
         $response->deleteFileAfterSend();
 
         return $response;
+    }
+
+    /**
+     * A filter the file cannot be made under: retrying would meet it again, so the page says to change the filter. The
+     * screens check their own filters first, so this is an address kept from before or typed by hand.
+     */
+    private static function refused(InvalidFilter $refused): ValidationException
+    {
+        return DomainRule::refused($refused->filter, $refused->getMessage(), 'filter_refused', previous: $refused);
     }
 
     public function auditActions(): array

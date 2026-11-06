@@ -119,9 +119,12 @@ final class AccountingExportTest extends ApiTestCase
 
     public function testAPeriodIsTwoDaysInOrder(): void
     {
-        foreach (['', '?from=2026-09-01', '?from=2026-09-30&to=2026-09-01', '?from=2026-02-30&to=2026-03-01', '?from=2025-01-01&to=2026-09-30'] as $query) {
+        $refused = ['' => 'from', '?from=2026-09-01' => 'to', '?from=2026-09-30&to=2026-09-01' => 'from', '?from=2026-02-30&to=2026-03-01' => 'from', '?from=2025-01-01&to=2026-09-30' => 'to'];
+        foreach ($refused as $query => $field) {
             $this->client->request('GET', $this->path().'/exports/sales-journal.csv'.$query);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $query);
+            // Said as a violation on the filter, so the page tells the person to change the filter rather than to try again.
+            self::assertSame([['propertyPath' => $field, 'reason' => 'filter_refused', 'params' => []]], $this->refusals(), $query);
         }
     }
 

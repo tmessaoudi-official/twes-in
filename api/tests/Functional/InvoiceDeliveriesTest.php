@@ -17,6 +17,7 @@ use App\Fiscal\Domain\Repository\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\Repository\TaxComponentRepository;
 use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Customer;
+use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
@@ -130,6 +131,9 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         $this->postJson($this->path('invoices').'/from-delivery-notes/check', ['deliveryNoteIds' => [$noteId]]);
         self::assertResponseIsSuccessful();
         self::assertSame([['skipped', 'invoiced']], array_map(static fn (array $row): array => [$row['outcome'], $row['reason']], $this->listOf($this->json(), 'rows')), 'the bulk check leaves it out as invoiced');
+        $this->postJson($this->path('invoices').'/from-delivery-notes/check', ['deliveryNoteIds' => []]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'deliveryNoteIds', 'reason' => 'selection_count', 'params' => ['max' => InvoiceDeliveryNotes::MOST]]], $this->refusals(), 'a selection the check cannot take is said on the selection, with its limit');
 
         $this->postJson($this->path('invoices'), ['customerId' => $this->customer->getId()->toRfc4122(), 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['description' => 'Port', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '10', 'taxComponentIds' => []]]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);

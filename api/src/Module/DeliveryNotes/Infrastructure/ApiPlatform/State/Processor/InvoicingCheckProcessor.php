@@ -12,17 +12,18 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform\State\Processor;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
+use App\Module\DeliveryNotes\Domain\Exception\InvalidDeliveryNote;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Resource\InvoicingCheckResource;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /** @implements ProcessorInterface<InvoicingCheckResource, InvoicingCheckResource> */
@@ -46,8 +47,8 @@ final readonly class InvoicingCheckProcessor implements ProcessorInterface
                 array_map(static fn (string $id): Uuid => Uuid::fromString($id), $data->deliveryNoteIds),
                 null === $data->invoiceId ? null : Uuid::fromString($data->invoiceId),
             );
-        } catch (\InvalidArgumentException $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+        } catch (InvalidDeliveryNote $refused) {
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvoiceNotDraft $conflict) {

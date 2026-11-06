@@ -4,14 +4,15 @@ import { ChangeDetectionStrategy, Component, inject, input, output, signal } fro
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { DEMO_REFUSED } from '../demo/demo-refused-interceptor';
 import { Feedback } from '../feedback/feedback';
 import { FileSaver } from '../files/save-file';
+import { sayRefusal } from '../form/refusal-words';
 import { StepUp } from '../step-up/step-up';
 import type { IconName } from '../icons/icons';
 import type { ExportFormat } from './export-address';
-import { ExportApi } from './export-api';
+import { ExportApi, type ExportRefused } from './export-api';
 
 /**
  * « Exporter ▾ »: one button whose menu downloads what a list shows as a CSV or an Excel file, or the files a screen
@@ -80,6 +81,7 @@ export class ListExport<F extends string = ExportFormat> {
   private readonly stepUp = inject(StepUp);
   private readonly feedback = inject(Feedback);
   private readonly saver = inject(FileSaver);
+  private readonly translate = inject(TranslateService);
   protected readonly busy = signal(false);
 
   /**
@@ -99,17 +101,26 @@ export class ListExport<F extends string = ExportFormat> {
         fetched = await this.fetch(address);
       }
       if (fetched === 'saved') this.saved.emit(address);
+      else if (typeof fetched === 'object') this.sayRefused(fetched);
       else if (fetched !== DEMO_REFUSED) this.feedback.failure('export.failed');
     } finally {
       this.busy.set(false);
     }
   }
 
+  /**
+   * A file refused for what was asked (a filter kept from an older address) is said in the refusal's words, which tell
+   * the person what to change: « try again » would meet the same refusal.
+   */
+  private sayRefused(refused: ExportRefused): void {
+    sayRefusal(this.feedback, this.translate, refused.refusals[0]);
+  }
+
   private async fetch(
     address: string,
-  ): Promise<'saved' | 'step_up' | typeof DEMO_REFUSED | 'failed'> {
+  ): Promise<'saved' | 'step_up' | typeof DEMO_REFUSED | ExportRefused | 'failed'> {
     const file = await this.api.file(address);
-    if (typeof file === 'string') return file;
+    if (typeof file === 'string' || !(file instanceof Blob)) return file;
     // A list's address ends with the file's name, which is also the API's own; a screen whose address does not names it.
     const named = this.fileName();
     this.saver.save(

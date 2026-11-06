@@ -3,7 +3,7 @@
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { Session } from '../shared/session/session';
@@ -205,6 +205,44 @@ describe('DeliveryNoteBulk', () => {
 
     expect(facade.invoiceNotes).not.toHaveBeenCalled();
     expect(said()).toEqual(['delivery_notes.bulk.check_failed']);
+  });
+
+  // One page per case: a refusal the API words is said in its words, which tell what to change; only a failure with no
+  // reason falls back to « could not be checked » or the code's sentence.
+  it.each([
+    ['the check', 'selection_count', true],
+    ['the invoice', 'not_an_invoice', false],
+  ] as const)(
+    'says why %s was refused in the words of its reason, and invoices nothing more',
+    async (_step, reason, atCheck) => {
+      const refused = new DeliveryNotesRefused('invalid', [
+        { field: 'deliveryNoteIds', reason, params: { max: 100 } },
+      ]);
+      check = atCheck ? refused : checkOf(row('a'));
+      invoiced = refused;
+      const fixture = create(['a']);
+      TestBed.inject(TranslateService).setTranslation(
+        'fr',
+        { import: { rejections: { [reason]: 'Refusé pour sa raison.' } } },
+        true,
+      );
+
+      await invoice(fixture);
+
+      expect(said()).toEqual([`import.rejections.${reason}`]);
+      expect(facade.invoiceNotes).toHaveBeenCalledTimes(atCheck ? 0 : 1);
+      expect(navigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('says nothing more when the demo interceptor has already said the refusal of the check', async () => {
+    check = refusedByTheDemo(new DeliveryNotesRefused('conflict'));
+    const fixture = create(['a']);
+
+    await invoice(fixture);
+
+    expect(said()).toEqual([]);
+    expect(facade.invoiceNotes).not.toHaveBeenCalled();
   });
 
   it('says why the invoice was refused, by the code the API answered, and stays on the list', async () => {

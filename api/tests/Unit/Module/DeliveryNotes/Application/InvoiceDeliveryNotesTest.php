@@ -253,8 +253,9 @@ final class InvoiceDeliveryNotesTest extends TestCase
             try {
                 $this->invoicing->check($this->company, $ids);
                 self::fail("$case was checked");
-            } catch (\InvalidArgumentException $refused) {
-                self::assertStringContainsString('1 to '.InvoiceDeliveryNotes::MOST, $refused->getMessage(), $case);
+            } catch (InvalidDeliveryNote $refused) {
+                // Said on the selection with its limit, so the list says how many it takes rather than « check failed ».
+                self::assertSame(['deliveryNoteIds', 'selection_count', ['max' => InvoiceDeliveryNotes::MOST]], [$refused->field, $refused->reason, $refused->params], $case);
             }
         }
         try {

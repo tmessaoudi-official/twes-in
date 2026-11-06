@@ -62,7 +62,7 @@ final class InvoicingCheckResource
     /** @var list<string> the selected notes' ids, a list page at most */
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid'], 'minItems' => 1, 'maxItems' => InvoiceDeliveryNotes::MOST])]
     #[Assert\Type('list', groups: [self::WRITE])]
-    #[Assert\Count(min: 1, max: InvoiceDeliveryNotes::MOST, groups: [self::WRITE])]
+    #[Assert\Count(min: 1, max: InvoiceDeliveryNotes::MOST, groups: [self::WRITE], payload: ['reason' => 'selection_count', 'params' => ['max' => InvoiceDeliveryNotes::MOST]])]
     #[Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public array $deliveryNoteIds = [];
