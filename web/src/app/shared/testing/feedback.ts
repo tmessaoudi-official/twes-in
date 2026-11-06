@@ -105,6 +105,13 @@ export function effectToasts(): string[] {
     .map((toast) => `${toast.key}:${toast.effect}`);
 }
 
+/** What each consequential action's toast was handed to say, in order (needs `provideQuietFeedback()`). */
+export function effectsSaid(): { key: string; params: Record<string, unknown> }[] {
+  return (TestBed.inject(Feedback) as RecordedFeedback).said
+    .filter((toast) => toast.effect !== undefined)
+    .map(({ key, params }) => ({ key, params: params ?? {} }));
+}
+
 /** The next step the last toast offered, or null (needs `provideQuietFeedback()`). */
 export function offeredNext(): FeedbackAction | null {
   return (TestBed.inject(Feedback) as RecordedFeedback).said.at(-1)?.action ?? null;

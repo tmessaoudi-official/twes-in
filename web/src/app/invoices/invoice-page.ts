@@ -20,6 +20,7 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { RecordHistory } from '../activity/record-history';
+import { documentOutcome } from '../shared/feedback/document-outcome';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { FieldError } from '../shared/form/form-builder';
@@ -1240,7 +1241,9 @@ export class InvoicePage {
     const id = this.id();
     if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
-    if (!companyId || id === null || input === null) return;
+    // The form is built only once the options are read, so a collected input has them.
+    const options = this.options();
+    if (!companyId || id === null || input === null || options === null) return;
     // Read before issuing: once issued, the screen declares what an issued document offers.
     const kind = kindAmong(this.actions(), 'issue');
     const key = this.isCreditNote() ? 'invoices.credit_note_issued' : 'invoices.issued';
@@ -1290,7 +1293,22 @@ export class InvoicePage {
     const next = this.owes(issued)
       ? { key: 'invoices.suggest.record_payment', run: () => void this.openPayment() }
       : undefined;
-    this.feedback.effect(key, {}, kind, next);
+    const total = {
+      amount: issued.total,
+      scale: options.currencyScale,
+      currency: options.currency,
+    };
+    this.feedback.effect(
+      key,
+      documentOutcome(
+        this.format,
+        issued,
+        issued.recordedCustomerName ?? issued.customerName,
+        total,
+      ),
+      kind,
+      next,
+    );
   }
 
   /** The document's payment, asked from the same declaration the list's rows and the sheet use. */

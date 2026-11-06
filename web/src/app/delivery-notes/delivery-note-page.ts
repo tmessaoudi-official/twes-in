@@ -68,7 +68,9 @@ import {
   type TaxFamily,
 } from './delivery-notes-types';
 import { productsIntoLines, takeInAdded, type TakenIn } from '../shared/documents/add-to';
+import { documentOutcome } from '../shared/feedback/document-outcome';
 import { Feedback } from '../shared/feedback/feedback';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { MatDialog } from '@angular/material/dialog';
@@ -155,6 +157,7 @@ export class DeliveryNotePage {
   private readonly dialog = inject(MatDialog);
   private readonly shortSales = inject(ShortSales);
   private readonly feedback = inject(Feedback);
+  private readonly format = inject(FormatFacade);
   protected readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly deletes = inject(RecordDeletes);
@@ -1084,7 +1087,9 @@ export class DeliveryNotePage {
     const id = this.id();
     if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
-    if (!companyId || id === null || input === null) return;
+    // The form is built only once the options are read, so a collected input has them.
+    const options = this.options();
+    if (!companyId || id === null || input === null || options === null) return;
     const kind = kindAmong(this.actions(), 'validate');
     const validate = (confirmedShort: boolean) =>
       this.facade.reviseAndValidate(
@@ -1106,7 +1111,22 @@ export class DeliveryNotePage {
     const next = this.invoiceable(validated)
       ? { key: 'delivery_notes.suggest.invoice', run: () => void this.invoice() }
       : undefined;
-    this.feedback.effect('delivery_notes.validated', {}, kind, next);
+    const total = {
+      amount: validated.total,
+      scale: options.currencyScale,
+      currency: options.currency,
+    };
+    this.feedback.effect(
+      'delivery_notes.validated',
+      documentOutcome(
+        this.format,
+        validated,
+        validated.recordedCustomerName ?? validated.customerName,
+        total,
+      ),
+      kind,
+      next,
+    );
   }
 
   protected async validateAndDeliver(): Promise<void> {
@@ -1114,7 +1134,9 @@ export class DeliveryNotePage {
     const id = this.id();
     if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
-    if (!companyId || id === null || input === null) return;
+    // The form is built only once the options are read, so a collected input has them.
+    const options = this.options();
+    if (!companyId || id === null || input === null || options === null) return;
     const kind = kindAmong(this.actions(), 'validate-deliver');
     const deliver = (confirmedShort: boolean) =>
       this.facade.reviseValidateAndDeliver(
@@ -1134,7 +1156,22 @@ export class DeliveryNotePage {
     const next = this.invoiceable(delivered)
       ? { key: 'delivery_notes.suggest.invoice', run: () => void this.invoice() }
       : undefined;
-    this.feedback.effect('delivery_notes.validated_delivered', {}, kind, next);
+    const total = {
+      amount: delivered.total,
+      scale: options.currencyScale,
+      currency: options.currency,
+    };
+    this.feedback.effect(
+      'delivery_notes.validated_delivered',
+      documentOutcome(
+        this.format,
+        delivered,
+        delivered.recordedCustomerName ?? delivered.customerName,
+        total,
+      ),
+      kind,
+      next,
+    );
   }
 
   /** Asked in a dialog, so the bar carries actions and not a date field (design review finding 3). */

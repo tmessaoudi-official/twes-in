@@ -25,7 +25,9 @@ import type { PlannedAction } from '../shared/actions/planned-actions';
 import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { productsIntoLines, takeInAdded, type TakenIn } from '../shared/documents/add-to';
+import { documentOutcome } from '../shared/feedback/document-outcome';
 import { Feedback } from '../shared/feedback/feedback';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { FieldRefusal } from '../shared/form/field-refusals';
 import { RefusalFigures } from '../shared/form/refusal-figures';
@@ -109,6 +111,7 @@ export class PurchaseOrderPage {
   private readonly unsaved = inject(UnsavedChanges);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
+  private readonly format = inject(FormatFacade);
   private readonly router = inject(Router);
   private readonly deletes = inject(RecordDeletes);
   private readonly destroyRef = inject(DestroyRef);
@@ -565,7 +568,24 @@ export class PurchaseOrderPage {
     const next = this.mayReceive()
       ? { key: 'purchases.suggest.receive', run: () => void this.openReceive() }
       : undefined;
-    this.feedback.effect('purchases.sent', { number: sent.number ?? '' }, kind, next);
+    // An order whose prices the reader may not see, or are unknown, is said without its total.
+    const currency = this.company()?.currency;
+    if (sent.totalNet === null || currency === undefined) {
+      this.feedback.effect(
+        'purchases.sent',
+        { number: sent.number ?? '', party: sent.vendorName },
+        kind,
+        next,
+      );
+    } else {
+      const total = { amount: sent.totalNet, scale: sent.currencyScale, currency };
+      this.feedback.effect(
+        'purchases.sent_total',
+        documentOutcome(this.format, sent, sent.vendorName, total),
+        kind,
+        next,
+      );
+    }
   }
 
   /** The goods that came, asked in a dialog that records them itself and stays open on a refusal. */

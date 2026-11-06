@@ -1522,8 +1522,8 @@
         "same": "Same as the same days of last month"
       }
     },
-    "issued": "The invoice was issued.",
-    "credit_note_issued": "The credit note was issued.",
+    "issued": "Invoice {{number}} was issued to {{party}}: {{total}} {{currency}}.",
+    "credit_note_issued": "Credit note {{number}} was issued to {{party}}: {{total}} {{currency}}.",
     "cancelled": "The draft was abandoned.",
     "suggest": {
       "record_payment": "Record a payment"
@@ -1749,8 +1749,8 @@
       "invalid": "The note was refused. Check the customer, the lines and the dates.",
       "customer_unavailable": "This customer has been deactivated, or merged into another, since: choose the customer on the draft (after a merge, the customer kept), or reactivate it on its record."
     },
-    "validated": "The note was validated.",
-    "validated_delivered": "The note was validated and delivered.",
+    "validated": "Note {{number}} was validated for {{party}}: {{total}} {{currency}}.",
+    "validated_delivered": "Note {{number}} was validated and delivered to {{party}}: {{total}} {{currency}}.",
     "receiver_corrected": "Who received the note is corrected.",
     "cancelled": "The note was cancelled.",
     "suggest": {
@@ -3443,7 +3443,7 @@
     "back": "Back to quotes",
     "saved": "The draft was saved.",
     "read_only": "You can read quotes, not change them.",
-    "sent": "The quote is marked sent: it carries its number and its validity date.",
+    "sent": "Quote {{number}} is marked sent to {{party}}: {{total}} {{currency}}, with its validity date.",
     "accepted": "The quote is marked accepted.",
     "refused": "The quote is marked refused.",
     "cancelled": "The quote was closed as not pursued.",

@@ -43,7 +43,9 @@ import { taxNames } from '../invoices/tax-names';
 import type { PlannedAction } from '../shared/actions/planned-actions';
 import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { documentOutcome } from '../shared/feedback/document-outcome';
 import { Feedback } from '../shared/feedback/feedback';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { FieldError } from '../shared/form/form-builder';
 import type { FieldRefusal } from '../shared/form/field-refusals';
@@ -140,6 +142,7 @@ export class QuotePage {
   private readonly unsaved = inject(UnsavedChanges);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
+  private readonly format = inject(FormatFacade);
   protected readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly deletes = inject(RecordDeletes);
@@ -788,7 +791,9 @@ export class QuotePage {
     const id = this.id();
     if (this.customerRead !== null) await this.customerRead;
     const input = this.collect();
-    if (!companyId || id === null || input === null) return;
+    // The form is built only once the options are read, so a collected input has them.
+    const options = this.options();
+    if (!companyId || id === null || input === null || options === null) return;
     // Read before sending: once sent, the screen declares what a sent quote offers.
     const kind = kindAmong(this.actions(), 'send');
     const sent = await this.facade.reviseAndSend(
@@ -800,7 +805,16 @@ export class QuotePage {
     );
     if (sent === null) await this.refused();
     if (sent !== null && kind !== undefined) {
-      this.feedback.effect('quotes.sent', {}, kind);
+      const total = {
+        amount: sent.total,
+        scale: options.currencyScale,
+        currency: options.currency,
+      };
+      this.feedback.effect(
+        'quotes.sent',
+        documentOutcome(this.format, sent, sent.recordedCustomerName ?? sent.customerName, total),
+        kind,
+      );
     }
   }
 

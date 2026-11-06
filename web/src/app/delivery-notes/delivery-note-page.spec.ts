@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { MatDialog } from '@angular/material/dialog';
 import type { ReceiverDialogData } from '../shared/receivers/receiver-dialog';
@@ -44,6 +45,7 @@ import type {
 import type { PickAsked } from '../shared/form/pick-api';
 import { NOBODY } from '../shared/receivers/receiver';
 import {
+  effectsSaid,
   effectToasts,
   failureToasts,
   noticeToasts,
@@ -921,6 +923,17 @@ describe('DeliveryNotePage', () => {
     await vi.waitFor(() =>
       expect(effectToasts()).toEqual(['delivery_notes.validated:corrigeable']),
     );
+    expect(effectsSaid()).toEqual([
+      {
+        key: 'delivery_notes.validated',
+        params: {
+          number: 'BL-2026-00001',
+          party: 'Carthage Conseil',
+          total: TestBed.inject(FormatFacade).amount('2975.000', 3),
+          currency: 'TND',
+        },
+      },
+    ]);
   });
 
   // docs/SPEC.md § 7, 2026-09-21 17:25: the step people skip is one action doing both moves, beside the two.
@@ -947,6 +960,12 @@ describe('DeliveryNotePage', () => {
     await vi.waitFor(() =>
       expect(effectToasts()).toEqual(['delivery_notes.validated_delivered:corrigeable']),
     );
+    expect(effectsSaid()[0]?.params).toEqual({
+      number: 'BL-2026-00001',
+      party: 'Carthage Conseil',
+      total: TestBed.inject(FormatFacade).amount('2975.000', 3),
+      currency: 'TND',
+    });
   });
 
   // A sale beyond the stock recorded is said in its own dialog before anything is numbered.

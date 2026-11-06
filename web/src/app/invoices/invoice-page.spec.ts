@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -49,6 +50,7 @@ import type {
 } from './invoices-types';
 import type { PickAsked } from '../shared/form/pick-api';
 import {
+  effectsSaid,
   effectToasts,
   failureToasts,
   noticeToasts,
@@ -1108,6 +1110,18 @@ describe('InvoicePage', () => {
     );
     // What was confirmed as corrigeable is said so once done (docs/SPEC.md § 7, 2026-09-25 22:17).
     await vi.waitFor(() => expect(effectToasts()).toEqual(['invoices.issued:corrigeable']));
+    // Which invoice left, for whom and for how much, the name as the invoice recorded it.
+    expect(effectsSaid()).toEqual([
+      {
+        key: 'invoices.issued',
+        params: {
+          number: 'FAC-2026-00045',
+          party: 'Carthage SA',
+          total: TestBed.inject(FormatFacade).amount('2143.000', 3),
+          currency: 'TND',
+        },
+      },
+    ]);
   });
 
   it('says before issuing the number the draft will carry, its total and who it is for', async () => {

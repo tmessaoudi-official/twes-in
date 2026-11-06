@@ -1522,8 +1522,8 @@
         "same": "Comme les mêmes jours du mois dernier"
       }
     },
-    "issued": "La facture a été émise.",
-    "credit_note_issued": "L’avoir a été émis.",
+    "issued": "La facture {{number}} a été émise pour {{party}} : {{total}} {{currency}}.",
+    "credit_note_issued": "L’avoir {{number}} a été émis pour {{party}} : {{total}} {{currency}}.",
     "cancelled": "Le brouillon a été abandonné.",
     "suggest": {
       "record_payment": "Enregistrer un paiement"
@@ -1749,8 +1749,8 @@
       "invalid": "Le bon a été refusé. Vérifiez le client, les lignes et les dates.",
       "customer_unavailable": "Ce client a été désactivé, ou fusionné dans un autre, depuis : choisissez le client sur le brouillon (après une fusion, le client conservé), ou réactivez-le dans sa fiche."
     },
-    "validated": "Le bon a été validé.",
-    "validated_delivered": "Le bon a été validé et livré.",
+    "validated": "Le bon {{number}} a été validé pour {{party}} : {{total}} {{currency}}.",
+    "validated_delivered": "Le bon {{number}} a été validé et livré à {{party}} : {{total}} {{currency}}.",
     "receiver_corrected": "Qui a reçu le bon est corrigé.",
     "cancelled": "Le bon a été annulé.",
     "suggest": {
@@ -3443,7 +3443,7 @@
     "back": "Retour aux devis",
     "saved": "Le brouillon a été enregistré.",
     "read_only": "Vous pouvez consulter les devis, pas les modifier.",
-    "sent": "Le devis est marqué envoyé : il porte son numéro et sa date de validité.",
+    "sent": "Le devis {{number}} est marqué envoyé à {{party}} : {{total}} {{currency}}, avec sa date de validité.",
     "accepted": "Le devis est marqué accepté.",
     "refused": "Le devis est marqué refusé.",
     "cancelled": "Le devis a été classé sans suite.",

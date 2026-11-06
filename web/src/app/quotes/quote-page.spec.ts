@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { RecordDeletes } from '../shared/records/record-deletes';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -26,10 +27,11 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import {
+  effectsSaid,
   effectToasts,
   failureToasts,
-  offeredNext,
   noticeToasts,
+  offeredNext,
   provideQuietFeedback,
   RecordedFeedback,
   successToasts,
@@ -470,6 +472,17 @@ describe('QuotePage', () => {
       expect.any(Function),
     );
     await vi.waitFor(() => expect(effectToasts()).toEqual(['quotes.sent:definitif']));
+    expect(effectsSaid()).toEqual([
+      {
+        key: 'quotes.sent',
+        params: {
+          number: sent.number,
+          party: 'Carthage Conseil',
+          total: TestBed.inject(FormatFacade).amount(sent.total, 3),
+          currency: 'TND',
+        },
+      },
+    ]);
   });
 
   /** The next save is refused as made over a version saved since, and the read after it brings that version. */

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -374,12 +375,33 @@ describe('PurchaseOrderPage', () => {
       expect.any(Function),
     );
     const said = (TestBed.inject(Feedback) as RecordedFeedback).said.at(-1);
+    // Which order left, to whom and for how much before tax.
     expect(said).toMatchObject({
-      key: 'purchases.sent',
-      params: { number: 'BC-2026-0007' },
+      key: 'purchases.sent_total',
+      params: {
+        number: 'BC-2026-0007',
+        party: 'Sotumag',
+        total: TestBed.inject(FormatFacade).amount('12.000', 3),
+        currency: 'TND',
+      },
       effect: 'corrigeable',
       action: { key: 'purchases.suggest.receive' },
     });
+  });
+
+  it('says an order sent without its total when its prices are not the reader’s to see', async () => {
+    order.set(orderIn('draft'));
+    facade.reviseAndSend.mockResolvedValueOnce({ ...orderIn('sent'), totalNet: null });
+    await open('o1');
+
+    q('document-action-send')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said.at(-1);
+    expect(said?.key).toBe('purchases.sent');
+    expect(said?.params).toEqual({ number: 'BC-2026-0007', party: 'Sotumag' });
   });
 
   it('lays the total in the summary track, before the order itself', async () => {
