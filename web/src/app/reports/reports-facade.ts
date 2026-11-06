@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import { FORM_REFUSAL_TEXTS } from '../shared/form/form-refusal-texts';
+import { TextsParts } from '../shared/i18n/texts-part';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ReportsApi } from './reports-api';
 import {
@@ -15,19 +18,21 @@ import { sessionSignal } from '../shared/session/session-data';
 
 /**
  * A report being read. `gone` is a report nobody here may read, of a module switched off, or that does not exist;
- * `refused` a question the API cannot answer, such as a period of more than a year.
+ * `refused` a question the API cannot answer, such as a period of more than a year, with the reason it gave, which tells
+ * what to change.
  */
 export type ReportState =
   | { readonly status: 'loading' }
   | { readonly status: 'ready'; readonly result: ReportResult }
   | { readonly status: 'gone' }
-  | { readonly status: 'refused' }
+  | { readonly status: 'refused'; readonly refusal: FieldRefusal | null }
   | { readonly status: 'unavailable' };
 
 /** The reports as signals: the catalogue the area offers, and the report on screen. */
 @Injectable({ providedIn: 'root' })
 export class ReportsFacade {
   private readonly api = inject(ReportsApi);
+  private readonly injector = inject(Injector);
   private readonly catalogueSignal = sessionSignal<readonly ReportEntry[] | null>(null);
   private readonly catalogueFailedSignal = sessionSignal(false);
   private readonly reportSignal = sessionSignal<ReportState>({ status: 'loading' });
@@ -55,16 +60,25 @@ export class ReportsFacade {
     try {
       state = { status: 'ready', result: await this.api.report(companyId, key, query) };
     } catch (error) {
-      state = {
-        status:
-          error instanceof ReportGone
-            ? 'gone'
-            : error instanceof ReportRefused
-              ? 'refused'
-              : 'unavailable',
-      };
+      state =
+        error instanceof ReportGone
+          ? { status: 'gone' }
+          : error instanceof ReportRefused
+            ? { status: 'refused', refusal: await this.worded(error) }
+            : { status: 'unavailable' };
     }
     if (mine === this.asked) this.reportSignal.set(state);
+  }
+
+  /** The reason the API worded, its texts opened first; were they not to come, the page's own sentence stands. */
+  private async worded(refused: ReportRefused): Promise<FieldRefusal | null> {
+    const refusal = refused.refusals.find((one) => one.reason !== null) ?? null;
+    if (refusal !== null)
+      await this.injector
+        .get(TextsParts)
+        .open(FORM_REFUSAL_TEXTS)
+        .catch(() => undefined);
+    return refusal;
   }
 
   /** Forgets the report shown, so another report never opens on the last one's figures. */

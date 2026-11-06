@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   InjectionToken,
+  Injector,
   input,
   type Signal,
   signal,
@@ -16,9 +17,13 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
-import type { DescriptorFormGroup } from '../shared/form/form-builder';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import type { FieldRefusal } from '../shared/form/field-refusals';
+import type { DescriptorFormGroup, FieldError } from '../shared/form/form-builder';
+import { FORM_REFUSAL_TEXTS } from '../shared/form/form-refusal-texts';
+import { refusedError } from '../shared/form/refusal-words';
 import { AmountPipe } from '../shared/i18n/format-pipes';
+import { TextsParts } from '../shared/i18n/texts-part';
 import {
   amountOf,
   atCurrencyScale,
@@ -37,8 +42,11 @@ export const PRICE_PREVIEW_DELAY = new InjectionToken<number>('PRICE_PREVIEW_DEL
   factory: () => 250,
 });
 
-/** The lines counted, null when the API could not count them, undefined while there is no price to count. */
-type Preview = PricePreviewLine[] | null | undefined;
+/**
+ * The lines counted, the words of the API's refusal when the price cannot be totalled (one too large for an amount),
+ * null when the API could not count them, undefined while there is no price to count.
+ */
+type Preview = PricePreviewLine[] | { readonly refused: FieldError } | null | undefined;
 
 /** A price the API takes: digits, and up to four decimals after a point. */
 const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
@@ -124,7 +132,7 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
         </dl>
       }
 
-      @if (withTax(); as lines) {
+      @if (linesOf(withTax()); as lines) {
         <div class="flex flex-col gap-1">
           <h3 class="m-0 text-base font-medium">
             {{ 'products.calculator.with_tax' | translate }}
@@ -136,6 +144,10 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
             "
           />
         </div>
+      } @else if (refusalOf(withTax()); as refused) {
+        <p class="m-0" role="alert" data-testid="price-calculator-with-tax-refused">
+          {{ refused.key | translate: refused.params }}
+        </p>
       } @else if (withTax() === null) {
         <p class="m-0" data-testid="price-calculator-with-tax-unavailable">
           {{ 'products.calculator.with_tax_unavailable' | translate }}
@@ -211,7 +223,7 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
                   }}
                 </span>
               }
-              @if (targetWithTax(); as lines) {
+              @if (linesOf(targetWithTax()); as lines) {
                 <ng-container
                   *ngTemplateOutlet="
                     prices;
@@ -294,6 +306,8 @@ export class PriceCalculator {
 
   private readonly products = inject(ProductsFacade);
   private readonly delay = inject(PRICE_PREVIEW_DELAY);
+  private readonly injector = inject(Injector);
+  private readonly translate = inject(TranslateService);
 
   protected readonly bases: readonly PercentBasis[] = ['margin', 'markup'];
   protected readonly basis = signal<PercentBasis>('margin');
@@ -380,6 +394,23 @@ export class PriceCalculator {
     return value === null ? null : (Math.round(value * 100) / 100).toFixed(2);
   }
 
+  protected linesOf(preview: Preview): PricePreviewLine[] | null {
+    return Array.isArray(preview) ? preview : null;
+  }
+
+  protected refusalOf(preview: Preview): FieldError | null {
+    return preview != null && !Array.isArray(preview) ? preview.refused : null;
+  }
+
+  /** A refusal in its reason's words, its texts opened first; were they not to come, the plain « Valeur refusée. ». */
+  private async worded(refusal: FieldRefusal): Promise<Preview> {
+    await this.injector
+      .get(TextsParts)
+      .open(FORM_REFUSAL_TEXTS)
+      .catch(() => undefined);
+    return { refused: refusedError(this.translate, refusal) };
+  }
+
   protected asLines(lines: unknown): PricePreviewLine[] {
     return lines as PricePreviewLine[];
   }
@@ -404,9 +435,14 @@ export class PriceCalculator {
         return;
       }
       const timer = setTimeout(() => {
-        void this.products.pricePreview(companyId, price, taxes, quantities).then((lines) => {
-          if (turn === asked) shown.set(lines);
-        });
+        void this.products
+          .pricePreview(companyId, price, taxes, quantities)
+          .then((answer) =>
+            answer === null || Array.isArray(answer) ? answer : this.worded(answer),
+          )
+          .then((said) => {
+            if (turn === asked) shown.set(said);
+          });
       }, this.delay);
       onCleanup(() => clearTimeout(timer));
     });

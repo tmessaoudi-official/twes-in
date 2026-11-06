@@ -132,7 +132,11 @@
       }
       @case ('refused') {
         <p role="alert" class="text-error" data-testid="report-refused">
-          {{ 'reports.errors.refused' | translate }}
+          @if (refusedSaid(); as said) {
+            {{ said.key | translate: said.params }}
+          } @else {
+            {{ 'reports.errors.refused' | translate }}
+          }
         </p>
       }
       @case ('unavailable') {

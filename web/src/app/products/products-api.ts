@@ -193,7 +193,8 @@ export class ProductsApi {
       taxComponentIds: [...taxComponentIds],
       quantities: [...quantities],
     };
-    return this.guard(async () =>
+    // A refusal names the price it is the price's to change, in a reason the calculator words.
+    return this.saving(async () =>
       (
         await firstValueFrom(
           this.http.post<PricePreviewRead>(path(companyId, 'price-preview'), body),

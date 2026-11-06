@@ -107,16 +107,24 @@ final class RunReportTest extends TestCase
         $report = new SalesByCustomerStub([], byEstablishment: false);
         $narrowed = new ReportContext($this->context->company, $this->context->today, $this->context->may, 'an-establishment');
 
-        $this->expectException(InvalidReportRequest::class);
-        new RunReport()->run($report, $narrowed, $this->october, ReportComparison::None);
+        try {
+            new RunReport()->run($report, $narrowed, $this->october, ReportComparison::None);
+            self::fail('an establishment the report has no say over is refused');
+        } catch (InvalidReportRequest $refused) {
+            self::assertSame(['establishment', 'not_by_establishment', []], [$refused->field, $refused->reason, $refused->params], 'refused on the establishment, in words that tell to read the whole company');
+        }
     }
 
     public function testAReportOfTodayRefusesAComparison(): void
     {
         $report = new SalesByCustomerStub([], periodic: false);
 
-        $this->expectException(InvalidReportRequest::class);
-        new RunReport()->run($report, $this->context, $this->october, ReportComparison::Previous);
+        try {
+            new RunReport()->run($report, $this->context, $this->october, ReportComparison::Previous);
+            self::fail('a comparison of today is refused');
+        } catch (InvalidReportRequest $refused) {
+            self::assertSame(['compare', 'compare_today', []], [$refused->field, $refused->reason, $refused->params], 'refused on the comparison, in words that tell to compare with nothing');
+        }
     }
 
     public function testAReportGivingOneRowTwiceIsAFault(): void

@@ -96,6 +96,32 @@ final class ReportsTest extends ApiTestCase
         }
     }
 
+    public function testAPeriodARefusedReportCannotReadIsRefusedOnItsDayWithItsReason(): void
+    {
+        $base = $this->path().'/reports/expenses-by-category';
+
+        $this->getJson($base.'?from=2026-09-30&to=2026-09-01');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'to', 'reason' => 'on_or_after', 'params' => ['day' => '2026-09-30']]], $this->refusals(), 'a period ends on its first day at the earliest');
+
+        $this->getJson($base.'?from=2026-09-01&to=2027-09-30');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'to', 'reason' => 'period_longest', 'params' => ['days' => 366]]], $this->refusals(), 'a report reads a year and a day at most');
+
+        $narrowed = '?from=2026-09-01&to=2026-09-30&establishment='.$this->establishment();
+        $this->getJson($base.$narrowed);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'establishment', 'reason' => 'not_by_establishment', 'params' => []]], $this->refusals(), 'an expense belongs to no establishment: the report reads the whole company');
+
+        $this->stepUp('password-1234');
+        $this->client->request('GET', $base.'/export.csv?from=2026-09-30&to=2026-09-01');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'to', 'reason' => 'on_or_after', 'params' => ['day' => '2026-09-30']]], $this->refusals(), 'the file is refused as the report is, in words the export menu says');
+        $this->client->request('GET', $base.'/export.csv'.$narrowed);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'establishment', 'reason' => 'not_by_establishment', 'params' => []]], $this->refusals(), 'and so is its establishment');
+    }
+
     public function testTheFileIsTheReportsFiguresAndIsOnRecord(): void
     {
         $file = $this->path().'/reports/expenses-by-category/export.csv?from=2026-09-01&to=2026-09-30&compare=previous';

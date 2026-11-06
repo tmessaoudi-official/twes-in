@@ -189,19 +189,22 @@ export class ProductsFacade {
   }
 
   /**
-   * The with-tax figures of a price being typed, or null when the API could not count them (a tax it refuses, the
-   * network). Quiet: a preview that fails says so where it is shown, never as the page's error.
+   * The with-tax figures of a price being typed, the API's refusal when it words why the price cannot be totalled (one
+   * whose pack comes to more than an amount holds, which no wait would count), or null when it could not count them (a
+   * tax it refuses, the network). Quiet: a preview that fails says so where it is shown, never as the page's error.
    */
   async pricePreview(
     companyId: string,
     unitPriceNet: string,
     taxComponentIds: readonly string[],
     quantities: readonly string[],
-  ): Promise<PricePreviewLine[] | null> {
+  ): Promise<PricePreviewLine[] | FieldRefusal | null> {
     try {
       return await this.api.pricePreview(companyId, unitPriceNet, taxComponentIds, quantities);
-    } catch {
-      return null;
+    } catch (error) {
+      return error instanceof ProductsRefused
+        ? (error.refusals.find((refusal) => refusal.reason !== null) ?? null)
+        : null;
     }
   }
 

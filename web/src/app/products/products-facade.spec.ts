@@ -108,6 +108,7 @@ describe('ProductsFacade', () => {
     createCategory: vi.fn(),
     reviseCategory: vi.fn(),
     substitutionGroups: vi.fn(),
+    pricePreview: vi.fn(),
   };
   const fieldsApi = { list: vi.fn() };
   const settingsApi = { chain: vi.fn() };
@@ -273,5 +274,17 @@ describe('ProductsFacade', () => {
 
     expect(facade.error()).toBe('network');
     expect(facade.busy()).toBe(false);
+  });
+
+  it('hands the calculator a price refused in words, and nothing for a preview the API could not count', async () => {
+    const refusal = { field: 'unitPriceNet', reason: 'amount_too_large', params: {} };
+    api.pricePreview.mockRejectedValueOnce(new ProductsRefused('invalid', [refusal]));
+    expect(await facade.pricePreview('c1', '9999999999', [], ['20'])).toEqual(refusal);
+
+    api.pricePreview.mockRejectedValueOnce(new ProductsRefused('invalid', []));
+    expect(await facade.pricePreview('c1', '100', ['nope'], ['1'])).toBeNull();
+
+    api.pricePreview.mockRejectedValueOnce(new Error('boom'));
+    expect(await facade.pricePreview('c1', '100', [], ['1'])).toBeNull();
   });
 });

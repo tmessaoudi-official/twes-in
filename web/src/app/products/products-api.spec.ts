@@ -834,5 +834,23 @@ describe('ProductsApi', () => {
       .expectOne('/api/companies/c1/price-preview')
       .flush({}, { status: 422, statusText: 'Unprocessable Content' });
     await expect(refused).rejects.toBeInstanceOf(ProductsRefused);
+
+    // A price no amount holds comes back refused on the price, in a reason the calculator words.
+    const tooLarge = api.pricePreview('c1', '9999999999', [], ['20']);
+    http.expectOne('/api/companies/c1/price-preview').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'unitPriceNet',
+            message: 'Too large.',
+            payload: { reason: 'amount_too_large', params: [] },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(tooLarge).rejects.toMatchObject({
+      refusals: [{ field: 'unitPriceNet', reason: 'amount_too_large', params: {} }],
+    });
   });
 });

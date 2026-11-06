@@ -88,6 +88,16 @@ final class PricePreviewTest extends ApiTestCase
         }
     }
 
+    public function testAPriceWhosePackComesToMoreThanAnAmountHoldsIsRefusedOnThePriceWithItsReason(): void
+    {
+        $this->signedIn(['product.read']);
+
+        $this->postJson($this->path(), ['unitPriceNet' => '9999999999', 'taxComponentIds' => [], 'quantities' => ['1', '20']]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'unitPriceNet', 'reason' => 'amount_too_large', 'params' => []]], $this->refusals(), 'waiting will never total it: the person lowers the price');
+    }
+
     public function testSomebodyWhoCannotReadProductsIsAnsweredAsAStranger(): void
     {
         $this->signedIn(['company.read']);

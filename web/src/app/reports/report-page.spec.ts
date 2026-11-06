@@ -29,6 +29,7 @@ import type { ReportEntry, ReportQuery, ReportResult } from './reports-types';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      import: { rejections: { on_or_after: 'Fin le {{day}} au plus tôt.' } },
       reports: {
         total: 'Total',
         previous: 'Période comparée',
@@ -369,11 +370,23 @@ describe('ReportPage', () => {
   });
 
   it('says a question the API refused', async () => {
-    report.set({ status: 'refused' });
+    report.set({ status: 'refused', refusal: null });
     const { el } = await open('/reports/expenses-by-category');
 
     expect(el.querySelector('[data-testid="report-refused"]')?.textContent).toContain('Refusé.');
     expect(el.querySelector('[data-testid="report-table"]')).toBeNull();
+  });
+
+  it('says a refused period in its reason’s words', async () => {
+    report.set({
+      status: 'refused',
+      refusal: { field: 'to', reason: 'on_or_after', params: { day: '2026-09-30' } },
+    });
+    const { el } = await open('/reports/expenses-by-category');
+
+    expect(el.querySelector('[data-testid="report-refused"]')?.textContent?.trim()).toBe(
+      'Fin le 2026-09-30 au plus tôt.',
+    );
   });
 
   it('reads the report again when what it counts changes', async () => {

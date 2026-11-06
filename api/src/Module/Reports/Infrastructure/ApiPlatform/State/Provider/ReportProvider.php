@@ -17,8 +17,8 @@ use App\Module\Reports\Application\RunReport;
 use App\Module\Reports\Infrastructure\ApiPlatform\Payload\ReportContexts;
 use App\Module\Reports\Infrastructure\ApiPlatform\Payload\ReportRequest;
 use App\Module\Reports\Infrastructure\ApiPlatform\Resource\ReportResource;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProviderInterface<ReportResource> */
 final readonly class ReportProvider implements ProviderInterface
@@ -40,7 +40,7 @@ final readonly class ReportProvider implements ProviderInterface
         try {
             return ReportResource::of($this->run->run($report, $reading, $asked->periodFor($report, $reading), $asked->comparison));
         } catch (InvalidReportRequest $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
     }
 }

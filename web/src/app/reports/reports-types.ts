@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { FieldRefusal } from '../shared/form/field-refusals';
+
 /** How a column's figures read: a name, a key the screen translates, a day, money, a quantity, a count or a span of days. */
 export type ReportColumnKind =
   'label' | 'choice' | 'day' | 'amount' | 'quantity' | 'count' | 'days';
@@ -86,9 +88,12 @@ export class ReportGone extends Error {
   }
 }
 
-/** A question the API refused (422): a period it cannot read, an establishment the report cannot be narrowed to. */
+/**
+ * A question the API refused (422): a period it cannot read, an establishment the report cannot be narrowed to, with
+ * what it named and why, when it says.
+ */
 export class ReportRefused extends Error {
-  constructor() {
+  constructor(readonly refusals: readonly FieldRefusal[] = []) {
     super('The report cannot be read so.');
   }
 }

@@ -27,6 +27,7 @@ use App\Module\Reports\Infrastructure\ApiPlatform\Payload\ReportRequest;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\BulkFile;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -37,7 +38,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -63,7 +63,7 @@ final readonly class ReportExportController implements BulkFile, DeclaresAuditAc
     ) {
     }
 
-    #[Route('/api/companies/{companyId}/reports/{key}/export.{format}', name: 'api_report_export', requirements: ['key' => '[a-z][a-z-]{1,39}', 'format' => 'csv|xlsx'], methods: ['GET'])]
+    #[Route('/api/companies/{companyId}/reports/{key}/export.{format}', name: 'api_report_export', requirements: ['key' => '[a-z][a-z-]{1,39}', 'format' => 'csv|xlsx'], methods: ['GET'], defaults: ['_api_respond' => true])]
     public function __invoke(Request $request, string $companyId, string $key, string $format): Response
     {
         $asked = ReportRequest::ofQuery($request->query->all());
@@ -83,7 +83,7 @@ final readonly class ReportExportController implements BulkFile, DeclaresAuditAc
         try {
             $result = $this->run->run($report, $reading, $asked->periodFor($report, $reading), $asked->comparison);
         } catch (InvalidReportRequest $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         $spreadsheet = SpreadsheetFormat::from($format);

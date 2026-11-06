@@ -17,6 +17,7 @@ use App\Module\Reports\Application\ReportComparison;
 use App\Module\Reports\Application\ReportContext;
 use App\Module\Reports\Application\ReportPeriod;
 use App\Shared\Domain\Service\WrittenDay;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\ApiPlatform\Payload\Paging;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
@@ -93,7 +94,7 @@ final readonly class ReportRequest
         try {
             return new ReportPeriod(new \DateTimeImmutable($this->from), new \DateTimeImmutable($this->to));
         } catch (InvalidReportRequest $refused) {
-            throw new UnprocessableEntityHttpException('to: '.$refused->getMessage(), $refused);
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
     }
 

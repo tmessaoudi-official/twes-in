@@ -2,9 +2,12 @@
 
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup } from '@angular/forms';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import type { DescriptorFormGroup } from '../shared/form/form-builder';
+import { FORM_REFUSAL_TEXTS } from '../shared/form/form-refusal-texts';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { PRICE_PREVIEW_DELAY, PriceCalculator } from './price-calculator';
 import { ProductsFacade } from './products-facade';
@@ -25,7 +28,8 @@ describe('PriceCalculator', () => {
       price: string,
       _taxes: readonly string[],
       quantities: readonly string[],
-    ): Promise<PricePreviewLine[] | null> => quantities.map((quantity) => counted(price, quantity)),
+    ): Promise<PricePreviewLine[] | FieldRefusal | null> =>
+      quantities.map((quantity) => counted(price, quantity)),
   );
 
   const q = (testId: string): HTMLElement | null =>
@@ -83,6 +87,7 @@ describe('PriceCalculator', () => {
         { provide: ProductsFacade, useValue: { pricePreview } },
         { provide: FormatFacade, useValue: { amount: (value: string) => `~${value}` } },
         { provide: PRICE_PREVIEW_DELAY, useValue: 0 },
+        { provide: TextsParts, useValue: { open: vi.fn(() => Promise.resolve()) } },
       ],
     });
     pricePreview.mockClear();
@@ -220,5 +225,23 @@ describe('PriceCalculator', () => {
     await settled();
     expect(pricePreview).not.toHaveBeenCalled();
     expect(q('price-calculator-with-tax-unavailable')).toBeNull();
+  });
+
+  it('says in its words a price the API refuses to total, which waiting would never count', async () => {
+    pricePreview.mockResolvedValueOnce({
+      field: 'unitPriceNet',
+      reason: 'amount_too_large',
+      params: {},
+    });
+    TestBed.inject(TranslateService).setTranslation('fr', {
+      import: { rejections: { amount_too_large: 'Baissez la quantité ou le prix.' } },
+    });
+    TestBed.inject(TranslateService).use('fr');
+    await open('60.000', '9999999999.000');
+
+    expect(TestBed.inject(TextsParts).open).toHaveBeenCalledWith(FORM_REFUSAL_TEXTS);
+    expect(text('price-calculator-with-tax-refused')).toBe('Baissez la quantité ou le prix.');
+    expect(q('price-calculator-with-tax-unavailable')).toBeNull();
+    expect(q('price-calculator-with-tax-1')).toBeNull();
   });
 });

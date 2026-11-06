@@ -23,10 +23,10 @@ final readonly class ReportPeriod
         $this->from = $from->setTime(0, 0);
         $this->to = $to->setTime(0, 0);
         if ($this->to < $this->from) {
-            throw new InvalidReportRequest('The period ends before it starts.');
+            throw new InvalidReportRequest('The period ends before it starts.', 'to', 'on_or_after', ['day' => $this->from->format('Y-m-d')]);
         }
         if ($this->from->diff($this->to)->days >= self::LONGEST_DAYS) {
-            throw new InvalidReportRequest(\sprintf('A report reads at most %d days.', self::LONGEST_DAYS));
+            throw new InvalidReportRequest(\sprintf('A report reads at most %d days.', self::LONGEST_DAYS), 'to', 'period_longest', ['days' => self::LONGEST_DAYS]);
         }
     }
 }

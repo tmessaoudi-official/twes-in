@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { FORM_REFUSAL_TEXTS } from '../shared/form/form-refusal-texts';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { ReportsApi } from './reports-api';
 import { ReportsFacade } from './reports-facade';
 import { ReportGone, ReportRefused, type ReportQuery, type ReportResult } from './reports-types';
@@ -35,7 +37,10 @@ describe('ReportsFacade', () => {
     report = vi.fn();
     catalogue = vi.fn();
     TestBed.configureTestingModule({
-      providers: [{ provide: ReportsApi, useValue: { report, catalogue } }],
+      providers: [
+        { provide: ReportsApi, useValue: { report, catalogue } },
+        { provide: TextsParts, useValue: { open: vi.fn(() => Promise.resolve()) } },
+      ],
     });
     facade = TestBed.inject(ReportsFacade);
   });
@@ -59,7 +64,14 @@ describe('ReportsFacade', () => {
 
     report.mockRejectedValueOnce(new ReportRefused());
     await facade.loadReport('k1', 'takings', QUERY);
-    expect(facade.report().status).toBe('refused');
+    expect(facade.report()).toEqual({ status: 'refused', refusal: null });
+
+    // The reason the API words is kept, its texts opened before the page says it.
+    const refusal = { field: 'to', reason: 'on_or_after', params: { day: '2026-09-30' } };
+    report.mockRejectedValueOnce(new ReportRefused([refusal]));
+    await facade.loadReport('k1', 'takings', QUERY);
+    expect(facade.report()).toEqual({ status: 'refused', refusal });
+    expect(TestBed.inject(TextsParts).open).toHaveBeenCalledWith(FORM_REFUSAL_TEXTS);
 
     report.mockRejectedValueOnce(new Error('offline'));
     await facade.loadReport('k1', 'takings', QUERY);

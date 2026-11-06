@@ -20,10 +20,10 @@ final readonly class RunReport
     public function run(DeclaresReport $report, ReportContext $context, ReportPeriod $period, ReportComparison $comparison): ReportResult
     {
         if (null !== $context->establishmentId && !$report->byEstablishment()) {
-            throw new InvalidReportRequest(\sprintf('The report %s cannot be narrowed to an establishment.', $report->key()));
+            throw new InvalidReportRequest(\sprintf('The report %s cannot be narrowed to an establishment.', $report->key()), 'establishment', 'not_by_establishment');
         }
         if (!$report->periodic() && ReportComparison::None !== $comparison) {
-            throw new InvalidReportRequest(\sprintf('The report %s reads today, and today has nothing to be compared with.', $report->key()));
+            throw new InvalidReportRequest(\sprintf('The report %s reads today, and today has nothing to be compared with.', $report->key()), 'compare', 'compare_today');
         }
         $columns = $report->columns($context);
         $current = $report->rows($context, $period);

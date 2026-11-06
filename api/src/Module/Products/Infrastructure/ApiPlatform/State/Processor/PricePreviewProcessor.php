@@ -19,7 +19,6 @@ use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<PricePreviewResource, PricePreviewResource> */
 final readonly class PricePreviewProcessor implements ProcessorInterface
@@ -37,7 +36,8 @@ final readonly class PricePreviewProcessor implements ProcessorInterface
         } catch (InvalidProduct $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         } catch (InvalidDocument $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+            // Each pack is one line of the price typed here, so what a line cannot total is the price's to change.
+            throw DomainRule::refused('unitPriceNet', $refused->getMessage(), $refused->reason ?? 'invalid_value', previous: $refused);
         }
     }
 }

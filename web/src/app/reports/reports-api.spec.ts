@@ -97,6 +97,26 @@ describe('ReportsApi', () => {
       .flush(null, { status: 422, statusText: 'Unprocessable' });
     await expect(refused).rejects.toBeInstanceOf(ReportRefused);
 
+    // A period the API words a refusal for comes with it, the day it names and the reason the page says.
+    const tooLong = api.report('k1', 'takings', SEPTEMBER);
+    http
+      .expectOne((r) => r.url === `${BASE}/takings`)
+      .flush(
+        {
+          violations: [
+            {
+              propertyPath: 'to',
+              message: 'A report reads at most 366 days.',
+              payload: { reason: 'period_longest', params: { days: 366 } },
+            },
+          ],
+        },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await expect(tooLong).rejects.toMatchObject({
+      refusals: [{ field: 'to', reason: 'period_longest', params: { days: 366 } }],
+    });
+
     const failed = api.report('k1', 'takings', SEPTEMBER);
     http
       .expectOne((r) => r.url === `${BASE}/takings`)

@@ -26,6 +26,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { EstablishmentsFacade } from '../company/establishments-facade';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
+import { RefusalFigures } from '../shared/form/refusal-figures';
+import { refusedError } from '../shared/form/refusal-words';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { todayIn } from '../shared/i18n/format';
@@ -107,6 +109,7 @@ export class ReportPage implements OnInit {
   private readonly establishmentsFacade = inject(EstablishmentsFacade);
   private readonly format = inject(FormatFacade);
   private readonly translate = inject(TranslateService);
+  private readonly figures = inject(RefusalFigures);
   private readonly live = inject(LiveChanges);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
@@ -155,6 +158,13 @@ export class ReportPage implements OnInit {
   protected readonly result = computed(() => {
     const state = this.state();
     return state.status === 'ready' && state.result.key === this.key() ? state.result : null;
+  });
+  /** What the API refused in its reason's words, which tell what to change, its day as the reader reads days. */
+  protected readonly refusedSaid = computed(() => {
+    const state = this.state();
+    return state.status === 'refused' && state.refusal !== null
+      ? refusedError(this.translate, state.refusal, state.refusal.params, this.figures)
+      : null;
   });
   protected readonly compared = computed(() => this.result()?.comparisonFrom != null);
   protected readonly headings = computed(() =>
