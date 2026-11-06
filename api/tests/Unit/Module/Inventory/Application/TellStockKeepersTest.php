@@ -16,6 +16,7 @@ use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
 use App\Tenancy\Domain\Model\Role;
 use App\Tenancy\Domain\ValueObject\Permission;
+use App\Tests\Support\InMemoryEffects;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryNotifications;
 use PHPUnit\Framework\TestCase;
@@ -33,7 +34,7 @@ final class TellStockKeepersTest extends TestCase
         $keeper = $this->member($memberships, 'keeper@acme.test', $acme, ['stock.read', 'stock.write']);
         $this->member($memberships, 'reader@acme.test', $acme, ['stock.read', 'delivery_note.validate']);
         $this->member($memberships, 'keeper@globex.test', $globex, ['stock.write']);
-        $tell = new TellStockKeepers($memberships, $notifications);
+        $tell = new TellStockKeepers($memberships, $notifications, new InMemoryEffects());
         $noteId = Uuid::v7();
 
         $tell->deliveryNoteLeftLinesOut($acme->getId(), $noteId, 'BL-2026-00007');

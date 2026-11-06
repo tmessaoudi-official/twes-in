@@ -46,6 +46,7 @@ use App\Tenancy\Domain\Model\Role;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCompanies;
+use App\Tests\Support\InMemoryEffects;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryModuleStates;
@@ -67,6 +68,7 @@ use Symfony\Component\Uid\Uuid;
 final class MoveStockOnInvoicesTest extends TestCase
 {
     private InMemoryNotifications $notifications;
+    private InMemoryEffects $effects;
     private InMemoryStockMoveFailures $failures;
     private InMemoryStockMovements $movements;
     private Company $company;
@@ -100,6 +102,7 @@ final class MoveStockOnInvoicesTest extends TestCase
 
         self::assertSame([[], []], [$this->movements->movements, $logger->logged]);
         self::assertSame([], $this->notifications->published);
+        self::assertSame([], $this->effects->said);
     }
 
     public function testACreditNoteTakesNothingOutWhateverItsEventCarries(): void
@@ -132,6 +135,7 @@ final class MoveStockOnInvoicesTest extends TestCase
         self::assertSame('error', $logger->logged[0][0]);
         self::assertStringContainsString('FAC-2026-00001', $logger->logged[0][1]);
         self::assertSame([TellStockKeepers::INVOICE_MOVED_NO_STOCK], array_map(static fn ($n) => $n->type, $this->notifications->published));
+        self::assertSame([['stock.document_not_moved', $this->effects->said[0]->id?->toRfc4122(), ['document' => 'invoice', 'outcome' => 'failed', 'number' => 'FAC-2026-00001']]], $this->effects->told(), 'whoever issued it hears that its stock did not move');
         self::assertSame([[FailedMove::Invoice, 'FAC-2026-00001']], array_map(static fn ($f) => [$f->getMove(), $f->getNumber()], $this->failures->failures));
     }
 
@@ -148,6 +152,7 @@ final class MoveStockOnInvoicesTest extends TestCase
         self::assertCount(1, $this->movements->movements);
         self::assertSame('warning', $logger->logged[0][0]);
         self::assertSame([TellStockKeepers::INVOICE_LINES_LEFT_OUT], array_map(static fn ($n) => $n->type, $this->notifications->published));
+        self::assertSame([['stock.document_not_moved', ['document' => 'invoice', 'outcome' => 'left_out', 'number' => 'FAC-2026-00001']]], array_map(static fn (array $told): array => [$told[0], $told[2]], $this->effects->told()));
     }
 
     public function testACreditNoteReturnsOnlyWhatItsReturnedLinesNameToTheInvoiceItCorrectsOnce(): void
@@ -167,6 +172,7 @@ final class MoveStockOnInvoicesTest extends TestCase
         self::assertTrue($note->invoiceId->equals($back->getSourceId()));
         self::assertTrue($invoiceId->equals($back->getReversesSourceId()));
         self::assertSame([], $this->notifications->published);
+        self::assertSame([], $this->effects->said, 'what moved as it should is the document\'s own outcome');
     }
 
     /**
@@ -210,6 +216,8 @@ final class MoveStockOnInvoicesTest extends TestCase
         self::assertSame('warning', $logger->logged[0][0]);
         self::assertStringContainsString('FAC-2026-00001', $logger->logged[0][1]);
         self::assertSame([TellStockKeepers::CREDIT_LINES_NOT_RETURNED], array_map(static fn ($n) => $n->type, $this->notifications->published));
+        self::assertSame([['document' => 'credit_note', 'outcome' => 'left_out', 'number' => 'FAC-2026-00001']], array_map(static fn (array $told): array => $told[2], $this->effects->told()));
+        $this->effects->said = [];
 
         $failing = new class implements Transactions {
             public function run(callable $work): mixed
@@ -229,12 +237,14 @@ final class MoveStockOnInvoicesTest extends TestCase
 
         self::assertSame('error', $brokenLogger->logged[0][0]);
         self::assertSame([TellStockKeepers::CREDIT_MOVED_NO_STOCK], array_map(static fn ($n) => $n->type, $this->notifications->published));
+        self::assertSame([['document' => 'credit_note', 'outcome' => 'failed', 'number' => 'FAC-2026-00001']], array_map(static fn (array $told): array => $told[2], $this->effects->told()));
         self::assertSame([FailedMove::CreditNote], array_map(static fn ($f) => $f->getMove(), $this->failures->failures));
     }
 
     protected function setUp(): void
     {
         $this->notifications = new InMemoryNotifications();
+        $this->effects = new InMemoryEffects();
         $this->movements = new InMemoryStockMovements();
         $this->failures = new InMemoryStockMoveFailures();
         $now = new \DateTimeImmutable('2026-09-15 09:00:00');
@@ -288,7 +298,7 @@ final class MoveStockOnInvoicesTest extends TestCase
             }
         };
 
-        return [new MoveStockOnInvoices($move, new TellStockKeepers($memberships, $this->notifications), $logger, $notes, $this->recorded()), $logger];
+        return [new MoveStockOnInvoices($move, new TellStockKeepers($memberships, $this->notifications, $this->effects), $logger, $notes, $this->recorded()), $logger];
     }
 
     /**

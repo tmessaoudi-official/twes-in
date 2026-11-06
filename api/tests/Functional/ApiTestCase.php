@@ -20,6 +20,7 @@ use App\Identity\Infrastructure\Security\CsrfRequestListener;
 use App\Module\Customers\Domain\ValueObject\CustomerKind;
 use App\Module\Customers\Domain\ValueObject\CustomerProfile;
 use App\Shared\Domain\Model\PostalAddress;
+use App\Shared\Infrastructure\Effects\EffectsAnswer;
 use App\Shared\Infrastructure\Submissions\Submissions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Membership;
@@ -430,6 +431,23 @@ abstract class ApiTestCase extends WebTestCase
         self::assertNotNull($wait, 'a spent budget says when to come back');
         self::assertMatchesRegularExpression('/^[1-9]\d*$/', $wait);
         self::assertLessThanOrEqual($window + $roundedTo, (int) $wait, 'the wait is the window, rounded up by one step at most');
+    }
+
+    /**
+     * What the last answer said the request did beyond its subject (`X-Effects`), all of it or one kind's.
+     *
+     * @return list<mixed>
+     */
+    protected function effects(?string $kind = null): array
+    {
+        $header = $this->client->getResponse()->headers->get(EffectsAnswer::HEADER);
+        if (null === $header) {
+            return [];
+        }
+        $effects = json_decode($header, true, flags: \JSON_THROW_ON_ERROR);
+        self::assertIsList($effects);
+
+        return null === $kind ? $effects : array_values(array_filter($effects, static fn (mixed $effect): bool => \is_array($effect) && $kind === ($effect['kind'] ?? null)));
     }
 
     /** @return array<string, mixed> */

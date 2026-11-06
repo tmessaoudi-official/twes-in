@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { CUSTOM_FIELD_PREFIX } from '../custom-fields/custom-fields';
+import { CUSTOM_FIELD_PREFIX } from '../custom-fields/custom-field-prefix';
 
 /**
  * A field the API refused, as its 422 names it: the form field it lands on, the reason the screens translate (the

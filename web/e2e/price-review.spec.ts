@@ -35,7 +35,9 @@ test('a receipt that moves the margin offers the price that keeps it, and the pr
     await page.getByRole('option', { name: 'Prendre le coût de cette réception' }).click();
     await page.getByTestId('stock-movement-save').click();
 
-    // The receipt is recorded, and the margin it moved is said at once, with the price that keeps it a click away.
+    // The receipt is recorded, and once that is read the margin it moved is said, with the price that keeps it a
+    // click away: a consequence never replaces the toast on screen.
+    await closeRecorded(page);
     await expect(toast(page)).toContainText(
       `La marge de Vis ${reference} est passée de 50,0 % à 40,0 %.`,
     );
@@ -86,7 +88,9 @@ test('a price that followed its cost is put back from the toast that says it', a
     await page.getByRole('option', { name: 'Prendre le coût de cette réception' }).click();
     await page.getByTestId('stock-movement-save').click();
 
-    // The price moved with its cost, said with the way back: « Annuler » puts back the price it replaced.
+    // The price moved with its cost, said with the way back once the receipt's own toast is read: « Annuler » puts
+    // back the price it replaced.
+    await closeRecorded(page);
     await expect(toast(page)).toContainText(`Le prix de Vis ${reference} est passé de`);
     await toast(page).getByRole('button', { name: 'Annuler' }).click();
     await expect(toast(page)).toContainText(`Prix de Vis ${reference} remis à`);
@@ -150,4 +154,10 @@ async function filedUnder(page: Page, productId: string, categoryId: string | nu
     },
     [CSRF, productId, categoryId] as const,
   );
+}
+
+/** The receipt's own outcome, read and closed, after which what it did beyond itself is said. */
+async function closeRecorded(page: Page): Promise<void> {
+  await expect(toast(page)).toContainText('Le mouvement a été enregistré.');
+  await toast(page).getByTestId('toast-close').click();
 }

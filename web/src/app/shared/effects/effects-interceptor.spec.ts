@@ -4,6 +4,7 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { Feedback } from '../feedback/feedback';
 import { RequestActivity } from '../feedback/request-activity';
 import { EFFECT_SAYERS, EFFECTS_HEADER, type SaidEffect } from './effects';
 import { effectsInterceptor } from './effects-interceptor';
@@ -14,8 +15,10 @@ describe('effectsInterceptor', () => {
   const handleError = vi.fn();
   let settledAtOnce = true;
   let settle: () => void = () => undefined;
+  let idle: () => Promise<void> = () => Promise.resolve();
 
   beforeEach(() => {
+    idle = () => Promise.resolve();
     prices.mockReset();
     counts.mockReset();
     handleError.mockReset();
@@ -25,6 +28,7 @@ describe('effectsInterceptor', () => {
         provideHttpClient(withInterceptors([effectsInterceptor])),
         provideHttpClientTesting(),
         { provide: ErrorHandler, useValue: { handleError } },
+        { provide: Feedback, useValue: { idle: () => idle() } },
         {
           provide: RequestActivity,
           useValue: {
@@ -99,6 +103,35 @@ describe('effectsInterceptor', () => {
     );
 
     await vi.waitFor(() => expect(prices).toHaveBeenCalledOnce());
+  });
+
+  it('says each sayer in turn, once the toast on screen has closed, so two consequences are both read', async () => {
+    const closes: (() => void)[] = [];
+    idle = () => new Promise<void>((resolve) => closes.push(resolve));
+    answer(
+      '/api/companies/a/stock-movements',
+      '[{"kind":"product.price_followed","id":"p1","params":{}},{"kind":"stock.counted","id":"m1","params":{}}]',
+    );
+    await aTurn();
+    expect(prices).not.toHaveBeenCalled();
+
+    closes.shift()?.();
+    await vi.waitFor(() => expect(prices).toHaveBeenCalledOnce());
+    await aTurn();
+    expect(counts).not.toHaveBeenCalled();
+
+    // The next answer's effects wait behind this one's.
+    answer(
+      '/api/companies/a/stock-movements',
+      '[{"kind":"product.price_followed","id":"p2","params":{}}]',
+    );
+    closes.shift()?.();
+    await vi.waitFor(() => expect(counts).toHaveBeenCalledOnce());
+    await aTurn();
+    expect(prices).toHaveBeenCalledOnce();
+
+    closes.shift()?.();
+    await vi.waitFor(() => expect(prices).toHaveBeenCalledTimes(2));
   });
 
   it('says nothing when the answer names no effect', async () => {

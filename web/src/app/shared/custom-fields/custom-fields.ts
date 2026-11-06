@@ -8,9 +8,8 @@ import type {
   CustomFieldValue,
 } from './custom-fields-types';
 import { typedText } from '../form/typed-text';
+import { CUSTOM_FIELD_PREFIX } from './custom-field-prefix';
 
-/** The id prefix of a custom field in a form and of its column in a list. */
-export const CUSTOM_FIELD_PREFIX = 'custom__';
 /** The API refuses longer text; the form says so first. */
 export const CUSTOM_TEXT_MAX = 2000;
 

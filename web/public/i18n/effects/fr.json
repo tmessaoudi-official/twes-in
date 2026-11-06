@@ -1,0 +1,35 @@
+{
+  "effects": {
+    "late_cost": {
+      "both": "Le coût des ventes est corrigé de {{amount}}, et le coût du produit passe de {{before}} à {{after}}.",
+      "both_set": "Le coût des ventes est corrigé de {{amount}}, et le coût du produit est maintenant de {{after}}.",
+      "cost_of_sales": "Le coût des ventes est corrigé de {{amount}} pour les articles déjà sortis.",
+      "cost": "Le coût du produit passe de {{before}} à {{after}}.",
+      "cost_set": "Le coût du produit est maintenant de {{after}}.",
+      "many": "{{count}} {count, plural, one {coût saisi a corrigé le coût des ventes ou du produit.} other {coûts saisis ont corrigé le coût des ventes ou des produits.}}"
+    },
+    "count": {
+      "differences": "Écart de comptage enregistré : {{differences}}.",
+      "at": "{{difference}} à {{location}}",
+      "many": "{{count}} {count, plural, one {écart de comptage enregistré.} other {écarts de comptage enregistrés.}}"
+    },
+    "reorder": {
+      "one": "Le stock de {{establishment}} est à ce seuil ou en dessous : le produit apparaît dans « À surveiller ».",
+      "many": "{{count}} {count, plural, one {produit apparaît dans « À surveiller », son stock étant à son seuil ou en dessous.} other {produits apparaissent dans « À surveiller », leur stock étant à leur seuil ou en dessous.}}"
+    },
+    "merge": {
+      "carried": "Le stock fusionné passe au produit conservé, {{quantity}} d’une valeur de {{value}}.",
+      "carried_units": "Le stock fusionné passe au produit conservé, {{quantity}}.",
+      "carried_many": "Le stock des produits fusionnés passe au produit conservé."
+    },
+    "not_moved": {
+      "left_out": "Certaines lignes de {{number}} n’ont pas mis à jour le stock : une autre unité que celle du produit, ou aucune quantité.",
+      "failed": "Le stock de {{number}} n’a pas pu être mis à jour : la page du document permet de le reprendre.",
+      "many": "{{count}} {count, plural, one {document n’a pas mis à jour tout son stock.} other {documents n’ont pas mis à jour tout leur stock.}}"
+    },
+    "credit": {
+      "given_back": "Le crédit de {{amount}} revient au client.",
+      "given_back_unnamed": "Le crédit utilisé revient au client."
+    }
+  }
+}

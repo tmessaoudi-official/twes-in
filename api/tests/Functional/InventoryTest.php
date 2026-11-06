@@ -305,6 +305,15 @@ final class InventoryTest extends ApiTestCase
             ['locationId' => $zoneId, 'quantity' => '2'],
         ]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $siteCode = $this->em()->getConnection()->fetchOne('SELECT code FROM stock_location WHERE id = ?', [$siteId]);
+        self::assertSame(
+            [
+                ['kind' => 'stock.count_difference', 'id' => $this->laptopId, 'params' => ['difference' => '2.000', 'location' => $siteCode]],
+                ['kind' => 'stock.count_difference', 'id' => $this->laptopId, 'params' => ['difference' => '2.000', 'location' => 'Z1']],
+            ],
+            $this->effects('stock.count_difference'),
+            'whoever counted hears the difference booked at each place, which the other keepers are told',
+        );
         $parts = $this->json()['parts'];
         self::assertIsArray($parts);
         self::assertSame([$siteId, $zoneId], array_column($parts, 'locationId'));
@@ -733,6 +742,11 @@ final class InventoryTest extends ApiTestCase
         $this->login('stock@twes.local', 'password-1234');
         $this->postJson($this->path('stock-movements', $receiptId).'/cost', ['unitCost' => '8']);
         self::assertResponseIsSuccessful();
+        self::assertSame(
+            [['kind' => 'stock.late_cost_entered', 'id' => $this->laptopId, 'params' => ['costOfSales' => '15.0000', 'costBefore' => '5.0000', 'cost' => '8.0000']]],
+            $this->effects('stock.late_cost_entered'),
+            'whoever entered the cost hears what it booked to the cost of sales and where the product cost went',
+        );
 
         $value = $this->em()->getConnection()->fetchOne('SELECT SUM(quantity * unit_cost + COALESCE(revaluation, 0)) FROM stock_movement WHERE product_id = ? AND unit_cost IS NOT NULL', [$this->laptopId]);
         self::assertEquals(40, $value, 'the five left are worth what they cost');
@@ -743,6 +757,52 @@ final class InventoryTest extends ApiTestCase
         $this->getJson($this->path('stock-movements').'?sourceType=cost_correction');
         self::assertResponseIsSuccessful();
         self::assertCount(1, $this->jsonList(), 'the correction is in the stock history, under its own kind');
+    }
+
+    /** A cost entered while every unit is still there, under a setting that leaves the product cost, moves nothing more. */
+    public function testACostEnteredThatMovesNothingBeyondTheReceiptSaysNothingMore(): void
+    {
+        $this->em()->getConnection()->executeStatement('UPDATE product SET cost_price = 5 WHERE id = ?', [$this->laptopId]);
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'suggest', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->createUser('clerk@twes.local', 'password-1234', $this->company(), ['company.read', 'stock.read', 'stock.write'], 'counter');
+        $this->signedIn(['company.read', 'stock.read', 'stock.write', 'product.cost.read']);
+
+        $this->login('clerk@twes.local', 'password-1234');
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $receiptId = $this->stringAt($this->json(), 'id');
+
+        $this->login('stock@twes.local', 'password-1234');
+        $this->postJson($this->path('stock-movements', $receiptId).'/cost', ['unitCost' => '8']);
+        self::assertResponseIsSuccessful();
+        self::assertSame('5.0000', $this->em()->getConnection()->fetchOne('SELECT cost_price FROM product WHERE id = ?', [$this->laptopId]));
+        self::assertSame([], $this->effects('stock.late_cost_entered'), 'the page says the cost was entered; nothing went further');
+    }
+
+    /** A cost entered while every unit is still there, under the average, moves the product cost alone: that is said. */
+    public function testACostEnteredThatMovesOnlyTheProductCostSaysWhereItWent(): void
+    {
+        $this->em()->getConnection()->executeStatement('UPDATE product SET cost_price = 5 WHERE id = ?', [$this->laptopId]);
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->createUser('clerk@twes.local', 'password-1234', $this->company(), ['company.read', 'stock.read', 'stock.write'], 'counter');
+        $this->signedIn(['company.read', 'stock.read', 'stock.write', 'product.cost.read']);
+
+        $this->login('clerk@twes.local', 'password-1234');
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $receiptId = $this->stringAt($this->json(), 'id');
+
+        $this->login('stock@twes.local', 'password-1234');
+        $this->postJson($this->path('stock-movements', $receiptId).'/cost', ['unitCost' => '8']);
+        self::assertResponseIsSuccessful();
+        self::assertSame('8.0000', $this->em()->getConnection()->fetchOne('SELECT cost_price FROM product WHERE id = ?', [$this->laptopId]));
+        self::assertSame(
+            [['kind' => 'stock.late_cost_entered', 'id' => $this->laptopId, 'params' => ['costOfSales' => null, 'costBefore' => '5.0000', 'cost' => '8.0000']]],
+            $this->effects('stock.late_cost_entered'),
+            'nothing went to the cost of sales, and where the product cost went is said',
+        );
     }
 
     public function testTheReceiptCostAndTheCostHistoryAreReadOnlyWithTheCostPermission(): void

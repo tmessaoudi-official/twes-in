@@ -155,6 +155,11 @@ final class CustomerCreditBalanceTest extends ApiTestCase
 
         $this->sendJson('DELETE', $this->invoicePath($invoice).'/payments/'.$paymentId, null);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame(
+            [['kind' => 'invoice.credit_given_back', 'id' => $invoice, 'params' => ['amount' => '250.000']]],
+            $this->effects('invoice.credit_given_back'),
+            'whoever deleted the payment hears the credit it gave back to the customer',
+        );
 
         $this->getJson($this->creditPath());
         self::assertSame(['300.000', ['overpayment']], [$this->json()['balance'], array_column($this->arrayAt($this->json(), 'entries'), 'kind')]);

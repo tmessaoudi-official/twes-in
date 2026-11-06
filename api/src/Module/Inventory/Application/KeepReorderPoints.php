@@ -17,13 +17,17 @@ use App\Audit\Domain\ValueObject\Recorded;
 use App\Module\Inventory\Domain\Exception\InvalidReorderPoint;
 use App\Module\Inventory\Domain\Model\ProductReorderPoint;
 use App\Module\Inventory\Domain\Repository\ProductReorderPointRepository;
+use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
+use App\Shared\Application\Effect;
+use App\Shared\Application\Effects;
 use App\Shared\Application\RecordChanged;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
 use App\Tenancy\Domain\Model\Establishment;
 use App\Tenancy\Domain\Repository\EstablishmentRepository;
+use BcMath\Number;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -38,6 +42,8 @@ final readonly class KeepReorderPoints implements DeclaresAuditActions
     public const string ENTITY_TYPE = 'product_reorder_point';
     public const string SET = 'product_reorder_point.set';
     public const string CLEARED = 'product_reorder_point.cleared';
+    /** A point written at or above what can be sold there: the product is on « À surveiller » at once, said to its writer. */
+    public const string AT_REORDER_POINT = 'stock.at_reorder_point';
 
     public function __construct(
         private ProductReorderPointRepository $points,
@@ -47,6 +53,8 @@ final readonly class KeepReorderPoints implements DeclaresAuditActions
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private StockMovementRepository $movements,
+        private Effects $effects,
     ) {
     }
 
@@ -93,6 +101,7 @@ final readonly class KeepReorderPoints implements DeclaresAuditActions
                 $this->points->save($point);
                 $this->held->changedBeside($product);
                 $this->record($company, $point, self::SET, $actorUserId);
+                $this->watchedAtOnce($product, $point);
 
                 return $point;
             }
@@ -100,6 +109,7 @@ final readonly class KeepReorderPoints implements DeclaresAuditActions
                 $this->points->save($existing);
                 $this->held->changedBeside($product);
                 $this->record($company, $existing, self::SET, $actorUserId);
+                $this->watchedAtOnce($product, $existing);
             }
 
             return $existing;
@@ -152,6 +162,22 @@ final readonly class KeepReorderPoints implements DeclaresAuditActions
             ['establishmentId' => $point->getEstablishment()->getId()->toRfc4122(), 'quantity' => self::CLEARED === $action ? null : $point->getQuantity()],
             companyId: $company->getId(),
         ));
+    }
+
+    /**
+     * What « À surveiller » lists as at its reorder point (`Infrastructure/Watch/StockWatch`): an active product whose
+     * stock that can be sold in the establishment is at or under the point. No figure is said, the point's writer
+     * not being one who may read the stock.
+     */
+    private function watchedAtOnce(Product $product, ProductReorderPoint $point): void
+    {
+        $establishment = $point->getEstablishment();
+        $onHand = new Number($this->movements->sellableInEstablishment($product->getId(), $establishment->getId()));
+        $limit = $point->getQuantity();
+        $limit = is_numeric($limit) ? $limit : throw new \LogicException('A reorder point is a number.');
+        if ($product->isActive() && 1 !== $onHand->compare(new Number($limit))) {
+            $this->effects->said(new Effect(self::AT_REORDER_POINT, $product->getId(), ['establishment' => $establishment->getName()]));
+        }
     }
 
     public function auditActions(): array

@@ -63,8 +63,10 @@ final class StockAlertsTest extends ApiTestCase
 
         $this->movement('count', $site, '10');
         self::assertSame([], $this->told('stock.count_difference'), 'a count that found what was expected has nothing to say');
+        self::assertSame([], $this->effects('stock.count_difference'), 'nor to the person who counted');
 
         $this->movement('count', $site, '7');
+        self::assertSame(['-3.000'], array_map(static fn (mixed $effect): mixed => \is_array($effect) && \is_array($effect['params'] ?? null) ? $effect['params']['difference'] ?? null : null, $this->effects('stock.count_difference')), 'the person who counted hears what was booked');
 
         $told = $this->told('stock.count_difference');
         self::assertSame([$this->bossId], $this->recipients($told), 'the person who counted knows; the other keepers are told, a reader is not');
@@ -93,6 +95,33 @@ final class StockAlertsTest extends ApiTestCase
         $this->movement('receive', $site, '10');
         $this->movement('count', $site, '4');
         self::assertCount(4, $this->told('stock.low'), 'back above and under again is a new fall');
+    }
+
+    /** A point set at or above what is on hand puts the product on « À surveiller » at once, which is said to whoever set it. */
+    public function testAPointSetAtOrAboveTheStockSaysTheProductIsNowWatched(): void
+    {
+        $site = $this->site();
+        $establishment = $this->establishmentId($site);
+        $name = $this->em()->getConnection()->fetchOne('SELECT name FROM establishment WHERE id = ?', [$establishment]);
+        $this->movement('receive', $site, '10');
+        $point = fn (string $quantity) => $this->sendJson('PUT', $this->path('products/'.$this->laptopId.'/reorder-points/'.$establishment), ['quantity' => $quantity, 'version' => $this->storedVersion('product', $this->laptopId)]);
+
+        $point('5');
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->effects('stock.at_reorder_point'), 'above the point: not watched');
+
+        $point('10');
+        self::assertResponseIsSuccessful();
+        self::assertSame([['kind' => 'stock.at_reorder_point', 'id' => $this->laptopId, 'params' => ['establishment' => $name]]], $this->effects('stock.at_reorder_point'), 'at the point: watched, and said');
+
+        $this->movement('count', $site, '4');
+        $point('6');
+        self::assertResponseIsSuccessful();
+        self::assertCount(1, $this->effects('stock.at_reorder_point'), 'under the point, said again for the point written');
+
+        $point('6');
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->effects('stock.at_reorder_point'), 'the same point again writes nothing and says nothing');
     }
 
     public function testGoodsPutInQuarantineAreNoLongerOnHandSoMovingThemThereCanBeTheFall(): void

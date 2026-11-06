@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import {
+  MatSnackBar,
+  type MatSnackBarConfig,
+  type MatSnackBarRef,
+} from '@angular/material/snack-bar';
 import type { ActionKind } from '../actions/screen-action';
 import { Feedback, type FeedbackAction } from './feedback';
 import { Toast, type ToastData } from './toast';
@@ -19,9 +23,27 @@ export const ACTION_DURATION_MS = 8_000;
 @Injectable({ providedIn: 'root' })
 export class MaterialFeedback extends Feedback {
   private readonly snackBar = inject(MatSnackBar);
+  /** The toast on screen, until it closes: a newer one replacing it takes its place. */
+  private shown: MatSnackBarRef<Toast> | null = null;
+
+  override idle(): Promise<void> {
+    const shown = this.shown;
+    if (shown === null) return Promise.resolve();
+    return new Promise<void>((closed) => shown.afterDismissed().subscribe(() => closed())).then(
+      () => this.idle(),
+    );
+  }
+
+  private show(config: MatSnackBarConfig<ToastData>): void {
+    const shown = this.snackBar.openFromComponent<Toast, ToastData>(Toast, config);
+    this.shown = shown;
+    shown.afterDismissed().subscribe(() => {
+      if (this.shown === shown) this.shown = null;
+    });
+  }
 
   success(key: string, params: Record<string, unknown> = {}, action?: FeedbackAction): void {
-    this.snackBar.openFromComponent<Toast, ToastData>(Toast, {
+    this.show({
       data:
         action === undefined
           ? { kind: 'success', key, params }
@@ -40,7 +62,7 @@ export class MaterialFeedback extends Feedback {
     kind: ActionKind,
     action?: FeedbackAction,
   ): void {
-    this.snackBar.openFromComponent<Toast, ToastData>(Toast, {
+    this.show({
       data:
         action === undefined
           ? { kind: 'success', key, params, effect: kind }
@@ -54,7 +76,7 @@ export class MaterialFeedback extends Feedback {
   }
 
   notice(key: string, params: Record<string, unknown> = {}): void {
-    this.snackBar.openFromComponent<Toast, ToastData>(Toast, {
+    this.show({
       data: { kind: 'notice', key, params },
       politeness: 'polite',
       duration: NOTICE_DURATION_MS,
@@ -65,7 +87,7 @@ export class MaterialFeedback extends Feedback {
   }
 
   failure(key: string, params: Record<string, unknown> = {}): void {
-    this.snackBar.openFromComponent<Toast, ToastData>(Toast, {
+    this.show({
       data: { kind: 'failure', key, params },
       politeness: 'assertive',
       verticalPosition: 'top',

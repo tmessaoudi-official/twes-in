@@ -18,6 +18,8 @@ use App\Module\Inventory\Domain\Repository\StockMovementRepository;
 use App\Module\Products\Domain\Model\Product;
 use App\Module\Products\Domain\Repository\ProductRepository;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
+use App\Shared\Application\Effect;
+use App\Shared\Application\Effects;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;
 use BcMath\Number;
@@ -33,6 +35,9 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class CarryMergedStock
 {
+    /** What the merge carried to the product kept, its units and their worth, said to whoever merged. */
+    public const string MERGE_CARRIED = 'stock.merge_carried';
+
     public function __construct(
         private StockMovementRepository $movements,
         private StockLotRepository $lots,
@@ -41,6 +46,7 @@ final readonly class CarryMergedStock
         private ClockInterface $clock,
         private LiveChanges $liveChanges,
         private ?RaiseStockAlerts $alerts = null,
+        private ?Effects $effects = null,
     ) {
     }
 
@@ -103,6 +109,14 @@ final readonly class CarryMergedStock
         if ([] !== $arrived) {
             $this->liveChanges->stage(new LiveChange('stock', $kept->getId(), 'stock.merged', $actorUserId, $companyId));
             $this->alerts?->raiseFalls($arrived);
+            // Goods are carried only for whoever reads costs (`costs_unseen` above), so their worth is theirs to hear.
+            $quantity = new Number('0.000');
+            $value = new Number('0.0000000');
+            foreach ($arrived as $movement) {
+                $quantity = $quantity->add($movement->getQuantity());
+                $value = $value->add($movement->value());
+            }
+            $this->effects?->said(new Effect(self::MERGE_CARRIED, $kept->getId(), ['quantity' => $quantity->round(3)->value, 'value' => $value->round(4)->value]));
         }
     }
 

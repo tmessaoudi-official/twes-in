@@ -42,6 +42,7 @@ use App\Tenancy\Domain\Model\Role;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCompanies;
+use App\Tests\Support\InMemoryEffects;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryModuleStates;
@@ -63,6 +64,7 @@ use Symfony\Component\Uid\Uuid;
 final class MoveStockOnDeliveryNotesTest extends TestCase
 {
     private InMemoryNotifications $notifications;
+    private InMemoryEffects $effects;
     private InMemoryStockMoveFailures $failures;
     private InMemoryStockMovements $movements;
     private Company $company;
@@ -91,6 +93,8 @@ final class MoveStockOnDeliveryNotesTest extends TestCase
         self::assertSame('error', $logger->logged[0][0]);
         self::assertStringContainsString('BL-2026-00001', $logger->logged[0][1]);
         self::assertSame([TellStockKeepers::MOVED_NO_STOCK], array_map(static fn ($n) => $n->type, $this->notifications->published));
+        self::assertSame(['stock.document_not_moved'], array_map(static fn (array $told): string => $told[0], $this->effects->told()));
+        self::assertSame(['delivery_note', 'failed'], [$this->effects->told()[0][2]['document'] ?? null, $this->effects->told()[0][2]['outcome'] ?? null], 'whoever validated it hears that its stock did not move');
         // Recorded, so a stock keeper moves it again from the note's page rather than wait for a console.
         self::assertSame([[FailedMove::DeliveryNote, 'BL-2026-00001']], array_map(static fn ($f) => [$f->getMove(), $f->getNumber()], $this->failures->failures));
     }
@@ -108,6 +112,7 @@ final class MoveStockOnDeliveryNotesTest extends TestCase
         self::assertCount(1, $this->movements->movements);
         self::assertSame('warning', $logger->logged[0][0]);
         self::assertSame([TellStockKeepers::LINES_LEFT_OUT], array_map(static fn ($n) => $n->type, $this->notifications->published));
+        self::assertSame([['delivery_note', 'left_out']], array_map(static fn (array $told): array => [$told[2]['document'] ?? null, $told[2]['outcome'] ?? null], $this->effects->told()));
     }
 
     public function testANoteThatMovedEverythingTellsNobody(): void
@@ -116,12 +121,14 @@ final class MoveStockOnDeliveryNotesTest extends TestCase
         $listener->onValidated($this->validated([new DeliveredQuantity($this->laptop->getId(), '1.000', $this->piece->getId())]));
 
         self::assertSame([[], 1], [$this->notifications->published, \count($this->movements->movements)]);
+        self::assertSame([], $this->effects->said);
         self::assertSame([], $logger->logged);
     }
 
     protected function setUp(): void
     {
         $this->notifications = new InMemoryNotifications();
+        $this->effects = new InMemoryEffects();
         $this->movements = new InMemoryStockMovements();
         $this->failures = new InMemoryStockMoveFailures();
         $now = new \DateTimeImmutable('2026-09-15 09:00:00');
@@ -163,7 +170,7 @@ final class MoveStockOnDeliveryNotesTest extends TestCase
             }
         };
 
-        return [new MoveStockOnDeliveryNotes($move, new TellStockKeepers($memberships, $this->notifications), $logger, $this->recorded()), $logger];
+        return [new MoveStockOnDeliveryNotes($move, new TellStockKeepers($memberships, $this->notifications, $this->effects), $logger, $this->recorded()), $logger];
     }
 
     /** @param list<DeliveredQuantity> $lines */

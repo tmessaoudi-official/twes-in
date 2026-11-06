@@ -187,6 +187,11 @@ final class ProductMergeTest extends ApiTestCase
         $this->receivedEarlier();
 
         $merge = $this->merged($kept, [$merged, $other]);
+        self::assertSame(
+            [['kind' => 'stock.merge_carried', 'id' => $kept, 'params' => ['quantity' => '7.000', 'value' => '14.0000']]],
+            $this->effects('stock.merge_carried'),
+            'whoever merged hears how much stock went to the product kept, and what it was worth',
+        );
 
         self::assertSame(['10.000', '0.000', '0.000'], [$this->onHand($kept), $this->onHand($merged), $this->onHand($other)]);
         // (3 × 4 + 5 × 2 + 2 × 2) / 10
@@ -321,6 +326,7 @@ final class ProductMergeTest extends ApiTestCase
         self::assertSame('5.000', $this->onHand($merged));
 
         $this->merged($kept, [$other]);
+        self::assertSame([], $this->effects('stock.merge_carried'), 'a product holding nothing carries nothing to say');
     }
 
     /** What arrives or comes back for a product merged away arrives for the product kept: the alias holds nothing again. */

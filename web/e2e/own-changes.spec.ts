@@ -50,6 +50,9 @@ test('a change made in this tab reaches its other panels with no realtime connec
     await page.getByRole('option', { name: 'Prendre le coût de cette réception' }).click();
     const again = page.waitForResponse(isWatchSummary);
     await page.getByTestId('stock-movement-save').click();
+    // The receipt's own toast first; the margin it moved is said once that one is closed.
+    await expect(toast(page)).toContainText('Le mouvement a été enregistré.');
+    await toast(page).getByTestId('toast-close').click();
     await expect(toast(page)).toContainText(`La marge de Vis ${reference}`);
 
     // The shell read « À surveiller » again on its own, and its menu says what it answered.

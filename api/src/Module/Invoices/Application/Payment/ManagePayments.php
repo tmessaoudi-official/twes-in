@@ -26,8 +26,11 @@ use App\Module\Invoices\Domain\Repository\CustomerCreditRepository;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Domain\Repository\PaymentInstrumentRepository;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
+use App\Shared\Application\Effect;
+use App\Shared\Application\Effects;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Model\Company;
+use BcMath\Number;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -40,6 +43,8 @@ final readonly class ManagePayments implements DeclaresAuditActions
 {
     public const string RECORDED = 'payment.recorded';
     public const string DELETED = 'payment.deleted';
+    /** A payment made of the customer's credit was deleted: the credit is the customer's again, said to whoever deleted it. */
+    public const string CREDIT_GIVEN_BACK = 'invoice.credit_given_back';
 
     public function __construct(
         private InvoiceRepository $invoices,
@@ -49,6 +54,7 @@ final readonly class ManagePayments implements DeclaresAuditActions
         private AuditTrail $audit,
         private ClockInterface $clock,
         private ?PaymentInstrumentRepository $instruments = null,
+        private ?Effects $effects = null,
     ) {
     }
 
@@ -97,6 +103,10 @@ final readonly class ManagePayments implements DeclaresAuditActions
             $applied = $this->credits->appliedByPayment($company->getId(), $paymentId);
             if (null !== $applied) {
                 $this->credits->remove($applied);
+                // What the payment spent of the credit, signed as spent: it comes back to the balance whole.
+                $spent = $applied->getAmount();
+                $spent = is_numeric($spent) ? $spent : throw new \LogicException('A credit entry\'s amount is a number.');
+                $this->effects?->said(new Effect(self::CREDIT_GIVEN_BACK, $invoice->getId(), ['amount' => new Number('0.000')->sub($spent)->value]));
             }
             $this->trail($company, $invoice, self::DELETED, $payment, $actorUserId);
         });

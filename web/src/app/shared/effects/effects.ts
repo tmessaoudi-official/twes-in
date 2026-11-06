@@ -6,6 +6,12 @@ import { InjectionToken } from '@angular/core';
 export const EFFECTS_HEADER = 'X-Effects';
 
 /**
+ * The texts the sayers' toasts are worded in, a part of its own (`public/i18n/effects/`) each sayer opens into the root
+ * before it speaks, so no screen's file carries them and none shows a key.
+ */
+export const EFFECT_TEXTS = 'effects';
+
+/**
  * Something a request did beyond what it was asked (a receipt that moved a price), as its answer says it. Past what a
  * header may carry the API folds them to one per kind with `count`, and no subject or figures.
  */

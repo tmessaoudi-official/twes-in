@@ -34,6 +34,14 @@ export abstract class Feedback {
 
   /** Something could not be done and there is no form to say it beside. Announced at once, stays until closed. */
   abstract failure(key: string, params?: Record<string, unknown>): void;
+
+  /**
+   * Resolves once no toast is on screen: what a request did beyond its subject waits for the toast being read rather
+   * than replace it, so two consequences of one action are both read, in turn. A Feedback showing nothing has none.
+   */
+  idle(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 /** A toast's one button: its label's translation key, and what it does. */

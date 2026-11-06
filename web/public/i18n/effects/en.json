@@ -1,0 +1,35 @@
+{
+  "effects": {
+    "late_cost": {
+      "both": "The cost of sales is corrected by {{amount}}, and the product's cost goes from {{before}} to {{after}}.",
+      "both_set": "The cost of sales is corrected by {{amount}}, and the product now costs {{after}}.",
+      "cost_of_sales": "The cost of sales is corrected by {{amount}} for the goods already gone.",
+      "cost": "The product's cost goes from {{before}} to {{after}}.",
+      "cost_set": "The product now costs {{after}}.",
+      "many": "{{count}} {count, plural, one {cost entered corrected the cost of sales or of the product.} other {costs entered corrected the cost of sales or of the products.}}"
+    },
+    "count": {
+      "differences": "Count difference recorded: {{differences}}.",
+      "at": "{{difference}} at {{location}}",
+      "many": "{{count}} {count, plural, one {count difference recorded.} other {count differences recorded.}}"
+    },
+    "reorder": {
+      "one": "The stock at {{establishment}} is at or under this point: the product now shows in “To watch”.",
+      "many": "{{count}} {count, plural, one {product now shows in “To watch”, its stock being at or under its point.} other {products now show in “To watch”, their stock being at or under their point.}}"
+    },
+    "merge": {
+      "carried": "The merged stock goes to the product kept, {{quantity}} worth {{value}}.",
+      "carried_units": "The merged stock goes to the product kept, {{quantity}}.",
+      "carried_many": "The merged products' stock goes to the product kept."
+    },
+    "not_moved": {
+      "left_out": "Some lines of {{number}} did not update the stock: another unit than the product's, or no quantity.",
+      "failed": "The stock of {{number}} could not be updated: the document's page can move it again.",
+      "many": "{{count}} {count, plural, one {document did not update all its stock.} other {documents did not update all their stock.}}"
+    },
+    "credit": {
+      "given_back": "The credit of {{amount}} goes back to the customer.",
+      "given_back_unnamed": "The credit used goes back to the customer."
+    }
+  }
+}

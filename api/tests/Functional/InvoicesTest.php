@@ -726,6 +726,7 @@ final class InvoicesTest extends ApiTestCase
 
         $this->sendJson('DELETE', $payments.'/'.$firstId);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame([], $this->effects(), 'a payment made of money gives no credit back: the page says it was deleted');
         $this->getJson($this->path($id));
         self::assertSame(['partially_paid', $remaining, '100.000'], [$this->json()['status'], $this->json()['amountPaid'], $this->json()['amountDue']]);
         $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'payment.deleted'");

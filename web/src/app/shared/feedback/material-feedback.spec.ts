@@ -136,6 +136,25 @@ describe('MaterialFeedback', () => {
     expect(document.querySelector('[data-testid="toast"]')?.textContent).toContain('Facture émise');
   });
 
+  it('tells when no toast is on screen, so a consequence waits for the one being read', async () => {
+    const feedback = TestBed.inject(MaterialFeedback);
+    await feedback.idle();
+    let idle = false;
+
+    feedback.success('saved', { name: 'Acme' });
+    void feedback.idle().then(() => (idle = true));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(idle).toBe(false);
+
+    // A toast replacing the one on screen is still on screen.
+    feedback.notice('saved', { name: 'Globex' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(idle).toBe(false);
+
+    TestBed.inject(MatSnackBar).dismiss();
+    await vi.waitFor(() => expect(idle).toBe(true));
+  });
+
   it('shows the translated message with a named way to close it', async () => {
     TestBed.inject(MaterialFeedback).success('saved', { name: 'Acme' });
     await vi.waitFor(() => expect(document.querySelector('[data-testid="toast"]')).not.toBeNull());

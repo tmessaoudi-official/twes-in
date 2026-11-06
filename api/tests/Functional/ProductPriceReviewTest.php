@@ -16,7 +16,6 @@ use App\Module\Products\Domain\ValueObject\ProductDetails;
 use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Settings\Domain\Model\Setting;
 use App\Settings\Domain\ValueObject\SettingAddress;
-use App\Shared\Infrastructure\Effects\EffectsAnswer;
 use App\Tenancy\Domain\Model\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -307,19 +306,6 @@ final class ProductPriceReviewTest extends ApiTestCase
         $this->uploadFile($this->path('imports/products'), 'products.csv', $contents, 'file', ['mode' => 'upsert', 'dryRun' => '0', 'switches' => [], 'choices' => []]);
         self::assertResponseIsSuccessful();
         self::assertSame([], $this->json()['rejected'] ?? null);
-    }
-
-    /** @return list<mixed> what the last answer said the request did beyond its subject */
-    private function effects(): array
-    {
-        $header = $this->client->getResponse()->headers->get(EffectsAnswer::HEADER);
-        if (null === $header) {
-            return [];
-        }
-        $effects = json_decode($header, true, flags: \JSON_THROW_ON_ERROR);
-        self::assertIsList($effects);
-
-        return $effects;
     }
 
     private function settle(string $decision, int $version): void

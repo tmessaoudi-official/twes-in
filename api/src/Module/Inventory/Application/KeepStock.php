@@ -38,6 +38,8 @@ use App\Module\Products\Domain\ValueObject\ProductKind;
 use App\Module\Products\Domain\ValueObject\ProductTracking;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Application\Effect;
+use App\Shared\Application\Effects;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
@@ -57,6 +59,11 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class KeepStock
 {
+    /** A late cost booked a share to the cost of sales, or moved the product's cost: said to whoever entered it. */
+    public const string LATE_COST_ENTERED = 'stock.late_cost_entered';
+    /** A count booked a difference at a place: said to whoever counted, the other keepers being told (`TellStockKeepers`). */
+    public const string COUNT_DIFFERENCE = 'stock.count_difference';
+
     public function __construct(
         private StockMovementRepository $movements,
         private StockLotRepository $lots,
@@ -70,6 +77,7 @@ final readonly class KeepStock
         private ?ReceiptCosts $receiptCosts = null,
         private ?ProductCategoryRepository $productCategories = null,
         private ?CountedProducts $counted = null,
+        private ?Effects $effects = null,
     ) {
     }
 
@@ -252,10 +260,21 @@ final readonly class KeepStock
             $receipt = $this->movements->ofIdInCompany($movementId, $company->getId()) ?? throw new StockMovementNotFound();
             $before = RunningValue::of($this->movements->valuedTotalsBefore($receipt));
             $provisional = $receipt->value();
+            $product = $receipt->getProduct();
+            $costBefore = $product->getDetails()->costPrice;
             $receipt->costEntered($unitCost, $before);
             $this->movements->saveValued($receipt);
-            $this->costOfSalesShare($receipt, $provisional, $before, $actorUserId);
-            $this->moveCost($company, $receipt->getProduct(), $receipt, $receipt->getUnitCost(), $apply, $actorUserId);
+            $sold = $this->costOfSalesShare($receipt, $provisional, $before, $actorUserId);
+            $this->moveCost($company, $product, $receipt, $receipt->getUnitCost(), $apply, $actorUserId);
+            $cost = $product->getDetails()->costPrice;
+            // The page says the cost was entered; what it booked or moved beyond the receipt is said too, never silent.
+            if (null !== $sold || $cost !== $costBefore) {
+                $this->effects?->said(new Effect(self::LATE_COST_ENTERED, $product->getId(), [
+                    'costOfSales' => null === $sold ? null : new Number($sold)->round(4)->value,
+                    'costBefore' => $costBefore,
+                    'cost' => $cost,
+                ]));
+            }
             $this->liveChanges->stage(new LiveChange('stock', $receipt->getProduct()->getId(), 'stock.cost_entered', $actorUserId, $company->getId()));
 
             return $receipt;
@@ -269,9 +288,11 @@ final readonly class KeepStock
      *
      * @param numeric-string $provisional what the receipt was worth before its cost was entered
      *
+     * @return numeric-string|null what was booked to the cost of sales, none when no goods had gone
+     *
      * @throws InvalidStockMovement
      */
-    private function costOfSalesShare(StockMovement $receipt, string $provisional, RunningValue $before, ?Uuid $actorUserId): void
+    private function costOfSalesShare(StockMovement $receipt, string $provisional, RunningValue $before, ?Uuid $actorUserId): ?string
     {
         $since = array_values(array_map(
             static fn (StockMovement $later): string => $later->getQuantity(),
@@ -282,6 +303,8 @@ final readonly class KeepStock
         if (null !== $sold) {
             $this->movements->saveValued(StockMovement::costOfSalesCorrection($receipt, $sold, $actorUserId, $this->clock->now()));
         }
+
+        return $sold;
     }
 
     /**
@@ -382,6 +405,10 @@ final readonly class KeepStock
         $this->inStockOnce($movement);
         $this->save($movement);
         $this->counted?->counted($company, $product, $actorUserId);
+        // A file's counts are said once for the file, by its report.
+        if (null === $importRunId && 0 !== new Number($movement->getQuantity())->compare(0)) {
+            $this->effects?->said(new Effect(self::COUNT_DIFFERENCE, $product->getId(), ['difference' => $movement->getQuantity(), 'location' => $location->getCode()]));
+        }
         $this->liveChanges->stage(new LiveChange('stock', $product->getId(), 'stock.counted', $actorUserId, $company->getId()));
 
         return $movement;

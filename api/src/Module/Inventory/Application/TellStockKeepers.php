@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Application;
 
+use App\Shared\Application\Effect;
+use App\Shared\Application\Effects;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
 use App\Tenancy\Domain\Model\Membership;
@@ -18,7 +20,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Tells the people who keep a company's stock (its members whose role grants `stock.write`) what a delivery note did not
  * move: the note is already committed, so a log line alone would reach nobody. Each is
- * told on their own channel, so a member who cannot act on it never sees it.
+ * told on their own channel, so a member who cannot act on it never sees it. What a document did not move is said to
+ * whoever issued, validated or cancelled it too, in their request's answer, whether or not they keep the stock.
  */
 final readonly class TellStockKeepers
 {
@@ -44,7 +47,10 @@ final readonly class TellStockKeepers
     /** A file's counts found differences: told once for the file, the person who imported it knowing. */
     public const string IMPORTED = 'stock.imported';
 
-    public function __construct(private MembershipRepository $memberships, private Notifications $notifications)
+    /** A document's stock did not all move (`outcome` left_out) or did not move at all (failed), said to whoever acted. */
+    public const string DOCUMENT_NOT_MOVED = 'stock.document_not_moved';
+
+    public function __construct(private MembershipRepository $memberships, private Notifications $notifications, private Effects $effects)
     {
     }
 
@@ -69,31 +75,46 @@ final readonly class TellStockKeepers
     public function deliveryNoteLeftLinesOut(Uuid $companyId, Uuid $deliveryNoteId, string $number): void
     {
         $this->tell($companyId, self::LINES_LEFT_OUT, $deliveryNoteId, $number);
+        $this->notMoved($deliveryNoteId, 'delivery_note', 'left_out', $number);
     }
 
     public function deliveryNoteMovedNoStock(Uuid $companyId, Uuid $deliveryNoteId, string $number): void
     {
         $this->tell($companyId, self::MOVED_NO_STOCK, $deliveryNoteId, $number);
+        $this->notMoved($deliveryNoteId, 'delivery_note', 'failed', $number);
     }
 
     public function invoiceLeftLinesOut(Uuid $companyId, Uuid $invoiceId, string $number): void
     {
         $this->tellAll($companyId, self::INVOICE_LINES_LEFT_OUT, ['invoice_id' => $invoiceId->toRfc4122(), 'number' => $number], null);
+        $this->notMoved($invoiceId, 'invoice', 'left_out', $number);
     }
 
     public function invoiceMovedNoStock(Uuid $companyId, Uuid $invoiceId, string $number): void
     {
         $this->tellAll($companyId, self::INVOICE_MOVED_NO_STOCK, ['invoice_id' => $invoiceId->toRfc4122(), 'number' => $number], null);
+        $this->notMoved($invoiceId, 'invoice', 'failed', $number);
     }
 
     public function creditLinesNotReturned(Uuid $companyId, Uuid $creditNoteId, string $number): void
     {
         $this->tellAll($companyId, self::CREDIT_LINES_NOT_RETURNED, ['invoice_id' => $creditNoteId->toRfc4122(), 'number' => $number], null);
+        $this->notMoved($creditNoteId, 'credit_note', 'left_out', $number);
     }
 
     public function creditMovedNoStock(Uuid $companyId, Uuid $creditNoteId, string $number): void
     {
         $this->tellAll($companyId, self::CREDIT_MOVED_NO_STOCK, ['invoice_id' => $creditNoteId->toRfc4122(), 'number' => $number], null);
+        $this->notMoved($creditNoteId, 'credit_note', 'failed', $number);
+    }
+
+    /**
+     * @param 'invoice'|'credit_note'|'delivery_note' $document
+     * @param 'left_out'|'failed'                     $outcome
+     */
+    private function notMoved(Uuid $documentId, string $document, string $outcome, string $number): void
+    {
+        $this->effects->said(new Effect(self::DOCUMENT_NOT_MOVED, $documentId, ['document' => $document, 'outcome' => $outcome, 'number' => $number]));
     }
 
     private function tell(Uuid $companyId, string $type, Uuid $deliveryNoteId, string $number): void
