@@ -89,7 +89,9 @@ This does three things, in order:
 2. **Migrates the database.** The one-shot `migrate` service (`infra/api/migrate.sh`) runs on every `make up`, before
    `api` and `worker` start: it applies pending migrations all or nothing as the schema's owner, then gives the
    application's role, `twes_app`, its password (`POSTGRES_APP_PASSWORD`) and its grants
-   (`app:database:app-role`): rows only, the journal added to and never rewritten, no schema. `api` and `worker` wait
+   (`app:database:app-role`): rows only, the journal added to and never rewritten, no schema. Last, a screen text the
+   release ships in another file takes its wording with it (`app:texts:follow-moved`, § « Textes » below), which only
+   warns if it fails. `api` and `worker` wait
    for it to succeed and connect as that role; only `migrate` is handed the owner's address
    (`DATABASE_MIGRATION_URL`). A failed migration leaves `api` unstarted instead of serving a half-migrated schema.
    You never run migrations by hand; `make migrate` runs the service again. Under `make up` a migration written while the
@@ -232,7 +234,9 @@ for the whole installation at `/platform/texts` (« Gérer les textes » on the 
 role given `company.texts`, words them for that company at `/company/texts` (« Textes » under the gear), over the
 installation's. Screens, mails and printed labels take them at once; the tax mentions are the law's and never offered.
 A release that changes an original a level worded keeps that level's wording and flags it « L’original a changé », with
-« Garder le mien » and « Prendre l’original ». The rows are `text_override`; `make reset` drops them with the rest.
+« Garder le mien » and « Prendre l’original ». A screen text a release moves into a page's own file keeps its wording:
+each start moves the wording to that file (`app:texts:follow-moved`), never over one written there since. The rows are
+`text_override`; `make reset` drops them with the rest.
 
 The seed loads no business rows. **`make fixtures`** adds two demo companies, which the operator owns:
 

@@ -25,3 +25,9 @@ if [ "$(find ./migrations -iname '*.php' -print -quit)" ]; then
 	php bin/console doctrine:migrations:migrate --no-interaction --all-or-nothing
 fi
 php bin/console app:database:app-role --no-interaction
+
+# A screen text this release ships in another file takes its company's wording with it. A failure here only warns, as a
+# start step does: the application starts, and the wording stays readable where it was, under the file it was written in.
+if ! php bin/console app:texts:follow-moved --no-interaction; then
+	echo 'Warning: the wording of screen texts moved into another file could not follow them; it is kept, and tried again at the next start.'
+fi

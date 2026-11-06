@@ -62,6 +62,23 @@ final readonly class DoctrineTextOverrideRepository implements TextOverrideRepos
         return $override instanceof TextOverride ? $override : null;
     }
 
+    public function lockedScreenTexts(): array
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('t')
+            ->from(TextOverride::class, 't')
+            ->where('t.domain = :screen OR t.domain LIKE :part')
+            ->setParameter('screen', TextAddress::SCREEN)
+            ->setParameter('part', TextAddress::SCREEN.':%')
+            ->orderBy('t.updatedAt', \SortDirection::Descending)
+            ->addOrderBy('t.id', \SortDirection::Descending)
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true);
+
+        return Rows::entities($query->getResult(), TextOverride::class);
+    }
+
     public function save(TextOverride $override): void
     {
         $this->entityManager->persist($override);

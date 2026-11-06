@@ -52,6 +52,7 @@ use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Application\Session\PinCompanyAtSignIn;
 use App\Tenancy\Application\Session\SwitchWorkingCompany;
 use App\Tenancy\Application\Signup\RequestSignup;
+use App\Texts\Application\FollowMovedTexts;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -111,6 +112,7 @@ final class CommandsAndQueriesTest extends TestCase
         ResealSecondFactors::class => 'the same secrets under a new key, run on the console with the service stopped, which no person changes; the runbook is its record',
         TellLapsingSubscriptions::class => 'a scheduled run with no actor: it marks the end of covered time told, outside the terms and their version, and its notification is the signal',
         TellClosedCompaniesNearRemoval::class => 'a scheduled run with no actor: it marks the company told, outside its version, and its notification is the signal',
+        FollowMovedTexts::class => 'the start moving a wording, unchanged, to the file its text now ships in, which no person changes; the wording\'s own change stays audited by OverrideText, and the move is logged',
         StockMoveFailures::class => 'a stock move that failed after its document was kept, with no actor: it is logged, told to the stock keepers and staged as a live change; moving it again or saying it settled is audited',
     ];
 

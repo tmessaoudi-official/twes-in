@@ -28,20 +28,29 @@ case "$*" in
   doctrine:migrations:migrate*|app:database:app-role*)
     promoted || { echo "SQLSTATE[25006]: cannot execute in a read-only transaction" >&2; exit 1; }
     echo "${1}" >> "$TMPDIR/ran" ;;
+  app:texts:follow-moved*)
+    [[ "${FOLLOW_FAILS:-0}" == 1 ]] && { echo "SQLSTATE[40P01]: deadlock detected" >&2; exit 1; }
+    echo "${1}" >> "$TMPDIR/ran" ;;
 esac
 EOF
 printf '#!/usr/bin/env bash\n:\n' > "$TMPDIR/bin/sleep"
 chmod +x "$TMPDIR/bin/"*
 
-migrate() { (cd "$TMPDIR/app" && rm -f "$TMPDIR/tries" "$TMPDIR/probes" "$TMPDIR/ran" && PATH="$TMPDIR/bin:$PATH" PROMOTED_AFTER=$1 sh "$HERE/migrate.sh" 2>&1); }
+migrate() { (cd "$TMPDIR/app" && rm -f "$TMPDIR/tries" "$TMPDIR/probes" "$TMPDIR/ran" && PATH="$TMPDIR/bin:$PATH" PROMOTED_AFTER=$1 FOLLOW_FAILS=${2:-0} sh "$HERE/migrate.sh" 2>&1); }
 
 out=$(migrate 3); check "a database still in recovery is waited for until it takes writes" $? 0 "$(cat "$TMPDIR/ran" 2>/dev/null)" "doctrine:migrations:migrate"
 check "  then the role's grants" 0 0 "$(cat "$TMPDIR/ran" 2>/dev/null)" "app:database:app-role"
 check "  each try a statement only a writable server answers" 0 0 "$(sort -u "$TMPDIR/probes")" "pg_current_xact_id"
+check "  then the wordings of texts a release moved, last" 0 0 "$(tail -n 1 "$TMPDIR/ran" 2>/dev/null)" "app:texts:follow-moved"
 check "  three tries" 0 0 "$(wc -l < "$TMPDIR/probes" | tr -d ' ')" "3"
 out=$(migrate 1); check "a server that takes writes at once is not waited for" $? 0 "$(wc -l < "$TMPDIR/probes" | tr -d ' ')" "1"
 out=$(migrate never); check "a server that never takes writes: refused after a minute's tries, saying why" $? 1 "$out" "cannot assign TransactionIds during recovery"
 [[ ! -e "$TMPDIR/ran" ]]; check "  and nothing run" $? 0 "" ""
+
+# A failing start step only warns: the shop's application starts, its texts' wording read where it was.
+out=$(migrate 1 1); check "wordings that cannot follow their text leave the start going, said" $? 0 "$out" "deadlock detected"
+check "  with what it means" 0 0 "$out" "wording"
+grep -qx "app:database:app-role" "$TMPDIR/ran"; check "  the grants made before it" $? 0 "" ""
 
 echo "migrate: $pass passed, $fail failed"
 ((fail == 0))

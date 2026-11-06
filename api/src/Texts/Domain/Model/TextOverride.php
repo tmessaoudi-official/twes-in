@@ -115,4 +115,22 @@ class TextOverride
     {
         return $this->version;
     }
+
+    public function getUpdatedAt(): \DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    /**
+     * A release moved its text into another screen file: the wording goes with it, unchanged, and stays the one in force
+     * there. Only a screen text moves between files; an API text's domain is the code's.
+     */
+    public function followInto(string $domain): void
+    {
+        $screen = static fn (string $file): bool => TextAddress::SCREEN === $file || str_starts_with($file, TextAddress::SCREEN.':');
+        if (!$screen($this->domain) || !$screen($domain)) {
+            throw new \LogicException(\sprintf('Only a screen text moves between files, not %s to %s.', $this->domain, $domain));
+        }
+        $this->domain = $domain;
+    }
 }

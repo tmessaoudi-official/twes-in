@@ -23,6 +23,12 @@ interface TextOverrideRepository
      */
     public function of(?Company $company, string $language): array;
 
+    /**
+     * @return list<TextOverride> every screen text worded otherwise, at every level and in every language, the latest
+     *                            written first; their rows held until the transaction this runs in ends
+     */
+    public function lockedScreenTexts(): array;
+
     /** A first text meeting another written meanwhile at the same address is refused as a save made since. */
     public function save(TextOverride $override): void;
 
