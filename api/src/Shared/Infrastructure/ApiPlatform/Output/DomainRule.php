@@ -23,6 +23,12 @@ use Symfony\Component\Validator\ConstraintViolationList;
  */
 final class DomainRule extends Constraint
 {
+    /**
+     * The field of a refusal of the request as a whole: Symfony's root path, a class constraint's, which the web reads as
+     * `WHOLE_REQUEST` and says on the page rather than under a field.
+     */
+    public const string WHOLE_REQUEST = '';
+
     /** @param array<string, string|int> $params */
     public static function refused(string $field, string $message, string $reason, array $params = [], ?\Throwable $previous = null): ValidationException
     {

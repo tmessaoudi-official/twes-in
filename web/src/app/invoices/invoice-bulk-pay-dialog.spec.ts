@@ -21,7 +21,7 @@ import { InvoicesFacade } from './invoices-facade';
 import type { BulkCheck, BulkCheckRow, BulkPaid, BulkPayment } from './invoices-types';
 
 describe('InvoiceBulkPayDialog', () => {
-  let checks: (BulkCheck | Promise<BulkCheck>)[];
+  let checks: (BulkCheck | Promise<BulkCheck> | Error)[];
   let paid: BulkPaid | Error;
   const close = vi.fn();
   const checked = vi.fn<
@@ -31,7 +31,10 @@ describe('InvoiceBulkPayDialog', () => {
       ids: readonly string[],
       date: string | null,
     ) => Promise<BulkCheck>
-  >(() => Promise.resolve(checks.shift() ?? { rows: [], included: 0, skipped: 0 }));
+  >(() => {
+    const next = checks.shift() ?? { rows: [], included: 0, skipped: 0 };
+    return next instanceof Error ? Promise.reject(next) : Promise.resolve(next);
+  });
   const payments = vi.fn<(companyId: string, payment: BulkPayment) => Promise<BulkPaid>>(() =>
     paid instanceof Error ? Promise.reject(paid) : Promise.resolve(paid),
   );
@@ -224,6 +227,25 @@ describe('InvoiceBulkPayDialog', () => {
     expect(
       element.querySelector('[data-testid="invoice-bulk-pay-refused"]')?.textContent?.trim(),
     ).toBe('import.rejections.invalid_value');
+  });
+
+  it('says a day the preview refuses under the day, with no toast, and offers nothing to pay', async () => {
+    checks = [
+      preview(due('a', 'FAC-1', '1.000')),
+      new InvoicesRefused('invalid', [{ field: 'date', reason: 'after_today', params: {} }]),
+    ];
+    const fixture = await open();
+    dayOf(fixture).setValue('2026-10-12');
+    await settle(fixture, 350);
+
+    expect(said()).toEqual([]);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="field-error-date"]')
+        ?.textContent,
+    ).toContain('import.rejections.invalid_value');
+    go(fixture).click();
+    await settle(fixture);
+    expect(payments).not.toHaveBeenCalled();
   });
 
   it('shows the answer to the day asked last, even when an earlier answer arrives after it', async () => {

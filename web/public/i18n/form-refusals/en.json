@@ -119,7 +119,8 @@
       "payment_already_decided": "This payment was already confirmed or rejected, perhaps by another operator: the list is read again.",
       "trial_or_paid_required": "Fill in “Trial ends on”, “Paid through” or both: a subscription covers at least one of them.",
       "filter_refused": "The file cannot be made with a filter in this address, from an old link or one changed by hand: choose the list’s filters again, then export.",
-      "selection_count": "An action on a selection takes 1 to {{max}} items: select fewer, then try again."
+      "selection_count": "An action on a selection takes 1 to {{max}} items: select fewer, then try again.",
+      "nothing_to_print": "Nothing to print: the invoices chosen are drafts or cancelled invoices whose box is not ticked, or they no longer exist. Tick the box, or choose other invoices."
     }
   }
 }

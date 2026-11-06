@@ -5,7 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MatDialog, type MatDialogRef } from '@angular/material/dialog';
 import { TestBed } from '@angular/core/testing';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
@@ -22,6 +22,7 @@ import { TextsParts } from '../shared/i18n/texts-part';
 import { StepUp } from '../shared/step-up/step-up';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { InvoiceBulk } from './invoice-bulk';
+import { InvoicesRefused } from './invoices-api';
 import { InvoicesFacade } from './invoices-facade';
 import type { BulkCheck, BulkSkipReason } from './invoices-types';
 
@@ -213,6 +214,27 @@ describe('InvoiceBulk', () => {
     );
     expect((TestBed.inject(Feedback) as RecordedFeedback).said.map((toast) => toast.key)).toEqual([
       'invoices.bulk.check_failed',
+    ]);
+  });
+
+  it('says a selection the API refuses in the words of its reason, and fetches nothing', async () => {
+    check = new InvoicesRefused('invalid', [
+      { field: 'ids', reason: 'selection_count', params: { max: 100 } },
+    ]);
+    const fixture = create(['a']);
+    TestBed.inject(TranslateService).setTranslation(
+      'fr',
+      { import: { rejections: { selection_count: 'De 1 à {{max}}.' } } },
+      true,
+    );
+
+    await exportAs(fixture, 'csv');
+
+    TestBed.inject(HttpTestingController).expectNone((request) =>
+      request.url.includes('/exports/'),
+    );
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said.map((toast) => toast.key)).toEqual([
+      'import.rejections.selection_count',
     ]);
   });
 

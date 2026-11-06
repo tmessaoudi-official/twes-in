@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Application\Bulk;
 
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Invoices\Application\Payment\ManagePayments;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Domain\ValueObject\PaymentDetails;
 use App\Shared\Application\Transactions;
@@ -39,8 +40,8 @@ final readonly class CashInvoicesInBulk
      *
      * @return string the total recorded, with three decimals
      *
-     * @throws BulkChanged               when the rows are not what the check would include now
-     * @throws \InvalidArgumentException on no row or too many, or a day after today
+     * @throws BulkChanged    when the rows are not what the check would include now
+     * @throws InvalidInvoice as the check, on no row or too many, or a day after today
      */
     public function cash(Company $company, array $rows, PaymentMethod $method, \DateTimeImmutable $day, ?string $reference, ?Uuid $actorUserId): string
     {

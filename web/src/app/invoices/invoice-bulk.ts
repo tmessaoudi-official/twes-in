@@ -4,9 +4,11 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, output } f
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
+import { saidAlready } from '../shared/errors/said-already';
 import { Feedback } from '../shared/feedback/feedback';
+import { sayRefusal } from '../shared/form/refusal-words';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { TextsParts } from '../shared/i18n/texts-part';
 import { todayIn } from '../shared/i18n/format';
@@ -19,6 +21,7 @@ import {
   type BulkSkippedChoice,
   type BulkSkippedData,
 } from './invoice-bulk-skipped-dialog';
+import { InvoicesRefused } from './invoices-api';
 import { InvoicesFacade } from './invoices-facade';
 import type { BulkAction, BulkCheck, BulkPaid, BulkPdfFormat } from './invoices-types';
 
@@ -75,6 +78,7 @@ export class InvoiceBulk {
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
   private readonly texts = inject(TextsParts);
+  private readonly translate = inject(TranslateService);
   protected readonly PDF_FORMATS: readonly BulkPdfFormat[] = ['pdf', 'zip'];
   /** How many invoices the file being fetched holds, as the API last checked. */
   private count = 0;
@@ -163,12 +167,21 @@ export class InvoiceBulk {
   /** What the API would do with each selected invoice, or null once the person is told it could not say. */
   private async check(action: BulkAction): Promise<BulkCheck | null> {
     await this.texts.open(INVOICE_BULK_TEXTS);
-    const check = await this.facade
-      .bulkCheck(this.companyId(), action, this.ids())
-      .catch(() => null);
-    if (check === null) this.feedback.failure('invoices.bulk.check_failed');
-    else this.count = check.included;
-    return check;
+    try {
+      const check = await this.facade.bulkCheck(this.companyId(), action, this.ids());
+      this.count = check.included;
+      return check;
+    } catch (error) {
+      // A selection the API words a refusal for (past its size) is said in those words, which tell what to change.
+      const refusal =
+        error instanceof InvoicesRefused
+          ? error.refusals.find((one) => one.reason !== null)
+          : undefined;
+      if (saidAlready(error)) return null;
+      if (refusal === undefined) this.feedback.failure('invoices.bulk.check_failed');
+      else sayRefusal(this.feedback, this.translate, refusal);
+      return null;
+    }
   }
 
   private async ask(data: BulkSkippedData): Promise<BulkSkippedChoice | null> {

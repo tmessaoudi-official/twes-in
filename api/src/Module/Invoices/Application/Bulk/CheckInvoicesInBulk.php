@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application\Bulk;
 
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Domain\Model\Invoice;
 use App\Module\Invoices\Domain\Repository\InvoiceRepository;
 use App\Module\Invoices\Domain\Repository\PaymentInstrumentRepository;
@@ -41,14 +42,17 @@ final readonly class CheckInvoicesInBulk
      *
      * @return list<BulkCheckRow>
      *
-     * @throws \InvalidArgumentException on no id or too many, or a payment with no day or dated after today
+     * @throws InvalidInvoice on `ids` for no id or too many, and on `date` for a payment with no day or dated after today
      */
     public function check(Company $company, BulkAction $action, array $ids, bool $drafts = false, bool $cancelled = false, ?\DateTimeImmutable $day = null): array
     {
         if (BulkAction::Pay === $action) {
             $today = $this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d');
-            if (null === $day || $day->format('Y-m-d') > $today) {
-                throw new \InvalidArgumentException(\sprintf('A payment is dated today at the latest, %s.', $today));
+            if (null === $day) {
+                throw new InvalidInvoice('date', 'A payment names the day it was received.', 'value_required');
+            }
+            if ($day->format('Y-m-d') > $today) {
+                throw new InvalidInvoice('date', \sprintf('A payment is dated today at the latest, %s.', $today), 'after_today');
             }
         }
         $unique = [];
@@ -56,7 +60,7 @@ final readonly class CheckInvoicesInBulk
             $unique[$id->toRfc4122()] ??= $id;
         }
         if ([] === $unique || \count($unique) > self::MOST) {
-            throw new \InvalidArgumentException(\sprintf('A bulk action takes 1 to %d invoices.', self::MOST));
+            throw new InvalidInvoice('ids', \sprintf('A bulk action takes 1 to %d invoices.', self::MOST), 'selection_count', ['max' => self::MOST]);
         }
         $found = [];
         foreach ($this->invoices->ofIdsInCompany(array_values($unique), $company->getId()) as $invoice) {

@@ -18,6 +18,7 @@ use App\Fiscal\Domain\Repository\UnitRepository;
 use App\Module\Customers\Domain\Model\Contact;
 use App\Module\Customers\Domain\Model\Customer;
 use App\Module\Customers\Domain\ValueObject\ContactDetails;
+use App\Module\Invoices\Application\Bulk\CheckInvoicesInBulk;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Application\ManageInvoices;
@@ -1726,9 +1727,12 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         $this->postJson($this->path().'/bulk-check', ['action' => 'export', 'ids' => []]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        // Said on the selection with its limit, so the list says how many it takes rather than « could not be checked ».
+        self::assertSame([['propertyPath' => 'ids', 'reason' => 'selection_count', 'params' => ['max' => CheckInvoicesInBulk::MOST]]], $this->refusals());
         $many = array_map(static fn (int $n): string => \sprintf('0192c3a4-0000-7000-8000-%012d', $n), range(1, 101));
         $this->postJson($this->path().'/bulk-check', ['action' => 'export', 'ids' => $many]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a list page holds at most 100 rows');
+        self::assertSame([['propertyPath' => 'ids', 'reason' => 'selection_count', 'params' => ['max' => CheckInvoicesInBulk::MOST]]], $this->refusals());
         $this->postJson($this->path().'/bulk-check', ['action' => 'export', 'ids' => ['not-an-id']]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
 
@@ -1856,9 +1860,19 @@ final class InvoicesTest extends ApiTestCase
 
         $this->stepUp('password-1234');
         $many = implode('&', array_map(static fn (int $n): string => \sprintf('id[]=0192c3a4-0000-7000-8000-%012d', $n), range(1, 101)));
-        foreach (['?id[]='.$draft => 'only a draft, its box not ticked', '?id[]='.self::ABSENT => 'nothing found', '' => 'nothing chosen', '?id[]=not-an-id' => 'not an identifier', '?'.$many => 'more than a list page'] as $query => $case) {
+        // Each said as a violation with its reason, so the menu says what to change rather than to try again.
+        $selection = ['propertyPath' => 'id', 'reason' => 'selection_count', 'params' => ['max' => CheckInvoicesInBulk::MOST]];
+        $nothing = ['propertyPath' => '', 'reason' => 'nothing_to_print', 'params' => []];
+        foreach ([
+            '?id[]='.$draft => ['only a draft, its box not ticked', $nothing],
+            '?id[]='.self::ABSENT => ['nothing found', $nothing],
+            '' => ['nothing chosen', $selection],
+            '?id[]=not-an-id' => ['not an identifier', ['propertyPath' => 'id', 'reason' => 'invalid_value', 'params' => []]],
+            '?'.$many => ['more than a list page', $selection],
+        ] as $query => [$case, $refusal]) {
             $this->client->request('GET', $pdf.$query);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
+            self::assertSame([$refusal], $this->refusals(), $case);
         }
         self::assertSame(0, $this->printedSelections(), 'nothing handed out, nothing recorded');
 
@@ -1935,6 +1949,8 @@ final class InvoicesTest extends ApiTestCase
 
         $this->postJson($this->path().'/bulk-check', ['action' => 'pay', 'ids' => [$open], 'date' => new \DateTimeImmutable($today)->modify('+1 day')->format('Y-m-d')]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a payment is dated today at the latest');
+        // Said under the day, as a single payment's is, so the dialog marks the field rather than « could not be checked ».
+        self::assertSame([['propertyPath' => 'date', 'reason' => 'after_today', 'params' => []]], $this->refusals());
         $this->postJson($this->path().'/bulk-check', ['action' => 'pay', 'ids' => [$open], 'date' => '2026-13-45']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a day that is none');
     }
@@ -2028,6 +2044,8 @@ final class InvoicesTest extends ApiTestCase
             $this->postJson($this->path().'/bulk-payments', [...$body, ...$change]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $what);
         }
+        $this->postJson($this->path().'/bulk-payments', [...$body, 'rows' => []]);
+        self::assertSame([['propertyPath' => 'rows', 'reason' => 'selection_count', 'params' => ['max' => CheckInvoicesInBulk::MOST]]], $this->refusals(), 'a selection the payment cannot take is said on it, with its limit');
 
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
         $yesterday = new \DateTimeImmutable($today)->modify('-1 day');

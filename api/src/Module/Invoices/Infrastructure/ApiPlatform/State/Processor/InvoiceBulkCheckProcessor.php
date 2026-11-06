@@ -13,11 +13,12 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Module\Invoices\Application\Bulk\BulkAction;
 use App\Module\Invoices\Application\Bulk\CheckInvoicesInBulk;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceBulkCheckResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /** @implements ProcessorInterface<InvoiceBulkCheckResource, InvoiceBulkCheckResource> */
@@ -36,8 +37,8 @@ final readonly class InvoiceBulkCheckProcessor implements ProcessorInterface
 
         try {
             $rows = $this->check->check($company, BulkAction::from($data->action), $ids, day: $day);
-        } catch (\InvalidArgumentException $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+        } catch (InvalidInvoice $refused) {
+            throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }
         $answer = new InvoiceBulkCheckResource();
         foreach ($rows as $row) {

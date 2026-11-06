@@ -70,7 +70,7 @@ final class InvoiceBulkPaymentResource
         ],
     ])]
     #[Assert\Type('list', groups: [self::WRITE])]
-    #[Assert\Count(min: 1, max: CheckInvoicesInBulk::MOST, groups: [self::WRITE])]
+    #[Assert\Count(min: 1, max: CheckInvoicesInBulk::MOST, groups: [self::WRITE], payload: ['reason' => 'selection_count', 'params' => ['max' => CheckInvoicesInBulk::MOST]])]
     #[Assert\All([new Assert\Collection(fields: [
         'id' => [new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(strict: false, groups: [self::WRITE])],
         'amount' => [new Assert\NotBlank(groups: [self::WRITE]), new Assert\Type('string', groups: [self::WRITE])],

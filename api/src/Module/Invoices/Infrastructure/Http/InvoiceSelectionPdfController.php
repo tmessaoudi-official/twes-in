@@ -19,8 +19,10 @@ use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Module\Invoices\Application\Bulk\PrintInvoicesInBulk;
 use App\Module\Invoices\Application\Print\NothingToPrint;
 use App\Module\Invoices\Application\Print\PrintedInvoice;
+use App\Module\Invoices\Domain\Exception\InvalidInvoice;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Shared\Infrastructure\Http\BulkFile;
 use App\Shared\Infrastructure\Http\LongRequest;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -33,7 +35,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
-use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
@@ -56,7 +57,8 @@ final readonly class InvoiceSelectionPdfController implements BulkFile, Declares
     ) {
     }
 
-    #[Route('/api/companies/{companyId}/exports/invoices.{format}', name: 'api_invoice_selection_pdf', requirements: ['format' => 'pdf|zip'], methods: ['GET'])]
+    // API Platform answers this route's errors as it answers a resource's, so a refused selection is a violation a page reads.
+    #[Route('/api/companies/{companyId}/exports/invoices.{format}', name: 'api_invoice_selection_pdf', requirements: ['format' => 'pdf|zip'], defaults: ['_api_respond' => true], methods: ['GET'])]
     public function __invoke(Request $request, string $companyId, string $format): Response
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), InvoicePermission::READ);
@@ -73,7 +75,7 @@ final readonly class InvoiceSelectionPdfController implements BulkFile, Declares
         $ids = [];
         foreach ($request->query->all('id') as $id) {
             if (!\is_string($id) || !Uuid::isValid($id)) {
-                throw new UnprocessableEntityHttpException('Each id[] is an invoice identifier.');
+                throw DomainRule::refused('id', 'Each id[] is an invoice identifier.', 'invalid_value');
             }
             $ids[] = Uuid::fromString($id);
         }
@@ -86,8 +88,11 @@ final readonly class InvoiceSelectionPdfController implements BulkFile, Declares
             $response = 'pdf' === $format
                 ? new Response($this->print->merged($company, $ids, $drafts, $cancelled), Response::HTTP_OK, ['Content-Type' => 'application/pdf'])
                 : $this->zip($this->print->each($company, $ids, $drafts, $cancelled));
-        } catch (\InvalidArgumentException|NothingToPrint $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+        } catch (InvalidInvoice $refused) {
+            // The selection is the address's `id[]`, which the bulk check names `ids`.
+            throw DomainRule::refused('ids' === $refused->field ? 'id' : $refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
+        } catch (NothingToPrint $refused) {
+            throw DomainRule::refused(DomainRule::WHOLE_REQUEST, $refused->getMessage(), 'nothing_to_print', previous: $refused);
         } catch (PdfRenderingFailed $failure) {
             throw new ServiceUnavailableHttpException(30, 'The PDF could not be rendered; try again shortly.', $failure);
         }

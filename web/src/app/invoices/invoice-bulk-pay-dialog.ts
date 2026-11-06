@@ -15,6 +15,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { saidAlready } from '../shared/errors/said-already';
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { FormStep } from '../shared/form/form-step';
@@ -292,11 +293,15 @@ export class InvoiceBulkPayDialog {
       if (asked !== this.asked) return;
       this.check.set(check);
       this.checkedDay = day;
-    } catch {
+    } catch (error) {
       if (asked !== this.asked) return;
       this.check.set(null);
       this.checkedDay = null;
-      this.feedback.failure('invoices.bulk.check_failed');
+      const refusals = error instanceof InvoicesRefused ? error.refusals : [];
+      // A day the API refuses (after today) is said under the day, as a payment's is; anything else as a failed check.
+      if (refusals.length > 0)
+        this.step.say(refusals, (refused) => this.form()?.showRefused(refused) ?? refused);
+      else if (!saidAlready(error)) this.feedback.failure('invoices.bulk.check_failed');
     } finally {
       if (asked === this.asked) this.checking.set(false);
     }

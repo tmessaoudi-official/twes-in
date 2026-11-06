@@ -68,7 +68,7 @@ final class InvoiceBulkCheckResource
     /** @var list<string> the selected invoices' ids, a list page at most */
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid'], 'minItems' => 1, 'maxItems' => CheckInvoicesInBulk::MOST])]
     #[Assert\Type('list', groups: [self::WRITE])]
-    #[Assert\Count(min: 1, max: CheckInvoicesInBulk::MOST, groups: [self::WRITE])]
+    #[Assert\Count(min: 1, max: CheckInvoicesInBulk::MOST, groups: [self::WRITE], payload: ['reason' => 'selection_count', 'params' => ['max' => CheckInvoicesInBulk::MOST]])]
     #[Assert\All([new Assert\Uuid(strict: false)], groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public array $ids = [];
