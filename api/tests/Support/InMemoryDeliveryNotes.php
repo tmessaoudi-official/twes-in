@@ -97,7 +97,7 @@ final class InMemoryDeliveryNotes implements DeliveryNoteRepository
             static fn (DeliveryNote $note): bool => $note->getCompany()->getId()->equals($companyId) && null !== $note->getNumber() && null === $note->getPdfFile(),
         );
 
-        return \array_slice(array_values(array_map(static fn (DeliveryNote $note): Uuid => $note->getId(), $found)), 0, $limit);
+        return \array_slice(array_values(array_map(static fn (DeliveryNote $note): array => ['id' => $note->getId(), 'number' => (string) $note->getNumber()], $found)), 0, $limit);
     }
 
     public function lockedOfIdsInCompany(array $ids, Uuid $companyId): array

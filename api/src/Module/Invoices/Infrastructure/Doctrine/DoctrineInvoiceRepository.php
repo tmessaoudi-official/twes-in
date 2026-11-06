@@ -263,9 +263,9 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
 
     public function numberedWithoutPdf(Uuid $companyId, int $limit): array
     {
-        /** @var list<array{id: Uuid}> $rows */
+        /** @var list<array{id: Uuid, number: string}> $rows */
         $rows = $this->entityManager->createQueryBuilder()
-            ->select('i.id')
+            ->select('i.id', 'i.number')
             ->from(Invoice::class, 'i')
             ->where('i.company = :company')
             ->andWhere('i.number IS NOT NULL')
@@ -277,7 +277,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ->getQuery()
             ->getResult();
 
-        return array_column($rows, 'id');
+        return $rows;
     }
 
     public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Invoice

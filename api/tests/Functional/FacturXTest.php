@@ -184,21 +184,30 @@ final class FacturXTest extends ApiTestCase
     }
 
     /** A pass's batch is spent on documents still missing their PDF only, as a delivery note's is. */
-    public function testTheWorkersPassSpendsItsBatchOnInvoicesMissingTheirPdf(): void
+    public function testTheWorkersPassSpendsItsBatchOnInvoicesMissingTheirPdfAndGoesPastOneThatFails(): void
     {
         $this->signedIn();
         $this->client->disableReboot();
         $older = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
-        static::getContainer()->get(FakePdfRenderer::class)->failing = true;
-        $missing = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
-        static::getContainer()->get(FakePdfRenderer::class)->failing = false;
+        $renderer = static::getContainer()->get(FakePdfRenderer::class);
+        $renderer->failing = true;
+        $first = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
+        $second = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
         // The invoice that kept its PDF made the oldest, so the batch reaches it first.
         $this->em()->getConnection()->executeStatement("UPDATE invoice SET issue_date = issue_date - INTERVAL '1 day' WHERE id = ?", [$older]);
+        $column = fn (string $name, string $invoice): mixed => $this->em()->getConnection()->fetchOne(\sprintf('SELECT %s FROM invoice WHERE id = ?', $name), [$invoice]);
+        $print = static::getContainer()->get(PrintInvoice::class);
 
-        $done = static::getContainer()->get(PrintInvoice::class)->storeMissing($this->company->getId(), 1);
+        $failed = $print->storeMissing($this->company->getId(), 2);
+        self::assertSame(0, $failed->stored);
+        self::assertSame([$column('number', $first), $column('number', $second)], array_keys($failed->failed), 'each invoice is tried, and each one failing is named by its number');
+
+        $renderer->failing = false;
+        $done = $print->storeMissing($this->company->getId(), 1);
 
         self::assertSame([1, []], [$done->stored, $done->failed]);
-        self::assertNotNull($this->em()->getConnection()->fetchOne('SELECT pdf_file_id FROM invoice WHERE id = ?', [$missing]));
+        self::assertNotNull($column('pdf_file_id', $first), 'the invoice keeping its PDF does not spend the batch');
+        self::assertNull($column('pdf_file_id', $second), 'the batch is spent');
     }
 
     public function testAnInvoiceIssuedBeforeTheCompanyMovedAnswersTheSellerItWasIssuedBy(): void

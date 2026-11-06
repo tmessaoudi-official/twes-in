@@ -321,8 +321,9 @@ final class DeliveryNotesTest extends ApiTestCase
         $print = static::getContainer()->get(PrintDeliveryNote::class);
 
         $failed = $print->storeMissing($this->company->getId(), 2);
+        $number = fn (string $note): mixed => $this->em()->getConnection()->fetchOne('SELECT number FROM delivery_note WHERE id = ?', [$note]);
         self::assertSame(0, $failed->stored);
-        self::assertCount(2, $failed->failed, 'each note is tried, and each one failing is named');
+        self::assertSame([$number($first), $number($second)], array_keys($failed->failed), 'each note is tried, and each one failing is named by its number');
 
         $renderer->failing = false;
         $done = $print->storeMissing($this->company->getId(), 1);

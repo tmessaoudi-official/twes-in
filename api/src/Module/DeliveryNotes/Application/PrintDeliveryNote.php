@@ -115,12 +115,12 @@ final readonly class PrintDeliveryNote
     {
         $stored = 0;
         $failed = [];
-        foreach ($this->notes->numberedWithoutPdf($companyId, $limit) as $id) {
+        foreach ($this->notes->numberedWithoutPdf($companyId, $limit) as ['id' => $id, 'number' => $number]) {
             try {
                 $this->storeIssued($companyId, $id);
                 ++$stored;
             } catch (\Exception $failure) {
-                $failed[$this->notes->ofIdInCompany($id, $companyId)?->getNumber() ?? $id->toRfc4122()] = $failure->getMessage();
+                $failed[$number] = $failure->getMessage();
             }
         }
 

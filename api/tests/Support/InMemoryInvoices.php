@@ -151,7 +151,7 @@ final class InMemoryInvoices implements InvoiceRepository
             static fn (Invoice $invoice): bool => $invoice->getCompany()->getId()->equals($companyId) && null !== $invoice->getNumber() && null === $invoice->getPdfFile(),
         );
 
-        return \array_slice(array_values(array_map(static fn (Invoice $invoice): Uuid => $invoice->getId(), $found)), 0, $limit);
+        return \array_slice(array_values(array_map(static fn (Invoice $invoice): array => ['id' => $invoice->getId(), 'number' => (string) $invoice->getNumber()], $found)), 0, $limit);
     }
 
     public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Invoice

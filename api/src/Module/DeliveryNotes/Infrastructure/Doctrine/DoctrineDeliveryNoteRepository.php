@@ -164,9 +164,9 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
 
     public function numberedWithoutPdf(Uuid $companyId, int $limit): array
     {
-        /** @var list<array{id: Uuid}> $rows */
+        /** @var list<array{id: Uuid, number: string}> $rows */
         $rows = $this->entityManager->createQueryBuilder()
-            ->select('n.id')
+            ->select('n.id', 'n.number')
             ->from(DeliveryNote::class, 'n')
             ->where('n.company = :company')
             ->andWhere('n.number IS NOT NULL')
@@ -178,7 +178,7 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
             ->getQuery()
             ->getResult();
 
-        return array_column($rows, 'id');
+        return $rows;
     }
 
     public function lockedOfLineIdsInCompany(array $lineIds, Uuid $companyId): array

@@ -131,7 +131,7 @@ interface InvoiceRepository
      * The numbered documents of the company that keep no PDF yet, the oldest numbered first: what failed to be stored when
      * it was issued, for the worker to store.
      *
-     * @return list<Uuid>
+     * @return list<array{id: Uuid, number: string}> each with its number, read with it so a failure is named without reading it again
      */
     public function numberedWithoutPdf(Uuid $companyId, int $limit): array;
 }
