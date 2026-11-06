@@ -15,6 +15,7 @@ use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
 use App\Settings\Domain\ValueObject\SettingLevel;
+use App\Settings\Infrastructure\ApiPlatform\Output\SettingRefusals;
 use App\Settings\Infrastructure\ApiPlatform\Payload\SettingKey;
 use App\Settings\Infrastructure\ApiPlatform\Security\SettingAccess;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -46,12 +47,14 @@ final readonly class ResetSettingProcessor implements ProcessorInterface
         $company = $this->access->companyToWrite($companyId, $level);
         $settingContext = $this->access->contextToWrite($company, $level, $query?->getString('roleId'), $query?->getString('customerId'), $query?->getString('customerGroupId'), $query?->getString('productId'), $query?->getString('productCategoryId'), $query?->getString('establishmentId'));
 
+        $key = SettingKey::of($uriVariables);
         try {
-            $this->change->reset($settingContext, SettingKey::of($uriVariables), $level, $this->access->callerId());
+            $this->change->reset($settingContext, $key, $level, $this->access->callerId());
         } catch (UnknownSetting $unknown) {
             throw new NotFoundHttpException($unknown->getMessage(), $unknown);
         } catch (SettingLevelRefused $refused) {
-            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+            // Said on the setting, as a change at that level is, so the page marks the field it refused.
+            throw SettingRefusals::ofLevel($key, $refused);
         }
 
         return null;

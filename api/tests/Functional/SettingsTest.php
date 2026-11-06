@@ -268,6 +268,17 @@ final class SettingsTest extends ApiTestCase
         self::assertSame([['propertyPath' => 'document.payment_terms_days', 'reason' => 'level_refused', 'params' => []]], $this->refusals());
     }
 
+    /** Putting a setting back at a level it is not kept at is refused on the setting too, as changing it there is. */
+    public function testAResetAtALevelRefusedIsSaidOnItsSetting(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+
+        $this->sendJson('DELETE', $this->path().'/document.payment_terms_days?level=user');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'document.payment_terms_days', 'reason' => 'level_refused', 'params' => []]], $this->refusals());
+    }
+
     // docs/SPEC.md § 7, 2026-09-24 22:51, row 125: each person's own keys, which no company or role sets for them.
     public function testEachPersonChangesAndRestoresTheirOwnKeyboardShortcuts(): void
     {
