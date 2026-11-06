@@ -145,8 +145,9 @@ the end of § Lessons here.
   subject (a receipt that moved a price) is said the same way: a use case calls the `Effects` port, `StagedEffects`
   keeps it until its unit commits (`StagedUntilCommit`, which `DoctrineTransactions` drives), `EffectsAnswer` writes
   `X-Effects`, and `effectsInterceptor` (`shared/effects/`) hands each kind to the `EFFECT_SAYERS` that say it, once
-  `RequestActivity.settled()`: one toast shows at a time, and a sayer speaking at the answer was replaced by the page's
-  own outcome, said after its reload.
+  `RequestActivity.settled()`, each in its turn (`EffectsInTurn`): a sayer speaks once the toast on screen has closed
+  (`Feedback.idle()`), so the page's own outcome is read first and two consequences never replace each other. An e2e
+  reading an effect's toast closes the page's own first (`toast-close`), or waits its four seconds.
 - A stock location that has seen a movement is KEPT (409), so an e2e that moves goods into a location it created
   cannot delete it and leaks one per run into the shared company. Say the dimension is uncertified instead.
 - Playwright's `evaluateAll` does NOT auto-wait: assert the count with `expect(locator).toHaveCount(n)` first, or a

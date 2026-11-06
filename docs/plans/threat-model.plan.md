@@ -108,4 +108,4 @@ real publish workflow.
 ### Needs research
 ### Fragile
 ### Known issues
-- On the live stack (`make up`), the logout e2e lands on `/login?expired=1`: it reproduces at `1cb8cf78` too, before W2's sign-in changes, and CI passes it on the image stack.
+- (no longer reproduced) On the live stack (`make up`), the logout e2e landed on `/login?expired=1`, at `1cb8cf78` too, while CI passed it on the image stack. On 2026-11-06, at 0d8e0af33 on `make up`, it passed 5 runs of 5 (`make e2e E2E_ARGS="e2e/auth.spec.ts --grep logout --repeat-each 4"`, var/claude/s51-logout.log); the fix that ended it is not identified [Inferred: the sign-out path that stopped asking the API once nobody is signed in, web.md's lesson on `NotificationBell` and `RequestActivity`].

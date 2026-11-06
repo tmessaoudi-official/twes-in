@@ -433,7 +433,26 @@ export class PlatformPage implements OnInit {
    * company starts on it.
    */
   protected readonly platformPhoneCountry = computed(() => this.platform.country()?.value ?? '');
-  /** WhatsApp is often the phone's own number: one press copies it, and the field stays the operator's to change. */
+  /**
+   * WhatsApp follows the phone while it is the same number: a phone typed anew moves it too, until a WhatsApp number of
+   * its own is typed, which then stays. Read from the form, so following needs nothing stored beside the two numbers.
+   */
+  private readonly whatsappFollowsPhone = effect((onCleanup) => {
+    const group = this.supportGroup();
+    const phone = group?.controls['phone'];
+    const whatsapp = group?.controls['whatsapp'];
+    if (phone === undefined || whatsapp === undefined) return;
+    let before = typedText(String(phone.value ?? ''));
+    const typing = phone.valueChanges.subscribe((value) => {
+      if (typedText(String(whatsapp.value ?? '')) === before) {
+        whatsapp.setValue(value);
+        whatsapp.markAsDirty();
+      }
+      before = typedText(String(value ?? ''));
+    });
+    onCleanup(() => typing.unsubscribe());
+  });
+  /** One press puts the phone's number in WhatsApp again, after it was typed apart; the field stays the operator's. */
   protected readonly supportActions: Readonly<Record<string, FieldAction>> = {
     whatsapp: {
       label: 'platform.support.same_as_phone',

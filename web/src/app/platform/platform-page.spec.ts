@@ -1253,6 +1253,36 @@ describe('PlatformPage', () => {
     });
   });
 
+  it('keeps WhatsApp on the phone while they are the same number, and its own once typed apart', async () => {
+    support.set({
+      phone: '+216 71 900 868',
+      whatsapp: '+216 71 900 868',
+      email: '',
+      status_url: '',
+    });
+    const { fixture, query } = await render();
+    const type = (id: string, value: string) => {
+      const input = query<HTMLInputElement>(id)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    };
+
+    type('field-phone', '71 900 869');
+    expect(query<HTMLInputElement>('field-whatsapp')!.value).toBe('71 900 869');
+
+    type('field-whatsapp', '20 123 456');
+    type('field-phone', '71 900 870');
+    expect(query<HTMLInputElement>('field-whatsapp')!.value).toBe('20 123 456');
+
+    query<HTMLButtonElement>('platform-support-save')!.click();
+    await fixture.whenStable();
+    expect(facade.saveSupport).toHaveBeenCalledWith({
+      phone: '+216 71 900 870',
+      whatsapp: '+216 20 123 456',
+    });
+  });
+
   it("reads the support's numbers by the country the platform is set to, never a fixed one", async () => {
     country.set({ ...countryState, value: 'FR' });
     TestBed.overrideProvider(AuthFacade, {
