@@ -13,7 +13,7 @@ import {
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell, DataListSelection } from '../shared/list/data-list';
@@ -40,6 +40,8 @@ import {
 } from './delivery-note-forms';
 import { DeliveryNoteBulk } from './delivery-note-bulk';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
+import { RefusalLine } from '../shared/documents/refusal-line';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import {
   DELIVERY_NOTE_STATUS_TONES,
   DELIVERY_NOTE_STATUS_STAGES,
@@ -107,6 +109,13 @@ export class DeliveryNotesPage implements OnInit {
   protected readonly scale = computed(() => this.facade.options()?.currencyScale ?? null);
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
+  /** A row's step refused for its note's state (cancelling one delivered since) said in its reason's words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'delivery_notes.errors.',
+    inject(TranslateService),
+    inject(RefusalFigures),
+  );
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   /** What the list says before it holds anything, offering the page's own create action where it is offered. */
   protected readonly emptyState = computed<EmptyState>(() => ({

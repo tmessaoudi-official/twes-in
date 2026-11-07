@@ -6,8 +6,9 @@ import { type FieldRefusal, refusalsIn } from './field-refusals';
 import { FORM_REFUSAL_TEXTS } from './form-refusal-texts';
 
 /**
- * The fields a save was refused on, read from a 422's body only, with their texts opened into the root before the form
- * says them. Texts that could not be fetched (the network gone between the answer and the fetch) neither hide the
+ * The fields a save was refused on, read from a 422's body, or a 409's, which names the move a record's state refuses
+ * with its reason as a refused value is named (a record saved by someone else since names none), with their texts
+ * opened into the root before the form says them. Texts that could not be fetched (the network gone between the answer and the fetch) neither hide the
  * refusal nor fail the save: a field whose reason has no words yet says « Valeur refusée. », and the next refusal
  * fetches them again (`TextsParts` keeps no failed fetch).
  */
@@ -16,7 +17,9 @@ export async function formRefusalsIn(
   error: unknown,
 ): Promise<readonly FieldRefusal[]> {
   const refusals =
-    error instanceof HttpErrorResponse && error.status === 422 ? refusalsIn(error.error) : [];
+    error instanceof HttpErrorResponse && (error.status === 422 || error.status === 409)
+      ? refusalsIn(error.error)
+      : [];
   if (refusals.length > 0) {
     const { TextsParts } = await import('../i18n/texts-part');
     await injector

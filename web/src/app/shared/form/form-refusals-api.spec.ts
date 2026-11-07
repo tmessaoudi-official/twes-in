@@ -32,9 +32,31 @@ describe('formRefusalsIn', () => {
 
   it('opens nothing for a refusal naming no field, or another answer', async () => {
     expect(await formRefusalsIn(injector, refused(422, { detail: 'x' }))).toEqual([]);
-    expect(await formRefusalsIn(injector, refused(409, twice))).toEqual([]);
+    expect(
+      await formRefusalsIn(
+        injector,
+        refused(409, { type: '/problems/record-changed', status: 409 }),
+      ),
+    ).toEqual([]);
+    expect(await formRefusalsIn(injector, refused(400, twice))).toEqual([]);
     expect(await formRefusalsIn(injector, new Error('offline'))).toEqual([]);
     expect(open).not.toHaveBeenCalled();
+  });
+
+  it('reads a move a state refuses, which a 409 names with its reason as a 422 does', async () => {
+    const cancelled = {
+      violations: [
+        {
+          propertyPath: '',
+          message: 'x',
+          payload: { reason: 'note_not_cancellable', params: { reference: 'BL-7' } },
+        },
+      ],
+    };
+    expect(await formRefusalsIn(injector, refused(409, cancelled))).toEqual([
+      { field: '', reason: 'note_not_cancellable', params: { reference: 'BL-7' } },
+    ]);
+    expect(open).toHaveBeenCalledWith(FORM_REFUSAL_TEXTS);
   });
 
   it('still names the fields when their texts cannot be fetched', async () => {

@@ -212,7 +212,10 @@ describe('CompanyApi, the members', () => {
       },
       { status: 409, statusText: 'Conflict' },
     );
-    await expect(last).rejects.toEqual(new CompanyRefused('last_owner'));
+    // The reason travels with the code, as every refusal a 409 names does; the members' screen says the code.
+    await expect(last).rejects.toEqual(
+      new CompanyRefused('last_owner', [{ field: 'member', reason: 'last_owner', params: {} }]),
+    );
 
     const own = api.removeMember('c1', 'u2');
     http.expectOne({ method: 'DELETE', url: '/api/companies/c1/members/u2' }).flush(
@@ -224,7 +227,11 @@ describe('CompanyApi, the members', () => {
       },
       { status: 409, statusText: 'Conflict' },
     );
-    await expect(own).rejects.toEqual(new CompanyRefused('own_membership'));
+    await expect(own).rejects.toEqual(
+      new CompanyRefused('own_membership', [
+        { field: 'member', reason: 'own_membership', params: {} },
+      ]),
+    );
 
     const already = api.removeMember('c1', 'u2');
     http

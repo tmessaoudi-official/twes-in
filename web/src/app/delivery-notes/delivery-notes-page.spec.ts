@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { computed, signal } from '@angular/core';
@@ -40,6 +41,9 @@ class StaticLoader implements TranslateLoader {
         not_delivered: 'Livraison non enregistrée',
         errors: { network: 'Le serveur est injoignable.' },
       },
+      import: {
+        rejections: { note_not_cancellable: 'Le bon « {{reference}} » ne s’annule plus.' },
+      },
     });
   }
 }
@@ -74,6 +78,7 @@ const numbered: DeliveryNoteRow = {
 
 describe('DeliveryNotesPage', () => {
   const error = signal<DeliveryNotesError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const statusCounts = signal<DeliveryNoteStatusCounts | null>(null);
   const listed: readonly DeliveryNoteRow[] = [
     numbered,
@@ -91,6 +96,7 @@ describe('DeliveryNotesPage', () => {
       taxes: [],
     }).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     readFailed: computed(() => error() !== null),
     total: signal(2).asReadonly(),
     statusCounts: statusCounts.asReadonly(),
@@ -120,6 +126,7 @@ describe('DeliveryNotesPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    refusals.set([]);
     notes.set(listed);
     facade.loadListContext.mockReset().mockResolvedValue(undefined);
     facade.loadPage.mockReset().mockResolvedValue(undefined);
@@ -280,5 +287,15 @@ describe('DeliveryNotesPage', () => {
     await settle();
 
     expect(q('delivery-notes-error')?.textContent).toContain('injoignable');
+  });
+
+  it('says a row’s step its note’s state refuses in its reason’s words', async () => {
+    error.set('conflict');
+    refusals.set([{ field: '', reason: 'note_not_cancellable', params: { reference: 'BL-7' } }]);
+    await settle();
+
+    expect(q('delivery-notes-error')?.textContent?.trim()).toBe(
+      'Le bon « BL-7 » ne s’annule plus.',
+    );
   });
 });

@@ -96,6 +96,26 @@ describe('DeliveryNotesApi', () => {
     });
   });
 
+  it('hands over the reason a 409 names for a move the note’s state refuses', async () => {
+    const refused = api.cancel('c1', 'n1');
+    http.expectOne('/api/companies/c1/delivery-notes/n1/cancel').flush(
+      {
+        violations: [
+          {
+            propertyPath: '',
+            message: 'x',
+            payload: { reason: 'note_not_cancellable', params: { reference: 'BL-7' } },
+          },
+        ],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'conflict',
+      refusals: [{ field: '', reason: 'note_not_cancellable', params: { reference: 'BL-7' } }],
+    });
+  });
+
   it('reads the form options', async () => {
     const pending = api.options('c 1');
     http.expectOne('/api/companies/c%201/delivery-note-options').flush({
