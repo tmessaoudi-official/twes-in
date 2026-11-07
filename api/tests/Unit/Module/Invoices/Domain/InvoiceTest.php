@@ -430,6 +430,60 @@ final class InvoiceTest extends TestCase
         self::assertSame([], $credit->getPayments());
     }
 
+    /**
+     * Every move a document's state refuses names why, for the screen to say it: a document never issued has no number,
+     * so no reason about one names a reference, where the API's own English line could only show its id.
+     */
+    public function testEveryStateRefusalNamesItsReasonAndOnlyAnIssuedDocumentByItsNumber(): void
+    {
+        $today = new \DateTimeImmutable('2026-09-20');
+        $draft = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
+        $cancelled = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
+        $cancelled->cancel($this->now);
+        $issued = $this->issued('12.900', '0.000', '12.900');
+        $credit = $this->issuedCreditNote($this->issued('12.900', '0.000', '12.900'), '-1.000');
+        $reference = ['reference' => 'FAC-2026-00001'];
+        $pay = fn (Invoice $invoice) => $invoice->recordPayment(new PaymentDetails($today, '1', PaymentMethod::Cash), $today, 3, null, $this->now);
+
+        foreach ([
+            'a cancelled draft cancelled again' => [fn () => $cancelled->cancel($this->now), 'invoice_cancelled_already', []],
+            'an issued invoice cancelled' => [fn () => $issued->cancel($this->now), 'invoice_not_cancellable', $reference],
+            'a draft\'s receiver put right' => [fn () => $draft->correctReceiver(Receiver::named('Sami'), $this->now), 'invoice_receiver_as_drafted', []],
+            'a cancelled draft\'s receiver put right' => [fn () => $cancelled->correctReceiver(Receiver::named('Sami'), $this->now), 'invoice_receiver_as_drafted', []],
+            'a draft credited' => [fn () => Invoice::creditNoteFor($draft, 'Retour', $this->now), 'credit_note_of_draft', []],
+            'a cancelled draft credited' => [fn () => Invoice::creditNoteFor($cancelled, 'Retour', $this->now), 'credit_note_of_draft', []],
+            'a credit note credited' => [fn () => Invoice::creditNoteFor($credit, 'Retour', $this->now), 'credit_note_not_credited', []],
+            'a credit note duplicated' => [fn () => Invoice::duplicateOf($credit, $this->now), 'credit_note_not_duplicated', []],
+            'a draft paid' => [static fn () => $pay($draft), 'invoice_not_issued_paid', []],
+            'a cancelled draft paid' => [static fn () => $pay($cancelled), 'invoice_not_issued_paid', []],
+            'a credit note paid' => [static fn () => $pay($credit), 'credit_note_not_paid', []],
+            'a draft paid beyond' => [static fn () => $draft->assertPaidBeyond($today), 'invoice_not_issued_paid', []],
+            'a credit note paid beyond' => [static fn () => $credit->assertPaidBeyond($today), 'credit_note_not_paid', []],
+            'an invoice paid beyond while due' => [static fn () => $issued->assertPaidBeyond($today), 'still_due', [...$reference, 'amount' => '12.900']],
+        ] as $case => [$attempt, $reason, $params]) {
+            try {
+                $attempt();
+                self::fail("accepted: $case");
+            } catch (InvoiceTransitionRefused $refused) {
+                self::assertSame([$reason, $params], [$refused->reason, $refused->params], $case);
+            }
+        }
+
+        foreach ([
+            'a cancelled draft revised' => [fn () => $cancelled->revise($this->establishment(), $cancelled->getCustomer(), new InvoiceHeader(), [], [], $this->now), 'invoice_draft_cancelled', []],
+            'a cancelled draft issued' => [static fn () => $cancelled->assertDraft('is issued', issuing: true), 'invoice_draft_cancelled', []],
+            'an issued invoice revised' => [fn () => $issued->revise($this->establishment(), $issued->getCustomer(), new InvoiceHeader(), [], [], $this->now), 'invoice_no_longer_draft', $reference],
+            'an issued invoice issued again' => [static fn () => $issued->assertDraft('is issued', issuing: true), 'invoice_issued_already', $reference],
+        ] as $case => [$attempt, $reason, $params]) {
+            try {
+                $attempt();
+                self::fail("accepted: $case");
+            } catch (InvoiceNotDraft $refused) {
+                self::assertSame([$reason, $params], [$refused->reason, $refused->params], $case);
+            }
+        }
+    }
+
     public function testACreditTakesItsAmountOffWhatItsInvoiceStillHasDueAtMostAllOfIt(): void
     {
         $invoice = $this->issued(total: '1190.000', withheld: '11.900', due: '1178.100');

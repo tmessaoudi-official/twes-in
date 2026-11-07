@@ -18,9 +18,9 @@ use App\Module\Invoices\Infrastructure\ApiPlatform\Output\InvoiceView;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\CreditNoteRight;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -44,7 +44,7 @@ final readonly class CancelInvoiceProcessor implements ProcessorInterface
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvoiceTransitionRefused $conflict) {
-            throw new ConflictHttpException($conflict->getMessage(), $conflict);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         }
 
         return $this->view->of($company, $invoice);

@@ -77,6 +77,7 @@ class StaticLoader implements TranslateLoader {
           tax_twice: '{{tax}} est choisie deux fois.',
           above_due: 'Un paiement couvre au plus ce qui reste à payer, {{amount}}.',
           receiver_off: 'Ce document ne remet aucune marchandise.',
+          invoice_not_cancellable: 'Le document « {{reference}} » est émis.',
         },
       },
       invoices: {
@@ -2379,6 +2380,19 @@ describe('InvoicePage', () => {
 
     await vi.waitFor(() =>
       expect(q('invoice-error')?.textContent?.trim()).toBe('Ajoutez au moins une ligne.'),
+    );
+  });
+
+  it('says a move the invoice’s state refuses in its reason’s words, not as a change meanwhile', async () => {
+    error.set('conflict');
+    refusals.set([
+      { field: '', reason: 'invoice_not_cancellable', params: { reference: 'FAC-2026-00001' } },
+    ]);
+    invoice.set(issued);
+    await open('i1');
+
+    expect(q('invoice-error')?.textContent?.trim()).toBe(
+      'Le document « FAC-2026-00001 » est émis.',
     );
   });
 

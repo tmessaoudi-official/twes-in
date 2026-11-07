@@ -683,6 +683,28 @@ describe('InvoicesApi', () => {
     }
   });
 
+  it('hands over the reason a 409 names for a move the invoice’s state refuses', async () => {
+    const refused = api.cancel('c1', 'i1');
+    http.expectOne('/api/companies/c1/invoices/i1/cancel').flush(
+      {
+        violations: [
+          {
+            propertyPath: '',
+            message: 'x',
+            payload: { reason: 'invoice_not_cancellable', params: { reference: 'FAC-2026-00001' } },
+          },
+        ],
+      },
+      { status: 409, statusText: 'Conflict' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'conflict',
+      refusals: [
+        { field: '', reason: 'invoice_not_cancellable', params: { reference: 'FAC-2026-00001' } },
+      ],
+    });
+  });
+
   it('names each field a save was refused on, a line’s by its line', async () => {
     const refused = api.revise('c1', 'i1', input, 1);
     http.expectOne('/api/companies/c1/invoices/i1').flush(

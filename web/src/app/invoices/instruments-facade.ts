@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { type FormAnswer, requestState } from '../shared/feedback/request-state';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { InstrumentsApi } from './instruments-api';
 import type { InstrumentInput, InstrumentRow, InstrumentStep } from './instruments-types';
 import { InvoicesRefused } from './invoices-api';
@@ -16,11 +17,14 @@ export class InstrumentsFacade {
   private readonly api = inject(InstrumentsApi);
 
   private readonly itemsSignal = signal<readonly InstrumentRow[]>([]);
+  private readonly refusalsSignal = signal<readonly FieldRefusal[]>([]);
   private readonly state = requestState<InvoicesError>((error) =>
     error instanceof InvoicesRefused ? error.code : 'network',
   );
 
   readonly items = this.itemsSignal.asReadonly();
+  /** Why the last step was refused, with the error it came with: a move the instrument's state no longer allows. */
+  readonly refusals = this.refusalsSignal.asReadonly();
   readonly busy = this.state.busy;
   readonly error = this.state.error;
   /** Whether `error` is a read's failure, which « Réessayer » answers; a refused save is not. */
@@ -38,6 +42,8 @@ export class InstrumentsFacade {
     invoiceId: string,
     input: InstrumentInput,
   ): Promise<FormAnswer<void>> {
+    // The line under the list says this answer's refusal, never an earlier step's.
+    this.refusalsSignal.set([]);
     return this.state.writeOrRefuse(
       async () => {
         await this.api.receive(companyId, invoiceId, input);
@@ -53,10 +59,17 @@ export class InstrumentsFacade {
     instrumentId: string,
     step: InstrumentStep,
   ): Promise<boolean> {
-    return this.run(async () => {
-      await this.api.advance(companyId, invoiceId, instrumentId, step);
-      this.itemsSignal.set(await this.api.list(companyId, invoiceId));
-    });
+    this.refusalsSignal.set([]);
+    return this.state.write(
+      async () => {
+        await this.api.advance(companyId, invoiceId, instrumentId, step);
+        this.itemsSignal.set(await this.api.list(companyId, invoiceId));
+      },
+      {
+        failed: (error) =>
+          this.refusalsSignal.set(error instanceof InvoicesRefused ? error.refusals : []),
+      },
+    );
   }
 
   clearError(): void {

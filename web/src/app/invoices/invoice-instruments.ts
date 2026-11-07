@@ -22,6 +22,7 @@ import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import { FormStep } from '../shared/form/form-step';
 import { RefusalFigures } from '../shared/form/refusal-figures';
+import { RefusalLine } from '../shared/documents/refusal-line';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { Feedback } from '../shared/feedback/feedback';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
@@ -89,6 +90,13 @@ export class InvoiceInstruments {
   protected readonly group = signal<DescriptorFormGroup | null>(null);
   protected readonly descriptor = instrumentForm();
   protected readonly step = new FormStep(inject(TranslateService), inject(RefusalFigures));
+  /** The line under the list: a step's refusal in its reason's words, else the error's own. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'invoices.errors.',
+    inject(TranslateService),
+    inject(RefusalFigures),
+  );
   private readonly form = viewChild(DescriptorForm);
 
   /**

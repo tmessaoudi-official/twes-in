@@ -22,7 +22,6 @@ use App\Module\Products\Infrastructure\ApiPlatform\Security\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -45,7 +44,7 @@ final readonly class ReceiveInvoiceProcessor implements ProcessorInterface
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvoiceTransitionRefused $conflict) {
-            throw new ConflictHttpException($conflict->getMessage(), $conflict);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         } catch (InvalidInvoice $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }

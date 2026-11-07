@@ -25,7 +25,6 @@ use App\ModuleRegistry\Application\ModuleStates;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;
 
@@ -59,7 +58,7 @@ final readonly class AddDeliveryNotesToDraftProcessor implements ProcessorInterf
         } catch (DeliveryNoteTransitionRefused $conflict) {
             throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         } catch (InvoiceNotDraft $conflict) {
-            throw new ConflictHttpException($conflict->getMessage(), $conflict);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         }
 
         return $this->answer->of($company, $invoiceId);

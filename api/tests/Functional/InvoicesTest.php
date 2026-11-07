@@ -346,8 +346,10 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame('cancelled', $this->json()['status']);
         $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => $this->storedVersion('invoice', $id)]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a cancelled invoice is no longer revised');
+        self::assertSame(['invoice_draft_cancelled', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoice is cancelled once');
+        self::assertSame(['invoice_cancelled_already', []], $this->refusedWholeAs(), 'the reason it is said with');
 
         $this->sendJson('PUT', $this->path(self::ABSENT), $this->invoice(['version' => 1]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
@@ -385,10 +387,13 @@ final class InvoicesTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path($id), $this->invoice(['version' => $this->storedVersion('invoice', $id)]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is no longer revised');
+        self::assertSame(['invoice_no_longer_draft', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is corrected by a credit note, never cancelled');
+        self::assertSame(['invoice_not_cancellable', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($id).'/issue', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoice is numbered once');
+        self::assertSame(['invoice_issued_already', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
 
         $this->postJson($this->path(), $this->invoice());
         $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/issue', null);
@@ -775,6 +780,7 @@ final class InvoicesTest extends ApiTestCase
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash']);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not paid');
+        self::assertSame(['invoice_not_issued_paid', []], $this->refusedWholeAs(), 'the reason it is said with');
     }
 
     public function testDuplicatingADocumentGivesANewDraftCarryingWhatWasTypedAndNothingItEarned(): void
@@ -821,6 +827,7 @@ final class InvoicesTest extends ApiTestCase
         $creditId = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path($creditId).'/duplicate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a credit note belongs to the invoice it corrects; a copy of it would correct it twice');
+        self::assertSame(['credit_note_not_duplicated', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path(self::ABSENT).'/duplicate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
@@ -900,11 +907,14 @@ final class InvoicesTest extends ApiTestCase
 
         $this->postJson($this->path($creditId).'/credit-notes', ['creditNoteReason' => 'Retour']);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a credit note is not credited');
+        self::assertSame(['credit_note_not_credited', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($creditId).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash']);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a credit note is not paid');
+        self::assertSame(['credit_note_not_paid', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/credit-notes', ['creditNoteReason' => 'Retour']);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not credited');
+        self::assertSame(['credit_note_of_draft', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path(self::ABSENT).'/credit-notes', ['creditNoteReason' => 'Retour']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
@@ -1068,6 +1078,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame('deposited', $this->json()['status']);
         $this->postJson($instruments.'/'.$chequeId.'/deposit', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'deposited once');
+        self::assertSame(['instrument_not_held', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->companyPath().'/record-removals', ['subject' => 'payment_instrument', 'ids' => [$chequeId]]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a deposited one stays as the record, as a stranger\'s would');
 
@@ -1081,6 +1092,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame([[$today, '100.000', 'check', 'CHQ-1', $cashed['paymentId']]], array_map(static fn (mixed $payment): array => \is_array($payment) ? [$payment['date'], $payment['amount'], $payment['method'], $payment['reference'], $payment['id']] : [], $paid));
         $this->sendJson('DELETE', $this->path($id).'/payments/'.$this->stringAt($cashed, 'paymentId'));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'the payment that cashed a cheque is kept');
+        self::assertSame(['payment_kept_cashed', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         self::assertEquals(3, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action IN ('instrument.received', 'instrument.deposited', 'instrument.cashed')"), 'a refused step leaves no trace');
     }
 
@@ -2262,6 +2274,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertStringContainsString('<bdi>Sami Trabelsi</bdi>', (string) $this->client->getResponse()->getContent(), 'the stored PDF says who received');
         $this->sendJson('PUT', $this->path($nobody), $this->invoice(['version' => $issued['version'], 'lines' => $goods, 'receivedBy' => ['name' => 'Sami Trabelsy']]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is never changed');
+        self::assertSame(['invoice_no_longer_draft', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         $this->getJson($this->path($nobody));
         self::assertSame('Sami Trabelsi', $this->receivedName($this->json()));
 
@@ -2308,6 +2321,7 @@ final class InvoicesTest extends ApiTestCase
 
         $this->postJson($this->path($id).'/receiver', ['receivedBy' => ['name' => 'Sami']]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft names its receiver as it is revised');
+        self::assertSame(['invoice_receiver_as_drafted', []], $this->refusedWholeAs(), 'the reason it is said with');
         $this->postJson($this->path($id).'/issue', null);
         self::assertResponseIsSuccessful();
         $this->client->request('GET', $this->path($id).'/pdf');

@@ -91,11 +91,11 @@ final readonly class ManagePayments implements DeclaresAuditActions
             $company->assertOpenOn($payment->getDate());
             // The money a credit note gave back was paid: taking the payment away would count it twice.
             if ($this->credits->hasGivenBack($company->getId(), $invoice->getId())) {
-                throw new InvoiceTransitionRefused(\sprintf('The invoice %s gave money back through a credit note: its payments are kept.', $invoice->getNumber() ?? $invoice->getId()->toRfc4122()));
+                throw new InvoiceTransitionRefused(\sprintf('The invoice %s gave money back through a credit note: its payments are kept.', $invoice->getNumber() ?? $invoice->getId()->toRfc4122()), 'payment_kept_credited', ['reference' => $invoice->getNumber() ?? $invoice->getId()->toRfc4122()]);
             }
             // A cashed cheque is the proof the money came: its payment is kept, or the instrument would say cashed for nothing.
             if (null !== $this->instruments?->cashedByPayment($company->getId(), $paymentId)) {
-                throw new InvoiceTransitionRefused(\sprintf('The payment cashed a cheque or traite of the invoice %s: it is kept.', $invoice->getNumber() ?? $invoice->getId()->toRfc4122()));
+                throw new InvoiceTransitionRefused(\sprintf('The payment cashed a cheque or traite of the invoice %s: it is kept.', $invoice->getNumber() ?? $invoice->getId()->toRfc4122()), 'payment_kept_cashed', ['reference' => $invoice->getNumber() ?? $invoice->getId()->toRfc4122()]);
             }
             $invoice->removePayment($payment, $this->clock->now());
             $this->invoices->save($invoice);

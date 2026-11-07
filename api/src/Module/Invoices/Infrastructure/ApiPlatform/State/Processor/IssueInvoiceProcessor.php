@@ -68,7 +68,9 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
             $invoice = $this->workflow->issue($company, CompanyPath::identifier($uriVariables, 'invoiceId'), $this->guard->account()->getId(), $excessTo, $this->consents->of($company, $context));
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
-        } catch (InvoiceNotDraft|NoNumberingSeries|InvalidNumbering|InvoiceNumberTaken $conflict) {
+        } catch (InvoiceNotDraft $conflict) {
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
+        } catch (NoNumberingSeries|InvalidNumbering|InvoiceNumberTaken $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidInvoice $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);

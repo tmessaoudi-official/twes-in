@@ -112,8 +112,17 @@ final class ManageInstrumentsTest extends TestCase
         self::assertSame([['2026-09-21', '500.000', PaymentMethod::Check, 'CHQ-77'], ['2026-09-21', '300.000', PaymentMethod::Other, 'TR-5']], array_map(static fn ($payment): array => [$payment->getDate()->format('Y-m-d'), $payment->getAmount(), $payment->getMethod(), $payment->getReference()], $payments), 'the 21st is already today in Tunis');
         self::assertSame('2026-09-21', $cheque->getSettledOn()?->format('Y-m-d'));
 
-        $this->expectException(InvoiceTransitionRefused::class);
-        $this->manage->cash($this->company, $invoice->getId(), $cheque->getId(), null);
+        foreach ([
+            'cashed again' => fn () => $this->manage->cash($this->company, $invoice->getId(), $cheque->getId(), null),
+            'refused once cashed' => fn () => $this->manage->refuse($this->company, $invoice->getId(), $traite->getId(), null),
+        ] as $case => $attempt) {
+            try {
+                $attempt();
+                self::fail("accepted: $case");
+            } catch (InvoiceTransitionRefused $refused) {
+                self::assertSame(['instrument_settled', []], [$refused->reason, $refused->params], $case);
+            }
+        }
     }
 
     public function testAnUnpaidInstrumentLeavesATraceAndNoPayment(): void
@@ -140,6 +149,18 @@ final class ManageInstrumentsTest extends TestCase
         $this->manage->receive($this->company, $invoice->getId(), new InstrumentDetails(InstrumentKind::Draft, new \DateTimeImmutable('2026-10-01'), '178.101'), null);
     }
 
+    public function testOnlyAnIssuedInvoiceTakesOne(): void
+    {
+        $draft = $this->drafted($this->company);
+
+        try {
+            $this->manage->receive($this->company, $draft->getId(), new InstrumentDetails(InstrumentKind::Check, new \DateTimeImmutable('2026-10-01'), '100'), null);
+            self::fail('a draft took a cheque');
+        } catch (InvoiceTransitionRefused $refused) {
+            self::assertSame(['invoice_not_issued_paid', []], [$refused->reason, $refused->params]);
+        }
+    }
+
     /** Taking a held one out of the portfolio is a delete of the records engine: `InvoicesTest` holds it. */
     public function testOnlyAHeldOneIsDeposited(): void
     {
@@ -150,7 +171,8 @@ final class ManageInstrumentsTest extends TestCase
         try {
             $this->manage->deposit($this->company, $invoice->getId(), $deposited->getId(), null);
             self::fail('a deposited one deposited again was accepted');
-        } catch (InvoiceTransitionRefused) {
+        } catch (InvoiceTransitionRefused $refused) {
+            self::assertSame(['instrument_not_held', []], [$refused->reason, $refused->params]);
             self::assertSame(InstrumentStatus::Deposited, $deposited->getStatus());
         }
     }
@@ -163,8 +185,12 @@ final class ManageInstrumentsTest extends TestCase
         $payment = $cheque->getPayment();
         self::assertNotNull($payment);
 
-        $this->expectException(InvoiceTransitionRefused::class);
-        $this->payments->delete($this->company, $invoice->getId(), $payment->getId(), null);
+        try {
+            $this->payments->delete($this->company, $invoice->getId(), $payment->getId(), null);
+            self::fail('a payment that cashed a cheque was taken away');
+        } catch (InvoiceTransitionRefused $refused) {
+            self::assertSame(['payment_kept_cashed', ['reference' => 'FAC-2026-00001']], [$refused->reason, $refused->params]);
+        }
     }
 
     public function testWhatIsRefusedOrNotTheCompanysLeavesNoTrace(): void
@@ -205,13 +231,21 @@ final class ManageInstrumentsTest extends TestCase
         return array_map(static fn (AuditEntry $entry): array => [$entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes, $entry->companyId], $this->audit->entries);
     }
 
-    private function issued(Company $company): Invoice
+    private function drafted(Company $company): Invoice
     {
         $regime = new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $this->clock->now());
         $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $regime, [], $this->clock->now());
         $unit = $this->units->ofCodeInCompany('C62', $company->getId());
         self::assertNotNull($unit);
         $invoice = Invoice::create($company, $this->establishments->ofCompany($company->getId())[0], $customer, new InvoiceHeader(), [new InvoiceLineDetails(null, 'Pièce', '1', $unit, '1000', null, [])], [], $this->clock->now());
+        $this->invoices->save($invoice);
+
+        return $invoice;
+    }
+
+    private function issued(Company $company): Invoice
+    {
+        $invoice = $this->drafted($company);
         $invoice->issue(
             new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'), KeptNames::of($invoice)),
             static fn (Invoice $issuing): InvoiceFigures => new InvoiceFigures('1000.000', '0.000', '1000.000', [], '190.000', [], '1190.000', [['code' => 'RS1', 'rate' => '1.000', 'base' => '1190.000', 'amount' => '11.900']], '11.900', '1178.100', [['net' => '1000.000', 'tax' => '190.000', 'gross' => '1190.000']]),

@@ -71,6 +71,7 @@ final class InvoiceNextNumberTest extends ApiTestCase
 
         $this->getJson($this->path($id).'/next-number');
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['invoice_issued_already', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
 
         $this->getJson('/api/companies/'.$this->createCompany('Elsewhere')->getId()->toRfc4122().'/invoices/'.$id.'/next-number');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);

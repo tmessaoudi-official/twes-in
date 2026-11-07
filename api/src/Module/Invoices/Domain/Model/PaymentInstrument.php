@@ -98,7 +98,7 @@ class PaymentInstrument implements CompanyOwned
     public function deposit(\DateTimeImmutable $now): void
     {
         if (InstrumentStatus::Held !== $this->status) {
-            throw new InvoiceTransitionRefused(\sprintf('The %s is %s: only one held in the portfolio is deposited.', $this->kind->value, $this->status->value));
+            throw new InvoiceTransitionRefused(\sprintf('The %s is %s: only one held in the portfolio is deposited.', $this->kind->value, $this->status->value), 'instrument_not_held');
         }
         $this->status = InstrumentStatus::Deposited;
         $this->updatedAt = $now;
@@ -123,7 +123,7 @@ class PaymentInstrument implements CompanyOwned
     private function settle(InstrumentStatus $to, \DateTimeImmutable $day, \DateTimeImmutable $now): void
     {
         if (!$this->status->isOpen()) {
-            throw new InvoiceTransitionRefused(\sprintf('The %s is already %s.', $this->kind->value, $this->status->value));
+            throw new InvoiceTransitionRefused(\sprintf('The %s is already %s.', $this->kind->value, $this->status->value), 'instrument_settled');
         }
         $this->status = $to;
         $this->settledOn = new \DateTimeImmutable($day->format('Y-m-d'), new \DateTimeZone('UTC'));

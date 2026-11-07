@@ -166,7 +166,24 @@
       "invoice_bills_no_goods": "La facture « {{reference}} » ne facture aucun article à livrer : ses lignes sont des services, des déductions ou des articles que ses bons ont déjà remis.",
       "invoice_delivered_whole": "Il ne reste rien à livrer sur la facture « {{reference}} » : ses avoirs et ses bons non annulés en prennent tout.",
       "quote_delivered_whole": "Il ne reste rien à livrer sur le devis « {{reference}} » : ses bons non annulés en prennent tout.",
-      "note_on_invoice": "Le bon « {{reference}} » est sur la facture « {{invoice}} », qui n’est pas annulée : il ne s’annule plus. Une facture émise se corrige par un avoir."
+      "note_on_invoice": "Le bon « {{reference}} » est sur la facture « {{invoice}} », qui n’est pas annulée : il ne s’annule plus. Une facture émise se corrige par un avoir.",
+      "invoice_cancelled_already": "Ce brouillon est déjà abandonné.",
+      "invoice_not_cancellable": "Le document « {{reference}} » est émis : seul un brouillon s’abandonne, et une facture émise se corrige par un avoir.",
+      "invoice_receiver_as_drafted": "Le réceptionnaire d’un brouillon se nomme en l’enregistrant, et un brouillon abandonné ne remet rien.",
+      "credit_note_of_draft": "Seule une facture émise se corrige par un avoir : un brouillon se modifie, et un brouillon abandonné n’a rien facturé.",
+      "credit_note_not_credited": "Un avoir ne se corrige pas par un autre avoir : seule une facture émise se corrige ainsi.",
+      "credit_note_not_duplicated": "Un avoir corrige sa facture : il ne se duplique pas. Dupliquez la facture, ou faites-lui un autre avoir.",
+      "invoice_not_issued_paid": "Seule une facture émise se règle : un brouillon, abandonné ou non, n’a encore rien facturé.",
+      "credit_note_not_paid": "Un avoir ne reçoit pas de règlement : seule une facture émise se règle.",
+      "still_due": "Il reste {{amount}} à payer sur la facture « {{reference}} » : réglez ce reste avant d’enregistrer un trop-perçu.",
+      "invoice_draft_cancelled": "Ce brouillon est abandonné : il ne s’émet plus et ne se modifie plus.",
+      "invoice_no_longer_draft": "Le document « {{reference}} » est émis : seul un brouillon se modifie. Une facture émise se corrige par un avoir.",
+      "invoice_issued_already": "Le document « {{reference}} » est déjà émis.",
+      "payment_kept_credited": "La facture « {{reference}} » a rendu de l’argent par un avoir : ses règlements sont gardés.",
+      "payment_kept_cashed": "Ce règlement a encaissé un chèque ou une traite de la facture « {{reference}} » : il est gardé, comme preuve que l’argent est venu.",
+      "instrument_not_held": "Seul un chèque ou une traite en portefeuille se remet à la banque : celui-ci y est déjà, ou il est encaissé ou impayé.",
+      "instrument_settled": "Ce chèque ou cette traite est déjà encaissé ou marqué impayé.",
+      "target_not_draft": "La facture choisie n’est plus un brouillon : des bons s’ajoutent seulement à un brouillon. Choisissez-en un autre, ou faites une nouvelle facture."
     }
   }
 }

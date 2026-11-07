@@ -269,7 +269,8 @@ final class InvoiceDeliveryNotesTest extends TestCase
         try {
             $this->invoicing->check($this->company, [$delivered->getId()], $target->getId());
             self::fail('a cancelled invoice was a target');
-        } catch (InvoiceNotDraft) {
+        } catch (InvoiceNotDraft $refused) {
+            self::assertSame(['target_not_draft', []], [$refused->reason, $refused->params]);
         }
     }
 
@@ -350,8 +351,12 @@ final class InvoiceDeliveryNotesTest extends TestCase
         self::assertSame([$before, $audited], [array_map(static fn (InvoiceLine $line): string => $line->getDescription(), $draft->getLines()), \count($this->audit->entries)]);
 
         $draft->cancel($this->clock->now());
-        $this->expectException(InvoiceNotDraft::class);
-        $this->invoicing->addToDraft($this->company, $draft->getId(), [$fine->getId()], null);
+        try {
+            $this->invoicing->addToDraft($this->company, $draft->getId(), [$fine->getId()], null);
+            self::fail('a cancelled draft took notes');
+        } catch (InvoiceNotDraft $refused) {
+            self::assertSame(['invoice_draft_cancelled', []], [$refused->reason, $refused->params]);
+        }
     }
 
     public function testIssuingAnInvoiceMarksTheNotesOfItsLinesInvoicedAndLeavesWhatItCannotMarkAsItWas(): void

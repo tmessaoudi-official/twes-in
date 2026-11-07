@@ -166,7 +166,24 @@
       "invoice_bills_no_goods": "Invoice “{{reference}}” bills no goods to deliver: its lines are services, deductions or goods its delivery notes handed over already.",
       "invoice_delivered_whole": "Nothing is left to deliver on invoice “{{reference}}”: its credit notes and its delivery notes that are not cancelled take all of it.",
       "quote_delivered_whole": "Nothing is left to deliver on quote “{{reference}}”: its delivery notes that are not cancelled take all of it.",
-      "note_on_invoice": "Delivery note “{{reference}}” is on invoice “{{invoice}}”, which is not cancelled: it can no longer be cancelled. An issued invoice is corrected by a credit note."
+      "note_on_invoice": "Delivery note “{{reference}}” is on invoice “{{invoice}}”, which is not cancelled: it can no longer be cancelled. An issued invoice is corrected by a credit note.",
+      "invoice_cancelled_already": "This draft is abandoned already.",
+      "invoice_not_cancellable": "Document “{{reference}}” is issued: only a draft is abandoned, and an issued invoice is corrected by a credit note.",
+      "invoice_receiver_as_drafted": "A draft’s receiver is named as it is saved, and an abandoned draft hands nothing over.",
+      "credit_note_of_draft": "Only an issued invoice is corrected by a credit note: a draft is changed, and an abandoned draft billed nothing.",
+      "credit_note_not_credited": "A credit note is not corrected by another credit note: only an issued invoice is.",
+      "credit_note_not_duplicated": "A credit note corrects its invoice: it is not duplicated. Duplicate the invoice, or give it another credit note.",
+      "invoice_not_issued_paid": "Only an issued invoice is paid: a draft, abandoned or not, has billed nothing yet.",
+      "credit_note_not_paid": "A credit note takes no payment: only an issued invoice is paid.",
+      "still_due": "{{amount}} is still due on invoice “{{reference}}”: pay that first, before recording an overpayment.",
+      "invoice_draft_cancelled": "This draft is abandoned: it is no longer issued or changed.",
+      "invoice_no_longer_draft": "Document “{{reference}}” is issued: only a draft is changed. An issued invoice is corrected by a credit note.",
+      "invoice_issued_already": "Document “{{reference}}” is issued already.",
+      "payment_kept_credited": "Invoice “{{reference}}” gave money back through a credit note: its payments are kept.",
+      "payment_kept_cashed": "This payment cashed a cheque or traite of invoice “{{reference}}”: it is kept, as the proof the money came.",
+      "instrument_not_held": "Only a cheque or traite in the portfolio is deposited: this one is at the bank already, cashed or unpaid.",
+      "instrument_settled": "This cheque or traite is already cashed or marked unpaid.",
+      "target_not_draft": "The invoice chosen is no longer a draft: delivery notes are added only to a draft. Choose another, or make a new invoice."
     }
   }
 }

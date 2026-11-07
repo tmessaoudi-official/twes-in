@@ -40,7 +40,7 @@ final readonly class NextInvoiceNumber
     public function of(Company $company, Uuid $id): IssuePreview
     {
         $invoice = $this->invoices->ofIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
-        $invoice->assertDraft('is numbered');
+        $invoice->assertDraft('is numbered', issuing: true);
 
         return new IssuePreview(
             $this->next->of($company, $invoice->getEstablishment(), $invoice->getType()->value),

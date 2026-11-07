@@ -99,7 +99,7 @@ final readonly class ManageInstruments implements DeclaresAuditActions
             $figures = $invoice->getIssuedFigures();
             $issued = $invoice->getIssueDate();
             if (InvoiceType::Invoice !== $invoice->getType() || !\in_array($invoice->getStatus(), [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid], true) || null === $figures || null === $issued) {
-                throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is paid.', $invoice->getType()->value, $invoice->getNumber() ?? $invoice->getId()->toRfc4122(), $invoice->getStatus()->value));
+                throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is paid.', $invoice->getType()->value, $invoice->getNumber() ?? $invoice->getId()->toRfc4122(), $invoice->getStatus()->value), InvoiceType::CreditNote === $invoice->getType() ? 'credit_note_not_paid' : 'invoice_not_issued_paid');
             }
             $scale = $this->scales->of($company->getCurrency());
             $amount = Decimal::of($details->amount);
@@ -151,7 +151,7 @@ final readonly class ManageInstruments implements DeclaresAuditActions
         return $this->transactions->run(function () use ($company, $invoiceId, $instrumentId, $actorUserId): PaymentInstrument {
             [$invoice, $instrument] = $this->locked($company, $invoiceId, $instrumentId);
             if (!$instrument->getStatus()->isOpen()) {
-                throw new InvoiceTransitionRefused(\sprintf('The %s is already %s.', $instrument->getKind()->value, $instrument->getStatus()->value));
+                throw new InvoiceTransitionRefused(\sprintf('The %s is already %s.', $instrument->getKind()->value, $instrument->getStatus()->value), 'instrument_settled');
             }
             $now = $this->clock->now();
             $today = $now->setTimezone(new \DateTimeZone($company->getTimezone()));

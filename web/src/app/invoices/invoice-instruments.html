@@ -103,7 +103,9 @@
           [retryable]="readFailed()"
           (retry)="readAgain()"
         >
-          {{ 'invoices.errors.' + code | translate }}
+          @if (refusalLine.for(code); as said) {
+            {{ said.key | translate: said.params }}
+          }
         </app-read-failed>
       }
 

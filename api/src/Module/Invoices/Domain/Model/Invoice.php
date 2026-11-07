@@ -346,7 +346,7 @@ class Invoice implements CompanyOwned
     public static function duplicateOf(self $invoice, \DateTimeImmutable $now): self
     {
         if (InvoiceType::Invoice !== $invoice->documentType) {
-            throw new InvoiceTransitionRefused(\sprintf('The %s %s corrects another document: it is not duplicated.', $invoice->documentType->value, $invoice->reference()));
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s corrects another document: it is not duplicated.', $invoice->documentType->value, $invoice->reference()), 'credit_note_not_duplicated');
         }
         $copy = new self($invoice->company, $now);
         $copy->establishment = $invoice->establishment;
@@ -409,7 +409,7 @@ class Invoice implements CompanyOwned
     public static function creditNoteFor(self $invoice, string $reason, \DateTimeImmutable $now): self
     {
         if (InvoiceType::Invoice !== $invoice->documentType || !$invoice->isIssued()) {
-            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is corrected by a credit note.', $invoice->documentType->value, $invoice->reference(), $invoice->status->value));
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is corrected by a credit note.', $invoice->documentType->value, $invoice->reference(), $invoice->status->value), InvoiceType::Invoice === $invoice->documentType ? 'credit_note_of_draft' : 'credit_note_not_credited');
         }
         $reason = TypedText::trimmed($reason);
         if ('' === $reason) {
@@ -717,7 +717,7 @@ class Invoice implements CompanyOwned
      */
     public function issue(InvoiceIssue $issue, \Closure $figures, \DateTimeImmutable $now): void
     {
-        $this->assertDraft('is issued');
+        $this->assertDraft('is issued', issuing: true);
         if ($this->lines->isEmpty()) {
             throw new InvalidInvoice('lines', 'An invoice is issued with at least one line.', 'lines_required');
         }
@@ -806,7 +806,7 @@ class Invoice implements CompanyOwned
     public function correctReceiver(?Receiver $receiver, \DateTimeImmutable $now): bool
     {
         if (!$this->isIssued()) {
-            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: a draft names who received as it is revised, and a cancelled draft hands nothing over.', $this->documentType->value, $this->reference(), $this->status->value));
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: a draft names who received as it is revised, and a cancelled draft hands nothing over.', $this->documentType->value, $this->reference(), $this->status->value), 'invoice_receiver_as_drafted');
         }
         if (null !== $receiver && [] === $this->goodsOfItsOwn()) {
             throw self::receiverWithoutGoods();
@@ -829,7 +829,8 @@ class Invoice implements CompanyOwned
     public function cancel(\DateTimeImmutable $now): void
     {
         if (InvoiceStatus::Draft !== $this->status) {
-            throw new InvoiceTransitionRefused(\sprintf('The invoice %s is %s: only a draft is cancelled, and an issued invoice is corrected by a credit note.', $this->reference(), $this->status->value));
+            // A cancelled draft was never numbered, so only an issued document is named.
+            throw null === $this->number ? new InvoiceTransitionRefused(\sprintf('The invoice %s is already cancelled.', $this->reference()), 'invoice_cancelled_already') : new InvoiceTransitionRefused(\sprintf('The invoice %s is %s: only a draft is cancelled, and an issued invoice is corrected by a credit note.', $this->reference(), $this->status->value), 'invoice_not_cancellable', ['reference' => $this->number]);
         }
         $this->status = InvoiceStatus::Cancelled;
         $this->updatedAt = $now;
@@ -849,7 +850,7 @@ class Invoice implements CompanyOwned
     public function recordPayment(PaymentDetails $details, \DateTimeImmutable $today, int $scale, ?Uuid $recordedBy, \DateTimeImmutable $now): Payment
     {
         if (InvoiceType::Invoice !== $this->documentType || !$this->isIssued() || null === $this->issueDate) {
-            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is paid.', $this->documentType->value, $this->reference(), $this->status->value));
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is paid.', $this->documentType->value, $this->reference(), $this->status->value), ...$this->unpaidReason());
         }
         $amount = Decimal::of($details->amount);
         if (0 !== Decimal::round($amount, $scale)->compare($amount)) {
@@ -884,10 +885,10 @@ class Invoice implements CompanyOwned
     public function assertPaidBeyond(\DateTimeImmutable $day): void
     {
         if (InvoiceType::Invoice !== $this->documentType || !$this->isIssued() || null === $this->issueDate) {
-            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is paid beyond.', $this->documentType->value, $this->reference(), $this->status->value));
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is paid beyond.', $this->documentType->value, $this->reference(), $this->status->value), ...$this->unpaidReason());
         }
         if (Decimal::of($this->amountDue ?? '0')->compare(0) > 0) {
-            throw new InvoiceTransitionRefused(\sprintf('The invoice %s still has %s due: that is paid on it first.', $this->reference(), $this->amountDue));
+            throw new InvoiceTransitionRefused(\sprintf('The invoice %s still has %s due: that is paid on it first.', $this->reference(), $this->amountDue), 'still_due', ['reference' => $this->reference(), 'amount' => $this->amountDue ?? '0']);
         }
         if ($day->format('Y-m-d') < $this->issueDate->format('Y-m-d')) {
             throw new InvalidInvoice('date', \sprintf('Money paid beyond an invoice is dated from its issue day, %s.', $this->issueDate->format('Y-m-d')), 'on_or_after', ['day' => $this->issueDate->format('Y-m-d')]);
@@ -1344,6 +1345,16 @@ class Invoice implements CompanyOwned
     }
 
     /**
+     * Why a document is not paid: a credit note never is, and a draft or a cancelled one has billed nothing yet.
+     *
+     * @return array{string} the refusal's reason, spread into it
+     */
+    private function unpaidReason(): array
+    {
+        return [InvoiceType::CreditNote === $this->documentType ? 'credit_note_not_paid' : 'invoice_not_issued_paid'];
+    }
+
+    /**
      * A credit note takes at most what the invoice invoiced to be paid less its earlier credit notes, paid or not: what
      * was already paid beyond what is due after it is the excess, which `creditExcess` names.
      */
@@ -1497,10 +1508,17 @@ class Invoice implements CompanyOwned
         return new \DateTimeImmutable($moment->format('Y-m-d'), new \DateTimeZone('UTC'));
     }
 
-    public function assertDraft(string $what): void
+    /** @param bool $issuing whether the draft was to be issued or numbered, rather than changed */
+    public function assertDraft(string $what, bool $issuing = false): void
     {
         if (InvoiceStatus::Draft !== $this->status) {
-            throw new InvoiceNotDraft(\sprintf('The invoice %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what));
+            $refused = \sprintf('The invoice %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what);
+            // A cancelled draft was never numbered, so only an issued document is named.
+            throw match (true) {
+                null === $this->number => new InvoiceNotDraft($refused, 'invoice_draft_cancelled'),
+                $issuing => new InvoiceNotDraft($refused, 'invoice_issued_already', ['reference' => $this->number]),
+                default => new InvoiceNotDraft($refused, 'invoice_no_longer_draft', ['reference' => $this->number]),
+            };
         }
     }
 

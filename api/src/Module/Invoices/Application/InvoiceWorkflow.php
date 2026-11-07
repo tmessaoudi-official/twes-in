@@ -120,7 +120,7 @@ final readonly class InvoiceWorkflow implements DeclaresAuditActions
             // Held until this transaction ends and read as it stands, before the series: a request that read the draft
             // before another issued it is refused here, and takes no number.
             $invoice = $this->invoices->lockedOfIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
-            $invoice->assertDraft('is issued');
+            $invoice->assertDraft('is issued', issuing: true);
             $type = $invoice->getType();
             if (InvoiceType::Invoice === $type) {
                 $this->stillGivenBack($company, $invoice);

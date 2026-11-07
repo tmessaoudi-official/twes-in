@@ -22,6 +22,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { InvoicesFacade } from './invoices-facade';
 import { InvoicesPage } from './invoices-page';
 import type {
@@ -46,6 +47,9 @@ class StaticLoader implements TranslateLoader {
           paid: 'Soldée',
         },
         errors: { network: 'Le serveur est injoignable.' },
+      },
+      import: {
+        rejections: { invoice_not_cancellable: 'Le document « {{reference}} » est émis.' },
       },
     });
   }
@@ -101,6 +105,7 @@ const issued: InvoiceRow = {
 
 describe('InvoicesPage', () => {
   const error = signal<InvoicesError | null>(null);
+  const refusals = signal<readonly FieldRefusal[]>([]);
   const statusCounts = signal<InvoiceStatusCounts | null>(null);
   const facade = {
     busy: signal(false).asReadonly(),
@@ -126,6 +131,7 @@ describe('InvoicesPage', () => {
       taxes: [],
     }).asReadonly(),
     error: error.asReadonly(),
+    refusals: refusals.asReadonly(),
     readFailed: computed(() => error() !== null),
     total: signal(2).asReadonly(),
     statusCounts: statusCounts.asReadonly(),
@@ -169,6 +175,7 @@ describe('InvoicesPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    refusals.set([]);
     facade.loadListContext.mockReset().mockResolvedValue(undefined);
     facade.loadPage.mockReset().mockResolvedValue(undefined);
     facade.loadStatusCounts.mockReset().mockResolvedValue(undefined);
@@ -350,5 +357,16 @@ describe('InvoicesPage', () => {
     error.set('network');
     await settle();
     expect(q('invoices-error')?.textContent).toContain('injoignable');
+  });
+
+  it('says a row’s step its invoice’s state refuses in its reason’s words', async () => {
+    error.set('conflict');
+    refusals.set([
+      { field: '', reason: 'invoice_not_cancellable', params: { reference: 'FAC-2026-00001' } },
+    ]);
+    await settle();
+    expect(q('invoices-error')?.textContent?.trim()).toBe(
+      'Le document « FAC-2026-00001 » est émis.',
+    );
   });
 });

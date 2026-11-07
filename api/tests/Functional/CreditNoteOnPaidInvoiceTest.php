@@ -163,6 +163,7 @@ final class CreditNoteOnPaidInvoiceTest extends ApiTestCase
             $this->sendJson('DELETE', $this->path($invoice).'/payments/'.$payment, null);
 
             self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, $destination);
+            self::assertSame(['payment_kept_credited', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
             $this->getJson($this->path($invoice));
             self::assertSame(['paid', '1000.000'], [$this->json()['status'], $this->json()['amountPaid']], 'the refused deletion changed nothing');
         }

@@ -17,9 +17,9 @@ use App\Module\Invoices\Application\Payment\PaymentNotFound;
 use App\Module\Invoices\Domain\Exception\InvoiceTransitionRefused;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\PaymentResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProcessorInterface<PaymentResource, null> */
@@ -38,7 +38,7 @@ final readonly class DeletePaymentProcessor implements ProcessorInterface
         } catch (InvoiceNotFound|PaymentNotFound $absent) {
             throw new NotFoundHttpException('No such payment.', $absent);
         } catch (InvoiceTransitionRefused $kept) {
-            throw new ConflictHttpException($kept->getMessage(), $kept);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $kept->getMessage(), $kept->reason, $kept->params, $kept);
         }
 
         return null;

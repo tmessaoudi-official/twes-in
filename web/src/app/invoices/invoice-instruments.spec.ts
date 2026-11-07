@@ -27,7 +27,9 @@ import type { InstrumentRow } from './instruments-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({});
+    return of({
+      import: { rejections: { instrument_not_held: 'Seul un chèque en portefeuille se remet.' } },
+    });
   }
 }
 
@@ -184,6 +186,38 @@ describe('InvoiceInstruments', () => {
     );
     expect(changes).toEqual([]);
     expect(effectToasts()).toEqual(['invoices.instruments.done.deposit:definitif']);
+  });
+
+  it('says a step the instrument’s state refuses in its reason’s words, and never for a later step', async () => {
+    await show([held]);
+    api.advance.mockRejectedValueOnce(
+      new InvoicesRefused('conflict', [{ field: '', reason: 'instrument_not_held', params: {} }]),
+    );
+
+    q('instrument-i1-deposit')!.click();
+    await settle();
+    await answer('confirm-run');
+
+    await vi.waitFor(() =>
+      expect(q('instrument-error')?.textContent?.trim()).toBe(
+        'Seul un chèque en portefeuille se remet.',
+      ),
+    );
+    api.receive.mockRejectedValueOnce(new InvoicesRefused('invalid'));
+    q('instrument-receive')!.click();
+    await settle();
+    q('instrument-save')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect(q('instrument-error')?.textContent?.trim()).toBe('invoices.errors.invalid'),
+    );
+    api.advance.mockRejectedValueOnce(new InvoicesRefused('conflict'));
+    q('instrument-i1-cash')!.click();
+    await settle();
+    await answer('confirm-run');
+    await vi.waitFor(() =>
+      expect(q('instrument-error')?.textContent?.trim()).toBe('invoices.errors.conflict'),
+    );
   });
 
   it('cashes only once confirmed, which tells the page the invoice changed', async () => {

@@ -179,6 +179,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->postJson($this->checkPath(), ['deliveryNoteIds' => [$first], 'invoiceId' => $draft]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoice that is no draft any more');
+        self::assertSame(['target_not_draft', []], $this->refusedWholeAs(), 'the reason it is said with');
     }
 
     public function testOnlyWhoMayDraftAnInvoiceChecksAndOnlyWhileBothModulesAreOn(): void
@@ -239,6 +240,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $third = $this->validatedNote();
         $this->postJson($toDraft, ['deliveryNoteIds' => [$third]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is corrected by a credit note, never added to');
+        self::assertSame(['invoice_no_longer_draft', ['reference']], $this->refusedWholeAs(), 'the reason it is said with');
         $this->getJson($this->invoicePath($id));
         self::assertCount(2, $this->arrayAt($this->json(), 'lines'), 'nothing was added');
 

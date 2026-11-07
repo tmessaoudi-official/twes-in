@@ -16,6 +16,7 @@ use App\Module\Invoices\Application\NextInvoiceNumber;
 use App\Module\Invoices\Domain\Exception\InvoiceNotDraft;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Resource\InvoiceNextNumberResource;
 use App\Module\Invoices\Infrastructure\ApiPlatform\Security\InvoicePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\Exception\InvalidNumbering;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
@@ -38,7 +39,9 @@ final readonly class InvoiceNextNumberProvider implements ProviderInterface
             $preview = $this->next->of($company, CompanyPath::identifier($uriVariables, 'invoiceId'));
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
-        } catch (InvoiceNotDraft|NoNumberingSeries|InvalidNumbering $conflict) {
+        } catch (InvoiceNotDraft $conflict) {
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
+        } catch (NoNumberingSeries|InvalidNumbering $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         }
         $resource = new InvoiceNextNumberResource();

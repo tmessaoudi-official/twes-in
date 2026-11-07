@@ -160,7 +160,7 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
         if (null !== $invoiceId) {
             $target = $this->invoicing->ofId($company, $invoiceId, false) ?? throw new InvoiceNotFound();
             if (!$target->draft) {
-                throw new InvoiceNotDraft();
+                throw new InvoiceNotDraft('The invoice chosen is not a draft any more: delivery notes are added only to a draft.', 'target_not_draft');
             }
             if (!$target->takesLines) {
                 throw new InvalidDeliveryNote('invoiceId', self::NOT_AN_INVOICE, 'not_an_invoice');

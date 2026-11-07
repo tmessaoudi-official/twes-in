@@ -19,7 +19,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { Router, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
@@ -54,6 +54,8 @@ import {
 } from './invoice-forms';
 import { InvoiceSheet } from './invoice-sheet';
 import { InvoicesFacade } from './invoices-facade';
+import { RefusalLine } from '../shared/documents/refusal-line';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import {
   INVOICE_STATUS_TONES,
   INVOICE_STATUS_STAGES,
@@ -149,6 +151,13 @@ export class InvoicesPage implements OnInit {
   protected readonly scale = computed(() => this.facade.options()?.currencyScale ?? null);
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
+  /** A row's step refused for its invoice's state (cancelling one issued since) said in its reason's words. */
+  protected readonly refusalLine = new RefusalLine(
+    this.facade.refusals,
+    'invoices.errors.',
+    inject(TranslateService),
+    inject(RefusalFigures),
+  );
   protected readonly mayWrite = computed(() => this.auth.hasPermission('invoice.write'));
   protected readonly mayPay = computed(() => this.auth.hasPermission('payment.write'));
   /** Factures and its recurring invoices as tabs, while the company has them; alone, no tab is drawn. */
