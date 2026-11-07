@@ -52,6 +52,7 @@ class StaticLoader implements TranslateLoader {
       import: {
         rejections: {
           value_required: 'Cette case doit être remplie.',
+          file_empty: 'Ce fichier est vide\u00a0: choisissez-en un autre.',
           invalid_amount:
             'Montant refusé\u00a0: un nombre au-dessus de 0, {{decimals}} décimales au plus.',
           one_vat_rate:
@@ -150,12 +151,14 @@ describe('ExpensePage', () => {
   const refusals = signal<readonly FieldRefusal[]>([]);
   const expense = signal<ExpenseRow | null>(null);
   const attachments = signal<readonly ExpenseAttachment[]>([]);
+  const fileRefusal = signal<FieldRefusal | null>(null);
   const optionsState = signal<ExpenseOptions | null>(options);
   const readFailed = signal(false);
   const facade = {
     options: optionsState.asReadonly(),
     expense: expense.asReadonly(),
     attachments: attachments.asReadonly(),
+    fileRefusal: fileRefusal.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     readFailed: readFailed.asReadonly(),
@@ -274,6 +277,7 @@ describe('ExpensePage', () => {
     facade.classifyWithholding.mockReset().mockResolvedValue({ ...draft, status: 'paid' });
     deletes.remove.mockReset().mockResolvedValue(true);
     facade.attach.mockReset().mockResolvedValue(true);
+    fileRefusal.set(null);
     facade.detach.mockReset().mockResolvedValue(true);
     facade.restoreAttachment.mockReset().mockResolvedValue(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -713,6 +717,36 @@ describe('ExpensePage', () => {
     auth.hasPermission.mockImplementation((permission: string) => permission !== 'expense.write');
     await open('e1');
     expect(await menuEntry('delete')).toBeNull();
+  });
+
+  it('says what the API refused of a file where the file is chosen, until another is kept', async () => {
+    expense.set(draft);
+    await open('e1');
+    facade.attach.mockImplementationOnce(async () => {
+      fileRefusal.set({ field: 'file', reason: 'file_empty', params: {} });
+      return false;
+    });
+    facade.attach.mockImplementationOnce(async () => {
+      fileRefusal.set(null);
+      return true;
+    });
+    const choose = async (file: File): Promise<void> => {
+      const input = q('expense-attach') as HTMLInputElement;
+      Object.defineProperty(input, 'files', {
+        value: { item: () => file, length: 1 },
+        configurable: true,
+      });
+      input.dispatchEvent(new Event('change'));
+      await settle();
+    };
+
+    await choose(new File([''], 'vide.pdf', { type: 'application/pdf' }));
+    expect(q('file-drop-refused')?.textContent?.trim()).toBe(
+      'Ce fichier est vide\u00a0: choisissez-en un autre.',
+    );
+
+    await choose(new File(['%PDF-1.4'], 'facture.pdf', { type: 'application/pdf' }));
+    expect(q('file-drop-refused')).toBeNull();
   });
 
   it('attaches a chosen file, links each receipt to its content, and removes one only from a draft', async () => {

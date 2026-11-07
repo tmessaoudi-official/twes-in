@@ -166,6 +166,13 @@ export class QuotePage {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   private readonly refusalFigures = inject(RefusalFigures);
+  /** What the API refused of the file last sent, in its words, said where files are chosen until one is kept. */
+  protected readonly fileRefused = computed((): FieldError | null => {
+    const refusal = this.facade.fileRefusal();
+    return refusal === null
+      ? null
+      : refusedError(this.translate, refusal, refusal.params, this.refusalFigures);
+  });
   /** The line above the form: what no field took, or the error's own words. */
   protected readonly refusalLine = new RefusalLine(
     this.facade.refusals,

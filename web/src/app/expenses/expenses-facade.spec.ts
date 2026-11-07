@@ -180,6 +180,20 @@ describe('ExpensesFacade', () => {
     expect(facade.error()).toBeNull();
   });
 
+  it('keeps what the API refused of a file for the zone to say, says nothing around it, and lets it go', async () => {
+    const refusal = { field: 'file', reason: 'file_empty', params: {} };
+    api.attach.mockRejectedValueOnce(new ExpensesRefused('file_refused', [refusal]));
+
+    expect(await facade.attach('c1', 'e1', new File([''], 'vide.pdf'))).toBe(false);
+    expect([facade.fileRefusal(), facade.error()]).toEqual([refusal, null]);
+
+    api.attach.mockResolvedValue(receipt);
+    api.attachments.mockResolvedValue([receipt]);
+    api.expense.mockResolvedValue(draft);
+    await facade.attach('c1', 'e1', new File(['%PDF'], 'recu.pdf'));
+    expect(facade.fileRefusal()).toBeNull();
+  });
+
   it('reads the files and the count again after a file is attached or removed', async () => {
     api.attach.mockResolvedValue(receipt);
     api.attachments.mockResolvedValue([receipt]);

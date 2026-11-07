@@ -145,6 +145,20 @@ describe('CompanyProfileFacade', () => {
     expect(facade.profile()?.logoVersion).toBe('v1');
   });
 
+  it('keeps what the API refused of a picture for the zone to say, and lets it go once one is kept', async () => {
+    api.profile.mockResolvedValue({ ...saved, logoVersion: 'v1' });
+    await facade.load('c1');
+    const refusal = { field: 'file', reason: 'file_empty', params: {} };
+    api.uploadLogo.mockRejectedValueOnce(new CompanyRefused('logo_refused', [refusal]));
+
+    expect(await facade.uploadLogo('c1', new File([''], 'logo.png'))).toBe(false);
+    expect([facade.logoRefusal(), facade.error()]).toEqual([refusal, null]);
+
+    api.uploadLogo.mockResolvedValue('v2');
+    expect(await facade.uploadLogo('c1', new File(['x'], 'logo.png'))).toBe(true);
+    expect(facade.logoRefusal()).toBeNull();
+  });
+
   // docs/SPEC.md § 7, the step-up list: new bank details wait for the person to prove who they are again.
   it('asks for the proof the API wants, then saves the profile', async () => {
     stepUp.request.mockReset().mockResolvedValue(true);

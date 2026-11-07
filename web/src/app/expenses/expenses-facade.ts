@@ -40,6 +40,7 @@ export class ExpensesFacade {
   private readonly countsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);
   private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
+  private readonly fileRefusalSignal = sessionSignal<FieldRefusal | null>(null);
 
   readonly expenses = this.expensesSignal.asReadonly();
   /** How many expenses the last search found in all, the page shown being one part of them. */
@@ -58,6 +59,8 @@ export class ExpensesFacade {
   readonly readFailed = this.state.readFailed;
   /** The fields the last save or recording was refused on, for the form and the bill to say under each. */
   readonly refusals = this.refusalsSignal.asReadonly();
+  /** What the API refused of the file last sent, for the zone that took it to say; null once one is kept. */
+  readonly fileRefusal = this.fileRefusalSignal.asReadonly();
 
   exportUrl(companyId: string, search: ExpenseSearch, format: ExportFormat): string {
     return this.api.exportUrl(companyId, search, format);
@@ -99,6 +102,7 @@ export class ExpensesFacade {
 
   /** What the expense screen needs: its options, and the expense with its files unless it is new. */
   async loadExpense(companyId: string, id: string | null): Promise<void> {
+    this.fileRefusalSignal.set(null);
     await this.read(async () => {
       const [options, expense, attachments] = await Promise.all([
         this.api.options(companyId),
@@ -164,12 +168,22 @@ export class ExpensesFacade {
     return this.save(() => this.api.classifyWithholding(companyId, id, code));
   }
 
-  /** Attaches a file, then reads the expense's files and count again. */
+  /**
+   * Attaches a file, then reads the expense's files and count again; what the API refused of the file is kept in
+   * `fileRefusal` for the zone that took it to say, and nothing is said around it.
+   */
   async attach(companyId: string, expenseId: string, file: File): Promise<boolean> {
-    return this.write(
-      () => this.api.attach(companyId, expenseId, file),
-      () => this.reloadFiles(companyId, expenseId),
+    this.fileRefusalSignal.set(null);
+    const answer = await this.state.writeOrRefuse(
+      async () => {
+        await this.api.attach(companyId, expenseId, file);
+        await this.reloadFiles(companyId, expenseId);
+      },
+      (error) => (error instanceof ExpensesRefused ? error.refusals : []),
     );
+    if (answer !== null && 'refused' in answer)
+      this.fileRefusalSignal.set(answer.refused[0] ?? null);
+    return answer !== null && 'kept' in answer;
   }
 
   async detach(companyId: string, expenseId: string, attachmentId: string): Promise<boolean> {

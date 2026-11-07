@@ -2,7 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
@@ -70,6 +70,20 @@ describe('RefusalFigures', () => {
     expect(spaced(TestBed.inject(RefusalFigures).written({ amount: '12.340' }))).toEqual({
       amount: '12,34',
     });
+  });
+
+  it('writes the most a file holds as a size, and the types it takes by name, as the file zone says them', () => {
+    TestBed.inject(TranslateService).setTranslation('fr', {
+      form: { file: { mb: '{{count}} Mo', kb: '{{count}} Ko' } },
+    });
+
+    expect(
+      TestBed.inject(RefusalFigures).written({
+        bytes: 10485760,
+        types: 'application/pdf,image/png,image/jpeg,image/webp',
+      }),
+    ).toEqual({ bytes: '10 Mo', types: 'PDF, PNG, JPEG, WebP' });
+    expect(TestBed.inject(RefusalFigures).written({ bytes: 512000 })).toEqual({ bytes: '500 Ko' });
   });
 
   it('leaves a figure it cannot read as it came, rather than blank', () => {

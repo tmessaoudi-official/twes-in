@@ -11,19 +11,9 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { sizeText, typeNames } from './file-limits';
+import type { FieldError } from './form-builder';
 import { typedText } from './typed-text';
-
-/** What each accepted type is called on screen, by the MIME type or extension a file input's `accept` names it with. */
-const TYPE_NAMES: Record<string, string> = {
-  'application/pdf': 'PDF',
-  'image/png': 'PNG',
-  'image/jpeg': 'JPEG',
-  'image/webp': 'WebP',
-  'text/csv': 'CSV',
-  '.csv': 'CSV',
-  '.xlsx': 'XLSX',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
-};
 
 /**
  * A file chosen by clicking or by dropping it on the zone, in place of the browser's own file button. It says what it
@@ -73,6 +63,10 @@ const TYPE_NAMES: Record<string, string> = {
       <span role="alert" class="px-2 text-xs text-error" data-testid="file-drop-refused"
         ><bdi>{{ message }}</bdi></span
       >
+    } @else if (refused(); as sent) {
+      <span role="alert" class="px-2 text-xs text-error" data-testid="file-drop-refused"
+        ><bdi>{{ sent.key | translate: sent.params }}</bdi></span
+      >
     }
   `,
 })
@@ -83,6 +77,11 @@ export class FileDrop {
   readonly disabled = input(false);
   readonly testId = input('');
   readonly chosenName = input<string | null>(null);
+  /**
+   * What the API refused of the file sent, in its reason's words, said where the zone says its own refusals; the page
+   * lets it go when another file is chosen.
+   */
+  readonly refused = input<FieldError | null>(null);
   readonly picked = output<File>();
 
   protected readonly over = signal(false);
@@ -96,13 +95,7 @@ export class FileDrop {
       .filter((token) => token !== ''),
   );
 
-  private readonly typesText = computed(() =>
-    [
-      ...new Set(
-        this.tokens().map((token) => TYPE_NAMES[token] ?? token.replace(/^\./, '').toUpperCase()),
-      ),
-    ].join(', '),
-  );
+  private readonly typesText = computed(() => typeNames(this.tokens()));
 
   protected limits(): string {
     const types = this.typesText();
@@ -159,8 +152,6 @@ export class FileDrop {
   }
 
   private sizeText(bytes: number): string {
-    return bytes >= 1024 * 1024
-      ? this.translate.instant('form.file.mb', { count: Math.round(bytes / (1024 * 1024)) })
-      : this.translate.instant('form.file.kb', { count: Math.round(bytes / 1024) });
+    return sizeText(this.translate, bytes);
   }
 }

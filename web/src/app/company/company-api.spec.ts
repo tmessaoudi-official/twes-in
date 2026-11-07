@@ -373,6 +373,27 @@ describe('CompanyApi, the logo', () => {
     expect(await sending).toBe('v2');
   });
 
+  it('hands over what the API refused of a picture, with the limit it met', async () => {
+    const sending = api.uploadLogo('c1', new File(['x'], 'logo.jpg'));
+    http.expectOne({ method: 'POST', url: '/api/companies/c1/logo' }).flush(
+      {
+        violations: [
+          {
+            propertyPath: 'file',
+            message: 'A logo is at most 4000 pixels on a side.',
+            payload: { reason: 'picture_too_wide', params: { pixels: 4000 } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(sending).rejects.toEqual(
+      new CompanyRefused('logo_refused', [
+        { field: 'file', reason: 'picture_too_wide', params: { pixels: 4000 } },
+      ]),
+    );
+  });
+
   it("says a picture the API does not keep is refused, from its 422 or the proxy's 413", async () => {
     for (const status of [422, 413]) {
       const sending = api.uploadLogo('c1', new File(['x'], 'logo.png'));

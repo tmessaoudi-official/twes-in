@@ -13,14 +13,16 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { companyLogoUrl } from './company-api';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { liveRecord } from '../shared/form/live-record';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { RecordChanged } from '../shared/form/record-changed';
-import { buildFormGroup } from '../shared/form/form-builder';
+import { buildFormGroup, type FieldError } from '../shared/form/form-builder';
+import { FormStep } from '../shared/form/form-step';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import type { FormValues } from '../shared/form/form-types';
 import { profileChanges, profileForm, profileValues } from './company-profile-form';
 import { CompanyProfileFacade } from './company-profile-facade';
@@ -58,6 +60,12 @@ import { ReadFailed } from '../shared/feedback/read-failed';
 export class CompanyProfilePage implements OnInit {
   protected readonly maxBytes = LOGO_MAX_BYTES;
   private readonly facade = inject(CompanyProfileFacade);
+  private readonly words = new FormStep(inject(TranslateService), inject(RefusalFigures));
+  /** What the API refused of the picture last sent, in its words, said where the logo is chosen until one is kept. */
+  protected readonly logoRefused = computed((): FieldError | null => {
+    const refusal = this.facade.logoRefusal();
+    return refusal === null ? null : this.words.wordsOf(refusal);
+  });
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 

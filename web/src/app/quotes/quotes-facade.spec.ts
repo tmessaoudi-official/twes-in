@@ -193,6 +193,22 @@ describe('QuotesFacade', () => {
     expect(facade.error()).toBe('file_refused');
   });
 
+  it('keeps what the API refused of the signed copy for the files zone to say, and says nothing else', async () => {
+    const accepted = { ...sent, status: 'accepted' as const };
+    const refusal: FieldRefusal = { field: 'file', reason: 'file_empty', params: {} };
+    api.accept.mockResolvedValue(accepted);
+    api.attach.mockRejectedValueOnce(new QuotesRefused('file_refused', [refusal]));
+
+    expect(await facade.accept('c1', 'q1', { answeredOn: '' }, signed)).toEqual({ kept: accepted });
+    expect([facade.fileRefusal(), facade.error()]).toEqual([refusal, null]);
+
+    api.attach.mockResolvedValue({ id: 'a1' });
+    api.attachments.mockResolvedValue([{ id: 'a1', name: 'signé.pdf' }]);
+    api.quote.mockResolvedValue({ ...accepted, attachmentCount: 1 });
+    expect(await facade.attach('c1', 'q1', signed)).toBe(true);
+    expect(facade.fileRefusal()).toBeNull();
+  });
+
   it('hands the dialog an answer’s refused fields, keeping them off the screen behind it, and attaches nothing', async () => {
     const day: FieldRefusal = { field: 'answeredOn', reason: 'after_today', params: {} };
     api.accept.mockRejectedValueOnce(new QuotesRefused('invalid', [day]));

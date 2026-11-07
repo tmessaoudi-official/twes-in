@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\Http;
 
 use App\Files\Application\AttachmentRefused;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Resource\CompanyProfileResource;
@@ -35,7 +36,7 @@ final readonly class CompanyLogoController
     {
     }
 
-    #[Route('/api/companies/{companyId}/logo', name: 'api_company_logo_upload', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/logo', name: 'api_company_logo_upload', methods: ['POST'], defaults: ['_api_respond' => true])]
     public function upload(Request $request, string $companyId): JsonResponse
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
@@ -51,7 +52,7 @@ final readonly class CompanyLogoController
         try {
             $attachment = $this->logo->set($company, $file->getClientOriginalName(), (string) file_get_contents($file->getPathname()), $this->guard->account()->getId());
         } catch (AttachmentRefused $refused) {
-            throw new UnprocessableEntityHttpException('file: '.$refused->getMessage(), $refused);
+            throw DomainRule::refused('file', $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return new JsonResponse(['logoVersion' => $attachment->getFile()->getId()->toRfc4122()], Response::HTTP_CREATED);

@@ -50,6 +50,7 @@ class StaticLoader implements TranslateLoader {
       import: {
         rejections: {
           lines_required: 'Ajoutez au moins une ligne.',
+          file_empty: 'Ce fichier est vide\u00a0: choisissez-en un autre.',
           discount_rate_or_amount: 'Un pourcentage ou un montant, pas les deux.',
           customer_deactivated: 'Le client « {{number}} » est désactivé.',
         },
@@ -176,10 +177,12 @@ describe('QuotePage', () => {
   const refusals = signal<readonly FieldRefusal[]>([]);
   const quote = signal<QuoteRow | null>(null);
   const attachments = signal<readonly QuoteAttachment[]>([]);
+  const fileRefusal = signal<FieldRefusal | null>(null);
   const facade = {
     options: signal<InvoiceOptions | null>(options).asReadonly(),
     quote: quote.asReadonly(),
     attachments: attachments.asReadonly(),
+    fileRefusal: fileRefusal.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     refusals: refusals.asReadonly(),
@@ -336,6 +339,17 @@ describe('QuotePage', () => {
 
   afterEach(() => {
     document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
+  it('says what the API refused of a file where files are chosen, the signed copy’s too', async () => {
+    quote.set(sent);
+    fileRefusal.set({ field: 'file', reason: 'file_empty', params: {} });
+    await open('q1');
+
+    expect(q('file-drop-refused')?.textContent?.trim()).toBe(
+      'Ce fichier est vide\u00a0: choisissez-en un autre.',
+    );
+    fileRefusal.set(null);
   });
 
   it('says a file is taken off and puts it back where it was on « Annuler »', async () => {

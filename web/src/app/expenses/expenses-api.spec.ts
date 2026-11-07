@@ -3,6 +3,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { TextsParts } from '../shared/i18n/texts-part';
 import { ExpensesApi, ExpensesRefused } from './expenses-api';
 import type { ExpenseInput, ExpenseSearch } from './expenses-types';
 
@@ -25,7 +26,11 @@ describe('ExpensesApi', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TextsParts, useValue: { open: vi.fn(() => Promise.resolve()) } },
+      ],
     });
     api = TestBed.inject(ExpensesApi);
     http = TestBed.inject(HttpTestingController);
@@ -474,10 +479,23 @@ describe('ExpensesApi', () => {
 
     const file = new File(['Bonjour'], 'facture.pdf', { type: 'application/pdf' });
     const refused = api.attach('c1', 'e1', file);
-    http
-      .expectOne('/api/companies/c1/expenses/e1/attachments')
-      .flush(null, { status: 422, statusText: 'Unprocessable Content' });
-    await expect(refused).rejects.toEqual(new ExpensesRefused('file_refused'));
+    http.expectOne('/api/companies/c1/expenses/e1/attachments').flush(
+      {
+        violations: [
+          {
+            propertyPath: 'file',
+            message: 'A file of type text/plain is not attached.',
+            payload: { reason: 'file_type', params: { types: 'application/pdf,image/png' } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Content' },
+    );
+    await expect(refused).rejects.toEqual(
+      new ExpensesRefused('file_refused', [
+        { field: 'file', reason: 'file_type', params: { types: 'application/pdf,image/png' } },
+      ]),
+    );
 
     const large = api.attach('c1', 'e1', file);
     http

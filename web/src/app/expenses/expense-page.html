@@ -308,6 +308,7 @@
                 [maxBytes]="maxBytes"
                 [disabled]="busy()"
                 testId="expense-attach"
+                [refused]="fileRefused()"
                 (picked)="upload($event)"
               />
             }

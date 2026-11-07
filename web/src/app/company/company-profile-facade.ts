@@ -16,6 +16,7 @@ export class CompanyProfileFacade {
   private readonly profileSignal = sessionSignal<CompanyProfile | null>(null);
   private readonly state = requestState(codeOf);
   private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
+  private readonly logoRefusalSignal = sessionSignal<FieldRefusal | null>(null);
 
   readonly profile = this.profileSignal.asReadonly();
   readonly busy = this.state.busy;
@@ -24,8 +25,11 @@ export class CompanyProfileFacade {
   readonly readFailed = this.state.readFailed;
   /** The fields the last save was refused on, each with the reason the screens translate. */
   readonly refusals = this.refusalsSignal.asReadonly();
+  /** What the API refused of the picture last sent, for the zone that took it to say; null once one is kept. */
+  readonly logoRefusal = this.logoRefusalSignal.asReadonly();
 
   async load(companyId: string): Promise<void> {
+    this.logoRefusalSignal.set(null);
     await this.state.read(async () => this.profileSignal.set(await this.api.profile(companyId)));
   }
 
@@ -57,7 +61,15 @@ export class CompanyProfileFacade {
 
   /** True when the API kept the picture; the profile then names the new version, so the screen reads it again. */
   async uploadLogo(companyId: string, file: File): Promise<boolean> {
-    return this.changeLogo(() => this.api.uploadLogo(companyId, file));
+    this.logoRefusalSignal.set(null);
+    const answer = await this.state.writeOrRefuse(async () => {
+      const logoVersion = await this.api.uploadLogo(companyId, file);
+      this.profileSignal.update((profile) => (profile ? { ...profile, logoVersion } : profile));
+    }, refusalsOf);
+    // What was refused of the picture (empty, too large or wide, not one) is said where it was chosen.
+    if (answer !== null && 'refused' in answer)
+      this.logoRefusalSignal.set(answer.refused[0] ?? null);
+    return answer !== null && 'kept' in answer;
   }
 
   /**

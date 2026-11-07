@@ -381,6 +381,7 @@
                   [maxBytes]="maxBytes"
                   [disabled]="busy()"
                   testId="quote-attach"
+                  [refused]="fileRefused()"
                   (picked)="upload($event)"
                 />
               }

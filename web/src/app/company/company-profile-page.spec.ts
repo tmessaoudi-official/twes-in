@@ -33,6 +33,8 @@ class StaticLoader implements TranslateLoader {
       import: {
         rejections: {
           invalid_email: 'E-mail refusé.',
+          picture_too_wide:
+            'Cette image dépasse {{pixels}} pixels de côté\u00a0: réduisez-la, puis recommencez.',
           identifier_shape: 'Ce numéro d’immatriculation n’a pas la forme attendue.',
         },
       },
@@ -79,6 +81,7 @@ describe('CompanyProfilePage', () => {
   const profileSignal = signal<CompanyProfile | null>(profile);
   const error = signal<CompanyError | null>(null);
   const refusals = signal<readonly FieldRefusal[]>([]);
+  const logoRefusal = signal<FieldRefusal | null>(null);
   const readFailed = signal(false);
   const facade = {
     profile: profileSignal.asReadonly(),
@@ -86,6 +89,7 @@ describe('CompanyProfilePage', () => {
     error: error.asReadonly(),
     readFailed: readFailed.asReadonly(),
     refusals: refusals.asReadonly(),
+    logoRefusal: logoRefusal.asReadonly(),
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     save: vi.fn(),
@@ -222,6 +226,16 @@ describe('CompanyProfilePage', () => {
 
     expect(facade.uploadLogo).toHaveBeenCalledWith('c1', file);
     expect(successToasts()).toContain('company.profile.logo.saved');
+  });
+
+  it('says what the API refused of a picture where the logo is chosen, with the limit it met', async () => {
+    logoRefusal.set({ field: 'file', reason: 'picture_too_wide', params: { pixels: 4000 } });
+    await open();
+
+    expect(q('file-drop-refused')?.textContent?.trim()).toBe(
+      'Cette image dépasse 4000 pixels de côté\u00a0: réduisez-la, puis recommencez.',
+    );
+    logoRefusal.set(null);
   });
 
   it('says nothing was kept when the picture is refused', async () => {

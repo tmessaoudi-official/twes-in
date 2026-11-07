@@ -16,7 +16,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { PickOption } from '../shared/form/pick-field';
@@ -55,6 +55,9 @@ import {
 } from '../recurring-expenses/recurring-expenses-api';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { TextsParts } from '../shared/i18n/texts-part';
+import type { FieldError } from '../shared/form/form-builder';
+import { FormStep } from '../shared/form/form-step';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -116,6 +119,12 @@ export class ExpensePage {
   private readonly recurring = inject(RecurringExpensesApi);
   private readonly format = inject(FormatFacade);
   private readonly texts = inject(TextsParts);
+  private readonly words = new FormStep(inject(TranslateService), inject(RefusalFigures));
+  /** What the API refused of the file last sent, in its words, said where the file is chosen until one is kept. */
+  protected readonly fileRefused = computed((): FieldError | null => {
+    const refusal = this.facade.fileRefusal();
+    return refusal === null ? null : this.words.wordsOf(refusal);
+  });
   private readonly deletes = inject(RecordDeletes);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `expenses/new`. */

@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { filenameOf } from '../shared/files/save-file';
 import { isPeriodClosed } from '../shared/documents/period-closed';
 import { type FieldRefusal, refusalsIn } from '../shared/form/field-refusals';
+import { formRefusalsIn } from '../shared/form/form-refusals-api';
 import { isRecordChanged } from '../shared/errors/record-changed';
 import type {
   ApiCompaniesCompanyIdexpensesGetCollectionResponse,
@@ -74,6 +75,7 @@ const RESTORE: Refusals = { conflict: 'not_draft', invalid: 'files_full' };
 @Injectable({ providedIn: 'root' })
 export class ExpensesApi {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
 
   async options(companyId: string): Promise<ExpenseOptions> {
     return this.guard(EXPENSE, async () =>
@@ -338,16 +340,22 @@ export class ExpensesApi {
   async attach(companyId: string, expenseId: string, file: File): Promise<ExpenseAttachment> {
     const body = new FormData();
     body.append('file', file, file.name);
-    return this.guard(FILE, async () =>
-      toAttachment(
+    try {
+      return toAttachment(
         await firstValueFrom(
           this.http.post<ExpenseAttachmentExpenseAttachmentRead>(
             attachmentsPath(companyId, expenseId),
             body,
           ),
         ),
-      ),
-    );
+      );
+    } catch (error) {
+      // What was refused of the file (empty, too large, of a type not taken, one too many), for the zone to say.
+      throw refusedFor(
+        error,
+        new ExpensesRefused(codeOf(error, FILE), await formRefusalsIn(this.injector, error)),
+      );
+    }
   }
 
   /** 409 once the expense is recorded: what it rests on stays. */

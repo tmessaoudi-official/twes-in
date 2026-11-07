@@ -742,19 +742,20 @@ export class InventoryApi {
   async attachToLoss(companyId: string, movementId: string, file: File): Promise<StockLossFile> {
     const body = new FormData();
     body.append('file', file, file.name);
-    return this.guard(
-      async () =>
-        toLossFile(
-          await firstValueFrom(
-            this.http.post<StockLossAttachmentStockLossAttachmentRead>(
-              lossFilesPath(companyId, movementId),
-              body,
-            ),
+    try {
+      return toLossFile(
+        await firstValueFrom(
+          this.http.post<StockLossAttachmentStockLossAttachmentRead>(
+            lossFilesPath(companyId, movementId),
+            body,
           ),
         ),
-      'invalid',
-      true,
-    );
+      );
+    } catch (error) {
+      // What was refused of the file (empty, too large, of a type not taken, one too many), for the zone to say.
+      const refusals = await formRefusalsIn(this.injector, error);
+      throw refusedFor(error, new InventoryRefused(fileCodeOf(error), null, refusals));
+    }
   }
 
   async detachFromLoss(companyId: string, movementId: string, fileId: string): Promise<void> {
@@ -776,7 +777,6 @@ export class InventoryApi {
           ),
         ),
       'invalid',
-      false,
       'files_full',
     );
   }
@@ -805,16 +805,12 @@ export class InventoryApi {
   private async guard<T>(
     call: () => Promise<T>,
     conflict: InventoryError = 'invalid',
-    file = false,
     invalid: InventoryError = 'invalid',
   ): Promise<T> {
     try {
       return await call();
     } catch (error) {
-      throw refusedFor(
-        error,
-        new InventoryRefused(file ? fileCodeOf(error) : codeOf(error, conflict, invalid)),
-      );
+      throw refusedFor(error, new InventoryRefused(codeOf(error, conflict, invalid)));
     }
   }
 }

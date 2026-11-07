@@ -15,6 +15,7 @@ use App\Module\Quotes\Application\QuoteAttachmentNotFound;
 use App\Module\Quotes\Application\QuoteNotFound;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Resource\QuoteAttachmentResource;
 use App\Module\Quotes\Infrastructure\ApiPlatform\Security\QuotePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -39,7 +40,7 @@ final readonly class QuoteAttachmentsController
     {
     }
 
-    #[Route('/api/companies/{companyId}/quotes/{quoteId}/attachments', name: 'api_quote_attachment_upload', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/quotes/{quoteId}/attachments', name: 'api_quote_attachment_upload', methods: ['POST'], defaults: ['_api_respond' => true])]
     public function upload(Request $request, string $companyId, string $quoteId): JsonResponse
     {
         $ids = ['companyId' => $companyId, 'quoteId' => $quoteId];
@@ -58,7 +59,7 @@ final readonly class QuoteAttachmentsController
         } catch (QuoteNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (AttachmentRefused $refused) {
-            throw new UnprocessableEntityHttpException('file: '.$refused->getMessage(), $refused);
+            throw DomainRule::refused('file', $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return new JsonResponse(QuoteAttachmentResource::of($attachment)->toArray(), Response::HTTP_CREATED);

@@ -305,6 +305,18 @@ describe('InventoryFacade', () => {
     expect(facade.error()).toBe('not_found');
   });
 
+  it("keeps what the API refused of a loss's file for its zone to say, and lets it go once one is kept", async () => {
+    const refusal = { field: 'file', reason: 'file_empty', params: {} };
+    api.attachToLoss.mockRejectedValueOnce(new InventoryRefused('file_refused', null, [refusal]));
+
+    expect(await facade.attachToLoss('c1', 'm3', new File([''], 'vide.pdf'))).toBe(false);
+    expect([facade.fileRefusal(), facade.error()]).toEqual([refusal, null]);
+
+    api.attachToLoss.mockResolvedValue({ id: 'f1' });
+    expect(await facade.attachToLoss('c1', 'm3', new File(['%PDF'], 'plainte.pdf'))).toBe(true);
+    expect(facade.fileRefusal()).toBeNull();
+  });
+
   it('puts a file back on its loss and reads the movements again; a refusal is returned, not written', async () => {
     await facade.loadMovements('c1', MOVEMENTS_SEARCH);
     api.restoreToLoss.mockResolvedValue(undefined);

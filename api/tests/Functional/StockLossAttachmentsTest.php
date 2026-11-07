@@ -180,10 +180,11 @@ final class StockLossAttachmentsTest extends ApiTestCase
         $this->signedIn('writer@twes.local', ['stock.read', 'stock.write']);
         [, $loss] = $this->receivedThenLost();
 
-        foreach (['empty' => '', 'a GIF' => self::gif()] as $what => $contents) {
+        $types = ['types' => implode(',', $this->typesTaken())];
+        foreach (['empty' => ['', 'file_empty', []], 'a GIF' => [self::gif(), 'file_type', $types]] as $what => [$contents, $reason, $params]) {
             $this->uploadFile($this->path($loss), 'photo.gif', $contents);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $what);
-            self::assertStringContainsString('file', (string) $this->client->getResponse()->getContent(), $what);
+            self::assertSame([['propertyPath' => 'file', 'reason' => $reason, 'params' => $params]], $this->refusals(), $what);
         }
         for ($i = 0; $i < 10; ++$i) {
             $this->uploadFile($this->path($loss), \sprintf('photo-%d.jpg', $i), self::jpeg(4, 4));
@@ -191,6 +192,7 @@ final class StockLossAttachmentsTest extends ApiTestCase
         }
         $this->uploadFile($this->path($loss), 'photo-11.jpg', self::jpeg(4, 4));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'ten files at most');
+        self::assertSame([['propertyPath' => 'file', 'reason' => 'too_many_files', 'params' => ['max' => static::getContainer()->getParameter('app.files.attachments_per_subject')]]], $this->refusals());
 
         $this->getJson($this->path($loss));
         $this->sendJson('DELETE', $this->path($loss).'/'.$this->stringAt($this->jsonList()[0], 'id'));

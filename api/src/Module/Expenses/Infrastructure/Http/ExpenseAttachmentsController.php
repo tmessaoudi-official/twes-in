@@ -16,6 +16,7 @@ use App\Module\Expenses\Application\ManageExpenses;
 use App\Module\Expenses\Domain\Exception\ExpenseTransitionRefused;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Resource\ExpenseAttachmentResource;
 use App\Module\Expenses\Infrastructure\ApiPlatform\Security\ExpensePermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -41,7 +42,7 @@ final readonly class ExpenseAttachmentsController
     {
     }
 
-    #[Route('/api/companies/{companyId}/expenses/{expenseId}/attachments', name: 'api_expense_attachment_upload', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/expenses/{expenseId}/attachments', name: 'api_expense_attachment_upload', methods: ['POST'], defaults: ['_api_respond' => true])]
     public function upload(Request $request, string $companyId, string $expenseId): JsonResponse
     {
         $ids = ['companyId' => $companyId, 'expenseId' => $expenseId];
@@ -60,7 +61,7 @@ final readonly class ExpenseAttachmentsController
         } catch (ExpenseNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (AttachmentRefused $refused) {
-            throw new UnprocessableEntityHttpException('file: '.$refused->getMessage(), $refused);
+            throw DomainRule::refused('file', $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return new JsonResponse(ExpenseAttachmentResource::of($attachment)->toArray(), Response::HTTP_CREATED);

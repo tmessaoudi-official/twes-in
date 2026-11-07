@@ -12,6 +12,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import type { FieldRefusal } from '../shared/form/field-refusals';
 import { AuthFacade } from '../auth/auth-facade';
 import { ProductScans } from '../products/product-scans';
 import type { ProductScan } from '../products/products-types';
@@ -49,7 +50,12 @@ class StaticLoader implements TranslateLoader {
         },
         movements: { of_lot: 'Mouvements du lot {{code}}.' },
       },
-      import: { rejections: { invalid_price: 'Prix refusé : un montant à partir de 0.' } },
+      import: {
+        rejections: {
+          invalid_price: 'Prix refusé : un montant à partir de 0.',
+          file_empty: 'Ce fichier est vide\u00a0: choisissez-en un autre.',
+        },
+      },
     });
   }
 }
@@ -137,6 +143,7 @@ describe('StockMovementsPage', () => {
   const shown = signal<readonly StockMovementRow[]>([delivered]);
   const shownError = signal<InventoryError | null>(null);
   const readFailed = signal(false);
+  const lossFileRefusal = signal<FieldRefusal | null>(null);
   const facade = {
     options: signal<StockOptions | null>(options).asReadonly(),
     levels: signal<readonly StockLevelRow[]>([]).asReadonly(),
@@ -169,6 +176,7 @@ describe('StockMovementsPage', () => {
     receiptToComplete: vi.fn(),
     enterReceiptCost: vi.fn(),
     lossFiles: vi.fn(),
+    fileRefusal: lossFileRefusal.asReadonly(),
     attachToLoss: vi.fn(),
     detachFromLoss: vi.fn(),
     clearError: vi.fn(),
@@ -537,6 +545,19 @@ describe('StockMovementsPage', () => {
     expect(facade.lossFiles).toHaveBeenCalledTimes(before + 1);
     inDialog('loss-files-close')!.click();
     await settle();
+  });
+
+  it("says what the API refused of a loss's file where its files are chosen", async () => {
+    shown.set([lost]);
+    lossFileRefusal.set({ field: 'file', reason: 'file_empty', params: {} });
+    await settle();
+    q('row-action-loss-files-m3')!.click();
+    await settle();
+
+    expect(
+      document.body.querySelector('[data-testid="file-drop-refused"]')?.textContent?.trim(),
+    ).toBe('Ce fichier est vide\u00a0: choisissez-en un autre.');
+    lossFileRefusal.set(null);
   });
 
   it('lets a stock writer add a file to a loss and take one off, and a reader only open them', async () => {

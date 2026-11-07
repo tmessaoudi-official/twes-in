@@ -659,8 +659,24 @@ describe('InventoryApi', () => {
     const post = http.expectOne('/api/companies/c1/stock-movements/m3/attachments');
     expect(post.request.method).toBe('POST');
     expect((post.request.body as FormData).get('file')).toBeInstanceOf(File);
-    post.flush({ detail: 'file: type' }, { status: 422, statusText: 'Unprocessable Entity' });
-    await expect(refused).rejects.toMatchObject({ code: 'file_refused' });
+    post.flush(
+      {
+        violations: [
+          {
+            propertyPath: 'file',
+            message: 'A file of type image/gif is not attached.',
+            payload: { reason: 'file_type', params: { types: 'application/pdf,image/png' } },
+          },
+        ],
+      },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await expect(refused).rejects.toMatchObject({
+      code: 'file_refused',
+      refusals: [
+        { field: 'file', reason: 'file_type', params: { types: 'application/pdf,image/png' } },
+      ],
+    });
     const large = api.attachToLoss('c1', 'm3', file);
     http
       .expectOne('/api/companies/c1/stock-movements/m3/attachments')

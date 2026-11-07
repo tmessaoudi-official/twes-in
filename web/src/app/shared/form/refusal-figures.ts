@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, Injector } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { FormatFacade } from '../i18n/format-facade';
 import { Session } from '../session/session';
+import { sizeText, typeNames } from './file-limits';
 
 /**
  * The params a refusal sends as figures, by name, and how the reader reads each: the API writes them as it stores
  * them, a decimal string and a day, never in anyone's format. Every reason naming a figure names it so.
  */
-const FIGURES: Readonly<Record<string, 'amount' | 'day' | 'decimal'>> = {
+const FIGURES: Readonly<Record<string, 'amount' | 'day' | 'decimal' | 'size' | 'types'>> = {
   amount: 'amount',
   day: 'day',
   quantity: 'decimal',
   price: 'decimal',
   wanted: 'decimal',
   on_hand: 'decimal',
+  bytes: 'size',
+  types: 'types',
 };
 
 /**
@@ -31,7 +35,17 @@ export class RefusalFigures {
     const written: Record<string, unknown> = { ...params };
     for (const [name, value] of Object.entries(params)) {
       const kind = FIGURES[name];
+      if (kind === 'size') {
+        // The most a file holds, sent in bytes, read as the zone that takes the file says it.
+        if (typeof value === 'number')
+          written[name] = sizeText(this.injector.get(TranslateService), value);
+        continue;
+      }
       if (kind === undefined || typeof value !== 'string') continue;
+      if (kind === 'types') {
+        written[name] = typeNames(value.split(','));
+        continue;
+      }
       const format = this.injector.get(FormatFacade);
       written[name] =
         kind === 'day'

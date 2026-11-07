@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { Feedback } from '../shared/feedback/feedback';
 import { FileDrop } from '../shared/form/file-drop';
+import type { FieldError } from '../shared/form/form-builder';
+import { FormStep } from '../shared/form/form-step';
+import { RefusalFigures } from '../shared/form/refusal-figures';
 import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 import { MomentPipe } from '../shared/i18n/format-pipes';
 import { InventoryFacade } from './inventory-facade';
@@ -96,6 +99,7 @@ export interface LossFilesDialogData {
             [maxBytes]="maxBytes"
             [disabled]="busy()"
             testId="loss-files-add"
+            [refused]="fileRefused()"
             (picked)="attach($event)"
           />
         }
@@ -120,6 +124,12 @@ export class LossFilesDialog {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly readFailed = this.facade.readFailed;
+  private readonly words = new FormStep(inject(TranslateService), inject(RefusalFigures));
+  /** What the API refused of the file last sent, in its words, said where files are chosen until one is kept. */
+  protected readonly fileRefused = computed((): FieldError | null => {
+    const refusal = this.facade.fileRefusal();
+    return refusal === null ? null : this.words.wordsOf(refusal);
+  });
 
   constructor() {
     void this.read();

@@ -15,6 +15,7 @@ use App\Module\Inventory\Application\StockLossAttachmentNotFound;
 use App\Module\Inventory\Application\StockMovementNotFound;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Resource\StockLossAttachmentResource;
 use App\Module\Inventory\Infrastructure\ApiPlatform\Security\StockPermission;
+use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -39,7 +40,7 @@ final readonly class StockLossAttachmentsController
     {
     }
 
-    #[Route('/api/companies/{companyId}/stock-movements/{movementId}/attachments', name: 'api_stock_loss_attachment_upload', methods: ['POST'])]
+    #[Route('/api/companies/{companyId}/stock-movements/{movementId}/attachments', name: 'api_stock_loss_attachment_upload', methods: ['POST'], defaults: ['_api_respond' => true])]
     public function upload(Request $request, string $companyId, string $movementId): JsonResponse
     {
         $ids = ['companyId' => $companyId, 'movementId' => $movementId];
@@ -58,7 +59,7 @@ final readonly class StockLossAttachmentsController
         } catch (StockMovementNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (AttachmentRefused $refused) {
-            throw new UnprocessableEntityHttpException('file: '.$refused->getMessage(), $refused);
+            throw DomainRule::refused('file', $refused->getMessage(), $refused->reason, $refused->params, $refused);
         }
 
         return new JsonResponse(StockLossAttachmentResource::of($attachment)->toArray(), Response::HTTP_CREATED);

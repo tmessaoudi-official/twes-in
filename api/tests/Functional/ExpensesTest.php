@@ -620,10 +620,11 @@ final class ExpensesTest extends ApiTestCase
         $receiptId = $this->stringAt($receipt, 'id');
         self::assertSame(['recu.pdf', 'application/pdf', \strlen(AttachmentsTest::PDF)], [$receipt['name'], $receipt['mime'], $receipt['size']]);
 
-        foreach (['text named like a PDF' => ['facture.pdf', 'Bonjour'], 'nothing' => ['vide.pdf', '']] as $case => [$name, $contents]) {
+        $types = implode(',', $this->typesTaken());
+        foreach (['text named like a PDF' => ['facture.pdf', 'Bonjour', 'file_type', ['types' => $types]], 'nothing' => ['vide.pdf', '', 'file_empty', []]] as $case => [$name, $contents, $reason, $params]) {
             $this->uploadFile($this->path($id).'/attachments', $name, $contents);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
-            self::assertStringContainsString('file', (string) $this->client->getResponse()->getContent(), $case);
+            self::assertSame([['propertyPath' => 'file', 'reason' => $reason, 'params' => $params]], $this->refusals(), $case);
         }
         $this->uploadFile($this->path($id).'/attachments', 'recu.pdf', AttachmentsTest::PDF, 'document');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'no part named file');

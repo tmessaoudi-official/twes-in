@@ -571,6 +571,10 @@ final class QuotesTest extends ApiTestCase
         $this->signedIn(self::WRITER);
         $id = $this->sent();
 
+        $this->uploadFile($this->path($id).'/attachments', 'devis-signé.pdf', '');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'an empty file');
+        self::assertSame([['propertyPath' => 'file', 'reason' => 'file_empty', 'params' => []]], $this->refusals(), 'said on the file, with what to change');
+
         $this->uploadFile($this->path($id).'/attachments', 'devis-signé.pdf', "%PDF-1.4\n%âãÏÓ\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF");
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $attachment = $this->stringAt($this->json(), 'id');

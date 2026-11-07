@@ -42,14 +42,14 @@ final readonly class Attachments
     public function attach(Company $company, string $entityType, Uuid $entityId, string $originalName, string $contents, ?Uuid $uploadedBy): Attachment
     {
         if ('' === $contents) {
-            throw new AttachmentRefused('The file is empty.');
+            throw new AttachmentRefused('The file is empty.', AttachmentRefused::EMPTY);
         }
         if (\strlen($contents) > $this->maxBytes) {
-            throw new AttachmentRefused(\sprintf('A file is at most %d KB.', intdiv($this->maxBytes, 1024)));
+            throw new AttachmentRefused(\sprintf('A file is at most %d KB.', intdiv($this->maxBytes, 1024)), AttachmentRefused::TOO_LARGE, ['bytes' => $this->maxBytes]);
         }
         $type = (string) (new \finfo(\FILEINFO_MIME_TYPE))->buffer($contents);
         if (!\in_array($type, $this->allowedTypes, true)) {
-            throw new AttachmentRefused(\sprintf('A file of type %s is not attached; accepted: %s.', $type, implode(', ', $this->allowedTypes)));
+            throw new AttachmentRefused(\sprintf('A file of type %s is not attached; accepted: %s.', $type, implode(', ', $this->allowedTypes)), AttachmentRefused::TYPE, ['types' => implode(',', $this->allowedTypes)]);
         }
         if (\count($this->of($company, $entityType, $entityId)) >= $this->perSubject) {
             throw $this->tooMany();

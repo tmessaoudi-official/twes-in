@@ -115,18 +115,18 @@ final readonly class CompanyLogo implements DeclaresAuditActions
     private static function check(string $contents): void
     {
         if ('' === $contents) {
-            throw new AttachmentRefused('The file is empty.');
+            throw new AttachmentRefused('The file is empty.', AttachmentRefused::EMPTY);
         }
         if (\strlen($contents) > self::MAX_BYTES) {
-            throw new AttachmentRefused(\sprintf('A logo is at most %d KB.', intdiv(self::MAX_BYTES, 1024)));
+            throw new AttachmentRefused(\sprintf('A logo is at most %d KB.', intdiv(self::MAX_BYTES, 1024)), AttachmentRefused::TOO_LARGE, ['bytes' => self::MAX_BYTES]);
         }
         $type = (string) (new \finfo(\FILEINFO_MIME_TYPE))->buffer($contents);
         $size = \in_array($type, self::TYPES, true) ? @getimagesizefromstring($contents) : false;
         if (false === $size) {
-            throw new AttachmentRefused(\sprintf('A logo is a PNG, JPEG or WebP picture; this file is %s.', '' === $type ? 'unknown' : $type));
+            throw new AttachmentRefused(\sprintf('A logo is a PNG, JPEG or WebP picture; this file is %s.', '' === $type ? 'unknown' : $type), AttachmentRefused::TYPE, ['types' => implode(',', self::TYPES)]);
         }
         if ($size[0] > self::MAX_SIDE || $size[1] > self::MAX_SIDE) {
-            throw new AttachmentRefused(\sprintf('A logo is at most %d pixels on a side.', self::MAX_SIDE));
+            throw new AttachmentRefused(\sprintf('A logo is at most %d pixels on a side.', self::MAX_SIDE), AttachmentRefused::TOO_WIDE, ['pixels' => self::MAX_SIDE]);
         }
     }
 

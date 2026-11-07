@@ -68,6 +68,7 @@
                 [maxBytes]="maxBytes"
                 [disabled]="busy()"
                 testId="profile-logo-input"
+                [refused]="logoRefused()"
                 (picked)="uploadLogo($event)"
               />
               @if (logoUrl()) {

@@ -41,6 +41,7 @@ export class QuotesFacade implements LineCatalogue {
   private readonly totalSignal = sessionSignal(0);
   private readonly statusCountsSignal = sessionSignal<QuoteStatusCounts | null>(null);
   private readonly refusalsSignal = sessionSignal<readonly FieldRefusal[]>([]);
+  private readonly fileRefusalSignal = sessionSignal<FieldRefusal | null>(null);
   private readonly pageRequests = new LatestRequest();
   private readonly countsRequests = new LatestRequest();
   private readonly state = requestState(codeOf);
@@ -61,6 +62,11 @@ export class QuotesFacade implements LineCatalogue {
   readonly readFailed = this.state.readFailed;
   /** Each field the last step was refused on, with why; empty after a step the API took. */
   readonly refusals = this.refusalsSignal.asReadonly();
+  /**
+   * What the API refused of the file last sent, the signed copy sent with a yes among them, for the files zone to say;
+   * null once one is kept.
+   */
+  readonly fileRefusal = this.fileRefusalSignal.asReadonly();
 
   /** What the list needs besides its page: the currency's scale its totals are shown at. */
   async loadListContext(companyId: string): Promise<void> {
@@ -88,6 +94,7 @@ export class QuotesFacade implements LineCatalogue {
 
   /** What the quote screen needs: the form's options, and the quote and its files unless it is new. */
   async loadQuote(companyId: string, id: string | null): Promise<void> {
+    this.fileRefusalSignal.set(null);
     await this.read(async () => {
       const [options, quote, attachments] = await Promise.all([
         this.api.options(companyId),
@@ -276,9 +283,22 @@ export class QuotesFacade implements LineCatalogue {
     );
   }
 
-  /** Attaches a file, then reads the quote's files and count again. */
+  /**
+   * Attaches a file, then reads the quote's files and count again; what the API refused of the file is kept in
+   * `fileRefusal` for the zone to say, and nothing is said around it.
+   */
   async attach(companyId: string, id: string, file: File): Promise<boolean> {
-    return this.fileStep(companyId, id, () => this.api.attach(companyId, id, file));
+    this.fileRefusalSignal.set(null);
+    const answer = await this.state.writeOrRefuse(
+      async () => {
+        await this.api.attach(companyId, id, file);
+        await this.reloadFiles(companyId, id);
+      },
+      (error) => (error instanceof QuotesRefused ? error.refusals : []),
+    );
+    if (answer !== null && 'refused' in answer)
+      this.fileRefusalSignal.set(answer.refused[0] ?? null);
+    return answer !== null && 'kept' in answer;
   }
 
   async detach(companyId: string, id: string, attachmentId: string): Promise<boolean> {
@@ -364,13 +384,17 @@ export class QuotesFacade implements LineCatalogue {
   ): Promise<boolean> {
     return this.state.write(async () => {
       await call();
-      const [attachments, quote] = await Promise.all([
-        this.api.attachments(companyId, id),
-        this.api.quote(companyId, id),
-      ]);
-      this.attachmentsSignal.set(attachments);
-      this.quoteSignal.set(quote);
+      await this.reloadFiles(companyId, id);
     });
+  }
+
+  private async reloadFiles(companyId: string, id: string): Promise<void> {
+    const [attachments, quote] = await Promise.all([
+      this.api.attachments(companyId, id),
+      this.api.quote(companyId, id),
+    ]);
+    this.attachmentsSignal.set(attachments);
+    this.quoteSignal.set(quote);
   }
 }
 

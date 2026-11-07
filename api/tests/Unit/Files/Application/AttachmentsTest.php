@@ -58,16 +58,18 @@ final class AttachmentsTest extends TestCase
 
     public function testWhatIsNotAnAllowedTypeTooLargeOrEmptyIsRefusedAndNothingIsStored(): void
     {
+        $types = ['file_type', ['types' => 'application/pdf,image/png']];
         foreach ([
-            'text named like a PDF' => ['facture.pdf', 'Bonjour, voici la facture'],
-            'a script' => ['recu.pdf', "<?php echo 'x';"],
-            'empty' => ['vide.pdf', ''],
-            'one byte above the limit' => ['gros.pdf', self::PDF.str_repeat(' ', 1025 - \strlen(self::PDF))],
-        ] as $case => [$name, $contents]) {
+            'text named like a PDF' => ['facture.pdf', 'Bonjour, voici la facture', $types],
+            'a script' => ['recu.pdf', "<?php echo 'x';", $types],
+            'empty' => ['vide.pdf', '', ['file_empty', []]],
+            'one byte above the limit' => ['gros.pdf', self::PDF.str_repeat(' ', 1025 - \strlen(self::PDF)), ['file_too_large', ['bytes' => 1024]]],
+        ] as $case => [$name, $contents, $said]) {
             try {
                 $this->attachments->attach($this->acme, 'expense', $this->expenseId, $name, $contents, null);
                 self::fail("$case was attached");
-            } catch (AttachmentRefused) {
+            } catch (AttachmentRefused $refused) {
+                self::assertSame($said, [$refused->reason, $refused->params], "$case says what to change, with the limit it met");
             }
         }
         self::assertSame([[], [], []], [$this->storage->contents, $this->files->files, $this->records->attachments]);

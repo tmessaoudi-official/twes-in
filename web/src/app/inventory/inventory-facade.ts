@@ -67,6 +67,7 @@ export class InventoryFacade {
   /** Which floor's rectangles are in hand, so a live change reads that same floor again. */
   private drawingsFloorId: string | null = null;
   private readonly structuresSignal = sessionSignal<readonly StockStructureRow[]>([]);
+  private readonly fileRefusalSignal = sessionSignal<FieldRefusal | null>(null);
   private readonly structuresRequests = new LatestRequest();
   /** Which floor's building is in hand, so a live change reads that same floor again. */
   private structuresFloorId: string | null = null;
@@ -100,6 +101,8 @@ export class InventoryFacade {
   /** Where the goods searched on the map are; null while nothing is searched. */
   readonly whereabouts = this.whereaboutsSignal.asReadonly();
   readonly busy = this.state.busy;
+  /** What the API refused of the file last sent to a loss, for the zone that took it to say; null once one is kept. */
+  readonly fileRefusal = this.fileRefusalSignal.asReadonly();
   readonly error = this.state.error;
   /** Whether `error` is a read's failure, what a list says in place of its rows; a refused save is not. */
   readonly readFailed = this.state.readFailed;
@@ -341,6 +344,7 @@ export class InventoryFacade {
   /** The files a loss keeps, or null when they could not be read (the reason is in `error`). */
   async lossFiles(companyId: string, movementId: string): Promise<StockLossFile[] | null> {
     this.state.clearError();
+    this.fileRefusalSignal.set(null);
     try {
       return await this.api.lossFiles(companyId, movementId);
     } catch (error) {
@@ -351,10 +355,17 @@ export class InventoryFacade {
 
   /** A file kept with a loss; true once kept and the movements read again, so the loss says how many it keeps. */
   async attachToLoss(companyId: string, movementId: string, file: File): Promise<boolean> {
-    return this.write(
-      () => this.api.attachToLoss(companyId, movementId, file),
-      () => this.reloadMovements(companyId),
+    this.fileRefusalSignal.set(null);
+    const answer = await this.state.writeOrRefuse(
+      async () => {
+        await this.api.attachToLoss(companyId, movementId, file);
+        await this.reloadMovements(companyId);
+      },
+      (error) => (error instanceof InventoryRefused ? error.refusals : []),
     );
+    if (answer !== null && 'refused' in answer)
+      this.fileRefusalSignal.set(answer.refused[0] ?? null);
+    return answer !== null && 'kept' in answer;
   }
 
   /** A file attached to a loss by mistake, taken off it; true once done and the movements read again. */

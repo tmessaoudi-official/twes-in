@@ -10,12 +10,16 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Domain\Model\User;
+use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Model\Company;
+use App\Tests\Support\MakesPictures;
 use Symfony\Component\HttpFoundation\Response;
 
 /** docs/SPEC.md § 7, 2026-09-26 22:24: each company uploads its logo, which its documents and its switcher show. */
 final class CompanyLogoTest extends ApiTestCase
 {
+    use MakesPictures;
+
     /** A 1x1 PNG. */
     private const string PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
@@ -121,14 +125,17 @@ final class CompanyLogoTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
+        $picture = ['file_type', ['types' => 'image/png,image/jpeg,image/webp']];
         foreach ([
-            'a PDF' => ['logo.pdf', '%PDF-1.4'."\n".'1 0 obj<<>>endobj'],
-            'a script dressed as a picture' => ['logo.png', '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'],
-            'an empty file' => ['logo.png', ''],
-            'bytes that are no picture' => ['logo.png', 'not a picture at all'],
-        ] as $why => [$name, $contents]) {
+            'a PDF' => ['logo.pdf', '%PDF-1.4'."\n".'1 0 obj<<>>endobj', $picture],
+            'a script dressed as a picture' => ['logo.png', '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>', $picture],
+            'an empty file' => ['logo.png', '', ['file_empty', []]],
+            'bytes that are no picture' => ['logo.png', 'not a picture at all', $picture],
+            'a picture wider than a logo is' => ['logo.jpg', self::jpeg(CompanyLogo::MAX_SIDE + 1, 1), ['picture_too_wide', ['pixels' => CompanyLogo::MAX_SIDE]]],
+        ] as $why => [$name, $contents, [$reason, $params]]) {
             $this->uploadFile($this->path(), $name, $contents);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $why);
+            self::assertSame([['propertyPath' => 'file', 'reason' => $reason, 'params' => $params]], $this->refusals(), $why);
         }
         $this->getJson($this->path());
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a refused upload leaves no logo');
@@ -138,9 +145,10 @@ final class CompanyLogoTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->uploadFile($this->path(), 'big.png', $this->png().str_repeat('0', 2 * 1024 * 1024));
+        $this->uploadFile($this->path(), 'big.png', $this->png().str_repeat('0', CompanyLogo::MAX_BYTES));
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame([['propertyPath' => 'file', 'reason' => 'file_too_large', 'params' => ['bytes' => CompanyLogo::MAX_BYTES]]], $this->refusals());
     }
 
     public function testAnotherCompanysLogoIsNotReadable(): void

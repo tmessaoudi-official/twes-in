@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   provideTranslateLoader,
@@ -10,6 +10,7 @@ import {
 import { of } from 'rxjs';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FileDrop } from './file-drop';
+import type { FieldError } from './form-builder';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -20,6 +21,7 @@ class StaticLoader implements TranslateLoader {
           limits: '{{types}} · up to {{size}}',
           refused: 'Not accepted: {{types}}.',
           too_large: 'Over {{size}}.',
+          empty_said: 'Empty: choose another.',
           mb: '{{count}} MB',
           kb: '{{count}} KB',
         },
@@ -41,6 +43,19 @@ class StaticLoader implements TranslateLoader {
 })
 class Host {
   readonly got: File[] = [];
+}
+
+@Component({
+  imports: [FileDrop],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<app-file-drop
+    label="Choose a receipt"
+    accept="application/pdf"
+    [refused]="refused()"
+  />`,
+})
+class RefusedHost {
+  readonly refused = signal<FieldError | null>({ key: 'form.file.empty_said', params: {} });
 }
 
 describe('FileDrop', () => {
@@ -102,5 +117,21 @@ describe('FileDrop', () => {
     await drop(big);
     expect(fixture.componentInstance.got).toEqual([]);
     expect(q('file-drop-refused')!.textContent).toContain('Over 2 MB.');
+  });
+
+  it('says where it takes a file what the API refused of the one sent, until the page lets it go', async () => {
+    const refused = TestBed.createComponent(RefusedHost);
+    refused.detectChanges();
+    await refused.whenStable();
+    refused.detectChanges();
+    const said = (): string | undefined =>
+      (refused.nativeElement as HTMLElement).querySelector('[data-testid="file-drop-refused"]')
+        ?.textContent;
+
+    expect(said()).toBe('Empty: choose another.');
+
+    refused.componentInstance.refused.set(null);
+    refused.detectChanges();
+    expect(said()).toBeUndefined();
   });
 });

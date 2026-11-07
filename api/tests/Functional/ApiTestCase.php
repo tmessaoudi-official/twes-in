@@ -481,6 +481,16 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
+     * The types a record's attachment may be, as the operator set them: what a refusal of another type names.
+     *
+     * @return list<string>
+     */
+    protected function typesTaken(): array
+    {
+        return array_values(static::getContainer()->getParameter('app.files.attachment_types'));
+    }
+
+    /**
      * What a 422 refused, as a screen reads it: each violation's property, the reason it translates and that text's
      * parameters (none when the payload carries none).
      *
