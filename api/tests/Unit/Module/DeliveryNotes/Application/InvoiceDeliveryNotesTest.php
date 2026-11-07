@@ -179,7 +179,8 @@ final class InvoiceDeliveryNotesTest extends TestCase
             try {
                 $this->invoicing->draftInvoice($this->company, [$mine->getId(), $note->getId()], null);
                 self::fail("$case was invoiced");
-            } catch (DeliveryNoteTransitionRefused) {
+            } catch (DeliveryNoteTransitionRefused $refused) {
+                self::assertSame(['note_not_invoiceable', ['reference' => $note->getNumber() ?? $note->getId()->toRfc4122()]], [$refused->reason, $refused->params], $case);
             }
         }
         self::assertSame([[], []], [$this->invoices->invoices, $this->audit->entries]);
@@ -190,6 +191,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
             self::fail('a note on a draft invoice was invoiced again');
         } catch (DeliveryNoteTransitionRefused $refused) {
             self::assertStringContainsString('invoice', $refused->getMessage());
+            self::assertSame(['notes_on_draft_invoice', []], [$refused->reason, $refused->params]);
         }
         $held->cancel($this->clock->now());
         $this->invoicing->draftInvoice($this->company, [$mine->getId()], null);

@@ -229,10 +229,10 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
         }
         foreach ($notes as $note) {
             if (DeliveryNoteStatus::Validated !== $note->getStatus() && DeliveryNoteStatus::Delivered !== $note->getStatus()) {
-                throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a validated or delivered note is invoiced.', self::reference($note), $note->getStatus()->value));
+                throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a validated or delivered note is invoiced.', self::reference($note), $note->getStatus()->value), 'note_not_invoiceable', ['reference' => self::reference($note)]);
             }
             if ($note->deliversInvoice()) {
-                throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s hands over the goods of an issued invoice, which billed its goods: it is never invoiced again.', self::reference($note)));
+                throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s hands over the goods of an issued invoice, which billed its goods: it is never invoiced again.', self::reference($note)), 'note_of_issued_invoice', ['reference' => self::reference($note)]);
             }
         }
         $first = $notes[0];
@@ -268,7 +268,13 @@ final readonly class InvoiceDeliveryNotes implements DeclaresAuditActions
             }
         } elseif ([] === array_filter($left, static fn (\BcMath\Number $each): bool => $each->compare(0) > 0)) {
             $held = $this->invoiced->carrying($company->getId(), self::lineIds($notes))[0] ?? null;
-            throw new DeliveryNoteTransitionRefused(\sprintf('Nothing is left to invoice on these delivery notes%s.', null === $held ? '' : \sprintf(': they are on the invoice %s, which is not cancelled', $held->number ?? $held->id->toRfc4122())));
+            // A draft has no number yet, so the screen names it by what it is rather than by an identifier.
+            $said = match (true) {
+                null === $held => ['nothing_left_to_invoice', []],
+                null === $held->number => ['notes_on_draft_invoice', []],
+                default => ['notes_on_invoice', ['invoice' => $held->number]],
+            };
+            throw new DeliveryNoteTransitionRefused(\sprintf('Nothing is left to invoice on these delivery notes%s.', null === $held ? '' : \sprintf(': they are on the invoice %s, which is not cancelled', $held->number ?? $held->id->toRfc4122())), ...$said);
         }
 
         $parts = [];

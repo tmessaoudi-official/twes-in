@@ -67,6 +67,7 @@ class StaticLoader implements TranslateLoader {
           customer_deactivated: 'Le client « {{number}} » est désactivé.',
           invalid_text: 'Texte refusé : {{max}} caractères au plus.',
           stock_short: '{{name}} : il en faut {{wanted}}, le stock en compte {{on_hand}}.',
+          note_not_cancellable: 'Le bon « {{reference}} » ne s’annule plus.',
         },
       },
       delivery_notes: {
@@ -1689,6 +1690,15 @@ describe('DeliveryNotePage', () => {
     await open('n1');
 
     expect(q('delivery-note-error')?.textContent).toContain('changé d’état');
+  });
+
+  it('says a move the note’s state refuses in its reason’s words, not as a change meanwhile', async () => {
+    error.set('conflict');
+    refusals.set([{ field: '', reason: 'note_not_cancellable', params: { reference: 'BL-7' } }]);
+    note.set(validated);
+    await open('n1');
+
+    expect(q('delivery-note-error')?.textContent?.trim()).toBe('Le bon « BL-7 » ne s’annule plus.');
   });
   it('drafts an invoice from a validated or delivered note and opens it', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);

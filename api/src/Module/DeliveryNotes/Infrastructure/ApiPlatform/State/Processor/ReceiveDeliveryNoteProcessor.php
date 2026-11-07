@@ -21,7 +21,6 @@ use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePer
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -45,7 +44,7 @@ final readonly class ReceiveDeliveryNoteProcessor implements ProcessorInterface
         } catch (DeliveryNoteNotFound $absent) {
             throw new NotFoundHttpException('No such delivery note.', $absent);
         } catch (DeliveryNoteTransitionRefused $conflict) {
-            throw new ConflictHttpException($conflict->getMessage(), $conflict);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         } catch (InvalidDeliveryNote $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }

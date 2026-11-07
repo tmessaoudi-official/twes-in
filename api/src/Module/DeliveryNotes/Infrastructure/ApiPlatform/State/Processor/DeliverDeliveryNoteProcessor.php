@@ -22,7 +22,6 @@ use App\Shared\Domain\Service\WrittenDay;
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProcessorInterface<DeliveryNoteResource, DeliveryNoteResource> */
@@ -51,7 +50,7 @@ final readonly class DeliverDeliveryNoteProcessor implements ProcessorInterface
         } catch (DeliveryNoteNotFound $absent) {
             throw new NotFoundHttpException('No such delivery note.', $absent);
         } catch (DeliveryNoteTransitionRefused $conflict) {
-            throw new ConflictHttpException($conflict->getMessage(), $conflict);
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         } catch (InvalidDeliveryNote $refused) {
             // The moment refused is the one this request sent, under its own name.
             $field = 'deliveredAt' === $refused->field ? 'delivered' : $refused->field;

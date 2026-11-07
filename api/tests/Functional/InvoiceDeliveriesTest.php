@@ -98,6 +98,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         self::assertSame([[$lathe, '4.000']], array_map(static fn (array $line): array => [$line['sourceInvoiceLineId'], $line['quantity']], $this->listOf($second, 'lines')), 'with no quantities, what is left of every line of goods');
         $this->postJson($this->deliver($invoiceId), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'nothing is left');
+        self::assertSame(['invoice_delivered_whole', ['reference']], $this->refusedWholeAs());
 
         $this->postJson($this->path('delivery-notes', $this->stringAt($second, 'id')).'/validate', null);
         self::assertResponseIsSuccessful();
@@ -128,6 +129,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         $this->postJson($this->path('invoices').'/from-delivery-notes', ['deliveryNoteIds' => [$noteId]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
         self::assertStringContainsString('billed its goods', $this->detail());
+        self::assertSame(['note_of_issued_invoice', ['reference']], $this->refusedWholeAs());
         $this->postJson($this->path('invoices').'/from-delivery-notes/check', ['deliveryNoteIds' => [$noteId]]);
         self::assertResponseIsSuccessful();
         self::assertSame([['skipped', 'invoiced']], array_map(static fn (array $row): array => [$row['outcome'], $row['reason']], $this->listOf($this->json(), 'rows')), 'the bulk check leaves it out as invoiced');
@@ -139,6 +141,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->postJson($this->path('invoices', $this->stringAt($this->json(), 'id')).'/delivery-notes', ['deliveryNoteIds' => [$noteId]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'nor added to a draft');
+        self::assertSame(['note_of_issued_invoice', ['reference']], $this->refusedWholeAs());
         self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM invoice WHERE document_type = 'invoice' AND status <> 'draft'"), 'one invoice bills the goods');
     }
 
@@ -158,12 +161,14 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         self::assertSame(['3.000'], array_column($this->listOf($this->json(), 'lines'), 'quantity'), 'six billed, two taken back, one on the first note');
         $this->postJson($this->deliver($invoiceId), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame(['invoice_delivered_whole', ['reference']], $this->refusedWholeAs());
 
         $this->getJson($this->path('invoices', $invoiceId));
         self::assertSame([['2.000', '4.000', '0.000']], array_map(static fn (array $line): array => [$line['returned'], $line['onNotes'], $line['left']], $this->listOf($this->json(), 'deliveries')));
         $this->postJson($this->deliver($creditId), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a credit note delivers nothing');
         self::assertStringContainsString('credit note', $this->detail());
+        self::assertSame(['not_goods_invoice', ['reference']], $this->refusedWholeAs());
     }
 
     /**
@@ -216,6 +221,7 @@ final class InvoiceDeliveriesTest extends ApiTestCase
         $this->postJson($this->deliver($draft), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft bills nothing yet');
         self::assertStringContainsString('not issued', $this->detail());
+        self::assertSame(['invoice_not_issued', ['reference']], $this->refusedWholeAs());
         $this->postJson($this->deliver(self::ABSENT), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 

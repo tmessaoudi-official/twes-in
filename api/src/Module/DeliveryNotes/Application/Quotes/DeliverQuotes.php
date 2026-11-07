@@ -53,7 +53,7 @@ final readonly class DeliverQuotes
             $quote = $this->quotes->ofId($company, $quoteId, true) ?? throw new DeliveredQuoteNotFound();
             $refused = QuoteDelivery::refusal($quote);
             if (null !== $refused) {
-                throw $refused[0] ? new DeliveryNoteTransitionRefused($refused[2]) : new InvalidDeliveryNote(...\array_slice($refused, 1));
+                throw $refused[0] ? new DeliveryNoteTransitionRefused($refused[2], ...\array_slice($refused, 3)) : new InvalidDeliveryNote(...\array_slice($refused, 1));
             }
             $left = $this->leftOf($company, $quote);
             $decimals = [];
@@ -73,7 +73,7 @@ final readonly class DeliverQuotes
                     }
                 }
             } elseif ([] === array_filter($left, static fn (\BcMath\Number $each): bool => $each->compare(0) > 0)) {
-                throw new DeliveryNoteTransitionRefused(\sprintf('Nothing is left to deliver on the quote %s: its notes that are not cancelled take all of it.', QuoteDelivery::reference($quote)));
+                throw new DeliveryNoteTransitionRefused(\sprintf('Nothing is left to deliver on the quote %s: its notes that are not cancelled take all of it.', QuoteDelivery::reference($quote)), 'quote_delivered_whole', ['reference' => QuoteDelivery::reference($quote)]);
             }
 
             $lines = [];

@@ -49,7 +49,9 @@ final readonly class ValidateDeliveryNoteProcessor implements ProcessorInterface
             $note = $this->workflow->validate($company, CompanyPath::identifier($uriVariables, 'deliveryNoteId'), $this->guard->account()->getId(), $this->consents->of($company, $context));
         } catch (DeliveryNoteNotFound $absent) {
             throw new NotFoundHttpException('No such delivery note.', $absent);
-        } catch (DeliveryNoteNotDraft|NoNumberingSeries|InvalidNumbering|DeliveryNoteNumberTaken $conflict) {
+        } catch (DeliveryNoteNotDraft $conflict) {
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
+        } catch (NoNumberingSeries|InvalidNumbering|DeliveryNoteNumberTaken $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         } catch (InvalidDeliveryNote $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);

@@ -56,7 +56,9 @@ final readonly class AddDeliveryNotesToDraftProcessor implements ProcessorInterf
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvalidDeliveryNote|InvalidInvoice $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
-        } catch (DeliveryNoteTransitionRefused|InvoiceNotDraft $conflict) {
+        } catch (DeliveryNoteTransitionRefused $conflict) {
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
+        } catch (InvoiceNotDraft $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         }
 

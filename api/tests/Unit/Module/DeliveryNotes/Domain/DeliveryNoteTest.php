@@ -339,15 +339,20 @@ final class DeliveryNoteTest extends TestCase
         );
         self::assertEquals($later, $note->getUpdatedAt());
         self::assertSame([], $note->releaseEvents(), 'the stock left with validation');
+        $draft = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now);
+        $number = ['reference' => $note->getNumber() ?? self::fail('a validated note is numbered')];
         foreach ([
-            'deliver again' => static fn () => $note->deliver($later, $later, ReceiverRule::Optional),
-            'cancel' => static fn () => $note->cancel($later),
-            'deliver a draft' => fn () => DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now)->deliver($later, $later, ReceiverRule::Optional),
-        ] as $case => $attempt) {
+            'deliver again' => [static fn () => $note->deliver($later, $later, ReceiverRule::Optional), 'note_not_validated', $number],
+            'cancel' => [static fn () => $note->cancel($later), 'note_not_cancellable', $number],
+            'deliver a draft' => [static fn () => $draft->deliver($later, $later, ReceiverRule::Optional), 'note_not_validated', ['reference' => $draft->getId()->toRfc4122()]],
+            'invoice a draft' => [static fn () => $draft->markInvoiced(Uuid::v7(), $later), 'note_not_invoiceable', ['reference' => $draft->getId()->toRfc4122()]],
+            'name the receiver of a draft' => [static fn () => $draft->correctReceiver(Receiver::named('Ahmed Ben Salah'), $later), 'receiver_named_as_drafted', []],
+        ] as $case => [$attempt, $reason, $params]) {
             try {
                 $attempt();
                 self::fail("$case accepted");
-            } catch (DeliveryNoteTransitionRefused) {
+            } catch (DeliveryNoteTransitionRefused $refused) {
+                self::assertSame([$reason, $params], [$refused->reason, $refused->params], $case);
             }
         }
     }
@@ -360,12 +365,14 @@ final class DeliveryNoteTest extends TestCase
         try {
             $draft->cancel($this->now);
             self::fail('a cancelled note was cancelled again');
-        } catch (DeliveryNoteTransitionRefused) {
+        } catch (DeliveryNoteTransitionRefused $refused) {
+            self::assertSame(['note_not_cancellable', ['reference' => $draft->getId()->toRfc4122()]], [$refused->reason, $refused->params]);
         }
         try {
             $draft->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), KeptNames::of($draft), $this->now);
             self::fail('a cancelled note was validated');
-        } catch (DeliveryNoteNotDraft) {
+        } catch (DeliveryNoteNotDraft $refused) {
+            self::assertSame(['note_validated_already', ['reference' => $draft->getId()->toRfc4122()]], [$refused->reason, $refused->params]);
         }
 
         $note = $this->validated($this->customer, new DeliveryNoteHeader());

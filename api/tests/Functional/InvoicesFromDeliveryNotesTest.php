@@ -84,8 +84,10 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
 
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$first]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a note already on a draft is not invoiced twice');
+        self::assertSame(['notes_on_draft_invoice', []], $this->refusedWholeAs());
         $this->postJson($this->notePath($second).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a note on an invoice is not cancelled');
+        self::assertSame(['note_on_draft_invoice', ['reference']], $this->refusedWholeAs());
 
         $echo = [];
         foreach ($lines as $line) {
@@ -119,10 +121,13 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         }
         $this->postJson($this->notePath($second).'/deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoiced note is not delivered');
+        self::assertSame(['note_not_validated', ['reference']], $this->refusedWholeAs());
         $this->postJson($this->notePath($first).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoiced note is not cancelled');
+        self::assertSame(['note_on_invoice', ['reference', 'invoice']], $this->refusedWholeAs(), 'the issued invoice that carries it, never « a draft »');
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$first]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoiced note is not invoiced again');
+        self::assertSame(['note_not_invoiceable', ['reference']], $this->refusedWholeAs());
 
         $this->postJson($this->invoicePath($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -223,6 +228,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertEquals(['fields' => ['lines'], 'deliveryNoteIds' => [$second]], json_decode($revised, true));
         $this->postJson($toDraft, ['deliveryNoteIds' => [$second]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'what the draft already took is not added twice');
+        self::assertSame(['notes_on_draft_invoice', []], $this->refusedWholeAs());
 
         $this->postJson($this->invoicePath($id).'/issue', null);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
@@ -312,6 +318,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
 
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'nothing is left to invoice');
+        self::assertSame(['notes_on_draft_invoice', []], $this->refusedWholeAs(), 'the two drafts hold all of it');
 
         $this->postJson($this->invoicePath($this->stringAt($first, 'id')).'/issue', null);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
@@ -619,11 +626,13 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $draft = $this->stringAt($this->json(), 'id');
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$draft]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft note is not invoiced');
+        self::assertSame(['note_not_invoiceable', ['reference']], $this->refusedWholeAs());
         $cancelled = $this->validatedNote();
         $this->postJson($this->notePath($cancelled).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$cancelled]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a cancelled note is not invoiced');
+        self::assertSame(['note_not_invoiceable', ['reference']], $this->refusedWholeAs());
 
         $mine = $this->validatedNote();
         $theirs = $this->validatedNote(['customerId' => $other]);

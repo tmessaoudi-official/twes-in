@@ -53,8 +53,9 @@ final readonly class DeliverInvoices
         return $this->transactions->run(function () use ($company, $invoiceId, $quantities, $actorUserId): DeliveryNote {
             $invoice = $this->invoices->ofId($company, $invoiceId, true) ?? throw new DeliveredInvoiceNotFound();
             $refused = InvoiceDelivery::refusal($invoice);
-            if (null !== $refused) {
-                throw new DeliveryNoteTransitionRefused($refused);
+            $reason = InvoiceDelivery::refusalReason($invoice);
+            if (null !== $refused && null !== $reason) {
+                throw new DeliveryNoteTransitionRefused($refused, ...$reason);
             }
             $taken = $this->notes->invoiceLineQuantities($company->getId(), array_map(static fn (InvoiceLineToDeliver $line): Uuid => $line->id, $invoice->lines));
             $left = [];
@@ -64,7 +65,7 @@ final readonly class DeliverInvoices
                 $decimals[$line->id->toRfc4122()] = $line->unit->getDecimals();
             }
             if ([] === $left) {
-                throw new DeliveryNoteTransitionRefused(\sprintf('The invoice %s bills no goods of its own to deliver: its lines are services, deductions or goods its delivery notes already handed over.', InvoiceDelivery::reference($invoice)));
+                throw new DeliveryNoteTransitionRefused(\sprintf('The invoice %s bills no goods of its own to deliver: its lines are services, deductions or goods its delivery notes already handed over.', InvoiceDelivery::reference($invoice)), 'invoice_bills_no_goods', ['reference' => InvoiceDelivery::reference($invoice)]);
             }
             if (null !== $quantities) {
                 foreach ($quantities as $lineId => $quantity) {
@@ -79,7 +80,7 @@ final readonly class DeliverInvoices
                     }
                 }
             } elseif ([] === array_filter($left, static fn (\BcMath\Number $each): bool => $each->compare(0) > 0)) {
-                throw new DeliveryNoteTransitionRefused(\sprintf('Nothing is left to deliver on the invoice %s: its credit notes and its notes that are not cancelled take all of it.', InvoiceDelivery::reference($invoice)));
+                throw new DeliveryNoteTransitionRefused(\sprintf('Nothing is left to deliver on the invoice %s: its credit notes and its notes that are not cancelled take all of it.', InvoiceDelivery::reference($invoice)), 'invoice_delivered_whole', ['reference' => InvoiceDelivery::reference($invoice)]);
             }
 
             $lines = [];

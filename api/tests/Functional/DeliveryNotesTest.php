@@ -353,9 +353,11 @@ final class DeliveryNotesTest extends ApiTestCase
 
         $this->sendJson('PUT', $this->path($id), $this->note(['version' => $this->storedVersion('delivery_note', $id)]));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a validated note is no longer revised');
+        self::assertSame(['note_no_longer_draft', ['reference']], $this->refusedWholeAs());
         self::assertStringNotContainsString('record-changed', (string) $this->client->getResponse()->getContent(), 'fixed, not saved since');
         $this->postJson($this->path($id).'/validate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a note is numbered once');
+        self::assertSame(['note_validated_already', ['reference']], $this->refusedWholeAs());
 
         foreach (['2000-01-01T10:00' => 'before its issue day', '2999-01-01T10:00' => 'after now', $today => 'a day without its time', '2026-02-30T10:00' => 'a day that does not exist', '15/09/2026 10:00' => 'not a moment'] as $moment => $case) {
             $this->postJson($this->path($id).'/deliver', ['delivered' => $moment]);
@@ -374,6 +376,7 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertSame('+00:00', $at->format('P'), 'a moment is answered in UTC');
         $this->postJson($this->path($id).'/cancel', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'delivered goods are not cancelled');
+        self::assertSame(['note_not_cancellable', ['reference']], $this->refusedWholeAs());
 
         $this->postJson($this->path(), $this->note());
         $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/validate', null);
@@ -431,6 +434,7 @@ final class DeliveryNotesTest extends ApiTestCase
 
         $this->postJson($this->path($id).'/validate-and-deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a note is numbered once');
+        self::assertSame(['note_validated_already', ['reference']], $this->refusedWholeAs());
         $this->postJson($this->path(), $this->note());
         $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/validate-and-deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a note without a line is not validated');
@@ -567,6 +571,7 @@ final class DeliveryNotesTest extends ApiTestCase
         $draft = $this->draftWithALine();
         $this->postJson($this->path($draft).'/receiver', $correct);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is put right by a save');
+        self::assertSame(['receiver_named_as_drafted', []], $this->refusedWholeAs());
 
         $this->changeReceiverRule($customer, 'off');
         $this->postJson($this->path(), $this->note(['receivedBy' => ['name' => 'Sami']]));
@@ -648,6 +653,7 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'cancelling needs delivery_note.validate');
         $this->postJson($this->path($id).'/deliver', []);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not delivered');
+        self::assertSame(['note_not_validated', ['reference']], $this->refusedWholeAs());
 
         $this->getJson($this->path($id));
         self::assertSame(['draft', null, null], [$this->json()['status'], $this->json()['number'], $this->json()['customerSnapshot']]);

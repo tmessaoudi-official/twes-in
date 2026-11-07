@@ -21,7 +21,6 @@ use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\Security\DeliveryNotePer
 use App\Shared\Infrastructure\ApiPlatform\Output\DomainRule;
 use App\Tenancy\Infrastructure\ApiPlatform\Payload\CompanyPath;
 use App\Tenancy\Infrastructure\ApiPlatform\Security\CompanyGuard;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProcessorInterface<DeliveryNoteResource, DeliveryNoteResource> */
@@ -39,8 +38,8 @@ final readonly class ReviseDeliveryNoteProcessor implements ProcessorInterface
             $note = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'deliveryNoteId'), $data->input(), $this->guard->account()->getId(), $data->version);
         } catch (DeliveryNoteNotFound $absent) {
             throw new NotFoundHttpException('No such delivery note.', $absent);
-        } catch (DeliveryNoteNotDraft $fixed) {
-            throw new ConflictHttpException($fixed->getMessage(), $fixed);
+        } catch (DeliveryNoteNotDraft $conflict) {
+            throw DomainRule::conflict(DomainRule::WHOLE_REQUEST, $conflict->getMessage(), $conflict->reason, $conflict->params, $conflict);
         } catch (InvalidDeliveryNote $refused) {
             throw DomainRule::refused($refused->field, $refused->getMessage(), $refused->reason ?? 'invalid_value', $refused->params, $refused);
         }

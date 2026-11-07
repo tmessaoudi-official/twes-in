@@ -525,6 +525,20 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
+     * The reason a request was refused with as a whole, and the names of its parameters: for a refusal whose values
+     * (a document's number) the unit test of its rule pins, the functional case asserts what reaches the screen.
+     *
+     * @return array{mixed, list<int|string>}
+     */
+    protected function refusedWholeAs(): array
+    {
+        [$reason, $params] = $this->refusalOf('');
+        self::assertIsArray($params);
+
+        return [$reason, array_keys($params)];
+    }
+
+    /**
      * Scalars out of a JSON body, asserted to be what they are. PHPStan runs at max here, so a test that
      * indexes straight into a decoded body is indexing into `mixed`.
      *

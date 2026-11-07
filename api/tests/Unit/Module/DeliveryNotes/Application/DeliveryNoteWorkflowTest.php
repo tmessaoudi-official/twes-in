@@ -295,7 +295,8 @@ final class DeliveryNoteWorkflowTest extends TestCase
         try {
             $this->workflow->cancel($this->company, $delivered->getId(), $actor);
             self::fail('a delivered note was cancelled');
-        } catch (DeliveryNoteTransitionRefused) {
+        } catch (DeliveryNoteTransitionRefused $refused) {
+            self::assertSame(['note_not_cancellable', ['reference' => $delivered->getNumber()]], [$refused->reason, $refused->params]);
         }
 
         $validated = $this->workflow->validate($this->company, $this->draft()->getId(), null);
@@ -422,7 +423,8 @@ final class DeliveryNoteWorkflowTest extends TestCase
         try {
             $this->workflow->validateAndDeliver($this->company, $validated->getId(), null);
             self::fail('a note already validated was validated again');
-        } catch (DeliveryNoteNotDraft) {
+        } catch (DeliveryNoteNotDraft $refused) {
+            self::assertSame(['note_validated_already', ['reference' => $validated->getNumber()]], [$refused->reason, $refused->params]);
         }
 
         self::assertSame([DeliveryNoteStatus::Draft, null], [$empty->getStatus(), $empty->getNumber()]);
@@ -471,6 +473,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
             self::fail('a note on a draft invoice was cancelled');
         } catch (DeliveryNoteTransitionRefused $refused) {
             self::assertStringContainsString('invoice', $refused->getMessage());
+            self::assertSame(['note_on_draft_invoice', ['reference' => $note->getNumber()]], [$refused->reason, $refused->params]);
         }
         self::assertSame(DeliveryNoteStatus::Validated, $note->getStatus());
 

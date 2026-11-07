@@ -151,7 +151,22 @@
       "place_drawn_twice": "This location is drawn twice in the same changes: keep only one.",
       "place_drawn_elsewhere": "This location is already drawn on another rectangle: erase that one first, in the same changes.",
       "code_taken": "The code {{code}} is already another location’s in this establishment: choose another one.",
-      "code_given_twice": "This code is given to two new locations: give one of them another."
+      "code_given_twice": "This code is given to two new locations: give one of them another.",
+      "note_not_validated": "Only a validated note is delivered, and delivery note “{{reference}}” is not, or no longer.",
+      "note_not_invoiceable": "Only a validated or delivered note is invoiced, and delivery note “{{reference}}” is not, or no longer.",
+      "note_not_cancellable": "Delivery note “{{reference}}” can no longer be cancelled: only a draft or a validated note is.",
+      "note_no_longer_draft": "Delivery note “{{reference}}” is no longer a draft: only a draft is changed.",
+      "note_validated_already": "Delivery note “{{reference}}” is no longer a draft: it was validated, or cancelled, already.",
+      "receiver_named_as_drafted": "A draft’s receiver is named as it is saved, and a cancelled note delivers nothing.",
+      "note_on_draft_invoice": "Delivery note “{{reference}}” is on a draft invoice: cancel that draft first.",
+      "note_of_issued_invoice": "Delivery note “{{reference}}” hands over the goods of an issued invoice, which billed them already: it is never invoiced again.",
+      "nothing_left_to_invoice": "Nothing is left to invoice on these delivery notes.",
+      "notes_on_draft_invoice": "These delivery notes are on a draft invoice already: nothing is left to invoice. Open that draft, or cancel it first.",
+      "notes_on_invoice": "These delivery notes are on invoice “{{invoice}}”, which is not cancelled: nothing is left to invoice.",
+      "invoice_bills_no_goods": "Invoice “{{reference}}” bills no goods to deliver: its lines are services, deductions or goods its delivery notes handed over already.",
+      "invoice_delivered_whole": "Nothing is left to deliver on invoice “{{reference}}”: its credit notes and its delivery notes that are not cancelled take all of it.",
+      "quote_delivered_whole": "Nothing is left to deliver on quote “{{reference}}”: its delivery notes that are not cancelled take all of it.",
+      "note_on_invoice": "Delivery note “{{reference}}” is on invoice “{{invoice}}”, which is not cancelled: it can no longer be cancelled. An issued invoice is corrected by a credit note."
     }
   }
 }

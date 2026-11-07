@@ -247,7 +247,8 @@ final class ManageDeliveryNotesTest extends TestCase
         try {
             $this->manage->revise($this->company, $note->getId(), $this->input($customer, [new DeliveryNoteLineInput($this->product()->getId(), null, '4')], header: new DeliveryNoteHeader(customerReference: 'PO-9')), null);
             self::fail('a note that is no longer a draft was revised from a copy read while it was one');
-        } catch (DeliveryNoteNotDraft) {
+        } catch (DeliveryNoteNotDraft $refused) {
+            self::assertSame('note_no_longer_draft', $refused->reason);
         }
 
         self::assertSame(['delivery_note.created'], array_map(static fn ($entry): string => $entry->action, $this->audit->entries));

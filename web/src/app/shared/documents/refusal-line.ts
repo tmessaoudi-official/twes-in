@@ -10,9 +10,10 @@ import { refusedError } from '../form/refusal-words';
 /**
  * The line a document's page says above its form when a step is refused. A refusal said under its field is not said
  * again there; one that no field shown takes (the document's lines as a whole, a field the form does not show) is said
- * in its own words rather than a list of everything that might be wrong; a code with no refusals behind it (a conflict,
- * a refusal without reasons) keeps the code's words. What the page placed holds for the refusals it placed only, so a
- * later step's refusals are read afresh.
+ * in its own words rather than a list of everything that might be wrong. A conflict carrying its reason (a move the
+ * document's state refuses, such as cancelling a delivered note) is read as a refused value is, since the API answers
+ * both alike; a code with no refusals behind it (a record changed meanwhile, a refusal without reasons) keeps the
+ * code's words. What the page placed holds for the refusals it placed only, so a later step's refusals are read afresh.
  */
 export class RefusalLine {
   private readonly placedOf = signal<{
@@ -35,7 +36,8 @@ export class RefusalLine {
   /** What the line says for the page's error code, null when the fields already say it all. */
   for(code: string): FieldError | null {
     const refusals = this.refusals();
-    if (code !== 'invalid' || refusals.length === 0) return { key: this.prefix + code, params: {} };
+    if ((code !== 'invalid' && code !== 'conflict') || refusals.length === 0)
+      return { key: this.prefix + code, params: {} };
     const placed = this.placedOf();
     const unplaced = placed !== null && placed.of === refusals ? placed.unplaced : refusals;
     const [first] = unplaced;

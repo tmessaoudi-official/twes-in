@@ -179,7 +179,9 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
             $lines = array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), $note->getLines());
             $invoice = [] === $lines ? null : ($this->invoiced->carrying($company->getId(), $lines)[0] ?? null);
             if (null !== $invoice) {
-                throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is on the invoice %s: cancel that draft first.', $note->getNumber() ?? $note->getId()->toRfc4122(), $invoice->number ?? $invoice->id->toRfc4122()));
+                $reference = $note->getNumber() ?? $note->getId()->toRfc4122();
+                // An issued invoice is named by its number; a draft has none yet, and is what can be cancelled first.
+                throw null === $invoice->number ? new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is on a draft invoice: cancel that draft first.', $reference), 'note_on_draft_invoice', ['reference' => $reference]) : new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is on the invoice %s, which is not cancelled.', $reference, $invoice->number), 'note_on_invoice', ['reference' => $reference, 'invoice' => $invoice->number]);
             }
             $note->cancel($this->clock->now());
             $this->notes->save($note);
@@ -194,7 +196,7 @@ final readonly class DeliveryNoteWorkflow implements DeclaresAuditActions
 
     private function numbered(Company $company, DeliveryNote $note, ?Uuid $actorUserId, ?Receiver $receiver = null, ?ShortSaleConsent $consent = null): DeliveryNote
     {
-        $note->assertDraft('is validated');
+        $note->assertDraft('is validated', validating: true);
         // A draft put back from « Récemment supprimés » was never moved by a merge made meanwhile.
         if ($note->getCustomer()->isMergedAway()) {
             throw new InvalidDeliveryNote('customerId', $note->getCustomer()->whySwitchedOff(), ...$note->getCustomer()->switchedOffReason());

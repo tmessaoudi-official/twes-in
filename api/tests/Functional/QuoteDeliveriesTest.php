@@ -92,6 +92,7 @@ final class QuoteDeliveriesTest extends ApiTestCase
         self::assertSame([[$lathe, '4.000'], [$pose, '1.500']], array_map(static fn (array $line): array => [$line['sourceQuoteLineId'], $line['quantity']], $this->listOf($this->json(), 'lines')), 'with no quantities, what is left of every line');
         $this->postJson($this->deliver($quoteId), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'nothing is left');
+        self::assertSame(['quote_delivered_whole', ['reference']], $this->refusedWholeAs());
 
         $this->getJson($this->path('quotes', $quoteId));
         $quote = $this->json();
@@ -143,6 +144,7 @@ final class QuoteDeliveriesTest extends ApiTestCase
         $sent = $this->sent();
         $this->postJson($this->deliver($sent), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a quote not accepted');
+        self::assertSame(['quote_not_accepted', ['reference']], $this->refusedWholeAs());
         $this->postJson($this->deliver(self::ABSENT), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson($this->path('quotes', self::ABSENT).'/left');
@@ -217,6 +219,7 @@ final class QuoteDeliveriesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->postJson($this->deliver($invoiced), ['quantities' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a quote invoiced whole draws no note');
+        self::assertSame(['quote_invoiced_whole', ['reference']], $this->refusedWholeAs());
     }
 
     /**

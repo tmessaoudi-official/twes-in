@@ -241,6 +241,27 @@ describe('DeliveryNotesFacade', () => {
     expect(facade.error()).toBe('conflict');
   });
 
+  it('keeps with every error the refusals that came with it, never those of an earlier step', async () => {
+    const lines = [{ field: 'lines[0].quantity', reason: 'invalid_quantity', params: {} }];
+    const held = [{ field: '', reason: 'notes_on_draft_invoice', params: {} }];
+    api.revise.mockRejectedValueOnce(new DeliveryNotesRefused('invalid', lines));
+    await facade.revise('c1', 'n1', input, 1);
+
+    api.invoice.mockRejectedValueOnce(new DeliveryNotesRefused('conflict', held));
+    await facade.invoice('c1', 'n1');
+    expect([facade.error(), facade.refusals()]).toEqual(['conflict', held]);
+
+    api.left.mockRejectedValueOnce(new DeliveryNotesRefused('conflict'));
+    await facade.left('c1', 'n1');
+    expect([facade.error(), facade.refusals()]).toEqual(['conflict', []]);
+
+    api.revise.mockRejectedValueOnce(new DeliveryNotesRefused('invalid', lines));
+    await facade.revise('c1', 'n1', input, 1);
+    api.deliver.mockRejectedValueOnce(new DeliveryNotesRefused('conflict'));
+    await facade.deliver('c1', 'n1', null);
+    expect([facade.error(), facade.refusals()]).toEqual(['conflict', []]);
+  });
+
   it('answers the drafts a note could be added to, and null with the reason when they could not be read', async () => {
     const drafts = [{ id: 'd1', total: '10.000', lineCount: 1, customerReference: null }];
     api.draftsOf.mockResolvedValue(drafts);

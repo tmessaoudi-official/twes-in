@@ -221,6 +221,7 @@ export class DeliveryNotesFacade {
     delivered: string | null,
     receivedBy: ReceiverChoice | null = null,
   ): Promise<FormAnswer<DeliveryNoteRow>> {
+    this.refusalsSignal.set([]);
     const answer = await this.state.writeOrRefuse(
       () => this.api.deliver(companyId, id, delivered, receivedBy),
       (error) => (error instanceof DeliveryNotesRefused ? error.refusals : []),
@@ -235,6 +236,7 @@ export class DeliveryNotesFacade {
     id: string,
     receivedBy: ReceiverChoice | null,
   ): Promise<FormAnswer<DeliveryNoteRow>> {
+    this.refusalsSignal.set([]);
     const answer = await this.state.writeOrRefuse(
       () => this.api.correctReceiver(companyId, id, receivedBy),
       (error) => (error instanceof DeliveryNotesRefused ? error.refusals : []),
@@ -258,7 +260,7 @@ export class DeliveryNotesFacade {
     try {
       return await this.api.left(companyId, id);
     } catch (error) {
-      this.state.fail(error);
+      this.fail(error);
       return null;
     }
   }
@@ -273,7 +275,13 @@ export class DeliveryNotesFacade {
     quantities?: Readonly<Record<string, string>>,
     intoDraftId?: string,
   ): Promise<string | null> {
-    return this.state.writeAnswer(() => this.api.invoice(companyId, [id], quantities, intoDraftId));
+    this.refusalsSignal.set([]);
+    return this.state.writeAnswer(
+      () => this.api.invoice(companyId, [id], quantities, intoDraftId),
+      {
+        failed: (error) => this.keepRefusalsOf(error),
+      },
+    );
   }
 
   /** An invoice for part of the note, asked in a dialog, which says a line's refused quantity on its line. */
@@ -283,6 +291,7 @@ export class DeliveryNotesFacade {
     quantities: Readonly<Record<string, string>>,
     intoDraftId?: string,
   ): Promise<FormAnswer<string>> {
+    this.refusalsSignal.set([]);
     return this.state.writeOrRefuse(
       () => this.api.invoice(companyId, [id], quantities, intoDraftId),
       (error) => (error instanceof DeliveryNotesRefused ? error.refusals : []),
@@ -333,7 +342,7 @@ export class DeliveryNotesFacade {
     try {
       return await this.api.draftsOf(companyId, customerId, establishmentId);
     } catch (error) {
-      this.state.fail(error);
+      this.fail(error);
       return null;
     }
   }
@@ -355,9 +364,23 @@ export class DeliveryNotesFacade {
     try {
       return await call();
     } catch (error) {
-      this.state.fail(error);
+      this.fail(error);
       return [];
     }
+  }
+
+  /**
+   * The refusals the page's line reads are always those of the error it shows: a conflict now carries its reason, so
+   * one an earlier step left would otherwise be said for a later failure.
+   */
+  private keepRefusalsOf(error: unknown): void {
+    this.refusalsSignal.set(error instanceof DeliveryNotesRefused ? error.refusals : []);
+  }
+
+  /** A failure outside a marked request, said with its own refusals. */
+  private fail(error: unknown): void {
+    this.state.fail(error);
+    this.keepRefusalsOf(error);
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
@@ -372,10 +395,7 @@ export class DeliveryNotesFacade {
         this.noteSignal.set(note);
         return note;
       },
-      {
-        failed: (error) =>
-          this.refusalsSignal.set(error instanceof DeliveryNotesRefused ? error.refusals : []),
-      },
+      { failed: (error) => this.keepRefusalsOf(error) },
     );
   }
 }

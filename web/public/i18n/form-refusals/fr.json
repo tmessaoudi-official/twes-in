@@ -151,7 +151,22 @@
       "place_drawn_twice": "Cet emplacement est dessiné deux fois dans les mêmes changements : n’en gardez qu’un.",
       "place_drawn_elsewhere": "Cet emplacement est déjà dessiné sur un autre rectangle : effacez d’abord celui-là, dans les mêmes changements.",
       "code_taken": "Le code {{code}} est déjà celui d’un autre emplacement de cet établissement : choisissez-en un autre.",
-      "code_given_twice": "Ce code est donné à deux nouveaux emplacements : donnez-en un autre à l’un des deux."
+      "code_given_twice": "Ce code est donné à deux nouveaux emplacements : donnez-en un autre à l’un des deux.",
+      "note_not_validated": "Seul un bon validé se livre ; le bon « {{reference}} » ne l’est pas, ou ne l’est plus.",
+      "note_not_invoiceable": "Seul un bon validé ou livré se facture ; le bon « {{reference}} » ne l’est pas, ou ne l’est plus.",
+      "note_not_cancellable": "Le bon « {{reference}} » ne s’annule plus : seul un brouillon ou un bon validé s’annule.",
+      "note_no_longer_draft": "Le bon « {{reference}} » n’est plus un brouillon : seul un brouillon se modifie.",
+      "note_validated_already": "Le bon « {{reference}} » n’est plus un brouillon : il a déjà été validé, ou annulé.",
+      "receiver_named_as_drafted": "Le réceptionnaire d’un brouillon se nomme en l’enregistrant, et un bon annulé ne livre rien.",
+      "note_on_draft_invoice": "Le bon « {{reference}} » est sur un brouillon de facture : annulez d’abord ce brouillon.",
+      "note_of_issued_invoice": "Le bon « {{reference}} » remet les articles d’une facture émise, qui les a déjà facturés : il ne se facture jamais de nouveau.",
+      "nothing_left_to_invoice": "Il ne reste rien à facturer sur ces bons.",
+      "notes_on_draft_invoice": "Ces bons sont déjà sur un brouillon de facture : il ne reste rien à facturer. Ouvrez ce brouillon, ou annulez-le d’abord.",
+      "notes_on_invoice": "Ces bons sont déjà sur la facture « {{invoice}} », qui n’est pas annulée : il ne reste rien à facturer.",
+      "invoice_bills_no_goods": "La facture « {{reference}} » ne facture aucun article à livrer : ses lignes sont des services, des déductions ou des articles que ses bons ont déjà remis.",
+      "invoice_delivered_whole": "Il ne reste rien à livrer sur la facture « {{reference}} » : ses avoirs et ses bons non annulés en prennent tout.",
+      "quote_delivered_whole": "Il ne reste rien à livrer sur le devis « {{reference}} » : ses bons non annulés en prennent tout.",
+      "note_on_invoice": "Le bon « {{reference}} » est sur la facture « {{invoice}} », qui n’est pas annulée : il ne s’annule plus. Une facture émise se corrige par un avoir."
     }
   }
 }
