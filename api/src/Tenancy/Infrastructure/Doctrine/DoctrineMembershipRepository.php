@@ -71,7 +71,7 @@ final readonly class DoctrineMembershipRepository implements MembershipRepositor
             ->join('m.user', 'u')->join('m.role', 'r')
             ->where('m.company IN (:companies)')->andWhere('r.name = :owner')
             ->setParameter('companies', $companyIds, ArrayParameterType::STRING)->setParameter('owner', Role::OWNER)
-            ->orderBy('m.createdAt', \SortDirection::Ascending)->getQuery()->getResult();
+            ->orderBy('m.createdAt', \SortDirection::Ascending)->addOrderBy('m.id', \SortDirection::Ascending)->getQuery()->getResult();
 
         return $owners;
     }
